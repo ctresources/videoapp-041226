@@ -1,19 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { uploadToYouTube, refreshYouTubeToken } from "@/lib/api/social/youtube";
-import { postToInstagram } from "@/lib/api/social/instagram";
-import { postToTikTok } from "@/lib/api/social/tiktok";
-import { decryptToken } from "@/lib/utils/encrypt";
+import { uploadMediaFromUrl, createPost, type PostTarget, type BlotatoPlatform } from "@/lib/api/blotato";
 import { NextRequest, NextResponse } from "next/server";
 
-interface SocialAccount {
-  id: string;
-  platform: string;
-  platform_user_id: string;
-  access_token_enc: string;
-  refresh_token_enc: string | null;
-  token_expires_at: string | null;
-  is_active: boolean;
+interface PostRequestTarget {
+  accountId: string;
+  platform: BlotatoPlatform;
+  caption?: string;
+  title?: string;
+  description?: string;
+  privacy?: "public" | "unlisted" | "private";
 }
 
 export async function POST(req: NextRequest) {
@@ -22,154 +18,97 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { videoId, platforms, caption, title, description, tags, privacyStatus } = body as {
+  const { videoId, targets, scheduledAt } = body as {
     videoId: string;
-    platforms: string[];
-    caption: string;
-    title: string;
-    description: string;
-    tags: string[];
-    privacyStatus?: "public" | "unlisted" | "private";
+    targets: PostRequestTarget[];
+    scheduledAt?: string;
   };
 
-  if (!videoId || !platforms?.length) {
-    return NextResponse.json({ error: "videoId and platforms required" }, { status: 400 });
+  if (!videoId || !targets?.length) {
+    return NextResponse.json({ error: "videoId and targets required" }, { status: 400 });
   }
 
   const admin = createAdminClient();
 
-  // Load video
-  const { data: videoData } = await admin
-    .from("generated_videos")
-    .select("*, projects(title, ai_script, seo_data)")
-    .eq("id", videoId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!videoData || !videoData.video_url) {
-    return NextResponse.json({ error: "Video not found or not yet rendered" }, { status: 404 });
-  }
+  // Load video + profile
+  const [{ data: videoData }, { data: profileData }] = await Promise.all([
+    admin.from("generated_videos")
+      .select("*, projects(title, ai_script, seo_data)")
+      .eq("id", videoId)
+      .eq("user_id", user.id)
+      .single(),
+    admin.from("profiles")
+      .select("blotato_api_key")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
   const video = videoData as {
-    id: string;
-    video_url: string;
+    video_url: string | null;
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
-  };
+  } | null;
 
-  // Load connected social accounts
-  const { data: accounts } = await admin
-    .from("social_accounts")
-    .select("*")
-    .eq("user_id", user.id)
-    .in("platform", platforms)
-    .eq("is_active", true);
+  const blotatoKey = (profileData as { blotato_api_key: string | null } | null)?.blotato_api_key;
 
-  const results: Record<string, { success: boolean; url?: string; error?: string }> = {};
+  if (!video?.video_url) return NextResponse.json({ error: "Video not ready" }, { status: 404 });
+  if (!blotatoKey) return NextResponse.json({ error: "Blotato API key not connected. Go to Settings → Social Accounts." }, { status: 400 });
 
-  for (const account of (accounts as SocialAccount[]) || []) {
-    try {
-      let accessToken = await decryptToken(account.access_token_enc);
+  try {
+    // Step 1: Upload video to Blotato (they host it for delivery)
+    const media = await uploadMediaFromUrl(blotatoKey, video.video_url, "video");
 
-      // Refresh YouTube token if expired
-      if (account.platform === "youtube" && account.token_expires_at) {
-        const expiresAt = new Date(account.token_expires_at).getTime();
-        if (Date.now() > expiresAt - 5 * 60 * 1000 && account.refresh_token_enc) {
-          const refreshToken = await decryptToken(account.refresh_token_enc);
-          accessToken = await refreshYouTubeToken(refreshToken);
-          // Update stored token
-          const { encryptToken } = await import("@/lib/utils/encrypt");
-          await admin.from("social_accounts").update({
-            access_token_enc: await encryptToken(accessToken),
-            token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
-          }).eq("id", account.id);
-        }
-      }
+    // Step 2: Build platform targets with AI-generated copy
+    const aiScript = video.projects?.ai_script as Record<string, unknown> | null;
+    const seoData = video.projects?.seo_data as Record<string, unknown> | null;
+    const defaultTitle = String(aiScript?.title || video.projects?.title || "");
+    const defaultYouTubeDesc = String(seoData?.youtube_description || aiScript?.description || defaultTitle);
+    const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
 
-      const videoTitle = title || (video.projects?.title) || "Real Estate Video";
-      const videoDesc = description || String((video.projects?.seo_data as Record<string, unknown> | null)?.youtube_description || videoTitle);
-      const videoTags = tags || ((video.projects?.ai_script as Record<string, unknown> | null)?.keywords as string[]) || [];
+    const postTargets: PostTarget[] = targets.map((t) => ({
+      accountId: t.accountId,
+      platform: t.platform,
+      // YouTube
+      title: t.title || defaultTitle,
+      description: t.description || defaultYouTubeDesc,
+      privacy: t.privacy || "public",
+      notifySubscribers: true,
+      // Instagram / TikTok / others
+      caption: t.caption || defaultCaption,
+      mediaType: "reel" as const,
+    }));
 
-      if (account.platform === "youtube") {
-        const result = await uploadToYouTube(accessToken, {
-          videoUrl: video.video_url,
-          title: videoTitle,
-          description: videoDesc,
-          tags: videoTags,
-          privacyStatus: privacyStatus || "public",
-        });
-        results.youtube = { success: true, url: result.video_url };
+    // Step 3: Post via Blotato (handles all platform APIs + OAuth)
+    const result = await createPost(blotatoKey, {
+      mediaId: media.id,
+      targets: postTargets,
+      scheduledAt,
+    });
 
-        // Save post record
-        await admin.from("social_posts").insert({
-          user_id: user.id,
-          video_id: videoId,
-          platform: "youtube",
-          social_account_id: account.id,
-          post_id: result.video_id,
-          post_url: result.video_url,
-          caption: videoDesc,
-          posted_at: new Date().toISOString(),
-          status: "published",
-        });
-      }
+    // Step 4: Log in social_posts
+    await admin.from("social_posts").insert({
+      user_id: user.id,
+      video_id: videoId,
+      platform: targets.map((t) => t.platform).join(","),
+      post_id: result.id,
+      caption: defaultCaption,
+      posted_at: scheduledAt ? null : new Date().toISOString(),
+      status: scheduledAt ? "scheduled" : "published",
+      metadata: result as unknown as Record<string, unknown>,
+    });
 
-      if (account.platform === "instagram") {
-        const igUserId = account.platform_user_id;
-        const result = await postToInstagram(accessToken, igUserId, {
-          videoUrl: video.video_url,
-          caption: caption || String((video.projects?.seo_data as Record<string, unknown> | null)?.instagram_caption || videoTitle),
-          mediaType: "REELS",
-        });
-        results.instagram = { success: true, url: result.post_url };
-
-        await admin.from("social_posts").insert({
-          user_id: user.id,
-          video_id: videoId,
-          platform: "instagram",
-          social_account_id: account.id,
-          post_id: result.post_id,
-          post_url: result.post_url,
-          caption: caption || "",
-          posted_at: new Date().toISOString(),
-          status: "published",
-        });
-      }
-
-      if (account.platform === "tiktok") {
-        const result = await postToTikTok(accessToken, {
-          videoUrl: video.video_url,
-          title: caption || videoTitle,
-          description: videoDesc,
-        });
-        results.tiktok = { success: true };
-
-        await admin.from("social_posts").insert({
-          user_id: user.id,
-          video_id: videoId,
-          platform: "tiktok",
-          social_account_id: account.id,
-          post_id: result.publish_id,
-          caption: caption || "",
-          posted_at: new Date().toISOString(),
-          status: "published",
-        });
-      }
-    } catch (err) {
-      results[account.platform] = {
-        success: false,
-        error: err instanceof Error ? err.message : "Post failed",
-      };
-    }
-  }
-
-  // Update project status
-  const anySuccess = Object.values(results).some((r) => r.success);
-  if (anySuccess) {
+    // Update project status
     const { data: videoRow } = await admin.from("generated_videos").select("project_id").eq("id", videoId).single();
     if (videoRow) {
-      await admin.from("projects").update({ status: "posted" }).eq("id", (videoRow as { project_id: string }).project_id);
+      await admin.from("projects")
+        .update({ status: scheduledAt ? "ready" : "posted" })
+        .eq("id", (videoRow as { project_id: string }).project_id);
     }
-  }
 
-  return NextResponse.json({ results });
+    return NextResponse.json({ success: true, postId: result.id, scheduledAt });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Post failed" },
+      { status: 500 }
+    );
+  }
 }

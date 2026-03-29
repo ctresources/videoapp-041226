@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createRender, buildBlogVideoSource, buildShortFormSource } from "@/lib/api/creatomate";
-import { searchRealEstateAssets } from "@/lib/api/freepik";
+import { generateAndWaitForAssets } from "@/lib/api/blotato";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Load project
   const { data: projectData } = await admin
     .from("projects")
     .select("*")
@@ -31,39 +30,68 @@ export async function POST(req: NextRequest) {
     seo_data: Record<string, unknown> | null;
   };
 
-  const aiScript = project.ai_script as Record<string, string> | null;
-  const videoScript = script || aiScript?.script || aiScript?.description || project.title;
-  const title = aiScript?.title || project.title;
+  const aiScript = project.ai_script as Record<string, unknown> | null;
+  const videoScript = script || aiScript?.script as string || project.title;
+  const title = aiScript?.title as string || project.title;
 
-  // Mark project as generating
+  // Load user profile (avatar + Blotato key)
+  const { data: profileData } = await admin
+    .from("profiles")
+    .select("heygen_avatar_id, heygen_voice_id, elevenlabs_voice_id, blotato_api_key")
+    .eq("id", user.id)
+    .single();
+
+  const profile = profileData as {
+    heygen_avatar_id: string | null;
+    heygen_voice_id: string | null;
+    elevenlabs_voice_id: string | null;
+    blotato_api_key: string | null;
+  } | null;
+
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
   try {
-    // Get background footage from Freepik
-    const keywords = ((aiScript?.keywords as unknown as string[]) || []).join(" ") || "real estate property";
-    const assets = await searchRealEstateAssets(`real estate ${keywords}`, "photo", 3);
-    const backgroundUrl = assets[0]?.preview_url;
+    // Generate b-roll assets from Blotato AI (non-blocking — graceful fallback to gradient)
+    let backgroundUrls: string[] = [];
+    if (profile?.blotato_api_key) {
+      const keywords = ((aiScript?.keywords as string[]) || []).slice(0, 4).join(", ");
+      const assetPrompt = `real estate ${keywords || "property home"} professional photography`;
+      backgroundUrls = await generateAndWaitForAssets(profile.blotato_api_key, assetPrompt);
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const webhookUrl = `${appUrl}/api/video/webhook`;
-    const logoUrl = "https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif";
-
-    // Build video source based on type
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
-    const source = isShortForm
-      ? buildShortFormSource({ title, voiceoverText: videoScript, backgroundVideoUrl: backgroundUrl })
-      : buildBlogVideoSource({ title, script: videoScript, voiceoverText: videoScript, backgroundVideoUrl: backgroundUrl, logoUrl });
 
-    // Submit render to Creatomate
+    // Single Creatomate render job:
+    //   - Blotato b-roll images as background
+    //   - ElevenLabs native TTS (user's cloned voice if set) + karaoke captions
+    //   - HeyGen avatar PiP via Creatomate native connector (same render call)
+    const source = isShortForm
+      ? buildShortFormSource({
+          title,
+          voiceoverText: videoScript,
+          backgroundUrls,
+          avatarId: profile?.heygen_avatar_id || undefined,
+          heygenVoiceId: profile?.heygen_voice_id || undefined,
+          elevenLabsVoiceId: profile?.elevenlabs_voice_id || undefined,
+        })
+      : buildBlogVideoSource({
+          title,
+          voiceoverText: videoScript,
+          backgroundUrls,
+          avatarId: profile?.heygen_avatar_id || undefined,
+          heygenVoiceId: profile?.heygen_voice_id || undefined,
+          elevenLabsVoiceId: profile?.elevenlabs_voice_id || undefined,
+        });
+
     const renders = await createRender({
       source,
-      webhook_url: webhookUrl,
+      webhook_url: `${appUrl}/api/video/webhook`,
       metadata: JSON.stringify({ projectId, userId: user.id, videoType }),
     });
 
     const render = renders[0];
 
-    // Create generated_video row
     const { data: videoRow } = await admin
       .from("generated_videos")
       .insert({
@@ -73,12 +101,16 @@ export async function POST(req: NextRequest) {
         render_provider: "creatomate",
         render_job_id: render.id,
         render_status: "rendering",
-        metadata: { render_id: render.id, source_url: render.url } as unknown as Record<string, unknown>,
+        metadata: {
+          render_id: render.id,
+          has_avatar: !!profile?.heygen_avatar_id,
+          has_broll: backgroundUrls.length > 0,
+          broll_count: backgroundUrls.length,
+        } as unknown as Record<string, unknown>,
       })
       .select()
       .single();
 
-    // Log API usage
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "creatomate",
