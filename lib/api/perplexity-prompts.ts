@@ -2,7 +2,10 @@
 // Perplexity Sonar API — Real Estate Video Script Prompts
 // Presets: Market Update | Why Live Here | Community Events
 // + fully custom topic support for any location-based content
+// All prompts include Fair Housing compliance guardrail.
 // ============================================================
+
+import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -90,7 +93,9 @@ Rules:
 - Use only data from the specified trusted domains
 - If a specific stat is not available for that city, say "data not available for this market" — do not fabricate numbers
 - Keep language conversational, not academic
-- Write as if speaking directly to home buyers and sellers in that area`,
+- Write as if speaking directly to home buyers and sellers in that area
+
+${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
@@ -163,7 +168,9 @@ Rules:
 - Use only data from the specified trusted domains
 - Be specific — use actual numbers, ratings, and rankings where available
 - Keep tone warm, inviting, and honest — not promotional fluff
-- If data is unavailable for a specific metric, skip it rather than fabricate`,
+- If data is unavailable for a specific metric, skip it rather than fabricate
+
+${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
@@ -235,7 +242,9 @@ Rules:
 - Search specifically for "${city}, ${state}" — do not return events from other cities in the state
 - Only include events with confirmed specific dates in the target month
 - If fewer than 3 confirmed events are found, honestly state that rather than padding with uncertain entries
-- Include event URLs from the source platform where available`,
+- Include event URLs from the source platform where available
+
+${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
@@ -299,7 +308,9 @@ Rules:
 - Focus exclusively on ${location} — do not generalize or pull from other cities
 - Use real, verifiable data where available — say "data not available" rather than guess
 - Keep language conversational and direct — write for home buyers, sellers, and residents
-- Aim for content that's genuinely useful, not just promotional`,
+- Aim for content that's genuinely useful, not just promotional
+
+${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",

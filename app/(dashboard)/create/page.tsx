@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown,
+  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { LocationVideoType } from "@/lib/api/perplexity-prompts";
+import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
 
 type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location";
@@ -86,6 +87,7 @@ export default function CreatePage() {
   const [locYear, setLocYear] = useState(CURRENT_YEAR);
   const [locCustomTopic, setLocCustomTopic] = useState("");
   const [locGenerating, setLocGenerating] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // ── Voice processing ────────────────────────────────────────────────────────
 
@@ -156,6 +158,16 @@ export default function CreatePage() {
   }
 
   // ── Location script ─────────────────────────────────────────────────────────
+
+  function handleTemplateSelect(template: ContentTemplate) {
+    setLocVideoType("custom");
+    setLocCustomTopic(template.topic);
+    setShowTemplates(false);
+    // Scroll to the topic input after a tick
+    setTimeout(() => {
+      document.getElementById("loc-custom-topic")?.focus();
+    }, 100);
+  }
 
   const selectedPreset = PRESET_TYPES.find((p) => p.value === locVideoType)!;
   const needsDate = selectedPreset.needsDate;
@@ -359,6 +371,31 @@ export default function CreatePage() {
       {/* ── Location Script flow ── */}
       {inputMode === "location" && (
         <Card>
+          {/* Templates toggle */}
+          <div className="mb-5">
+            <button
+              onClick={() => setShowTemplates((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">💡</span>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-brand-text">Start from a Template</p>
+                  <p className="text-xs text-slate-400">10 ready-made real estate content topics</p>
+                </div>
+              </div>
+              {showTemplates
+                ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
+                : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+            </button>
+
+            {showTemplates && (
+              <div className="mt-3">
+                <ContentTemplates onSelect={handleTemplateSelect} />
+              </div>
+            )}
+          </div>
+
           {/* Video type selector */}
           <div className="mb-5">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
@@ -398,6 +435,7 @@ export default function CreatePage() {
                 What&apos;s your topic? <span className="text-red-400">*</span>
               </label>
               <input
+                id="loc-custom-topic"
                 type="text"
                 value={locCustomTopic}
                 onChange={(e) => setLocCustomTopic(e.target.value)}

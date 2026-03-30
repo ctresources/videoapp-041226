@@ -1,3 +1,5 @@
+import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
 interface ScriptOutput {
@@ -54,7 +56,9 @@ export async function generateVideoScript(
   agentName: string,
   projectType: "blog_video" | "short_form" | "carousel"
 ): Promise<ScriptOutput> {
-  const systemPrompt = `You are an expert real estate video content strategist. You create compelling, SEO-optimized video scripts and blog content for real estate agents to build their brand and attract leads online. You write in a conversational, authentic tone that builds trust. Always respond with valid JSON only.`;
+  const systemPrompt = `You are an expert real estate video content strategist. You create compelling, SEO-optimized video scripts and blog content for real estate agents to build their brand and attract leads online. You write in a conversational, authentic tone that builds trust. Always respond with valid JSON only.
+
+${FAIR_HOUSING_GUARDRAIL}`;
 
   const userPrompt = `Real estate agent "${agentName}" recorded this voice content:
 
@@ -94,7 +98,9 @@ export async function generateSeoData(
   script: string,
   keywords: string[]
 ): Promise<SeoOutput> {
-  const systemPrompt = `You are an SEO expert specializing in real estate content. Generate optimized metadata for video and blog content. Always respond with valid JSON only.`;
+  const systemPrompt = `You are an SEO expert specializing in real estate content. Generate optimized metadata for video and blog content. Always respond with valid JSON only.
+
+${FAIR_HOUSING_GUARDRAIL}`;
 
   const userPrompt = `Generate SEO metadata for this real estate video content.
 
