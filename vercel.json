@@ -21,6 +21,9 @@
     },
     "app/api/social/post/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/ai/generate-location-script/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [
