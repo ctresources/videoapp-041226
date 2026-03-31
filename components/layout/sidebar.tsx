@@ -13,16 +13,20 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  CalendarDays,
+  BarChart2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/providers/supabase-provider";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/create", icon: Mic, label: "Create Video" },
-  { href: "/videos", icon: Video, label: "My Videos" },
-  { href: "/social", icon: Share2, label: "Social Media" },
-  { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/create",    icon: Mic,             label: "Create Video" },
+  { href: "/videos",    icon: Video,           label: "My Videos" },
+  { href: "/calendar",  icon: CalendarDays,    label: "Calendar" },
+  { href: "/analytics", icon: BarChart2,       label: "Analytics" },
+  { href: "/social",    icon: Share2,          label: "Social Media" },
+  { href: "/settings",  icon: Settings,        label: "Settings" },
 ];
 
 export function Sidebar() {

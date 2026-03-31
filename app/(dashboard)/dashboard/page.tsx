@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight } from "lucide-react";
+import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight, CalendarDays } from "lucide-react";
 import { Suspense } from "react";
+import { TrendingTopics } from "@/components/dashboard/trending-topics";
 
 async function DashboardStats() {
   const supabase = await createClient();
@@ -14,12 +15,18 @@ async function DashboardStats() {
   const [videosResult, postsResult, profileResult] = await Promise.all([
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user!.id),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user!.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier").eq("id", user!.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, location_city, location_state").eq("id", user!.id).single(),
   ]);
 
   const videoCount = videosResult.count;
   const postCount = postsResult.count;
-  const profile = profileResult.data as { full_name: string | null; credits_remaining: number; subscription_tier: string } | null;
+  const profile = profileResult.data as {
+    full_name: string | null;
+    credits_remaining: number;
+    subscription_tier: string;
+    location_city: string | null;
+    location_state: string | null;
+  } | null;
 
   const stats = [
     { label: "Videos Created", value: videoCount ?? 0, icon: Video, color: "text-primary-500", bg: "bg-primary-50" },
@@ -51,6 +58,14 @@ async function DashboardStats() {
           </Card>
         ))}
       </div>
+
+      {/* Trending Topics widget — client component, uses user's saved city/state */}
+      <Card className="mb-6">
+        <TrendingTopics
+          city={profile?.location_city ?? undefined}
+          state={profile?.location_state ?? undefined}
+        />
+      </Card>
     </>
   );
 }
@@ -138,17 +153,30 @@ export default function DashboardPage() {
         <DashboardStats />
       </Suspense>
 
-      {/* Quick action */}
-      <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl p-6 mb-6 text-white">
-        <h3 className="font-bold text-xl mb-1">Start Your First Video Blog</h3>
-        <p className="text-primary-100 text-sm mb-4">
-          Speak for 2 minutes. We'll turn it into a full video with script, SEO, and social posts.
-        </p>
-        <Link href="/create">
-          <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
-            <Mic size={16} /> Record My Voice
-          </Button>
-        </Link>
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl p-6 text-white">
+          <h3 className="font-bold text-lg mb-1">Create a New Video</h3>
+          <p className="text-primary-100 text-sm mb-4">
+            Record your voice or pick a template — we handle the rest.
+          </p>
+          <Link href="/create">
+            <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
+              <Mic size={16} /> Start Creating
+            </Button>
+          </Link>
+        </div>
+        <div className="bg-gradient-to-r from-teal-500 to-accent-500 rounded-2xl p-6 text-white">
+          <h3 className="font-bold text-lg mb-1">Content Calendar</h3>
+          <p className="text-teal-100 text-sm mb-4">
+            View and manage all your scheduled posts across every platform.
+          </p>
+          <Link href="/calendar">
+            <Button className="bg-white text-teal-600 hover:bg-teal-50 gap-2" size="md">
+              <CalendarDays size={16} /> View Calendar
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Suspense fallback={<Skeleton className="h-64" />}>

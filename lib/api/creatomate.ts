@@ -52,6 +52,7 @@ export interface VideoParams {
   avatarId?: string;              // HeyGen avatar ID (native Creatomate connector)
   heygenVoiceId?: string;         // HeyGen voice (used when avatarId set)
   elevenLabsVoiceId?: string;     // ElevenLabs voice clone ID (overrides default TTS)
+  languageCode?: string;          // ISO 639-1 language code (default: "en")
   logoUrl?: string;
   primaryColor?: string;
 }
@@ -61,13 +62,16 @@ function elevenLabsAudioElement(
   text: string,
   voiceId: string | undefined,
   transcriptY: string,
-  transcriptWidth: string
+  transcriptWidth: string,
+  languageCode?: string
 ): Record<string, unknown> {
   return {
     type: "audio",
     provider: "elevenlabs",
     // Pass the user's cloned voice ID if available, otherwise Creatomate picks a default
     ...(voiceId ? { voice_id: voiceId } : {}),
+    // Language hint — eleven_multilingual_v2 auto-detects but this improves accuracy
+    ...(languageCode && languageCode !== "en" ? { language_code: languageCode } : {}),
     text,
     model: "eleven_multilingual_v2",
     // ElevenLabs quality settings
@@ -162,7 +166,8 @@ export function buildBlogVideoSource(params: VideoParams): Record<string, unknow
         params.voiceoverText,
         params.elevenLabsVoiceId,
         captionY,
-        captionWidth
+        captionWidth,
+        params.languageCode
       ),
 
       // 4: HeyGen Avatar PiP — native Creatomate connector (circle crop, bottom-right)
@@ -239,7 +244,8 @@ export function buildShortFormSource(params: VideoParams): Record<string, unknow
         params.voiceoverText,
         params.elevenLabsVoiceId,
         captionY,
-        "88%"
+        "88%",
+        params.languageCode
       ),
 
       // 4: HeyGen Avatar — centered, fullscreen vertical

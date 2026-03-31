@@ -33,7 +33,8 @@ export async function DELETE(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { scheduleId } = await req.json();
+  const body = await req.json();
+  const scheduleId = body.scheduleId ?? body.postId;
   if (!scheduleId) return NextResponse.json({ error: "scheduleId required" }, { status: 400 });
 
   const admin = createAdminClient();

@@ -5,11 +5,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { User, Lock, Trash2, LogOut, Share2 } from "lucide-react";
+import { User, Lock, Trash2, LogOut, Share2, Globe, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { SUPPORTED_LANGUAGES } from "@/lib/utils/languages";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -19,22 +20,32 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [prefs, setPrefs] = useState({ language: "en", city: "", state: "" });
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone")
+      .select("full_name, company_name, phone, preferred_language, location_city, location_state")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
-        const row = data as { full_name: string | null; company_name: string | null; phone: string | null } | null;
+        const row = data as {
+          full_name: string | null; company_name: string | null; phone: string | null;
+          preferred_language: string | null; location_city: string | null; location_state: string | null;
+        } | null;
         if (row) {
           setProfile({
             fullName: row.full_name || "",
             company: row.company_name || "",
             phone: row.phone || "",
+          });
+          setPrefs({
+            language: row.preferred_language || "en",
+            city: row.location_city || "",
+            state: row.location_state || "",
           });
         }
         setLoaded(true);
@@ -81,6 +92,24 @@ export default function SettingsPage() {
     setSavingPassword(false);
   }
 
+  async function handleSavePrefs(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setSavingPrefs(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        preferred_language: prefs.language,
+        location_city: prefs.city.trim() || null,
+        location_state: prefs.state.trim() || null,
+      })
+      .eq("id", user.id);
+    if (error) toast.error(error.message);
+    else toast.success("Preferences saved!");
+    setSavingPrefs(false);
+  }
+
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -123,6 +152,72 @@ export default function SettingsPage() {
           <span className="text-sm text-primary-500 group-hover:underline">Manage →</span>
         </Card>
       </Link>
+
+      {/* Content Preferences */}
+      <Card>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center">
+            <Globe size={18} className="text-teal-500" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-brand-text">Content Preferences</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Used for AI script generation, TTS voice, and trending topics</p>
+          </div>
+        </div>
+        <form onSubmit={handleSavePrefs} className="flex flex-col gap-4">
+          {/* Language */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Video Language
+            </label>
+            <select
+              value={prefs.language}
+              onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value }))}
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.flag} {lang.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">
+              AI scripts will be written and narrated in this language
+            </p>
+          </div>
+
+          {/* Market location */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <MapPin size={13} className="text-slate-400" /> Your Market Location
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                value={prefs.city}
+                onChange={(e) => setPrefs((p) => ({ ...p, city: e.target.value }))}
+                placeholder="City (e.g. Austin)"
+                className="text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <input
+                type="text"
+                value={prefs.state}
+                onChange={(e) => setPrefs((p) => ({ ...p, state: e.target.value }))}
+                placeholder="State (e.g. TX)"
+                maxLength={2}
+                className="text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Powers the &ldquo;Trending This Week&rdquo; widget and hyper-local scripts
+            </p>
+          </div>
+
+          <Button type="submit" loading={savingPrefs} className="self-start">
+            Save Preferences
+          </Button>
+        </form>
+      </Card>
 
       {/* Profile */}
       <Card>
