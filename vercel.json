@@ -1,0 +1,43 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "functions": {
+    "app/api/voice/upload/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/voice/transcribe/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/ai/generate-script/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/video/create-blog/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/video/rerender/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/video/test-render/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/social/post/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/ai/generate-location-script/route.ts": {
+      "maxDuration": 120
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS,PATCH" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
+      ]
+    }
+  ]
+}
