@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight, CalendarDays } from "lucide-react";
+import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight, CalendarDays, CheckCircle, Circle } from "lucide-react";
 import { Suspense } from "react";
 import { TrendingTopics } from "@/components/dashboard/trending-topics";
 
@@ -67,6 +67,65 @@ async function DashboardStats() {
         />
       </Card>
     </>
+  );
+}
+
+async function GettingStarted() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [profileResult, videoResult, socialResult] = await Promise.all([
+    supabase.from("profiles").select("voice_clone_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user!.id).single(),
+    supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", user!.id).eq("is_active", true),
+  ]);
+
+  const profile = profileResult.data as { voice_clone_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
+  const videoCount = videoResult.count ?? 0;
+  const socialCount = socialResult.count ?? 0;
+
+  const steps = [
+    { label: "Create your account", done: true },
+    { label: "Set up your voice clone", done: !!profile?.voice_clone_id, href: "/settings" },
+    { label: "Upload your avatar photo", done: !!profile?.avatar_url, href: "/settings" },
+    { label: "Generate your first video", done: videoCount > 0, href: "/create" },
+    { label: "Connect a social account", done: socialCount > 0, href: "/settings/social" },
+  ];
+
+  const allDone = steps.every((s) => s.done);
+  if (allDone) return null; // Hide once complete
+
+  const completedCount = steps.filter((s) => s.done).length;
+  const pct = Math.round((completedCount / steps.length) * 100);
+
+  return (
+    <Card className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-semibold text-brand-text">Getting Started</p>
+          <p className="text-xs text-slate-400">{completedCount} of {steps.length} complete</p>
+        </div>
+        <span className="text-xs font-bold text-primary-500">{pct}%</span>
+      </div>
+      <div className="w-full h-1.5 bg-slate-100 rounded-full mb-4">
+        <div className="h-1.5 bg-primary-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        {steps.map(({ label, done, href }) => (
+          <div key={label} className={`flex items-center gap-3 text-sm ${done ? "text-slate-400" : "text-brand-text"}`}>
+            {done
+              ? <CheckCircle size={16} className="text-accent-500 shrink-0" />
+              : <Circle size={16} className="text-slate-300 shrink-0" />}
+            <span className={done ? "line-through" : ""}>{label}</span>
+            {!done && href && (
+              <Link href={href} className="ml-auto text-xs text-primary-500 hover:underline shrink-0">
+                Set up →
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -151,6 +210,10 @@ export default function DashboardPage() {
         </div>
       }>
         <DashboardStats />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <GettingStarted />
       </Suspense>
 
       {/* Quick actions */}

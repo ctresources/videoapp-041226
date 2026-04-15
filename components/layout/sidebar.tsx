@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   CalendarDays,
   BarChart2,
+  CreditCard,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/providers/supabase-provider";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/calendar",  icon: CalendarDays,    label: "Calendar" },
   { href: "/analytics", icon: BarChart2,       label: "Analytics" },
   { href: "/social",    icon: Share2,          label: "Social Media" },
+  { href: "/billing",   icon: CreditCard,      label: "Billing" },
   { href: "/settings",  icon: Settings,        label: "Settings" },
 ];
 

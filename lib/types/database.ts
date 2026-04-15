@@ -21,7 +21,7 @@ export interface Profile {
   role: UserRole;
   onboarding_done: boolean;
   voice_clone_id: string | null;
-  heygen_avatar_id: string | null;
+  heygen_photo_id: string | null;
   subscription_tier: SubscriptionTier;
   credits_remaining: number;
   created_at: string;

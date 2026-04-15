@@ -7,12 +7,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
-  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2
+  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
+  ImageIcon, Film, Palette
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+/** Safely parse JSON from a fetch Response — returns null if the body is HTML/empty */
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  const text = await res.text();
+  if (!text || text.trimStart().startsWith("<")) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
 
 type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
 
@@ -55,11 +63,18 @@ interface Project {
 
 type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 
-const videoTypes: { value: VideoType; label: string; desc: string; provider: string }[] = [
-  { value: "blog_long", label: "Blog Video", desc: "Landscape 16:9, 3-5 min", provider: "Creatomate" },
-  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, 30-90 sec", provider: "HeyGen Avatar" },
-  { value: "youtube_16x9", label: "YouTube Long-form", desc: "Landscape 16:9, 5-10 min", provider: "Creatomate" },
-  { value: "short_1x1", label: "Square Post", desc: "1:1, 60-90 sec", provider: "Creatomate" },
+const videoTypes: { value: VideoType; label: string; desc: string }[] = [
+  { value: "blog_long", label: "Blog Video", desc: "Landscape 16:9, 3-5 min" },
+  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, 30-90 sec" },
+  { value: "youtube_16x9", label: "YouTube Long-form", desc: "Landscape 16:9, 5-10 min" },
+  { value: "short_1x1", label: "Square Post", desc: "1:1, 60-90 sec" },
+];
+
+type BackgroundMode = "stock-video" | "animated";
+
+const backgroundModes: { value: BackgroundMode; label: string; desc: string; icon: typeof ImageIcon }[] = [
+  { value: "stock-video", label: "Video B-Roll", desc: "Real video footage matched to your topic", icon: Film },
+  { value: "animated", label: "Animated", desc: "Animated color gradient backgrounds", icon: Palette },
 ];
 
 export default function ProjectEditorPage() {
@@ -72,17 +87,39 @@ export default function ProjectEditorPage() {
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("blog_long");
+  const [selectedBgMode, setSelectedBgMode] = useState<BackgroundMode>("stock-video");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: false, blog: false,
   });
   const [editedScript, setEditedScript] = useState("");
+  const [selectedHook, setSelectedHook] = useState<string>("");
+  const [contactInfo, setContactInfo] = useState<{
+    full_name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
+    company_address: string | null;
+  } | null>(null);
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
 
   useEffect(() => {
     loadProject();
+    loadProfile();
   }, [projectId]); // eslint-disable-line
+
+  async function loadProfile() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, company_name, phone, company_phone, company_address")
+      .eq("id", user.id)
+      .single();
+    if (data) setContactInfo(data as typeof contactInfo);
+  }
 
   async function loadProject() {
     setLoading(true);
@@ -110,7 +147,11 @@ export default function ProjectEditorPage() {
 
     const p = data as unknown as Project;
     setProject(p);
-    if (p.ai_script) setEditedScript((p.ai_script as AiScript).script || "");
+    if (p.ai_script) {
+      setEditedScript((p.ai_script as AiScript).script || "");
+      const hooks = (p.ai_script as AiScript).hooks;
+      setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
+    }
     setLoading(false);
   }
 
@@ -124,14 +165,20 @@ export default function ProjectEditorPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to generate script");
+        const err = await safeJson(res);
+        throw new Error((err?.error as string) || `Script generation failed (${res.status})`);
       }
 
-      const { project: newProject } = await res.json();
+      const body = await safeJson(res);
+      if (!body?.project) throw new Error("Invalid response from script generator");
+      const { project: newProject } = body as { project: Project };
       const p = newProject as Project;
       setProject(p);
-      if (p.ai_script) setEditedScript((p.ai_script as AiScript).script || "");
+      if (p.ai_script) {
+        setEditedScript((p.ai_script as AiScript).script || "");
+        const hooks = (p.ai_script as AiScript).hooks;
+        setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
+      }
       // Update URL to the new project ID
       router.replace(`/create/${p.id}`);
       toast.success("Script generated!");
@@ -152,10 +199,16 @@ export default function ProjectEditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recordingId: project.voice_recording_id, projectType: project.project_type }),
       });
-      if (!res.ok) throw new Error("Regeneration failed");
-      const { aiScript, seoData } = await res.json();
+      if (!res.ok) {
+        const err = await safeJson(res);
+        throw new Error((err?.error as string) || `Regeneration failed (${res.status})`);
+      }
+      const body = await safeJson(res);
+      if (!body) throw new Error("Invalid response from regenerate");
+      const { aiScript, seoData } = body as { aiScript: AiScript; seoData: SeoData };
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
+      setSelectedHook(aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "");
       toast.success("Script regenerated!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
@@ -168,33 +221,60 @@ export default function ProjectEditorPage() {
     if (!project) return;
     setVideoGenerating(true);
 
-    const provider = selectedVideoType === "reel_9x16" ? "heygen" : "creatomate";
-    const endpoint = provider === "heygen" ? "/api/video/create-short" : "/api/video/create-blog";
+    // create-blog handles all videoTypes (blog_long, reel_9x16, short_1x1, youtube_16x9)
+    const endpoint = "/api/video/create-blog";
 
     try {
+      // Build the full video script: hook → body → CTA + contact info
+      const bodyScript = editedScript || project.ai_script?.script || "";
+      const hook = selectedHook || project.ai_script?.hook || "";
+      const cta = (project.ai_script as AiScript | null)?.cta || "";
+      const contactLine = buildContactLine();
+      const ctaWithContact = [cta, contactLine].filter(Boolean).join("\n");
+      const fullScript = [hook, bodyScript, ctaWithContact].filter(Boolean).join("\n\n");
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
           videoType: selectedVideoType,
-          script: editedScript || project.ai_script?.script,
+          backgroundMode: selectedBgMode,
+          script: fullScript,
+          hook,
         }),
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Video generation failed");
+        const err = await safeJson(res);
+        throw new Error((err?.error as string) || `Video generation failed (${res.status})`);
       }
 
-      const { video } = await res.json();
-      toast.success("Video is rendering! We'll notify you when it's ready.");
+      const body = await safeJson(res);
+      if (!body?.video) throw new Error("Invalid response from video generator");
+      const { video } = body as { video: { id: string; render_status?: string } };
+      if (video.render_status === "completed") {
+        toast.success("Video ready! Redirecting to preview...", { duration: 3000 });
+      } else {
+        toast.success("Video is rendering. You'll see it in My Videos shortly.", { duration: 5000 });
+      }
       router.push(`/videos?highlight=${video.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start video generation");
     } finally {
       setVideoGenerating(false);
     }
+  }
+
+  function buildContactLine(): string {
+    if (!contactInfo) return "";
+    const parts: string[] = [];
+    if (contactInfo.full_name) parts.push(contactInfo.full_name);
+    if (contactInfo.company_name) parts.push(contactInfo.company_name);
+    const phone = contactInfo.phone || contactInfo.company_phone;
+    if (phone) parts.push(phone);
+    if (contactInfo.company_address) parts.push(contactInfo.company_address);
+    return parts.join(" · ");
   }
 
   function copyToClipboard(text: string, label: string) {
@@ -223,7 +303,7 @@ export default function ProjectEditorPage() {
               {generating ? "Generating your script with AI..." : "Loading project..."}
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              {generating ? "Perplexity AI is crafting your script, hooks, SEO data, and blog content" : ""}
+              {generating ? "AI is crafting your script, hooks, SEO data, and blog content…" : ""}
             </p>
           </div>
           <div className="flex gap-1.5 mt-2">
@@ -291,20 +371,34 @@ export default function ProjectEditorPage() {
             <div className="flex items-center gap-2 px-2 py-1 mb-3">
               <Sparkles size={16} className="text-secondary-500" />
               <h3 className="font-semibold text-sm text-brand-text">Hook Options</h3>
-              <span className="text-xs text-slate-400 ml-auto">Pick one to open your video</span>
+              <span className="text-xs text-slate-400 ml-auto">Tap to select · used to open your video</span>
             </div>
             <div className="flex flex-col gap-2">
-              {(script.hooks || [script.hook]).map((hook, i) => (
-                <div key={i} className="flex items-start gap-2 bg-slate-50 rounded-xl px-3 py-2.5 group">
-                  <span className="text-xs font-bold text-primary-500 mt-0.5 shrink-0">#{i + 1}</span>
+              {(script.hooks?.length ? script.hooks : [script.hook]).map((hook, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedHook(hook)}
+                  className={`flex items-start gap-3 w-full text-left rounded-xl px-3 py-2.5 border-2 transition-all group ${
+                    selectedHook === hook
+                      ? "border-primary-500 bg-primary-50"
+                      : "bg-slate-50 border-transparent hover:border-slate-200"
+                  }`}
+                >
+                  <span className={`text-xs font-bold mt-0.5 shrink-0 ${selectedHook === hook ? "text-primary-500" : "text-slate-400"}`}>
+                    #{i + 1}
+                  </span>
                   <p className="text-sm text-slate-700 flex-1 leading-relaxed">{hook}</p>
-                  <button
-                    onClick={() => copyToClipboard(hook, "Hook")}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-slate-200"
-                  >
-                    <Copy size={13} className="text-slate-400" />
-                  </button>
-                </div>
+                  {selectedHook === hook ? (
+                    <CheckCircle size={15} className="text-primary-500 mt-0.5 shrink-0" />
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(hook, "Hook"); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-200 shrink-0"
+                    >
+                      <Copy size={13} className="text-slate-400" />
+                    </button>
+                  )}
+                </button>
               ))}
             </div>
           </Card>
@@ -341,15 +435,42 @@ export default function ProjectEditorPage() {
 
           {/* CTA */}
           <Card padding="sm">
-            <div className="flex items-center gap-2 px-2 py-1 mb-2">
-              <CheckCircle size={16} className="text-accent-500" />
-              <h3 className="font-semibold text-sm text-brand-text">Call to Action</h3>
-            </div>
-            <div className="bg-accent-500/5 border border-accent-500/20 rounded-xl px-4 py-3 text-sm text-slate-700 flex items-start justify-between gap-2">
-              <span>{script.cta}</span>
-              <button onClick={() => copyToClipboard(script.cta, "CTA")} className="shrink-0">
-                <Copy size={13} className="text-slate-400 hover:text-slate-600" />
+            <div className="flex items-center justify-between px-2 py-1 mb-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-accent-500" />
+                <h3 className="font-semibold text-sm text-brand-text">Call to Action</h3>
+              </div>
+              <button
+                onClick={() => {
+                  const contactLine = buildContactLine();
+                  const full = contactLine ? `${script.cta}\n\n${contactLine}` : script.cta;
+                  copyToClipboard(full, "CTA");
+                }}
+                className="flex items-center gap-1 text-xs text-primary-500 hover:underline"
+              >
+                <Copy size={12} /> Copy with contact
               </button>
+            </div>
+            <div className="bg-accent-500/5 border border-accent-500/20 rounded-xl px-4 py-3 text-sm text-slate-700 flex flex-col gap-2">
+              <p className="leading-relaxed">{script.cta}</p>
+              {buildContactLine() ? (
+                <div className="border-t border-accent-500/20 pt-2 flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
+                  <button
+                    onClick={() => copyToClipboard(buildContactLine(), "Contact info")}
+                    className="shrink-0"
+                    title="Copy contact info"
+                  >
+                    <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic border-t border-accent-500/20 pt-2">
+                  Add your name, phone & address in{" "}
+                  <a href="/settings" className="text-primary-500 hover:underline">Settings</a>{" "}
+                  to auto-append contact info here.
+                </p>
+              )}
             </div>
           </Card>
 
@@ -445,8 +566,11 @@ export default function ProjectEditorPage() {
               <Video size={18} className="text-primary-500" />
               <h3 className="font-semibold text-brand-text">Generate Video</h3>
             </div>
+
+            {/* Video format selector */}
+            <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
             <div className="grid grid-cols-2 gap-2 mb-5">
-              {videoTypes.map(({ value, label, desc, provider }) => (
+              {videoTypes.map(({ value, label, desc }) => (
                 <button
                   key={value}
                   onClick={() => setSelectedVideoType(value)}
@@ -458,10 +582,30 @@ export default function ProjectEditorPage() {
                 >
                   <p className="text-sm font-medium text-brand-text">{label}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                  <p className="text-xs text-primary-500 mt-0.5 font-medium">{provider}</p>
                 </button>
               ))}
             </div>
+
+            {/* Background style selector */}
+            <p className="text-xs font-medium text-slate-500 mb-2">Background Style</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {backgroundModes.map(({ value, label, desc, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedBgMode(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedBgMode === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <Icon size={16} className={selectedBgMode === value ? "text-primary-500" : "text-slate-400"} />
+                  <p className="text-sm font-medium text-brand-text mt-1">{label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-tight">{desc}</p>
+                </button>
+              ))}
+            </div>
+
             <Button
               onClick={handleGenerateVideo}
               loading={videoGenerating}

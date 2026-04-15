@@ -27,6 +27,10 @@ export interface LocationParams {
 // ─── Shared API call wrapper ──────────────────────────────────────────────────
 
 async function callPerplexity(requestBody: Record<string, unknown>): Promise<string> {
+  if (!process.env.PERPLEXITY_API_KEY) {
+    throw new Error("PERPLEXITY_API_KEY is not configured.");
+  }
+
   const response = await fetch(PERPLEXITY_API_URL, {
     method: "POST",
     headers: {
@@ -37,12 +41,15 @@ async function callPerplexity(requestBody: Record<string, unknown>): Promise<str
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Perplexity API error ${response.status}: ${err}`);
+    const err = await response.text().catch(() => "unknown");
+    console.error(`Perplexity ${response.status}:`, err);
+    throw new Error(`Perplexity ${response.status}: ${err.slice(0, 300)}`);
   }
 
   const data = await response.json();
-  return data.choices[0].message.content as string;
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Perplexity returned empty content");
+  return content as string;
 }
 
 // ─── VIDEO TYPE 1: Market Update Report ──────────────────────────────────────
@@ -56,65 +63,66 @@ function buildMarketUpdateRequest(params: LocationParams): Record<string, unknow
   const afterDate = `${String(monthIndex).padStart(2, "0")}/01/${year}`;
 
   return {
-    model: "sonar",
+    model: "sonar-pro",
     messages: [
       {
         role: "system",
-        content: `You are a real estate market analyst writing content for a short social video script.
+        content: `You are a real estate market analyst and content writer. You have live web search — use it aggressively to find current, specific data.
 
-Your job is to gather current, factual real estate market data for a specific location and return it in a structured format ready for video production.
+YOUR JOB: Search the web RIGHT NOW for current real estate market data for the specific city/area requested, then write a video script using that real data.
 
-REQUIRED OUTPUT FORMAT — return exactly this structure, no extra commentary:
+SEARCH STRATEGY:
+1. Search "[city] [state] real estate market [month] [year]"
+2. Search "[city] median home price [year]"
+3. Search "redfin [city] [state] housing market" or "zillow [city] [state] market"
+4. Use whatever sources have the data — Zillow, Redfin, Realtor.com, local MLS, news articles, city-specific reports
 
-HOOK: [One punchy sentence that would stop someone scrolling — include a surprising or specific stat]
+REQUIRED OUTPUT FORMAT — return exactly this structure:
+
+HOOK: [One punchy sentence that would stop someone scrolling — include a REAL specific stat you found]
 
 MARKET STATS:
-- Median home price: [value + % change vs last month if available]
-- Average days on market: [value]
-- Active listings / inventory: [value + months of supply if available]
-- List-to-sale price ratio: [value if available]
-- New listings this month: [value if available]
-- Mortgage rate context: [current 30-yr fixed rate if mentioned in sources]
+- Median home price: [REAL value from your search + % change if found]
+- Average days on market: [REAL value]
+- Active listings / inventory: [REAL value + months of supply if found]
+- List-to-sale price ratio: [value if found]
+- New listings this month: [value if found]
+- Mortgage rate context: [current 30-yr fixed rate from your search]
 
-MARKET NARRATIVE: [2-3 sentences summarizing what the data means for buyers and sellers right now in this specific market. Be specific — mention the city by name.]
+MARKET NARRATIVE: [2-3 sentences using the REAL data you found, explaining what it means for buyers and sellers in ${location} right now. Be specific — use actual numbers.]
 
-CALL TO ACTION: [One sentence prompting viewers to contact a local agent or visit a website]
+CALL TO ACTION: [One sentence prompting viewers to act]
 
 VIDEO TITLE OPTIONS:
-1. [Option 1 — data-driven, specific]
+1. [Option 1 — include a real data point]
 2. [Option 2 — curiosity/question format]
 3. [Option 3 — trend/news format]
 
-BLOG POST INTRO: [2-3 sentences expanding on the hook, suitable for a blog post introduction]
+BLOG POST INTRO: [2-3 sentences expanding on the hook with real data]
 
-SOURCES USED: [List the domains you pulled data from]
+SOURCES USED: [List every URL or domain you pulled data from]
 
-Rules:
-- Use only data from the specified trusted domains
-- If a specific stat is not available for that city, say "data not available for this market" — do not fabricate numbers
-- Keep language conversational, not academic
-- Write as if speaking directly to home buyers and sellers in that area
+CRITICAL RULES:
+- You MUST search the web before writing — do not rely on training data for current prices
+- Use real numbers you find — approximate is fine ("around $X" or "roughly X days")
+- If you truly cannot find a specific stat after searching, skip that line entirely (do NOT write "data not available")
+- Never make up numbers — but always find SOMETHING real to report
+- Keep language conversational, like you're talking to a neighbor
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
-        content: `Generate a real estate market update video script for ${location} for the month of ${monthYear}.
+        content: `Search the web and generate a real estate market update video script for ${location} for ${monthYear}.
 
-Include current median home prices, days on market, inventory levels, and what this means for buyers and sellers right now. Pull only from trusted real estate data sources.`,
+Search for: current median home price in ${location}, days on market, active listings, and recent market trends. Use Zillow, Redfin, Realtor.com, local news, or any source that has current data for ${city}, ${state}. The more specific and current the data, the better.`,
       },
     ],
-    search_domain_filter: [
-      "zillow.com", "redfin.com", "nar.realtor", "realtors.com",
-      "realtor.com", "housingwire.com", "freddiemac.com",
-      "bankrate.com", "mba.org",
-    ],
     search_recency_filter: "month",
-    search_after_date_filter: afterDate,
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.2,
-    max_tokens: 1000,
+    max_tokens: 1200,
   };
 }
 
@@ -125,7 +133,7 @@ function buildWhyLiveHereRequest(params: LocationParams): Record<string, unknown
   const location = `${city}, ${state}${zip ? ` (zip ${zip})` : ""}`;
 
   return {
-    model: "sonar",
+    model: "sonar-pro",
     messages: [
       {
         role: "system",
@@ -165,28 +173,25 @@ BLOG POST INTRO: [2-3 sentences that could open a blog post about moving to this
 SOURCES USED: [List the domains you pulled data from]
 
 Rules:
-- Use only data from the specified trusted domains
-- Be specific — use actual numbers, ratings, and rankings where available
+- Search the web for current data — use any reliable source (Niche, GreatSchools, Census, local news, city websites)
+- Be specific — use actual numbers, ratings, and rankings that you find
 - Keep tone warm, inviting, and honest — not promotional fluff
-- If data is unavailable for a specific metric, skip it rather than fabricate
+- If you can't find a specific metric, skip that line entirely — do not write "data not available"
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
-        content: `Create a "Why Live in ${location}" video script. Research the quality of life, schools, community feel, demographics, commute, and what makes this area attractive to home buyers and relocating families.`,
+        content: `Search the web and create a "Why Live in ${location}" video script.
+
+Search for: "${city} ${state} schools rating", "${city} ${state} median income", "${city} ${state} cost of living", "${city} ${state} crime rate", "${city} ${state} things to do", walkability score for ${city}. Use Niche.com, GreatSchools, Census data, or any current source that has real numbers for ${city}, ${state}.`,
       },
-    ],
-    search_domain_filter: [
-      "niche.com", "greatschools.org", "areavibes.com",
-      "neighborhoodscout.com", "bestplaces.net", "walkscore.com",
-      "city-data.com", "census.gov", "datausa.io",
     ],
     search_recency_filter: "month",
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.3,
-    max_tokens: 1000,
+    max_tokens: 1200,
   };
 }
 
@@ -204,7 +209,7 @@ function buildCommunityEventsRequest(params: LocationParams): Record<string, unk
   const beforeDate = `${String(nextMonthIndex).padStart(2, "0")}/01/${nextMonthYear}`;
 
   return {
-    model: "sonar",
+    model: "sonar-pro",
     messages: [
       {
         role: "system",
@@ -253,17 +258,13 @@ ${FAIR_HOUSING_GUARDRAIL}`,
 Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${city}, ${state}. Focus on family-friendly events, festivals, farmers markets, outdoor activities, community gatherings, arts events, and local meetups. Include specific dates, venue names, and a brief description for each event.`,
       },
     ],
-    search_domain_filter: [
-      "eventbrite.com", "ticketmaster.com", "meetup.com",
-      "allevents.in", "10times.com",
-    ],
-    search_recency_filter: "month",
     search_after_date_filter: afterDate,
     search_before_date_filter: beforeDate,
+    search_recency_filter: "month",
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.4,
-    max_tokens: 1200,
+    max_tokens: 1400,
   };
 }
 
@@ -276,7 +277,7 @@ function buildCustomRequest(params: LocationParams): Record<string, unknown> {
   if (!customTopic) throw new Error("customTopic is required for custom video type");
 
   return {
-    model: "sonar",
+    model: "sonar-pro",
     messages: [
       {
         role: "system",
@@ -306,7 +307,7 @@ SOURCES USED: [List the domains you pulled data from]
 
 Rules:
 - Focus exclusively on ${location} — do not generalize or pull from other cities
-- Use real, verifiable data where available — say "data not available" rather than guess
+- Search the web for real, current data — skip any metric you can't find rather than writing "data not available"
 - Keep language conversational and direct — write for home buyers, sellers, and residents
 - Aim for content that's genuinely useful, not just promotional
 
@@ -340,9 +341,19 @@ export function buildRequest(videoType: LocationVideoType, params: LocationParam
 
 export async function generateLocationScript(
   videoType: LocationVideoType,
-  params: LocationParams
+  params: LocationParams,
+  agentName?: string
 ): Promise<string> {
   const requestBody = buildRequest(videoType, params);
+  // Inject agent name into the system prompt so the CTA is personalized
+  if (agentName) {
+    const messages = requestBody.messages as { role: string; content: string }[];
+    const systemMsg = messages.find((m) => m.role === "system");
+    if (systemMsg) {
+      systemMsg.content +=
+        `\n\nAgent name: "${agentName}". The CALL TO ACTION section MUST address the viewer by name and end with: "Contact ${agentName} today" or "Call ${agentName} at [number]". Never use generic phrases like "contact a local agent".`;
+    }
+  }
   return callPerplexity(requestBody);
 }
 

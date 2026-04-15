@@ -73,16 +73,15 @@ export async function POST(req: NextRequest) {
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
   const params: LocationParams = { city, state, zip, month, year, customTopic };
+  const agentName = (profile as { credits_remaining: number; full_name?: string | null }).full_name || undefined;
 
   let raw: string;
   try {
-    raw = await generateLocationScript(videoType, params);
+    raw = await generateLocationScript(videoType, params, agentName);
   } catch (err) {
-    console.error("Perplexity location script error:", err);
-    return NextResponse.json(
-      { error: "Failed to generate script. Please try again." },
-      { status: 500 }
-    );
+    const msg = err instanceof Error ? err.message : "Script generation failed";
+    console.error("Perplexity location script error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   // ── Parse into structured ai_script ────────────────────────────────────────

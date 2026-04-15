@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role              TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   onboarding_done   BOOLEAN NOT NULL DEFAULT false,
   voice_clone_id    TEXT,
-  heygen_avatar_id  TEXT,
+  heygen_photo_id   TEXT,            -- HeyGen Talking Photo ID (cached after first upload)
   subscription_tier TEXT NOT NULL DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'agency')),
-  credits_remaining INTEGER NOT NULL DEFAULT 5,
+  credits_remaining INTEGER NOT NULL DEFAULT 100,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );

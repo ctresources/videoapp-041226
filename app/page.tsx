@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { DemoVideo } from "@/components/landing/demo-video";
 import { Button } from "@/components/ui/button";
 import {
   Mic, Video, Share2, CheckCircle, Star, ArrowRight, Zap,
@@ -171,57 +172,82 @@ const testimonials = [
 // ─── Pricing ───────────────────────────────────────────────────────────────────
 const pricingTiers = [
   {
-    name: "Free",
-    price: "$0",
+    name: "Starter",
+    price: "$27",
     period: "/month",
-    description: "Test drive the platform",
+    description: "Dip your toes in",
+    badge: null,
     features: [
-      "5 video credits",
+      "4 videos/month",
       "Voice recording + AI script",
+      "Blog & landscape formats",
+      "Content templates",
       "Trending topic discovery",
-      "1 social channel",
-      "720p video",
+      "1 social platform",
     ],
-    cta: "Start Free",
+    cta: "Get Started",
     highlighted: false,
-    href: "/register",
+    href: "/api/stripe/checkout?plan=starter",
+  },
+  {
+    name: "Agent",
+    price: "$47",
+    period: "/month",
+    description: "Solo agents building their brand",
+    badge: null,
+    features: [
+      "12 videos/month",
+      "All video formats (16:9, 9:16, 1:1)",
+      "Voice clone — your voice, always",
+      "AI script + SEO optimization",
+      "MLS listing auto-video",
+      "Content templates (24 topics)",
+      "3 social platforms",
+      "Trending topic discovery",
+    ],
+    cta: "Get Started",
+    highlighted: false,
+    href: "/api/stripe/checkout?plan=agent",
   },
   {
     name: "Pro",
-    price: "$49",
+    price: "$97",
     period: "/month",
-    description: "For active agents posting daily",
+    description: "Active agents posting daily",
+    badge: "Most Popular",
     features: [
-      "50 videos/month",
-      "AI avatar + voice cloning",
+      "30 videos/month",
+      "Everything in Agent",
+      "HeyGen AI avatar (in-app setup)",
       "All 10 social platforms",
-      "Hyper-local market videos",
-      "Listing auto-video generator",
-      "Content calendar + analytics",
-      "Multi-language (16 languages)",
-      "1080p · Priority rendering",
+      "Content calendar + scheduling",
+      "CRM webhooks (GHL, HubSpot, FUB, BoldTrail)",
+      "Community events & news videos",
+      "Priority rendering",
     ],
-    cta: "Start 7-Day Free Trial",
+    cta: "Get Started",
     highlighted: true,
-    href: "/register",
+    href: "/api/stripe/checkout?plan=pro",
   },
   {
     name: "Agency",
-    price: "$149",
+    price: "$197",
     period: "/month",
-    description: "For teams and brokerages",
+    description: "Teams, team leads & brokerages",
+    badge: null,
     features: [
-      "Unlimited videos",
-      "Up to 5 agents",
+      "100 videos/month",
+      "Everything in Pro",
+      "Up to 5 agent seats",
       "White-label branding",
-      "4K video quality",
       "Custom AI avatar per agent",
       "Team analytics dashboard",
       "Dedicated account manager",
+      "API access",
     ],
-    cta: "Contact Sales",
+    cta: "Get Started",
     highlighted: false,
-    href: "mailto:sales@voicetovideos.ai",
+    href: "/api/stripe/checkout?plan=agency",
   },
 ];
 
@@ -304,6 +330,9 @@ export default function LandingPage() {
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Fair Housing compliant AI</span>
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Setup in under 2 minutes</span>
           </div>
+
+          {/* Demo video */}
+          <DemoVideo />
         </div>
 
         {/* Stats strip inside hero */}
@@ -508,10 +537,10 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
               Less than one lost commission covers a year.
             </h2>
-            <p className="text-slate-500 text-lg">Start free. No credit card. Upgrade when you&apos;re ready.</p>
+            <p className="text-slate-500 text-lg">No contracts. Cancel anytime. Billed monthly.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {pricingTiers.map(({ name, price, period, description, features: f, cta, highlighted, href }) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+            {pricingTiers.map(({ name, price, period, description, features: f, cta, highlighted, badge, href }) => (
               <div
                 key={name}
                 className={`rounded-2xl p-6 border relative ${
@@ -520,9 +549,9 @@ export default function LandingPage() {
                     : "border-slate-200 bg-white shadow-sm"
                 }`}
               >
-                {highlighted && (
+                {badge && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-black px-4 py-1.5 rounded-full shadow-md">
-                    Most Popular
+                    {badge}
                   </div>
                 )}
                 <p className="text-sm font-bold text-slate-500 mb-1">{name}</p>
@@ -539,14 +568,14 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href={href}>
+                <a href={href}>
                   <Button
                     variant={highlighted ? "primary" : "outline"}
                     className={`w-full ${highlighted ? "shadow-md" : ""}`}
                   >
                     {cta}
                   </Button>
-                </Link>
+                </a>
               </div>
             ))}
           </div>

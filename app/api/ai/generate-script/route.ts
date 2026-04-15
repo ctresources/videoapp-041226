@@ -75,9 +75,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ project, aiScript, seoData });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Script generation failed" },
-      { status: 500 }
-    );
+    const msg = err instanceof Error ? err.message : "Script generation failed";
+    console.error("generate-script error:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

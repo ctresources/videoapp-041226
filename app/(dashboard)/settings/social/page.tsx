@@ -105,7 +105,7 @@ export default function SocialSettingsPage() {
         </Link>
         <div>
           <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Powered by Blotato — post to 10 platforms from one place</p>
+          <p className="text-sm text-slate-500 mt-0.5">Connect once — post to 10 platforms from one place</p>
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export default function SocialSettingsPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-brand-text">Blotato API Key</h3>
+              <h3 className="font-semibold text-brand-text">Social Publishing API Key</h3>
               {isConnected && (
                 <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle size={11} /> Connected

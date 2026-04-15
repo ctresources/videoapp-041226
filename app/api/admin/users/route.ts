@@ -52,13 +52,40 @@ export async function PATCH(req: NextRequest) {
   const admin_user = await verifyAdmin();
   if (!admin_user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { userId, role } = await req.json();
-  if (!userId || !role) return NextResponse.json({ error: "userId and role required" }, { status: 400 });
-  if (!["user", "admin"].includes(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  const body = await req.json();
+  const { userId, role, subscription_tier, credits_remaining, suspended } = body as {
+    userId: string;
+    role?: string;
+    subscription_tier?: string;
+    credits_remaining?: number;
+    suspended?: boolean;
+  };
+
+  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ role }).eq("id", userId);
+  const updates: Record<string, unknown> = {};
 
+  if (role !== undefined) {
+    if (!["user", "admin"].includes(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    updates.role = role;
+  }
+  if (subscription_tier !== undefined) {
+    if (!["free", "starter", "agent", "pro", "agency"].includes(subscription_tier)) return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
+    updates.subscription_tier = subscription_tier;
+  }
+  if (credits_remaining !== undefined) {
+    if (typeof credits_remaining !== "number" || credits_remaining < 0) return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
+    updates.credits_remaining = credits_remaining;
+  }
+  if (suspended !== undefined) {
+    // Store suspended state in role field: "suspended" is a special value
+    updates.role = suspended ? "suspended" : "user";
+  }
+
+  if (Object.keys(updates).length === 0) return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+
+  const { error } = await admin.from("profiles").update(updates).eq("id", userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }

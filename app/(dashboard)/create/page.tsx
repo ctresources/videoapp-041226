@@ -7,16 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp,
+  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp, Building2,
 } from "lucide-react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { LocationVideoType } from "@/lib/api/perplexity-prompts";
 import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
+import { ListingVideoForm } from "@/components/create/listing-video-form";
+
+async function safeJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text || text.trimStart().startsWith("<")) return {};
+  try { return JSON.parse(text); } catch { return {}; }
+}
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-type InputMode = "record" | "upload" | "location";
+type InputMode = "record" | "upload" | "location" | "listing";
 
 // ─── Location script presets ──────────────────────────────────────────────────
 
@@ -67,8 +74,9 @@ const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CreatePage() {
+function CreatePageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Voice flow state
   const [inputMode, setInputMode] = useState<InputMode>("record");
@@ -89,6 +97,25 @@ export default function CreatePage() {
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // ── Pre-fill from URL params (e.g. clicked from Trending Topics) ─────────
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const type = searchParams.get("type") as LocationVideoType | null;
+    const topic = searchParams.get("topic");
+    const city = searchParams.get("city");
+    const state = searchParams.get("state");
+
+    if (tab === "location") {
+      setInputMode("location");
+      if (type && PRESET_TYPES.some((p) => p.value === type)) setLocVideoType(type);
+      if (topic) setLocCustomTopic(topic);
+      if (city) setLocCity(city);
+      if (state) setLocState(state);
+      // If a topic was passed in, switch to custom type so the topic field shows
+      if (topic && (!type || type === "custom")) setLocVideoType("custom");
+    }
+  }, []); // eslint-disable-line
+
   // ── Voice processing ────────────────────────────────────────────────────────
 
   async function processAudio(blob: Blob, durationSeconds: number, title = "New Recording") {
@@ -105,12 +132,9 @@ export default function CreatePage() {
         body: formData,
       });
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json();
-        throw new Error(err.error || "Upload failed");
-      }
-
-      const { recording, signedUrl } = await uploadRes.json();
+      const uploadBody = await safeJson(uploadRes);
+      if (!uploadRes.ok) throw new Error((uploadBody.error as string) || `Upload failed (${uploadRes.status})`);
+      const { recording, signedUrl } = uploadBody as { recording: { id: string }; signedUrl: string };
       setRecordingId(recording.id);
 
       setStep("transcribing");
@@ -121,12 +145,9 @@ export default function CreatePage() {
         body: JSON.stringify({ recordingId: recording.id, signedUrl }),
       });
 
-      if (!transcribeRes.ok) {
-        const err = await transcribeRes.json();
-        throw new Error(err.error || "Transcription failed");
-      }
-
-      const { transcript: text } = await transcribeRes.json();
+      const transcribeBody = await safeJson(transcribeRes);
+      if (!transcribeRes.ok) throw new Error((transcribeBody.error as string) || `Transcription failed (${transcribeRes.status})`);
+      const { transcript: text } = transcribeBody as { transcript: string };
       setTranscript(text);
       setStep("done");
       toast.success("Voice transcribed! Review and generate your video.");
@@ -199,11 +220,12 @@ export default function CreatePage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Script generation failed");
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || `Script generation failed (${res.status})`);
 
       toast.success("Location script ready!");
-      router.push(`/create/${data.project.id}?source=location`);
+      const project = data.project as { id: string };
+      router.push(`/create/${project.id}?source=location`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -224,42 +246,50 @@ export default function CreatePage() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-brand-text">Create New Video</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Record your voice, upload audio, or generate from location data.
+          Record your voice, upload audio, generate from location data, or import a listing.
         </p>
       </div>
 
       {/* Mode toggle — only show on input step */}
       {step === "input" && (
-        <div className="flex gap-1.5 mb-6 p-1 bg-slate-100 rounded-xl">
+        <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
             onClick={() => setInputMode("record")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
-            <Mic size={15} /> Record Voice
+            <Mic size={14} /> Record
           </button>
           <button
             onClick={() => setInputMode("upload")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "upload" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
-            <Upload size={15} /> Upload Audio
+            <Upload size={14} /> Upload
           </button>
           <button
             onClick={() => setInputMode("location")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
-            <MapPin size={15} /> Location Script
+            <MapPin size={14} /> Location
+          </button>
+          <button
+            onClick={() => setInputMode("listing")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "listing" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <Building2 size={14} /> Listing
           </button>
         </div>
       )}
 
       {/* ── Voice / Upload flow ── */}
-      {inputMode !== "location" && (
+      {inputMode !== "location" && inputMode !== "listing" && (
         <>
           {/* Progress steps */}
           {step !== "input" && (
@@ -335,7 +365,7 @@ export default function CreatePage() {
                 <FileText className="w-8 h-8 text-secondary-500 animate-pulse" />
               </div>
               <div>
-                <p className="font-semibold text-brand-text">Transcribing with ElevenLabs AI...</p>
+                <p className="font-semibold text-brand-text">Transcribing your voice...</p>
                 <p className="text-sm text-slate-400 mt-1">Converting your voice to text</p>
               </div>
               <Skeleton className="h-2 w-40 mt-2" />
@@ -368,6 +398,22 @@ export default function CreatePage() {
         </>
       )}
 
+      {/* ── Listing Video flow ── */}
+      {inputMode === "listing" && (
+        <Card>
+          <div className="flex items-center gap-2 mb-5">
+            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Building2 size={16} className="text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-brand-text">MLS Listing Auto-Video</p>
+              <p className="text-xs text-slate-400">Import from Zillow, Realtor.com, Redfin + more</p>
+            </div>
+          </div>
+          <ListingVideoForm />
+        </Card>
+      )}
+
       {/* ── Location Script flow ── */}
       {inputMode === "location" && (
         <Card>
@@ -381,7 +427,10 @@ export default function CreatePage() {
                 <span className="text-xl">💡</span>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-brand-text">Start from a Template</p>
-                  <p className="text-xs text-slate-400">10 ready-made real estate content topics</p>
+                  <p className="text-xs text-slate-400">
+                    24 templates · Real Estate · Location · Events &amp; Community News
+                    {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
+                  </p>
                 </div>
               </div>
               {showTemplates
@@ -391,7 +440,11 @@ export default function CreatePage() {
 
             {showTemplates && (
               <div className="mt-3">
-                <ContentTemplates onSelect={handleTemplateSelect} />
+                <ContentTemplates
+                  onSelect={handleTemplateSelect}
+                  city={locCity}
+                  state={locState}
+                />
               </div>
             )}
           </div>
@@ -443,7 +496,7 @@ export default function CreatePage() {
                 className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <p className="text-xs text-slate-400 mt-1">
-                Any real estate topic — Perplexity will research it for this specific location
+                Any real estate topic — our AI will research it for this specific location
               </p>
             </div>
           )}
@@ -541,7 +594,7 @@ export default function CreatePage() {
           {/* Info banner */}
           <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
             <p className="text-xs text-primary-700 leading-relaxed">
-              <strong>Powered by Perplexity Sonar</strong> — searches trusted real estate data sources
+              <strong>AI-powered research</strong> — searches trusted real estate data sources
               in real time and returns a structured script ready for video production. Takes ~10–20 seconds.
             </p>
           </div>
@@ -563,5 +616,13 @@ export default function CreatePage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={<div className="max-w-2xl mx-auto h-64 animate-pulse bg-slate-100 rounded-2xl" />}>
+      <CreatePageInner />
+    </Suspense>
   );
 }
