@@ -474,6 +474,65 @@ export default function ProjectEditorPage() {
             </div>
           </Card>
 
+          {/* Generate video */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <Video size={18} className="text-primary-500" />
+              <h3 className="font-semibold text-brand-text">Generate Video</h3>
+            </div>
+
+            {/* Video format selector */}
+            <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {videoTypes.map(({ value, label, desc }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedVideoType(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedVideoType === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-brand-text">{label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Background style selector */}
+            <p className="text-xs font-medium text-slate-500 mb-2">Background Style</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {backgroundModes.map(({ value, label, desc, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedBgMode(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedBgMode === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <Icon size={16} className={selectedBgMode === value ? "text-primary-500" : "text-slate-400"} />
+                  <p className="text-sm font-medium text-brand-text mt-1">{label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-tight">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <Button
+              onClick={handleGenerateVideo}
+              loading={videoGenerating}
+              size="lg"
+              className="w-full gap-2"
+            >
+              <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+            </Button>
+            <p className="text-xs text-slate-400 text-center mt-2">
+              Rendering takes 2-5 minutes. You&apos;ll see it in My Videos when ready.
+            </p>
+          </Card>
+
           {/* SEO section */}
           {seo && (
             <Card padding="sm">
@@ -559,65 +618,6 @@ export default function ProjectEditorPage() {
               )}
             </Card>
           )}
-
-          {/* Generate video */}
-          <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Video size={18} className="text-primary-500" />
-              <h3 className="font-semibold text-brand-text">Generate Video</h3>
-            </div>
-
-            {/* Video format selector */}
-            <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              {videoTypes.map(({ value, label, desc }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedVideoType(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <p className="text-sm font-medium text-brand-text">{label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </button>
-              ))}
-            </div>
-
-            {/* Background style selector */}
-            <p className="text-xs font-medium text-slate-500 mb-2">Background Style</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              {backgroundModes.map(({ value, label, desc, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedBgMode(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedBgMode === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <Icon size={16} className={selectedBgMode === value ? "text-primary-500" : "text-slate-400"} />
-                  <p className="text-sm font-medium text-brand-text mt-1">{label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-tight">{desc}</p>
-                </button>
-              ))}
-            </div>
-
-            <Button
-              onClick={handleGenerateVideo}
-              loading={videoGenerating}
-              size="lg"
-              className="w-full gap-2"
-            >
-              <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
-            </Button>
-            <p className="text-xs text-slate-400 text-center mt-2">
-              Rendering takes 2-5 minutes. You&apos;ll see it in My Videos when ready.
-            </p>
-          </Card>
         </div>
       ) : (
         <Card className="text-center py-12">
