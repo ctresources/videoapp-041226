@@ -55,6 +55,9 @@ async function perplexityChat(messages: { role: string; content: string }[], mod
     throw new Error("PERPLEXITY_API_KEY is not set. Add it to .env.local and restart the server.");
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 50000); // 50s — leaves buffer before Vercel's 60s limit
+
   const res = await fetch(`${PERPLEXITY_API}/chat/completions`, {
     method: "POST",
     headers: {
@@ -67,7 +70,8 @@ async function perplexityChat(messages: { role: string; content: string }[], mod
       temperature: 0.7,
       max_tokens: 4000,
     }),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "unknown");

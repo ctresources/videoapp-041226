@@ -11,22 +11,28 @@
       "maxDuration": 60
     },
     "app/api/ai/generate-script/route.ts": {
-      "maxDuration": 120
-    },
-    "app/api/video/create-blog/route.ts": {
-      "maxDuration": 120
-    },
-    "app/api/video/rerender/route.ts": {
-      "maxDuration": 120
-    },
-    "app/api/video/test-render/route.ts": {
-      "maxDuration": 120
-    },
-    "app/api/social/post/route.ts": {
       "maxDuration": 60
     },
     "app/api/ai/generate-location-script/route.ts": {
-      "maxDuration": 120
+      "maxDuration": 60
+    },
+    "app/api/ai/listing-video/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/ai/scrape-listing/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/video/create-blog/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/video/rerender/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/video/test-render/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/social/post/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [
