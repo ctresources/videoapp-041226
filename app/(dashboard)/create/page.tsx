@@ -79,7 +79,7 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("record");
+  const [inputMode, setInputMode] = useState<InputMode>("location");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -254,6 +254,14 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
+            onClick={() => setInputMode("location")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <MapPin size={14} /> Templates
+          </button>
+          <button
             onClick={() => setInputMode("record")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
@@ -268,14 +276,6 @@ function CreatePageInner() {
             }`}
           >
             <Upload size={14} /> Upload
-          </button>
-          <button
-            onClick={() => setInputMode("location")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <MapPin size={14} /> Location
           </button>
           <button
             onClick={() => setInputMode("listing")}

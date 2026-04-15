@@ -72,7 +72,7 @@ const features = [
     bg: "bg-purple-50",
     title: "Your AI Avatar & Cloned Voice",
     description: "Create your digital twin once. Generate unlimited Reels and TikToks with your AI avatar speaking in your own cloned voice — even while you're at showings.",
-    badge: "Powered by HeyGen",
+    badge: "AI Avatar",
   },
   {
     icon: Home,
@@ -218,10 +218,10 @@ const pricingTiers = [
     features: [
       "30 videos/month",
       "Everything in Agent",
-      "HeyGen AI avatar (in-app setup)",
+      "AI avatar (in-app setup)",
       "All 10 social platforms",
       "Content calendar + scheduling",
-      "CRM webhooks (GHL, HubSpot, FUB, BoldTrail)",
+      "CRM webhooks (GoHighLevel, HubSpot, Follow Up Boss)",
       "Community events & news videos",
       "Priority rendering",
     ],
@@ -416,7 +416,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Everything Included</p>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
-              More features than Syllaby, Rejig, and Roomvu — combined.
+              More features than every competitor — combined.
             </h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
               Purpose-built for real estate agents, not generic content creators.
@@ -457,7 +457,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
               We checked. No one else does all of this.
             </h2>
-            <p className="text-slate-500">Compared to Syllaby.io, Rejig.ai, and Roomvu.com</p>
+            <p className="text-slate-500">Compared to the top real estate video platforms</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
@@ -466,9 +466,9 @@ export default function LandingPage() {
                 <tr className="border-b border-slate-100">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
                   <th className="p-4 text-center font-black text-primary-600 text-xs">VoiceToVideos.AI</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Syllaby</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Rejig</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Roomvu</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor A</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor B</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor C</th>
                 </tr>
               </thead>
               <tbody>

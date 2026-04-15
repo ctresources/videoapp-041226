@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import type { ListingData } from "../scrape-listing/route";
 
-async function generateListingScript(listing: ListingData): Promise<{
+async function generateListingScript(listing: ListingData, agentName?: string): Promise<{
   title: string;
   script: string;
   hook: string;
@@ -42,7 +42,7 @@ INSTRUCTIONS:
 - Open with a compelling hook about the property (NOT "Welcome to...")
 - Highlight the top 3–4 features conversationally
 - Mention the price and key specs naturally
-- End with a clear call to action to schedule a showing
+- End with a clear call to action to schedule a showing${agentName ? ` — must include the agent's name: "${agentName}"` : ""}
 - Keep it under 200 words — this is a voiceover script, not text
 - Do NOT mention schools, churches, demographics, neighborhood composition, or anything that could violate Fair Housing laws
 - Naturally include Fair Housing Equal Opportunity language at the very end
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("credits_remaining")
+    .select("credits_remaining, full_name")
     .eq("id", user.id)
     .single();
 
@@ -106,7 +106,8 @@ export async function POST(req: NextRequest) {
   // Generate script
   let scriptData: Awaited<ReturnType<typeof generateListingScript>>;
   try {
-    scriptData = await generateListingScript(listing);
+    const agentName = (profile as { credits_remaining: number; full_name?: string | null }).full_name || undefined;
+    scriptData = await generateListingScript(listing, agentName);
   } catch (err) {
     console.error("Listing script error:", err);
     return NextResponse.json({ error: "Failed to generate script. Please try again." }, { status: 500 });
