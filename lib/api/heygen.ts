@@ -428,6 +428,73 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
   };
 }
 
+// ─── V3 Voice Clone ───────────────────────────────────────────────────────────
+
+/**
+ * Create a HeyGen voice clone from an uploaded audio asset.
+ *
+ * Flow:
+ *   1. Upload audio buffer to POST /v3/assets → asset_id
+ *   2. POST /v3/voices with the asset_id → voice_id
+ *
+ * The returned voice_id is stored in the user's profile as heygen_voice_id
+ * and passed as voice_id to the Video Agent so their cloned voice is used.
+ */
+export async function cloneVoice(
+  audioBuffer: Buffer,
+  name: string,
+  contentType = "audio/mpeg",
+): Promise<string> {
+  const apiKey = getApiKey();
+
+  // Step 1 — upload audio as asset
+  console.log(`[heygen] Uploading voice sample (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
+  const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": contentType },
+    body: new Uint8Array(audioBuffer),
+  });
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text().catch(() => "unknown");
+    throw new Error(`HeyGen voice asset upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
+  }
+
+  const uploadData = await uploadRes.json();
+  const assetId = uploadData.data?.asset_id || uploadData.data?.id;
+  if (!assetId) {
+    throw new Error(`HeyGen returned no asset_id for voice upload. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
+  }
+  console.log(`[heygen] Voice asset uploaded: ${assetId}`);
+
+  // Step 2 — create voice clone from asset
+  console.log(`[heygen] Creating voice clone "${name}"...`);
+  const cloneRes = await fetch(`${HEYGEN_API}/v3/voices`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      files: [{ type: "asset_id", asset_id: assetId }],
+    }),
+  });
+
+  const rawText = await cloneRes.text();
+  console.log(`[heygen] Voice clone response (${cloneRes.status}):`, rawText.slice(0, 300));
+
+  if (!cloneRes.ok) {
+    throw new Error(`HeyGen voice clone failed (${cloneRes.status}): ${rawText.slice(0, 300)}`);
+  }
+
+  const cloneData = JSON.parse(rawText);
+  const voiceId = cloneData.data?.voice_id || cloneData.data?.id;
+  if (!voiceId) {
+    throw new Error(`HeyGen returned no voice_id. Response: ${rawText.slice(0, 200)}`);
+  }
+
+  console.log(`[heygen] Voice clone created: ${voiceId}`);
+  return voiceId;
+}
+
 // ─── V3 Video Agent API ───────────────────────────────────────────────────────
 
 export interface VideoAgentFile {

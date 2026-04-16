@@ -19,6 +19,7 @@ export interface BrandProfileInitial {
   avatar_url: string | null;
   logo_url: string | null;
   voice_clone_id: string | null;
+  heygen_voice_id: string | null;
   heygen_photo_id: string | null;
   website: string | null;
   license_number: string | null;
@@ -256,8 +257,11 @@ function TalkingAvatarUploader({
 }
 
 // ── Voice Clone uploader (record + upload) ───────────────────────────────────
-function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
-  userId: string; currentVoiceId: string | null; onUpdate: (id: string | null) => void;
+function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUpdate }: {
+  userId: string;
+  currentVoiceId: string | null;
+  currentHeygenVoiceId: string | null;
+  onUpdate: (elevenLabsId: string | null, heygenId: string | null) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -267,6 +271,7 @@ function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
 
   const [tab, setTab] = useState<"record" | "upload">("record");
   const [voiceId, setVoiceId] = useState(currentVoiceId);
+  const [heygenVoiceId, setHeygenVoiceId] = useState(currentHeygenVoiceId);
   const [submitting, setSubmitting] = useState(false);
 
   // Recording state
@@ -337,20 +342,49 @@ function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
 
   async function submitAudio(audioBlob: Blob, filename: string) {
     setSubmitting(true);
-    const form = new FormData();
-    form.append("audio", audioBlob, filename);
-    form.append("name", "My Voice");
+
+    // Build FormData once; reuse for both APIs
+    const elvForm = new FormData();
+    elvForm.append("audio", audioBlob, filename);
+    elvForm.append("name", "My Voice");
+
+    const heyForm = new FormData();
+    heyForm.append("audio", audioBlob, filename);
+    heyForm.append("name", "My Voice");
+
     try {
-      const res = await fetch("/api/profile/voice-clone", { method: "POST", body: form });
-      const text = await res.text();
-      let data: { voice_id?: string; error?: string } = {};
-      try { data = JSON.parse(text); } catch {
-        throw new Error(res.ok ? "Unexpected server response." : `Server error ${res.status}`);
+      // Call ElevenLabs and HeyGen voice clone in parallel
+      const [elvRes, heyRes] = await Promise.all([
+        fetch("/api/profile/voice-clone", { method: "POST", body: elvForm }),
+        fetch("/api/profile/heygen-voice", { method: "POST", body: heyForm }),
+      ]);
+
+      // ElevenLabs is required — fail if it errors
+      const elvText = await elvRes.text();
+      let elvData: { voice_id?: string; error?: string } = {};
+      try { elvData = JSON.parse(elvText); } catch {
+        throw new Error(elvRes.ok ? "Unexpected server response." : `Server error ${elvRes.status}`);
       }
-      if (!res.ok) throw new Error(data.error || "Voice clone failed");
-      if (!data.voice_id) throw new Error("No voice ID returned from server.");
-      setVoiceId(data.voice_id);
-      onUpdate(data.voice_id);
+      if (!elvRes.ok) throw new Error(elvData.error || "Voice clone failed");
+      if (!elvData.voice_id) throw new Error("No voice ID returned from server.");
+
+      // HeyGen is optional — log failure but don't block the user
+      let newHeygenVoiceId: string | null = heygenVoiceId;
+      try {
+        const heyText = await heyRes.text();
+        const heyData: { voice_id?: string; error?: string } = JSON.parse(heyText);
+        if (heyRes.ok && heyData.voice_id) {
+          newHeygenVoiceId = heyData.voice_id;
+          setHeygenVoiceId(heyData.voice_id);
+        } else {
+          console.warn("[voice-clone] HeyGen voice clone skipped:", heyData.error);
+        }
+      } catch (heyErr) {
+        console.warn("[voice-clone] HeyGen voice clone failed (non-fatal):", heyErr);
+      }
+
+      setVoiceId(elvData.voice_id);
+      onUpdate(elvData.voice_id, newHeygenVoiceId);
       setRecState("idle");
       setRecBlob(null);
       setRecUrl(null);
@@ -371,13 +405,17 @@ function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
 
   async function handleDelete() {
     if (!confirm("Remove your voice clone? Your AI videos will use a default voice.")) return;
-    await fetch("/api/profile/voice-clone", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voice_id: voiceId }),
-    });
+    await Promise.all([
+      fetch("/api/profile/voice-clone", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: voiceId }),
+      }),
+      fetch("/api/profile/heygen-voice", { method: "DELETE" }),
+    ]);
     setVoiceId(null);
-    onUpdate(null);
+    setHeygenVoiceId(null);
+    onUpdate(null, null);
     toast.success("Voice clone removed");
   }
 
@@ -391,11 +429,15 @@ function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-green-800">Voice clone active</p>
-            <p className="text-xs text-green-600 mt-0.5">Your videos will be narrated in your cloned voice.</p>
+            <p className="text-xs text-green-600 mt-0.5">
+              {heygenVoiceId
+                ? "Your cloned voice is ready for AI video generation."
+                : "Voice saved · re-record to activate in AI videos."}
+            </p>
           </div>
           <div className="flex gap-3 shrink-0">
             <button
-              onClick={() => { setVoiceId(null); setRecState("idle"); }}
+              onClick={() => { setVoiceId(null); setHeygenVoiceId(null); setRecState("idle"); }}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
             >
               <RefreshCw size={11} /> Re-clone
@@ -570,17 +612,18 @@ function VoiceCloneUploader({ userId, currentVoiceId, onUpdate }: {
 // ── Main BrandProfile component ───────────────────────────────────────────────
 export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
   const [fields, setFields] = useState({
-    full_name:       initial.full_name       || "",
-    company_name:    initial.company_name    || "",
-    phone:           initial.phone           || "",
-    company_phone:   initial.company_phone   || "",
-    company_address: initial.company_address || "",
-    avatar_url:      initial.avatar_url      || "",
-    logo_url:        initial.logo_url        || "",
-    voice_clone_id:  initial.voice_clone_id  || "",
-    heygen_photo_id: initial.heygen_photo_id || "",
-    website:         initial.website         || "",
-    license_number:  initial.license_number  || "",
+    full_name:        initial.full_name       || "",
+    company_name:     initial.company_name    || "",
+    phone:            initial.phone           || "",
+    company_phone:    initial.company_phone   || "",
+    company_address:  initial.company_address || "",
+    avatar_url:       initial.avatar_url      || "",
+    logo_url:         initial.logo_url        || "",
+    voice_clone_id:   initial.voice_clone_id  || "",
+    heygen_voice_id:  initial.heygen_voice_id || "",
+    heygen_photo_id:  initial.heygen_photo_id || "",
+    website:          initial.website         || "",
+    license_number:   initial.license_number  || "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -757,7 +800,11 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         <VoiceCloneUploader
           userId={userId}
           currentVoiceId={fields.voice_clone_id || null}
-          onUpdate={(id) => set("voice_clone_id", id || "")}
+          currentHeygenVoiceId={fields.heygen_voice_id || null}
+          onUpdate={(elevenLabsId, heygenId) => {
+            set("voice_clone_id", elevenLabsId || "");
+            set("heygen_voice_id", heygenId || "");
+          }}
         />
       </div>
 

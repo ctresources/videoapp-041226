@@ -37,7 +37,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_photo_id, website, license_number")
+      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -46,7 +46,8 @@ export default function SettingsPage() {
           company_phone: string | null; company_address: string | null;
           preferred_language: string | null; location_city: string | null; location_state: string | null;
           avatar_url: string | null; logo_url: string | null; voice_clone_id: string | null;
-          heygen_photo_id: string | null; website: string | null; license_number: string | null;
+          heygen_voice_id: string | null; heygen_photo_id: string | null;
+          website: string | null; license_number: string | null;
         } | null;
         if (row) {
           setPrefs({
@@ -63,6 +64,7 @@ export default function SettingsPage() {
             avatar_url:      row.avatar_url,
             logo_url:        row.logo_url,
             voice_clone_id:  row.voice_clone_id,
+            heygen_voice_id: row.heygen_voice_id,
             heygen_photo_id: row.heygen_photo_id,
             website:         row.website,
             license_number:  row.license_number,

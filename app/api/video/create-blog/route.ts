@@ -110,12 +110,13 @@ export async function POST(req: NextRequest) {
   // Load user profile
   const { data: profileData } = await admin
     .from("profiles")
-    .select("voice_clone_id, avatar_url, logo_url, full_name, heygen_photo_id, location_city, location_state")
+    .select("voice_clone_id, heygen_voice_id, avatar_url, logo_url, full_name, heygen_photo_id, location_city, location_state")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
     voice_clone_id: string | null;
+    heygen_voice_id: string | null;
     avatar_url: string | null;
     logo_url: string | null;
     heygen_photo_id: string | null;
@@ -193,6 +194,8 @@ export async function POST(req: NextRequest) {
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId: profile?.heygen_photo_id || undefined,
+      // Use HeyGen-native voice clone if set up; falls back to avatar default voice
+      voiceId: profile?.heygen_voice_id || undefined,
       orientation,
       files: files.length > 0 ? files : undefined,
       callbackUrl,
