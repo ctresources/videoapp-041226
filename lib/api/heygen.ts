@@ -418,6 +418,207 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
   };
 }
 
+// ─── V3 Video Agent API ───────────────────────────────────────────────────────
+
+export interface VideoAgentFile {
+  type: "url";
+  url: string;
+}
+
+export interface GenerateVideoAgentParams {
+  prompt: string;
+  avatarId?: string;
+  voiceId?: string;
+  orientation?: "landscape" | "portrait" | "square";
+  files?: VideoAgentFile[];
+  callbackUrl?: string;
+  callbackId?: string;
+  styleId?: string;
+}
+
+export interface VideoAgentSession {
+  sessionId: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  videoId: string | null;
+  error: string | null;
+}
+
+/**
+ * Fetch the first cinematic style ID from HeyGen's style library.
+ * Used to apply a professional cinematic look to Video Agent renders.
+ * Returns null on failure — the caller should proceed without a style_id.
+ */
+export async function getCinematicStyleId(): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${HEYGEN_API}/v3/video-agents/styles?tag=cinematic&limit=1`,
+      { headers: { "x-api-key": getApiKey() } },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const styleId = data.data?.[0]?.style_id || null;
+    if (styleId) console.log(`[heygen] Using cinematic style: ${styleId}`);
+    return styleId;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate a video using the HeyGen Video Agent v3 API.
+ *
+ * The agent autonomously generates b-roll, scene layout, pacing, and
+ * visual composition from the prompt. Returns a session_id for polling.
+ *
+ * NOTE: voice_id here must be a HeyGen native voice ID; ElevenLabs
+ * cloned voices require pre-generating audio and attaching as a file.
+ */
+export async function generateVideoAgent(
+  params: GenerateVideoAgentParams,
+): Promise<string> {
+  const body: Record<string, unknown> = {
+    prompt: params.prompt,
+    ...(params.avatarId && { avatar_id: params.avatarId }),
+    ...(params.voiceId && { voice_id: params.voiceId }),
+    ...(params.orientation && { orientation: params.orientation }),
+    ...(params.files?.length && { files: params.files }),
+    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
+    ...(params.callbackId && { callback_id: params.callbackId }),
+    ...(params.styleId && { style_id: params.styleId }),
+  };
+
+  console.log(`[heygen] Submitting Video Agent v3 (${params.prompt.length} chars)...`);
+
+  const res = await fetch(`${HEYGEN_API}/v3/video-agents`, {
+    method: "POST",
+    headers: {
+      "x-api-key": getApiKey(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rawText = await res.text();
+  console.log(`[heygen] Video Agent response (${res.status}):`, rawText.slice(0, 400));
+
+  if (!res.ok) {
+    throw new Error(`HeyGen Video Agent v3 failed (${res.status}): ${rawText.slice(0, 400)}`);
+  }
+
+  const data = JSON.parse(rawText);
+  const sessionId = data.data?.session_id;
+  if (!sessionId) {
+    throw new Error(`HeyGen Video Agent returned no session_id. Response: ${rawText.slice(0, 300)}`);
+  }
+
+  console.log(`[heygen] Video Agent session created: ${sessionId}`);
+  return sessionId;
+}
+
+/**
+ * Poll the Video Agent session status.
+ * Returns status and video_id once the agent has finished compositing.
+ * Follows the two-step flow: session → video_id → GET /v3/videos/{id}
+ */
+export async function getVideoAgentSession(
+  sessionId: string,
+): Promise<VideoAgentSession> {
+  const res = await fetch(
+    `${HEYGEN_API}/v3/video-agents/${sessionId}`,
+    { headers: { "x-api-key": getApiKey() } },
+  );
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen session poll failed (${res.status}): ${err.slice(0, 200)}`);
+  }
+
+  const json = await res.json();
+  const d = json.data;
+
+  return {
+    sessionId: d.session_id || sessionId,
+    status: d.status,
+    videoId: d.video_id || null,
+    error: d.error
+      ? (typeof d.error === "string" ? d.error : JSON.stringify(d.error))
+      : null,
+  };
+}
+
+/**
+ * Get final video details from the v3 videos endpoint.
+ * Called after getVideoAgentSession() returns a video_id.
+ */
+export async function getVideoV3Status(videoId: string): Promise<VideoStatus> {
+  const res = await fetch(
+    `${HEYGEN_API}/v3/videos/${videoId}`,
+    { headers: { "x-api-key": getApiKey() } },
+  );
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen v3 video status failed (${res.status}): ${err.slice(0, 200)}`);
+  }
+
+  const json = await res.json();
+  const d = json.data;
+
+  let errorMsg: string | null = null;
+  if (d.error) {
+    errorMsg = typeof d.error === "string" ? d.error : JSON.stringify(d.error);
+  }
+
+  return {
+    status: d.status,
+    videoUrl: d.video_url || null,
+    thumbnailUrl: d.thumbnail_url || null,
+    captionUrl: d.caption_url || null,
+    duration: d.duration || null,
+    error: errorMsg,
+  };
+}
+
+// ─── 6. Poll V3 Agent Until Complete ─────────────────────────────────────────
+
+/**
+ * Poll a Video Agent session until the video is completed or fails.
+ * Handles the two-step flow automatically: session → video_id → final status.
+ * Default: 10-minute timeout (agent renders take longer), poll every 15 seconds.
+ */
+export async function waitForVideoAgent(
+  sessionId: string,
+  timeoutMs = 600_000,
+  intervalMs = 15_000,
+): Promise<VideoStatus & { videoId: string }> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const session = await getVideoAgentSession(sessionId);
+    console.log(`[heygen] Agent session ${sessionId}: ${session.status}`);
+
+    if (session.status === "failed") {
+      throw new Error(`HeyGen Video Agent failed: ${session.error || "unknown error"}`);
+    }
+
+    if (session.videoId) {
+      const videoStatus = await getVideoV3Status(session.videoId);
+      console.log(`[heygen] Video ${session.videoId}: ${videoStatus.status}`);
+
+      if (videoStatus.status === "completed") {
+        return { ...videoStatus, videoId: session.videoId };
+      }
+      if (videoStatus.status === "failed") {
+        throw new Error(`HeyGen v3 video failed: ${videoStatus.error || "unknown error"}`);
+      }
+    }
+
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  throw new Error(`HeyGen Video Agent timed out after ${Math.round(timeoutMs / 1000)}s`);
+}
+
 /**
  * Poll HeyGen until the video is completed or fails.
  * Default: 5-minute timeout, poll every 10 seconds.
