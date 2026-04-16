@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
     // ── Create DB row before submitting ─────────────────────────────────────
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
-    const { data: videoRow } = await admin
+    const { data: videoRow, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
         project_id: projectId,
@@ -182,6 +182,10 @@ export async function POST(req: NextRequest) {
       })
       .select()
       .single();
+
+    if (insertErr || !videoRow) {
+      throw new Error(`Failed to create video record: ${insertErr?.message || "unknown"}`);
+    }
 
     // ── Submit to HeyGen Video Agent v3 (fire-and-forget) ───────────────────
     // Returns a session_id — the agent renders asynchronously.
