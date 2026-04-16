@@ -6,7 +6,7 @@ export type RecordingStatus = "uploaded" | "transcribing" | "transcribed" | "pro
 export type ProjectType = "blog_video" | "short_form" | "carousel";
 export type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
 export type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
-export type RenderProvider = "creatomate" | "heygen";
+export type RenderProvider = "creatomate" | "heygen" | "heygen_agent";
 export type RenderStatus = "pending" | "rendering" | "completed" | "failed";
 export type SocialPlatform = "youtube" | "instagram" | "tiktok" | "facebook" | "linkedin" | "x";
 export type PostStatus = "scheduled" | "posting" | "posted" | "failed";
@@ -22,6 +22,7 @@ export interface Profile {
   onboarding_done: boolean;
   voice_clone_id: string | null;
   heygen_photo_id: string | null;
+  heygen_voice_id: string | null;
   subscription_tier: SubscriptionTier;
   credits_remaining: number;
   created_at: string;

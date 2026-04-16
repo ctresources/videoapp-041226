@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus } from "@/lib/api/heygen";
+import { getVideoStatus, getVideoAgentSession, getVideoV3Status } from "@/lib/api/heygen";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,9 +11,9 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Strategy:
  *   1. Read the DB row (the webhook updates it in production)
- *   2. If the DB says "rendering" but the webhook may not have reached us
- *      (e.g. local dev where HeyGen can't call back to localhost), fall
- *      back to querying HeyGen directly and update the DB if complete.
+ *   2. If still rendering, fall back to querying HeyGen directly:
+ *      - heygen_agent: two-step poll (session_id → video_id → GET /v3/videos/{id})
+ *      - heygen (v2):  single-step poll via GET /v3/videos/{id} (v1 endpoint retired)
  */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     const { data: video } = await admin
       .from("generated_videos")
-      .select("id, project_id, user_id, video_type, render_status, video_url, render_provider, render_job_id")
+      .select("id, project_id, user_id, video_type, render_status, video_url, render_provider, render_job_id, metadata")
       .eq("render_job_id", renderId)
       .eq("user_id", user.id)
       .single();
@@ -44,54 +44,136 @@ export async function GET(req: NextRequest) {
     // If still rendering, query HeyGen directly (webhook fallback)
     if (status === "rendering" || status === "pending") {
       try {
-        const heygenStatus = await getVideoStatus(renderId);
+        const provider = video.render_provider as string;
 
-        if (heygenStatus.status === "completed") {
-          status = "completed";
-          videoUrl = heygenStatus.videoUrl;
+        if (provider === "heygen_agent") {
+          // ── Two-step v3 polling ─────────────────────────────────────────
+          // Step 1: poll the agent session to get video_id
+          const session = await getVideoAgentSession(renderId);
+          console.log(`[status] Agent session ${renderId}: ${session.status}`);
 
-          await admin
-            .from("generated_videos")
-            .update({ render_status: "completed", video_url: videoUrl })
-            .eq("id", video.id);
+          if (session.status === "failed") {
+            status = "failed";
+            errorMsg = session.error || "HeyGen Video Agent failed";
 
-          if (video.project_id) {
             await admin
-              .from("projects")
-              .update({ status: "ready" })
-              .eq("id", video.project_id);
+              .from("generated_videos")
+              .update({ render_status: "failed" })
+              .eq("id", video.id);
+
+            if (video.project_id) {
+              await admin
+                .from("projects")
+                .update({ status: "error" })
+                .eq("id", video.project_id);
+            }
+          } else if (session.videoId) {
+            // Step 2: we have a video_id — poll v3 videos endpoint
+            const videoStatus = await getVideoV3Status(session.videoId);
+            console.log(`[status] V3 video ${session.videoId}: ${videoStatus.status}`);
+
+            if (videoStatus.status === "completed" && videoStatus.videoUrl) {
+              status = "completed";
+              videoUrl = videoStatus.videoUrl;
+
+              // Update DB — store the final video_id in render_job_id so future
+              // webhook lookups can match on it directly
+              await admin
+                .from("generated_videos")
+                .update({
+                  render_status: "completed",
+                  video_url: videoUrl,
+                  render_job_id: session.videoId,
+                })
+                .eq("id", video.id);
+
+              if (video.project_id) {
+                await admin
+                  .from("projects")
+                  .update({ status: "ready" })
+                  .eq("id", video.project_id);
+              }
+
+              if (video.user_id && videoUrl) {
+                publishWebhookEvent(video.user_id, "video.published", {
+                  video_id: video.id,
+                  video_url: videoUrl,
+                  video_type: video.video_type,
+                  project_id: video.project_id,
+                }).catch(console.error);
+              }
+
+              console.log(`[status] HeyGen Agent ${renderId} → video ${session.videoId} completed`);
+            } else if (videoStatus.status === "failed") {
+              status = "failed";
+              errorMsg = videoStatus.error || "HeyGen v3 render failed";
+
+              await admin
+                .from("generated_videos")
+                .update({ render_status: "failed", render_job_id: session.videoId })
+                .eq("id", video.id);
+
+              if (video.project_id) {
+                await admin
+                  .from("projects")
+                  .update({ status: "error" })
+                  .eq("id", video.project_id);
+              }
+            }
+            // Still processing — keep status as "rendering"
           }
+          // session.videoId is null → agent still working, keep "rendering"
 
-          // Fire CRM webhooks on completion
-          if (video.user_id && videoUrl) {
-            publishWebhookEvent(video.user_id, "video.published", {
-              video_id: video.id,
-              video_url: videoUrl,
-              video_type: video.video_type,
-              project_id: video.project_id,
-            }).catch(console.error);
-          }
+        } else {
+          // ── Legacy v2 single-step polling ──────────────────────────────
+          const heygenStatus = await getVideoStatus(renderId);
 
-          console.log(`[status] HeyGen ${renderId} completed via direct poll`);
-        } else if (heygenStatus.status === "failed") {
-          status = "failed";
-          errorMsg = heygenStatus.error || "HeyGen render failed";
+          if (heygenStatus.status === "completed") {
+            status = "completed";
+            videoUrl = heygenStatus.videoUrl;
 
-          await admin
-            .from("generated_videos")
-            .update({ render_status: "failed" })
-            .eq("id", video.id);
-
-          if (video.project_id) {
             await admin
-              .from("projects")
-              .update({ status: "error" })
-              .eq("id", video.project_id);
-          }
+              .from("generated_videos")
+              .update({ render_status: "completed", video_url: videoUrl })
+              .eq("id", video.id);
 
-          console.warn(`[status] HeyGen ${renderId} failed via direct poll: ${errorMsg}`);
+            if (video.project_id) {
+              await admin
+                .from("projects")
+                .update({ status: "ready" })
+                .eq("id", video.project_id);
+            }
+
+            if (video.user_id && videoUrl) {
+              publishWebhookEvent(video.user_id, "video.published", {
+                video_id: video.id,
+                video_url: videoUrl,
+                video_type: video.video_type,
+                project_id: video.project_id,
+              }).catch(console.error);
+            }
+
+            console.log(`[status] HeyGen ${renderId} completed via direct poll`);
+          } else if (heygenStatus.status === "failed") {
+            status = "failed";
+            errorMsg = heygenStatus.error || "HeyGen render failed";
+
+            await admin
+              .from("generated_videos")
+              .update({ render_status: "failed" })
+              .eq("id", video.id);
+
+            if (video.project_id) {
+              await admin
+                .from("projects")
+                .update({ status: "error" })
+                .eq("id", video.project_id);
+            }
+
+            console.warn(`[status] HeyGen ${renderId} failed via direct poll: ${errorMsg}`);
+          }
+          // Still processing/waiting/pending — keep "rendering"
         }
-        // Still processing/waiting/pending — keep DB status as "rendering"
       } catch (pollErr) {
         // Don't fail the status check if HeyGen poll fails; keep DB value
         console.warn("[status] HeyGen direct poll failed:", pollErr);
