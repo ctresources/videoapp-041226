@@ -1,23 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
-import { generateSpeech } from "@/lib/api/elevenlabs";
-import { searchStockVideos } from "@/lib/api/stock-video";
 import {
-  generateVideo,
-  generateVideoWithAudio,
-  uploadAudioAsset,
-  uploadVideoAsset,
-  uploadTalkingPhoto,
+  generateVideoAgent,
+  getCinematicStyleId,
   DIMENSIONS,
   type VideoType,
-  type SceneInput,
+  type VideoAgentFile,
 } from "@/lib/api/heygen";
 
-// Fire-and-forget: submit to HeyGen then return. Client polls /api/video/status.
-export const maxDuration = 120;
+export const maxDuration = 60;
 
-// 3-minute max for all video types
 const MAX_SCRIPT_WORDS = 450;
 
 function clampScript(text: string): string {
@@ -26,37 +19,51 @@ function clampScript(text: string): string {
   return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
 }
 
-function splitIntoScenes(script: string, numScenes = 4): string[] {
-  const paragraphs = script.split(/\n\n+/).filter((p) => p.trim().length > 0);
-  if (paragraphs.length >= numScenes) {
-    const scenes: string[] = [];
-    const perScene = Math.ceil(paragraphs.length / numScenes);
-    for (let i = 0; i < paragraphs.length; i += perScene) {
-      scenes.push(paragraphs.slice(i, i + perScene).join("\n\n"));
-    }
-    return scenes.slice(0, numScenes);
-  }
-  const sentences = script.match(/[^.!?]+[.!?]+/g) || [script];
-  if (sentences.length < 2) return [script];
-  const scenes: string[] = [];
-  const perScene = Math.ceil(sentences.length / numScenes);
-  for (let i = 0; i < sentences.length; i += perScene) {
-    scenes.push(sentences.slice(i, i + perScene).join(" ").trim());
-  }
-  return scenes.filter((s) => s.length > 0).slice(0, numScenes);
+function buildVideoAgentPrompt(params: {
+  script: string;
+  title: string;
+  city: string;
+  state: string;
+  agentName?: string;
+  keywords: string[];
+  isShortForm: boolean;
+}): string {
+  const location = [params.city, params.state].filter(Boolean).join(", ");
+  const locationDesc = location ? ` in ${location}` : "";
+  const agentRef = params.agentName
+    ? `real estate agent ${params.agentName}`
+    : "a professional real estate agent";
+
+  return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
+
+NARRATION SCRIPT — deliver this word-for-word as the voiceover:
+${params.script}
+
+VISUAL DIRECTION:
+- Present the full-body avatar as the on-screen presenter throughout
+- Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes
+- Where market statistics or prices are mentioned, add clean data visualizations: bar charts, line graphs, infographic overlays
+- Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
+- ${params.isShortForm
+    ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
+    : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
+- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}
+
+Deliver a single continuous, polished real estate marketing video${locationDesc}.`;
 }
 
 export interface RerenderEdits {
   script: string;
   title: string;
   format: VideoType;
-  brandColor: string;
-  logoEnabled: boolean;
-  captionColor: string;
-  captionHighlightColor?: string;
+  brandColor?: string;
+  logoEnabled?: boolean;
   captionsEnabled?: boolean;
   voiceId?: string | null;
   avatarId?: string | null;
+  // Legacy fields kept for editor compatibility — not used in v3 Video Agent
+  captionColor?: string;
+  captionHighlightColor?: string;
   musicUrl?: string | null;
 }
 
@@ -83,173 +90,103 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("voice_clone_id, logo_url, avatar_url, full_name, heygen_photo_id, location_city, location_state")
+    .select("heygen_voice_id, heygen_photo_id, logo_url, full_name, location_city, location_state")
     .eq("id", user.id)
     .single();
 
   const p = profile as {
-    voice_clone_id: string | null;
-    logo_url: string | null;
-    avatar_url: string | null;
-    full_name: string | null;
+    heygen_voice_id: string | null;
     heygen_photo_id: string | null;
+    logo_url: string | null;
+    full_name: string | null;
     location_city: string | null;
     location_state: string | null;
   } | null;
 
-  if (!p?.avatar_url && !p?.heygen_photo_id) {
-    return NextResponse.json({ error: "Upload your photo in Settings first." }, { status: 400 });
-  }
-
-  // Auto-register with HeyGen if photo exists but hasn't been registered yet
-  if (p?.avatar_url && !p?.heygen_photo_id) {
-    try {
-      console.log("[rerender] Auto-registering avatar with HeyGen...");
-      const imgRes = await fetch(p.avatar_url);
-      if (!imgRes.ok) throw new Error(`Failed to download avatar: ${imgRes.status}`);
-      const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
-      const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-      const photoId = await uploadTalkingPhoto(imageBuffer, contentType);
-
-      await admin
-        .from("profiles")
-        .update({ heygen_photo_id: photoId })
-        .eq("id", user.id);
-
-      p.heygen_photo_id = photoId;
-      console.log(`[rerender] Auto-registered HeyGen talking photo: ${photoId}`);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.error("[rerender] Auto-registration failed:", errMsg);
-      return NextResponse.json(
-        { error: `Failed to register your photo with HeyGen: ${errMsg}` },
-        { status: 400 },
-      );
-    }
-  }
-
-  if (!p?.voice_clone_id) {
-    return NextResponse.json({ error: "Upload a voice sample in Settings first." }, { status: 400 });
+  if (!p?.heygen_photo_id) {
+    return NextResponse.json(
+      { error: "Upload your photo in Settings to create your video avatar." },
+      { status: 400 },
+    );
   }
 
   const safeScript = clampScript(edits.script);
   const isShortForm = edits.format === "reel_9x16" || edits.format === "short_1x1";
-  const numScenes = isShortForm ? 3 : 5;
+  const orientation = isShortForm ? "portrait" : "landscape";
+
+  const proj = video.projects as { ai_script?: Record<string, unknown> } | null;
+  const aiScript = proj?.ai_script as Record<string, unknown> | undefined;
+  const keywords = (aiScript?.keywords as string[]) || [];
+  const city = p.location_city || "";
+  const state = p.location_state || "";
 
   try {
-    // ── Split script into scenes ─────────────────────────────────────────
-    const sceneTexts = splitIntoScenes(safeScript, numScenes);
+    const prompt = buildVideoAgentPrompt({
+      script: safeScript,
+      title: edits.title,
+      city,
+      state,
+      agentName: p.full_name || undefined,
+      keywords,
+      isShortForm,
+    });
 
-    // ── Search location-specific b-roll ──────────────────────────────────
-    const proj = video.projects as { ai_script?: Record<string, unknown> } | null;
-    const keywords = (proj?.ai_script?.keywords as string[]) || [];
-    const city = p.location_city || "";
-    const state = p.location_state || "";
-    const searchTerms = keywords.length > 0
-      ? keywords.slice(0, 4)
-      : [`${city} ${state} homes`.trim(), "real estate neighborhood"];
+    const styleId = await getCinematicStyleId().catch(() => null);
 
-    let stockVideoAssetIds: string[] = [];
-    try {
-      const clips = await searchStockVideos(
-        searchTerms,
-        isShortForm ? "portrait" : "landscape",
-        1,
-      );
-      console.log(`[rerender] Found ${clips.length} b-roll clips, uploading to HeyGen...`);
-      for (let i = 0; i < clips.length; i++) {
-        try {
-          const clipRes = await fetch(clips[i].url);
-          if (!clipRes.ok) continue;
-          const clipBuffer = Buffer.from(await clipRes.arrayBuffer());
-          const assetId = await uploadVideoAsset(clipBuffer);
-          stockVideoAssetIds.push(assetId);
-        } catch (upErr) {
-          console.warn(`[rerender] B-roll ${i + 1} upload failed:`, upErr);
-        }
-      }
-    } catch { /* fallback to solid bg */ }
+    const files: VideoAgentFile[] = [];
+    if (p.logo_url) files.push({ type: "url", url: p.logo_url });
 
     const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
 
-    // ── Create DB row ────────────────────────────────────────────────────
     const { data: newVideo, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
         project_id: video.project_id,
         user_id: user.id,
         video_type: edits.format,
-        render_provider: "heygen",
+        render_provider: "heygen_agent",
         render_status: "rendering",
+        metadata: { dimension, orientation, city, state, title: edits.title },
       })
       .select()
       .single();
 
     if (insertErr) throw new Error(insertErr.message);
 
-    // ── Generate per-scene ElevenLabs audio ──────────────────────────────
-    // HeyGen can't access private cloned voices — we generate audio per scene
-    // so each scene has its own matching voice track.
-    const voiceId = edits.voiceId || p.voice_clone_id!;
-    console.log(`[rerender] Generating ${sceneTexts.length} per-scene audio tracks via ElevenLabs...`);
-
-    const sceneAudioAssetIds: string[] = [];
-    for (let i = 0; i < sceneTexts.length; i++) {
-      const text = sceneTexts[i];
-      console.log(`[rerender] Scene ${i + 1}/${sceneTexts.length}: generating voice (${text.length} chars)...`);
-      const audioBuffer = await generateSpeech(text, voiceId);
-      const assetId = await uploadAudioAsset(audioBuffer);
-      sceneAudioAssetIds.push(assetId);
-    }
-
-    // Build scenes with per-scene audio + HeyGen-hosted b-roll
-    const scenes: SceneInput[] = sceneTexts.map((text, i) => ({
-      scriptText: text,
-      audioAssetId: sceneAudioAssetIds[i],
-      backgroundVideoAssetId: stockVideoAssetIds.length > 0
-        ? stockVideoAssetIds[i % stockVideoAssetIds.length]
-        : undefined,
-      backgroundColor: edits.brandColor || "#0F172A",
-    }));
-
-    // ── Submit to HeyGen (fire-and-forget) ───────────────────────────────
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    let heygenVideoId: string;
-    try {
-      heygenVideoId = await generateVideo({
-        scenes,
-        talkingPhotoId: p.heygen_photo_id!,
-        dimension,
-        title: edits.title,
-        callbackUrl,
-      });
-    } catch (primaryErr) {
-      console.warn("[rerender] Multi-scene failed, single-scene fallback:", primaryErr);
-      heygenVideoId = await generateVideoWithAudio({
-        audioAssetId: sceneAudioAssetIds[0],
-        talkingPhotoId: p.heygen_photo_id!,
-        backgroundVideoAssetId: stockVideoAssetIds[0],
-        dimension,
-        title: edits.title,
-        callbackUrl,
-      });
-    }
+    const sessionId = await generateVideoAgent({
+      prompt,
+      avatarId: edits.avatarId || p.heygen_photo_id || undefined,
+      voiceId: edits.voiceId || p.heygen_voice_id || undefined,
+      orientation,
+      files: files.length > 0 ? files : undefined,
+      callbackUrl,
+      callbackId: newVideo?.id,
+      styleId: styleId || undefined,
+    });
 
-    // ── Save HeyGen video_id and return immediately ─────────────────────
     await admin
       .from("generated_videos")
-      .update({ render_job_id: heygenVideoId })
+      .update({ render_job_id: sessionId })
       .eq("id", newVideo?.id);
 
-    console.log(`[rerender] Submitted to HeyGen (${heygenVideoId}) — client will poll`);
+    await admin.from("api_usage_log").insert({
+      user_id: user.id,
+      api_provider: "heygen",
+      endpoint: "video-agent-v3-rerender",
+      credits_used: 1,
+      response_status: 202,
+    });
+
+    console.log(`[rerender] Video Agent session ${sessionId} submitted`);
     return NextResponse.json({
       video: {
         ...newVideo,
-        render_job_id: heygenVideoId,
+        render_job_id: sessionId,
         render_status: "rendering",
       },
     });

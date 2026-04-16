@@ -342,49 +342,23 @@ function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUp
 
   async function submitAudio(audioBlob: Blob, filename: string) {
     setSubmitting(true);
-
-    // Build FormData once; reuse for both APIs
-    const elvForm = new FormData();
-    elvForm.append("audio", audioBlob, filename);
-    elvForm.append("name", "My Voice");
-
-    const heyForm = new FormData();
-    heyForm.append("audio", audioBlob, filename);
-    heyForm.append("name", "My Voice");
+    const form = new FormData();
+    form.append("audio", audioBlob, filename);
+    form.append("name", "My Voice");
 
     try {
-      // Call ElevenLabs and HeyGen voice clone in parallel
-      const [elvRes, heyRes] = await Promise.all([
-        fetch("/api/profile/voice-clone", { method: "POST", body: elvForm }),
-        fetch("/api/profile/heygen-voice", { method: "POST", body: heyForm }),
-      ]);
-
-      // ElevenLabs is required — fail if it errors
-      const elvText = await elvRes.text();
-      let elvData: { voice_id?: string; error?: string } = {};
-      try { elvData = JSON.parse(elvText); } catch {
-        throw new Error(elvRes.ok ? "Unexpected server response." : `Server error ${elvRes.status}`);
+      const res = await fetch("/api/profile/heygen-voice", { method: "POST", body: form });
+      const text = await res.text();
+      let data: { voice_id?: string; error?: string } = {};
+      try { data = JSON.parse(text); } catch {
+        throw new Error(res.ok ? "Unexpected server response." : `Server error ${res.status}`);
       }
-      if (!elvRes.ok) throw new Error(elvData.error || "Voice clone failed");
-      if (!elvData.voice_id) throw new Error("No voice ID returned from server.");
+      if (!res.ok) throw new Error(data.error || "Voice clone failed");
+      if (!data.voice_id) throw new Error("No voice ID returned from server.");
 
-      // HeyGen is optional — log failure but don't block the user
-      let newHeygenVoiceId: string | null = heygenVoiceId;
-      try {
-        const heyText = await heyRes.text();
-        const heyData: { voice_id?: string; error?: string } = JSON.parse(heyText);
-        if (heyRes.ok && heyData.voice_id) {
-          newHeygenVoiceId = heyData.voice_id;
-          setHeygenVoiceId(heyData.voice_id);
-        } else {
-          console.warn("[voice-clone] HeyGen voice clone skipped:", heyData.error);
-        }
-      } catch (heyErr) {
-        console.warn("[voice-clone] HeyGen voice clone failed (non-fatal):", heyErr);
-      }
-
-      setVoiceId(elvData.voice_id);
-      onUpdate(elvData.voice_id, newHeygenVoiceId);
+      setVoiceId(data.voice_id);
+      setHeygenVoiceId(data.voice_id);
+      onUpdate(null, data.voice_id);
       setRecState("idle");
       setRecBlob(null);
       setRecUrl(null);
@@ -405,14 +379,7 @@ function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUp
 
   async function handleDelete() {
     if (!confirm("Remove your voice clone? Your AI videos will use a default voice.")) return;
-    await Promise.all([
-      fetch("/api/profile/voice-clone", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice_id: voiceId }),
-      }),
-      fetch("/api/profile/heygen-voice", { method: "DELETE" }),
-    ]);
+    await fetch("/api/profile/heygen-voice", { method: "DELETE" });
     setVoiceId(null);
     setHeygenVoiceId(null);
     onUpdate(null, null);
