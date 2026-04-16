@@ -12,8 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
  * Strategy:
  *   1. Read the DB row (the webhook updates it in production)
  *   2. If still rendering, fall back to querying HeyGen directly:
- *      - heygen_agent: two-step poll (session_id → video_id → /v3/videos/{id})
- *      - heygen (v2):  single-step poll via v1/video_status.get
+ *      - heygen_agent: two-step poll (session_id → video_id → GET /v3/videos/{id})
+ *      - heygen (v2):  single-step poll via GET /v3/videos/{id} (v1 endpoint retired)
  */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();

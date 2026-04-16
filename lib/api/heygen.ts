@@ -1,18 +1,21 @@
 /**
- * HeyGen Studio Video API integration.
+ * HeyGen API integration — v3 primary, v2 legacy fallback.
  *
- * Handles the complete video generation pipeline:
- *   1. Upload user photo → talking_photo_id (one-time, in settings)
- *   2. Upload audio asset (fallback for voice)
- *   3. Generate multi-scene video with avatar + voice + b-roll + captions
- *   4. Poll for completion → video URL
+ * Primary pipeline (v3 Video Agent):
+ *   1. Upload user photo → talking_photo_id via POST /v2/photo_avatar/avatar_group/create
+ *   2. Upload assets via POST /v3/assets
+ *   3. Submit Video Agent job via POST /v3/video-agents → session_id
+ *   4. Two-step poll: GET /v3/video-agents/{session_id} → video_id → GET /v3/videos/{video_id}
+ *
+ * v2 legacy functions (generateVideo, generateVideoWithAudio) remain for rerenders
+ * until a v3 equivalent of the multi-scene Studio API is available (flagged for
+ * deprecation by October 31, 2026).
  *
  * Users never interact with HeyGen directly — everything goes through our app.
  * All generated content is Fair Housing compliant.
  */
 
 const HEYGEN_API = "https://api.heygen.com";
-const HEYGEN_UPLOAD = "https://upload.heygen.com";
 
 function getApiKey(): string {
   const key = process.env.HEYGEN_API_KEY;
@@ -78,8 +81,8 @@ export async function uploadTalkingPhoto(
   const apiKey = getApiKey();
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);
 
-  // ── Step 1: Upload image as asset ──────────────────────────────────────────
-  const uploadRes = await fetch(`${HEYGEN_UPLOAD}/v1/asset`, {
+  // ── Step 1: Upload image as asset (v3 endpoint) ───────────────────────────
+  const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -96,7 +99,8 @@ export async function uploadTalkingPhoto(
   const uploadData = await uploadRes.json();
   console.log("[heygen] Asset upload response:", JSON.stringify(uploadData).slice(0, 300));
 
-  const imageKey = uploadData.data?.image_key;
+  // v3 returns asset_id; v2 photo avatar group creation still uses image_key
+  const imageKey = uploadData.data?.image_key || uploadData.data?.asset_id;
   if (!imageKey) {
     throw new Error(`HeyGen returned no image_key. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
   }
@@ -138,14 +142,13 @@ export async function uploadTalkingPhoto(
 // ─── 2a. Upload Video Asset (for b-roll backgrounds) ────────────────────────
 
 /**
- * Upload an MP4 video clip to HeyGen as an asset for use as a scene background.
- * External URLs (e.g. Pixabay) are not reliably rendered by HeyGen — the asset
- * must be uploaded to their system first.
+ * Upload an MP4 video clip to HeyGen as an asset (v3 endpoint).
+ * Returns the asset_id for use in v2 scene backgrounds or v3 file references.
  */
 export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading video asset (${(videoBuffer.length / 1024).toFixed(0)} KB)...`);
 
-  const res = await fetch(`${HEYGEN_UPLOAD}/v1/asset`, {
+  const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
     headers: {
       "x-api-key": getApiKey(),
@@ -160,7 +163,7 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
   }
 
   const data = await res.json();
-  const id = data.data?.id;
+  const id = data.data?.asset_id || data.data?.id;
   if (!id) throw new Error(`HeyGen returned no video asset id. Response: ${JSON.stringify(data).slice(0, 200)}`);
 
   console.log(`[heygen] Video asset uploaded: ${id}`);
@@ -170,13 +173,13 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
 // ─── 2b. Upload Audio Asset (voice track for scenes) ────────────────────────
 
 /**
- * Upload an MP3 audio file to HeyGen as an asset.
- * Used as fallback when ElevenLabs voice_id doesn't work directly in HeyGen.
+ * Upload an MP3 audio file to HeyGen as an asset (v3 endpoint).
+ * Used by legacy v2 multi-scene generation for per-scene voice tracks.
  */
 export async function uploadAudioAsset(audioBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading audio asset (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
 
-  const res = await fetch(`${HEYGEN_UPLOAD}/v1/asset`, {
+  const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
     headers: {
       "x-api-key": getApiKey(),
@@ -191,7 +194,7 @@ export async function uploadAudioAsset(audioBuffer: Buffer): Promise<string> {
   }
 
   const data = await res.json();
-  const id = data.data?.id;
+  const id = data.data?.asset_id || data.data?.id;
   if (!id) throw new Error("HeyGen returned no asset id");
 
   console.log(`[heygen] Audio asset uploaded: ${id}`);
@@ -388,9 +391,14 @@ export async function generateVideoWithAudio(params: {
 
 // ─── 5. Poll for Completion ──────────────────────────────────────────────────
 
+/**
+ * Get video status via GET /v3/videos/{id}.
+ * Replaces the deprecated GET /v1/video_status.get endpoint.
+ * Used for both legacy v2-generated videos and v3 direct video jobs.
+ */
 export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
   const res = await fetch(
-    `${HEYGEN_API}/v1/video_status.get?video_id=${videoId}`,
+    `${HEYGEN_API}/v3/videos/${videoId}`,
     { headers: { "x-api-key": getApiKey() } },
   );
 
@@ -402,9 +410,11 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
   const json = await res.json();
   const d = json.data;
 
-  // Normalize error — HeyGen sometimes returns an object, sometimes a string
+  // v3 uses failure_code + failure_message for render errors
   let errorMsg: string | null = null;
-  if (d.error) {
+  if (d.failure_message) {
+    errorMsg = `${d.failure_code || "error"}: ${d.failure_message}`;
+  } else if (d.error) {
     errorMsg = typeof d.error === "string" ? d.error : JSON.stringify(d.error);
   }
 
@@ -438,8 +448,8 @@ export interface GenerateVideoAgentParams {
 
 export interface VideoAgentSession {
   sessionId: string;
-  /** "generating" is the initial status returned on creation and during storyboard phase */
-  status: "pending" | "generating" | "processing" | "completed" | "failed";
+  /** "generating" = storyboard phase; "thinking" = agent reasoning; "processing" = rendering */
+  status: "pending" | "thinking" | "generating" | "processing" | "completed" | "failed";
   videoId: string | null;
   error: string | null;
 }
