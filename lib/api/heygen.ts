@@ -438,7 +438,8 @@ export interface GenerateVideoAgentParams {
 
 export interface VideoAgentSession {
   sessionId: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  /** "generating" is the initial status returned on creation and during storyboard phase */
+  status: "pending" | "generating" | "processing" | "completed" | "failed";
   videoId: string | null;
   error: string | null;
 }
@@ -564,8 +565,11 @@ export async function getVideoV3Status(videoId: string): Promise<VideoStatus> {
   const json = await res.json();
   const d = json.data;
 
+  // v3 videos use failure_code + failure_message for render errors
   let errorMsg: string | null = null;
-  if (d.error) {
+  if (d.failure_message) {
+    errorMsg = `${d.failure_code || "error"}: ${d.failure_message}`;
+  } else if (d.error) {
     errorMsg = typeof d.error === "string" ? d.error : JSON.stringify(d.error);
   }
 
@@ -601,6 +605,7 @@ export async function waitForVideoAgent(
       throw new Error(`HeyGen Video Agent failed: ${session.error || "unknown error"}`);
     }
 
+    // "generating" = storyboard phase; "processing" = rendering; both are in-progress
     if (session.videoId) {
       const videoStatus = await getVideoV3Status(session.videoId);
       console.log(`[heygen] Video ${session.videoId}: ${videoStatus.status}`);
