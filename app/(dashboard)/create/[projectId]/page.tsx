@@ -88,6 +88,7 @@ export default function ProjectEditorPage() {
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("blog_long");
   const [selectedBgMode, setSelectedBgMode] = useState<BackgroundMode>("stock-video");
+  const [quickMode, setQuickMode] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: false, blog: false,
   });
@@ -242,6 +243,7 @@ export default function ProjectEditorPage() {
           backgroundMode: selectedBgMode,
           script: fullScript,
           hook,
+          quickMode,
         }),
       });
 
@@ -520,6 +522,31 @@ export default function ProjectEditorPage() {
               ))}
             </div>
 
+            {/* Quick Mode toggle */}
+            <button
+              type="button"
+              onClick={() => setQuickMode((v) => !v)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all mb-3 ${
+                quickMode
+                  ? "border-amber-400 bg-amber-50"
+                  : "border-slate-200 hover:border-slate-300 bg-white"
+              }`}
+            >
+              <div className="text-left">
+                <p className={`text-sm font-semibold ${quickMode ? "text-amber-700" : "text-brand-text"}`}>
+                  ⚡ Quick Mode {quickMode ? "ON" : "OFF"}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {quickMode
+                    ? "~60s script, minimal prompt — renders in ~8-12 min"
+                    : "~90s script, cinematic directions — renders in ~15-25 min"}
+                </p>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${quickMode ? "bg-amber-400" : "bg-slate-200"}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${quickMode ? "translate-x-4" : "translate-x-0"}`} />
+              </div>
+            </button>
+
             <Button
               onClick={handleGenerateVideo}
               loading={videoGenerating}
@@ -529,7 +556,7 @@ export default function ProjectEditorPage() {
               <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
             </Button>
             <p className="text-xs text-slate-400 text-center mt-2">
-              Rendering takes 2-5 minutes. You&apos;ll see it in My Videos when ready.
+              AI video generation takes 8-25 min depending on mode. You&apos;ll see it in My Videos when ready.
             </p>
           </Card>
 
