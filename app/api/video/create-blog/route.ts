@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
+  getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
@@ -9,8 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-const MAX_SCRIPT_WORDS = 250;   // ~90s video — keeps render times reasonable
-const QUICK_SCRIPT_WORDS = 150; // ~60s video — quick mode
+const MAX_SCRIPT_WORDS = 250;
+const QUICK_SCRIPT_WORDS = 150;
 
 function clampScript(text: string, limit: number): string {
   const words = text.trim().split(/\s+/);
@@ -27,7 +28,6 @@ function buildPrompt(params: {
   quickMode: boolean;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
-  const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
@@ -35,20 +35,30 @@ function buildPrompt(params: {
     ? "Vertical 9:16, fast cuts, bold text overlays for social media."
     : "Horizontal 16:9, smooth transitions, professional editorial feel.";
 
+  // Location-specific b-roll direction — explicit so HeyGen doesn't use generic footage
+  const brollDir = location
+    ? `B-roll must show footage specifically from ${location}: ${location} streets, ${location} neighborhoods, ${location} home exteriors, ${location} lifestyle scenes. Do not use generic or unrelated city footage.`
+    : "B-roll: local streets, home exteriors, neighborhood lifestyle scenes.";
+
   if (params.quickMode) {
-    return `Professional real estate video for ${agentRef}${locationDesc}.
+    return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
 
-Script (deliver word-for-word): ${params.script}
-
-Full-body avatar presenter. ${format}`;
-  }
-
-  return `Professional real estate video for ${agentRef}${locationDesc}.
-
-Script (deliver word-for-word as voiceover):
+NARRATION — read word-for-word with clear audio voiceover:
 ${params.script}
 
-Visuals: full-body avatar presenter throughout; b-roll of ${location || "the local area"} (streets, home exteriors, modern interiors); warm tones, clean whites, deep navy palette. ${format}`;
+${brollDir} ${format} Full-body avatar presenter with audible voiceover narration throughout.`;
+  }
+
+  return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
+
+NARRATION — read word-for-word with clear audio voiceover:
+${params.script}
+
+VISUALS:
+- Full-body avatar presenter on screen with clear audible voiceover narration
+- ${brollDir}
+- Warm tones, clean whites, deep navy color palette
+- ${format}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -114,21 +124,15 @@ export async function POST(req: NextRequest) {
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
   try {
-    const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
+    // reel_9x16 is portrait; everything else (including short_1x1) is landscape 16:9
+    const isShortForm = videoType === "reel_9x16";
     const orientation = isShortForm ? "portrait" : "landscape";
 
     const scriptLocation = aiScript?.location as string | undefined;
     const city = scriptLocation?.split(",")[0]?.trim() || profile?.location_city || "";
     const state = scriptLocation?.split(",")[1]?.trim() || profile?.location_state || "";
 
-    const prompt = buildPrompt({
-      script: safeScript,
-      city,
-      state,
-      agentName: profile?.full_name || undefined,
-      isShortForm,
-      quickMode,
-    });
+    const prompt = buildPrompt({ script: safeScript, city, state, agentName: profile?.full_name || undefined, isShortForm, quickMode });
 
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
@@ -149,6 +153,9 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create video record: ${insertErr?.message || "unknown"}`);
     }
 
+    // Always ensure a voice_id is passed — without it HeyGen may render silent video
+    const voiceId = profile?.heygen_voice_id || await getDefaultEnglishVoiceId().catch(() => null);
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
@@ -157,7 +164,7 @@ export async function POST(req: NextRequest) {
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId: profile?.heygen_photo_id || undefined,
-      voiceId: profile?.heygen_voice_id || undefined,
+      voiceId: voiceId || undefined,
       orientation,
       callbackUrl,
       callbackId: videoRow.id,
@@ -176,7 +183,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[create-blog] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}`);
+    console.log(`[create-blog] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}, voice: ${voiceId || "none"}`);
     return NextResponse.json({
       video: { ...videoRow, render_job_id: sessionId, render_status: "rendering" },
     });

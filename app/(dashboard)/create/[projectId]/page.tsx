@@ -64,10 +64,9 @@ interface Project {
 type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 
 const videoTypes: { value: VideoType; label: string; desc: string }[] = [
-  { value: "blog_long", label: "Blog Video", desc: "Landscape 16:9, 3-5 min" },
-  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, 30-90 sec" },
-  { value: "youtube_16x9", label: "YouTube Long-form", desc: "Landscape 16:9, 5-10 min" },
-  { value: "short_1x1", label: "Square Post", desc: "1:1, 60-90 sec" },
+  { value: "blog_long", label: "Blog Video", desc: "Landscape 16:9, ~2 min" },
+  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min" },
+  { value: "youtube_16x9", label: "YouTube", desc: "Landscape 16:9, ~2 min" },
 ];
 
 type BackgroundMode = "stock-video" | "animated";

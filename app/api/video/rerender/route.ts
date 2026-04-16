@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoAgent,
+  getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
@@ -27,7 +28,6 @@ function buildPrompt(params: {
   quickMode: boolean;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
-  const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
@@ -35,20 +35,29 @@ function buildPrompt(params: {
     ? "Vertical 9:16, fast cuts, bold text overlays for social media."
     : "Horizontal 16:9, smooth transitions, professional editorial feel.";
 
+  const brollDir = location
+    ? `B-roll must show footage specifically from ${location}: ${location} streets, ${location} neighborhoods, ${location} home exteriors, ${location} lifestyle scenes. Do not use generic or unrelated city footage.`
+    : "B-roll: local streets, home exteriors, neighborhood lifestyle scenes.";
+
   if (params.quickMode) {
-    return `Professional real estate video for ${agentRef}${locationDesc}.
+    return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
 
-Script (deliver word-for-word): ${params.script}
-
-Full-body avatar presenter. ${format}`;
-  }
-
-  return `Professional real estate video for ${agentRef}${locationDesc}.
-
-Script (deliver word-for-word as voiceover):
+NARRATION — read word-for-word with clear audio voiceover:
 ${params.script}
 
-Visuals: full-body avatar presenter throughout; b-roll of ${location || "the local area"} (streets, home exteriors, modern interiors); warm tones, clean whites, deep navy palette. ${format}`;
+${brollDir} ${format} Full-body avatar presenter with audible voiceover narration throughout.`;
+  }
+
+  return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
+
+NARRATION — read word-for-word with clear audio voiceover:
+${params.script}
+
+VISUALS:
+- Full-body avatar presenter on screen with clear audible voiceover narration
+- ${brollDir}
+- Warm tones, clean whites, deep navy color palette
+- ${format}`;
 }
 
 export interface RerenderEdits {
@@ -112,7 +121,8 @@ export async function POST(req: NextRequest) {
   const quickMode = edits.quickMode ?? false;
   const wordLimit = quickMode ? QUICK_SCRIPT_WORDS : MAX_SCRIPT_WORDS;
   const safeScript = clampScript(edits.script, wordLimit);
-  const isShortForm = edits.format === "reel_9x16" || edits.format === "short_1x1";
+  // reel_9x16 is portrait; everything else is landscape 16:9
+  const isShortForm = edits.format === "reel_9x16";
   const orientation = isShortForm ? "portrait" : "landscape";
   const city = p.location_city || "";
   const state = p.location_state || "";
@@ -144,6 +154,8 @@ export async function POST(req: NextRequest) {
 
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
 
+    const voiceId = edits.voiceId || p?.heygen_voice_id || await getDefaultEnglishVoiceId().catch(() => null);
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
@@ -152,7 +164,7 @@ export async function POST(req: NextRequest) {
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId: edits.avatarId || p.heygen_photo_id || undefined,
-      voiceId: edits.voiceId || p.heygen_voice_id || undefined,
+      voiceId: voiceId || undefined,
       orientation,
       callbackUrl,
       callbackId: newVideo.id,
@@ -171,7 +183,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[rerender] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}`);
+    console.log(`[rerender] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}, voice: ${voiceId || "none"}`);
     return NextResponse.json({
       video: { ...newVideo, render_job_id: sessionId, render_status: "rendering" },
     });
