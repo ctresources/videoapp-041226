@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  generateVideoV3,
+  generateVideoAgent,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
@@ -140,7 +140,19 @@ export async function POST(req: NextRequest) {
   const state = p.location_state || "";
 
   try {
+    const aiScript = (video.projects as { ai_script?: Record<string, unknown> } | null)?.ai_script;
+    const hookText = (aiScript?.hook as string) || undefined;
     const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
+
+    const prompt = buildPrompt({
+      script: safeScript,
+      city,
+      state,
+      agentName: p.full_name || undefined,
+      isShortForm,
+      quickMode,
+      hookText,
+    });
 
     const voiceId = edits.voiceId
       || p?.heygen_voice_id
@@ -149,18 +161,15 @@ export async function POST(req: NextRequest) {
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-    const avatarId = edits.avatarId || p.heygen_photo_id;
-    if (!avatarId) throw new Error("No avatar found. Please upload your photo in Settings.");
-
     const { data: newVideo, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
         project_id: video.project_id,
         user_id: user.id,
         video_type: edits.format,
-        render_provider: "heygen",
+        render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, title: edits.title, quickMode },
+        metadata: { dimension, orientation, city, state, title: edits.title, quickMode },
       })
       .select()
       .single();
@@ -172,32 +181,30 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const videoId = await generateVideoV3({
-      avatarId,
+    const sessionId = await generateVideoAgent({
+      prompt,
       voiceId,
-      scriptText: safeScript,
-      dimension,
-      title: edits.title,
+      orientation,
       callbackUrl,
       callbackId: newVideo.id,
     });
 
     await admin
       .from("generated_videos")
-      .update({ render_job_id: videoId })
+      .update({ render_job_id: sessionId })
       .eq("id", newVideo.id);
 
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
-      endpoint: "v3-videos-rerender",
+      endpoint: "video-agent-v3-rerender",
       credits_used: 1,
       response_status: 202,
     });
 
-    console.log(`[rerender] v3 video submitted: ${videoId}, avatar: ${avatarId}, voice: ${voiceId}`);
+    console.log(`[rerender] v3 agent submitted: ${sessionId}, voice: ${voiceId}`);
     return NextResponse.json({
-      video: { ...newVideo, render_job_id: videoId, render_status: "rendering" },
+      video: { ...newVideo, render_job_id: sessionId, render_status: "rendering" },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Re-render failed";

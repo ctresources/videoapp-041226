@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  generateVideoV3,
+  generateVideoAgent,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
@@ -164,12 +164,30 @@ export async function POST(req: NextRequest) {
     const orientation = isShortForm ? "portrait" : "landscape";
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
+    const scriptLocation = aiScript?.location as string | undefined;
+    const city = scriptLocation?.split(",")[0]?.trim() || profile?.location_city || "";
+    const state = scriptLocation?.split(",")[1]?.trim() || profile?.location_state || "";
+    const aiKeywords = (aiScript?.keywords as string[]) || [];
+    const contactLine = profile ? buildContactLine(profile) : "";
+
+    const prompt = buildVideoAgentPrompt({
+      script: safeScript,
+      title,
+      city,
+      state,
+      agentName: profile?.full_name || undefined,
+      keywords: aiKeywords,
+      isShortForm,
+      quickMode,
+      hookText: hookText || undefined,
+      contactLine: contactLine || undefined,
+    });
+
     const voiceId = profile?.heygen_voice_id
       || await getPrivateVoiceId().catch(() => null)
       || await getDefaultEnglishVoiceId().catch(() => null);
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
-    if (!profile?.heygen_photo_id) throw new Error("No avatar found. Please upload your photo in Settings.");
 
     const { data: videoRow, error: insertErr } = await admin
       .from("generated_videos")
@@ -177,9 +195,9 @@ export async function POST(req: NextRequest) {
         project_id: projectId,
         user_id: user.id,
         video_type: videoType,
-        render_provider: "heygen",
+        render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, title, quickMode },
+        metadata: { dimension, orientation, city, state, title, quickMode },
       })
       .select()
       .single();
@@ -193,32 +211,30 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const videoId = await generateVideoV3({
-      avatarId: profile.heygen_photo_id,
+    const sessionId = await generateVideoAgent({
+      prompt,
       voiceId,
-      scriptText: safeScript,
-      dimension,
-      title,
+      orientation,
       callbackUrl,
       callbackId: videoRow.id,
     });
 
     await admin
       .from("generated_videos")
-      .update({ render_job_id: videoId })
+      .update({ render_job_id: sessionId })
       .eq("id", videoRow.id);
 
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
-      endpoint: "v3-videos",
+      endpoint: "video-agent-v3",
       credits_used: 1,
       response_status: 202,
     });
 
-    console.log(`[create-blog] v3 video submitted: ${videoId}, avatar: ${profile.heygen_photo_id}, voice: ${voiceId}`);
+    console.log(`[create-blog] v3 agent submitted: ${sessionId}, voice: ${voiceId}`);
     return NextResponse.json({
-      video: { ...videoRow, render_job_id: videoId, render_status: "rendering" },
+      video: { ...videoRow, render_job_id: sessionId, render_status: "rendering" },
     });
 
   } catch (err) {
