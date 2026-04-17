@@ -34,25 +34,41 @@ export const DIMENSIONS: Record<VideoType, { width: number; height: number }> = 
   short_1x1:    { width: 1080, height: 1080 },
 };
 
+export interface TextElement {
+  type: "text";
+  text: string;
+  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center" | "top-center" | "bottom-center";
+  style?: {
+    fontFamily?: string;
+    fontSize?: number;
+    fontColor?: string;
+    backgroundColor?: string;
+    bold?: boolean;
+  };
+}
+
 export interface SceneInput {
   scriptText: string;
-  /** Per-scene pre-uploaded ElevenLabs audio asset — required for cloned voices. */
+  /** Per-scene pre-uploaded audio asset — required for cloned voices. */
   audioAssetId?: string;
-  /** HeyGen-hosted video asset ID (from uploadVideoAsset) — preferred over url. */
+  /** HeyGen-hosted video asset ID — preferred over url. */
   backgroundVideoAssetId?: string;
   backgroundVideoUrl?: string;
   backgroundImageUrl?: string;
   backgroundColor?: string;
+  /** Text overlays rendered on top of the scene (hook caption, contact info, etc.) */
+  elements?: TextElement[];
 }
 
 export interface GenerateVideoParams {
   scenes: SceneInput[];
   talkingPhotoId: string;
-  /** ElevenLabs voice_id — only works for HeyGen's own shared voices, not cloned voices. Use per-scene audioAssetId instead for cloned voices. */
   voiceId?: string;
   dimension: { width: number; height: number };
   title?: string;
   callbackUrl?: string;
+  /** Position the talking photo: "bottom-left" (default) or "bottom-right" */
+  photoPosition?: "bottom-left" | "bottom-right";
 }
 
 export interface VideoStatus {
@@ -261,17 +277,21 @@ export async function generateVideo(params: GenerateVideoParams): Promise<string
           speed: 1.0,
         };
 
+    // Position: bottom-left by default (leaves right side open for text overlays)
+    const photoX = params.photoPosition === "bottom-right" ? 0.35 : -0.35;
+
     return {
       character: {
         type: "talking_photo",
         talking_photo_id: params.talkingPhotoId,
         talking_photo_style: "circle",
-        scale: 0.3,
-        offset: { x: 0.35, y: 0.35 },
+        scale: 0.28,
+        offset: { x: photoX, y: 0.32 },
         matting: true,
       },
       voice,
       background,
+      ...(scene.elements?.length && { elements: scene.elements }),
     };
   });
 

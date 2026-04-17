@@ -49,12 +49,11 @@ const typeLabel: Record<string, string> = {
   short_1x1:    "Square",
 };
 
-// HeyGen Video Agent renders take 10-25 minutes (AI b-roll + avatar + compositing)
 const ESTIMATED_SECS: Record<string, number> = {
-  reel_9x16:    900,
-  short_1x1:    900,
-  blog_long:    1200,
-  youtube_16x9: 1500,
+  reel_9x16:    120,
+  short_1x1:    120,
+  blog_long:    240,
+  youtube_16x9: 300,
 };
 
 function useElapsedSeconds(startedAt: string, active: boolean) {
@@ -112,7 +111,7 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span className="flex items-center gap-1">
           <RefreshCw size={11} className="animate-spin text-primary-500" />
-          AI rendering… (10-25 min)
+          Rendering…
         </span>
         <span className="font-medium text-primary-600">{displayPct}%</span>
       </div>

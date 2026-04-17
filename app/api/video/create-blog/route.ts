@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  generateVideoAgent,
+  generateVideo,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
+  type SceneInput,
+  type TextElement,
 } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -19,46 +21,18 @@ function clampScript(text: string, limit: number): string {
   return words.slice(0, limit).join(" ") + ".";
 }
 
-function buildPrompt(params: {
-  script: string;
-  city: string;
-  state: string;
-  agentName?: string;
-  isShortForm: boolean;
-  quickMode: boolean;
+function buildContactLine(profile: {
+  full_name: string | null;
+  company_name: string | null;
+  phone: string | null;
+  company_phone: string | null;
 }): string {
-  const location = [params.city, params.state].filter(Boolean).join(", ");
-  const agentRef = params.agentName
-    ? `real estate agent ${params.agentName}`
-    : "a professional real estate agent";
-  const format = params.isShortForm
-    ? "Vertical 9:16, fast cuts, bold text overlays for social media."
-    : "Horizontal 16:9, smooth transitions, professional editorial feel.";
-
-  // Location-specific b-roll direction — explicit so HeyGen doesn't use generic footage
-  const brollDir = location
-    ? `B-roll must show footage specifically from ${location}: ${location} streets, ${location} neighborhoods, ${location} home exteriors, ${location} lifestyle scenes. Do not use generic or unrelated city footage.`
-    : "B-roll: local streets, home exteriors, neighborhood lifestyle scenes.";
-
-  if (params.quickMode) {
-    return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
-
-NARRATION — read word-for-word with clear audio voiceover:
-${params.script}
-
-${brollDir} ${format} Full-body avatar presenter with audible voiceover narration throughout.`;
-  }
-
-  return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
-
-NARRATION — read word-for-word with clear audio voiceover:
-${params.script}
-
-VISUALS:
-- Full-body avatar presenter on screen with clear audible voiceover narration
-- ${brollDir}
-- Warm tones, clean whites, deep navy color palette
-- ${format}`;
+  const parts: string[] = [];
+  if (profile.full_name) parts.push(profile.full_name);
+  if (profile.company_name) parts.push(profile.company_name);
+  const phone = profile.phone || profile.company_phone;
+  if (phone) parts.push(phone);
+  return parts.join("  ·  ");
 }
 
 export async function POST(req: NextRequest) {
@@ -66,7 +40,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, quickMode = false } = await req.json();
+  const { projectId, videoType = "blog_long", script, hook, quickMode = false } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -94,6 +68,8 @@ export async function POST(req: NextRequest) {
   const rawScript = script || (aiScript?.script as string) || project.title;
   const safeScript = clampScript(rawScript, wordLimit);
 
+  const hookText = hook || (aiScript?.hook as string) || "";
+
   const title =
     videoType === "youtube_16x9"
       ? ((seoData?.youtube_title as string) || (aiScript?.title as string) || project.title)
@@ -101,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, avatar_url, full_name, heygen_photo_id, location_city, location_state")
+    .select("heygen_voice_id, avatar_url, full_name, company_name, phone, company_phone, heygen_photo_id, location_city, location_state")
     .eq("id", user.id)
     .single();
 
@@ -110,6 +86,9 @@ export async function POST(req: NextRequest) {
     avatar_url: string | null;
     heygen_photo_id: string | null;
     full_name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
     location_city: string | null;
     location_state: string | null;
   } | null;
@@ -124,17 +103,40 @@ export async function POST(req: NextRequest) {
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
   try {
-    // reel_9x16 is portrait; everything else (including short_1x1) is landscape 16:9
     const isShortForm = videoType === "reel_9x16";
     const orientation = isShortForm ? "portrait" : "landscape";
 
-    const scriptLocation = aiScript?.location as string | undefined;
-    const city = scriptLocation?.split(",")[0]?.trim() || profile?.location_city || "";
-    const state = scriptLocation?.split(",")[1]?.trim() || profile?.location_state || "";
+    const contactLine = profile ? buildContactLine(profile) : "";
 
-    const prompt = buildPrompt({ script: safeScript, city, state, agentName: profile?.full_name || undefined, isShortForm, quickMode });
+    // Text overlays: hook caption top-right, contact info bottom-right
+    const elements: TextElement[] = [
+      ...(hookText ? [{
+        type: "text" as const,
+        text: hookText,
+        position: "top-right" as const,
+        style: { fontFamily: "Montserrat", fontSize: 36, fontColor: "#FFFFFF", bold: true },
+      }] : []),
+      ...(contactLine ? [{
+        type: "text" as const,
+        text: contactLine,
+        position: "bottom-right" as const,
+        style: { fontFamily: "Montserrat", fontSize: 22, fontColor: "#F1F5F9", bold: false },
+      }] : []),
+    ];
+
+    const scene: SceneInput = {
+      scriptText: safeScript,
+      backgroundColor: "#0F172A",
+      elements: elements.length > 0 ? elements : undefined,
+    };
 
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
+
+    // Always ensure a voice_id — without it HeyGen renders silent video
+    const voiceId = profile?.heygen_voice_id
+      || await getDefaultEnglishVoiceId().catch(() => null);
+
+    if (!voiceId) throw new Error("No voice available. Please set up your voice in Settings.");
 
     const { data: videoRow, error: insertErr } = await admin
       .from("generated_videos")
@@ -142,9 +144,9 @@ export async function POST(req: NextRequest) {
         project_id: projectId,
         user_id: user.id,
         video_type: videoType,
-        render_provider: "heygen_agent",
+        render_provider: "heygen",
         render_status: "rendering",
-        metadata: { dimension, orientation, city, state, title, quickMode },
+        metadata: { dimension, orientation, title, quickMode },
       })
       .select()
       .single();
@@ -153,39 +155,37 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create video record: ${insertErr?.message || "unknown"}`);
     }
 
-    // Always ensure a voice_id is passed — without it HeyGen may render silent video
-    const voiceId = profile?.heygen_voice_id || await getDefaultEnglishVoiceId().catch(() => null);
-
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const sessionId = await generateVideoAgent({
-      prompt,
-      avatarId: profile?.heygen_photo_id || undefined,
-      voiceId: voiceId || undefined,
-      orientation,
+    const videoId = await generateVideo({
+      scenes: [scene],
+      talkingPhotoId: profile!.heygen_photo_id!,
+      voiceId,
+      dimension,
+      title,
       callbackUrl,
-      callbackId: videoRow.id,
+      photoPosition: "bottom-left",
     });
 
     await admin
       .from("generated_videos")
-      .update({ render_job_id: sessionId })
+      .update({ render_job_id: videoId })
       .eq("id", videoRow.id);
 
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
-      endpoint: "video-agent-v3",
+      endpoint: "video-v2",
       credits_used: 1,
       response_status: 202,
     });
 
-    console.log(`[create-blog] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}, voice: ${voiceId || "none"}`);
+    console.log(`[create-blog] v2 video submitted: ${videoId}, voice: ${voiceId}`);
     return NextResponse.json({
-      video: { ...videoRow, render_job_id: sessionId, render_status: "rendering" },
+      video: { ...videoRow, render_job_id: videoId, render_status: "rendering" },
     });
 
   } catch (err) {
