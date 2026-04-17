@@ -542,6 +542,58 @@ export async function getCinematicStyleId(): Promise<string | null> {
   }
 }
 
+let _cachedPrivateVoiceId: string | null | undefined = undefined;
+
+/**
+ * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
+ * Used as fallback when profile.heygen_voice_id is not set.
+ */
+export async function getPrivateVoiceId(): Promise<string | null> {
+  if (_cachedPrivateVoiceId !== undefined) return _cachedPrivateVoiceId;
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/voices?type=private`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) { _cachedPrivateVoiceId = null; return null; }
+    const data = await res.json();
+    const voices: Array<{ voice_id: string }> = data.data?.voices || data.data || [];
+    _cachedPrivateVoiceId = voices[0]?.voice_id || null;
+    if (_cachedPrivateVoiceId) console.log(`[heygen] Private voice fallback: ${_cachedPrivateVoiceId}`);
+    return _cachedPrivateVoiceId;
+  } catch {
+    _cachedPrivateVoiceId = null;
+    return null;
+  }
+}
+
+let _cachedVoiceId: string | null | undefined = undefined;
+
+/**
+ * Fetch a default English voice ID from HeyGen's voice library.
+ * Used as fallback when the user hasn't set up a HeyGen voice clone.
+ * Result is cached for the lifetime of the serverless instance.
+ */
+export async function getDefaultEnglishVoiceId(): Promise<string | null> {
+  if (_cachedVoiceId !== undefined) return _cachedVoiceId;
+  try {
+    const res = await fetch(`${HEYGEN_API}/v2/voices`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) { _cachedVoiceId = null; return null; }
+    const data = await res.json();
+    const voices: Array<{ voice_id: string; language?: string; locale?: string }> =
+      data.data?.voices || data.data || [];
+    const voice = voices.find((v) =>
+      (v.language || v.locale || "").toLowerCase().startsWith("en")
+    );
+    _cachedVoiceId = voice?.voice_id || null;
+    if (_cachedVoiceId) console.log(`[heygen] Default voice: ${_cachedVoiceId}`);
+    return _cachedVoiceId;
+  } catch {
+    _cachedVoiceId = null;
+    return null;
+  }
+}
 /**
  * Generate a video using the HeyGen Video Agent v3 API.
  *

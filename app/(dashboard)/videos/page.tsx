@@ -51,10 +51,10 @@ const typeLabel: Record<string, string> = {
 
 // Rough render time estimates (seconds) by video type
 const ESTIMATED_SECS: Record<string, number> = {
-  reel_9x16:    90,
-  short_1x1:    90,
-  blog_long:    180,
-  youtube_16x9: 240,
+  reel_9x16:    900,
+  short_1x1:    900,
+  blog_long:    1200,
+  youtube_16x9: 1500,
 };
 
 function useElapsedSeconds(startedAt: string, active: boolean) {

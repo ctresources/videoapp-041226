@@ -3,36 +3,38 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
   getCinematicStyleId,
+  getPrivateVoiceId,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
 } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 
-// Fire-and-forget: we submit to HeyGen Video Agent then return immediately.
-// The client polls /api/video/status which queries DB (updated by webhook)
-// or falls back to HeyGen session polling when webhook isn't reachable (local dev).
 export const maxDuration = 60;
 
-// 3-minute max for ALL video types / templates / platforms
-const MAX_SCRIPT_WORDS = 450;  // ~3 min at 150 wpm
+const MAX_SCRIPT_WORDS = 450;
+const QUICK_SCRIPT_WORDS = 150;
 
-/** Clamp script to stay within 3-minute video limit. */
-function clampScript(text: string): string {
+function clampScript(text: string, limit: number): string {
   const words = text.trim().split(/\s+/);
-  if (words.length <= MAX_SCRIPT_WORDS) return text;
-  return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
+  if (words.length <= limit) return text;
+  return words.slice(0, limit).join(" ") + ".";
 }
 
-/**
- * Build a rich Video Agent prompt for real estate content.
- *
- * The v3 agent uses this prompt to autonomously generate:
- *   - Full-body avatar narrating on screen
- *   - Cinematic b-roll from city/state context
- *   - Data visualizations where relevant
- *   - Scene layout, pacing, and transitions
- */
+function buildContactLine(profile: {
+  full_name: string | null;
+  company_name?: string | null;
+  phone?: string | null;
+  company_phone?: string | null;
+}): string {
+  const parts: string[] = [];
+  if (profile.full_name) parts.push(profile.full_name);
+  if (profile.company_name) parts.push(profile.company_name);
+  const phone = profile.phone || profile.company_phone;
+  if (phone) parts.push(phone);
+  return parts.join("  ·  ");
+}
+
 function buildVideoAgentPrompt(params: {
   script: string;
   title: string;
@@ -41,44 +43,65 @@ function buildVideoAgentPrompt(params: {
   agentName?: string;
   keywords: string[];
   isShortForm: boolean;
+  quickMode: boolean;
+  hookText?: string;
+  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName ? `real estate agent ${params.agentName}` : "a professional real estate agent";
+
+  const leftOverlays = [
+    params.hookText ? `Headline: "${params.hookText}"` : "",
+    params.contactLine ? `Contact: "${params.contactLine}"` : "",
+  ].filter(Boolean).join("\n- ");
+
+  const layoutDir = `LAYOUT: Place the avatar presenter on the RIGHT side of the frame throughout the entire video.${leftOverlays ? `\nDisplay these text overlays on the LEFT half of the frame:\n- ${leftOverlays}` : ""}`;
+
+  if (params.quickMode) {
+    return `Professional real estate video for ${agentRef}${locationDesc}.
+
+NARRATION — read word-for-word with clear audio voiceover:
+${params.script}
+
+${layoutDir}
+
+B-roll: ${location ? `${location} streets, neighborhoods, home exteriors, lifestyle scenes.` : "local streets, home exteriors, neighborhood lifestyle scenes."}
+${params.isShortForm ? "Vertical 9:16, fast cuts, bold text overlays for social media." : "Horizontal 16:9, smooth cinematic transitions, premium editorial feel."}
+Full-body avatar presenter on RIGHT side with audible voiceover narration throughout.`;
+  }
 
   return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
 
 NARRATION SCRIPT — deliver this word-for-word as the voiceover:
 ${params.script}
 
+${layoutDir}
+
 VISUAL DIRECTION:
-- Present the full-body avatar as the on-screen presenter throughout
-- Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes (coffee shops, parks, families)
+- Full-body avatar presenter on the RIGHT side of frame with clear audible voiceover narration
+- Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes (coffee shops, parks, families). Use footage specifically from ${location || "the local area"} — do not use generic stock footage.
 - Where market statistics or prices are mentioned, add clean data visualizations: bar charts for home prices, line graphs for market trends, infographic overlays for inventory levels
 - Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
 - ${params.isShortForm
     ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
     : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
 - Seamlessly intercut avatar presenter shots with b-roll footage
-- Visually highlight key stats and property details as text overlays
-- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}
+- Visually highlight key stats and property details as text overlays${params.keywords.length > 0 ? `\n- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
 Deliver a single continuous, polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
 }
-
-// ─── Main Route ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script } = await req.json();
+  const { projectId, videoType = "blog_long", script, hook, quickMode = false } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
 
-  // Load project
   const { data: projectData } = await admin
     .from("projects")
     .select("*")
@@ -98,34 +121,36 @@ export async function POST(req: NextRequest) {
   const aiScript = project.ai_script as Record<string, unknown> | null;
   const seoData = project.seo_data as Record<string, unknown> | null;
 
-  // Extract script — clamp to 3-minute max
+  const wordLimit = quickMode ? QUICK_SCRIPT_WORDS : MAX_SCRIPT_WORDS;
   const rawScript = script || (aiScript?.script as string) || project.title;
-  const safeScript = clampScript(rawScript);
+  const safeScript = clampScript(rawScript, wordLimit);
+
+  const hookText = hook || (aiScript?.hook as string) || "";
 
   const title =
     videoType === "youtube_16x9"
       ? ((seoData?.youtube_title as string) || (aiScript?.title as string) || project.title)
       : ((aiScript?.title as string) || project.title);
 
-  // Load user profile
   const { data: profileData } = await admin
     .from("profiles")
-    .select("voice_clone_id, heygen_voice_id, avatar_url, logo_url, full_name, heygen_photo_id, location_city, location_state")
+    .select("heygen_voice_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, heygen_photo_id, location_city, location_state")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
-    voice_clone_id: string | null;
     heygen_voice_id: string | null;
     avatar_url: string | null;
     logo_url: string | null;
     heygen_photo_id: string | null;
     full_name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
     location_city: string | null;
     location_state: string | null;
   } | null;
 
-  // Require at minimum a registered HeyGen avatar
   if (!profile?.heygen_photo_id && !profile?.avatar_url) {
     return NextResponse.json(
       { error: "Please upload your photo in Settings to create your video avatar." },
@@ -136,17 +161,15 @@ export async function POST(req: NextRequest) {
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
   try {
-    // ── Determine orientation from video type ────────────────────────────────
-    const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
+    const isShortForm = videoType === "reel_9x16";
     const orientation = isShortForm ? "portrait" : "landscape";
 
-    // ── Resolve location from script or profile ──────────────────────────────
     const scriptLocation = aiScript?.location as string | undefined;
     const city = scriptLocation?.split(",")[0]?.trim() || profile?.location_city || "";
     const state = scriptLocation?.split(",")[1]?.trim() || profile?.location_state || "";
     const aiKeywords = (aiScript?.keywords as string[]) || [];
+    const contactLine = profile ? buildContactLine(profile) : "";
 
-    // ── Build rich agent prompt ──────────────────────────────────────────────
     const prompt = buildVideoAgentPrompt({
       script: safeScript,
       title,
@@ -155,22 +178,26 @@ export async function POST(req: NextRequest) {
       agentName: profile?.full_name || undefined,
       keywords: aiKeywords,
       isShortForm,
+      quickMode,
+      hookText: hookText || undefined,
+      contactLine: contactLine || undefined,
     });
 
-    // ── Fetch cinematic style (non-blocking, optional) ───────────────────────
     const styleId = await getCinematicStyleId().catch(() => null);
 
-    // ── Attach reference files for visual context ────────────────────────────
-    // Pass logo as a branding reference if available
     const files: VideoAgentFile[] = [];
     if (profile?.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
     }
 
-    // ── Create DB row before submitting ─────────────────────────────────────
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
-    const { data: videoRow } = await admin
+    const voiceId = profile?.heygen_voice_id
+      || await getPrivateVoiceId().catch(() => null);
+
+    if (!voiceId) throw new Error("No voice available. Please set up your voice clone in Settings.");
+
+    const { data: videoRow, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
         project_id: projectId,
@@ -178,14 +205,15 @@ export async function POST(req: NextRequest) {
         video_type: videoType,
         render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, city, state, title },
+        metadata: { dimension, orientation, city, state, title, quickMode },
       })
       .select()
       .single();
 
-    // ── Submit to HeyGen Video Agent v3 (fire-and-forget) ───────────────────
-    // Returns a session_id — the agent renders asynchronously.
-    // The client polls /api/video/status which handles two-step session → video_id flow.
+    if (insertErr || !videoRow) {
+      throw new Error(`Failed to create video record: ${insertErr?.message || "unknown"}`);
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
@@ -193,21 +221,19 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: profile?.heygen_photo_id || undefined,
-      // Use HeyGen-native voice clone if set up; falls back to avatar default voice
-      voiceId: profile?.heygen_voice_id || undefined,
+      avatarId: profile!.heygen_photo_id || undefined,
+      voiceId,
       orientation,
       files: files.length > 0 ? files : undefined,
       callbackUrl,
-      callbackId: videoRow?.id,
+      callbackId: videoRow.id,
       styleId: styleId || undefined,
     });
 
-    // ── Save session_id as render_job_id ─────────────────────────────────────
     await admin
       .from("generated_videos")
       .update({ render_job_id: sessionId })
-      .eq("id", videoRow?.id);
+      .eq("id", videoRow.id);
 
     await admin.from("api_usage_log").insert({
       user_id: user.id,
@@ -217,13 +243,9 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[create-blog] Video Agent session ${sessionId} submitted — client will poll for completion`);
+    console.log(`[create-blog] v3 agent session: ${sessionId}, voice: ${voiceId}`);
     return NextResponse.json({
-      video: {
-        ...videoRow,
-        render_job_id: sessionId,
-        render_status: "rendering",
-      },
+      video: { ...videoRow, render_job_id: sessionId, render_status: "rendering" },
     });
 
   } catch (err) {
