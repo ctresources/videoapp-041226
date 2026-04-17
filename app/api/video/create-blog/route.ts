@@ -4,6 +4,7 @@ import {
   generateVideoAgent,
   getCinematicStyleId,
   getPrivateVoiceId,
+  getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -193,9 +194,10 @@ export async function POST(req: NextRequest) {
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
     const voiceId = profile?.heygen_voice_id
-      || await getPrivateVoiceId().catch(() => null);
+      || await getPrivateVoiceId().catch(() => null)
+      || await getDefaultEnglishVoiceId().catch(() => null);
 
-    if (!voiceId) throw new Error("No voice available. Please set up your voice clone in Settings.");
+    if (!voiceId) console.warn("[create-blog] No voice ID found — HeyGen will use default");
 
     const { data: videoRow, error: insertErr } = await admin
       .from("generated_videos")
@@ -221,8 +223,7 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: profile!.heygen_photo_id || undefined,
-      voiceId,
+      voiceId: voiceId || undefined,
       orientation,
       files: files.length > 0 ? files : undefined,
       callbackUrl,

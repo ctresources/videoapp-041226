@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoAgent,
   getPrivateVoiceId,
+  getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
@@ -169,7 +170,10 @@ export async function POST(req: NextRequest) {
 
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
 
-    const voiceId = edits.voiceId || p?.heygen_voice_id || await getPrivateVoiceId().catch(() => null);
+    const voiceId = edits.voiceId
+      || p?.heygen_voice_id
+      || await getPrivateVoiceId().catch(() => null)
+      || await getDefaultEnglishVoiceId().catch(() => null);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
@@ -178,7 +182,6 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: edits.avatarId || p.heygen_photo_id || undefined,
       voiceId: voiceId || undefined,
       orientation,
       callbackUrl,
