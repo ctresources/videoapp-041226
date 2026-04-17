@@ -43,19 +43,10 @@ function buildVideoAgentPrompt(params: {
   keywords: string[];
   isShortForm: boolean;
   quickMode: boolean;
-  hookText?: string;
-  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName ? `real estate agent ${params.agentName}` : "a professional real estate agent";
-
-  const leftOverlays = [
-    params.hookText ? `Headline: "${params.hookText}"` : "",
-    params.contactLine ? `Contact: "${params.contactLine}"` : "",
-  ].filter(Boolean).join("\n- ");
-
-  const layoutDir = `LAYOUT: Place the avatar presenter on the RIGHT side of the frame throughout the entire video.${leftOverlays ? `\nDisplay these text overlays on the LEFT half of the frame:\n- ${leftOverlays}` : ""}`;
 
   if (params.quickMode) {
     return `Professional real estate video for ${agentRef}${locationDesc}.
@@ -63,11 +54,9 @@ function buildVideoAgentPrompt(params: {
 NARRATION — read word-for-word with clear audio voiceover:
 ${params.script}
 
-${layoutDir}
-
 B-roll: ${location ? `${location} streets, neighborhoods, home exteriors, lifestyle scenes.` : "local streets, home exteriors, neighborhood lifestyle scenes."}
 ${params.isShortForm ? "Vertical 9:16, fast cuts, bold text overlays for social media." : "Horizontal 16:9, smooth cinematic transitions, premium editorial feel."}
-Full-body avatar presenter on RIGHT side with audible voiceover narration throughout.`;
+Full-body avatar presenter with audible voiceover narration throughout.`;
   }
 
   return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
@@ -75,10 +64,8 @@ Full-body avatar presenter on RIGHT side with audible voiceover narration throug
 NARRATION SCRIPT — deliver this word-for-word as the voiceover:
 ${params.script}
 
-${layoutDir}
-
 VISUAL DIRECTION:
-- Full-body avatar presenter on the RIGHT side of frame with clear audible voiceover narration
+- Full-body avatar presenter on screen with clear audible voiceover narration
 - Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes (coffee shops, parks, families). Use footage specifically from ${location || "the local area"} — do not use generic stock footage.
 - Where market statistics or prices are mentioned, add clean data visualizations: bar charts for home prices, line graphs for market trends, infographic overlays for inventory levels
 - Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
@@ -179,8 +166,6 @@ export async function POST(req: NextRequest) {
       keywords: aiKeywords,
       isShortForm,
       quickMode,
-      hookText: hookText || undefined,
-      contactLine: contactLine || undefined,
     });
 
     const voiceId = profile?.heygen_voice_id

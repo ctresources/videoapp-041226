@@ -27,8 +27,6 @@ function buildPrompt(params: {
   agentName?: string;
   isShortForm: boolean;
   quickMode: boolean;
-  hookText?: string;
-  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const agentRef = params.agentName
@@ -42,22 +40,13 @@ function buildPrompt(params: {
     ? `B-roll must show footage specifically from ${location}: ${location} streets, ${location} neighborhoods, ${location} home exteriors, ${location} lifestyle scenes. Do not use generic or unrelated city footage.`
     : "B-roll: local streets, home exteriors, neighborhood lifestyle scenes.";
 
-  const leftOverlays = [
-    params.hookText ? `Headline text: "${params.hookText}"` : "",
-    params.contactLine ? `Contact info: "${params.contactLine}"` : "",
-  ].filter(Boolean).join("\n- ");
-
-  const layoutDir = `LAYOUT: Place the avatar presenter on the RIGHT side of the frame throughout the entire video.${leftOverlays ? `\nOn the LEFT half of the frame display these text overlays:\n- ${leftOverlays}` : ""}`;
-
   if (params.quickMode) {
     return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
 
 NARRATION — read word-for-word with clear audio voiceover:
 ${params.script}
 
-${layoutDir}
-
-${brollDir} ${format} Full-body avatar presenter on RIGHT side with audible voiceover narration throughout.`;
+${brollDir} ${format} Full-body avatar presenter with audible voiceover narration throughout.`;
   }
 
   return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
@@ -65,10 +54,8 @@ ${brollDir} ${format} Full-body avatar presenter on RIGHT side with audible voic
 NARRATION — read word-for-word with clear audio voiceover:
 ${params.script}
 
-${layoutDir}
-
 VISUALS:
-- Full-body avatar presenter on the RIGHT side of frame with clear audible voiceover narration
+- Full-body avatar presenter on screen with clear audible voiceover narration
 - ${brollDir}
 - Warm tones, clean whites, deep navy color palette
 - ${format}`;
@@ -140,8 +127,6 @@ export async function POST(req: NextRequest) {
   const state = p.location_state || "";
 
   try {
-    const aiScript = (video.projects as { ai_script?: Record<string, unknown> } | null)?.ai_script;
-    const hookText = (aiScript?.hook as string) || undefined;
     const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
 
     const prompt = buildPrompt({
@@ -151,7 +136,6 @@ export async function POST(req: NextRequest) {
       agentName: p.full_name || undefined,
       isShortForm,
       quickMode,
-      hookText,
     });
 
     const voiceId = edits.voiceId
