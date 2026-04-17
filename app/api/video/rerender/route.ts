@@ -26,12 +26,19 @@ function buildPrompt(params: {
   state: string;
   agentName?: string;
   isShortForm: boolean;
+  hookText?: string;
+  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
+
+  const overlays = [
+    params.hookText ? `- First frame: bold white text overlay at the top — "${params.hookText}"` : "",
+    params.contactLine ? `- Final frame: agent contact info as a text overlay at the bottom — "${params.contactLine}"` : "",
+  ].filter(Boolean).join("\n");
 
   return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
 
@@ -45,7 +52,7 @@ VISUAL DIRECTION:
 - ${params.isShortForm
     ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
     : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
-- Seamlessly intercut avatar presenter shots with b-roll footage
+- Seamlessly intercut avatar presenter shots with b-roll footage${overlays ? `\n\nTEXT OVERLAYS:\n${overlays}` : ""}
 
 Deliver a polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
 }
@@ -88,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, full_name, location_city, location_state")
+    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state")
     .eq("id", user.id)
     .single();
 
@@ -96,6 +103,9 @@ export async function POST(req: NextRequest) {
     heygen_voice_id: string | null;
     heygen_photo_id: string | null;
     full_name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
     location_city: string | null;
     location_state: string | null;
   } | null;
@@ -116,12 +126,23 @@ export async function POST(req: NextRequest) {
   try {
     const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
 
+    const proj = video.projects as { ai_script?: Record<string, unknown> } | null;
+    const hookText = (proj?.ai_script?.hook as string) || undefined;
+    const contactParts = [
+      p.full_name,
+      p.company_name,
+      p.phone || p.company_phone,
+    ].filter(Boolean);
+    const contactLine = contactParts.length > 0 ? contactParts.join("  ·  ") : undefined;
+
     const prompt = buildPrompt({
       script: safeScript,
       city,
       state,
       agentName: p.full_name || undefined,
       isShortForm,
+      hookText,
+      contactLine,
     });
 
     const voiceId = edits.voiceId
