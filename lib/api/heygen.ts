@@ -495,6 +495,79 @@ export async function cloneVoice(
   return voiceId;
 }
 
+// ─── V3 Avatar Video Generation (POST /v3/videos) ────────────────────────────
+
+export interface GenerateVideoV3Params {
+  avatarId: string;
+  voiceId: string;
+  scriptText: string;
+  dimension: { width: number; height: number };
+  title?: string;
+  callbackUrl?: string;
+  callbackId?: string;
+  backgroundColor?: string;
+}
+
+/**
+ * Generate an avatar video using HeyGen's v3 Videos API (POST /v3/videos).
+ * This is the v3 replacement for v2 Studio API for single-scene avatar videos.
+ * Uses the user's photo avatar (avatar_id) and cloned voice (voice_id).
+ * Returns the video_id for polling via GET /v3/videos/{id}.
+ */
+export async function generateVideoV3(params: GenerateVideoV3Params): Promise<string> {
+  const body = {
+    title: params.title || "Generated Video",
+    dimension: params.dimension,
+    caption: false,
+    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
+    ...(params.callbackId && { callback_id: params.callbackId }),
+    video_inputs: [
+      {
+        character: {
+          type: "avatar",
+          avatar_id: params.avatarId,
+          avatar_style: "normal",
+        },
+        voice: {
+          type: "text",
+          voice_id: params.voiceId,
+          input_text: params.scriptText,
+          speed: 1.0,
+        },
+        background: {
+          type: "color",
+          value: params.backgroundColor || "#0F172A",
+        },
+      },
+    ],
+  };
+
+  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId})...`);
+
+  const res = await fetch(`${HEYGEN_API}/v3/videos`, {
+    method: "POST",
+    headers: {
+      "x-api-key": getApiKey(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rawText = await res.text();
+  console.log(`[heygen] v3 videos response (${res.status}):`, rawText.slice(0, 400));
+
+  if (!res.ok) {
+    throw new Error(`HeyGen v3 Videos failed (${res.status}): ${rawText.slice(0, 400)}`);
+  }
+
+  const data = JSON.parse(rawText);
+  const videoId = data.data?.video_id;
+  if (!videoId) throw new Error(`HeyGen v3 Videos returned no video_id. Response: ${rawText.slice(0, 300)}`);
+
+  console.log(`[heygen] v3 video submitted: ${videoId}`);
+  return videoId;
+}
+
 // ─── V3 Video Agent API ───────────────────────────────────────────────────────
 
 export interface VideoAgentFile {
