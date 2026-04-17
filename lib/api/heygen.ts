@@ -515,6 +515,65 @@ export async function cloneVoice(
   return voiceId;
 }
 
+// ─── V3 Avatar Video Generation (POST /v3/videos) ────────────────────────────
+
+export interface GenerateVideoV3Params {
+  avatarId: string;
+  voiceId: string;
+  scriptText: string;
+  dimension: { width: number; height: number };
+  title?: string;
+  callbackUrl?: string;
+  callbackId?: string;
+  backgroundColor?: string;
+}
+
+/**
+ * Generate an avatar video using HeyGen's v3 Videos API (POST /v3/videos).
+ * Uses the April 2026 discriminated union schema: type "CreateVideoFromAvatar".
+ * The user's photo avatar (avatar_id) and cloned voice (voice_id) are passed
+ * within the typed schema. Returns video_id for polling via GET /v3/videos/{id}.
+ */
+export async function generateVideoV3(params: GenerateVideoV3Params): Promise<string> {
+  // April 2026 breaking change: discriminated union replaces flat request body.
+  // type "CreateVideoFromAvatar" → avatar_id, voice_id, script are nested here.
+  const body = {
+    type: "CreateVideoFromAvatar",
+    avatar_id: params.avatarId,
+    voice_id: params.voiceId,
+    script: params.scriptText,
+    title: params.title || "Generated Video",
+    dimension: params.dimension,
+    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
+    ...(params.callbackId && { callback_id: params.callbackId }),
+  };
+
+  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId})...`);
+
+  const res = await fetch(`${HEYGEN_API}/v3/videos`, {
+    method: "POST",
+    headers: {
+      "x-api-key": getApiKey(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rawText = await res.text();
+  console.log(`[heygen] v3 videos response (${res.status}):`, rawText.slice(0, 400));
+
+  if (!res.ok) {
+    throw new Error(`HeyGen v3 Videos failed (${res.status}): ${rawText.slice(0, 400)}`);
+  }
+
+  const data = JSON.parse(rawText);
+  const videoId = data.data?.video_id;
+  if (!videoId) throw new Error(`HeyGen v3 Videos returned no video_id. Response: ${rawText.slice(0, 300)}`);
+
+  console.log(`[heygen] v3 video submitted: ${videoId}`);
+  return videoId;
+}
+
 // ─── V3 Video Agent API ───────────────────────────────────────────────────────
 
 export interface VideoAgentFile {
@@ -562,6 +621,32 @@ export async function getCinematicStyleId(): Promise<string | null> {
   }
 }
 
+
+let _cachedPrivateVoiceId: string | null | undefined = undefined;
+
+/**
+ * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
+ * Used as fallback when profile.heygen_voice_id is not set.
+ */
+export async function getPrivateVoiceId(): Promise<string | null> {
+  if (_cachedPrivateVoiceId !== undefined) return _cachedPrivateVoiceId;
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/voices?type=private`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) { _cachedPrivateVoiceId = null; return null; }
+    const data = await res.json();
+    const voices: Array<{ voice_id: string }> = data.data?.voices || data.data || [];
+    _cachedPrivateVoiceId = voices[0]?.voice_id || null;
+    if (_cachedPrivateVoiceId) console.log(`[heygen] Private voice fallback: ${_cachedPrivateVoiceId}`);
+    return _cachedPrivateVoiceId;
+  } catch {
+    _cachedPrivateVoiceId = null;
+    return null;
+  }
+}
+
+
 let _cachedVoiceId: string | null | undefined = undefined;
 
 /**
@@ -590,6 +675,7 @@ export async function getDefaultEnglishVoiceId(): Promise<string | null> {
     return null;
   }
 }
+
 
 /**
  * Generate a video using the HeyGen Video Agent v3 API.

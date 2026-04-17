@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoAgent,
+  getCinematicStyleId,
+  getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
@@ -10,13 +12,12 @@ import {
 
 export const maxDuration = 60;
 
-const MAX_SCRIPT_WORDS = 250;
-const QUICK_SCRIPT_WORDS = 150;
+const MAX_SCRIPT_WORDS = 450;
 
-function clampScript(text: string, limit: number): string {
+function clampScript(text: string): string {
   const words = text.trim().split(/\s+/);
-  if (words.length <= limit) return text;
-  return words.slice(0, limit).join(" ") + ".";
+  if (words.length <= MAX_SCRIPT_WORDS) return text;
+  return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
 }
 
 function buildPrompt(params: {
@@ -25,39 +26,28 @@ function buildPrompt(params: {
   state: string;
   agentName?: string;
   isShortForm: boolean;
-  quickMode: boolean;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
+  const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
-  const format = params.isShortForm
-    ? "Vertical 9:16, fast cuts, bold text overlays for social media."
-    : "Horizontal 16:9, smooth transitions, professional editorial feel.";
 
-  const brollDir = location
-    ? `B-roll must show footage specifically from ${location}: ${location} streets, ${location} neighborhoods, ${location} home exteriors, ${location} lifestyle scenes. Do not use generic or unrelated city footage.`
-    : "B-roll: local streets, home exteriors, neighborhood lifestyle scenes.";
+  return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
 
-  if (params.quickMode) {
-    return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
-
-NARRATION — read word-for-word with clear audio voiceover:
+NARRATION SCRIPT — deliver this word-for-word as the voiceover:
 ${params.script}
 
-${brollDir} ${format} Full-body avatar presenter with audible voiceover narration throughout.`;
-  }
+VISUAL DIRECTION:
+- Present the full-body avatar as the on-screen presenter throughout
+- Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes
+- Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
+- ${params.isShortForm
+    ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
+    : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
+- Seamlessly intercut avatar presenter shots with b-roll footage
 
-  return `Professional real estate video for ${agentRef}${location ? ` in ${location}` : ""}.
-
-NARRATION — read word-for-word with clear audio voiceover:
-${params.script}
-
-VISUALS:
-- Full-body avatar presenter on screen with clear audible voiceover narration
-- ${brollDir}
-- Warm tones, clean whites, deep navy color palette
-- ${format}`;
+Deliver a polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
 }
 
 export interface RerenderEdits {
@@ -70,7 +60,6 @@ export interface RerenderEdits {
   captionsEnabled?: boolean;
   voiceId?: string | null;
   avatarId?: string | null;
-  // Legacy fields kept for editor compatibility
   captionColor?: string;
   captionHighlightColor?: string;
   musicUrl?: string | null;
@@ -118,26 +107,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const quickMode = edits.quickMode ?? false;
-  const wordLimit = quickMode ? QUICK_SCRIPT_WORDS : MAX_SCRIPT_WORDS;
-  const safeScript = clampScript(edits.script, wordLimit);
-  // reel_9x16 is portrait; everything else is landscape 16:9
-  const isShortForm = edits.format === "reel_9x16";
+  const safeScript = clampScript(edits.script);
+  const isShortForm = edits.format === "reel_9x16" || edits.format === "short_1x1";
   const orientation = isShortForm ? "portrait" : "landscape";
   const city = p.location_city || "";
   const state = p.location_state || "";
 
   try {
+    const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
+
     const prompt = buildPrompt({
       script: safeScript,
       city,
       state,
       agentName: p.full_name || undefined,
       isShortForm,
-      quickMode,
     });
 
-    const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
+    const voiceId = edits.voiceId
+      || p.heygen_voice_id
+      || await getPrivateVoiceId().catch(() => null)
+      || await getDefaultEnglishVoiceId().catch(() => null);
+
+    if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
+
+    const styleId = isShortForm ? null : await getCinematicStyleId().catch(() => null);
 
     const { data: newVideo, error: insertErr } = await admin
       .from("generated_videos")
@@ -147,14 +141,12 @@ export async function POST(req: NextRequest) {
         video_type: edits.format,
         render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, city, state, title: edits.title, quickMode },
+        metadata: { dimension, orientation, city, state, title: edits.title },
       })
       .select()
       .single();
 
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
-
-    const voiceId = edits.voiceId || p?.heygen_voice_id || await getDefaultEnglishVoiceId().catch(() => null);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
@@ -163,11 +155,12 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: edits.avatarId || p.heygen_photo_id || undefined,
-      voiceId: voiceId || undefined,
+      avatarId: p.heygen_photo_id,
+      voiceId,
       orientation,
       callbackUrl,
       callbackId: newVideo.id,
+      styleId: styleId || undefined,
     });
 
     await admin
@@ -183,7 +176,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[rerender] ${quickMode ? "Quick" : "Standard"} render submitted: session ${sessionId}, voice: ${voiceId || "none"}`);
+    console.log(`[rerender] Video Agent session ${sessionId} submitted (avatar: ${p.heygen_photo_id}, voice: ${voiceId})`);
     return NextResponse.json({
       video: { ...newVideo, render_job_id: sessionId, render_status: "rendering" },
     });
