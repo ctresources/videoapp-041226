@@ -36,7 +36,7 @@ function buildPrompt(params: {
     : "a professional real estate agent";
 
   const overlays = [
-    params.hookText ? `- First frame: bold white text overlay at the top — "${params.hookText}"` : "",
+    params.hookText ? `- First frame: compose a full branded title card as the opening frame — avatar presenter prominently on one side, large bold hook text on the other: "${params.hookText}". Use deep navy background with warm accent tones. Style it like a high-converting YouTube thumbnail.` : "",
     params.contactLine ? `- Final frame: agent contact info as a text overlay at the bottom — "${params.contactLine}"` : "",
   ].filter(Boolean).join("\n");
 
