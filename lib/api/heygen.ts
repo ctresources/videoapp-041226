@@ -588,13 +588,13 @@ export interface VideoAgentSession {
 export async function getCinematicStyleId(): Promise<string | null> {
   try {
     const res = await fetch(
-      `${HEYGEN_API}/v3/video-agents/styles?tag=print&limit=1`,
+      `${HEYGEN_API}/v3/video-agents/styles?tag=cinematic&limit=1`,
       { headers: { "x-api-key": getApiKey() } },
     );
     if (!res.ok) return null;
     const data = await res.json();
     const styleId = data.data?.[0]?.style_id || null;
-    if (styleId) console.log(`[heygen] Using print style: ${styleId}`);
+    if (styleId) console.log(`[heygen] Using cinematic style: ${styleId}`);
     return styleId;
   } catch {
     return null;
