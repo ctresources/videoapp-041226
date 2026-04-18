@@ -12,7 +12,7 @@ import {
 
 export const maxDuration = 60;
 
-const MAX_SCRIPT_WORDS = 450;
+const MAX_SCRIPT_WORDS = 200;
 
 function clampScript(text: string): string {
   const words = text.trim().split(/\s+/);
