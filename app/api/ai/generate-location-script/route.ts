@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Parse into structured ai_script ────────────────────────────────────────
-  const parsed = parseLocationScript(raw, videoType, city, state);
+  const parsed = parseLocationScript(raw, videoType, city, state, agentName);
 
   const aiScript = {
     title: parsed.title,

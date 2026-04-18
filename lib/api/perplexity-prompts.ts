@@ -184,7 +184,7 @@ ${FAIR_HOUSING_GUARDRAIL}`,
         role: "user",
         content: `Search the web and create a "Why Live in ${location}" video script.
 
-Search for: "${city} ${state} schools rating", "${city} ${state} median income", "${city} ${state} cost of living", "${city} ${state} crime rate", "${city} ${state} things to do", walkability score for ${city}. Use Niche.com, GreatSchools, Census data, or any current source that has real numbers for ${city}, ${state}.`,
+Search for: "${city} ${state} school district name", "${city} ${state} school district rating GreatSchools", "${city} ${state} median income", "${city} ${state} cost of living", "${city} ${state} crime rate", "${city} ${state} things to do", walkability score for ${city}${zip ? ` ${zip}` : ""}. Use Niche.com, GreatSchools, Census data, or any current source that has real numbers for ${city}, ${state}. When reporting school data, name the exact school district that serves ${city}${zip ? ` zip ${zip}` : ""} — do not use a neighboring district's data.`,
       },
     ],
     search_recency_filter: "month",
@@ -345,14 +345,13 @@ export async function generateLocationScript(
   agentName?: string
 ): Promise<string> {
   const requestBody = buildRequest(videoType, params);
-  // Inject agent name into the system prompt so the CTA is personalized
-  if (agentName) {
-    const messages = requestBody.messages as { role: string; content: string }[];
-    const systemMsg = messages.find((m) => m.role === "system");
-    if (systemMsg) {
-      systemMsg.content +=
-        `\n\nAgent name: "${agentName}". The CALL TO ACTION section MUST address the viewer by name and end with: "Contact ${agentName} today" or "Call ${agentName} at [number]". Never use generic phrases like "contact a local agent".`;
-    }
+  const messages = requestBody.messages as { role: string; content: string }[];
+  const systemMsg = messages.find((m) => m.role === "system");
+  if (systemMsg) {
+    const nameClause = agentName
+      ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today" or "Call ${agentName} at [number]". Never use generic phrases like "contact a local agent" or "reach out to an agent".`
+      : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent" — use "your agent" or a direct action instead.`;
+    systemMsg.content += `\n\n${nameClause}`;
   }
   return callPerplexity(requestBody);
 }
@@ -401,7 +400,8 @@ export function parseLocationScript(
   raw: string,
   videoType: LocationVideoType,
   city: string,
-  state: string
+  state: string,
+  agentName?: string
 ): ParsedLocationScript {
   // All section headings across all four video types
   const allHeadings = [
@@ -450,7 +450,9 @@ export function parseLocationScript(
   }
 
   const cta = extractSection(raw, "CALL TO ACTION", allHeadings) ||
-    `Contact a local real estate agent in ${city}, ${state} today to learn more!`;
+    (agentName
+      ? `Contact ${agentName} today to learn more about ${city}, ${state}!`
+      : `Reach out today to learn more about ${city}, ${state}!`);
 
   const blogIntro = extractSection(raw, "BLOG POST INTRO", allHeadings);
   const sourcesRaw = extractSection(raw, "SOURCES USED", []);

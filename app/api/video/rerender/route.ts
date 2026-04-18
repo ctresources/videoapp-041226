@@ -128,10 +128,11 @@ export async function POST(req: NextRequest) {
 
     const proj = video.projects as { ai_script?: Record<string, unknown> } | null;
     const hookText = (proj?.ai_script?.hook as string) || undefined;
+    const phones = [...new Set([p.phone, p.company_phone].filter(Boolean))];
     const contactParts = [
       p.full_name,
       p.company_name,
-      p.phone || p.company_phone,
+      ...phones,
     ].filter(Boolean);
     const contactLine = contactParts.length > 0 ? contactParts.join("  ·  ") : undefined;
 

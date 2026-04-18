@@ -138,10 +138,11 @@ export async function POST(req: NextRequest) {
     const aiKeywords = (aiScript?.keywords as string[]) || [];
 
     const hookText = (aiScript?.hook as string) || undefined;
+    const phones = [...new Set([profile.phone, profile.company_phone].filter(Boolean))];
     const contactParts = [
       profile.full_name,
       profile.company_name,
-      profile.phone || profile.company_phone,
+      ...phones,
     ].filter(Boolean);
     const contactLine = contactParts.length > 0 ? contactParts.join("  ·  ") : undefined;
 
