@@ -14,9 +14,11 @@ import {
   AlertCircle,
   ChevronRight,
   Video,
+  Share2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
+import { PublishModal } from "@/components/social/PublishModal";
 
 type CamStep = "script" | "camera" | "done";
 
@@ -45,6 +47,10 @@ export function CameraRecorder() {
   const [genTopic, setGenTopic] = useState("");
   const [generating, setGenerating] = useState(false);
   const [showAiGen, setShowAiGen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
+  const [savedTitle, setSavedTitle] = useState("Camera Recording");
+  const [showPublish, setShowPublish] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -205,6 +211,28 @@ export function CameraRecorder() {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleSaveForSocial() {
+    if (!videoBlob) return;
+    setSaving(true);
+    try {
+      const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
+      const ext = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+      const fd = new FormData();
+      fd.append("video", videoBlob, `recording.${ext}`);
+      fd.append("title", title);
+      const res = await fetch("/api/video/save-camera-recording", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setSavedVideoId(data.videoId);
+      setSavedTitle(data.title);
+      setShowPublish(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -439,32 +467,55 @@ export function CameraRecorder() {
 
   // ── Done step ──────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
-        {videoUrl && (
-          <video
-            src={videoUrl}
-            controls
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        )}
-      </div>
-      <div className="flex items-center justify-between px-1">
-        <p className="text-sm font-semibold text-brand-text">Recording complete</p>
-        <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
-      </div>
-      <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3 leading-relaxed">
-        Your video is ready to download. Share it on social media, your website, or any platform.
-      </p>
-      <div className="flex gap-2">
-        <Button onClick={handleReset} variant="ghost" size="lg" className="gap-2 flex-1">
-          <RotateCcw size={15} /> Re-record
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+          {videoUrl && (
+            <video
+              src={videoUrl}
+              controls
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-sm font-semibold text-brand-text">Recording complete</p>
+          <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
+        </div>
+
+        {/* Action buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={handleDownload} variant="outline" size="lg" className="gap-2">
+            <Download size={16} /> Download
+          </Button>
+          <Button
+            onClick={handleSaveForSocial}
+            loading={saving}
+            size="lg"
+            className="gap-2"
+          >
+            {saving ? (
+              <><Loader2 size={16} className="animate-spin" /> Uploading...</>
+            ) : (
+              <><Share2 size={16} /> Upload to Social</>
+            )}
+          </Button>
+        </div>
+
+        <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
+          <RotateCcw size={13} /> Re-record
         </Button>
-        <Button onClick={handleDownload} size="lg" className="gap-2 flex-[2]">
-          <Download size={17} /> Download Video
-        </Button>
       </div>
-    </div>
+
+      {showPublish && savedVideoId && (
+        <PublishModal
+          videoId={savedVideoId}
+          videoTitle={savedTitle}
+          onClose={() => setShowPublish(false)}
+          onPublished={() => setShowPublish(false)}
+        />
+      )}
+    </>
   );
 }
