@@ -87,7 +87,6 @@ export default function ProjectEditorPage() {
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("blog_long");
   const [selectedBgMode, setSelectedBgMode] = useState<BackgroundMode>("stock-video");
-  const [quickMode, setQuickMode] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: false, blog: false,
   });
@@ -242,7 +241,6 @@ export default function ProjectEditorPage() {
           backgroundMode: selectedBgMode,
           script: fullScript,
           hook,
-          quickMode,
         }),
       });
 
@@ -272,8 +270,8 @@ export default function ProjectEditorPage() {
     const parts: string[] = [];
     if (contactInfo.full_name) parts.push(contactInfo.full_name);
     if (contactInfo.company_name) parts.push(contactInfo.company_name);
-    const phone = contactInfo.phone || contactInfo.company_phone;
-    if (phone) parts.push(phone);
+    const phones = Array.from(new Set([contactInfo.phone, contactInfo.company_phone].filter(Boolean)));
+    phones.forEach((p) => parts.push(p as string));
     if (contactInfo.company_address) parts.push(contactInfo.company_address);
     return parts.join(" · ");
   }
@@ -520,31 +518,6 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
-
-            {/* Quick Mode toggle */}
-            <button
-              type="button"
-              onClick={() => setQuickMode((v) => !v)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all mb-3 ${
-                quickMode
-                  ? "border-amber-400 bg-amber-50"
-                  : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
-            >
-              <div className="text-left">
-                <p className={`text-sm font-semibold ${quickMode ? "text-amber-700" : "text-brand-text"}`}>
-                  ⚡ Quick Mode {quickMode ? "ON" : "OFF"}
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {quickMode
-                    ? "~60s script, minimal prompt — renders in ~8-12 min"
-                    : "~90s script, cinematic directions — renders in ~15-25 min"}
-                </p>
-              </div>
-              <div className={`w-10 h-6 rounded-full transition-colors flex items-center px-1 ${quickMode ? "bg-amber-400" : "bg-slate-200"}`}>
-                <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${quickMode ? "translate-x-4" : "translate-x-0"}`} />
-              </div>
-            </button>
 
             <Button
               onClick={handleGenerateVideo}

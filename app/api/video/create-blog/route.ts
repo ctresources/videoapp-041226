@@ -38,10 +38,19 @@ function buildVideoAgentPrompt(params: {
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
 
-  const overlays = [
-    params.hookText ? `- First frame: compose a full branded title card as the opening frame — avatar presenter prominently on one side, large bold hook text on the other: "${params.hookText}". Use deep navy background with warm accent tones. Style it like a high-converting YouTube thumbnail.` : "",
-    params.contactLine ? `- Final frame: agent contact info as a text overlay at the bottom — "${params.contactLine}"` : "",
-  ].filter(Boolean).join("\n");
+  const firstFrameInstruction = params.hookText
+    ? `FIRST FRAME — open with a bold YouTube-thumbnail-style title card that fills the ENTIRE frame:
+- Avatar presenter: full-body, positioned on the RIGHT side of the frame
+- Text card: large, high-contrast, occupying the LEFT half of the frame — display this exact hook text in large bold typography: "${params.hookText}"
+- Background: a vivid warm real estate lifestyle photo (sunlit home exterior, inviting neighborhood street, or bright modern interior) filling the complete frame behind both elements
+- Color treatment: deep navy overlay on the text card side, warm natural tones on the avatar side
+- Zero black areas — every pixel of the frame must be filled with content
+- Style it like a scroll-stopping YouTube thumbnail a top real estate creator would use`
+    : "";
+
+  const contactInstruction = params.contactLine
+    ? `FINAL FRAME — display agent contact info as a clean text overlay at the bottom of the frame: "${params.contactLine}"`
+    : "";
 
   return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
 
@@ -50,6 +59,7 @@ ${params.script}
 
 VISUAL DIRECTION:
 - Present the full-body avatar as the on-screen presenter throughout
+- CRITICAL: Fill the ENTIRE video frame at all times — no black areas, no empty canvas, no unused space anywhere
 - Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes (coffee shops, parks, families)
 - Where market statistics or prices are mentioned, add clean data visualizations: bar charts for home prices, line graphs for market trends, infographic overlays for inventory levels
 - Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
@@ -57,7 +67,7 @@ VISUAL DIRECTION:
     ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
     : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
 - Seamlessly intercut avatar presenter shots with b-roll footage
-- Visually highlight key stats and property details as text overlays${params.keywords.length > 0 ? `\n- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}${overlays ? `\n\nTEXT OVERLAYS:\n${overlays}` : ""}
+- Visually highlight key stats and property details as text overlays${params.keywords.length > 0 ? `\n- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}${firstFrameInstruction ? `\n\n${firstFrameInstruction}` : ""}${contactInstruction ? `\n\n${contactInstruction}` : ""}
 
 Deliver a single continuous, polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
 }
@@ -138,7 +148,7 @@ export async function POST(req: NextRequest) {
     const aiKeywords = (aiScript?.keywords as string[]) || [];
 
     const hookText = (aiScript?.hook as string) || undefined;
-    const phones = [...new Set([profile.phone, profile.company_phone].filter(Boolean))];
+    const phones = Array.from(new Set([profile.phone, profile.company_phone].filter(Boolean)));
     const contactParts = [
       profile.full_name,
       profile.company_name,

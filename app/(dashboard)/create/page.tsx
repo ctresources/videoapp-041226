@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp, Building2,
+  MapPin, ChevronDown, ChevronUp, Building2, Video,
 } from "lucide-react";
+import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
-import { LocationVideoType } from "@/lib/api/perplexity-prompts";
 import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 
@@ -24,53 +24,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 
 type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location" | "listing";
-
-// ─── Location script presets ──────────────────────────────────────────────────
-
-const PRESET_TYPES: {
-  value: LocationVideoType;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  needsDate: boolean;
-}[] = [
-  {
-    value: "market_update",
-    label: "Market Update",
-    description: "Median prices, days on market, inventory, buyer/seller insights",
-    icon: TrendingUp,
-    needsDate: true,
-  },
-  {
-    value: "why_live_here",
-    label: "Why Live Here",
-    description: "Schools, commute, lifestyle, demographics, cost of living",
-    icon: Home,
-    needsDate: false,
-  },
-  {
-    value: "community_events",
-    label: "Community Events",
-    description: "Local events, festivals, farmers markets, and recurring meetups",
-    icon: CalendarDays,
-    needsDate: true,
-  },
-  {
-    value: "custom",
-    label: "Custom Topic",
-    description: "Write any topic — new developments, school ratings, commute analysis, flood zones, and more",
-    icon: Sparkles,
-    needsDate: false,
-  },
-];
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const CURRENT_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+type RecordMode = "voice" | "camera";
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -80,6 +34,7 @@ function CreatePageInner() {
 
   // Voice flow state
   const [inputMode, setInputMode] = useState<InputMode>("location");
+  const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -87,12 +42,9 @@ function CreatePageInner() {
   const [uploadedBlob, setUploadedBlob] = useState<{ blob: Blob; duration: number } | null>(null);
 
   // Location script state
-  const [locVideoType, setLocVideoType] = useState<LocationVideoType>("market_update");
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
   const [locZip, setLocZip] = useState("");
-  const [locMonth, setLocMonth] = useState(MONTHS[new Date().getMonth()]);
-  const [locYear, setLocYear] = useState(CURRENT_YEAR);
   const [locCustomTopic, setLocCustomTopic] = useState("");
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -107,12 +59,9 @@ function CreatePageInner() {
 
     if (tab === "location") {
       setInputMode("location");
-      if (type && PRESET_TYPES.some((p) => p.value === type)) setLocVideoType(type);
       if (topic) setLocCustomTopic(topic);
       if (city) setLocCity(city);
       if (state) setLocState(state);
-      // If a topic was passed in, switch to custom type so the topic field shows
-      if (topic && (!type || type === "custom")) setLocVideoType("custom");
     }
   }, []); // eslint-disable-line
 
@@ -181,7 +130,6 @@ function CreatePageInner() {
   // ── Location script ─────────────────────────────────────────────────────────
 
   function handleTemplateSelect(template: ContentTemplate) {
-    setLocVideoType("custom");
     setLocCustomTopic(template.topic);
     setShowTemplates(false);
     // Scroll to the topic input after a tick
@@ -190,17 +138,11 @@ function CreatePageInner() {
     }, 100);
   }
 
-  const selectedPreset = PRESET_TYPES.find((p) => p.value === locVideoType)!;
-  const needsDate = selectedPreset.needsDate;
-
   async function handleGenerateLocationScript() {
     if (!locCity.trim() || !locState.trim()) {
       return toast.error("City and state are required");
     }
-    if (needsDate && (!locMonth || !locYear)) {
-      return toast.error("Month and year are required for this video type");
-    }
-    if (locVideoType === "custom" && !locCustomTopic.trim()) {
+    if (!locCustomTopic.trim()) {
       return toast.error("Please describe your topic");
     }
 
@@ -210,13 +152,11 @@ function CreatePageInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          videoType: locVideoType,
+          videoType: "custom",
           city: locCity.trim(),
           state: locState.trim(),
           zip: locZip.trim() || undefined,
-          month: needsDate ? locMonth : undefined,
-          year: needsDate ? locYear : undefined,
-          customTopic: locVideoType === "custom" ? locCustomTopic.trim() : undefined,
+          customTopic: locCustomTopic.trim(),
         }),
       });
 
@@ -237,7 +177,8 @@ function CreatePageInner() {
 
   const readyToContinue =
     step === "input" &&
-    ((inputMode === "record" && uploadedBlob) || (inputMode === "upload" && uploadedFile));
+    ((inputMode === "record" && recordMode === "voice" && !!uploadedBlob) ||
+      (inputMode === "upload" && !!uploadedFile));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -329,7 +270,37 @@ function CreatePageInner() {
           {step === "input" && (
             <Card>
               {inputMode === "record" ? (
-                <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                <>
+                  {/* Record sub-mode toggle */}
+                  <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
+                    <button
+                      onClick={() => setRecordMode("voice")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        recordMode === "voice"
+                          ? "bg-white shadow-sm text-brand-text"
+                          : "text-slate-500 hover:text-brand-text"
+                      }`}
+                    >
+                      <Mic size={13} /> Voice Only
+                    </button>
+                    <button
+                      onClick={() => setRecordMode("camera")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        recordMode === "camera"
+                          ? "bg-white shadow-sm text-brand-text"
+                          : "text-slate-500 hover:text-brand-text"
+                      }`}
+                    >
+                      <Video size={13} /> Camera + Teleprompter
+                    </button>
+                  </div>
+
+                  {recordMode === "voice" ? (
+                    <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                  ) : (
+                    <CameraRecorder />
+                  )}
+                </>
               ) : (
                 <VoiceUploader onFileSelected={handleFileSelected} />
               )}
@@ -417,92 +388,6 @@ function CreatePageInner() {
       {/* ── Location Script flow ── */}
       {inputMode === "location" && (
         <Card>
-          {/* Templates toggle */}
-          <div className="mb-5">
-            <button
-              onClick={() => setShowTemplates((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">💡</span>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-brand-text">Start from a Template</p>
-                  <p className="text-xs text-slate-400">
-                    24 templates · Real Estate · Location · Events &amp; Community News
-                    {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
-                  </p>
-                </div>
-              </div>
-              {showTemplates
-                ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
-                : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
-            </button>
-
-            {showTemplates && (
-              <div className="mt-3">
-                <ContentTemplates
-                  onSelect={handleTemplateSelect}
-                  city={locCity}
-                  state={locState}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Video type selector */}
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-              What do you want to create?
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {PRESET_TYPES.map(({ value, label, description, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setLocVideoType(value)}
-                  className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
-                    locVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                    locVideoType === value ? "bg-primary-500" : "bg-slate-100"
-                  }`}>
-                    <Icon size={14} className={locVideoType === value ? "text-white" : "text-slate-500"} />
-                  </div>
-                  <span className={`text-xs font-semibold ${
-                    locVideoType === value ? "text-primary-600" : "text-brand-text"
-                  }`}>
-                    {label}
-                  </span>
-                  <span className="text-xs text-slate-500 leading-snug">{description}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom topic input */}
-          {locVideoType === "custom" && (
-            <div className="mb-4">
-              <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                What&apos;s your topic? <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="loc-custom-topic"
-                type="text"
-                value={locCustomTopic}
-                onChange={(e) => setLocCustomTopic(e.target.value)}
-                placeholder="e.g. New construction near downtown, Flood zone map, Top-rated schools, HOA fees comparison..."
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Any real estate topic — our AI will research it for this specific location
-              </p>
-            </div>
-          )}
-
-          <div className="border-t border-slate-100 pt-4 mb-4" />
-
           {/* Location fields */}
           <div className="mb-4">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
@@ -548,48 +433,55 @@ function CreatePageInner() {
             </div>
           </div>
 
-          {/* Date fields — only for types that need them */}
-          {needsDate && (
-            <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Time Period</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                    Month <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={locMonth}
-                      onChange={(e) => setLocMonth(e.target.value)}
-                      className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                    >
-                      {MONTHS.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                    Year <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={locYear}
-                      onChange={(e) => setLocYear(Number(e.target.value))}
-                      className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                    >
-                      {YEAR_OPTIONS.map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  </div>
+          {/* Templates toggle */}
+          <div className="mb-5">
+            <button
+              onClick={() => setShowTemplates((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">💡</span>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-brand-text">Start from a Template</p>
+                  <p className="text-xs text-slate-400">
+                    24 templates · Real Estate · Location · Events &amp; Community News
+                    {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+              {showTemplates
+                ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
+                : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+            </button>
+
+            {showTemplates && (
+              <div className="mt-3">
+                <ContentTemplates
+                  onSelect={handleTemplateSelect}
+                  city={locCity}
+                  state={locState}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Topic input */}
+          <div className="mb-5">
+            <label className="text-xs font-medium text-slate-500 block mb-1.5">
+              What&apos;s your topic? <span className="text-red-400">*</span>
+            </label>
+            <input
+              id="loc-custom-topic"
+              type="text"
+              value={locCustomTopic}
+              onChange={(e) => setLocCustomTopic(e.target.value)}
+              placeholder="e.g. Market update, Why live here, New construction, School ratings, HOA fees..."
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Any real estate topic — our AI will research it for this specific location
+            </p>
+          </div>
 
           {/* Info banner */}
           <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
@@ -603,7 +495,7 @@ function CreatePageInner() {
           <Button
             onClick={handleGenerateLocationScript}
             loading={locGenerating}
-            disabled={!locCity.trim() || !locState.trim()}
+            disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim()}
             size="lg"
             className="w-full gap-2"
           >
