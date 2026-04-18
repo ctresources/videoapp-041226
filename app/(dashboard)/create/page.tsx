@@ -46,6 +46,9 @@ function CreatePageInner() {
   const [locState, setLocState] = useState("");
   const [locZip, setLocZip] = useState("");
   const [locCustomTopic, setLocCustomTopic] = useState("");
+  const [locAudience, setLocAudience] = useState("");
+  const [locTone, setLocTone] = useState("");
+  const [locCta, setLocCta] = useState("");
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
@@ -145,6 +148,12 @@ function CreatePageInner() {
     if (!locCustomTopic.trim()) {
       return toast.error("Please describe your topic");
     }
+    if (!locAudience) {
+      return toast.error("Please select a target audience");
+    }
+    if (!locTone) {
+      return toast.error("Please select a brand style");
+    }
 
     setLocGenerating(true);
     try {
@@ -157,6 +166,9 @@ function CreatePageInner() {
           state: locState.trim(),
           zip: locZip.trim() || undefined,
           customTopic: locCustomTopic.trim(),
+          audience: locAudience,
+          tone: locTone,
+          ctaPreference: locCta || undefined,
         }),
       });
 
@@ -433,6 +445,72 @@ function CreatePageInner() {
             </div>
           </div>
 
+          {/* Audience + Tone */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                Target Audience <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={locAudience}
+                  onChange={(e) => setLocAudience(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                >
+                  <option value="">Select...</option>
+                  <option value="Buyers">Buyers</option>
+                  <option value="Sellers">Sellers</option>
+                  <option value="Investors">Investors</option>
+                  <option value="First-Time Buyers">First-Time Buyers</option>
+                  <option value="Luxury">Luxury</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                Brand Style <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={locTone}
+                  onChange={(e) => setLocTone(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                >
+                  <option value="">Select...</option>
+                  <option value="Friendly">Friendly</option>
+                  <option value="Modern">Modern</option>
+                  <option value="Luxury">Luxury</option>
+                  <option value="High-Energy">High-Energy</option>
+                  <option value="Educational">Educational</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* CTA Preference */}
+          <div className="mb-5">
+            <label className="text-xs font-medium text-slate-500 block mb-1.5">
+              CTA Preference <span className="text-slate-400">(optional)</span>
+            </label>
+            <div className="relative">
+              <select
+                value={locCta}
+                onChange={(e) => setLocCta(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+              >
+                <option value="">Call or Text Today (default)</option>
+                <option value="call">Call Today</option>
+                <option value="text">Text Today</option>
+                <option value="website">Visit Website</option>
+                <option value="consultation">Schedule a Consultation</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
           {/* Templates toggle */}
           <div className="mb-5">
             <button
@@ -495,7 +573,7 @@ function CreatePageInner() {
           <Button
             onClick={handleGenerateLocationScript}
             loading={locGenerating}
-            disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim()}
+            disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim() || !locAudience || !locTone}
             size="lg"
             className="w-full gap-2"
           >

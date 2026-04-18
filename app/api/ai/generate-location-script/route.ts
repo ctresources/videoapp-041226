@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
     month,
     year,
     customTopic,
+    audience,
+    tone,
+    ctaPreference,
   } = body as {
     videoType: LocationVideoType;
     city: string;
@@ -31,6 +34,9 @@ export async function POST(req: NextRequest) {
     month?: string;
     year?: number;
     customTopic?: string;
+    audience?: string;
+    tone?: string;
+    ctaPreference?: string;
   };
 
   // Basic validation
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
-  const params: LocationParams = { city, state, zip, month, year, customTopic };
+  const params: LocationParams = { city, state, zip, month, year, customTopic, audience, tone, ctaPreference };
   const agentName = (profile as { credits_remaining: number; full_name?: string | null }).full_name || undefined;
 
   let raw: string;
@@ -104,6 +110,9 @@ export async function POST(req: NextRequest) {
     video_type: parsed.video_type,
     location: parsed.location,
     custom_topic: customTopic || null,
+    audience: audience || null,
+    tone: tone || null,
+    cta_preference: ctaPreference || null,
   };
 
   const seoData = {

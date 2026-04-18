@@ -19,9 +19,12 @@ export interface LocationParams {
   city: string;
   state: string;
   zip?: string;
-  month?: string;        // Required for market_update + community_events
-  year?: number;         // Required for market_update + community_events
-  customTopic?: string;  // Required for custom type — any location topic
+  month?: string;
+  year?: number;
+  customTopic?: string;
+  audience?: string;      // e.g. "Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"
+  tone?: string;          // e.g. "Friendly", "Modern", "Luxury", "High-Energy", "Educational"
+  ctaPreference?: string; // e.g. "call", "text", "website", "consultation"
 }
 
 // ─── Shared API call wrapper ──────────────────────────────────────────────────
@@ -339,6 +342,23 @@ export function buildRequest(videoType: LocationVideoType, params: LocationParam
   }
 }
 
+const AUDIENCE_SCRIPT_GUIDANCE: Record<string, string> = {
+  "Buyers": "Focus on timing, market opportunities, competition dynamics, and smart buying strategy. Speak to people ready to make a move.",
+  "Sellers": "Emphasize pricing power, buyer demand, and how to maximize home value. Speak to homeowners thinking about selling.",
+  "Investors": "Highlight ROI potential, appreciation trends, rental demand, and cash flow opportunities. Use numbers and data.",
+  "First-Time Buyers": "Reduce fear, simplify the process, and build confidence. Avoid jargon. Be encouraging and supportive.",
+  "Luxury": "Use elevated, polished language. Focus on exclusivity, lifestyle, and premium positioning. Avoid anything that sounds generic.",
+  "Mixed": "Speak broadly — address both buyers and sellers. Balance opportunity messaging for both sides of the market.",
+};
+
+const TONE_SCRIPT_GUIDANCE: Record<string, string> = {
+  "Friendly": "Conversational, warm, approachable. Write like you're talking to a neighbor. Use short sentences.",
+  "Modern": "Clean, direct, professional. Crisp language, no filler words, confident delivery.",
+  "Luxury": "Polished and elevated. Use premium vocabulary. Avoid casual phrases. Project authority and taste.",
+  "High-Energy": "Punchy, urgent, action-oriented. Short bursts. Exclamation points where appropriate. Build momentum.",
+  "Educational": "Helpful, informative, authoritative. Explain things clearly. Position the agent as a knowledgeable guide.",
+};
+
 export async function generateLocationScript(
   videoType: LocationVideoType,
   params: LocationParams,
@@ -349,9 +369,17 @@ export async function generateLocationScript(
   const systemMsg = messages.find((m) => m.role === "system");
   if (systemMsg) {
     const nameClause = agentName
-      ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today" or "Call ${agentName} at [number]". Never use generic phrases like "contact a local agent" or "reach out to an agent".`
-      : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent" — use "your agent" or a direct action instead.`;
-    systemMsg.content += `\n\n${nameClause}`;
+      ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".`
+      : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".`;
+
+    const audienceGuidance = params.audience && AUDIENCE_SCRIPT_GUIDANCE[params.audience]
+      ? `\nTarget Audience: ${params.audience}. ${AUDIENCE_SCRIPT_GUIDANCE[params.audience]}`
+      : "";
+    const toneGuidance = params.tone && TONE_SCRIPT_GUIDANCE[params.tone]
+      ? `\nBrand Tone: ${params.tone}. ${TONE_SCRIPT_GUIDANCE[params.tone]}`
+      : "";
+
+    systemMsg.content += `\n\n${nameClause}${audienceGuidance}${toneGuidance}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
   }
   return callPerplexity(requestBody);
 }

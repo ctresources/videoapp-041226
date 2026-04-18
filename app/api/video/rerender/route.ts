@@ -20,51 +20,131 @@ function clampScript(text: string): string {
   return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
 }
 
+const AUDIENCE_VISUALS: Record<string, string> = {
+  "Buyers": "Entry-level to mid-range homes, young couples and families arriving, neighborhood community feel",
+  "Sellers": "Curb-appeal-focused exteriors, well-maintained homes, proud homeowner moments",
+  "Investors": "Duplexes, multi-unit properties, city growth aerial shots, ROI chart overlays",
+  "First-Time Buyers": "Welcoming neighborhood homes, approachable community scenes, first-key-handover moments",
+  "Luxury": "High-end home exteriors and interiors, waterfront or hilltop properties, premium finishes and details",
+  "Mixed": "Range of homes from starter to luxury, diverse buyers and sellers",
+};
+
+const TONE_VISUALS: Record<string, string> = {
+  "Luxury": "Cinematic slow-motion shots, subtle gold color grading, premium interior close-ups",
+  "Friendly": "Warm daylight exterior shots, families in yards, walkable neighborhood street scenes",
+  "High-Energy": "Fast dynamic cuts, bold animated text overlays, high-contrast motion graphics",
+  "Educational": "Clean data overlays, bar and line chart animations, split-screen comparisons",
+  "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
+};
+
 function buildPrompt(params: {
   script: string;
   city: string;
   state: string;
   agentName?: string;
+  brokerage?: string;
+  audience?: string;
+  tone?: string;
+  ctaPreference?: string;
+  phone1?: string;
+  phone2?: string;
+  website?: string;
   isShortForm: boolean;
   hookText?: string;
-  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
-  const locationDesc = location ? ` in ${location}` : "";
-  const agentRef = params.agentName
-    ? `real estate agent ${params.agentName}`
-    : "a professional real estate agent";
+  const locationOr = location || "the local area";
 
-  const firstFrameInstruction = params.hookText
-    ? `FIRST FRAME — open with a bold YouTube-thumbnail-style title card that fills the ENTIRE frame:
-- Avatar presenter: full-body, positioned on the RIGHT side of the frame
-- Text card: large, high-contrast, occupying the LEFT half of the frame — display this exact hook text in large bold typography: "${params.hookText}"
-- Background: a vivid warm real estate lifestyle photo (sunlit home exterior, inviting neighborhood street, or bright modern interior) filling the complete frame behind both elements
-- Color treatment: deep navy overlay on the text card side, warm natural tones on the avatar side
-- Zero black areas — every pixel of the frame must be filled with content
-- Style it like a scroll-stopping YouTube thumbnail a top real estate creator would use`
-    : "";
+  const ctaText =
+    params.ctaPreference === "text" ? "Call or Text Today to Get Started" :
+    params.ctaPreference === "website" ? `Visit ${params.website || "Our Website"} to Learn More` :
+    params.ctaPreference === "consultation" ? "Schedule Your Private Consultation Today" :
+    "Call or Text Today to Get Started";
 
-  const contactInstruction = params.contactLine
-    ? `FINAL FRAME — display agent contact info as a clean text overlay at the bottom of the frame: "${params.contactLine}"`
-    : "";
+  const contactParts = [
+    params.agentName,
+    params.brokerage,
+    params.phone1,
+    params.phone2,
+    params.website,
+  ].filter(Boolean);
+  const contactLine = contactParts.join("  ·  ");
 
-  return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
+  const audienceVisual = params.audience ? AUDIENCE_VISUALS[params.audience] || "" : "";
+  const toneVisual = params.tone ? TONE_VISUALS[params.tone] || "" : "";
 
-NARRATION SCRIPT — deliver this word-for-word as the voiceover:
+  return `You are producing a high-end, professional real estate marketing video.
+
+=====================================
+AGENT + MARKET DETAILS
+=====================================
+- Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
+- Market: ${locationOr}
+- Audience: ${params.audience || "Mixed"}
+- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Phone 1: ${params.phone1}` : ""}${params.phone2 ? `\n- Phone 2: ${params.phone2}` : ""}${params.website ? `\n- Website: ${params.website}` : ""}
+
+=====================================
+NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
+=====================================
 ${params.script}
 
-VISUAL DIRECTION:
-- Present the full-body avatar as the on-screen presenter throughout
-- CRITICAL: Fill the ENTIRE video frame at all times — no black areas, no empty canvas, no unused space anywhere
-- Generate cinematic b-roll footage of ${location || "the local area"}: neighborhood aerial views, tree-lined streets, home exteriors, modern interiors, lifestyle scenes
-- Color palette: warm tones, clean whites, deep navy — professional luxury real estate aesthetic
-- ${params.isShortForm
-    ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
-    : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
-- Seamlessly intercut avatar presenter shots with b-roll footage${firstFrameInstruction ? `\n\n${firstFrameInstruction}` : ""}${contactInstruction ? `\n\n${contactInstruction}` : ""}
+=====================================
+VISUAL DIRECTION
+=====================================
+- Full-body avatar presenter on screen — confident, approachable, professional
+- Seamlessly intercut with cinematic b-roll of ${locationOr}
+- CRITICAL: Frame must be 100% filled at ALL times — no empty space, no black bars
 
-Deliver a polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
+=====================================
+B-ROLL
+=====================================
+- Aerial drone shots of ${locationOr} neighborhoods
+- Tree-lined streets, home exteriors, curb appeal${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
+- Interior shots: modern kitchens, open living spaces
+- Lifestyle: cafes, parks, families, walkability scenes
+
+=====================================
+COLOR + STYLE
+=====================================
+- B-roll: slight warm filter — inviting, emotional (avoid cool/blue tones)${toneVisual ? `\n- Tone (${params.tone}): ${toneVisual}` : ""}
+- ${params.isShortForm ? "Vertical 9:16 — fast punchy cuts, bold text overlays, social media optimized" : "Horizontal 16:9 — smooth cinematic transitions, premium editorial feel"}
+
+=====================================
+DATA VISUALIZATION
+=====================================
+When stats or numbers are spoken:
+- Bar charts → home prices
+- Line graphs → market trends
+- Infographic overlays → inventory/demand levels
+
+=====================================
+TEXT OVERLAYS
+=====================================
+- Highlight key stats and insights as they are mentioned in the script
+- Background: semi-transparent dark gray
+- Text: white or soft gold
+- Accent lines/icons: gold or navy
+- Bold, minimal, readable — no clutter
+
+=====================================
+FIRST FRAME (THUMBNAIL-STYLE OPENER)
+=====================================
+RIGHT side: full-body avatar against a warm, bright lifestyle image of ${locationOr}
+LEFT side: bold headline — "${params.hookText || "Your Local Real Estate Expert"}"
+
+- LEFT panel: dark gray blending into deep navy gradient (high contrast, text readable)
+- RIGHT panel: warm natural tones behind the agent (inviting, lifestyle feel)
+- Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
+- Style like a scroll-stopping YouTube thumbnail
+
+=====================================
+FINAL FRAME (CTA)
+=====================================
+Clean contact overlay: ${contactLine}
+
+Bold CTA on screen: "${ctaText}"
+
+Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
 }
 
 export interface RerenderEdits {
@@ -105,7 +185,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state")
+    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website")
     .eq("id", user.id)
     .single();
 
@@ -118,6 +198,7 @@ export async function POST(req: NextRequest) {
     company_phone: string | null;
     location_city: string | null;
     location_state: string | null;
+    website: string | null;
   } | null;
 
   if (!p?.heygen_photo_id) {
@@ -138,22 +219,25 @@ export async function POST(req: NextRequest) {
 
     const proj = video.projects as { ai_script?: Record<string, unknown> } | null;
     const hookText = (proj?.ai_script?.hook as string) || undefined;
-    const phones = Array.from(new Set([p.phone, p.company_phone].filter(Boolean)));
-    const contactParts = [
-      p.full_name,
-      p.company_name,
-      ...phones,
-    ].filter(Boolean);
-    const contactLine = contactParts.length > 0 ? contactParts.join("  ·  ") : undefined;
+    const audience = (proj?.ai_script?.audience as string) || undefined;
+    const tone = (proj?.ai_script?.tone as string) || undefined;
+    const ctaPreference = (proj?.ai_script?.cta_preference as string) || undefined;
+    const phones = Array.from(new Set([p.phone, p.company_phone].filter(Boolean))) as string[];
 
     const prompt = buildPrompt({
       script: safeScript,
       city,
       state,
       agentName: p.full_name || undefined,
+      brokerage: p.company_name || undefined,
+      audience,
+      tone,
+      ctaPreference,
+      phone1: phones[0],
+      phone2: phones[1],
+      website: p.website || undefined,
       isShortForm,
       hookText,
-      contactLine,
     });
 
     const voiceId = edits.voiceId
