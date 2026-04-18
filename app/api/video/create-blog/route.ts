@@ -29,12 +29,19 @@ function buildVideoAgentPrompt(params: {
   agentName?: string;
   keywords: string[];
   isShortForm: boolean;
+  hookText?: string;
+  contactLine?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationDesc = location ? ` in ${location}` : "";
   const agentRef = params.agentName
     ? `real estate agent ${params.agentName}`
     : "a professional real estate agent";
+
+  const overlays = [
+    params.hookText ? `- First frame: compose a full branded title card as the opening frame — avatar presenter prominently on one side, large bold hook text on the other: "${params.hookText}". Use deep navy background with warm accent tones. Style it like a high-converting YouTube thumbnail.` : "",
+    params.contactLine ? `- Final frame: agent contact info as a text overlay at the bottom — "${params.contactLine}"` : "",
+  ].filter(Boolean).join("\n");
 
   return `You are producing a professional real estate video for ${agentRef}${locationDesc}.
 
@@ -50,7 +57,7 @@ VISUAL DIRECTION:
     ? "Vertical 9:16 format — fast-paced punchy cuts, bold text overlays, optimized for social media"
     : "Horizontal 16:9 format — smooth cinematic transitions, premium editorial feel"}
 - Seamlessly intercut avatar presenter shots with b-roll footage
-- Visually highlight key stats and property details as text overlays${params.keywords.length > 0 ? `\n- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
+- Visually highlight key stats and property details as text overlays${params.keywords.length > 0 ? `\n- Keywords for visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}${overlays ? `\n\nTEXT OVERLAYS:\n${overlays}` : ""}
 
 Deliver a single continuous, polished real estate marketing video that builds trust and motivates buyers and sellers${locationDesc} to take action.`;
 }
@@ -94,7 +101,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, location_city, location_state")
+    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state")
     .eq("id", user.id)
     .single();
 
@@ -104,6 +111,9 @@ export async function POST(req: NextRequest) {
     avatar_url: string | null;
     logo_url: string | null;
     full_name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
     location_city: string | null;
     location_state: string | null;
   } | null;
@@ -127,6 +137,15 @@ export async function POST(req: NextRequest) {
     const state = scriptLocation?.split(",")[1]?.trim() || profile.location_state || "";
     const aiKeywords = (aiScript?.keywords as string[]) || [];
 
+    const hookText = (aiScript?.hook as string) || undefined;
+    const phones = Array.from(new Set([profile.phone, profile.company_phone].filter(Boolean)));
+    const contactParts = [
+      profile.full_name,
+      profile.company_name,
+      ...phones,
+    ].filter(Boolean);
+    const contactLine = contactParts.length > 0 ? contactParts.join("  ·  ") : undefined;
+
     const prompt = buildVideoAgentPrompt({
       script: safeScript,
       title,
@@ -135,6 +154,8 @@ export async function POST(req: NextRequest) {
       agentName: profile.full_name || undefined,
       keywords: aiKeywords,
       isShortForm,
+      hookText,
+      contactLine,
     });
 
     const voiceId = profile.heygen_voice_id

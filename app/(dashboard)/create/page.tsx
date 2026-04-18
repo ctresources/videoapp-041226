@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp, Building2,
+  MapPin, TrendingUp, Home, CalendarDays, Sparkles, ChevronDown, ChevronUp, Building2, Video,
 } from "lucide-react";
+import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -24,6 +25,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 
 type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location" | "listing";
+type RecordMode = "voice" | "camera";
 
 // ─── Location script presets ──────────────────────────────────────────────────
 
@@ -79,7 +81,8 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("record");
+  const [inputMode, setInputMode] = useState<InputMode>("location");
+  const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -237,7 +240,8 @@ function CreatePageInner() {
 
   const readyToContinue =
     step === "input" &&
-    ((inputMode === "record" && uploadedBlob) || (inputMode === "upload" && uploadedFile));
+    ((inputMode === "record" && recordMode === "voice" && !!uploadedBlob) ||
+      (inputMode === "upload" && !!uploadedFile));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -329,7 +333,37 @@ function CreatePageInner() {
           {step === "input" && (
             <Card>
               {inputMode === "record" ? (
-                <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                <>
+                  {/* Record sub-mode toggle */}
+                  <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
+                    <button
+                      onClick={() => setRecordMode("voice")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        recordMode === "voice"
+                          ? "bg-white shadow-sm text-brand-text"
+                          : "text-slate-500 hover:text-brand-text"
+                      }`}
+                    >
+                      <Mic size={13} /> Voice Only
+                    </button>
+                    <button
+                      onClick={() => setRecordMode("camera")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        recordMode === "camera"
+                          ? "bg-white shadow-sm text-brand-text"
+                          : "text-slate-500 hover:text-brand-text"
+                      }`}
+                    >
+                      <Video size={13} /> Camera + Teleprompter
+                    </button>
+                  </div>
+
+                  {recordMode === "voice" ? (
+                    <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                  ) : (
+                    <CameraRecorder />
+                  )}
+                </>
               ) : (
                 <VoiceUploader onFileSelected={handleFileSelected} />
               )}
