@@ -55,7 +55,6 @@ function CreatePageInner() {
   // ── Pre-fill from URL params (e.g. clicked from Trending Topics) ─────────
   useEffect(() => {
     const tab = searchParams.get("tab");
-    const type = searchParams.get("type") as LocationVideoType | null;
     const topic = searchParams.get("topic");
     const city = searchParams.get("city");
     const state = searchParams.get("state");
