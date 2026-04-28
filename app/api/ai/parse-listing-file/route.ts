@@ -140,9 +140,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   }
 
-  // Reasonable size guardrail (50MB)
-  if (file.size > 50 * 1024 * 1024) {
-    return NextResponse.json({ error: "File is larger than 50MB" }, { status: 413 });
+  // Reasonable size guardrail (60MB)
+  if (file.size > 60 * 1024 * 1024) {
+    return NextResponse.json({ error: "File is larger than 60MB" }, { status: 413 });
   }
 
   try {

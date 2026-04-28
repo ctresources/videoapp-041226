@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
-  Upload, FileText,
+  Upload, FileText, Camera, Trash2,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 
@@ -42,7 +42,11 @@ export function ListingVideoForm() {
   const [newFeature, setNewFeature] = useState("");
   const [manualMode, setManualMode] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_LISTING_PHOTOS = 12;
 
   // ── Scrape ─────────────────────────────────────────────────────────────────
   async function handleScrape() {
@@ -72,8 +76,8 @@ export function ListingVideoForm() {
 
   // ── Upload File (any type) ─────────────────────────────────────────────────
   async function handleFileUpload(file: File) {
-    if (file.size > 50 * 1024 * 1024) {
-      return toast.error("File is too large. Max 50MB.");
+    if (file.size > 60 * 1024 * 1024) {
+      return toast.error("File is too large. Max 60MB.");
     }
     setUploadedFileName(file.name);
     setStep("parsing-file");
@@ -107,6 +111,61 @@ export function ListingVideoForm() {
       setStep("url");
       setUploadedFileName(null);
     }
+  }
+
+  // ── Listing photos (uploaded photos used as b-roll) ────────────────────────
+  async function handlePhotosUpload(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+
+    const remaining = MAX_LISTING_PHOTOS - listing.photoUrls.length;
+    if (remaining <= 0) {
+      return toast.error(`Max ${MAX_LISTING_PHOTOS} photos. Remove one first.`);
+    }
+    const batch = list.slice(0, remaining);
+    if (list.length > remaining) {
+      toast(`Only the first ${remaining} photos will be used (max ${MAX_LISTING_PHOTOS}).`, { icon: "ℹ️" });
+    }
+
+    // Client-side validation
+    for (const f of batch) {
+      if (!f.type.startsWith("image/")) {
+        return toast.error(`${f.name} is not an image.`);
+      }
+      if (f.size > 15 * 1024 * 1024) {
+        return toast.error(`${f.name} is too large. Max 15 MB per photo.`);
+      }
+    }
+
+    setUploadingPhotos(true);
+    try {
+      const formData = new FormData();
+      for (const f of batch) formData.append("photos", f);
+
+      const res = await fetch("/api/ai/upload-listing-photos", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      setListing((l) => ({
+        ...l,
+        photoUrls: [...l.photoUrls, ...(data.photoUrls as string[])],
+      }));
+      toast.success(`Uploaded ${batch.length} photo${batch.length === 1 ? "" : "s"}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not upload photos");
+    } finally {
+      setUploadingPhotos(false);
+    }
+  }
+
+  function removePhoto(index: number) {
+    setListing((l) => ({
+      ...l,
+      photoUrls: l.photoUrls.filter((_, i) => i !== index),
+    }));
   }
 
   // ── Generate ───────────────────────────────────────────────────────────────
@@ -431,13 +490,85 @@ export function ListingVideoForm() {
         )}
       </div>
 
-      {/* Photo count note */}
-      {listing.photoUrls.length > 0 && (
-        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-          <ImageIcon size={13} className="text-slate-400" />
-          {listing.photoUrls.length} listing photos imported — AI may use these as b-roll
-        </div>
-      )}
+      {/* Listing Photos — used as b-roll in the generated video */}
+      <div>
+        <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5 flex-wrap">
+          <Camera size={12} /> Listing Photos
+          <span className="text-slate-400 font-normal">
+            (optional · up to {MAX_LISTING_PHOTOS} — if added, used as b-roll behind your avatar)
+          </span>
+        </label>
+
+        {listing.photoUrls.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-2">
+            {listing.photoUrls.map((url, i) => (
+              <div
+                key={`${url}-${i}`}
+                className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`Listing photo ${i + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Remove photo"
+                >
+                  <Trash2 size={11} />
+                </button>
+                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">
+                  {i + 1}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
+          <button
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={uploadingPhotos}
+            className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {uploadingPhotos ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span className="flex-1 text-left">Uploading photos…</span>
+              </>
+            ) : (
+              <>
+                <ImageIcon size={16} />
+                <span className="flex-1 text-left">
+                  {listing.photoUrls.length === 0
+                    ? "Upload listing photos"
+                    : `Add more photos (${MAX_LISTING_PHOTOS - listing.photoUrls.length} left)`}
+                  <span className="block text-xs text-slate-400 font-normal mt-0.5">
+                    JPG, PNG, WEBP — up to 15 MB each. Multiple at once.
+                  </span>
+                </span>
+                <Upload size={14} className="text-slate-400" />
+              </>
+            )}
+          </button>
+        )}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) handlePhotosUpload(files);
+            if (photoInputRef.current) photoInputRef.current.value = "";
+          }}
+        />
+      </div>
 
       {/* Fair Housing notice */}
       <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">

@@ -53,6 +53,8 @@ function buildVideoAgentPrompt(params: {
   keywords: string[];
   isShortForm: boolean;
   hookText?: string;
+  listingAddress?: string;
+  listingPhotoCount?: number;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationOr = location || "the local area";
@@ -74,6 +76,22 @@ function buildVideoAgentPrompt(params: {
 
   const audienceVisual = params.audience ? AUDIENCE_VISUALS[params.audience] || "" : "";
   const toneVisual = params.tone ? TONE_VISUALS[params.tone] || "" : "";
+
+  const hasListingPhotos = (params.listingPhotoCount ?? 0) > 0;
+  const listingPhotoBlock = hasListingPhotos
+    ? `
+
+=====================================
+LISTING PHOTOS (PRIMARY B-ROLL — USE THESE)
+=====================================
+${params.listingPhotoCount} actual photos of THIS property at ${params.listingAddress || "the listing address"} are attached as files.
+- Use the attached listing photos as the PRIMARY b-roll throughout the video — these are the actual property
+- Cycle through ALL provided photos so every photo gets screen time (~5–10 seconds each)
+- Apply gentle Ken Burns motion (slow pan + zoom) on each photo to keep the frame alive
+- Match each photo to whatever room/feature the script is describing at that moment
+- DO NOT replace these photos with stock or generated imagery for the property itself
+- Stock cinematic b-roll of ${params.city || "the area"} may ONLY be used between listing photos for transitions or for neighborhood/lifestyle context`
+    : "";
 
   return `You are producing a high-end, professional real estate marketing video.
 
@@ -99,7 +117,8 @@ VISUAL DIRECTION
 
 =====================================
 B-ROLL
-=====================================
+=====================================${listingPhotoBlock}
+${hasListingPhotos ? "\nSECONDARY / FILLER B-ROLL (only between listing photos):" : ""}
 - Aerial drone shots of ${locationOr} neighborhoods
 - Tree-lined streets, home exteriors, curb appeal${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
 - Interior shots: modern kitchens, open living spaces
@@ -171,12 +190,18 @@ export async function POST(req: NextRequest) {
   const project = projectData as {
     id: string;
     title: string;
+    project_type: string | null;
     ai_script: Record<string, unknown> | null;
     seo_data: Record<string, unknown> | null;
+    listing_data: Record<string, unknown> | null;
   };
 
   const aiScript = project.ai_script as Record<string, unknown> | null;
   const seoData = project.seo_data as Record<string, unknown> | null;
+  const listingData = project.listing_data as Record<string, unknown> | null;
+  const listingPhotos = (listingData?.photoUrls as string[] | undefined)?.filter(
+    (u) => typeof u === "string" && u.startsWith("http"),
+  ) ?? [];
 
   const rawScript = script || (aiScript?.script as string) || project.title;
   const safeScript = clampScript(rawScript);
@@ -231,6 +256,8 @@ export async function POST(req: NextRequest) {
     const ctaPreference = (aiScript?.cta_preference as string) || undefined;
     const phones = Array.from(new Set([profile.phone, profile.company_phone].filter(Boolean))) as string[];
 
+    const listingAddress = (listingData?.address as string | undefined) || undefined;
+
     const prompt = buildVideoAgentPrompt({
       script: safeScript,
       city,
@@ -246,6 +273,8 @@ export async function POST(req: NextRequest) {
       keywords: aiKeywords,
       isShortForm,
       hookText,
+      listingAddress,
+      listingPhotoCount: listingPhotos.length,
     });
 
     const voiceId = profile.heygen_voice_id
@@ -260,6 +289,11 @@ export async function POST(req: NextRequest) {
     const files: VideoAgentFile[] = [];
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
+    }
+    // Attach listing photos as files so the Video Agent uses them as primary b-roll.
+    // Cap at 12 to keep the agent responsive — matches the upload limit.
+    for (const url of listingPhotos.slice(0, 12)) {
+      files.push({ type: "url", url });
     }
 
     const { data: videoRow } = await admin
