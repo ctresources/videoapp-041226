@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
+  Upload, FileText,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 
-type Step = "url" | "scraping" | "review" | "generating";
+type Step = "url" | "scraping" | "review" | "generating" | "parsing-file";
 
 const EMPTY_LISTING: ListingData = {
   address: "",
@@ -40,6 +41,8 @@ export function ListingVideoForm() {
   const [listing, setListing] = useState<ListingData>(EMPTY_LISTING);
   const [newFeature, setNewFeature] = useState("");
   const [manualMode, setManualMode] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Scrape ─────────────────────────────────────────────────────────────────
   async function handleScrape() {
@@ -65,6 +68,45 @@ export function ListingVideoForm() {
     setManualMode(true);
     setListing(EMPTY_LISTING);
     setStep("review");
+  }
+
+  // ── Upload File (any type) ─────────────────────────────────────────────────
+  async function handleFileUpload(file: File) {
+    if (file.size > 50 * 1024 * 1024) {
+      return toast.error("File is too large. Max 50MB.");
+    }
+    setUploadedFileName(file.name);
+    setStep("parsing-file");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/ai/parse-listing-file", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setListing(data.listing);
+      setManualMode(true);
+      setStep("review");
+
+      if (data.warning) {
+        toast(data.warning, { icon: "ℹ️" });
+      } else if (data.listing?.address) {
+        toast.success(`Imported details from ${file.name}`);
+      } else {
+        toast(`Uploaded ${file.name} — please fill in any missing fields`, { icon: "ℹ️" });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not read file");
+      setStep("url");
+      setUploadedFileName(null);
+    }
   }
 
   // ── Generate ───────────────────────────────────────────────────────────────
@@ -134,6 +176,32 @@ export function ListingVideoForm() {
           <div className="flex-1 h-px bg-slate-200" />
         </div>
 
+        {/* Upload any file type — PDF flyer, MLS export, doc, image, etc. */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600"
+        >
+          <Upload size={16} />
+          <span className="flex-1 text-left">
+            Upload listing file
+            <span className="block text-xs text-slate-400 font-normal mt-0.5">
+              PDF flyer, MLS export, Word, CSV, image — any file type
+            </span>
+          </span>
+          <ArrowRight size={14} className="text-slate-400" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleFileUpload(f);
+            // Reset so the same file can be re-selected
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+        />
+
         <button
           onClick={handleManual}
           className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600"
@@ -162,6 +230,23 @@ export function ListingVideoForm() {
         <div>
           <p className="font-semibold text-brand-text">Reading listing details…</p>
           <p className="text-sm text-slate-400 mt-1">Importing from {new URL(url).hostname}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Parsing uploaded file step ─────────────────────────────────────────────
+  if (step === "parsing-file") {
+    return (
+      <div className="flex flex-col items-center py-12 gap-4 text-center">
+        <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center">
+          <FileText className="w-8 h-8 text-primary-500 animate-pulse" />
+        </div>
+        <div>
+          <p className="font-semibold text-brand-text">Reading your file…</p>
+          <p className="text-sm text-slate-400 mt-1 truncate max-w-xs">
+            {uploadedFileName || "Extracting listing details"}
+          </p>
         </div>
       </div>
     );
