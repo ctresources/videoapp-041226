@@ -10,6 +10,32 @@ import {
   Upload, FileText, Camera, Trash2,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Upload a single image directly from the browser to Supabase Storage.
+ * Bypasses Vercel's ~4.5MB serverless body limit. RLS policy
+ * "Users upload own assets" allows authenticated users to write to
+ * `assets/{userId}/...`. Returns the public URL.
+ */
+async function uploadPhotoToStorage(file: File): Promise<string> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in to upload photos");
+
+  const extFromType = (file.type.split("/")[1] || "jpg").toLowerCase();
+  const ext = extFromType.includes("jpeg") ? "jpg" : extFromType.replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${user.id}/listing-photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("assets")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) throw new Error(error.message || "Upload failed");
+
+  const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(path);
+  return publicUrl;
+}
 
 type Step = "url" | "scraping" | "review" | "generating" | "parsing-file";
 
@@ -76,9 +102,42 @@ export function ListingVideoForm() {
 
   // ── Upload File (any type) ─────────────────────────────────────────────────
   async function handleFileUpload(file: File) {
-    if (file.size > 60 * 1024 * 1024) {
-      return toast.error("File is too large. Max 60MB.");
+    // If the user picks an image here, treat it as a listing photo (not a doc).
+    // This avoids the "couldn't read file" warning when an image was uploaded
+    // to the parser, and lets them keep adding photos.
+    if (file.type.startsWith("image/")) {
+      if (file.size > 15 * 1024 * 1024) {
+        return toast.error("Photo is too large. Max 15 MB per photo.");
+      }
+      setUploadedFileName(file.name);
+      setUploadingPhotos(true);
+      try {
+        const url = await uploadPhotoToStorage(file);
+        setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, url] }));
+        setManualMode(true);
+        setStep("review");
+        toast.success(`Added ${file.name} to listing photos`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not upload photo");
+        setStep("url");
+      } finally {
+        setUploadingPhotos(false);
+        setUploadedFileName(null);
+      }
+      return;
     }
+
+    // Vercel serverless body limit on the parse-file endpoint is ~4.5 MB.
+    // Anything larger will be rejected at the platform layer before our code
+    // runs, so we cap the client-side check here too.
+    const PARSE_FILE_MAX_MB = 4;
+    if (file.size > PARSE_FILE_MAX_MB * 1024 * 1024) {
+      return toast.error(
+        `File is too large. Max ${PARSE_FILE_MAX_MB} MB for documents. ` +
+        `For larger files, switch to Manual entry below.`,
+      );
+    }
+
     setUploadedFileName(file.name);
     setStep("parsing-file");
     try {
@@ -89,13 +148,21 @@ export function ListingVideoForm() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
+
+      // Some platform errors (413, 502) return non-JSON bodies. Guard the parse.
+      const text = await res.text();
+      let data: { error?: string; listing?: ListingData; warning?: string } = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { /* non-JSON body */ }
 
       if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
+        throw new Error(
+          data.error ||
+          (res.status === 413 ? "File is too large for the document parser. Try Manual entry." :
+           `Upload failed (${res.status})`),
+        );
       }
 
-      setListing(data.listing);
+      if (data.listing) setListing(data.listing);
       setManualMode(true);
       setStep("review");
 
@@ -138,26 +205,28 @@ export function ListingVideoForm() {
     }
 
     setUploadingPhotos(true);
-    try {
-      const formData = new FormData();
-      for (const f of batch) formData.append("photos", f);
+    let okCount = 0;
+    const failures: string[] = [];
 
-      const res = await fetch("/api/ai/upload-listing-photos", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+    // Upload each photo directly browser→Supabase (bypasses Vercel limits).
+    // Run sequentially so one failure doesn't kill the rest.
+    for (const f of batch) {
+      try {
+        const url = await uploadPhotoToStorage(f);
+        setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, url] }));
+        okCount++;
+      } catch (err) {
+        failures.push(`${f.name}: ${err instanceof Error ? err.message : "upload failed"}`);
+      }
+    }
 
-      setListing((l) => ({
-        ...l,
-        photoUrls: [...l.photoUrls, ...(data.photoUrls as string[])],
-      }));
-      toast.success(`Uploaded ${batch.length} photo${batch.length === 1 ? "" : "s"}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not upload photos");
-    } finally {
-      setUploadingPhotos(false);
+    setUploadingPhotos(false);
+
+    if (okCount > 0) {
+      toast.success(`Uploaded ${okCount} photo${okCount === 1 ? "" : "s"}`);
+    }
+    if (failures.length > 0) {
+      toast.error(failures.length === 1 ? failures[0] : `${failures.length} photos failed to upload`);
     }
   }
 
@@ -244,7 +313,7 @@ export function ListingVideoForm() {
           <span className="flex-1 text-left">
             Upload listing file
             <span className="block text-xs text-slate-400 font-normal mt-0.5">
-              PDF flyer, MLS export, Word, CSV, image — any file type
+              Documents (PDF, MLS export, Word, CSV) up to 4 MB · or drop a property photo
             </span>
           </span>
           <ArrowRight size={14} className="text-slate-400" />
