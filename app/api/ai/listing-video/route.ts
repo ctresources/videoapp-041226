@@ -47,6 +47,13 @@ INSTRUCTIONS:
 - Do NOT mention schools, churches, demographics, neighborhood composition, or anything that could violate Fair Housing laws
 - Naturally include Fair Housing Equal Opportunity language at the very end
 
+PRONUNCIATION RULES (CRITICAL — this is a voiceover, every word will be SPOKEN):
+- ALWAYS spell out street-suffix abbreviations as full words: "Ln" → "Lane", "St" → "Street", "Rd" → "Road", "Ave" → "Avenue", "Blvd" → "Boulevard", "Dr" → "Drive", "Ct" → "Court", "Cir" → "Circle", "Pl" → "Place", "Pkwy" → "Parkway", "Hwy" → "Highway", "Ter" → "Terrace", "Trl" → "Trail", "Pt" → "Point", "Sq" → "Square"
+- ALWAYS spell out directional abbreviations: "N" → "North", "S" → "South", "E" → "East", "W" → "West", "NE" → "Northeast", "NW" → "Northwest", "SE" → "Southeast", "SW" → "Southwest"
+- ALWAYS spell out unit abbreviations: "Apt" → "Apartment", "Ste" → "Suite", "Bldg" → "Building"
+- Do NOT include any phone numbers in the script. Do NOT prepend "1" to any number. Phone numbers appear on-screen via overlays — never spoken in the narration.
+- If you mention an address, write it the way a human would say it out loud (e.g. "123 Oak Lane" not "123 Oak Ln")
+
 Return ONLY a JSON object:
 {
   "title": "short listing video title (max 60 chars)",
