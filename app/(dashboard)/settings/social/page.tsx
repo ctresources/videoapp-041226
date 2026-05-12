@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, CheckCircle, Link2Off, ExternalLink, Key,
   RefreshCw, PlayCircle, Camera, Music2,
-  Share2, Globe, AtSign, Youtube, AlertTriangle, Loader2,
+  Share2, Globe, AtSign, AlertTriangle, Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
@@ -142,11 +142,11 @@ function SocialSettingsContent() {
         </div>
       </div>
 
-      {/* ── Native YouTube ───────────────────────────────────────────────── */}
+      {/* ── Native YouTube ───────────────────────────────────────────────────── */}
       <Card className="mb-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
-            <Youtube size={22} className="text-red-500" />
+            <PlayCircle size={22} className="text-red-500" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -189,7 +189,7 @@ function SocialSettingsContent() {
                 </p>
                 <a href="/api/auth/youtube">
                   <Button className="gap-2">
-                    <Youtube size={15} /> Connect YouTube Channel
+                    <PlayCircle size={15} /> Connect YouTube Channel
                   </Button>
                 </a>
               </>
@@ -211,7 +211,7 @@ function SocialSettingsContent() {
         )}
       </Card>
 
-      {/* ── Blotato (other platforms) ────────────────────────────────────── */}
+      {/* ── Blotato (other platforms) ──────────────────────────────────────────────── */}
       <Card className="mb-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-secondary-50 rounded-xl flex items-center justify-center shrink-0">
