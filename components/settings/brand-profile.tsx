@@ -692,52 +692,6 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
               className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-        </div>
-      </div>
-
-      <div className="border-t border-slate-100" />
-
-      {/* ── Photos & Branding ─────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Photos & Branding</p>
-        <div className="flex flex-col gap-5">
-
-          {/* Talking avatar photo — uploads to avatar_url + registers heygen_photo_id */}
-          <TalkingAvatarUploader
-            userId={userId}
-            currentPhotoId={fields.heygen_photo_id || null}
-            currentAvatarUrl={fields.avatar_url || null}
-            onUpdate={(photoId, avatarUrl) => {
-              set("heygen_photo_id", photoId || "");
-              set("avatar_url", avatarUrl);
-            }}
-          />
-
-          {/* Avatar looks — different outfits/backgrounds for the same avatar */}
-          <AvatarLooksManager
-            userId={userId}
-            hasAvatar={!!fields.heygen_photo_id}
-          />
-
-          <ImageUploader
-            label="Brokerage Logo"
-            hint="Appears as a watermark on your videos. PNG with transparent background recommended."
-            bucket="assets"
-            path={`${userId}/logo`}
-            currentUrl={fields.logo_url || null}
-            onUploaded={(url) => set("logo_url", url)}
-            shape="square"
-            icon={ImageIcon}
-          />
-        </div>
-      </div>
-
-      <div className="border-t border-slate-100" />
-
-      {/* ── Additional Info ────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Additional Info</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1">
               <Globe size={11} /> Website
@@ -762,6 +716,44 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
               className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
+          <div className="sm:col-span-2">
+            <ImageUploader
+              label="Brokerage Logo"
+              hint="Appears as a watermark on your videos. PNG with transparent background recommended."
+              bucket="assets"
+              path={`${userId}/logo`}
+              currentUrl={fields.logo_url || null}
+              onUploaded={(url) => set("logo_url", url)}
+              shape="square"
+              icon={ImageIcon}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-slate-100" />
+
+      {/* ── Avatar ────────────────────────────────────────────────────────── */}
+      <div>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Your Avatar</p>
+        <div className="flex flex-col gap-5">
+
+          {/* Talking avatar photo — uploads to avatar_url + registers heygen_photo_id */}
+          <TalkingAvatarUploader
+            userId={userId}
+            currentPhotoId={fields.heygen_photo_id || null}
+            currentAvatarUrl={fields.avatar_url || null}
+            onUpdate={(photoId, avatarUrl) => {
+              set("heygen_photo_id", photoId || "");
+              set("avatar_url", avatarUrl);
+            }}
+          />
+
+          {/* Avatar looks — different outfits/backgrounds for the same avatar */}
+          <AvatarLooksManager
+            userId={userId}
+            hasAvatar={!!fields.heygen_photo_id}
+          />
         </div>
       </div>
 
