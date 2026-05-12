@@ -125,7 +125,9 @@ export default function ProjectEditorPage() {
       const res = await fetch("/api/avatar/looks");
       if (res.ok) {
         const data = await res.json();
-        const list: AvatarLook[] = data.looks || [];
+        const list: AvatarLook[] = (data.looks || []).filter(
+          (l: AvatarLook) => !l.status || l.status === "completed"
+        );
         setLooks(list);
         if (list.length > 0) setSelectedLookId(list[0].id);
       }

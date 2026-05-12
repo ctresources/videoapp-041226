@@ -690,7 +690,7 @@ export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
     if (!res.ok) break;
     const data = await res.json();
     const page: AvatarLook[] = data.data || [];
-    looks.push(...page.filter((l) => !l.status || l.status === "completed"));
+    looks.push(...page);
     token = data.has_more ? data.next_token : undefined;
   } while (token);
 
