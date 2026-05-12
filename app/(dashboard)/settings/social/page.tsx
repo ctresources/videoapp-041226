@@ -10,7 +10,7 @@ import {
   Share2, Globe, AtSign, Youtube, AlertTriangle, Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -35,7 +35,7 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100" },
 };
 
-export default function SocialSettingsPage() {
+function SocialSettingsContent() {
   const searchParams = useSearchParams();
 
   const [apiKey, setApiKey] = useState("");
@@ -349,5 +349,13 @@ export default function SocialSettingsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function SocialSettingsPage() {
+  return (
+    <Suspense>
+      <SocialSettingsContent />
+    </Suspense>
   );
 }
