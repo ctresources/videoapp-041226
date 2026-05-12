@@ -7,18 +7,20 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, CheckCircle, Link2Off, ExternalLink, Key,
   RefreshCw, PlayCircle, Camera, Music2,
-  Share2, Globe, AtSign
+  Share2, Globe, AtSign, Youtube, AlertTriangle, Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
-interface BlotatoAccount {
+interface SocialAccount {
   id: string;
   platform: string;
   name: string;
   username?: string;
   avatarUrl?: string;
+  source?: "native" | "blotato";
 }
 
 const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
@@ -33,23 +35,38 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100" },
 };
 
-export default function SocialSettingsPage() {
+function SocialSettingsContent() {
+  const searchParams = useSearchParams();
+
   const [apiKey, setApiKey] = useState("");
   const [savedKey, setSavedKey] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<BlotatoAccount[]>([]);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [youtubeConnected, setYoutubeConnected] = useState(false);
+  const [youtubeChannel, setYoutubeChannel] = useState<SocialAccount | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [disconnectingYT, setDisconnectingYT] = useState(false);
 
-  useEffect(() => { loadAccounts(); }, []);
+  useEffect(() => {
+    // Show toast based on OAuth redirect result
+    const ytParam = searchParams.get("youtube");
+    const ytError = searchParams.get("youtube_error");
+    if (ytParam === "connected") toast.success("YouTube channel connected!");
+    if (ytError) toast.error(`YouTube error: ${ytError}`);
+    loadAccounts();
+  }, []); // eslint-disable-line
 
   async function loadAccounts() {
     setLoading(true);
     const res = await fetch("/api/social/accounts");
     if (res.ok) {
-      const { accounts: data, connected } = await res.json();
-      setAccounts(data || []);
-      if (connected) setSavedKey("••••••••••••••••");
+      const { accounts: data, connected, youtubeConnected: ytConnected } = await res.json();
+      const all: SocialAccount[] = data || [];
+      setAccounts(all.filter((a) => a.source !== "native"));
+      setYoutubeConnected(!!ytConnected);
+      setYoutubeChannel(all.find((a) => a.id === "native_youtube") ?? null);
+      if (connected && all.some((a) => a.source === "blotato")) setSavedKey("••••••••••••••••");
     }
     setLoading(false);
   }
@@ -65,7 +82,7 @@ export default function SocialSettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Invalid key");
-      setAccounts(data.accounts || []);
+      setAccounts((data.accounts || []).map((a: SocialAccount) => ({ ...a, source: "blotato" })));
       setSavedKey("••••••••••••••••");
       setApiKey("");
       toast.success(`Connected! ${data.accounts?.length || 0} social accounts found.`);
@@ -76,12 +93,27 @@ export default function SocialSettingsPage() {
     }
   }
 
-  async function handleDisconnect() {
+  async function handleDisconnectBlotato() {
     const res = await fetch("/api/social/accounts", { method: "DELETE" });
     if (res.ok) {
       setSavedKey(null);
       setAccounts([]);
       toast.success("Blotato disconnected");
+    }
+  }
+
+  async function handleDisconnectYouTube() {
+    setDisconnectingYT(true);
+    try {
+      const res = await fetch("/api/auth/youtube", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to disconnect");
+      setYoutubeConnected(false);
+      setYoutubeChannel(null);
+      toast.success("YouTube disconnected");
+    } catch {
+      toast.error("Failed to disconnect YouTube");
+    } finally {
+      setDisconnectingYT(false);
     }
   }
 
@@ -92,7 +124,8 @@ export default function SocialSettingsPage() {
     toast.success("Accounts refreshed");
   }
 
-  const isConnected = !!savedKey;
+  const isBlotato = !!savedKey;
+  const blotatoAccounts = accounts.filter((a) => a.source !== "native");
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -105,11 +138,80 @@ export default function SocialSettingsPage() {
         </Link>
         <div>
           <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Connect once — post to 10 platforms from one place</p>
+          <p className="text-sm text-slate-500 mt-0.5">Connect once — post to YouTube and other platforms directly from the app</p>
         </div>
       </div>
 
-      {/* Blotato connection card */}
+      {/* ── Native YouTube ───────────────────────────────────────────────── */}
+      <Card className="mb-5">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
+            <Youtube size={22} className="text-red-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-brand-text">YouTube</h3>
+              {youtubeConnected && (
+                <Badge variant="success" className="text-xs gap-1">
+                  <CheckCircle size={11} /> Connected
+                </Badge>
+              )}
+            </div>
+
+            {youtubeConnected && youtubeChannel ? (
+              <div className="flex items-center gap-3">
+                {youtubeChannel.avatarUrl && (
+                  <img
+                    src={youtubeChannel.avatarUrl}
+                    alt="channel"
+                    className="w-8 h-8 rounded-full border border-slate-200"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-brand-text truncate">{youtubeChannel.name}</p>
+                  <p className="text-xs text-slate-400 truncate">Channel ID: {youtubeChannel.username}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDisconnectYouTube}
+                  disabled={disconnectingYT}
+                  className="text-red-500 hover:bg-red-50 gap-1.5 shrink-0"
+                >
+                  {disconnectingYT ? <Loader2 size={13} className="animate-spin" /> : <Link2Off size={13} />}
+                  Disconnect
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 mb-4">
+                  Connect your YouTube channel to publish videos directly — no third-party tools required.
+                </p>
+                <a href="/api/auth/youtube">
+                  <Button className="gap-2">
+                    <Youtube size={15} /> Connect YouTube Channel
+                  </Button>
+                </a>
+              </>
+            )}
+          </div>
+        </div>
+
+        {!youtubeConnected && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="flex items-start gap-2 text-xs text-slate-400">
+              <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-400" />
+              <span>
+                Requires <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong> in your environment.{" "}
+                Set these up in Google Cloud Console → YouTube Data API v3 → OAuth 2.0 credentials.
+                Redirect URI: <code className="bg-slate-100 px-1 rounded">/api/auth/youtube/callback</code>
+              </span>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Blotato (other platforms) ────────────────────────────────────── */}
       <Card className="mb-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-secondary-50 rounded-xl flex items-center justify-center shrink-0">
@@ -117,20 +219,20 @@ export default function SocialSettingsPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-brand-text">Social Publishing API Key</h3>
-              {isConnected && (
+              <h3 className="font-semibold text-brand-text">Other Platforms (Blotato)</h3>
+              {isBlotato && (
                 <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle size={11} /> Connected
                 </Badge>
               )}
             </div>
             <p className="text-sm text-slate-500 mb-4">
-              {isConnected
-                ? "Your social accounts are connected via Blotato. All your channels below are ready for posting."
-                : "Enter your Blotato API key to connect all your social accounts at once."}
+              {isBlotato
+                ? "Instagram, TikTok, LinkedIn and more are connected via Blotato."
+                : "Enter your Blotato API key to connect Instagram, TikTok, LinkedIn, Facebook, and more."}
             </p>
 
-            {isConnected ? (
+            {isBlotato ? (
               <div className="flex items-center gap-3">
                 <code className="text-sm bg-slate-100 px-3 py-1.5 rounded-lg text-slate-500 flex-1">{savedKey}</code>
                 <Button
@@ -145,7 +247,7 @@ export default function SocialSettingsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleDisconnect}
+                  onClick={handleDisconnectBlotato}
                   className="text-red-500 hover:bg-red-50 gap-1.5 shrink-0"
                 >
                   <Link2Off size={13} /> Disconnect
@@ -169,7 +271,7 @@ export default function SocialSettingsPage() {
           </div>
         </div>
 
-        {!isConnected && (
+        {!isBlotato && (
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
             <p className="text-xs text-slate-400">Get your API key from your Blotato account settings</p>
             <a
@@ -184,12 +286,12 @@ export default function SocialSettingsPage() {
         )}
       </Card>
 
-      {/* Connected accounts list */}
-      {isConnected && (
+      {/* Connected Blotato accounts list */}
+      {isBlotato && (
         <>
           <div className="flex items-center justify-between mb-3 px-1">
             <p className="text-sm font-medium text-slate-600">
-              {accounts.length} connected channel{accounts.length !== 1 ? "s" : ""}
+              {blotatoAccounts.length} connected channel{blotatoAccounts.length !== 1 ? "s" : ""}
             </p>
             <a
               href="https://app.blotato.com/accounts"
@@ -207,7 +309,7 @@ export default function SocialSettingsPage() {
                 <div key={i} className="h-16 bg-slate-100 rounded-2xl animate-pulse" />
               ))}
             </div>
-          ) : accounts.length === 0 ? (
+          ) : blotatoAccounts.length === 0 ? (
             <Card className="text-center py-10">
               <p className="text-sm text-slate-500 mb-2">No accounts found in Blotato yet</p>
               <a href="https://app.blotato.com/accounts" target="_blank" rel="noreferrer">
@@ -218,7 +320,7 @@ export default function SocialSettingsPage() {
             </Card>
           ) : (
             <div className="flex flex-col gap-3">
-              {accounts.map((account) => {
+              {blotatoAccounts.map((account) => {
                 const meta = PLATFORM_META[account.platform.toLowerCase()] || PLATFORM_META.youtube;
                 const Icon = meta.icon;
                 return (
@@ -244,18 +346,16 @@ export default function SocialSettingsPage() {
               })}
             </div>
           )}
-
-          {/* Info */}
-          <div className="mt-5 bg-primary-50 border border-primary-100 rounded-2xl p-4">
-            <p className="text-sm font-medium text-primary-700 mb-1">How it works</p>
-            <p className="text-sm text-primary-600 leading-relaxed">
-              When you click <strong>Publish to Social</strong> on any video, we upload it to Blotato
-              and post simultaneously to every platform you select — including YouTube, Instagram Reels,
-              TikTok, LinkedIn, and more. Scheduling uses Blotato&apos;s built-in queue.
-            </p>
-          </div>
         </>
       )}
     </div>
+  );
+}
+
+export default function SocialSettingsPage() {
+  return (
+    <Suspense>
+      <SocialSettingsContent />
+    </Suspense>
   );
 }
