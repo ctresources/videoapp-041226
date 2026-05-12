@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ interface AvatarLook {
 
 export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasAvatar: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -23,12 +24,10 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [consentLoading, setConsentLoading] = useState(false);
 
-  useEffect(() => {
-    if (hasAvatar) fetchLooks();
-  }, [hasAvatar]); // eslint-disable-line
+  const PENDING_STATUSES = ["processing", "pending_consent"];
 
-  async function fetchLooks() {
-    setLoading(true);
+  const fetchLooks = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/avatar/looks");
       if (res.ok) {
@@ -36,9 +35,32 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
         setLooks(data.looks || []);
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }
+  }, []);
+
+  // Start/stop polling based on whether any look is still in a pending state
+  useEffect(() => {
+    const hasPending = looks.some((l) => l.status && PENDING_STATUSES.includes(l.status));
+
+    if (hasPending && !pollRef.current) {
+      pollRef.current = setInterval(() => fetchLooks(true), 15_000);
+    } else if (!hasPending && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [looks, fetchLooks]); // eslint-disable-line
+
+  useEffect(() => {
+    if (hasAvatar) fetchLooks();
+  }, [hasAvatar, fetchLooks]);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -236,7 +258,7 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
 
       {looks.some((l) => l.status === "processing") && (
         <p className="text-xs text-amber-600 flex items-center gap-1">
-          <Clock size={11} /> Some looks are still training — hit refresh in a few minutes.
+          <Loader2 size={11} className="animate-spin" /> Training in progress — status updates automatically.
         </p>
       )}
 
