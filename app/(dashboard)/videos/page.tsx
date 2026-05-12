@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { createClient } from "@/lib/supabase/client";
+import { isExpiredHeygenUrl } from "@/lib/utils/store-video";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film,
@@ -270,8 +271,30 @@ function VideosContent() {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    setVideos((data as unknown as GeneratedVideo[]) || []);
+    const videos = (data as unknown as GeneratedVideo[]) || [];
+    setVideos(videos);
     setLoading(false);
+
+    // Silently refresh any completed videos with expired HeyGen signed URLs
+    const expired = videos.filter(
+      (v) => v.render_status === "completed" && v.video_url && isExpiredHeygenUrl(v.video_url)
+    );
+    for (const v of expired) {
+      fetch("/api/video/refresh-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: v.id }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.videoUrl) {
+            setVideos((prev) =>
+              prev.map((vid) => vid.id === v.id ? { ...vid, video_url: d.videoUrl } : vid)
+            );
+          }
+        })
+        .catch(() => {/* silent — keep showing old URL */});
+    }
   }, []);
 
   useEffect(() => { loadVideos(); }, [loadVideos]);
