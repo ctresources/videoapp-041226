@@ -269,9 +269,10 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
+    const avatarId = edits.avatarId || p.heygen_photo_id;
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: p.heygen_photo_id,
+      avatarId,
       voiceId,
       orientation,
       callbackUrl,
@@ -292,7 +293,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[rerender] Video Agent session ${sessionId} submitted (avatar: ${p.heygen_photo_id}, voice: ${voiceId})`);
+    console.log(`[rerender] Video Agent session ${sessionId} submitted (avatar: ${avatarId}, voice: ${voiceId})`);
     return NextResponse.json({
       video: { ...newVideo, render_job_id: sessionId, render_status: "rendering" },
     });

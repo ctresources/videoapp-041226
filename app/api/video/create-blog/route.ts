@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -411,9 +411,10 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
+    const avatarId = lookId || profile.heygen_photo_id;
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: profile.heygen_photo_id,
+      avatarId,
       voiceId,
       orientation,
       files: files.length > 0 ? files : undefined,
@@ -435,7 +436,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[create-blog] Video Agent session ${sessionId} submitted (avatar: ${profile.heygen_photo_id}, voice: ${voiceId})`);
+    console.log(`[create-blog] Video Agent session ${sessionId} submitted (avatar: ${avatarId}, voice: ${voiceId})`);
     return NextResponse.json({
       video: {
         ...videoRow,

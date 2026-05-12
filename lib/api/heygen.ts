@@ -27,6 +27,17 @@ function getApiKey(): string {
 
 export type VideoType = "blog_long" | "youtube_16x9" | "reel_9x16" | "short_1x1";
 
+export interface AvatarLook {
+  id: string;
+  name: string;
+  avatar_type: string;
+  group_id: string | null;
+  gender: string | null;
+  preview_image_url: string | null;
+  preview_video_url: string | null;
+  status: string | null;
+}
+
 export const DIMENSIONS: Record<VideoType, { width: number; height: number }> = {
   blog_long:    { width: 1920, height: 1080 },
   youtube_16x9: { width: 1920, height: 1080 },
@@ -621,6 +632,35 @@ export async function getCinematicStyleId(): Promise<string | null> {
   }
 }
 
+
+/**
+ * Fetch all completed looks for an avatar group (GET /v3/avatars/looks).
+ * Pass a look's `id` as `avatar_id` when creating a video.
+ */
+export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
+  const looks: AvatarLook[] = [];
+  let token: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      group_id: groupId,
+      ownership: "private",
+      limit: "50",
+      ...(token ? { token } : {}),
+    });
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/looks?${params}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    const page: AvatarLook[] = data.data || [];
+    looks.push(...page.filter((l) => !l.status || l.status === "completed"));
+    token = data.has_more ? data.next_token : undefined;
+  } while (token);
+
+  console.log(`[heygen] getAvatarLooks(${groupId}): ${looks.length} looks`);
+  return looks;
+}
 
 /**
  * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
