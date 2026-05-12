@@ -89,11 +89,13 @@ NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
 ${params.script}
 
 =====================================
-VISUAL DIRECTION
+AVATAR PRESENTATION
 =====================================
-- Full-body avatar presenter on screen — confident, approachable, professional
-- Seamlessly intercut with cinematic b-roll of ${locationOr}
-- CRITICAL: Frame must be 100% filled at ALL times — no empty space, no black bars
+- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
+- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
+- Apply a clean white or soft gold circular border around the PiP
+- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
+- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
 
 =====================================
 B-ROLL
@@ -240,10 +242,15 @@ export async function POST(req: NextRequest) {
       hookText,
     });
 
-    const voiceId = edits.voiceId
-      || p.heygen_voice_id
-      || await getPrivateVoiceId().catch(() => null)
-      || await getDefaultEnglishVoiceId().catch(() => null);
+    let voiceId = edits.voiceId || p.heygen_voice_id;
+    if (!voiceId) {
+      const privateVoiceId = await getPrivateVoiceId().catch(() => null);
+      if (privateVoiceId) {
+        voiceId = privateVoiceId;
+        admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id).catch(() => {});
+      }
+    }
+    voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
