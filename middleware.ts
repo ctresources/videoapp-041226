@@ -29,7 +29,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession reads from cookie — no network call, stays within middleware timeout
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // Logged-in users visiting auth pages → redirect to dashboard
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
@@ -54,18 +56,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Onboarding check — authenticated users who haven't completed onboarding
-  if (user && pathname.startsWith("/dashboard")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_done")
-      .eq("id", user.id)
-      .single();
-
-    if (profile && !profile.onboarding_done) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-  }
+  // Onboarding check moved to /dashboard page (server component) to avoid
+  // extra DB round-trip on every middleware invocation.
 
   return supabaseResponse;
 }
