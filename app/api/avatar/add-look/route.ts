@@ -39,15 +39,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const imgRes = await fetch(image_url);
-    if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`);
-    const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
-    const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-
     const look = await addAvatarLook(
       profile.heygen_photo_id,
-      imageBuffer,
-      contentType,
+      image_url,
       name.trim(),
     );
 

@@ -170,38 +170,23 @@ export async function uploadTalkingPhoto(
 
 /**
  * Add a new look (outfit/style) to an existing photo avatar group via POST /v3/avatars.
+ * Passes the Supabase public URL directly — no intermediate asset upload needed.
  * Returns the new AvatarLookItem — status will be "processing" until training completes.
  */
 export async function addAvatarLook(
   groupId: string,
-  imageBuffer: Buffer,
-  contentType: string,
+  imageUrl: string,
   name: string,
 ): Promise<AvatarLook> {
   const apiKey = getApiKey();
 
-  // Step 1: upload image as asset
-  const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
-    method: "POST",
-    headers: { "x-api-key": apiKey, "Content-Type": contentType },
-    body: new Uint8Array(imageBuffer),
-  });
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text().catch(() => "unknown");
-    throw new Error(`HeyGen asset upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
-  }
-  const uploadData = await uploadRes.json();
-  const assetId = uploadData.data?.asset_id || uploadData.data?.image_key;
-  if (!assetId) throw new Error(`HeyGen returned no asset_id. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
-
-  // Step 2: create look in existing group
   const createRes = await fetch(`${HEYGEN_API}/v3/avatars`, {
     method: "POST",
     headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
       type: "photo",
       name,
-      file: { type: "asset_id", asset_id: assetId },
+      file: { type: "url", url: imageUrl },
       avatar_group_id: groupId,
     }),
   });
