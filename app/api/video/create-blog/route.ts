@@ -380,7 +380,7 @@ export async function POST(req: NextRequest) {
       if (privateVoiceId) {
         voiceId = privateVoiceId;
         // Save so future videos use it directly without a fallback lookup
-        admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id).catch(() => {});
+        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
       }
     }
     voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);

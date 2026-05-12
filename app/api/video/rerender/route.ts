@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);
       if (privateVoiceId) {
         voiceId = privateVoiceId;
-        admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id).catch(() => {});
+        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
       }
     }
     voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
