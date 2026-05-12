@@ -138,31 +138,33 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
     }
   }
 
-  if (!hasAvatar) {
-    return (
-      <div className="text-xs text-slate-400 italic">
-        Upload your headshot above to enable avatar looks.
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">Avatar Looks</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Different outfits or backgrounds for your avatar · each video you pick a look
+            Upload different photos of yourself (outfits, backgrounds) · choose a look per video
           </p>
         </div>
-        <button
-          onClick={fetchLooks}
-          title="Refresh looks"
-          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
-        >
-          <RefreshCw size={13} />
-        </button>
+        {hasAvatar && (
+          <button
+            onClick={() => fetchLooks()}
+            title="Refresh looks"
+            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+          >
+            <RefreshCw size={13} />
+          </button>
+        )}
       </div>
+
+      {!hasAvatar && (
+        <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+          Upload your headshot above first, then come back here to add multiple looks.
+        </p>
+      )}
+
+      {hasAvatar && (<>
 
       {loading ? (
         <div className="flex gap-2">
@@ -285,6 +287,7 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
       )}
 
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+      </>)}
     </div>
   );
 }
