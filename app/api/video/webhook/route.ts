@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
+import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+
+export const maxDuration = 120;
 
 /**
  * POST /api/video/webhook
@@ -102,11 +105,20 @@ export async function POST(req: NextRequest) {
       .eq("id", video.project_id);
   }
 
+  // ── Permanently store video in Supabase Storage ───────────────────────────
+  // Download from HeyGen's expiring signed URL and upload to our own bucket
+  // so the video URL never expires. Fire-and-forget; fallback to HeyGen URL.
+  let finalVideoUrl = videoUrl;
+  if (success && videoUrl) {
+    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id);
+    if (permanentUrl) finalVideoUrl = permanentUrl;
+  }
+
   // ── Fire CRM webhooks on video completion ─────────────────────────────────
-  if (success && video.user_id && videoUrl) {
+  if (success && video.user_id && finalVideoUrl) {
     publishWebhookEvent(video.user_id, "video.published", {
       video_id: video.id,
-      video_url: videoUrl,
+      video_url: finalVideoUrl,
       video_type: video.video_type,
       project_id: video.project_id,
     }).catch(console.error);
