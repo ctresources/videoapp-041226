@@ -699,6 +699,31 @@ export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
 }
 
 /**
+ * Initiate the HeyGen consent flow for an avatar group.
+ * Returns the URL the user must visit to approve their avatar.
+ * Only needed when a look has status "pending_consent".
+ */
+export async function getAvatarConsentUrl(
+  groupId: string,
+  rerouteUrl?: string,
+): Promise<string> {
+  const res = await fetch(`${HEYGEN_API}/v3/avatars/${groupId}/consent`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    body: JSON.stringify(rerouteUrl ? { reroute_url: rerouteUrl } : {}),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen consent initiation failed (${res.status}): ${err.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const url = data.data?.url;
+  if (!url) throw new Error("HeyGen returned no consent URL");
+  console.log(`[heygen] Consent URL for group ${groupId}: ${url}`);
+  return url;
+}
+
+/**
  * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
  * Used as fallback when profile.heygen_voice_id is not set.
  * No module-level caching — serverless instances can cache stale nulls across requests.

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw } from "lucide-react";
+import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface AvatarLook {
@@ -21,6 +21,7 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
   const [showNameInput, setShowNameInput] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [consentLoading, setConsentLoading] = useState(false);
 
   useEffect(() => {
     if (hasAvatar) fetchLooks();
@@ -56,6 +57,26 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
     setPreviewUrl(null);
     setShowNameInput(false);
     setLookName("");
+  }
+
+  async function handleRequestConsent() {
+    setConsentLoading(true);
+    try {
+      const rerouteUrl = `${window.location.origin}/settings`;
+      const res = await fetch("/api/avatar/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reroute_url: rerouteUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to get consent URL");
+      window.open(data.url, "_blank", "noopener");
+      toast.success("Complete consent in the new tab, then click refresh here.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start consent flow");
+    } finally {
+      setConsentLoading(false);
+    }
   }
 
   async function handleAddLook() {
@@ -148,6 +169,8 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
                     <CheckCircle size={14} className="text-green-500 bg-white rounded-full" />
                   ) : look.status === "processing" ? (
                     <Clock size={14} className="text-amber-500 bg-white rounded-full" />
+                  ) : look.status === "pending_consent" ? (
+                    <ShieldAlert size={14} className="text-purple-500 bg-white rounded-full" />
                   ) : look.status === "failed" ? (
                     <AlertCircle size={14} className="text-red-500 bg-white rounded-full" />
                   ) : null}
@@ -215,6 +238,28 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
         <p className="text-xs text-amber-600 flex items-center gap-1">
           <Clock size={11} /> Some looks are still training — hit refresh in a few minutes.
         </p>
+      )}
+
+      {looks.some((l) => l.status === "pending_consent") && (
+        <div className="flex items-start gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+          <ShieldAlert size={15} className="text-purple-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-purple-800">Consent required</p>
+            <p className="text-xs text-purple-600 mt-0.5">
+              HeyGen requires your approval before training can begin. Complete it in one click.
+            </p>
+            <button
+              onClick={handleRequestConsent}
+              disabled={consentLoading}
+              className="mt-2 flex items-center gap-1.5 text-xs font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50"
+            >
+              {consentLoading
+                ? <Loader2 size={11} className="animate-spin" />
+                : <ExternalLink size={11} />}
+              {consentLoading ? "Opening…" : "Complete consent →"}
+            </button>
+          </div>
+        </div>
       )}
 
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
