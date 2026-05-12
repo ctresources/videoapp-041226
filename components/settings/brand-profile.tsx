@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
@@ -710,6 +711,12 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
               set("heygen_photo_id", photoId || "");
               set("avatar_url", avatarUrl);
             }}
+          />
+
+          {/* Avatar looks — different outfits/backgrounds for the same avatar */}
+          <AvatarLooksManager
+            userId={userId}
+            hasAvatar={!!fields.heygen_photo_id}
           />
 
           <ImageUploader

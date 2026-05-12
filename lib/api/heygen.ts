@@ -27,6 +27,17 @@ function getApiKey(): string {
 
 export type VideoType = "blog_long" | "youtube_16x9" | "reel_9x16" | "short_1x1";
 
+export interface AvatarLook {
+  id: string;
+  name: string;
+  avatar_type: string;
+  group_id: string | null;
+  gender: string | null;
+  preview_image_url: string | null;
+  preview_video_url: string | null;
+  status: string | null;
+}
+
 export const DIMENSIONS: Record<VideoType, { width: number; height: number }> = {
   blog_long:    { width: 1920, height: 1080 },
   youtube_16x9: { width: 1920, height: 1080 },
@@ -153,6 +164,42 @@ export async function uploadTalkingPhoto(
 
   console.log(`[heygen] Talking photo avatar created: ${groupId}`);
   return groupId;
+}
+
+// ─── 1b. Add Look to Existing Avatar Group ───────────────────────────────────
+
+/**
+ * Add a new look (outfit/style) to an existing photo avatar group via POST /v3/avatars.
+ * Passes the Supabase public URL directly — no intermediate asset upload needed.
+ * Returns the new AvatarLookItem — status will be "processing" until training completes.
+ */
+export async function addAvatarLook(
+  groupId: string,
+  imageUrl: string,
+  name: string,
+): Promise<AvatarLook> {
+  const apiKey = getApiKey();
+
+  const createRes = await fetch(`${HEYGEN_API}/v3/avatars`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "photo",
+      name,
+      file: { type: "url", url: imageUrl },
+      avatar_group_id: groupId,
+    }),
+  });
+  if (!createRes.ok) {
+    const err = await createRes.text().catch(() => "unknown");
+    throw new Error(`HeyGen avatar creation failed (${createRes.status}): ${err.slice(0, 300)}`);
+  }
+  const createData = await createRes.json();
+  const item = createData.data?.avatar_item;
+  if (!item) throw new Error(`HeyGen returned no avatar_item. Response: ${JSON.stringify(createData).slice(0, 200)}`);
+
+  console.log(`[heygen] New look created: ${item.id} (${item.status})`);
+  return item as AvatarLook;
 }
 
 // ─── 2a. Upload Video Asset (for b-roll backgrounds) ────────────────────────
@@ -621,6 +668,60 @@ export async function getCinematicStyleId(): Promise<string | null> {
   }
 }
 
+
+/**
+ * Fetch all completed looks for an avatar group (GET /v3/avatars/looks).
+ * Pass a look's `id` as `avatar_id` when creating a video.
+ */
+export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
+  const looks: AvatarLook[] = [];
+  let token: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      group_id: groupId,
+      ownership: "private",
+      limit: "50",
+      ...(token ? { token } : {}),
+    });
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/looks?${params}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    const page: AvatarLook[] = data.data || [];
+    looks.push(...page);
+    token = data.has_more ? data.next_token : undefined;
+  } while (token);
+
+  console.log(`[heygen] getAvatarLooks(${groupId}): ${looks.length} looks`);
+  return looks;
+}
+
+/**
+ * Initiate the HeyGen consent flow for an avatar group.
+ * Returns the URL the user must visit to approve their avatar.
+ * Only needed when a look has status "pending_consent".
+ */
+export async function getAvatarConsentUrl(
+  groupId: string,
+  rerouteUrl?: string,
+): Promise<string> {
+  const res = await fetch(`${HEYGEN_API}/v3/avatars/${groupId}/consent`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    body: JSON.stringify(rerouteUrl ? { reroute_url: rerouteUrl } : {}),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen consent initiation failed (${res.status}): ${err.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const url = data.data?.url;
+  if (!url) throw new Error("HeyGen returned no consent URL");
+  console.log(`[heygen] Consent URL for group ${groupId}: ${url}`);
+  return url;
+}
 
 /**
  * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
