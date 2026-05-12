@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadMediaFromUrl, createPost, type PostTarget, type BlotatoPlatform } from "@/lib/api/blotato";
+import { getValidAccessToken, uploadVideoToYouTube } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 300;
 
 interface PostRequestTarget {
   accountId: string;
@@ -10,6 +13,7 @@ interface PostRequestTarget {
   title?: string;
   description?: string;
   privacy?: "public" | "unlisted" | "private";
+  source?: "native" | "blotato";
 }
 
 export async function POST(req: NextRequest) {
@@ -30,7 +34,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Load video + profile
   const [{ data: videoData }, { data: profileData }] = await Promise.all([
     admin.from("generated_videos")
       .select("*, projects(title, ai_script, seo_data)")
@@ -45,70 +48,126 @@ export async function POST(req: NextRequest) {
 
   const video = videoData as {
     video_url: string | null;
+    project_id: string | null;
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
   } | null;
 
   const blotatoKey = (profileData as { blotato_api_key: string | null } | null)?.blotato_api_key;
 
   if (!video?.video_url) return NextResponse.json({ error: "Video not ready" }, { status: 404 });
-  if (!blotatoKey) return NextResponse.json({ error: "Blotato API key not connected. Go to Settings → Social Accounts." }, { status: 400 });
 
-  try {
-    // Step 1: Upload video to Blotato (they host it for delivery)
-    const media = await uploadMediaFromUrl(blotatoKey, video.video_url, "video");
+  const aiScript = video.projects?.ai_script as Record<string, unknown> | null;
+  const seoData = video.projects?.seo_data as Record<string, unknown> | null;
+  const defaultTitle = String(aiScript?.title || video.projects?.title || "");
+  const defaultYouTubeDesc = String(seoData?.youtube_description || aiScript?.description || defaultTitle);
+  const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
 
-    // Step 2: Build platform targets with AI-generated copy
-    const aiScript = video.projects?.ai_script as Record<string, unknown> | null;
-    const seoData = video.projects?.seo_data as Record<string, unknown> | null;
-    const defaultTitle = String(aiScript?.title || video.projects?.title || "");
-    const defaultYouTubeDesc = String(seoData?.youtube_description || aiScript?.description || defaultTitle);
-    const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
+  const results: Array<{ platform: string; status: string; url?: string }> = [];
 
-    const postTargets: PostTarget[] = targets.map((t) => ({
-      accountId: t.accountId,
-      platform: t.platform,
-      // YouTube
-      title: t.title || defaultTitle,
-      description: t.description || defaultYouTubeDesc,
-      privacy: t.privacy || "public",
-      notifySubscribers: true,
-      // Instagram / TikTok / others
-      caption: t.caption || defaultCaption,
-      mediaType: "reel" as const,
-    }));
+  // ── Native YouTube targets ─────────────────────────────────────────────────
+  const nativeYouTubeTargets = targets.filter(
+    (t) => t.accountId === "native_youtube" || t.source === "native",
+  );
 
-    // Step 3: Post via Blotato (handles all platform APIs + OAuth)
-    const result = await createPost(blotatoKey, {
-      mediaId: media.id,
-      targets: postTargets,
-      scheduledAt,
-    });
+  if (nativeYouTubeTargets.length > 0) {
+    try {
+      const accessToken = await getValidAccessToken(user.id, admin);
+      const target = nativeYouTubeTargets[0];
 
-    // Step 4: Log in social_posts
-    await admin.from("social_posts").insert({
-      user_id: user.id,
-      video_id: videoId,
-      platform: targets.map((t) => t.platform).join(","),
-      post_id: result.id,
-      caption: defaultCaption,
-      posted_at: scheduledAt ? null : new Date().toISOString(),
-      status: scheduledAt ? "scheduled" : "published",
-      metadata: result as unknown as Record<string, unknown>,
-    });
+      const result = await uploadVideoToYouTube(accessToken, {
+        videoUrl: video.video_url,
+        title: target.title || defaultTitle,
+        description: target.description || defaultYouTubeDesc,
+        privacy: target.privacy || "public",
+      });
 
-    // Update project status
-    const { data: videoRow } = await admin.from("generated_videos").select("project_id").eq("id", videoId).single();
-    if (videoRow) {
-      await admin.from("projects")
-        .update({ status: scheduledAt ? "ready" : "posted" })
-        .eq("id", (videoRow as { project_id: string }).project_id);
+      await admin.from("social_posts").insert({
+        user_id: user.id,
+        video_id: videoId,
+        platform: "youtube",
+        post_url: result.youtubeUrl,
+        caption: target.description || defaultYouTubeDesc,
+        posted_at: scheduledAt ? null : new Date().toISOString(),
+        status: "published",
+        metadata: { youtube_video_id: result.videoId, source: "native_youtube" },
+      });
+
+      results.push({ platform: "youtube", status: "published", url: result.youtubeUrl });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "YouTube upload failed";
+      results.push({ platform: "youtube", status: "failed", url: msg });
+    }
+  }
+
+  // ── Blotato targets (everything else) ─────────────────────────────────────
+  const blotatoTargets = targets.filter(
+    (t) => t.accountId !== "native_youtube" && t.source !== "native",
+  );
+
+  if (blotatoTargets.length > 0) {
+    if (!blotatoKey) {
+      return NextResponse.json(
+        { error: "Blotato API key not connected. Go to Settings → Social Accounts.", results },
+        { status: 400 },
+      );
     }
 
-    return NextResponse.json({ success: true, postId: result.id, scheduledAt });
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Post failed" },
-      { status: 500 }
-    );
+    try {
+      const media = await uploadMediaFromUrl(blotatoKey, video.video_url, "video");
+
+      const postTargets: PostTarget[] = blotatoTargets.map((t) => ({
+        accountId: t.accountId,
+        platform: t.platform,
+        title: t.title || defaultTitle,
+        description: t.description || defaultYouTubeDesc,
+        privacy: t.privacy || "public",
+        notifySubscribers: true,
+        caption: t.caption || defaultCaption,
+        mediaType: "reel" as const,
+      }));
+
+      const result = await createPost(blotatoKey, {
+        mediaId: media.id,
+        targets: postTargets,
+        scheduledAt,
+      });
+
+      await admin.from("social_posts").insert({
+        user_id: user.id,
+        video_id: videoId,
+        platform: blotatoTargets.map((t) => t.platform).join(","),
+        post_id: result.id,
+        caption: defaultCaption,
+        posted_at: scheduledAt ? null : new Date().toISOString(),
+        status: scheduledAt ? "scheduled" : "published",
+        metadata: result as unknown as Record<string, unknown>,
+      });
+
+      results.push({
+        platform: blotatoTargets.map((t) => t.platform).join(","),
+        status: scheduledAt ? "scheduled" : "published",
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Blotato post failed";
+      results.push({ platform: "blotato", status: "failed", url: msg });
+    }
   }
+
+  // Update project status
+  if (video.project_id) {
+    const allFailed = results.every((r) => r.status === "failed");
+    if (!allFailed) {
+      await admin.from("projects")
+        .update({ status: scheduledAt ? "ready" : "posted" })
+        .eq("id", video.project_id);
+    }
+  }
+
+  const anySuccess = results.some((r) => r.status !== "failed");
+  return NextResponse.json({
+    success: anySuccess,
+    results,
+    scheduledAt,
+    youtubeUrl: results.find((r) => r.platform === "youtube")?.url,
+  });
 }
