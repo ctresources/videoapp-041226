@@ -166,6 +166,57 @@ export async function uploadTalkingPhoto(
   return groupId;
 }
 
+// ─── 1b. Add Look to Existing Avatar Group ───────────────────────────────────
+
+/**
+ * Add a new look (outfit/style) to an existing photo avatar group via POST /v3/avatars.
+ * Returns the new AvatarLookItem — status will be "processing" until training completes.
+ */
+export async function addAvatarLook(
+  groupId: string,
+  imageBuffer: Buffer,
+  contentType: string,
+  name: string,
+): Promise<AvatarLook> {
+  const apiKey = getApiKey();
+
+  // Step 1: upload image as asset
+  const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": contentType },
+    body: new Uint8Array(imageBuffer),
+  });
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text().catch(() => "unknown");
+    throw new Error(`HeyGen asset upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
+  }
+  const uploadData = await uploadRes.json();
+  const assetId = uploadData.data?.asset_id || uploadData.data?.image_key;
+  if (!assetId) throw new Error(`HeyGen returned no asset_id. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
+
+  // Step 2: create look in existing group
+  const createRes = await fetch(`${HEYGEN_API}/v3/avatars`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "photo",
+      name,
+      file: { type: "asset_id", asset_id: assetId },
+      avatar_group_id: groupId,
+    }),
+  });
+  if (!createRes.ok) {
+    const err = await createRes.text().catch(() => "unknown");
+    throw new Error(`HeyGen avatar creation failed (${createRes.status}): ${err.slice(0, 300)}`);
+  }
+  const createData = await createRes.json();
+  const item = createData.data?.avatar_item;
+  if (!item) throw new Error(`HeyGen returned no avatar_item. Response: ${JSON.stringify(createData).slice(0, 200)}`);
+
+  console.log(`[heygen] New look created: ${item.id} (${item.status})`);
+  return item as AvatarLook;
+}
+
 // ─── 2a. Upload Video Asset (for b-roll backgrounds) ────────────────────────
 
 /**
