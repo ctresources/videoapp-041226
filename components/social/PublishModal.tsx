@@ -186,7 +186,7 @@ export function PublishModal({
                       >
                         <Icon size={14} className={meta.color} />
                         <span className="font-medium text-brand-text text-xs">
-                          {account.username ? `@${account.username}` : meta.label}
+                          {account.name || meta.label}
                         </span>
                         {isSelected && <CheckCircle size={12} className="text-primary-500" />}
                       </button>
