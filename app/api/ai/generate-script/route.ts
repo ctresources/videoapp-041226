@@ -75,11 +75,14 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
+
     const seoData = {
       ...baseSeo,
       // Prefer SEO/GEO/AEO-optimized YouTube copy when available
       youtube_title: ytMeta?.youtube_title || baseSeo.youtube_title,
       youtube_description: ytMeta?.youtube_description || baseSeo.youtube_description,
+      thumbnail_url: thumbnailUrl,
     };
 
     // Create project

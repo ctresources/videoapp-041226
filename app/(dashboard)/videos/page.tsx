@@ -579,13 +579,14 @@ function VideosContent() {
       {publishingVideo && (() => {
         const proj = publishingVideo.projects as {
           title: string;
-          seo_data?: { youtube_title?: string; youtube_description?: string } | null;
+          seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string } | null;
         } | null;
         return (
           <PublishModal
             videoId={publishingVideo.id}
             videoTitle={proj?.seo_data?.youtube_title || proj?.title || "Untitled Video"}
             defaultDescription={proj?.seo_data?.youtube_description || ""}
+            thumbnailUrl={proj?.seo_data?.thumbnail_url || undefined}
             onClose={() => setPublishingVideo(null)}
             onPublished={loadVideos}
           />

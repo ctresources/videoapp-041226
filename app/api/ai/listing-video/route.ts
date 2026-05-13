@@ -166,6 +166,8 @@ export async function POST(req: NextRequest) {
     return null;
   });
 
+  const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((scriptData.hook || scriptData.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
+
   const seoData = {
     meta_title: scriptData.title,
     meta_description: scriptData.description,
@@ -173,6 +175,7 @@ export async function POST(req: NextRequest) {
     hashtags: ytMeta?.hashtags?.length ? ytMeta.hashtags : scriptData.hashtags,
     youtube_title: ytMeta?.youtube_title || scriptData.title,
     youtube_description: ytMeta?.youtube_description || scriptData.description,
+    thumbnail_url: thumbnailUrl,
   };
 
   // Create project

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -22,6 +22,7 @@ interface PublishModalProps {
   defaultCaption?: string;
   defaultDescription?: string;
   defaultTags?: string[];
+  thumbnailUrl?: string;
   onClose: () => void;
   onPublished?: () => void;
 }
@@ -42,7 +43,7 @@ type Tab = "now" | "schedule";
 
 export function PublishModal({
   videoId, videoTitle, defaultCaption = "", defaultDescription = "",
-  defaultTags = [], onClose, onPublished
+  defaultTags = [], thumbnailUrl, onClose, onPublished
 }: PublishModalProps) {
   const [accounts, setAccounts] = useState<BlotatoAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -227,6 +228,34 @@ export function PublishModal({
             {/* YouTube-specific fields */}
             {hasYoutube && (
               <div className="flex flex-col gap-3">
+                {/* Thumbnail */}
+                {thumbnailUrl && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <Image size={12} /> YouTube Thumbnail
+                      </label>
+                      <a
+                        href={thumbnailUrl}
+                        download="youtube-thumbnail.png"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                      >
+                        <Download size={11} /> Download PNG
+                      </a>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={thumbnailUrl}
+                        alt="YouTube thumbnail preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">1280×720 · Download and upload manually to YouTube Studio after publishing</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-medium text-slate-500 block mb-1">Description</label>
                   <textarea
