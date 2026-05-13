@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const settingsUrl = `${appUrl}/settings/social`;
+  const settingsUrl = `${appUrl}/social`;
 
   if (error) {
     return NextResponse.redirect(`${settingsUrl}?youtube_error=${encodeURIComponent(error)}`);
