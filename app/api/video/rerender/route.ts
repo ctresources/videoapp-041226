@@ -277,15 +277,42 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     const avatarId = edits.avatarId || p.heygen_photo_id;
-    const sessionId = await generateVideoAgent({
-      prompt,
-      avatarId,
-      voiceId,
-      orientation,
-      callbackUrl,
-      callbackId: newVideo.id,
-      styleId: styleId || undefined,
-    });
+    let sessionId: string;
+    try {
+      sessionId = await generateVideoAgent({
+        prompt,
+        avatarId,
+        voiceId,
+        orientation,
+        callbackUrl,
+        callbackId: newVideo.id,
+        styleId: styleId || undefined,
+      });
+    } catch (err) {
+      // HeyGen rejects voice IDs that aren't in their system (e.g. legacy
+      // ElevenLabs IDs leaking through from profile.voice_clone_id). Retry
+      // once with a fallback HeyGen voice so the rerender still completes.
+      const msg = err instanceof Error ? err.message : "";
+      const isInvalidVoice = /invalid voice_id|voice not found/i.test(msg);
+      if (!isInvalidVoice) throw err;
+
+      const fallbackVoiceId =
+        (await getPrivateVoiceId().catch(() => null)) ||
+        (await getDefaultEnglishVoiceId().catch(() => null));
+      if (!fallbackVoiceId) throw err;
+
+      console.log(`[rerender] voice ${voiceId} rejected; retrying with fallback ${fallbackVoiceId}`);
+      sessionId = await generateVideoAgent({
+        prompt,
+        avatarId,
+        voiceId: fallbackVoiceId,
+        orientation,
+        callbackUrl,
+        callbackId: newVideo.id,
+        styleId: styleId || undefined,
+      });
+      voiceId = fallbackVoiceId;
+    }
 
     await admin
       .from("generated_videos")
