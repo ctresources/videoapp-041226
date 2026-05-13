@@ -12,8 +12,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
-  const { data: profile, error: profileError } = await admin
+  // Use the user's own session to read their profile (avoids admin client RLS issues)
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("blotato_api_key, youtube_channel_id, youtube_channel_name, youtube_channel_thumbnail")
     .eq("id", user.id)
