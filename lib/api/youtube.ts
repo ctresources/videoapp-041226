@@ -20,7 +20,10 @@ export function buildAuthUrl(state: string): string {
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
-    prompt: "consent",
+    // select_account forces the Google account picker (and YouTube brand-channel picker)
+    // consent forces the consent screen so we always get a refresh_token
+    prompt: "select_account consent",
+    include_granted_scopes: "false",
     state,
   });
   return `${GOOGLE_OAUTH_URL}?${params}`;
