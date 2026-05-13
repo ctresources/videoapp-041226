@@ -152,6 +152,18 @@ export function PublishModal({
           </div>
         ) : (
           <div className="p-5 flex flex-col gap-4">
+            {/* Title — always visible */}
+            <div>
+              <label className="text-xs font-medium text-slate-500 block mb-1">Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={100}
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
             {/* Account selector */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Post to</p>
@@ -212,19 +224,9 @@ export function PublishModal({
               ))}
             </div>
 
-            {/* YouTube fields */}
+            {/* YouTube-specific fields */}
             {hasYoutube && (
               <div className="flex flex-col gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-500 block mb-1">YouTube Title</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    maxLength={100}
-                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
                 <div>
                   <label className="text-xs font-medium text-slate-500 block mb-1">Description</label>
                   <textarea
@@ -294,12 +296,12 @@ export function PublishModal({
             <Button
               onClick={handleSubmit}
               loading={loading}
-              disabled={!selectedIds.length || accounts.length === 0}
+              disabled={accounts.length === 0}
               size="lg"
               className="w-full gap-2"
             >
               {tab === "now"
-                ? <><Send size={16} /> Publish to {selectedIds.length} Platform{selectedIds.length !== 1 ? "s" : ""}</>
+                ? <><Send size={16} /> {selectedIds.length > 0 ? `Publish to ${selectedIds.length} Platform${selectedIds.length !== 1 ? "s" : ""}` : "Select a Platform"}</>
                 : <><Clock size={16} /> Schedule Post</>}
             </Button>
           </div>
