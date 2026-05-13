@@ -6,6 +6,7 @@ import {
   LocationVideoType,
   LocationParams,
 } from "@/lib/api/perplexity-prompts";
+import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("credits_remaining, full_name")
+    .select("credits_remaining, full_name, company_name, phone, company_phone, website")
     .eq("id", user.id)
     .single();
 
@@ -115,13 +116,41 @@ export async function POST(req: NextRequest) {
     cta_preference: ctaPreference || null,
   };
 
+  // Generate SEO/GEO/AEO-optimized YouTube metadata in parallel — non-blocking
+  // failures are tolerated; the script flow shouldn't fail because the YouTube
+  // copy step had an upstream hiccup.
+  const prof = profile as {
+    credits_remaining: number;
+    full_name?: string | null;
+    company_name?: string | null;
+    phone?: string | null;
+    company_phone?: string | null;
+    website?: string | null;
+  };
+  const ytMeta = await generateYoutubeMetadata({
+    title: parsed.title,
+    script: parsed.script,
+    city,
+    state,
+    agentName: prof.full_name || undefined,
+    brokerage: prof.company_name || undefined,
+    keywords: parsed.keywords,
+    website: prof.website || undefined,
+    phone: prof.phone || prof.company_phone || undefined,
+  }).catch((err) => {
+    console.error("[generate-location-script] YouTube metadata failed:", err);
+    return null;
+  });
+
   const seoData = {
     meta_title: parsed.title,
     meta_description: parsed.description || parsed.hook,
     keywords: parsed.keywords,
-    hashtags: parsed.hashtags,
+    hashtags: ytMeta?.hashtags?.length ? ytMeta.hashtags : parsed.hashtags,
     blog_intro: parsed.blog_intro,
     sources: parsed.sources,
+    youtube_title: ytMeta?.youtube_title || parsed.title,
+    youtube_description: ytMeta?.youtube_description || parsed.description || parsed.hook,
   };
 
   // ── Create project row ──────────────────────────────────────────────────────
