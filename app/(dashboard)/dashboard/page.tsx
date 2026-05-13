@@ -90,11 +90,11 @@ async function GettingStarted() {
     { label: "Set up your voice clone", done: !!profile?.voice_clone_id, href: "/settings" },
     { label: "Upload your avatar photo", done: !!profile?.avatar_url, href: "/settings" },
     { label: "Generate your first video", done: videoCount > 0, href: "/create" },
-    { label: "Connect a social account", done: socialCount > 0, href: "/settings/social" },
+    { label: "Connect a social account", done: socialCount > 0, href: "/social" },
   ];
 
   const allDone = steps.every((s) => s.done);
-  if (allDone) return null; // Hide once complete
+  if (allDone) return null;
 
   const completedCount = steps.filter((s) => s.done).length;
   const pct = Math.round((completedCount / steps.length) * 100);
@@ -202,15 +202,15 @@ async function RecentProjects() {
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_done")
-      .eq("id", user.id)
-      .single();
-    if (profile && !profile.onboarding_done) {
-      redirect("/onboarding");
-    }
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_done")
+    .eq("id", user.id)
+    .single();
+  if (profile && !profile.onboarding_done) {
+    redirect("/onboarding");
   }
 
   return (
