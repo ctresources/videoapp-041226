@@ -12,6 +12,7 @@ import {
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
@@ -52,19 +53,32 @@ function CreatePageInner() {
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // ── Pre-fill from URL params (e.g. clicked from Trending Topics) ─────────
+  // ── Load profile defaults + pre-fill from URL params ─────────────────────
   useEffect(() => {
     const tab = searchParams.get("tab");
     const topic = searchParams.get("topic");
-    const city = searchParams.get("city");
-    const state = searchParams.get("state");
+    const urlCity = searchParams.get("city");
+    const urlState = searchParams.get("state");
 
-    if (tab === "location") {
-      setInputMode("location");
-      if (topic) setLocCustomTopic(topic);
-      if (city) setLocCity(city);
-      if (state) setLocState(state);
-    }
+    if (tab === "location") setInputMode("location");
+    if (topic) setLocCustomTopic(topic);
+
+    // Load saved city/state from profile; URL params override
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("profiles")
+        .select("location_city, location_state")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.location_city && !urlCity) setLocCity(data.location_city);
+          if (data?.location_state && !urlState) setLocState(data.location_state);
+          if (urlCity) setLocCity(urlCity);
+          if (urlState) setLocState(urlState);
+        });
+    });
   }, []); // eslint-disable-line
 
   // ── Voice processing ────────────────────────────────────────────────────────

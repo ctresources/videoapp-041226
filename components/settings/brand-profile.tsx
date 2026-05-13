@@ -258,7 +258,7 @@ function TalkingAvatarUploader({
 }
 
 // ── Voice Clone uploader (record + upload) ───────────────────────────────────
-function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUpdate }: {
+export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUpdate }: {
   userId: string;
   currentVoiceId: string | null;
   currentHeygenVoiceId: string | null;
@@ -755,23 +755,6 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
             hasAvatar={!!fields.heygen_photo_id}
           />
         </div>
-      </div>
-
-      <div className="border-t border-slate-100" />
-
-      {/* ── Voice Clone ───────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">AI Voice Clone</p>
-        <p className="text-xs text-slate-400 mb-4">Your videos will be narrated in your own voice</p>
-        <VoiceCloneUploader
-          userId={userId}
-          currentVoiceId={fields.voice_clone_id || null}
-          currentHeygenVoiceId={fields.heygen_voice_id || null}
-          onUpdate={(elevenLabsId, heygenId) => {
-            set("voice_clone_id", elevenLabsId || "");
-            set("heygen_voice_id", heygenId || "");
-          }}
-        />
       </div>
 
       <Button onClick={handleSave} loading={saving} className="self-start">
