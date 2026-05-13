@@ -7,14 +7,19 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) {
+    console.log("[social/accounts] no user — returning 401");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("blotato_api_key, youtube_channel_id, youtube_channel_name, youtube_channel_thumbnail")
     .eq("id", user.id)
     .single();
+
+  if (profileError) console.log("[social/accounts] profile query error:", profileError.message);
 
   const p = profile as {
     blotato_api_key: string | null;
@@ -23,13 +28,15 @@ export async function GET() {
     youtube_channel_thumbnail: string | null;
   } | null;
 
+  console.log("[social/accounts] user:", user.id, "yt_channel:", p?.youtube_channel_id ?? "none");
+
   // Native YouTube account (appears first in the list)
   const nativeYouTube = p?.youtube_channel_id
     ? [{
         id: "native_youtube",
         platform: "youtube",
         name: p.youtube_channel_name || "YouTube Channel",
-        username: p.youtube_channel_id,
+        username: p.youtube_channel_name || "YouTube Channel",
         avatarUrl: p.youtube_channel_thumbnail || undefined,
         source: "native" as const,
       }]
@@ -56,6 +63,7 @@ export async function GET() {
   const accounts = [...nativeYouTube, ...blotatoAccounts];
   const connected = blotatoConnected || nativeYouTube.length > 0;
 
+  console.log("[social/accounts] returning", accounts.length, "accounts, youtubeConnected:", nativeYouTube.length > 0);
   return NextResponse.json({ accounts, connected, youtubeConnected: nativeYouTube.length > 0 });
 }
 
