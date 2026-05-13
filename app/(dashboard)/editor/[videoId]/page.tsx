@@ -122,6 +122,9 @@ export default function VideoEditorPage() {
     captionHighlightColor: "#3B82F6",
     musicUrl: null,
   });
+  // Snapshot of edits as they were when the video loaded — used to detect
+  // whether the user made render-affecting changes vs. a title-only edit.
+  const [initialEdits, setInitialEdits] = useState<RerenderEdits | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
 
   useEffect(() => {
@@ -147,12 +150,16 @@ export default function VideoEditorPage() {
 
     const v = data as unknown as VideoData;
     setVideo(v);
-    setEdits((e) => ({
-      ...e,
-      script: v.projects?.ai_script?.script || "",
-      title: v.projects?.title || "",
-      format: (v.video_type as RerenderEdits["format"]) || "blog_long",
-    }));
+    setEdits((e) => {
+      const next = {
+        ...e,
+        script: v.projects?.ai_script?.script || "",
+        title: v.projects?.title || "",
+        format: (v.video_type as RerenderEdits["format"]) || "blog_long",
+      };
+      setInitialEdits(next);
+      return next;
+    });
 
     if (user) {
       const { data: prof } = await supabase
@@ -219,8 +226,54 @@ export default function VideoEditorPage() {
     setEdits((e) => ({ ...e, musicUrl: preset.url }));
   }
 
+  // Fields that, when changed, require a full HeyGen re-render.
+  // Title is intentionally excluded — it's metadata and can be saved instantly.
+  const RENDER_FIELDS: Array<keyof RerenderEdits> = [
+    "script", "format", "brandColor", "logoEnabled", "avatarId", "voiceId",
+    "captionsEnabled", "captionColor", "captionHighlightColor", "musicUrl",
+  ];
+
+  function hasRenderChanges(): boolean {
+    if (!initialEdits) return true;
+    return RENDER_FIELDS.some((k) => edits[k] !== initialEdits[k]);
+  }
+
+  function hasTitleChange(): boolean {
+    if (!initialEdits) return false;
+    return (edits.title || "").trim() !== (initialEdits.title || "").trim();
+  }
+
+  async function handleSaveTitle() {
+    const newTitle = edits.title.trim();
+    if (!newTitle) { toast.error("Title cannot be empty"); return; }
+    setRendering(true);
+    try {
+      const res = await fetch("/api/video/update-title", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, title: newTitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+      setInitialEdits((prev) => prev ? { ...prev, title: newTitle } : prev);
+      toast.success("Title saved!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setRendering(false);
+    }
+  }
+
   async function handleRerender() {
     if (!edits.script.trim()) { toast.error("Script cannot be empty"); return; }
+
+    // If only the title changed, skip the expensive HeyGen render and just
+    // update the DB. Saves ~3 minutes and a HeyGen credit per title tweak.
+    if (!hasRenderChanges() && hasTitleChange()) {
+      await handleSaveTitle();
+      return;
+    }
+
     setRendering(true);
     setRenderDone(false);
     try {
@@ -276,7 +329,9 @@ export default function VideoEditorPage() {
         >
           {renderDone
             ? <><CheckCircle size={16} /> Done!</>
-            : <><Wand2 size={16} /> Re-render Video</>}
+            : !hasRenderChanges() && hasTitleChange()
+              ? <><CheckCircle size={16} /> Save Title</>
+              : <><Wand2 size={16} /> Re-render Video</>}
         </Button>
       </div>
 
@@ -665,10 +720,14 @@ export default function VideoEditorPage() {
           >
             {renderDone
               ? <><CheckCircle size={16} /> Render queued — check My Videos</>
-              : <><Wand2 size={16} /> Re-render with These Changes</>}
+              : !hasRenderChanges() && hasTitleChange()
+                ? <><CheckCircle size={16} /> Save Title (no re-render needed)</>
+                : <><Wand2 size={16} /> Re-render with These Changes</>}
           </Button>
           <p className="text-xs text-slate-400 text-center">
-            Original video is preserved · New version appears in My Videos
+            {!hasRenderChanges() && hasTitleChange()
+              ? "Title changes are saved instantly — no HeyGen credit used"
+              : "Original video is preserved · New version appears in My Videos"}
           </p>
         </div>
       </div>
