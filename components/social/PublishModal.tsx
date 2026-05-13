@@ -65,7 +65,8 @@ export function PublishModal({
         setAccounts(accs);
         setSelectedIds(accs.map((a: BlotatoAccount) => a.id));
         setLoadingAccounts(false);
-      });
+      })
+      .catch(() => setLoadingAccounts(false));
   }, []);
 
   function toggleAccount(id: string) {
@@ -163,8 +164,8 @@ export function PublishModal({
                   <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
                   <p className="text-sm text-yellow-700">
                     No social accounts connected.{" "}
-                    <Link href="/settings/social" className="underline font-medium" onClick={onClose}>
-                      Connect Blotato →
+                    <Link href="/social" className="underline font-medium" onClick={onClose}>
+                      Connect YouTube or Blotato →
                     </Link>
                   </p>
                 </div>
