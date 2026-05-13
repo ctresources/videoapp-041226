@@ -185,6 +185,10 @@ export async function POST(req: NextRequest) {
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
+  // Tracks the placeholder generated_videos row so we can mark it failed if
+  // HeyGen rejects the job (otherwise it lingers as "rendering" forever).
+  let placeholderVideoId: string | null = null;
+
   const { data: profile } = await admin
     .from("profiles")
     .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website")
@@ -270,6 +274,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
+    placeholderVideoId = newVideo.id;
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
@@ -334,6 +339,16 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Re-render failed";
     console.error("[rerender] error:", msg);
+
+    // Mark the placeholder row as failed so it doesn't linger as "rendering"
+    if (placeholderVideoId) {
+      await admin
+        .from("generated_videos")
+        .update({ render_status: "failed" })
+        .eq("id", placeholderVideoId)
+        .then(() => undefined, () => undefined);
+    }
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
