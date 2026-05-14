@@ -1,6 +1,5 @@
 "use client";
 
-import { VoiceRecorder } from "@/components/voice/voice-recorder";
 import { VoiceUploader } from "@/components/voice/voice-uploader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
   MapPin, ChevronDown, ChevronUp, Building2, Video, Square,
+  Pause, RotateCcw, AlertCircle,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -100,6 +100,174 @@ function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void
     >
       <Mic size={16} />
     </button>
+  );
+}
+
+// ─── Hero voice recorder for the Record tab ──────────────────────────────────
+
+function formatTime(s: number) {
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
+  const sec = (s % 60).toString().padStart(2, "0");
+  return `${m}:${sec}`;
+}
+
+interface VoiceHeroProps {
+  onRecordingComplete: (blob: Blob, duration: number) => void;
+}
+
+function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
+  const { state, seconds, audioBlob, audioUrl, amplitudes, start, pause, resume, stop, reset, error } =
+    useVoiceRecorder();
+
+  const isIdle = state === "idle" || state === "requesting";
+  const isRecording = state === "recording";
+  const isPaused = state === "paused";
+  const isStopped = state === "stopped";
+
+  function handleUse() {
+    if (audioBlob) onRecordingComplete(audioBlob, seconds);
+  }
+
+  if (seconds >= 300 && isRecording) stop();
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-4">
+      {/* Big mic button */}
+      {(isIdle || isRecording || isPaused) && (
+        <div className="relative flex items-center justify-center">
+          {/* Outer pulse ring — only while recording */}
+          {isRecording && (
+            <>
+              <div className="absolute w-40 h-40 rounded-full bg-red-100 animate-ping opacity-30" />
+              <div className="absolute w-32 h-32 rounded-full bg-red-50 animate-pulse" />
+            </>
+          )}
+          <button
+            onClick={isRecording ? stop : isPaused ? stop : start}
+            className={`relative z-10 w-28 h-28 rounded-full flex flex-col items-center justify-center gap-1 shadow-lg transition-all duration-200 ${
+              isRecording
+                ? "bg-red-500 hover:bg-red-600 text-white scale-105"
+                : isPaused
+                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                : "bg-primary-600 hover:bg-primary-700 text-white hover:scale-105"
+            }`}
+          >
+            {isRecording ? (
+              <>
+                <Square size={32} fill="white" />
+                <span className="text-xs font-semibold">Stop</span>
+              </>
+            ) : isPaused ? (
+              <>
+                <Mic size={32} />
+                <span className="text-xs font-semibold">Paused</span>
+              </>
+            ) : (
+              <>
+                <Mic size={36} />
+                <span className="text-xs font-semibold mt-0.5">
+                  {state === "requesting" ? "…" : "Record"}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Timer */}
+      {(isRecording || isPaused) && (
+        <div className="text-center">
+          <span className={`text-3xl font-mono font-bold tabular-nums ${isRecording ? "text-red-500" : "text-amber-500"}`}>
+            {formatTime(seconds)}
+          </span>
+          <p className="text-xs text-slate-400 mt-1">
+            {isRecording ? "Recording in progress — speak your video idea" : "Paused"}
+          </p>
+        </div>
+      )}
+
+      {/* Idle label */}
+      {isIdle && state !== "requesting" && (
+        <div className="text-center">
+          <p className="text-sm font-medium text-slate-600">Tap to start speaking</p>
+          <p className="text-xs text-slate-400 mt-1">Describe your topic, location, and key points</p>
+        </div>
+      )}
+
+      {/* Waveform — only while recording */}
+      {isRecording && (
+        <div className="w-full h-14 flex items-center justify-center gap-0.5 bg-red-50 rounded-2xl px-4 overflow-hidden">
+          {amplitudes.map((amp, i) => (
+            <div
+              key={i}
+              className="w-1 rounded-full bg-red-400 transition-all duration-75"
+              style={{ height: `${Math.max(3, amp * 0.6)}px` }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pause button while recording */}
+      {isRecording && (
+        <button
+          onClick={pause}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <Pause size={13} /> Pause
+        </button>
+      )}
+
+      {/* Resume button while paused */}
+      {isPaused && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={resume}
+            className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
+          >
+            <Mic size={13} /> Resume
+          </button>
+          <span className="text-slate-300">·</span>
+          <button
+            onClick={stop}
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            <Square size={12} /> Stop
+          </button>
+        </div>
+      )}
+
+      {/* Stopped — preview + use */}
+      {isStopped && (
+        <div className="w-full flex flex-col gap-4">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-brand-text">{formatTime(seconds)} recorded</p>
+            <p className="text-xs text-slate-400 mt-0.5">Listen back or use this recording</p>
+          </div>
+          {audioUrl && (
+            <audio src={audioUrl} controls className="w-full h-10" />
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={reset}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <RotateCcw size={14} /> Re-record
+            </button>
+            <Button onClick={handleUse} size="sm" className="flex-1 gap-1.5">
+              Use Recording <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3 w-full">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -372,14 +540,6 @@ function CreatePageInner() {
             <Card>
               {inputMode === "record" ? (
                 <>
-                  {/* Guidance */}
-                  <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-                    <p className="text-xs text-primary-800 leading-relaxed">
-                      <strong>Speak your video idea</strong> — describe the topic, location, and key points you want to cover.
-                      Our AI will research the market and write a professional script in your voice.
-                    </p>
-                  </div>
-
                   {/* Record sub-mode toggle */}
                   <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
                     <button
@@ -405,7 +565,7 @@ function CreatePageInner() {
                   </div>
 
                   {recordMode === "voice" ? (
-                    <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                    <VoiceHero onRecordingComplete={handleRecordingComplete} />
                   ) : (
                     <CameraRecorder />
                   )}
