@@ -5,9 +5,10 @@ import { VoiceUploader } from "@/components/voice/voice-uploader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, ChevronDown, ChevronUp, Building2, Video,
+  MapPin, ChevronDown, ChevronUp, Building2, Video, Square,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -27,6 +28,81 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location" | "listing";
 type RecordMode = "voice" | "camera";
 
+// ─── Inline voice-to-topic mic ─────────────────────────────────────────────
+
+function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+  const { state, audioBlob, start, stop, reset, error } = useVoiceRecorder();
+  const [busy, setBusy] = useState(false);
+
+  const isRecording = state === "recording" || state === "requesting";
+  const isStopped = state === "stopped";
+
+  async function handleStop() {
+    stop();
+  }
+
+  useEffect(() => {
+    if (state === "stopped" && audioBlob && !busy) {
+      setBusy(true);
+      const form = new FormData();
+      form.append("audio", audioBlob, `topic.${audioBlob.type.includes("mp4") ? "mp4" : "webm"}`);
+      fetch("/api/voice/quick-transcribe", { method: "POST", body: form })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.transcript) onTranscript(d.transcript.trim());
+          else toast.error("Could not understand audio — please try again");
+        })
+        .catch(() => toast.error("Transcription failed"))
+        .finally(() => { setBusy(false); reset(); });
+    }
+  }, [state, audioBlob]); // eslint-disable-line
+
+  if (error) {
+    return (
+      <button
+        type="button"
+        onClick={reset}
+        title={error}
+        className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+      >
+        <Mic size={16} />
+      </button>
+    );
+  }
+
+  if (busy) {
+    return (
+      <div className="p-2" title="Transcribing…">
+        <Loader2 size={16} className="animate-spin text-primary-500" />
+      </div>
+    );
+  }
+
+  if (isRecording) {
+    return (
+      <button
+        type="button"
+        onClick={handleStop}
+        title="Stop recording"
+        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors animate-pulse"
+      >
+        <Square size={16} />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={start}
+      title="Speak your topic"
+      className="p-2 rounded-lg text-slate-400 hover:text-primary-500 hover:bg-primary-50 transition-colors"
+    >
+      <Mic size={16} />
+    </button>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function CreatePageInner() {
@@ -34,7 +110,7 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("location");
+  const [inputMode, setInputMode] = useState<InputMode>("record");
   const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
@@ -61,9 +137,10 @@ function CreatePageInner() {
     const urlState = searchParams.get("state");
 
     if (tab === "location") setInputMode("location");
-    if (topic) setLocCustomTopic(topic);
+    if (tab === "upload") setInputMode("upload");
+    if (tab === "listing") setInputMode("listing");
+    if (topic) { setLocCustomTopic(topic); setInputMode("location"); }
 
-    // Load saved city/state from profile; URL params override
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
@@ -148,7 +225,6 @@ function CreatePageInner() {
   function handleTemplateSelect(template: ContentTemplate) {
     setLocCustomTopic(template.topic);
     setShowTemplates(false);
-    // Scroll to the topic input after a tick
     setTimeout(() => {
       document.getElementById("loc-custom-topic")?.focus();
     }, 100);
@@ -212,7 +288,7 @@ function CreatePageInner() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-brand-text">Create New Video</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Record your voice, upload audio, generate from location data, or import a listing.
+          Speak your idea and we&apos;ll turn it into a professional real estate video.
         </p>
       </div>
 
@@ -220,20 +296,20 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
-            onClick={() => setInputMode("location")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <MapPin size={14} /> Templates
-          </button>
-          <button
             onClick={() => setInputMode("record")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
             <Mic size={14} /> Record
+          </button>
+          <button
+            onClick={() => setInputMode("location")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <MapPin size={14} /> Templates
           </button>
           <button
             onClick={() => setInputMode("upload")}
@@ -296,6 +372,14 @@ function CreatePageInner() {
             <Card>
               {inputMode === "record" ? (
                 <>
+                  {/* Guidance */}
+                  <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
+                    <p className="text-xs text-primary-800 leading-relaxed">
+                      <strong>Speak your video idea</strong> — describe the topic, location, and key points you want to cover.
+                      Our AI will research the market and write a professional script in your voice.
+                    </p>
+                  </div>
+
                   {/* Record sub-mode toggle */}
                   <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
                     <button
@@ -556,21 +640,24 @@ function CreatePageInner() {
             )}
           </div>
 
-          {/* Topic input */}
+          {/* Topic input with inline mic */}
           <div className="mb-5">
             <label className="text-xs font-medium text-slate-500 block mb-1.5">
               What&apos;s your topic? <span className="text-red-400">*</span>
             </label>
-            <input
-              id="loc-custom-topic"
-              type="text"
-              value={locCustomTopic}
-              onChange={(e) => setLocCustomTopic(e.target.value)}
-              placeholder="e.g. Market update, Why live here, New construction, School ratings, HOA fees..."
-              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+            <div className="flex items-center gap-1 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+              <input
+                id="loc-custom-topic"
+                type="text"
+                value={locCustomTopic}
+                onChange={(e) => setLocCustomTopic(e.target.value)}
+                placeholder="e.g. Market update, Why live here, New construction…  or tap 🎤 to speak"
+                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none rounded-xl"
+              />
+              <TopicMicButton onTranscript={(t) => setLocCustomTopic(t)} />
+            </div>
             <p className="text-xs text-slate-400 mt-1">
-              Any real estate topic — our AI will research it for this specific location
+              Type your topic or tap the mic to speak it — AI will research it for this specific location
             </p>
           </div>
 
