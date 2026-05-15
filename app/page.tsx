@@ -92,7 +92,7 @@ const features = [
     bg: "bg-teal-50",
     title: "Auto-Schedule to Every Platform",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags. Your content calendar runs on autopilot.",
-    badge: "Multi-Platform",
+    badge: "Social Platforms",
   },
   {
     icon: Home,
@@ -196,7 +196,7 @@ const pricingTiers = [
     features: [
       "16 videos/month",
       "Everything in Agent",
-      "All major social platforms",
+      "Social platforms",
       "Hyperlocal SEO + Google AI Rankings",
       "Content calendar + scheduling",
       "CRM webhooks (GoHighLevel, HubSpot)",
@@ -322,12 +322,11 @@ export default function LandingPage() {
         </div>
 
         {/* Stats strip */}
-        <div className="max-w-4xl mx-auto mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
+        <div className="max-w-4xl mx-auto mt-16 grid grid-cols-3 gap-4 relative z-10">
           {[
-            { stat: "49%",    label: "Faster revenue growth",  icon: TrendingUp },
+            { stat: "49%",     label: "Faster revenue growth",  icon: TrendingUp },
             { stat: "< 2 min", label: "Voice to finished video", icon: Clock },
-            { stat: "16",     label: "Languages supported",     icon: Globe },
-            { stat: "0",      label: "Filming or editing",      icon: Video },
+            { stat: "0",       label: "Filming or editing",      icon: Video },
           ].map(({ stat, label, icon: Icon }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
               <Icon size={18} className="text-primary-400 mx-auto mb-1.5" />
