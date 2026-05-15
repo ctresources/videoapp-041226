@@ -90,9 +90,9 @@ const features = [
     icon: CalendarDays,
     color: "text-teal-500",
     bg: "bg-teal-50",
-    title: "Auto-Schedule to 10 Platforms",
+    title: "Auto-Schedule to Every Platform",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags. Your content calendar runs on autopilot.",
-    badge: "10 Platforms",
+    badge: "Multi-Platform",
   },
   {
     icon: Home,
@@ -196,7 +196,7 @@ const pricingTiers = [
     features: [
       "16 videos/month",
       "Everything in Agent",
-      "All 10 social platforms",
+      "All major social platforms",
       "Hyperlocal SEO + Google AI Rankings",
       "Content calendar + scheduling",
       "CRM webhooks (GoHighLevel, HubSpot)",
@@ -292,7 +292,7 @@ export default function LandingPage() {
           {/* Body */}
           <p className="text-base sm:text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             VoiceToVideos.AI turns a simple 90-second voice recording into a professional video,
-            SEO blog, and social posts published to 10 platforms — automatically.
+            SEO blog, and social posts published across all your platforms — automatically.
             No filming. No editing. No technical skills required.
           </p>
 
@@ -326,7 +326,7 @@ export default function LandingPage() {
           {[
             { stat: "49%",    label: "Faster revenue growth",  icon: TrendingUp },
             { stat: "< 2 min", label: "Voice to finished video", icon: Clock },
-            { stat: "10",     label: "Platforms at once",       icon: Share2 },
+            { stat: "16",     label: "Languages supported",     icon: Globe },
             { stat: "0",      label: "Filming or editing",      icon: Video },
           ].map(({ stat, label, icon: Icon }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
