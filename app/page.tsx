@@ -152,7 +152,7 @@ const steps = [
 const pricingTiers = [
   {
     name: "Starter",
-    price: "$27",
+    price: "$39",
     period: "/month",
     description: "Get in the game",
     badge: null,
@@ -170,7 +170,7 @@ const pricingTiers = [
   },
   {
     name: "Agent",
-    price: "$47",
+    price: "$69",
     period: "/month",
     description: "Build your local brand",
     badge: null,
@@ -189,12 +189,12 @@ const pricingTiers = [
   },
   {
     name: "Pro",
-    price: "$97",
+    price: "$99",
     period: "/month",
     description: "Dominate your ZIP code",
     badge: "Most Popular",
     features: [
-      "30 videos/month",
+      "16 videos/month",
       "Everything in Agent",
       "All 10 social platforms",
       "Hyperlocal SEO + Google AI Rankings",
@@ -208,12 +208,12 @@ const pricingTiers = [
   },
   {
     name: "Agency",
-    price: "$197",
+    price: "$199",
     period: "/month",
     description: "For teams and brokerages",
     badge: null,
     features: [
-      "100 videos/month",
+      "30 videos/month",
       "Everything in Pro",
       "Up to 5 agent seats",
       "White-label branding",
