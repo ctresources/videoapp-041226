@@ -90,7 +90,7 @@ const features = [
     icon: CalendarDays,
     color: "text-teal-500",
     bg: "bg-teal-50",
-    title: "Auto-Schedule to Every Platform",
+    title: "Auto-Schedule to Social Platforms",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags. Your content calendar runs on autopilot.",
     badge: "Social Platforms",
   },
@@ -292,7 +292,7 @@ export default function LandingPage() {
           {/* Body */}
           <p className="text-base sm:text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             VoiceToVideos.AI turns a simple 90-second voice recording into a professional video,
-            SEO blog, and social posts published across all your platforms — automatically.
+            SEO blog, and social posts published to social platforms — automatically.
             No filming. No editing. No technical skills required.
           </p>
 
