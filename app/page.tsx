@@ -4,39 +4,43 @@ import { DemoVideo } from "@/components/landing/demo-video";
 import { Button } from "@/components/ui/button";
 import {
   Mic, Video, Share2, CheckCircle, Star, ArrowRight, Zap,
-  Clock, TrendingUp, AlertCircle, MapPin, Home, BarChart2,
-  CalendarDays, Globe, Flame, PlayCircle, X,
+  Clock, TrendingUp, MapPin, Home, CalendarDays, Globe,
+  PlayCircle, X, Camera, Users, UserPlus, Trophy,
 } from "lucide-react";
 
-// ─── Pain Points ───────────────────────────────────────────────────────────────
-const painPoints = [
+// ─── Segments ─────────────────────────────────────────────────────────────────
+const segments = [
   {
     icon: Clock,
-    color: "text-red-500",
-    bg: "bg-red-50",
-    headline: "Content takes hours you don't have.",
-    sub: "Writing captions, editing clips, resizing for every platform — you became an agent, not a content studio. Every hour you spend on content is an hour not spent closing.",
+    color: "text-primary-500",
+    bg: "bg-primary-50",
+    segment: "Solo Agents",
+    driver: "Time Scarcity",
+    desire: "Stay top-of-mind without losing 15 hours a week to content production.",
   },
   {
-    icon: AlertCircle,
+    icon: Camera,
+    color: "text-pink-500",
+    bg: "bg-pink-50",
+    segment: "Camera-Shy Agents",
+    driver: "Performance Anxiety",
+    desire: "Build a powerful personal brand without ever appearing on screen.",
+  },
+  {
+    icon: Users,
     color: "text-orange-500",
     bg: "bg-orange-50",
-    headline: "The agents who post daily are winning your clients.",
-    sub: "On social, consistency beats quality every time. While you're figuring out what to post, your competition is already in your prospects' feeds — every single morning.",
+    segment: "Team Leaders",
+    driver: "Scalability",
+    desire: "Ensure team-wide content consistency and brand compliance — at scale.",
   },
   {
-    icon: MapPin,
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-    headline: "You know your market cold. No one can tell.",
-    sub: "Buyers and sellers Google local agents before they call. If your expertise isn't showing up as hyper-local video content, you're invisible — and a newer agent gets the call.",
-  },
-  {
-    icon: Home,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    headline: "Your listing videos don't stand out.",
-    sub: "Scroll-stopping listing videos with branded intros and agent voiceovers used to cost $500 per property. The agents using AI are doing it for pennies — in under a minute.",
+    icon: UserPlus,
+    color: "text-green-500",
+    bg: "bg-green-50",
+    segment: "New Agents",
+    driver: "Brand Building",
+    desire: "Establish local authority quickly and compete with seasoned agents from day one.",
   },
 ];
 
@@ -46,80 +50,80 @@ const features = [
     icon: Mic,
     color: "text-primary-500",
     bg: "bg-primary-50",
-    title: "Mic on Every Field — Just Speak",
-    description: "Every input — city, topic, audience, tone, listing details — has a mic button. Tap and talk. No typing needed. Designed for agents on the go, between showings, in the car.",
+    title: "One-Button Video Creation",
+    description: "Speak for 90 seconds about any market topic, listing, or local update. Our AI writes the script, builds the visuals, adds captions, and renders a broadcast-quality video — no filming, no editing, no technical skills needed.",
     badge: "Core Feature",
+  },
+  {
+    icon: Camera,
+    color: "text-pink-500",
+    bg: "bg-pink-50",
+    title: "No Camera. No Problem.",
+    description: "Your AI avatar appears on screen in your place — speaking in your cloned voice. Build a compelling personal brand and stay top-of-mind without ever recording your face or worrying about how you look.",
+    badge: "Camera-Free",
   },
   {
     icon: MapPin,
     color: "text-orange-500",
     bg: "bg-orange-50",
-    title: "Hyper-Local Market Videos",
-    description: "Speak a city and ZIP code. We generate a branded market update video — median prices, days on market, inventory — sourced live from Zillow, Redfin, and NAR data.",
-    badge: "High Impact",
+    title: "Hyperlocal Market Intelligence",
+    description: "Dominate search in your city or neighborhood. Generate hyper-local market update videos that rank on YouTube and appear in Google AI Overviews — positioning you as the undisputed digital expert in your ZIP code.",
+    badge: "SEO Domination",
   },
   {
-    icon: Flame,
-    color: "text-red-500",
-    bg: "bg-red-50",
-    title: "Trending Topic Discovery",
-    description: "\"What should I post today?\" — we search what home buyers in your exact market are Googling right now and turn the top trend into a ready-to-post video with one click.",
-    badge: "Unique to Us",
+    icon: Trophy,
+    color: "text-yellow-500",
+    bg: "bg-yellow-50",
+    title: "\"Digital Mayor\" Status",
+    description: "Consistently publishing hyper-local, expert content makes you the agent people think of first. Buyers and sellers Google local agents before they call — VoiceToVideos.AI makes sure you're what they find.",
+    badge: "Top-of-Mind",
   },
   {
-    icon: Video,
-    color: "text-secondary-500",
-    bg: "bg-purple-50",
-    title: "Your AI Avatar & Cloned Voice",
-    description: "Create your digital twin once. Generate unlimited Reels, Shorts, and TikToks with your AI avatar speaking in your own cloned voice — even while you're at showings.",
-    badge: "AI Avatar",
-  },
-  {
-    icon: Home,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    title: "Listing Video Generator",
-    description: "Paste a Zillow URL, upload a PDF flyer, or speak the address and details. We pull the listing, write a Fair Housing-compliant script, and render the video in under 60 seconds.",
-    badge: "Live Now",
+    icon: Globe,
+    color: "text-green-600",
+    bg: "bg-green-50",
+    title: "YouTube & Google AI Rankings",
+    description: "Every video comes with an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search and surface in Google AI Overviews for your target neighborhood keywords.",
+    badge: "Rank #1",
   },
   {
     icon: CalendarDays,
     color: "text-teal-500",
     bg: "bg-teal-50",
     title: "Auto-Schedule to 10 Platforms",
-    description: "One click publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, Bluesky, Pinterest, and more — with platform-optimized captions and hashtags built in.",
+    description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags. Your content calendar runs on autopilot.",
     badge: "10 Platforms",
   },
   {
-    icon: Globe,
-    color: "text-green-600",
-    bg: "bg-green-50",
-    title: "Multi-Language Content",
-    description: "Serve every buyer in your market. Generate scripts and narration in Spanish, Portuguese, Mandarin, Hindi, and 13 more languages — with a single setting toggle.",
-    badge: "16 Languages",
+    icon: Home,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    title: "Listing Video Generator",
+    description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post before you leave the driveway.",
+    badge: "Live Now",
   },
   {
-    icon: BarChart2,
-    color: "text-slate-500",
-    bg: "bg-slate-100",
-    title: "Content Analytics",
-    description: "See which videos drive leads, which platforms deliver ROI, and what topics land best — so you only create content that converts, never content that wastes time.",
-    badge: "Know What Works",
+    icon: TrendingUp,
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    title: "Proven ROI — 49% Faster Growth",
+    description: "Agents who post consistent video content grow revenue 49% faster than those who don't. VoiceToVideos.AI gives you the output of a full content team — without the cost, time, or technical headache.",
+    badge: "49% Growth",
   },
 ];
 
 // ─── Comparison table ──────────────────────────────────────────────────────────
 const comparison = [
-  { feature: "AI Script from Your Voice",       us: true,  syllaby: true,  rejig: false, roomvu: false },
-  { feature: "Mic on Every Field — No Typing",  us: true,  syllaby: false, rejig: false, roomvu: false },
-  { feature: "AI Avatar + Voice Cloning",        us: true,  syllaby: true,  rejig: true,  roomvu: false },
-  { feature: "Hyper-local Market Updates",       us: true,  syllaby: false, rejig: true,  roomvu: true  },
-  { feature: "Trending Topic Discovery",          us: true,  syllaby: true,  rejig: false, roomvu: false },
-  { feature: "Listing Auto-Video (URL → Video)", us: true,  syllaby: false, rejig: true,  roomvu: true  },
-  { feature: "10+ Platform Auto-Publishing",     us: true,  syllaby: true,  rejig: true,  roomvu: true  },
-  { feature: "Multi-language (16 languages)",    us: true,  syllaby: true,  rejig: false, roomvu: false },
-  { feature: "Fair Housing Guardrails Built-in", us: true,  syllaby: false, rejig: false, roomvu: false },
-  { feature: "Purpose-built for Real Estate",    us: true,  syllaby: false, rejig: true,  roomvu: true  },
+  { feature: "No filming or on-camera requirement",  us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "AI Avatar + Voice Cloning",             us: true,  syllaby: true,  rejig: true,  roomvu: false },
+  { feature: "Hyperlocal market intelligence",        us: true,  syllaby: false, rejig: true,  roomvu: true  },
+  { feature: "YouTube + Google AI Overview SEO",      us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "One-button — no tech skills needed",    us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "Listing Auto-Video (URL → Video)",      us: true,  syllaby: false, rejig: true,  roomvu: true  },
+  { feature: "10+ Platform Auto-Publishing",          us: true,  syllaby: true,  rejig: true,  roomvu: true  },
+  { feature: "Team / brokerage multi-seat plans",     us: true,  syllaby: true,  rejig: true,  roomvu: true  },
+  { feature: "Fair Housing Guardrails Built-in",      us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "Purpose-built for Real Estate",         us: true,  syllaby: false, rejig: true,  roomvu: true  },
 ];
 
 // ─── Steps ─────────────────────────────────────────────────────────────────────
@@ -127,45 +131,20 @@ const steps = [
   {
     step: "01",
     emoji: "🎤",
-    title: "Tap a Mic. Say What You Know.",
-    description: "Every field has a mic. Say your market, your listing address, your topic, your audience. No typing. Speak from your car, your office, your open house — wherever you are.",
+    title: "Hit Record. Say What You Know.",
+    description: "Open the app, pick a topic — market update, listing, local trend — and talk for 60–90 seconds about your area. No script, no prep, no camera. Just your expertise.",
   },
   {
     step: "02",
     emoji: "🤖",
-    title: "AI Writes, Renders, and Optimizes.",
-    description: "Our AI writes a Fair Housing-compliant script, generates b-roll, narrates in your cloned voice, renders a broadcast-quality video, and writes an SEO blog post — simultaneously.",
+    title: "AI Builds Your Video Automatically.",
+    description: "Our AI writes a Fair Housing-compliant script, generates your AI avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video. Zero editing required.",
   },
   {
     step: "03",
     emoji: "📲",
-    title: "One Click. Ten Platforms. Done.",
-    description: "Approve your content and publish to YouTube, Instagram, TikTok, LinkedIn, Facebook, and 5 more — all at once, with platform-optimized captions, hashtags, and scheduling.",
-  },
-];
-
-// ─── Testimonials ──────────────────────────────────────────────────────────────
-const testimonials = [
-  {
-    name: "Sarah Mitchell",
-    role: "Realtor · Austin, TX",
-    quote: "I went from posting twice a week to posting daily on 6 platforms. My Google Business impressions tripled in 45 days. The trending topic feature alone is worth the subscription.",
-    avatar: "SM",
-    stat: "6 platforms, daily posting",
-  },
-  {
-    name: "James Rodriguez",
-    role: "Broker · Miami, FL",
-    quote: "I tap the mic in my car between showings and just talk about the market. By the time I park, there's a professional video ready to post. I've closed 2 deals from Instagram I never would have gotten.",
-    avatar: "JR",
-    stat: "Closed 2 deals from Instagram",
-  },
-  {
-    name: "Lisa Chen",
-    role: "Buyer's Agent · San Francisco, CA",
-    quote: "I serve a lot of Mandarin-speaking buyers. Being able to generate market update videos in Chinese has made me the go-to agent in my community. Nothing else does this.",
-    avatar: "LC",
-    stat: "16-language support",
+    title: "Publish. Rank. Stay Top-of-Mind.",
+    description: "One click posts to YouTube, Instagram, TikTok, LinkedIn, and 6 more platforms — with SEO-optimized metadata designed to rank in your ZIP code and appear in Google AI Overviews.",
   },
 ];
 
@@ -175,7 +154,7 @@ const pricingTiers = [
     name: "Starter",
     price: "$27",
     period: "/month",
-    description: "Dip your toes in",
+    description: "Get in the game",
     badge: null,
     features: [
       "4 videos/month",
@@ -193,17 +172,16 @@ const pricingTiers = [
     name: "Agent",
     price: "$47",
     period: "/month",
-    description: "Solo agents building their brand",
+    description: "Build your local brand",
     badge: null,
     features: [
       "12 videos/month",
       "All video formats (16:9, 9:16, 1:1)",
-      "Voice clone — your voice, always",
+      "AI avatar + voice clone",
       "AI script + SEO optimization",
       "MLS listing auto-video",
       "Content templates (24 topics)",
       "3 social platforms",
-      "Trending topic discovery",
     ],
     cta: "Get Started",
     highlighted: false,
@@ -213,16 +191,15 @@ const pricingTiers = [
     name: "Pro",
     price: "$97",
     period: "/month",
-    description: "Active agents posting daily",
+    description: "Dominate your ZIP code",
     badge: "Most Popular",
     features: [
       "30 videos/month",
       "Everything in Agent",
-      "AI avatar (in-app setup)",
       "All 10 social platforms",
+      "Hyperlocal SEO + Google AI Rankings",
       "Content calendar + scheduling",
-      "CRM webhooks (GoHighLevel, HubSpot, Follow Up Boss)",
-      "Community events & news videos",
+      "CRM webhooks (GoHighLevel, HubSpot)",
       "Priority rendering",
     ],
     cta: "Get Started",
@@ -233,7 +210,7 @@ const pricingTiers = [
     name: "Agency",
     price: "$197",
     period: "/month",
-    description: "Teams, team leads & brokerages",
+    description: "For teams and brokerages",
     badge: null,
     features: [
       "100 videos/month",
@@ -242,7 +219,6 @@ const pricingTiers = [
       "White-label branding",
       "Custom AI avatar per agent",
       "Team analytics dashboard",
-      "Dedicated account manager",
       "API access",
     ],
     cta: "Get Started",
@@ -270,10 +246,10 @@ export default function LandingPage() {
             />
           </Link>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            <a href="#who"         className="hover:text-primary-500 transition-colors">Who It&apos;s For</a>
             <a href="#how-it-works" className="hover:text-primary-500 transition-colors">How It Works</a>
-            <a href="#features"     className="hover:text-primary-500 transition-colors">Features</a>
-            <a href="#compare"      className="hover:text-primary-500 transition-colors">Compare</a>
-            <a href="#pricing"      className="hover:text-primary-500 transition-colors">Pricing</a>
+            <a href="#features"    className="hover:text-primary-500 transition-colors">Features</a>
+            <a href="#pricing"     className="hover:text-primary-500 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login">
@@ -295,27 +271,29 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative z-10">
 
           {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-xs font-bold px-4 py-2 rounded-full mb-8 backdrop-blur-sm tracking-wide">
-            <Mic size={12} className="text-primary-400" /> Real Estate&apos;s First Fully Voice-Driven Content Platform
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-xs font-bold px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
+            <Mic size={12} className="text-primary-400" /> The One-Button Video Platform for Real Estate Agents
           </div>
 
           {/* H1 */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight mb-5">
-            Just Speak.{" "}
+            Grow Revenue{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">
-              We Handle Everything Else.
-            </span>
+              49% Faster
+            </span>{" "}
+            Without Ever Going on Camera.
           </h1>
 
-          {/* Sub-headline */}
+          {/* Sub */}
           <p className="text-xl sm:text-2xl text-slate-200 font-semibold mb-5">
-            Professional videos. SEO blog. Social posts. 10 platforms.<br className="hidden sm:block" /> All from your voice — in under 2 minutes.
+            Busy, stretched-thin agents achieve dominant top-of-mind presence<br className="hidden sm:block" /> — without the technical headache or the pressure of being on camera.
           </p>
 
           {/* Body */}
           <p className="text-base sm:text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Every field on VoiceToVideos.AI has a mic button. Tap it. Say your market, your listing,
-            your topic. Our AI writes, renders, and publishes while you focus on selling.
+            VoiceToVideos.AI turns a simple 90-second voice recording into a professional video,
+            SEO blog, and social posts published to 10 platforms — automatically.
+            No filming. No editing. No technical skills required.
           </p>
 
           {/* CTAs */}
@@ -336,8 +314,8 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-sm text-slate-400">
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No credit card required</span>
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> 5 free videos included</span>
+            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No camera needed</span>
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Fair Housing compliant AI</span>
-            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Setup in under 2 minutes</span>
           </div>
 
           {/* Demo video */}
@@ -347,12 +325,12 @@ export default function LandingPage() {
         {/* Stats strip */}
         <div className="max-w-4xl mx-auto mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
           {[
-            { stat: "0 typing", label: "Every field has a mic",   icon: Mic },
-            { stat: "< 2 min",  label: "Voice to finished video", icon: Clock },
-            { stat: "10",       label: "Platforms at once",       icon: Share2 },
-            { stat: "16",       label: "Languages supported",     icon: Globe },
+            { stat: "49%",    label: "Faster revenue growth",  icon: TrendingUp },
+            { stat: "< 2 min", label: "Voice to finished video", icon: Clock },
+            { stat: "10",     label: "Platforms at once",       icon: Share2 },
+            { stat: "0",      label: "Filming or editing",      icon: Video },
           ].map(({ stat, label, icon: Icon }) => (
-            <div key={stat} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+            <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
               <Icon size={18} className="text-primary-400 mx-auto mb-1.5" />
               <p className="text-2xl font-black text-white">{stat}</p>
               <p className="text-slate-400 text-xs mt-0.5">{label}</p>
@@ -361,32 +339,74 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Pain Points ── */}
-      <section id="pain" className="py-20 px-4 sm:px-6 bg-white">
+      {/* ── Testimonial Story ── */}
+      <section className="py-16 px-4 sm:px-6 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex gap-1 justify-center mb-5">
+            {[1,2,3,4,5].map(i => <Star key={i} size={18} className="text-yellow-400 fill-yellow-400" />)}
+          </div>
+          <blockquote className="text-center text-lg sm:text-xl text-slate-700 leading-relaxed italic mb-6">
+            &ldquo;I used to feel that sinking pit in my stomach every Sunday night, knowing I&apos;d wasted another
+            week buried in technical headaches and awkward retakes while my community slowly forgot I was
+            the local expert they needed. That changed when I stopped trying to be a film editor and started
+            leaning into my actual expertise — simply narrating updates on neighborhood inventory and school
+            trends directly into a one-button AI system that builds the visuals and captions for me. Now
+            I&apos;m finally that steady, professional presence my sphere trusts because I&apos;ve traded the
+            exhausting grind of video production for a digital megaphone that keeps me top-of-mind while
+            I&apos;m out actually showing homes and closing deals.&rdquo;
+          </blockquote>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+              JR
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-brand-text">James Rodriguez</p>
+              <p className="text-xs text-slate-400">Broker · Miami, FL · Closed 2 deals from Instagram</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Who It's For ── */}
+      <section id="who" className="py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Sound Familiar?</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-brand-text leading-tight">
-              Why top agents dominate online —<br className="hidden sm:block" />
-              and what&apos;s holding everyone else back.
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Who It&apos;s For</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text leading-tight mb-4">
+              Two-thirds of agents know video grows their business.<br className="hidden sm:block" />
+              <span className="text-primary-500">Most just don&apos;t have a system to do it.</span>
             </h2>
+            <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+              VoiceToVideos.AI was built for the agents who are already successful — and want to
+              future-proof their business and achieve &ldquo;digital mayor&rdquo; status in their local area.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {painPoints.map(({ icon: Icon, color, bg, headline, sub }) => (
-              <div key={headline} className="flex gap-4 p-5 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                  <Icon size={18} className={color} />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {segments.map(({ icon: Icon, color, bg, segment, driver, desire }) => (
+              <div key={segment} className="flex gap-4 p-5 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md hover:border-primary-200 transition-all">
+                <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                  <Icon size={20} className={color} />
                 </div>
                 <div>
-                  <p className="font-bold text-brand-text text-sm leading-snug mb-1.5">{headline}</p>
-                  <p className="text-slate-500 text-sm leading-relaxed">{sub}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-bold text-brand-text text-sm">{segment}</p>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{driver}</span>
+                  </div>
+                  <p className="text-slate-500 text-sm leading-relaxed">{desire}</p>
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-center text-slate-400 text-sm mt-8 font-medium">
-            VoiceToVideos.AI removes every one of these blockers. Here&apos;s how 👇
-          </p>
+
+          <div className="mt-8 p-5 bg-primary-50 border border-primary-100 rounded-2xl text-center">
+            <p className="text-sm font-semibold text-primary-800">
+              Agents who post consistent video content grow revenue{" "}
+              <span className="text-primary-600 font-black">49% faster</span>{" "}
+              than those who don&apos;t — yet two-thirds of the market still isn&apos;t doing it consistently.
+              VoiceToVideos.AI removes every barrier that&apos;s stopping them.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -394,11 +414,11 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-20 px-4 sm:px-6 bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">The Workflow</p>
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">How It Works</p>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
-              Three steps. Zero typing required.
+              No technical skill. No camera. No editing.
             </h2>
-            <p className="text-slate-500 text-lg">No filming. No editing. No guessing what to post.</p>
+            <p className="text-slate-500 text-lg">Just your voice — and your local expertise.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
@@ -416,21 +436,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-
-          {/* Voice-first callout */}
-          <div className="mt-14 bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center shrink-0">
-              <Mic size={22} className="text-white" />
-            </div>
-            <div>
-              <p className="font-bold text-brand-text mb-1">Built for agents on the move — not stuck at a desk.</p>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Every field — city, topic, audience, tone, listing address, property description — has a
-                mic button. Tap and speak from your car, between showings, at the open house. No keyboard
-                needed. VoiceToVideos.AI is the only platform where your voice handles the entire workflow.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -440,10 +445,10 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Everything Included</p>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
-              More features than every competitor — combined.
+              Built to make you the digital expert<br className="hidden sm:block" /> in your market.
             </h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-              Purpose-built for real estate agents, not generic content creators.
+              Hyperlocal intelligence. SEO domination. Zero camera required.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -453,12 +458,15 @@ export default function LandingPage() {
                   <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center`}>
                     <Icon size={18} className={color} />
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    badge === "Unique to Us"  ? "bg-primary-100 text-primary-700" :
-                    badge === "Live Now"      ? "bg-green-100 text-green-700" :
-                    badge === "High Impact"   ? "bg-orange-100 text-orange-700" :
-                    badge === "Core Feature"  ? "bg-primary-100 text-primary-700" :
-                                               "bg-teal-100 text-teal-700"
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    badge === "Core Feature"    ? "bg-primary-100 text-primary-700" :
+                    badge === "Camera-Free"     ? "bg-pink-100 text-pink-700" :
+                    badge === "SEO Domination"  ? "bg-orange-100 text-orange-700" :
+                    badge === "49% Growth"      ? "bg-purple-100 text-purple-700" :
+                    badge === "Rank #1"         ? "bg-green-100 text-green-700" :
+                    badge === "Top-of-Mind"     ? "bg-yellow-100 text-yellow-700" :
+                    badge === "Live Now"        ? "bg-green-100 text-green-700" :
+                                                 "bg-teal-100 text-teal-700"
                   }`}>
                     {badge}
                   </span>
@@ -477,9 +485,9 @@ export default function LandingPage() {
           <div className="text-center mb-10">
             <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">How We Stack Up</p>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
-              We checked. No one else does all of this.
+              The only platform that removes every barrier.
             </h2>
-            <p className="text-slate-500">Compared to the top real estate video platforms</p>
+            <p className="text-slate-500">No camera. No tech skills. No manual editing. No excuses.</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
@@ -510,44 +518,6 @@ export default function LandingPage() {
             </table>
           </div>
           <p className="text-center text-xs text-slate-400 mt-4">Based on publicly available feature documentation. Last updated {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="py-20 px-4 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Real Results</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">Agents are closing more deals.</h2>
-            <div className="flex justify-center gap-1 mt-2">
-              {[1,2,3,4,5].map(i => <Star key={i} size={18} className="text-yellow-400 fill-yellow-400" />)}
-              <span className="text-slate-500 text-sm ml-2 font-medium">4.9 · 200+ agent reviews</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map(({ name, role, quote, avatar, stat }) => (
-              <div key={name} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col">
-                <div className="flex gap-1 mb-4">
-                  {[1,2,3,4,5].map(i => <Star key={i} size={13} className="text-yellow-400 fill-yellow-400" />)}
-                </div>
-                <p className="text-slate-600 text-sm leading-relaxed flex-1 mb-4">&ldquo;{quote}&rdquo;</p>
-                <div className="pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
-                      {avatar}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-brand-text">{name}</p>
-                      <p className="text-xs text-slate-400">{role}</p>
-                    </div>
-                  </div>
-                  <div className="bg-primary-50 rounded-lg px-3 py-1.5">
-                    <p className="text-xs font-semibold text-primary-700">✨ {stat}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -624,20 +594,20 @@ export default function LandingPage() {
       <section className="py-24 px-4 sm:px-6 bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(99,102,241,0.25),transparent)] pointer-events-none" />
         <div className="max-w-3xl mx-auto text-center relative z-10">
-          <p className="text-xs font-bold text-primary-400 uppercase tracking-widest mb-4">Your move.</p>
+          <p className="text-xs font-bold text-primary-400 uppercase tracking-widest mb-4">Stop waiting. Start dominating.</p>
           <h2 className="text-3xl sm:text-4xl font-black mb-4">
-            Become the most visible agent<br className="hidden sm:block" /> in your ZIP code.
+            Become the &ldquo;digital mayor&rdquo;<br className="hidden sm:block" /> of your ZIP code.
           </h2>
           <p className="text-slate-300 text-lg mb-10 max-w-xl mx-auto">
-            The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI.
-            Join 200+ agents already ahead of their competition.
+            The two-thirds of agents who know video works but aren&apos;t doing it consistently —
+            this is your system. No camera. No editing. No excuses.
           </p>
           <Link href="/register">
             <Button className="bg-white text-primary-700 hover:bg-primary-50 text-base px-12 py-4 gap-2 font-bold shadow-xl" size="lg">
               <PlayCircle size={18} /> Start Free — 5 Videos on Us
             </Button>
           </Link>
-          <p className="text-slate-500 text-sm mt-5">No credit card · Fair Housing compliant · Cancel anytime</p>
+          <p className="text-slate-500 text-sm mt-5">No credit card · No camera needed · Fair Housing compliant</p>
         </div>
       </section>
 
@@ -654,7 +624,7 @@ export default function LandingPage() {
                 unoptimized
               />
               <p className="text-xs mt-3 text-slate-500 max-w-xs leading-relaxed">
-                Real estate&apos;s first fully voice-driven content platform. Tap. Speak. Publish.
+                The one-button video platform for real estate agents. No camera. No editing. Just results.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-x-16 gap-y-2 text-sm">
