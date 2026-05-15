@@ -144,7 +144,7 @@ const steps = [
     step: "03",
     emoji: "📲",
     title: "Publish. Rank. Stay Top-of-Mind.",
-    description: "One click posts to YouTube, Instagram, TikTok, LinkedIn, and 6 more platforms — with SEO-optimized metadata designed to rank in your ZIP code and appear in Google AI Overviews.",
+    description: "One click posts to YouTube, Instagram, TikTok, LinkedIn, and other platforms — with SEO-optimized metadata designed to rank in your town.",
   },
 ];
 
