@@ -313,7 +313,6 @@ export default function LandingPage() {
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-sm text-slate-400">
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No credit card required</span>
-            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> 5 free videos included</span>
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No camera needed</span>
             <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Fair Housing compliant AI</span>
           </div>
