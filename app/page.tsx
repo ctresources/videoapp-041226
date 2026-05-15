@@ -117,11 +117,10 @@ const comparison = [
   { feature: "No filming or on-camera requirement",  us: true,  syllaby: false, rejig: false, roomvu: false },
   { feature: "AI Avatar + Voice Cloning",             us: true,  syllaby: true,  rejig: true,  roomvu: false },
   { feature: "Hyperlocal market intelligence",        us: true,  syllaby: false, rejig: true,  roomvu: true  },
-  { feature: "YouTube + Google AI Overview SEO",      us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "YouTube SEO optimized metadata",        us: true,  syllaby: false, rejig: false, roomvu: false },
   { feature: "One-button — no tech skills needed",    us: true,  syllaby: false, rejig: false, roomvu: false },
   { feature: "Listing Auto-Video (URL → Video)",      us: true,  syllaby: false, rejig: true,  roomvu: true  },
-  { feature: "10+ Platform Auto-Publishing",          us: true,  syllaby: true,  rejig: true,  roomvu: true  },
-  { feature: "Team / brokerage multi-seat plans",     us: true,  syllaby: true,  rejig: true,  roomvu: true  },
+  { feature: "Social platform auto-publishing",       us: true,  syllaby: true,  rejig: true,  roomvu: true  },
   { feature: "Fair Housing Guardrails Built-in",      us: true,  syllaby: false, rejig: false, roomvu: false },
   { feature: "Purpose-built for Real Estate",         us: true,  syllaby: false, rejig: true,  roomvu: true  },
 ];
