@@ -1,17 +1,19 @@
 "use client";
 
-import { VoiceRecorder } from "@/components/voice/voice-recorder";
 import { VoiceUploader } from "@/components/voice/voice-uploader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
-  MapPin, ChevronDown, ChevronUp, Building2, Video,
+  MapPin, ChevronDown, ChevronUp, Building2, Video, Square,
+  Pause, RotateCcw, AlertCircle,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
@@ -26,6 +28,249 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location" | "listing";
 type RecordMode = "voice" | "camera";
 
+// ─── Inline voice-to-topic mic ─────────────────────────────────────────────
+
+function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+  const { state, audioBlob, start, stop, reset, error } = useVoiceRecorder();
+  const [busy, setBusy] = useState(false);
+
+  const isRecording = state === "recording" || state === "requesting";
+  const isStopped = state === "stopped";
+
+  async function handleStop() {
+    stop();
+  }
+
+  useEffect(() => {
+    if (state === "stopped" && audioBlob && !busy) {
+      setBusy(true);
+      const form = new FormData();
+      form.append("audio", audioBlob, `topic.${audioBlob.type.includes("mp4") ? "mp4" : "webm"}`);
+      fetch("/api/voice/quick-transcribe", { method: "POST", body: form })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.transcript) onTranscript(d.transcript.trim());
+          else toast.error("Could not understand audio — please try again");
+        })
+        .catch(() => toast.error("Transcription failed"))
+        .finally(() => { setBusy(false); reset(); });
+    }
+  }, [state, audioBlob]); // eslint-disable-line
+
+  if (error) {
+    return (
+      <button
+        type="button"
+        onClick={reset}
+        title={error}
+        className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+      >
+        <Mic size={16} />
+      </button>
+    );
+  }
+
+  if (busy) {
+    return (
+      <div className="p-2" title="Transcribing…">
+        <Loader2 size={16} className="animate-spin text-primary-500" />
+      </div>
+    );
+  }
+
+  if (isRecording) {
+    return (
+      <button
+        type="button"
+        onClick={handleStop}
+        title="Stop recording"
+        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors animate-pulse"
+      >
+        <Square size={16} />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={start}
+      title="Speak your topic"
+      className="p-2 rounded-lg text-slate-400 hover:text-primary-500 hover:bg-primary-50 transition-colors"
+    >
+      <Mic size={16} />
+    </button>
+  );
+}
+
+// ─── Hero voice recorder for the Record tab ──────────────────────────────────
+
+function formatTime(s: number) {
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
+  const sec = (s % 60).toString().padStart(2, "0");
+  return `${m}:${sec}`;
+}
+
+interface VoiceHeroProps {
+  onRecordingComplete: (blob: Blob, duration: number) => void;
+}
+
+function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
+  const { state, seconds, audioBlob, audioUrl, amplitudes, start, pause, resume, stop, reset, error } =
+    useVoiceRecorder();
+
+  const isIdle = state === "idle" || state === "requesting";
+  const isRecording = state === "recording";
+  const isPaused = state === "paused";
+  const isStopped = state === "stopped";
+
+  function handleUse() {
+    if (audioBlob) onRecordingComplete(audioBlob, seconds);
+  }
+
+  if (seconds >= 300 && isRecording) stop();
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-4">
+      {/* Big mic button */}
+      {(isIdle || isRecording || isPaused) && (
+        <div className="relative flex items-center justify-center">
+          {/* Outer pulse ring — only while recording */}
+          {isRecording && (
+            <>
+              <div className="absolute w-40 h-40 rounded-full bg-red-100 animate-ping opacity-30" />
+              <div className="absolute w-32 h-32 rounded-full bg-red-50 animate-pulse" />
+            </>
+          )}
+          <button
+            onClick={isRecording ? stop : isPaused ? stop : start}
+            className={`relative z-10 w-28 h-28 rounded-full flex flex-col items-center justify-center gap-1 shadow-lg transition-all duration-200 ${
+              isRecording
+                ? "bg-red-500 hover:bg-red-600 text-white scale-105"
+                : isPaused
+                ? "bg-amber-500 hover:bg-amber-600 text-white"
+                : "bg-primary-600 hover:bg-primary-700 text-white hover:scale-105"
+            }`}
+          >
+            {isRecording ? (
+              <>
+                <Square size={32} fill="white" />
+                <span className="text-xs font-semibold">Stop</span>
+              </>
+            ) : isPaused ? (
+              <>
+                <Mic size={32} />
+                <span className="text-xs font-semibold">Paused</span>
+              </>
+            ) : (
+              <>
+                <Mic size={36} />
+                <span className="text-xs font-semibold mt-0.5">
+                  {state === "requesting" ? "…" : "Record"}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Timer */}
+      {(isRecording || isPaused) && (
+        <div className="text-center">
+          <span className={`text-3xl font-mono font-bold tabular-nums ${isRecording ? "text-red-500" : "text-amber-500"}`}>
+            {formatTime(seconds)}
+          </span>
+          <p className="text-xs text-slate-400 mt-1">
+            {isRecording ? "Recording in progress — speak your video idea" : "Paused"}
+          </p>
+        </div>
+      )}
+
+      {/* Idle label */}
+      {isIdle && state !== "requesting" && (
+        <div className="text-center">
+          <p className="text-sm font-medium text-slate-600">Tap to start speaking</p>
+          <p className="text-xs text-slate-400 mt-1">Describe your topic, location, and key points</p>
+        </div>
+      )}
+
+      {/* Waveform — only while recording */}
+      {isRecording && (
+        <div className="w-full h-14 flex items-center justify-center gap-0.5 bg-red-50 rounded-2xl px-4 overflow-hidden">
+          {amplitudes.map((amp, i) => (
+            <div
+              key={i}
+              className="w-1 rounded-full bg-red-400 transition-all duration-75"
+              style={{ height: `${Math.max(3, amp * 0.6)}px` }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Pause button while recording */}
+      {isRecording && (
+        <button
+          onClick={pause}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <Pause size={13} /> Pause
+        </button>
+      )}
+
+      {/* Resume button while paused */}
+      {isPaused && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={resume}
+            className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
+          >
+            <Mic size={13} /> Resume
+          </button>
+          <span className="text-slate-300">·</span>
+          <button
+            onClick={stop}
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            <Square size={12} /> Stop
+          </button>
+        </div>
+      )}
+
+      {/* Stopped — preview + use */}
+      {isStopped && (
+        <div className="w-full flex flex-col gap-4">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-brand-text">{formatTime(seconds)} recorded</p>
+            <p className="text-xs text-slate-400 mt-0.5">Listen back or use this recording</p>
+          </div>
+          {audioUrl && (
+            <audio src={audioUrl} controls className="w-full h-10" />
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={reset}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <RotateCcw size={14} /> Re-record
+            </button>
+            <Button onClick={handleUse} size="sm" className="flex-1 gap-1.5">
+              Use Recording <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3 w-full">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function CreatePageInner() {
@@ -33,7 +278,7 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("location");
+  const [inputMode, setInputMode] = useState<InputMode>("record");
   const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
@@ -52,19 +297,33 @@ function CreatePageInner() {
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // ── Pre-fill from URL params (e.g. clicked from Trending Topics) ─────────
+  // ── Load profile defaults + pre-fill from URL params ─────────────────────
   useEffect(() => {
     const tab = searchParams.get("tab");
     const topic = searchParams.get("topic");
-    const city = searchParams.get("city");
-    const state = searchParams.get("state");
+    const urlCity = searchParams.get("city");
+    const urlState = searchParams.get("state");
 
-    if (tab === "location") {
-      setInputMode("location");
-      if (topic) setLocCustomTopic(topic);
-      if (city) setLocCity(city);
-      if (state) setLocState(state);
-    }
+    if (tab === "location") setInputMode("location");
+    if (tab === "upload") setInputMode("upload");
+    if (tab === "listing") setInputMode("listing");
+    if (topic) { setLocCustomTopic(topic); setInputMode("location"); }
+
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("profiles")
+        .select("location_city, location_state")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.location_city && !urlCity) setLocCity(data.location_city);
+          if (data?.location_state && !urlState) setLocState(data.location_state);
+          if (urlCity) setLocCity(urlCity);
+          if (urlState) setLocState(urlState);
+        });
+    });
   }, []); // eslint-disable-line
 
   // ── Voice processing ────────────────────────────────────────────────────────
@@ -134,7 +393,6 @@ function CreatePageInner() {
   function handleTemplateSelect(template: ContentTemplate) {
     setLocCustomTopic(template.topic);
     setShowTemplates(false);
-    // Scroll to the topic input after a tick
     setTimeout(() => {
       document.getElementById("loc-custom-topic")?.focus();
     }, 100);
@@ -198,7 +456,7 @@ function CreatePageInner() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-brand-text">Create New Video</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Record your voice, upload audio, generate from location data, or import a listing.
+          Speak your idea and we&apos;ll turn it into a professional real estate video.
         </p>
       </div>
 
@@ -206,20 +464,20 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
-            onClick={() => setInputMode("location")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <MapPin size={14} /> Templates
-          </button>
-          <button
             onClick={() => setInputMode("record")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
             <Mic size={14} /> Record
+          </button>
+          <button
+            onClick={() => setInputMode("location")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <MapPin size={14} /> Templates
           </button>
           <button
             onClick={() => setInputMode("upload")}
@@ -307,7 +565,7 @@ function CreatePageInner() {
                   </div>
 
                   {recordMode === "voice" ? (
-                    <VoiceRecorder onRecordingComplete={handleRecordingComplete} maxSeconds={300} />
+                    <VoiceHero onRecordingComplete={handleRecordingComplete} />
                   ) : (
                     <CameraRecorder />
                   )}
@@ -542,21 +800,24 @@ function CreatePageInner() {
             )}
           </div>
 
-          {/* Topic input */}
+          {/* Topic input with inline mic */}
           <div className="mb-5">
             <label className="text-xs font-medium text-slate-500 block mb-1.5">
               What&apos;s your topic? <span className="text-red-400">*</span>
             </label>
-            <input
-              id="loc-custom-topic"
-              type="text"
-              value={locCustomTopic}
-              onChange={(e) => setLocCustomTopic(e.target.value)}
-              placeholder="e.g. Market update, Why live here, New construction, School ratings, HOA fees..."
-              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+            <div className="flex items-center gap-1 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+              <input
+                id="loc-custom-topic"
+                type="text"
+                value={locCustomTopic}
+                onChange={(e) => setLocCustomTopic(e.target.value)}
+                placeholder="e.g. Market update, Why live here, New construction…  or tap 🎤 to speak"
+                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none rounded-xl"
+              />
+              <TopicMicButton onTranscript={(t) => setLocCustomTopic(t)} />
+            </div>
             <p className="text-xs text-slate-400 mt-1">
-              Any real estate topic — our AI will research it for this specific location
+              Type your topic or tap the mic to speak it — AI will research it for this specific location
             </p>
           </div>
 

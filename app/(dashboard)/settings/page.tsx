@@ -5,9 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette } from "lucide-react";
+import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic } from "lucide-react";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
-import { BrandProfile, type BrandProfileInitial } from "@/components/settings/brand-profile";
+import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -199,7 +199,36 @@ export default function SettingsPage() {
         </form>
       </Card>
 
-      {/* Brand & AI Profile — includes contact info, photos, voice, avatar */}
+      {/* AI Voice Clone — dedicated card for easy access */}
+      {brandData && user && (
+        <Card>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
+              <Mic size={18} className="text-blue-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-brand-text">AI Voice Clone</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Record or upload your voice — your AI videos will speak in your voice
+              </p>
+            </div>
+          </div>
+          <VoiceCloneUploader
+            userId={user.id}
+            currentVoiceId={brandData.voice_clone_id ?? null}
+            currentHeygenVoiceId={brandData.heygen_voice_id ?? null}
+            onUpdate={(elevenLabsId, heygenId) => {
+              setBrandData((prev) => prev ? {
+                ...prev,
+                voice_clone_id: elevenLabsId,
+                heygen_voice_id: heygenId,
+              } : prev);
+            }}
+          />
+        </Card>
+      )}
+
+      {/* Brand & AI Profile — contact info, photos, avatar */}
       {brandData && user && (
         <Card>
           <div className="flex items-center gap-3 mb-5">
@@ -209,7 +238,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="font-semibold text-brand-text">Brand & AI Profile</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Contact info, photos, voice clone, and AI avatar
+                Contact info, photos, and AI avatar
               </p>
             </div>
           </div>

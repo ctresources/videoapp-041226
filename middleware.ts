@@ -3,10 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register"];
 const AUTH_ROUTES = ["/login", "/register"];
-const ADMIN_ROUTES = ["/admin"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // API routes handle their own auth — skip session check to avoid redirect loops
+  // and ensure they return proper JSON error responses instead of redirect HTML.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -19,7 +24,9 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -29,42 +36,18 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // Validate session server-side — cookie presence alone is not enough.
+  // After signOut(), getUser() returns null even if stale cookies remain.
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Logged-in users visiting auth pages → redirect to dashboard
+  // Authenticated users visiting login/register → dashboard
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Protected routes — must be authenticated
-  if (!user && !PUBLIC_ROUTES.some((r) => pathname === r) && !pathname.startsWith("/api/video/webhook")) {
+  // Unauthenticated users on protected routes → login
+  if (!user && !PUBLIC_ROUTES.some((r) => pathname === r)) {
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Admin routes — check role
-  if (user && ADMIN_ROUTES.some((r) => pathname.startsWith(r))) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-  }
-
-  // Onboarding check — authenticated users who haven't completed onboarding
-  if (user && pathname.startsWith("/dashboard")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_done")
-      .eq("id", user.id)
-      .single();
-
-    if (profile && !profile.onboarding_done) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
   }
 
   return supabaseResponse;

@@ -204,11 +204,13 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
 
 =====================================
-VISUAL DIRECTION
+AVATAR PRESENTATION
 =====================================
-- Full-body avatar presenter on screen — confident, approachable, professional
-- Seamlessly intercut with cinematic b-roll of ${locationOr}
-- CRITICAL: Frame must be 100% filled at ALL times — no empty space, no black bars
+- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
+- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
+- Apply a clean white or soft gold circular border around the PiP
+- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
+- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
 
 =====================================
 B-ROLL
@@ -245,11 +247,9 @@ TEXT OVERLAYS
 =====================================
 FIRST FRAME (THUMBNAIL-STYLE OPENER)
 =====================================
-RIGHT side: full-body avatar against a warm, bright lifestyle image of ${locationOr}
-LEFT side: bold headline — "${params.hookText || "Your Local Real Estate Expert"}"
-
-- LEFT panel: dark gray blending into deep navy gradient (high contrast, text readable)
-- RIGHT panel: warm natural tones behind the agent (inviting, lifestyle feel)
+- Full-frame warm lifestyle image of ${locationOr} filling the entire background
+- Bold headline centered or left-aligned: "${params.hookText || "Your Local Real Estate Expert"}"
+- Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
 - Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
 - Style like a scroll-stopping YouTube thumbnail
 
@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -374,9 +374,16 @@ export async function POST(req: NextRequest) {
       listingPhotoCount: listingPhotos.length,
     });
 
-    const voiceId = profile.heygen_voice_id
-      || await getPrivateVoiceId().catch(() => null)
-      || await getDefaultEnglishVoiceId().catch(() => null);
+    let voiceId = profile.heygen_voice_id;
+    if (!voiceId) {
+      const privateVoiceId = await getPrivateVoiceId().catch(() => null);
+      if (privateVoiceId) {
+        voiceId = privateVoiceId;
+        // Save so future videos use it directly without a fallback lookup
+        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
+      }
+    }
+    voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
@@ -411,9 +418,10 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
+    const avatarId = lookId || profile.heygen_photo_id;
     const sessionId = await generateVideoAgent({
       prompt,
-      avatarId: profile.heygen_photo_id,
+      avatarId,
       voiceId,
       orientation,
       files: files.length > 0 ? files : undefined,
@@ -435,7 +443,7 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[create-blog] Video Agent session ${sessionId} submitted (avatar: ${profile.heygen_photo_id}, voice: ${voiceId})`);
+    console.log(`[create-blog] Video Agent session ${sessionId} submitted (avatar: ${avatarId}, voice: ${voiceId})`);
     return NextResponse.json({
       video: {
         ...videoRow,

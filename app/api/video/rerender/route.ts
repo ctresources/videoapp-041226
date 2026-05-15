@@ -89,11 +89,13 @@ NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
 ${params.script}
 
 =====================================
-VISUAL DIRECTION
+AVATAR PRESENTATION
 =====================================
-- Full-body avatar presenter on screen — confident, approachable, professional
-- Seamlessly intercut with cinematic b-roll of ${locationOr}
-- CRITICAL: Frame must be 100% filled at ALL times — no empty space, no black bars
+- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
+- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
+- Apply a clean white or soft gold circular border around the PiP
+- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
+- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
 
 =====================================
 B-ROLL
@@ -183,6 +185,10 @@ export async function POST(req: NextRequest) {
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
+  // Tracks the placeholder generated_videos row so we can mark it failed if
+  // HeyGen rejects the job (otherwise it lingers as "rendering" forever).
+  let placeholderVideoId: string | null = null;
+
   const { data: profile } = await admin
     .from("profiles")
     .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website")
@@ -240,10 +246,15 @@ export async function POST(req: NextRequest) {
       hookText,
     });
 
-    const voiceId = edits.voiceId
-      || p.heygen_voice_id
-      || await getPrivateVoiceId().catch(() => null)
-      || await getDefaultEnglishVoiceId().catch(() => null);
+    let voiceId = edits.voiceId || p.heygen_voice_id;
+    if (!voiceId) {
+      const privateVoiceId = await getPrivateVoiceId().catch(() => null);
+      if (privateVoiceId) {
+        voiceId = privateVoiceId;
+        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
+      }
+    }
+    voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
@@ -263,21 +274,50 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
+    placeholderVideoId = newVideo.id;
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const sessionId = await generateVideoAgent({
-      prompt,
-      avatarId: p.heygen_photo_id,
-      voiceId,
-      orientation,
-      callbackUrl,
-      callbackId: newVideo.id,
-      styleId: styleId || undefined,
-    });
+    const avatarId = edits.avatarId || p.heygen_photo_id;
+    let sessionId: string;
+    try {
+      sessionId = await generateVideoAgent({
+        prompt,
+        avatarId,
+        voiceId,
+        orientation,
+        callbackUrl,
+        callbackId: newVideo.id,
+        styleId: styleId || undefined,
+      });
+    } catch (err) {
+      // HeyGen rejects voice IDs that aren't in their system (e.g. legacy
+      // ElevenLabs IDs leaking through from profile.voice_clone_id). Retry
+      // once with a fallback HeyGen voice so the rerender still completes.
+      const msg = err instanceof Error ? err.message : "";
+      const isInvalidVoice = /invalid voice_id|voice not found/i.test(msg);
+      if (!isInvalidVoice) throw err;
+
+      const fallbackVoiceId =
+        (await getPrivateVoiceId().catch(() => null)) ||
+        (await getDefaultEnglishVoiceId().catch(() => null));
+      if (!fallbackVoiceId) throw err;
+
+      console.log(`[rerender] voice ${voiceId} rejected; retrying with fallback ${fallbackVoiceId}`);
+      sessionId = await generateVideoAgent({
+        prompt,
+        avatarId,
+        voiceId: fallbackVoiceId,
+        orientation,
+        callbackUrl,
+        callbackId: newVideo.id,
+        styleId: styleId || undefined,
+      });
+      voiceId = fallbackVoiceId;
+    }
 
     await admin
       .from("generated_videos")
@@ -292,13 +332,23 @@ export async function POST(req: NextRequest) {
       response_status: 202,
     });
 
-    console.log(`[rerender] Video Agent session ${sessionId} submitted (avatar: ${p.heygen_photo_id}, voice: ${voiceId})`);
+    console.log(`[rerender] Video Agent session ${sessionId} submitted (avatar: ${avatarId}, voice: ${voiceId})`);
     return NextResponse.json({
       video: { ...newVideo, render_job_id: sessionId, render_status: "rendering" },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Re-render failed";
     console.error("[rerender] error:", msg);
+
+    // Mark the placeholder row as failed so it doesn't linger as "rendering"
+    if (placeholderVideoId) {
+      await admin
+        .from("generated_videos")
+        .update({ render_status: "failed" })
+        .eq("id", placeholderVideoId)
+        .then(() => undefined, () => undefined);
+    }
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

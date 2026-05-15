@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateVideoScript, generateSeoData } from "@/lib/api/perplexity";
+import { generateVideoScript, generateSeoData, generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { searchRealEstateContext } from "@/lib/api/yousearch";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,11 +17,20 @@ export async function POST(req: NextRequest) {
   // Get recording + profile
   const [recordingResult, profileResult] = await Promise.all([
     admin.from("voice_recordings").select("transcript, title").eq("id", recordingId).eq("user_id", user.id).single(),
-    admin.from("profiles").select("full_name, credits_remaining").eq("id", user.id).single(),
+    admin.from("profiles").select("full_name, credits_remaining, company_name, phone, company_phone, website, location_city, location_state").eq("id", user.id).single(),
   ]);
 
   const recording = recordingResult.data as { transcript: string | null; title: string | null } | null;
-  const profile = profileResult.data as { full_name: string | null; credits_remaining: number } | null;
+  const profile = profileResult.data as {
+    full_name: string | null;
+    credits_remaining: number;
+    company_name: string | null;
+    phone: string | null;
+    company_phone: string | null;
+    website: string | null;
+    location_city: string | null;
+    location_state: string | null;
+  } | null;
 
   if (!recording?.transcript) {
     return NextResponse.json({ error: "No transcript found. Please transcribe the recording first." }, { status: 400 });
@@ -48,7 +57,33 @@ export async function POST(req: NextRequest) {
   try {
     // Generate script and SEO in parallel
     const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType);
-    const seoData = await generateSeoData(aiScript.title, aiScript.script, aiScript.keywords);
+    const [baseSeo, ytMeta] = await Promise.all([
+      generateSeoData(aiScript.title, aiScript.script, aiScript.keywords),
+      generateYoutubeMetadata({
+        title: aiScript.title,
+        script: aiScript.script,
+        city: profile.location_city || undefined,
+        state: profile.location_state || undefined,
+        agentName: profile.full_name || undefined,
+        brokerage: profile.company_name || undefined,
+        keywords: aiScript.keywords,
+        website: profile.website || undefined,
+        phone: profile.phone || profile.company_phone || undefined,
+      }).catch((err) => {
+        console.error("[generate-script] YouTube metadata failed:", err);
+        return null;
+      }),
+    ]);
+
+    const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
+
+    const seoData = {
+      ...baseSeo,
+      // Prefer SEO/GEO/AEO-optimized YouTube copy when available
+      youtube_title: ytMeta?.youtube_title || baseSeo.youtube_title,
+      youtube_description: ytMeta?.youtube_description || baseSeo.youtube_description,
+      thumbnail_url: thumbnailUrl,
+    };
 
     // Create project
     const { data: project, error: projectError } = await admin

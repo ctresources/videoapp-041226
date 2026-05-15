@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft, CheckCircle, Link2Off, ExternalLink, Key,
+  CheckCircle, Link2Off, ExternalLink, Key,
   RefreshCw, PlayCircle, Camera, Music2,
   Share2, Globe, AtSign, AlertTriangle, Loader2,
 } from "lucide-react";
@@ -35,7 +35,7 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100" },
 };
 
-function SocialSettingsContent() {
+function SocialPageContent() {
   const searchParams = useSearchParams();
 
   const [apiKey, setApiKey] = useState("");
@@ -49,7 +49,6 @@ function SocialSettingsContent() {
   const [disconnectingYT, setDisconnectingYT] = useState(false);
 
   useEffect(() => {
-    // Show toast based on OAuth redirect result
     const ytParam = searchParams.get("youtube");
     const ytError = searchParams.get("youtube_error");
     if (ytParam === "connected") toast.success("YouTube channel connected!");
@@ -129,17 +128,8 @@ function SocialSettingsContent() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/settings">
-          <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-            <ArrowLeft size={18} className="text-slate-400" />
-          </button>
-        </Link>
-        <div>
-          <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Connect once — post to YouTube and other platforms directly from the app</p>
-        </div>
+      <div className="mb-6">
+        <p className="text-sm text-slate-500">Connect once — post to YouTube and other platforms directly from the app</p>
       </div>
 
       {/* ── Native YouTube ───────────────────────────────────────────────────── */}
@@ -348,14 +338,21 @@ function SocialSettingsContent() {
           )}
         </>
       )}
+
+      <p className="text-xs text-slate-400 text-center mt-6">
+        Also accessible from{" "}
+        <Link href="/settings/social" className="text-primary-500 hover:underline">
+          Settings → Social Accounts
+        </Link>
+      </p>
     </div>
   );
 }
 
-export default function SocialSettingsPage() {
+export default function SocialPage() {
   return (
     <Suspense>
-      <SocialSettingsContent />
+      <SocialPageContent />
     </Suspense>
   );
 }

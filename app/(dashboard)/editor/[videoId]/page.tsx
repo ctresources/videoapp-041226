@@ -36,15 +36,14 @@ const FORMAT_OPTIONS = [
 const CAPTION_COLORS = ["#FFFFFF", "#FFFF00", "#00FF88", "#FF6B6B", "#60A5FA", "#F472B6"];
 const HIGHLIGHT_COLORS = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444", "#EC4899"];
 
-// Preset ElevenLabs voices (public, no clone needed)
-const PRESET_VOICES = [
-  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel",  desc: "Calm · Narration",   gender: "F" },
-  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh",    desc: "Deep · Confident",   gender: "M" },
-  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam",    desc: "Professional",        gender: "M" },
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella",   desc: "Soft · Friendly",    gender: "F" },
-  { id: "ErXwobaYiN019PkySvjV", name: "Antoni",  desc: "Warm · Clear",        gender: "M" },
-  { id: "MF3mGyEYCl7XYWbV9V6O", name: "Elli",    desc: "Young · Energetic",  gender: "F" },
-];
+// Preset HeyGen voices (loaded dynamically from /api/profile/heygen-voices)
+interface HeygenVoice {
+  voice_id: string;
+  name: string;
+  language: string;
+  gender: string;
+  preview_audio: string | null;
+}
 
 // Stock HeyGen avatars
 const STOCK_AVATARS = [
@@ -66,7 +65,7 @@ interface VideoData {
 }
 
 interface Profile {
-  voice_clone_id: string | null;
+  heygen_voice_id: string | null;
   heygen_photo_id: string | null;
   full_name: string | null;
   logo_url: string | null;
@@ -102,6 +101,7 @@ export default function VideoEditorPage() {
   const musicInputRef = useRef<HTMLInputElement>(null);
   const [video, setVideo] = useState<VideoData | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [presetVoices, setPresetVoices] = useState<HeygenVoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [renderDone, setRenderDone] = useState(false);
@@ -122,6 +122,9 @@ export default function VideoEditorPage() {
     captionHighlightColor: "#3B82F6",
     musicUrl: null,
   });
+  // Snapshot of edits as they were when the video loaded — used to detect
+  // whether the user made render-affecting changes vs. a title-only edit.
+  const [initialEdits, setInitialEdits] = useState<RerenderEdits | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
 
   useEffect(() => {
@@ -147,26 +150,44 @@ export default function VideoEditorPage() {
 
     const v = data as unknown as VideoData;
     setVideo(v);
-    setEdits((e) => ({
-      ...e,
-      script: v.projects?.ai_script?.script || "",
-      title: v.projects?.title || "",
-      format: (v.video_type as RerenderEdits["format"]) || "blog_long",
-    }));
+    setEdits((e) => {
+      const next = {
+        ...e,
+        script: v.projects?.ai_script?.script || "",
+        title: v.projects?.title || "",
+        format: (v.video_type as RerenderEdits["format"]) || "blog_long",
+      };
+      setInitialEdits(next);
+      return next;
+    });
 
     if (user) {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("voice_clone_id, heygen_photo_id, full_name, logo_url")
+        .select("heygen_voice_id, heygen_photo_id, full_name, logo_url")
         .eq("id", user.id)
         .single();
       if (prof) {
         setProfile(prof as Profile);
-        // Default to user's cloned voice if they have one
-        if (prof.voice_clone_id) {
-          setEdits((e) => ({ ...e, voiceId: prof.voice_clone_id }));
+        // Default to user's HeyGen cloned voice if they have one
+        if (prof.heygen_voice_id) {
+          setEdits((e) => ({ ...e, voiceId: prof.heygen_voice_id }));
         }
       }
+    }
+
+    // Load valid HeyGen preset voices (so picks always work with Video Agent v3)
+    try {
+      const res = await fetch("/api/profile/heygen-voices");
+      if (res.ok) {
+        const { voices } = await res.json();
+        const english = (voices || []).filter((v: HeygenVoice) =>
+          (v.language || "").toLowerCase().startsWith("en")
+        );
+        setPresetVoices(english.slice(0, 6));
+      }
+    } catch {
+      // non-fatal — user can still use their cloned voice or default
     }
 
     setLoading(false);
@@ -205,8 +226,54 @@ export default function VideoEditorPage() {
     setEdits((e) => ({ ...e, musicUrl: preset.url }));
   }
 
+  // Fields that, when changed, require a full HeyGen re-render.
+  // Title is intentionally excluded — it's metadata and can be saved instantly.
+  const RENDER_FIELDS: Array<keyof RerenderEdits> = [
+    "script", "format", "brandColor", "logoEnabled", "avatarId", "voiceId",
+    "captionsEnabled", "captionColor", "captionHighlightColor", "musicUrl",
+  ];
+
+  function hasRenderChanges(): boolean {
+    if (!initialEdits) return true;
+    return RENDER_FIELDS.some((k) => edits[k] !== initialEdits[k]);
+  }
+
+  function hasTitleChange(): boolean {
+    if (!initialEdits) return false;
+    return (edits.title || "").trim() !== (initialEdits.title || "").trim();
+  }
+
+  async function handleSaveTitle() {
+    const newTitle = edits.title.trim();
+    if (!newTitle) { toast.error("Title cannot be empty"); return; }
+    setRendering(true);
+    try {
+      const res = await fetch("/api/video/update-title", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, title: newTitle }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+      setInitialEdits((prev) => prev ? { ...prev, title: newTitle } : prev);
+      toast.success("Title saved!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setRendering(false);
+    }
+  }
+
   async function handleRerender() {
     if (!edits.script.trim()) { toast.error("Script cannot be empty"); return; }
+
+    // If only the title changed, skip the expensive HeyGen render and just
+    // update the DB. Saves ~3 minutes and a HeyGen credit per title tweak.
+    if (!hasRenderChanges() && hasTitleChange()) {
+      await handleSaveTitle();
+      return;
+    }
+
     setRendering(true);
     setRenderDone(false);
     try {
@@ -262,7 +329,9 @@ export default function VideoEditorPage() {
         >
           {renderDone
             ? <><CheckCircle size={16} /> Done!</>
-            : <><Wand2 size={16} /> Re-render Video</>}
+            : !hasRenderChanges() && hasTitleChange()
+              ? <><CheckCircle size={16} /> Save Title</>
+              : <><Wand2 size={16} /> Re-render Video</>}
         </Button>
       </div>
 
@@ -468,13 +537,13 @@ export default function VideoEditorPage() {
           {/* Voice */}
           <Section icon={Mic2} title="Voice" color="bg-blue-500">
             <div className="flex flex-col gap-2">
-              {profile?.voice_clone_id && (
+              {profile?.heygen_voice_id && (
                 <>
                   <p className="text-xs font-medium text-slate-500 mb-1">Your cloned voice</p>
                   <button
-                    onClick={() => setEdits((x) => ({ ...x, voiceId: profile.voice_clone_id }))}
+                    onClick={() => setEdits((x) => ({ ...x, voiceId: profile.heygen_voice_id }))}
                     className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      edits.voiceId === profile.voice_clone_id
+                      edits.voiceId === profile.heygen_voice_id
                         ? "border-blue-500 bg-blue-50"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
@@ -488,31 +557,38 @@ export default function VideoEditorPage() {
                       </p>
                       <p className="text-xs text-slate-400">Trained on your voice sample</p>
                     </div>
-                    {edits.voiceId === profile.voice_clone_id && (
+                    {edits.voiceId === profile.heygen_voice_id && (
                       <CheckCircle size={14} className="text-blue-500 ml-auto shrink-0" />
                     )}
                   </button>
-                  <p className="text-xs font-medium text-slate-500 mt-2 mb-1">Or choose a preset voice</p>
+                  {presetVoices.length > 0 && (
+                    <p className="text-xs font-medium text-slate-500 mt-2 mb-1">Or choose a preset voice</p>
+                  )}
                 </>
               )}
-              {!profile?.voice_clone_id && (
+              {!profile?.heygen_voice_id && presetVoices.length > 0 && (
                 <p className="text-xs font-medium text-slate-500 mb-1">Choose a voice</p>
               )}
+              {!profile?.heygen_voice_id && presetVoices.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  Set up a voice clone in Settings, or we&apos;ll use a default HeyGen voice.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-1.5">
-                {PRESET_VOICES.map((v) => (
+                {presetVoices.map((v) => (
                   <button
-                    key={v.id}
-                    onClick={() => setEdits((x) => ({ ...x, voiceId: v.id }))}
+                    key={v.voice_id}
+                    onClick={() => setEdits((x) => ({ ...x, voiceId: v.voice_id }))}
                     className={`flex items-center gap-2 p-2.5 rounded-xl border-2 text-left transition-all ${
-                      edits.voiceId === v.id
+                      edits.voiceId === v.voice_id
                         ? "border-blue-500 bg-blue-50"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
-                    <span className="text-base">{v.gender === "F" ? "👩" : "👨"}</span>
+                    <span className="text-base">{(v.gender || "").toLowerCase().startsWith("f") ? "👩" : "👨"}</span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-brand-text">{v.name}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{v.desc}</p>
+                      <p className="text-xs font-semibold text-brand-text truncate">{v.name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{v.language}</p>
                     </div>
                   </button>
                 ))}
@@ -644,10 +720,14 @@ export default function VideoEditorPage() {
           >
             {renderDone
               ? <><CheckCircle size={16} /> Render queued — check My Videos</>
-              : <><Wand2 size={16} /> Re-render with These Changes</>}
+              : !hasRenderChanges() && hasTitleChange()
+                ? <><CheckCircle size={16} /> Save Title (no re-render needed)</>
+                : <><Wand2 size={16} /> Re-render with These Changes</>}
           </Button>
           <p className="text-xs text-slate-400 text-center">
-            Original video is preserved · New version appears in My Videos
+            {!hasRenderChanges() && hasTitleChange()
+              ? "Title changes are saved instantly — no HeyGen credit used"
+              : "Original video is preserved · New version appears in My Videos"}
           </p>
         </div>
       </div>

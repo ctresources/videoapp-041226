@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -22,6 +22,7 @@ interface PublishModalProps {
   defaultCaption?: string;
   defaultDescription?: string;
   defaultTags?: string[];
+  thumbnailUrl?: string;
   onClose: () => void;
   onPublished?: () => void;
 }
@@ -42,7 +43,7 @@ type Tab = "now" | "schedule";
 
 export function PublishModal({
   videoId, videoTitle, defaultCaption = "", defaultDescription = "",
-  defaultTags = [], onClose, onPublished
+  defaultTags = [], thumbnailUrl, onClose, onPublished
 }: PublishModalProps) {
   const [accounts, setAccounts] = useState<BlotatoAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -65,7 +66,8 @@ export function PublishModal({
         setAccounts(accs);
         setSelectedIds(accs.map((a: BlotatoAccount) => a.id));
         setLoadingAccounts(false);
-      });
+      })
+      .catch(() => setLoadingAccounts(false));
   }, []);
 
   function toggleAccount(id: string) {
@@ -151,6 +153,18 @@ export function PublishModal({
           </div>
         ) : (
           <div className="p-5 flex flex-col gap-4">
+            {/* Title — always visible */}
+            <div>
+              <label className="text-xs font-medium text-slate-500 block mb-1">Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={100}
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
             {/* Account selector */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Post to</p>
@@ -163,8 +177,8 @@ export function PublishModal({
                   <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
                   <p className="text-sm text-yellow-700">
                     No social accounts connected.{" "}
-                    <Link href="/settings/social" className="underline font-medium" onClick={onClose}>
-                      Connect Blotato →
+                    <Link href="/social" className="underline font-medium" onClick={onClose}>
+                      Connect YouTube or Blotato →
                     </Link>
                   </p>
                 </div>
@@ -185,7 +199,7 @@ export function PublishModal({
                       >
                         <Icon size={14} className={meta.color} />
                         <span className="font-medium text-brand-text text-xs">
-                          {account.username ? `@${account.username}` : meta.label}
+                          {account.name || meta.label}
                         </span>
                         {isSelected && <CheckCircle size={12} className="text-primary-500" />}
                       </button>
@@ -211,19 +225,37 @@ export function PublishModal({
               ))}
             </div>
 
-            {/* YouTube fields */}
+            {/* YouTube-specific fields */}
             {hasYoutube && (
               <div className="flex flex-col gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-500 block mb-1">YouTube Title</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    maxLength={100}
-                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
+                {/* Thumbnail */}
+                {thumbnailUrl && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <Image size={12} /> YouTube Thumbnail
+                      </label>
+                      <a
+                        href={thumbnailUrl}
+                        download="youtube-thumbnail.png"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                      >
+                        <Download size={11} /> Download PNG
+                      </a>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={thumbnailUrl}
+                        alt="YouTube thumbnail preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">1280×720 · Download and upload manually to YouTube Studio after publishing</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-medium text-slate-500 block mb-1">Description</label>
                   <textarea
@@ -293,12 +325,12 @@ export function PublishModal({
             <Button
               onClick={handleSubmit}
               loading={loading}
-              disabled={!selectedIds.length || accounts.length === 0}
+              disabled={accounts.length === 0}
               size="lg"
               className="w-full gap-2"
             >
               {tab === "now"
-                ? <><Send size={16} /> Publish to {selectedIds.length} Platform{selectedIds.length !== 1 ? "s" : ""}</>
+                ? <><Send size={16} /> {selectedIds.length > 0 ? `Publish to ${selectedIds.length} Platform${selectedIds.length !== 1 ? "s" : ""}` : "Select a Platform"}</>
                 : <><Clock size={16} /> Schedule Post</>}
             </Button>
           </div>

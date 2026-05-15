@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  ImageIcon, Film, Palette
+  ImageIcon, Film, Palette, User
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -20,6 +20,13 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
   const text = await res.text();
   if (!text || text.trimStart().startsWith("<")) return null;
   try { return JSON.parse(text); } catch { return null; }
+}
+
+interface AvatarLook {
+  id: string;
+  name: string;
+  preview_image_url: string | null;
+  status: string | null;
 }
 
 type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
@@ -87,6 +94,9 @@ export default function ProjectEditorPage() {
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("blog_long");
   const [selectedBgMode, setSelectedBgMode] = useState<BackgroundMode>("stock-video");
+  const [looks, setLooks] = useState<AvatarLook[]>([]);
+  const [looksLoading, setLooksLoading] = useState(false);
+  const [selectedLookId, setSelectedLookId] = useState<string>("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: false, blog: false,
   });
@@ -106,7 +116,27 @@ export default function ProjectEditorPage() {
   useEffect(() => {
     loadProject();
     loadProfile();
+    loadLooks();
   }, [projectId]); // eslint-disable-line
+
+  async function loadLooks() {
+    setLooksLoading(true);
+    try {
+      const res = await fetch("/api/avatar/looks");
+      if (res.ok) {
+        const data = await res.json();
+        const list: AvatarLook[] = (data.looks || []).filter(
+          (l: AvatarLook) => !l.status || l.status === "completed"
+        );
+        setLooks(list);
+        if (list.length > 0) setSelectedLookId(list[0].id);
+      }
+    } catch {
+      // silently ignore — look picker just won't appear
+    } finally {
+      setLooksLoading(false);
+    }
+  }
 
   async function loadProfile() {
     const supabase = createClient();
@@ -241,6 +271,7 @@ export default function ProjectEditorPage() {
           backgroundMode: selectedBgMode,
           script: fullScript,
           hook,
+          lookId: selectedLookId || undefined,
         }),
       });
 
@@ -518,6 +549,56 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
+
+            {/* Avatar look selector */}
+            {(looksLoading || looks.length > 1) && (
+              <>
+                <p className="text-xs font-medium text-slate-500 mb-2">Avatar Look</p>
+                {looksLoading ? (
+                  <div className="flex gap-2 mb-5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="w-20 h-24 rounded-xl bg-slate-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mb-5 flex-wrap">
+                    {looks.map((look) => (
+                      <button
+                        key={look.id}
+                        onClick={() => setSelectedLookId(look.id)}
+                        title={look.name}
+                        className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
+                          selectedLookId === look.id
+                            ? "border-primary-500 ring-2 ring-primary-200"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                        style={{ width: 72, height: 88 }}
+                      >
+                        {look.preview_image_url ? (
+                          <img
+                            src={look.preview_image_url}
+                            alt={look.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                            <User size={24} className="text-slate-300" />
+                          </div>
+                        )}
+                        {selectedLookId === look.id && (
+                          <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
+                            <CheckCircle size={10} className="text-white" />
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
+                          <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
             <Button
               onClick={handleGenerateVideo}

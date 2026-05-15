@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { createClient } from "@/lib/supabase/client";
+import { isExpiredHeygenUrl } from "@/lib/utils/store-video";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film,
@@ -266,12 +267,34 @@ function VideosContent() {
     const supabase = createClient();
     const { data } = await supabase
       .from("generated_videos")
-      .select("*, projects(title)")
+      .select("*, projects(title, seo_data)")
       .order("created_at", { ascending: false })
       .limit(50);
 
-    setVideos((data as unknown as GeneratedVideo[]) || []);
+    const videos = (data as unknown as GeneratedVideo[]) || [];
+    setVideos(videos);
     setLoading(false);
+
+    // Silently refresh any completed videos with expired HeyGen signed URLs
+    const expired = videos.filter(
+      (v) => v.render_status === "completed" && v.video_url && isExpiredHeygenUrl(v.video_url)
+    );
+    for (const v of expired) {
+      fetch("/api/video/refresh-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: v.id }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.videoUrl) {
+            setVideos((prev) =>
+              prev.map((vid) => vid.id === v.id ? { ...vid, video_url: d.videoUrl } : vid)
+            );
+          }
+        })
+        .catch(() => {/* silent — keep showing old URL */});
+    }
   }, []);
 
   useEffect(() => { loadVideos(); }, [loadVideos]);
@@ -553,14 +576,22 @@ function VideosContent() {
       )}
 
       {/* Publish Modal */}
-      {publishingVideo && (
-        <PublishModal
-          videoId={publishingVideo.id}
-          videoTitle={(publishingVideo.projects as { title: string } | null)?.title || "Untitled Video"}
-          onClose={() => setPublishingVideo(null)}
-          onPublished={loadVideos}
-        />
-      )}
+      {publishingVideo && (() => {
+        const proj = publishingVideo.projects as {
+          title: string;
+          seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string } | null;
+        } | null;
+        return (
+          <PublishModal
+            videoId={publishingVideo.id}
+            videoTitle={proj?.seo_data?.youtube_title || proj?.title || "Untitled Video"}
+            defaultDescription={proj?.seo_data?.youtube_description || ""}
+            thumbnailUrl={proj?.seo_data?.thumbnail_url || undefined}
+            onClose={() => setPublishingVideo(null)}
+            onPublished={loadVideos}
+          />
+        );
+      })()}
 
       {/* Delete Confirmation Modal */}
       {videoToDelete && (

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import type { ListingData } from "../scrape-listing/route";
 
 async function generateListingScript(listing: ListingData, agentName?: string): Promise<{
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("credits_remaining, full_name")
+    .select("credits_remaining, full_name, company_name, phone, company_phone, website, location_city, location_state")
     .eq("id", user.id)
     .single();
 
@@ -136,11 +137,45 @@ export async function POST(req: NextRequest) {
     location: listing.address,
   };
 
+  // Generate SEO/GEO/AEO-optimized YouTube metadata — non-blocking
+  const prof = profile as {
+    credits_remaining: number;
+    full_name?: string | null;
+    company_name?: string | null;
+    phone?: string | null;
+    company_phone?: string | null;
+    website?: string | null;
+    location_city?: string | null;
+    location_state?: string | null;
+  };
+  // Pull city/state from listing if present; fall back to agent's market
+  const listingCity = (listing as ListingData & { city?: string }).city || prof.location_city || undefined;
+  const listingState = (listing as ListingData & { state?: string }).state || prof.location_state || undefined;
+  const ytMeta = await generateYoutubeMetadata({
+    title: scriptData.title,
+    script: scriptData.script,
+    city: listingCity,
+    state: listingState,
+    agentName: prof.full_name || undefined,
+    brokerage: prof.company_name || undefined,
+    keywords: scriptData.keywords,
+    website: prof.website || undefined,
+    phone: prof.phone || prof.company_phone || undefined,
+  }).catch((err) => {
+    console.error("[listing-video] YouTube metadata failed:", err);
+    return null;
+  });
+
+  const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((scriptData.hook || scriptData.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
+
   const seoData = {
     meta_title: scriptData.title,
     meta_description: scriptData.description,
     keywords: scriptData.keywords,
-    hashtags: scriptData.hashtags,
+    hashtags: ytMeta?.hashtags?.length ? ytMeta.hashtags : scriptData.hashtags,
+    youtube_title: ytMeta?.youtube_title || scriptData.title,
+    youtube_description: ytMeta?.youtube_description || scriptData.description,
+    thumbnail_url: thumbnailUrl,
   };
 
   // Create project

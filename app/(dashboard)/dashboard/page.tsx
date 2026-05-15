@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,12 @@ import { TrendingTopics } from "@/components/dashboard/trending-topics";
 async function DashboardStats() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
   const [videosResult, postsResult, profileResult] = await Promise.all([
-    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user!.id),
-    supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user!.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, location_city, location_state").eq("id", user!.id).single(),
+    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
+    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, location_city, location_state").eq("id", user.id).single(),
   ]);
 
   const videoCount = videosResult.count;
@@ -59,7 +61,6 @@ async function DashboardStats() {
         ))}
       </div>
 
-      {/* Trending Topics widget — client component, uses user's saved city/state */}
       <Card className="mb-6">
         <TrendingTopics
           city={profile?.location_city ?? undefined}
@@ -73,11 +74,12 @@ async function DashboardStats() {
 async function GettingStarted() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
   const [profileResult, videoResult, socialResult] = await Promise.all([
-    supabase.from("profiles").select("voice_clone_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user!.id).single(),
-    supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
-    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", user!.id).eq("is_active", true),
+    supabase.from("profiles").select("voice_clone_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user.id).single(),
+    supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_active", true),
   ]);
 
   const profile = profileResult.data as { voice_clone_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
@@ -89,11 +91,11 @@ async function GettingStarted() {
     { label: "Set up your voice clone", done: !!profile?.voice_clone_id, href: "/settings" },
     { label: "Upload your avatar photo", done: !!profile?.avatar_url, href: "/settings" },
     { label: "Generate your first video", done: videoCount > 0, href: "/create" },
-    { label: "Connect a social account", done: socialCount > 0, href: "/settings/social" },
+    { label: "Connect a social account", done: socialCount > 0, href: "/social" },
   ];
 
   const allDone = steps.every((s) => s.done);
-  if (allDone) return null; // Hide once complete
+  if (allDone) return null;
 
   const completedCount = steps.filter((s) => s.done).length;
   const pct = Math.round((completedCount / steps.length) * 100);
@@ -132,11 +134,12 @@ async function GettingStarted() {
 async function RecentProjects() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
   const { data: projectsData } = await supabase
     .from("projects")
     .select("id, title, status, created_at")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -198,7 +201,24 @@ async function RecentProjects() {
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    await supabase.auth.signOut();
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_done")
+    .eq("id", user.id)
+    .single();
+  if (profile && !profile.onboarding_done) {
+    redirect("/onboarding");
+  }
+
   return (
     <div>
       <Suspense fallback={
@@ -216,7 +236,6 @@ export default function DashboardPage() {
         <GettingStarted />
       </Suspense>
 
-      {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1">Create a New Video</h3>

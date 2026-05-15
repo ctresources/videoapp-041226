@@ -139,6 +139,103 @@ STEP 2: Generate the complete content package below, incorporating the real data
   return parseJson<ScriptOutput>(raw, "generateVideoScript");
 }
 
+export interface YoutubeMetadata {
+  youtube_title: string;
+  youtube_description: string;
+  hashtags: string[];
+}
+
+/**
+ * Generate SEO/GEO/AEO-optimized YouTube title + description for a real estate video.
+ *
+ *   - SEO (Search Engine Optimization): keyword-rich front-loaded copy, structured
+ *     content, geographic and topical signals for Google/YouTube search.
+ *   - GEO (Generative Engine Optimization): clear factual statements with explicit
+ *     entities (city, state, agent, brokerage, year) that LLM-powered search engines
+ *     like ChatGPT, Perplexity, and Gemini can quote verbatim.
+ *   - AEO (Answer Engine Optimization): FAQ-style direct-answer sections and
+ *     conversational phrasing that voice assistants and featured snippets surface.
+ */
+export async function generateYoutubeMetadata(params: {
+  title: string;
+  script: string;
+  city?: string;
+  state?: string;
+  agentName?: string;
+  brokerage?: string;
+  keywords?: string[];
+  website?: string;
+  phone?: string;
+}): Promise<YoutubeMetadata> {
+  const location = [params.city, params.state].filter(Boolean).join(", ");
+  const contactLine = [
+    params.agentName,
+    params.brokerage,
+    params.phone,
+    params.website,
+  ].filter(Boolean).join(" · ");
+
+  const systemPrompt = `You are an SEO/GEO/AEO expert specializing in real estate YouTube optimization. You write YouTube titles and descriptions that win across three search surfaces:
+
+1. SEO — Traditional YouTube + Google search. Keyword-rich, front-loaded, includes the city and state in the first 70 characters.
+2. GEO — Generative engines (ChatGPT, Perplexity, Gemini). Uses explicit named entities (city, state, year, agent name, brokerage) and clear factual sentences the AI can quote.
+3. AEO — Answer engines (voice search, featured snippets). Includes a short FAQ block of 3-4 direct-answer questions phrased the way people speak them out loud.
+
+Always respond with valid JSON only.
+
+${FAIR_HOUSING_GUARDRAIL}`;
+
+  const userPrompt = `Generate an SEO/GEO/AEO-optimized YouTube title and description for this real estate video.
+
+Title: "${params.title}"
+${location ? `Market: ${location}` : ""}
+${params.agentName ? `Agent: ${params.agentName}` : ""}
+${params.brokerage ? `Brokerage: ${params.brokerage}` : ""}
+${params.keywords?.length ? `Keywords: ${params.keywords.join(", ")}` : ""}
+Script: """${params.script.slice(0, 1500)}"""
+
+DESCRIPTION STRUCTURE (in this order, plain text — no markdown):
+
+Paragraph 1 (first 150 chars matter most — visible in search snippets):
+A keyword-rich hook that includes ${location || "the location"} and the primary topic. Front-load the most-searched phrase.
+
+Paragraph 2 (3-4 sentences):
+Expand on the topic with specific, factual, citation-friendly sentences. Use named entities (city, state, year, neighborhood) so LLM search engines can quote you. Include 1-2 real numbers or data points if the script mentions them.
+
+📋 IN THIS VIDEO:
+- Bullet list of 4-6 key topics covered (each starts with a verb, includes a keyword)
+
+❓ FREQUENTLY ASKED QUESTIONS:
+Q: <Common spoken question about the topic in ${location || "the area"}>
+A: <Direct 1-2 sentence answer, factual, includes a keyword>
+(Repeat for 3-4 Q&A pairs — these power voice search and featured snippets)
+
+📍 SERVING:
+${location || "the local market"} and surrounding areas
+
+👋 CONNECT WITH ME:
+${contactLine || "(agent contact details)"}
+
+#️⃣ TAGS:
+Inline the 5-8 most relevant hashtags here (mix broad + local).
+
+🔔 Subscribe for weekly ${location || "local"} real estate market updates.
+
+Return ONLY valid JSON:
+{
+  "youtube_title": "Under 70 chars. Includes ${location || "the city"} and primary keyword. Front-loaded for click-through.",
+  "youtube_description": "Full description following the structure above, around 250-400 words. Use real newlines (\\n) between sections.",
+  "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5", "#hashtag6"]
+}`;
+
+  const raw = await perplexityChat([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ]);
+
+  return parseJson<YoutubeMetadata>(raw, "generateYoutubeMetadata");
+}
+
 export async function generateSeoData(
   title: string,
   script: string,
