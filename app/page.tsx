@@ -276,11 +276,6 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
-              <Button size="lg" className="gap-2 w-full sm:w-auto text-base px-8 bg-primary-500 hover:bg-primary-600">
-                <Mic size={18} /> Start Creating Free
-              </Button>
-            </Link>
             <a href="#how-it-works">
               <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto text-base">
                 See How It Works <ArrowRight size={16} />
