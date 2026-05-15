@@ -206,25 +206,6 @@ const pricingTiers = [
     highlighted: true,
     href: "/api/stripe/checkout?plan=pro",
   },
-  {
-    name: "Agency",
-    price: "$199",
-    period: "/month",
-    description: "For teams and brokerages",
-    badge: null,
-    features: [
-      "30 videos/month",
-      "Everything in Pro",
-      "Up to 5 agent seats",
-      "White-label branding",
-      "Custom AI avatar per agent",
-      "Team analytics dashboard",
-      "API access",
-    ],
-    cta: "Get Started",
-    highlighted: false,
-    href: "/api/stripe/checkout?plan=agency",
-  },
 ];
 
 // ─── Component ─────────────────────────────────────────────────────────────────
