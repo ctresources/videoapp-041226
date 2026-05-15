@@ -356,10 +356,10 @@ export default function LandingPage() {
           </blockquote>
           <div className="flex items-center justify-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
-              JR
+              CT
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-brand-text">James Rodriguez</p>
+              <p className="text-sm font-bold text-brand-text">C. Thompson</p>
               <p className="text-xs text-slate-400">Broker · Miami, FL · Closed 2 deals from Instagram</p>
             </div>
           </div>
