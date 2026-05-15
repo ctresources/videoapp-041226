@@ -245,32 +245,30 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="pt-28 pb-16 px-4 sm:px-6 bg-gradient-to-b from-slate-900 via-primary-950/90 to-slate-900 text-white overflow-hidden relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(99,102,241,0.3),transparent)] pointer-events-none" />
-
+      <section className="pt-28 pb-16 px-4 sm:px-6 bg-white overflow-hidden relative">
         <div className="max-w-4xl mx-auto text-center relative z-10">
 
           {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-xs font-bold px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
-            <Mic size={12} className="text-primary-400" /> The One-Button Video Platform for Real Estate Agents
+          <div className="inline-flex items-center gap-2 bg-primary-50 border border-primary-100 text-primary-600 text-xs font-bold px-4 py-2 rounded-full mb-8">
+            <Mic size={12} className="text-primary-500" /> The One-Button Video Platform for Real Estate Agents
           </div>
 
           {/* H1 */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight mb-5">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight mb-5 text-brand-text">
             Grow Revenue{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-accent-500">
               49% Faster
             </span>{" "}
             Without Ever Going on Camera.
           </h1>
 
           {/* Sub */}
-          <p className="text-xl sm:text-2xl text-slate-200 font-semibold mb-5">
+          <p className="text-xl sm:text-2xl text-slate-600 font-semibold mb-5">
             Busy, stretched-thin agents achieve dominant top-of-mind presence<br className="hidden sm:block" /> — without the technical headache or the pressure of being on camera.
           </p>
 
           {/* Body */}
-          <p className="text-base sm:text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed">
             VoiceToVideos.AI turns a simple 90-second voice recording into a professional video,
             SEO blog, and social posts published to social platforms — automatically.
             No filming. No editing. No technical skills required.
@@ -284,17 +282,17 @@ export default function LandingPage() {
               </Button>
             </Link>
             <a href="#how-it-works">
-              <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto text-base border-white/30 text-white hover:bg-white/10">
+              <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto text-base">
                 See How It Works <ArrowRight size={16} />
               </Button>
             </a>
           </div>
 
           {/* Trust badges */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-sm text-slate-400">
-            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No credit card required</span>
-            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No camera needed</span>
-            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Fair Housing compliant AI</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-primary-500" /> No credit card required</span>
+            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-primary-500" /> No camera needed</span>
+            <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-primary-500" /> Fair Housing compliant AI</span>
           </div>
 
           {/* Demo video */}
@@ -308,10 +306,10 @@ export default function LandingPage() {
             { stat: "< 2 min", label: "Voice to finished video", icon: Clock },
             { stat: "0",       label: "Filming or editing",      icon: Video },
           ].map(({ stat, label, icon: Icon }) => (
-            <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
-              <Icon size={18} className="text-primary-400 mx-auto mb-1.5" />
-              <p className="text-2xl font-black text-white">{stat}</p>
-              <p className="text-slate-400 text-xs mt-0.5">{label}</p>
+            <div key={label} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-center">
+              <Icon size={18} className="text-primary-500 mx-auto mb-1.5" />
+              <p className="text-2xl font-black text-brand-text">{stat}</p>
+              <p className="text-slate-500 text-xs mt-0.5">{label}</p>
             </div>
           ))}
         </div>
