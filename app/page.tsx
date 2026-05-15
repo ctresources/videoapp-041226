@@ -581,8 +581,7 @@ export default function LandingPage() {
             <p className="text-sm text-blue-700 leading-relaxed">
               Every script, blog post, and video description is automatically reviewed by our Fair Housing
               guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and HUD advertising guidelines
-              (24 CFR Part 109). Non-compliant language is silently rewritten before it reaches you.
-              You&apos;re always protected.
+              (24 CFR Part 109).
             </p>
           </div>
         </div>
