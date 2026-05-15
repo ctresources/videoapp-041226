@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { FieldMic } from "@/components/ui/field-mic";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
@@ -423,13 +424,16 @@ export function ListingVideoForm() {
         <label className="text-xs font-medium text-slate-500 block mb-1.5">
           Address <span className="text-red-400">*</span>
         </label>
-        <input
-          type="text"
-          value={listing.address}
-          onChange={(e) => setListing((l) => ({ ...l, address: e.target.value }))}
-          placeholder="123 Main St, Austin, TX 78701"
-          className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
+        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
+          <input
+            type="text"
+            value={listing.address}
+            onChange={(e) => setListing((l) => ({ ...l, address: e.target.value }))}
+            placeholder="123 Main St, Austin, TX 78701"
+            className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none"
+          />
+          <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, address: t }))} title="Speak address" />
+        </div>
       </div>
 
       {/* Price + Type */}
@@ -438,13 +442,16 @@ export function ListingVideoForm() {
           <label className="text-xs font-medium text-slate-500 flex items-center gap-1 mb-1.5">
             <DollarSign size={11} /> Price <span className="text-red-400">*</span>
           </label>
-          <input
-            type="text"
-            value={listing.price}
-            onChange={(e) => setListing((l) => ({ ...l, price: e.target.value }))}
-            placeholder="$450,000"
-            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
+            <input
+              type="text"
+              value={listing.price}
+              onChange={(e) => setListing((l) => ({ ...l, price: e.target.value }))}
+              placeholder="$450,000"
+              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none"
+            />
+            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, price: t }))} title="Speak price" />
+          </div>
         </div>
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Property Type</label>
@@ -488,32 +495,44 @@ export function ListingVideoForm() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Garage</label>
-          <input
-            type="text"
-            value={listing.garage}
-            onChange={(e) => setListing((l) => ({ ...l, garage: e.target.value }))}
-            placeholder="2-car attached"
-            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
+            <input
+              type="text"
+              value={listing.garage}
+              onChange={(e) => setListing((l) => ({ ...l, garage: e.target.value }))}
+              placeholder="2-car attached"
+              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none min-w-0"
+            />
+            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, garage: t }))} title="Speak garage" />
+          </div>
         </div>
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Lot Size</label>
-          <input
-            type="text"
-            value={listing.lotSize}
-            onChange={(e) => setListing((l) => ({ ...l, lotSize: e.target.value }))}
-            placeholder="0.25 acres"
-            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
+            <input
+              type="text"
+              value={listing.lotSize}
+              onChange={(e) => setListing((l) => ({ ...l, lotSize: e.target.value }))}
+              placeholder="0.25 acres"
+              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none min-w-0"
+            />
+            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, lotSize: t }))} title="Speak lot size" />
+          </div>
         </div>
       </div>
 
       {/* Description */}
       <div>
-        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-          Property Description
-          <span className="text-slate-400 font-normal ml-1">(AI will use this in the script)</span>
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-medium text-slate-500">
+            Property Description
+            <span className="text-slate-400 font-normal ml-1">(AI will use this in the script)</span>
+          </label>
+          <FieldMic
+            onTranscript={(t) => setListing((l) => ({ ...l, description: l.description ? l.description + " " + t : t }))}
+            title="Speak description"
+          />
+        </div>
         <textarea
           value={listing.description}
           onChange={(e) => setListing((l) => ({ ...l, description: e.target.value }))}
@@ -544,14 +563,20 @@ export function ListingVideoForm() {
         </div>
         {listing.features.length < 8 && (
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={newFeature}
-              onChange={(e) => setNewFeature(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addFeature()}
-              placeholder="e.g. Quartz countertops, Pool, Smart home…"
-              className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+            <div className="flex-1 flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
+              <input
+                type="text"
+                value={newFeature}
+                onChange={(e) => setNewFeature(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addFeature()}
+                placeholder="e.g. Quartz countertops, Pool, Smart home…"
+                className="flex-1 text-sm px-3 py-2 bg-transparent outline-none"
+              />
+              <FieldMic
+                onTranscript={(t) => { setNewFeature(t); }}
+                title="Speak a feature"
+              />
+            </div>
             <Button variant="outline" size="sm" onClick={addFeature} disabled={!newFeature.trim()}>
               Add
             </Button>

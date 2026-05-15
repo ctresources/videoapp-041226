@@ -4,6 +4,7 @@ import { VoiceUploader } from "@/components/voice/voice-uploader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FieldMic } from "@/components/ui/field-mic";
 import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
@@ -28,79 +29,52 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "record" | "upload" | "location" | "listing";
 type RecordMode = "voice" | "camera";
 
-// ─── Inline voice-to-topic mic ─────────────────────────────────────────────
+// ─── State name → abbreviation ────────────────────────────────────────────────
+const STATE_MAP: Record<string, string> = {
+  "alabama":"AL","alaska":"AK","arizona":"AZ","arkansas":"AR","california":"CA",
+  "colorado":"CO","connecticut":"CT","delaware":"DE","florida":"FL","georgia":"GA",
+  "hawaii":"HI","idaho":"ID","illinois":"IL","indiana":"IN","iowa":"IA","kansas":"KS",
+  "kentucky":"KY","louisiana":"LA","maine":"ME","maryland":"MD","massachusetts":"MA",
+  "michigan":"MI","minnesota":"MN","mississippi":"MS","missouri":"MO","montana":"MT",
+  "nebraska":"NE","nevada":"NV","new hampshire":"NH","new jersey":"NJ",
+  "new mexico":"NM","new york":"NY","north carolina":"NC","north dakota":"ND",
+  "ohio":"OH","oklahoma":"OK","oregon":"OR","pennsylvania":"PA","rhode island":"RI",
+  "south carolina":"SC","south dakota":"SD","tennessee":"TN","texas":"TX","utah":"UT",
+  "vermont":"VT","virginia":"VA","washington":"WA","west virginia":"WV",
+  "wisconsin":"WI","wyoming":"WY","district of columbia":"DC",
+};
+function toStateAbbr(t: string) {
+  const lower = t.trim().toLowerCase();
+  return STATE_MAP[lower] || t.trim().slice(0, 2).toUpperCase();
+}
 
-function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void }) {
-  const { state, audioBlob, start, stop, reset, error } = useVoiceRecorder();
-  const [busy, setBusy] = useState(false);
-
-  const isRecording = state === "recording" || state === "requesting";
-  const isStopped = state === "stopped";
-
-  async function handleStop() {
-    stop();
-  }
-
-  useEffect(() => {
-    if (state === "stopped" && audioBlob && !busy) {
-      setBusy(true);
-      const form = new FormData();
-      form.append("audio", audioBlob, `topic.${audioBlob.type.includes("mp4") ? "mp4" : "webm"}`);
-      fetch("/api/voice/quick-transcribe", { method: "POST", body: form })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.transcript) onTranscript(d.transcript.trim());
-          else toast.error("Could not understand audio — please try again");
-        })
-        .catch(() => toast.error("Transcription failed"))
-        .finally(() => { setBusy(false); reset(); });
-    }
-  }, [state, audioBlob]); // eslint-disable-line
-
-  if (error) {
-    return (
-      <button
-        type="button"
-        onClick={reset}
-        title={error}
-        className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-      >
-        <Mic size={16} />
-      </button>
-    );
-  }
-
-  if (busy) {
-    return (
-      <div className="p-2" title="Transcribing…">
-        <Loader2 size={16} className="animate-spin text-primary-500" />
-      </div>
-    );
-  }
-
-  if (isRecording) {
-    return (
-      <button
-        type="button"
-        onClick={handleStop}
-        title="Stop recording"
-        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors animate-pulse"
-      >
-        <Square size={16} />
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={start}
-      title="Speak your topic"
-      className="p-2 rounded-lg text-slate-400 hover:text-primary-500 hover:bg-primary-50 transition-colors"
-    >
-      <Mic size={16} />
-    </button>
-  );
+// ─── Fuzzy matchers for dropdowns ─────────────────────────────────────────────
+function matchAudience(t: string): string {
+  const s = t.toLowerCase();
+  if (s.includes("first")) return "First-Time Buyers";
+  if (s.includes("invest")) return "Investors";
+  if (s.includes("sell")) return "Sellers";
+  if (s.includes("luxury") || s.includes("luxur")) return "Luxury";
+  if (s.includes("mix")) return "Mixed";
+  if (s.includes("buy") || s.includes("buyer")) return "Buyers";
+  return "";
+}
+function matchTone(t: string): string {
+  const s = t.toLowerCase();
+  if (s.includes("high") || s.includes("energy")) return "High-Energy";
+  if (s.includes("educat")) return "Educational";
+  if (s.includes("modern")) return "Modern";
+  if (s.includes("luxury") || s.includes("luxur")) return "Luxury";
+  if (s.includes("friend")) return "Friendly";
+  return "";
+}
+function matchCta(t: string): string {
+  const s = t.toLowerCase();
+  if (s.includes("consult") || s.includes("schedul") || s.includes("meeting")) return "consultation";
+  if (s.includes("website") || s.includes("site") || s.includes("online")) return "website";
+  if (s.includes("text")) return "text";
+  if (s.includes("call")) return "call";
+  return "";
 }
 
 // ─── Hero voice recorder for the Record tab ──────────────────────────────────
@@ -278,7 +252,7 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("record");
+  const [inputMode, setInputMode] = useState<InputMode>("location");
   const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
@@ -464,20 +438,20 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
-            onClick={() => setInputMode("record")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <Mic size={14} /> Record
-          </button>
-          <button
             onClick={() => setInputMode("location")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
             <MapPin size={14} /> Templates
+          </button>
+          <button
+            onClick={() => setInputMode("record")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <Mic size={14} /> Record
           </button>
           <button
             onClick={() => setInputMode("upload")}
@@ -665,40 +639,49 @@ function CreatePageInner() {
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">
                   City <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={locCity}
-                  onChange={(e) => setLocCity(e.target.value)}
-                  placeholder="Austin"
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+                <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                  <input
+                    type="text"
+                    value={locCity}
+                    onChange={(e) => setLocCity(e.target.value)}
+                    placeholder="Austin"
+                    className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                  />
+                  <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">
                   State <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={locState}
-                  onChange={(e) => setLocState(e.target.value)}
-                  placeholder="TX"
-                  maxLength={2}
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
-                />
+                <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                  <input
+                    type="text"
+                    value={locState}
+                    onChange={(e) => setLocState(e.target.value)}
+                    placeholder="TX"
+                    maxLength={2}
+                    className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
+                  />
+                  <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
+                </div>
               </div>
             </div>
             <div className="mt-3">
               <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                ZIP Code <span className="text-slate-400">(optional — narrows results)</span>
+                ZIP Code <span className="text-slate-400">(optional)</span>
               </label>
-              <input
-                type="text"
-                value={locZip}
-                onChange={(e) => setLocZip(e.target.value)}
-                placeholder="78701"
-                maxLength={10}
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+              <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                <input
+                  type="text"
+                  value={locZip}
+                  onChange={(e) => setLocZip(e.target.value)}
+                  placeholder="78701"
+                  maxLength={10}
+                  className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                />
+                <FieldMic onTranscript={(t) => setLocZip(t.replace(/\D/g, "").slice(0, 10))} title="Say your ZIP code" />
+              </div>
             </div>
           </div>
 
@@ -708,41 +691,55 @@ function CreatePageInner() {
               <label className="text-xs font-medium text-slate-500 block mb-1.5">
                 Target Audience <span className="text-red-400">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={locAudience}
-                  onChange={(e) => setLocAudience(e.target.value)}
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                >
-                  <option value="">Select...</option>
-                  <option value="Buyers">Buyers</option>
-                  <option value="Sellers">Sellers</option>
-                  <option value="Investors">Investors</option>
-                  <option value="First-Time Buyers">First-Time Buyers</option>
-                  <option value="Luxury">Luxury</option>
-                  <option value="Mixed">Mixed</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <div className="flex items-center gap-1">
+                <div className="relative flex-1">
+                  <select
+                    value={locAudience}
+                    onChange={(e) => setLocAudience(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Buyers">Buyers</option>
+                    <option value="Sellers">Sellers</option>
+                    <option value="Investors">Investors</option>
+                    <option value="First-Time Buyers">First-Time Buyers</option>
+                    <option value="Luxury">Luxury</option>
+                    <option value="Mixed">Mixed</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                <FieldMic title='Say "buyers", "sellers", "investors"…' onTranscript={(t) => {
+                  const v = matchAudience(t);
+                  if (v) setLocAudience(v);
+                  else toast.error(`Try "buyers", "sellers", "investors", "luxury", or "mixed"`);
+                }} />
               </div>
             </div>
             <div>
               <label className="text-xs font-medium text-slate-500 block mb-1.5">
                 Brand Style <span className="text-red-400">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={locTone}
-                  onChange={(e) => setLocTone(e.target.value)}
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                >
-                  <option value="">Select...</option>
-                  <option value="Friendly">Friendly</option>
-                  <option value="Modern">Modern</option>
-                  <option value="Luxury">Luxury</option>
-                  <option value="High-Energy">High-Energy</option>
-                  <option value="Educational">Educational</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <div className="flex items-center gap-1">
+                <div className="relative flex-1">
+                  <select
+                    value={locTone}
+                    onChange={(e) => setLocTone(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Friendly">Friendly</option>
+                    <option value="Modern">Modern</option>
+                    <option value="Luxury">Luxury</option>
+                    <option value="High-Energy">High-Energy</option>
+                    <option value="Educational">Educational</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                <FieldMic title='Say "friendly", "modern", "luxury"…' onTranscript={(t) => {
+                  const v = matchTone(t);
+                  if (v) setLocTone(v);
+                  else toast.error(`Try "friendly", "modern", "luxury", "high energy", or "educational"`);
+                }} />
               </div>
             </div>
           </div>
@@ -752,19 +749,25 @@ function CreatePageInner() {
             <label className="text-xs font-medium text-slate-500 block mb-1.5">
               CTA Preference <span className="text-slate-400">(optional)</span>
             </label>
-            <div className="relative">
-              <select
-                value={locCta}
-                onChange={(e) => setLocCta(e.target.value)}
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-              >
-                <option value="">Call or Text Today (default)</option>
-                <option value="call">Call Today</option>
-                <option value="text">Text Today</option>
-                <option value="website">Visit Website</option>
-                <option value="consultation">Schedule a Consultation</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1">
+                <select
+                  value={locCta}
+                  onChange={(e) => setLocCta(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                >
+                  <option value="">Call or Text Today (default)</option>
+                  <option value="call">Call Today</option>
+                  <option value="text">Text Today</option>
+                  <option value="website">Visit Website</option>
+                  <option value="consultation">Schedule a Consultation</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+              <FieldMic title='Say "call", "text", "website", or "consultation"' onTranscript={(t) => {
+                const v = matchCta(t);
+                if (v) setLocCta(v);
+              }} />
             </div>
           </div>
 
@@ -800,24 +803,24 @@ function CreatePageInner() {
             )}
           </div>
 
-          {/* Topic input with inline mic */}
+          {/* Topic input with mic */}
           <div className="mb-5">
             <label className="text-xs font-medium text-slate-500 block mb-1.5">
               What&apos;s your topic? <span className="text-red-400">*</span>
             </label>
-            <div className="flex items-center gap-1 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+            <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
               <input
                 id="loc-custom-topic"
                 type="text"
                 value={locCustomTopic}
                 onChange={(e) => setLocCustomTopic(e.target.value)}
-                placeholder="e.g. Market update, Why live here, New construction…  or tap 🎤 to speak"
-                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none rounded-xl"
+                placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
+                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
               />
-              <TopicMicButton onTranscript={(t) => setLocCustomTopic(t)} />
+              <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Type your topic or tap the mic to speak it — AI will research it for this specific location
+              Tap the 🎤 mic on any field to speak instead of type
             </p>
           </div>
 
@@ -829,7 +832,6 @@ function CreatePageInner() {
             </p>
           </div>
 
-          {/* Generate button */}
           <Button
             onClick={handleGenerateLocationScript}
             loading={locGenerating}
