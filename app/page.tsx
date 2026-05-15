@@ -339,7 +339,7 @@ export default function LandingPage() {
             </div>
             <div className="text-left">
               <p className="text-sm font-bold text-brand-text">C. Thompson</p>
-              <p className="text-xs text-slate-400">Broker · Miami, FL · Closed 2 deals from Instagram</p>
+              <p className="text-xs text-slate-400">Real Estate Broker</p>
             </div>
           </div>
         </div>
