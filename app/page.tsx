@@ -14,24 +14,28 @@ const segments = [
     segment: "Solo Agents",
     driver: "Time Scarcity",
     desire: "Stay top-of-mind without losing 15 hours a week to content production.",
+    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Camera,
     segment: "Camera-Shy Agents",
     driver: "Performance Anxiety",
     desire: "Build a powerful personal brand without ever appearing on screen.",
+    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Users,
     segment: "Team Leaders",
     driver: "Scalability",
     desire: "Ensure team-wide content consistency and brand compliance — at scale.",
+    photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: UserPlus,
     segment: "New Agents",
     driver: "Brand Building",
     desire: "Establish local authority quickly and compete with seasoned agents from day one.",
+    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -180,33 +184,48 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="pt-32 pb-20 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
-              Real Estate Video Marketing Platform
-            </p>
-            <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-              Grow Revenue 49% Faster.<br />
-              <span className="text-blue-900">Without Ever Going on Camera.</span>
-            </h1>
-            <p className="text-xl text-slate-600 mb-4 leading-relaxed max-w-2xl">
-              Busy, stretched-thin agents achieve dominant top-of-mind presence — without the technical headache or the pressure of being on camera.
-            </p>
-            <p className="text-base text-slate-500 mb-10 leading-relaxed max-w-2xl">
-              VoiceToVideos.AI turns a simple 90-second voice recording into a professional video, SEO blog, and social posts — automatically. No filming. No editing. No technical skills required.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                See How It Works <ArrowRight size={15} />
-              </a>
-              <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-                View Pricing <ChevronRight size={15} />
-              </a>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
+                Real Estate Video Marketing Platform
+              </p>
+              <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
+                Grow Revenue 49% Faster.<br />
+                <span className="text-blue-900">Without Ever Going on Camera.</span>
+              </h1>
+              <p className="text-xl text-slate-600 mb-4 leading-relaxed">
+                Busy, stretched-thin agents achieve dominant top-of-mind presence — without the technical headache or the pressure of being on camera.
+              </p>
+              <p className="text-base text-slate-500 mb-10 leading-relaxed">
+                VoiceToVideos.AI turns a simple 90-second voice recording into a professional video, SEO blog, and social posts — automatically. No filming. No editing. No technical skills required.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+                  See How It Works <ArrowRight size={15} />
+                </a>
+                <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                  View Pricing <ChevronRight size={15} />
+                </a>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-8 text-sm text-slate-500">
+                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No credit card required</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No camera needed</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> Fair Housing compliant</span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-8 text-sm text-slate-500">
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No credit card required</span>
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No camera needed</span>
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> Fair Housing compliant</span>
+            {/* Hero image */}
+            <div className="relative hidden lg:block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80"
+                alt="Beautiful modern home"
+                className="w-full h-[520px] object-cover"
+              />
+              <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-lg px-5 py-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Agents using video grow</p>
+                <p className="text-2xl font-black text-blue-900">49% faster</p>
+              </div>
             </div>
           </div>
         </div>
@@ -265,18 +284,18 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-200 border border-slate-200">
-            {segments.map(({ icon: Icon, segment, driver, desire }) => (
-              <div key={segment} className="bg-white p-6 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start gap-4">
-                  <Icon size={20} className="text-blue-900 mt-0.5 shrink-0" />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <p className="font-bold text-slate-900 text-sm">{segment}</p>
-                      <span className="text-[10px] font-semibold text-blue-900 bg-blue-50 border border-blue-100 px-2 py-0.5">{driver}</span>
-                    </div>
-                    <p className="text-slate-500 text-sm leading-relaxed">{desire}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {segments.map(({ icon: Icon, segment, driver, desire, photo }) => (
+              <div key={segment} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo} alt={segment} className="w-full h-44 object-cover" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon size={16} className="text-blue-900 shrink-0" />
+                    <p className="font-bold text-slate-900 text-sm">{segment}</p>
+                    <span className="text-[10px] font-semibold text-blue-900 bg-blue-50 border border-blue-100 px-2 py-0.5 ml-auto">{driver}</span>
                   </div>
+                  <p className="text-slate-500 text-sm leading-relaxed">{desire}</p>
                 </div>
               </div>
             ))}
@@ -301,11 +320,19 @@ export default function LandingPage() {
             <p className="text-slate-500">Just your voice — and your local expertise.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {steps.map(({ step, title, description }) => (
-              <div key={step} className="border-t-2 border-blue-900 pt-5">
-                <p className="text-3xl font-black text-slate-200 mb-3">{step}</p>
-                <h3 className="text-base font-bold text-slate-900 mb-2">{title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{description}</p>
+            {[
+              { ...steps[0], photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80" },
+              { ...steps[1], photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80" },
+              { ...steps[2], photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80" },
+            ].map(({ step, title, description, photo }) => (
+              <div key={step} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo} alt={title} className="w-full h-40 object-cover" />
+                <div className="p-5 border-t-2 border-blue-900">
+                  <p className="text-3xl font-black text-slate-200 mb-2">{step}</p>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">{title}</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed">{description}</p>
+                </div>
               </div>
             ))}
           </div>
