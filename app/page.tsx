@@ -188,17 +188,14 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
-                Real Estate Video Marketing Platform
+                Stop waiting. Start dominating.
               </p>
               <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                Grow Revenue 49% Faster.<br />
-                <span className="text-blue-900">Without Ever Going on Camera.</span>
+                Become the &ldquo;digital mayor&rdquo;<br />
+                <span className="text-blue-900">of your ZIP code.</span>
               </h1>
-              <p className="text-xl text-slate-600 mb-4 leading-relaxed">
-                Busy, stretched-thin agents achieve dominant top-of-mind presence — without the technical headache or the pressure of being on camera.
-              </p>
               <p className="text-base text-slate-500 mb-10 leading-relaxed">
-                VoiceToVideos.AI turns a simple 90-second voice recording into a professional video, SEO blog, and social posts — automatically. No filming. No editing. No technical skills required.
+                The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
@@ -208,11 +205,7 @@ export default function LandingPage() {
                   View Pricing <ChevronRight size={15} />
                 </a>
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-8 text-sm text-slate-500">
-                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No credit card required</span>
-                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> No camera needed</span>
-                <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-blue-900" /> Fair Housing compliant</span>
-              </div>
+              <p className="mt-8 text-sm text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
             </div>
             {/* Hero image */}
             <div className="relative hidden lg:block">
