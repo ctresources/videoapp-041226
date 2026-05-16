@@ -502,11 +502,6 @@ export default function LandingPage() {
           <p className="text-slate-400 text-lg mb-10 max-w-lg mx-auto">
             The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
           </p>
-          <Link href="/register">
-            <button className="inline-flex items-center gap-2 bg-white text-slate-900 text-base font-bold px-10 py-4 rounded-full hover:bg-slate-100 active:scale-95 transition-all shadow-xl">
-              <PlayCircle size={18} /> Start Free — No Credit Card
-            </button>
-          </Link>
           <p className="text-slate-600 text-sm mt-5">No camera needed · Fair Housing compliant · Cancel anytime</p>
         </div>
       </section>
