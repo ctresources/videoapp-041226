@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { DemoVideo } from "@/components/landing/demo-video";
 import { Button } from "@/components/ui/button";
 import {
   Video, CheckCircle, Star, ArrowRight,
@@ -240,10 +239,6 @@ export default function LandingPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="max-w-5xl mx-auto mt-10">
-          <DemoVideo />
         </div>
       </section>
 
