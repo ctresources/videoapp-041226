@@ -1,159 +1,263 @@
 import Image from "next/image";
 import Link from "next/link";
-import { DemoVideo } from "@/components/landing/demo-video";
 import { Button } from "@/components/ui/button";
+
 import {
   Mic, Video, Share2, CheckCircle, Star, ArrowRight, Zap,
-  Clock, TrendingUp, MapPin, Home, CalendarDays,
-  PlayCircle, X, Camera, Users, UserPlus, Trophy, ChevronRight,
+  Clock, TrendingUp, AlertCircle, MapPin, Home, BarChart2,
+  CalendarDays, Globe, Flame, PlayCircle, X,
 } from "lucide-react";
 
-const segments = [
+// ─── Pain Points (Real estate agents' #1 complaints) ─────────────────────────
+const painPoints = [
   {
     icon: Clock,
-    segment: "Solo Agents",
-    driver: "Time Scarcity",
-    desire: "Stay top-of-mind without losing 15 hours a week to content production.",
-    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+    color: "text-red-500",
+    bg: "bg-red-50",
+    headline: "You're spending 15+ hours a week on content — and it still looks amateurish.",
+    sub: "Writing captions, editing clips, resizing for every platform, hunting for royalty-free music… you became an agent, not a content studio.",
   },
   {
-    icon: Camera,
-    segment: "Camera-Shy Agents",
-    driver: "Performance Anxiety",
-    desire: "Build a powerful personal brand without ever appearing on screen.",
-    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    icon: Users,
-    segment: "Team Leaders",
-    driver: "Scalability",
-    desire: "Ensure team-wide content consistency and brand compliance — at scale.",
-    photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    icon: UserPlus,
-    segment: "New Agents",
-    driver: "Brand Building",
-    desire: "Establish local authority quickly and compete with seasoned agents from day one.",
-    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
-  },
-];
-
-const features = [
-  {
-    icon: Mic,
-    title: "One-Button Video Creation",
-    description: "Speak for 90 seconds about any market topic, listing, or local update. AI writes the script, builds visuals, adds captions, and renders broadcast-quality video — no filming or editing required.",
-  },
-  {
-    icon: Camera,
-    title: "No Camera Required",
-    description: "Your AI avatar appears on screen in your place, speaking in your cloned voice. Build a compelling personal brand without ever recording your face.",
+    icon: AlertCircle,
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    headline: "Competitors in your zip code are posting daily. You're posting weekly — maybe.",
+    sub: "Consistency beats quality on social. Every day you're not showing up, another agent is building relationships with your future clients.",
   },
   {
     icon: MapPin,
-    title: "Hyperlocal Market Intelligence",
-    description: "Generate hyper-local market update videos that rank on YouTube — positioning you as the digital expert in your town.",
-  },
-  {
-    icon: Trophy,
-    title: "\"Digital Mayor\" Status",
-    description: "Consistently publishing hyper-local expert content makes you the agent people think of first when buyers and sellers search for a local expert.",
-  },
-  {
-    icon: TrendingUp,
-    title: "YouTube SEO Rankings",
-    description: "Every video includes an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search for your target neighborhood keywords.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Social Platform Publishing",
-    description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags built in.",
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    headline: "Your market expertise is your #1 asset — but nobody sees it.",
+    sub: "Buyers and sellers Google local agents before they call. If you're not producing hyper-local content about your market, you're invisible.",
   },
   {
     icon: Home,
-    title: "Listing Video Generator",
-    description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post in minutes.",
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    headline: "Your listing videos look like everyone else's — and buyers scroll right past them.",
+    sub: "Professional listing videos with branded intros, agent voiceovers, and social-ready formats used to cost $500+ per property. Now it's one click.",
+  },
+];
+
+// ─── Features ─────────────────────────────────────────────────────────────────
+const features = [
+  {
+    icon: Mic,
+    color: "text-primary-500",
+    bg: "bg-primary-50",
+    title: "Speak — AI Does the Rest",
+    description: "Record a voice note from your car, office, or open house. Our AI writes the script, generates captions, optimizes for SEO, and produces a broadcast-quality video — in minutes, not hours.",
+    badge: "Core Feature",
   },
   {
-    icon: Share2,
-    title: "49% Faster Revenue Growth",
-    description: "Agents who post consistent video content grow revenue 49% faster. VoiceToVideos.AI gives you the output of a full content team without the cost or headache.",
+    icon: MapPin,
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    title: "Hyper-Local Market Videos",
+    description: "Automatically generate market update videos for any ZIP code — median prices, days on market, inventory levels — sourced live from Zillow, Redfin, and NAR. The content your buyers and sellers actually want.",
+    badge: "Beats Competitors",
+  },
+  {
+    icon: Flame,
+    color: "text-red-500",
+    bg: "bg-red-50",
+    title: "Trending Topic Discovery",
+    description: "A \"What should I post?\" button searches what home buyers in YOUR market are Googling right now. Turn any trend into a video with one click.",
+    badge: "Unique to Us",
+  },
+  {
+    icon: Video,
+    color: "text-secondary-500",
+    bg: "bg-purple-50",
+    title: "Your AI Avatar & Cloned Voice",
+    description: "Create your digital twin once. Generate unlimited Reels and TikToks with your AI avatar speaking in your own cloned voice — even while you're at showings.",
+    badge: "Powered by HeyGen",
+  },
+  {
+    icon: Home,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    title: "Listing Video Generator",
+    description: "Paste a Zillow or Realtor.com URL. We scrape the photos, price, and details and auto-generate a branded property tour video ready to post — in under 60 seconds.",
+    badge: "Coming Soon",
+  },
+  {
+    icon: CalendarDays,
+    color: "text-teal-500",
+    bg: "bg-teal-50",
+    title: "Auto-Schedule to 10 Platforms",
+    description: "One click publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, Bluesky, Pinterest, and more — on your schedule or on autopilot. Your content calendar runs itself.",
+    badge: "10 Platforms",
+  },
+  {
+    icon: Globe,
+    color: "text-green-600",
+    bg: "bg-green-50",
+    title: "Multi-Language Content",
+    description: "Serve every buyer in your market. Generate scripts and narration in Spanish, Portuguese, Mandarin, Hindi, and 12 more languages — with a single toggle in your settings.",
+    badge: "16 Languages",
+  },
+  {
+    icon: BarChart2,
+    color: "text-slate-500",
+    bg: "bg-slate-100",
+    title: "Content Analytics",
+    description: "See exactly which videos are driving leads, which platforms are delivering ROI, and what topics resonate most with your audience — so you never waste time on content that doesn't convert.",
+    badge: "Know What Works",
   },
 ];
 
+// ─── Comparison table data ─────────────────────────────────────────────────────
 const comparison = [
-  { feature: "No filming or on-camera requirement",  us: true,  a: false, b: false, c: false },
-  { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
-  { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
-  { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
-  { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
-  { feature: "Listing Auto-Video (URL → Video)",      us: true,  a: false, b: true,  c: true  },
-  { feature: "Social platform auto-publishing",       us: true,  a: true,  b: true,  c: true  },
-  { feature: "Fair Housing Guardrails Built-in",      us: true,  a: false, b: false, c: false },
-  { feature: "Purpose-built for Real Estate",         us: true,  a: false, b: true,  c: true  },
+  { feature: "AI Script from Your Voice",      us: true,  syllaby: true,  rejig: false, roomvu: false },
+  { feature: "AI Avatar + Voice Cloning",       us: true,  syllaby: true,  rejig: true,  roomvu: false },
+  { feature: "Hyper-local Market Updates",      us: true,  syllaby: false, rejig: true,  roomvu: true  },
+  { feature: "Trending Topic Discovery",         us: true,  syllaby: true,  rejig: false, roomvu: false },
+  { feature: "Listing Auto-Video (URL → Video)",us: true,  syllaby: false, rejig: true,  roomvu: true  },
+  { feature: "10+ Platform Auto-Publishing",    us: true,  syllaby: true,  rejig: true,  roomvu: true  },
+  { feature: "Multi-language (16 languages)",   us: true,  syllaby: true,  rejig: false, roomvu: false },
+  { feature: "Content Calendar",                us: true,  syllaby: true,  rejig: true,  roomvu: true  },
+  { feature: "Fair Housing Guardrails Built-in",us: true,  syllaby: false, rejig: false, roomvu: false },
+  { feature: "Purpose-built for Real Estate",   us: true,  syllaby: false, rejig: true,  roomvu: true  },
 ];
 
+// ─── Steps ─────────────────────────────────────────────────────────────────────
 const steps = [
   {
     step: "01",
-    title: "Hit Record. Say What You Know.",
-    description: "Open the app, pick a topic — market update, listing, local trend — and talk for 60–90 seconds. No script, no prep, no camera. Just your expertise.",
+    emoji: "🎤",
+    title: "Speak, Pick a Template, or Drop a Listing URL",
+    description: "Record a voice note about any topic. Or choose from 10 done-for-you real estate content templates. Or paste a Zillow URL and let us pull the listing data automatically.",
   },
   {
     step: "02",
-    title: "AI Builds Your Video Automatically.",
-    description: "Our AI writes a Fair Housing-compliant script, generates your AI avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video. Zero editing required.",
+    emoji: "🤖",
+    title: "AI Writes, Produces, and Renders Your Video",
+    description: "Our AI writes a Fair Housing-compliant script, generates b-roll from real estate photo libraries, narrates in your cloned voice, renders a broadcast-quality video, and writes your SEO blog post — all at once.",
   },
   {
     step: "03",
-    title: "Publish. Rank. Stay Top-of-Mind.",
-    description: "One click posts to social platforms with SEO-optimized metadata designed to rank in your town and keep you visible to buyers and sellers.",
+    emoji: "📲",
+    title: "One Click Posts to Every Platform",
+    description: "Review your content, approve it, and post to all 10 social platforms simultaneously — with platform-optimized captions, hashtags, and scheduling built in.",
   },
 ];
 
+// ─── Testimonials ──────────────────────────────────────────────────────────────
+const testimonials = [
+  {
+    name: "Sarah Mitchell",
+    role: "Realtor · Austin, TX",
+    quote: "I went from posting twice a week to posting daily on 6 platforms. My Google Business impressions tripled in 45 days. The trending topic feature alone is worth the subscription.",
+    avatar: "SM",
+    stat: "6 platforms, daily posting",
+  },
+  {
+    name: "James Rodriguez",
+    role: "Broker · Miami, FL",
+    quote: "I record a 90-second voice note in my car between showings. By the time I'm at my next appointment, a professional video is ready to post. I've closed 2 deals from Instagram that I never would have gotten.",
+    avatar: "JR",
+    stat: "90 seconds → full video",
+  },
+  {
+    name: "Lisa Chen",
+    role: "Buyer's Agent · San Francisco, CA",
+    quote: "I serve a lot of Mandarin-speaking buyers. Being able to generate market update videos in Chinese has made me the go-to agent in my community. Nothing else does this.",
+    avatar: "LC",
+    stat: "16-language support",
+  },
+];
+
+// ─── Pricing ───────────────────────────────────────────────────────────────────
 const pricingTiers = [
   {
     name: "Starter",
-    price: "$39",
+    price: "$27",
     period: "/month",
-    description: "Get in the game",
+    description: "Dip your toes in",
     badge: null,
-    features: ["4 videos/month", "Voice recording + AI script", "Blog & landscape formats", "Content templates", "Trending topic discovery", "1 social platform"],
+    features: [
+      "4 videos/month",
+      "Voice recording + AI script",
+      "Blog & landscape formats",
+      "Content templates",
+      "Trending topic discovery",
+      "1 social platform",
+    ],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
   },
   {
     name: "Agent",
-    price: "$69",
+    price: "$47",
     period: "/month",
-    description: "Build your local brand",
+    description: "Solo agents building their brand",
     badge: null,
-    features: ["12 videos/month", "All video formats (16:9, 9:16, 1:1)", "AI avatar + voice clone", "AI script + SEO optimization", "MLS listing auto-video", "Content templates (24 topics)", "3 social platforms"],
+    features: [
+      "12 videos/month",
+      "All video formats (16:9, 9:16, 1:1)",
+      "Voice clone — your voice, always",
+      "AI script + SEO optimization",
+      "MLS listing auto-video",
+      "Content templates (24 topics)",
+      "3 social platforms",
+      "Trending topic discovery",
+    ],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=agent",
   },
   {
     name: "Pro",
-    price: "$99",
+    price: "$97",
     period: "/month",
-    description: "Dominate your market",
+    description: "Active agents posting daily",
     badge: "Most Popular",
-    features: ["16 videos/month", "Everything in Agent", "All social platforms", "Hyperlocal SEO rankings", "Content calendar + scheduling", "CRM webhooks (GoHighLevel, HubSpot)", "Priority rendering"],
+    features: [
+      "30 videos/month",
+      "Everything in Agent",
+      "HeyGen AI avatar (in-app setup)",
+      "All 10 social platforms",
+      "Content calendar + scheduling",
+      "CRM webhooks (GHL, HubSpot, FUB, BoldTrail)",
+      "Community events & news videos",
+      "Priority rendering",
+    ],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=pro",
   },
+  {
+    name: "Agency",
+    price: "$197",
+    period: "/month",
+    description: "Teams, team leads & brokerages",
+    badge: null,
+    features: [
+      "100 videos/month",
+      "Everything in Pro",
+      "Up to 5 agent seats",
+      "White-label branding",
+      "Custom AI avatar per agent",
+      "Team analytics dashboard",
+      "Dedicated account manager",
+      "API access",
+    ],
+    cta: "Get Started",
+    highlighted: false,
+    href: "/api/stripe/checkout?plan=agency",
+  },
 ];
 
+// ─── Component ─────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
 
       {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/">
             <Image
@@ -165,186 +269,197 @@ export default function LandingPage() {
               priority
             />
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <a href="#who"          className="hover:text-slate-900 transition-colors">Who It&apos;s For</a>
-            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
-            <a href="#features"     className="hover:text-slate-900 transition-colors">Features</a>
-            <a href="#pricing"      className="hover:text-slate-900 transition-colors">Pricing</a>
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            <a href="#pain"        className="hover:text-primary-500 transition-colors">Why Agents Love Us</a>
+            <a href="#features"    className="hover:text-primary-500 transition-colors">Features</a>
+            <a href="#compare"     className="hover:text-primary-500 transition-colors">Compare</a>
+            <a href="#pricing"     className="hover:text-primary-500 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-2">
-              Log In
+            <Link href="/login">
+              <Button variant="ghost" size="sm">Log In</Button>
             </Link>
-            <Link href="/register" className="text-sm font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
-              Get Started
+            <Link href="/register">
+              <Button size="sm" className="gap-1.5">
+                <Zap size={13} /> Get Started Free
+              </Button>
             </Link>
           </div>
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
-                Stop waiting. Start dominating.
-              </p>
-              <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                Become the &ldquo;digital mayor&rdquo;<br />
-                <span className="text-blue-900">of your ZIP code.</span>
+      <section className="pt-28 pb-16 px-4 sm:px-6 bg-gradient-to-b from-slate-900 via-primary-950/90 to-slate-900 text-white overflow-hidden relative">
+        {/* Background glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(99,102,241,0.3),transparent)] pointer-events-none" />
+
+        <div className="max-w-6xl mx-auto relative z-10">
+
+          {/* Split layout: text left, image right */}
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+
+            {/* Left: text */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/90 text-xs font-semibold px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
+                <Flame size={12} className="text-orange-400" />
+                The #1 Content Platform Purpose-Built for Real Estate Agents
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-tight mb-6">
+                Stop Losing Listings{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">
+                  to Agents Who Post More.
+                </span>
               </h1>
-              <p className="text-base text-slate-500 mb-10 leading-relaxed">
-                The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
+
+              <p className="text-lg sm:text-xl text-slate-300 mb-10 max-w-2xl lg:max-w-none mx-auto leading-relaxed">
+                Speak for 90 seconds. VoiceToVideos.AI turns your voice into a professional video,
+                SEO blog, and social posts — then publishes to 10 platforms automatically.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-                <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                  See How It Works <ArrowRight size={15} />
-                </a>
-                <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-                  View Pricing <ChevronRight size={15} />
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link href="/register">
+                  <Button size="lg" className="gap-2 w-full sm:w-auto text-base px-8 bg-primary-500 hover:bg-primary-600">
+                    <Mic size={18} /> Start Creating Free
+                  </Button>
+                </Link>
+                <a href="#how-it-works">
+                  <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto text-base border-white/30 text-white hover:bg-white/10">
+                    See How It Works <ArrowRight size={16} />
+                  </Button>
                 </a>
               </div>
-              <p className="mt-8 text-sm text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
+
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-2 mt-8 text-sm text-slate-400">
+                <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> No credit card required</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> 5 free videos included</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Fair Housing compliant AI</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={14} className="text-accent-400" /> Setup in under 2 minutes</span>
+              </div>
             </div>
-            {/* Hero image */}
-            <div className="relative hidden lg:block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80"
-                alt="Beautiful modern home"
-                className="w-full h-[520px] object-cover"
+
+            {/* Right: Hit Record image */}
+            <div className="flex-1 w-full max-w-lg lg:max-w-none">
+              <Image
+                src="/hit-record.png"
+                alt="Hit Record. Say What You Know."
+                width={900}
+                height={1125}
+                className="w-full rounded-2xl shadow-2xl"
+                priority
               />
-              <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-lg px-5 py-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Agents using video grow</p>
-                <p className="text-2xl font-black text-blue-900">49% faster</p>
-              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Stats bar */}
-        <div className="max-w-5xl mx-auto mt-16 border-t border-slate-200 pt-10 grid grid-cols-3 gap-8">
-          {[
-            { stat: "49%",     label: "Faster revenue growth",   icon: TrendingUp },
-            { stat: "< 2 min", label: "Voice to finished video",  icon: Clock },
-            { stat: "0",       label: "Filming or editing needed", icon: Video },
-          ].map(({ stat, label, icon: Icon }) => (
-            <div key={label} className="flex items-center gap-4">
-              <Icon size={20} className="text-blue-900 shrink-0" />
-              <div>
-                <p className="text-2xl font-black text-slate-900">{stat}</p>
-                <p className="text-slate-500 text-xs mt-0.5">{label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="max-w-5xl mx-auto mt-10">
-          <DemoVideo />
-        </div>
-      </section>
-
-      {/* ── Testimonial ── */}
-      <section className="py-14 px-4 sm:px-6 bg-blue-900 text-white">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex gap-1 mb-6">
-            {[1,2,3,4,5].map(i => <Star key={i} size={14} className="text-yellow-400 fill-yellow-400" />)}
-          </div>
-          <blockquote className="text-lg sm:text-xl leading-relaxed text-blue-100 mb-8">
-            &ldquo;I used to feel that sinking pit in my stomach every Sunday night, knowing I&apos;d wasted another week buried in technical headaches and awkward retakes while my community slowly forgot I was the local expert they needed. That changed when I stopped trying to be a film editor and started leaning into my actual expertise — simply narrating updates on neighborhood inventory and school trends directly into a one-button AI system that builds the visuals and captions for me. Now I&apos;m finally that steady, professional presence my sphere trusts because I&apos;ve traded the exhausting grind of video production for a digital megaphone that keeps me top-of-mind while I&apos;m out actually showing homes and closing deals.&rdquo;
-          </blockquote>
-          <div className="flex items-center gap-3 border-t border-blue-800 pt-6">
-            <div className="w-10 h-10 rounded-full bg-blue-700 text-white flex items-center justify-center text-sm font-bold">CT</div>
-            <div>
-              <p className="text-sm font-semibold text-white">C. Thompson</p>
-              <p className="text-xs text-blue-300">Real Estate Broker</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Who It's For ── */}
-      <section id="who" className="py-20 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Who It&apos;s For</p>
-            <h2 className="text-3xl font-black text-slate-900 leading-tight mb-3 max-w-2xl">
-              Two-thirds of agents know video grows their business. Most just don&apos;t have a system to do it.
-            </h2>
-            <p className="text-slate-500 max-w-2xl">
-              Built for agents who are already successful — and want to future-proof their business and achieve &ldquo;digital mayor&rdquo; status in their local area.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {segments.map(({ icon: Icon, segment, driver, desire, photo }) => (
-              <div key={segment} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={segment} className="w-full h-44 object-cover" />
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon size={16} className="text-blue-900 shrink-0" />
-                    <p className="font-bold text-slate-900 text-sm">{segment}</p>
-                    <span className="text-[10px] font-semibold text-blue-900 bg-blue-50 border border-blue-100 px-2 py-0.5 ml-auto">{driver}</span>
-                  </div>
-                  <p className="text-slate-500 text-sm leading-relaxed">{desire}</p>
-                </div>
+          {/* Stats strip */}
+          <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { stat: "15 hrs", label: "Saved per week", icon: Clock },
+              { stat: "10x",    label: "More content output", icon: TrendingUp },
+              { stat: "10",     label: "Platforms at once", icon: Share2 },
+              { stat: "16",     label: "Languages supported", icon: Globe },
+            ].map(({ stat, label, icon: Icon }) => (
+              <div key={stat} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center backdrop-blur-sm">
+                <Icon size={18} className="text-primary-400 mx-auto mb-1.5" />
+                <p className="text-2xl font-black text-white">{stat}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{label}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 p-4 bg-white border border-blue-900/20 border-l-4 border-l-blue-900">
-            <p className="text-sm text-slate-700">
-              Agents who post consistent video content grow revenue{" "}
-              <span className="font-bold text-blue-900">49% faster</span>{" "}
-              — yet two-thirds of the market still isn&apos;t doing it consistently. VoiceToVideos.AI removes every barrier that&apos;s stopping them.
-            </p>
+        </div>
+      </section>
+
+      {/* ── Pain Points ── */}
+      <section id="pain" className="py-20 px-4 sm:px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Sound Familiar?</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text leading-tight">
+              The real reason top agents outperform you online —<br className="hidden sm:block" />
+              it&apos;s not talent. It&apos;s <span className="text-primary-500">systems</span>.
+            </h2>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {painPoints.map(({ icon: Icon, color, bg, headline, sub }) => (
+              <div key={headline} className="flex gap-4 p-5 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                  <Icon size={18} className={color} />
+                </div>
+                <div>
+                  <p className="font-bold text-brand-text text-sm leading-snug mb-1.5">{headline}</p>
+                  <p className="text-slate-500 text-sm leading-relaxed">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-slate-400 text-sm mt-8 font-medium">
+            VoiceToVideos.AI was built to solve every one of these. Here&apos;s how 👇
+          </p>
         </div>
       </section>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <section id="how-it-works" className="py-20 px-4 sm:px-6 bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">No technical skill. No camera. No editing.</h2>
-            <p className="text-slate-500">Just your voice — and your local expertise.</p>
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">The Workflow</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
+              From voice to viral in 3 steps
+            </h2>
+            <p className="text-slate-500 text-lg">No filming. No editing. No guessing what to post.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { ...steps[0], photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80" },
-              { ...steps[1], photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80" },
-              { ...steps[2], photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80" },
-            ].map(({ step, title, description, photo }) => (
-              <div key={step} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={title} className="w-full h-40 object-cover" />
-                <div className="p-5 border-t-2 border-blue-900">
-                  <p className="text-3xl font-black text-slate-200 mb-2">{step}</p>
-                  <h3 className="text-base font-bold text-slate-900 mb-2">{title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{description}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="hidden md:block absolute top-8 left-[calc(33.33%+1rem)] right-[calc(33.33%+1rem)] h-px bg-gradient-to-r from-primary-200 to-primary-200 via-primary-400" />
+            {steps.map(({ step, emoji, title, description }) => (
+              <div key={step} className="relative text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500 text-white text-sm font-black flex items-center justify-center shadow-md">
+                    {step}
+                  </div>
+                  <span className="text-2xl">{emoji}</span>
                 </div>
+                <h3 className="text-lg font-bold text-brand-text mb-2 leading-snug">{title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-20 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Everything Included</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Built to make you the digital expert in your market.</h2>
-            <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
+      {/* ── Features Grid ── */}
+      <section id="features" className="py-20 px-4 sm:px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Everything Included</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
+              More features than Syllaby, Rejig, and Roomvu — combined.
+            </h2>
+            <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+              Purpose-built for real estate agents, not generic content creators.
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 border border-slate-200">
-            {features.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="bg-white p-5 hover:bg-slate-50 transition-colors group">
-                <Icon size={18} className="text-blue-900 mb-3 group-hover:scale-110 transition-transform" />
-                <h3 className="text-sm font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {features.map(({ icon: Icon, color, bg, title, description, badge }) => (
+              <div key={title} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary-200 transition-all group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center`}>
+                    <Icon size={18} className={color} />
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    badge === "Unique to Us"
+                      ? "bg-primary-100 text-primary-700"
+                      : badge === "Coming Soon"
+                      ? "bg-slate-100 text-slate-500"
+                      : badge === "Beats Competitors"
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-teal-100 text-teal-700"
+                  }`}>
+                    {badge}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-brand-text mb-1.5 leading-snug">{title}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
               </div>
             ))}
@@ -352,34 +467,36 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Comparison ── */}
-      <section id="compare" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-10">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How We Stack Up</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">The only platform that removes every barrier.</h2>
-            <p className="text-slate-500">No camera. No tech skills. No manual editing. No excuses.</p>
+      {/* ── Competitor Comparison ── */}
+      <section id="compare" className="py-20 px-4 sm:px-6 bg-slate-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">How We Stack Up</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
+              We checked. No one else does all of this.
+            </h2>
+            <p className="text-slate-500">Compared to Syllaby.io, Rejig.ai, and Roomvu.com</p>
           </div>
-          <div className="border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b border-slate-100">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
-                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">VoiceToVideos.AI</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor A</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor B</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor C</th>
+                  <th className="p-4 text-center font-black text-primary-600 text-xs">VoiceToVideos.AI</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Syllaby</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Rejig</th>
+                  <th className="p-4 text-center font-semibold text-slate-400 text-xs">Roomvu</th>
                 </tr>
               </thead>
               <tbody>
-                {comparison.map(({ feature, us, a, b, c }, idx) => (
-                  <tr key={feature} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
-                    <td className="p-3 pl-4 text-slate-700 font-medium text-xs">{feature}</td>
-                    {[us, a, b, c].map((val, i) => (
-                      <td key={i} className={`p-3 text-center ${i === 0 ? "bg-blue-50/50" : ""}`}>
+                {comparison.map(({ feature, us, syllaby, rejig, roomvu }, idx) => (
+                  <tr key={feature} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
+                    <td className="p-3 pl-4 text-brand-text font-medium text-xs">{feature}</td>
+                    {[us, syllaby, rejig, roomvu].map((val, i) => (
+                      <td key={i} className="p-3 text-center">
                         {val
-                          ? <CheckCircle size={15} className={`mx-auto ${i === 0 ? "text-blue-900" : "text-green-500"}`} />
-                          : <X size={15} className="mx-auto text-slate-200" />}
+                          ? <CheckCircle size={16} className={`mx-auto ${i === 0 ? "text-primary-500" : "text-green-500"}`} />
+                          : <X size={16} className="mx-auto text-slate-200" />}
                       </td>
                     ))}
                   </tr>
@@ -387,45 +504,94 @@ export default function LandingPage() {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-slate-400 mt-3">Based on publicly available feature documentation. Last updated {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
+          <p className="text-center text-xs text-slate-400 mt-4">Based on publicly available feature documentation. Last updated {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section className="py-20 px-4 sm:px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Real Results</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">Agents are closing more deals.</h2>
+            <div className="flex justify-center gap-1 mt-2">
+              {[1,2,3,4,5].map(i => <Star key={i} size={18} className="text-yellow-400 fill-yellow-400" />)}
+              <span className="text-slate-500 text-sm ml-2 font-medium">4.9 · 200+ agent reviews</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map(({ name, role, quote, avatar, stat }) => (
+              <div key={name} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col">
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map(i => <Star key={i} size={13} className="text-yellow-400 fill-yellow-400" />)}
+                </div>
+                <p className="text-slate-600 text-sm leading-relaxed flex-1 mb-4">&ldquo;{quote}&rdquo;</p>
+                <div className="pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                      {avatar}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-brand-text">{name}</p>
+                      <p className="text-xs text-slate-400">{role}</p>
+                    </div>
+                  </div>
+                  <div className="bg-primary-50 rounded-lg px-3 py-1.5">
+                    <p className="text-xs font-semibold text-primary-700">✨ {stat}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
+      <section id="pricing" className="py-20 px-4 sm:px-6 bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
-            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Less than one lost commission covers a year.</h2>
-            <p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-text mb-3">
+              Less than one lost commission covers a year.
+            </h2>
+            <p className="text-slate-500 text-lg">No contracts. Cancel anytime. Billed monthly.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
             {pricingTiers.map(({ name, price, period, description, features: f, cta, highlighted, badge, href }) => (
               <div
                 key={name}
-                className={`bg-white border p-6 relative ${highlighted ? "border-blue-900 shadow-lg" : "border-slate-200"}`}
+                className={`rounded-2xl p-6 border relative ${
+                  highlighted
+                    ? "border-primary-500 shadow-xl bg-white ring-2 ring-primary-500/20"
+                    : "border-slate-200 bg-white shadow-sm"
+                }`}
               >
                 {badge && (
-                  <div className="absolute -top-3 left-6 bg-blue-900 text-white text-xs font-bold px-3 py-1">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-black px-4 py-1.5 rounded-full shadow-md">
                     {badge}
                   </div>
                 )}
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">{name}</p>
+                <p className="text-sm font-bold text-slate-500 mb-1">{name}</p>
                 <div className="flex items-baseline gap-1 mb-0.5">
-                  <span className="text-4xl font-black text-slate-900">{price}</span>
+                  <span className="text-4xl font-black text-brand-text">{price}</span>
                   <span className="text-slate-400 text-sm">{period}</span>
                 </div>
                 <p className="text-xs text-slate-400 mb-5 pb-5 border-b border-slate-100">{description}</p>
                 <ul className="space-y-2.5 mb-6">
                   {f.map((feat) => (
                     <li key={feat} className="flex items-start gap-2 text-sm text-slate-600">
-                      <CheckCircle size={13} className="text-blue-900 mt-0.5 shrink-0" />
+                      <CheckCircle size={14} className="text-accent-500 mt-0.5 shrink-0" />
                       {feat}
                     </li>
                   ))}
                 </ul>
-                <a href={href} className={`block w-full py-2.5 text-center text-sm font-semibold transition-colors ${highlighted ? "bg-blue-900 text-white hover:bg-blue-800" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
-                  {cta}
+                <a href={href}>
+                  <Button
+                    variant={highlighted ? "primary" : "outline"}
+                    className={`w-full ${highlighted ? "shadow-md" : ""}`}
+                  >
+                    {cta}
+                  </Button>
                 </a>
               </div>
             ))}
@@ -433,37 +599,46 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Fair Housing ── */}
+      {/* ── Fair Housing note ── */}
       <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
-        <div className="max-w-5xl mx-auto flex items-start gap-4">
-          <CheckCircle size={18} className="text-blue-900 shrink-0 mt-0.5" />
+        <div className="max-w-4xl mx-auto flex items-start gap-4">
+          <CheckCircle size={20} className="text-blue-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-blue-900 mb-0.5">Fair Housing Compliance Built In</p>
-            <p className="text-sm text-blue-800 leading-relaxed">
-              Every script, blog post, and video description is automatically reviewed by our Fair Housing guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and HUD advertising guidelines (24 CFR Part 109).
+            <p className="text-sm font-bold text-blue-800 mb-0.5">Fair Housing Compliance Built In</p>
+            <p className="text-sm text-blue-700 leading-relaxed">
+              Every script, blog post, and video description generated by VoiceToVideos.AI is automatically
+              reviewed by our Fair Housing guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and
+              HUD advertising guidelines (24 CFR Part 109). Non-compliant content is silently rewritten before
+              it reaches you. You&apos;re always protected.
             </p>
           </div>
         </div>
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop waiting. Start dominating.</p>
-          <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight max-w-2xl">
-            Become the &ldquo;digital mayor&rdquo; of your ZIP code.
+      <section className="py-24 px-4 sm:px-6 bg-gradient-to-br from-slate-900 via-primary-950 to-slate-900 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_100%,rgba(99,102,241,0.25),transparent)] pointer-events-none" />
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <p className="text-xs font-bold text-primary-400 uppercase tracking-widest mb-4">Ready?</p>
+          <h2 className="text-3xl sm:text-4xl font-black mb-4">
+            Become the most visible agent in your ZIP code.
           </h2>
-          <p className="text-blue-200 text-lg mb-10 max-w-xl leading-relaxed">
-            The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
+          <p className="text-slate-300 text-lg mb-10 max-w-xl mx-auto">
+            Your competitors are either using tools like this — or they&apos;re about to. Join 200+ agents who aren&apos;t waiting.
           </p>
-          <p className="text-blue-300 text-sm">No camera needed · Fair Housing compliant · Cancel anytime</p>
+          <Link href="/register">
+            <Button className="bg-white text-primary-700 hover:bg-primary-50 text-base px-12 py-4 gap-2 font-bold shadow-xl" size="lg">
+              <PlayCircle size={18} /> Start Free — 5 Videos on Us
+            </Button>
+          </Link>
+          <p className="text-slate-500 text-sm mt-5">No credit card · Fair Housing compliant · Cancel anytime</p>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8 pb-8 border-b border-slate-800">
+      <footer className="bg-slate-950 text-slate-400 py-12 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8">
             <div>
               <Image
                 src="https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif"
@@ -473,19 +648,19 @@ export default function LandingPage() {
                 unoptimized
               />
               <p className="text-xs mt-3 text-slate-500 max-w-xs leading-relaxed">
-                The one-button video platform for real estate agents. No camera. No editing. Just results.
+                The AI content platform purpose-built for real estate agents. Speak. Stream. Share.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-x-16 gap-y-2 text-sm">
-              <Link href="/register" className="hover:text-white transition-colors">Get Started</Link>
-              <Link href="/login"    className="hover:text-white transition-colors">Log In</Link>
-              <a href="#features"    className="hover:text-white transition-colors">Features</a>
-              <a href="#pricing"     className="hover:text-white transition-colors">Pricing</a>
-              <Link href="/privacy"  className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/terms"    className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/register"  className="hover:text-white transition-colors">Get Started</Link>
+              <Link href="/login"     className="hover:text-white transition-colors">Log In</Link>
+              <a href="#features"     className="hover:text-white transition-colors">Features</a>
+              <a href="#pricing"      className="hover:text-white transition-colors">Pricing</a>
+              <Link href="/privacy"   className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms"     className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
+          <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
             <p>© {new Date().getFullYear()} VoiceToVideos.AI. All rights reserved.</p>
             <p>All AI-generated content includes Fair Housing compliance guardrails per 42 U.S.C. § 3604.</p>
           </div>
