@@ -188,11 +188,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
-                Stop waiting. Start dominating.
+                Stop waiting. Start dominating your local market.
               </p>
               <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                Become the &ldquo;digital mayor&rdquo;<br />
-                <span className="text-blue-900">of your ZIP code.</span>
+                Become the &ldquo;digital go-to-real estate agent&rdquo;<br />
+                <span className="text-blue-900">of your TOWN.</span>
               </h1>
               <p className="text-base text-slate-500 mb-10 leading-relaxed">
                 The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
@@ -275,7 +275,7 @@ export default function LandingPage() {
               Two-thirds of agents know video grows their business. Most just don&apos;t have a system to do it.
             </h2>
             <p className="text-slate-500 max-w-2xl">
-              Built for agents who are already successful — and want to future-proof their business and achieve &ldquo;digital mayor&rdquo; status in their local area.
+              Built for agents who are already successful — and want to future-proof their business and become the &ldquo;digital go-to-real estate agent&rdquo; in their town.
             </p>
           </div>
 
@@ -451,9 +451,9 @@ export default function LandingPage() {
       {/* ── Final CTA ── */}
       <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop waiting. Start dominating.</p>
+          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop waiting. Start dominating your local market.</p>
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight max-w-2xl">
-            Become the &ldquo;digital mayor&rdquo; of your ZIP code.
+            Become the &ldquo;digital go-to-real estate agent&rdquo; of your TOWN.
           </h2>
           <p className="text-blue-200 text-lg mb-10 max-w-xl leading-relaxed">
             The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
