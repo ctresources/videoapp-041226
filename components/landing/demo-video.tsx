@@ -11,7 +11,7 @@ export function DemoVideo() {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
-      v.play();
+      v.play().catch(() => {});
     } else {
       v.pause();
     }
@@ -31,8 +31,11 @@ export function DemoVideo() {
         </span>
       </div>
 
-      {/* Video + overlay button */}
-      <div className="relative group cursor-pointer bg-black" onClick={toggle}>
+      {/* Video — aspect ratio holds space before metadata loads */}
+      <div
+        className="relative group cursor-pointer bg-black aspect-video"
+        onClick={toggle}
+      >
         <video
           ref={videoRef}
           src="/demo.mp4"
@@ -40,7 +43,7 @@ export function DemoVideo() {
           muted
           loop
           playsInline
-          className="w-full block"
+          className="absolute inset-0 w-full h-full object-contain"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
         />
