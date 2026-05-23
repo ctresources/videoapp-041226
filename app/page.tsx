@@ -20,7 +20,7 @@ const segments = [
     segment: "Camera-Shy Agents",
     driver: "Performance Anxiety",
     desire: "Build a powerful personal brand without ever appearing on screen.",
-    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Users,
