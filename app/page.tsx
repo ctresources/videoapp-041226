@@ -42,42 +42,42 @@ const features = [
   {
     title: "One-Button Video Creation",
     description: "Speak for 90 seconds about any market topic, listing, or local update. AI writes the script, builds visuals, adds captions, and renders broadcast-quality video — no filming or editing required.",
-    photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/mic/600/400",
   },
   {
     title: "No Camera Required",
     description: "Your AI avatar appears on screen in your place, speaking in your cloned voice. Build a compelling personal brand without ever recording your face.",
-    photo: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/avatar/600/400",
   },
   {
     title: "Hyperlocal Market Intelligence",
     description: "Generate hyper-local market update videos that rank on YouTube — positioning you as the digital expert in your town.",
-    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/neighborhood/600/400",
   },
   {
     title: "\"Digital Go-To Agent\" Status",
     description: "Consistently publishing hyper-local expert content makes you the agent people think of first when buyers and sellers search for a local expert.",
-    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/realestate/600/400",
   },
   {
     title: "YouTube SEO Rankings",
     description: "Every video includes an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search for your target neighborhood keywords.",
-    photo: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/seo/600/400",
   },
   {
     title: "Social Platform Publishing",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags built in.",
-    photo: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/social/600/400",
   },
   {
     title: "Listing Video Generator",
     description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post in minutes.",
-    photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/listing/600/400",
   },
   {
     title: "49% Faster Revenue Growth",
     description: "Agents who post consistent video content grow revenue 49% faster. VoiceToVideos.AI gives you the output of a full content team without the cost or headache.",
-    photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
+    photo: "https://picsum.photos/seed/growth/600/400",
   },
 ];
 
@@ -230,17 +230,17 @@ export default function LandingPage() {
             {
               stat: "49%",
               label: "Faster revenue growth",
-              photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+              photo: "https://picsum.photos/seed/revenue/600/400",
             },
             {
               stat: "< 2 min",
               label: "Voice to finished video",
-              photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
+              photo: "https://picsum.photos/seed/voice/600/400",
             },
             {
               stat: "0",
               label: "Filming or editing needed",
-              photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+              photo: "https://picsum.photos/seed/nocamera/600/400",
             },
           ].map(({ stat, label, photo }) => (
             <div key={label} className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
