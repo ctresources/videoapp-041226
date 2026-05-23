@@ -3,9 +3,9 @@ import Link from "next/link";
 import { DemoVideo } from "@/components/landing/demo-video";
 import { Button } from "@/components/ui/button";
 import {
-  Mic, Video, Share2, CheckCircle, Star, ArrowRight, Zap,
-  Clock, TrendingUp, MapPin, Home, CalendarDays,
-  PlayCircle, X, Camera, Users, UserPlus, Trophy, ChevronRight,
+  Video, CheckCircle, Star, ArrowRight,
+  Clock, TrendingUp,
+  X, Camera, Users, UserPlus, ChevronRight,
 } from "lucide-react";
 
 const segments = [
@@ -41,44 +41,44 @@ const segments = [
 
 const features = [
   {
-    icon: Mic,
     title: "One-Button Video Creation",
     description: "Speak for 90 seconds about any market topic, listing, or local update. AI writes the script, builds visuals, adds captions, and renders broadcast-quality video — no filming or editing required.",
+    photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: Camera,
     title: "No Camera Required",
     description: "Your AI avatar appears on screen in your place, speaking in your cloned voice. Build a compelling personal brand without ever recording your face.",
+    photo: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: MapPin,
     title: "Hyperlocal Market Intelligence",
     description: "Generate hyper-local market update videos that rank on YouTube — positioning you as the digital expert in your town.",
+    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: Trophy,
-    title: "\"Digital Mayor\" Status",
+    title: "\"Digital Go-To Agent\" Status",
     description: "Consistently publishing hyper-local expert content makes you the agent people think of first when buyers and sellers search for a local expert.",
+    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: TrendingUp,
     title: "YouTube SEO Rankings",
     description: "Every video includes an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search for your target neighborhood keywords.",
+    photo: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: CalendarDays,
     title: "Social Platform Publishing",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags built in.",
+    photo: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: Home,
     title: "Listing Video Generator",
     description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post in minutes.",
+    photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
-    icon: Share2,
     title: "49% Faster Revenue Growth",
     description: "Agents who post consistent video content grow revenue 49% faster. VoiceToVideos.AI gives you the output of a full content team without the cost or headache.",
+    photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -208,7 +208,7 @@ export default function LandingPage() {
               <p className="mt-8 text-sm text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
             </div>
             {/* Hero image */}
-            <div className="relative hidden lg:block">
+            <div className="relative hidden lg:block animate-float">
               <Image
                 src="/hit-record.png"
                 alt="Hit Record. Say What You Know."
@@ -324,11 +324,14 @@ export default function LandingPage() {
             <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 border border-slate-200">
-            {features.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="bg-white p-5 hover:bg-slate-50 transition-colors group">
-                <Icon size={18} className="text-blue-900 mb-3 group-hover:scale-110 transition-transform" />
-                <h3 className="text-sm font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
-                <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
+            {features.map(({ title, description, photo }) => (
+              <div key={title} className="bg-white hover:bg-slate-50 transition-colors group overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo} alt={title} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300" />
+                <div className="p-5">
+                  <h3 className="text-sm font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
+                  <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
+                </div>
               </div>
             ))}
           </div>
