@@ -34,7 +34,7 @@ const segments = [
     segment: "New Agents",
     driver: "Brand Building",
     desire: "Establish local authority quickly and compete with seasoned agents from day one.",
-    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
