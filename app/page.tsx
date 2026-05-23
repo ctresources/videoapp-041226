@@ -13,7 +13,7 @@ const segments = [
     segment: "Solo Agents",
     driver: "Time Scarcity",
     desire: "Stay top-of-mind without losing 15 hours a week to content production.",
-    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Camera,
@@ -27,14 +27,14 @@ const segments = [
     segment: "Team Leaders",
     driver: "Scalability",
     desire: "Ensure team-wide content consistency and brand compliance — at scale.",
-    photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: UserPlus,
     segment: "New Agents",
     driver: "Brand Building",
     desire: "Establish local authority quickly and compete with seasoned agents from day one.",
-    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -57,7 +57,7 @@ const features = [
   {
     title: "\"Digital Go-To Agent\" Status",
     description: "Consistently publishing hyper-local expert content makes you the agent people think of first when buyers and sellers search for a local expert.",
-    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "YouTube SEO Rankings",
@@ -235,12 +235,12 @@ export default function LandingPage() {
             {
               stat: "< 2 min",
               label: "Voice to finished video",
-              photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
+              photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80",
             },
             {
               stat: "0",
               label: "Filming or editing needed",
-              photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+              photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
             },
           ].map(({ stat, label, photo }) => (
             <div key={label} className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
