@@ -416,19 +416,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Fair Housing ── */}
-      <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
-        <div className="max-w-5xl mx-auto flex items-start gap-4">
-          <CheckCircle size={18} className="text-blue-900 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-blue-900 mb-0.5">Fair Housing Compliance Built In</p>
-            <p className="text-sm text-blue-800 leading-relaxed">
-              Every script, blog post, and video description is automatically reviewed by our Fair Housing guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and HUD advertising guidelines (24 CFR Part 109).
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* ── Testimonial ── */}
       <section className="py-14 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-3xl mx-auto">
@@ -444,6 +431,19 @@ export default function LandingPage() {
               <p className="text-sm font-semibold text-white">C. Thompson</p>
               <p className="text-xs text-blue-300">Real Estate Broker</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Fair Housing ── */}
+      <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
+        <div className="max-w-5xl mx-auto flex items-start gap-4">
+          <CheckCircle size={18} className="text-blue-900 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-blue-900 mb-0.5">Fair Housing Compliance Built In</p>
+            <p className="text-sm text-blue-800 leading-relaxed">
+              Every script, blog post, and video description is automatically reviewed by our Fair Housing guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and HUD advertising guidelines (24 CFR Part 109).
+            </p>
           </div>
         </div>
       </section>
