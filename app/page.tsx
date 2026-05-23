@@ -2,8 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Video, CheckCircle, Star, ArrowRight,
-  Clock, TrendingUp,
+  CheckCircle, Star, ArrowRight,
+  Clock,
   X, Camera, Users, UserPlus, ChevronRight,
 } from "lucide-react";
 
@@ -225,17 +225,30 @@ export default function LandingPage() {
         </div>
 
         {/* Stats bar */}
-        <div className="max-w-5xl mx-auto mt-16 border-t border-slate-200 pt-10 grid grid-cols-3 gap-8">
+        <div className="max-w-5xl mx-auto mt-16 border-t border-slate-200 pt-10 grid grid-cols-3 gap-6">
           {[
-            { stat: "49%",     label: "Faster revenue growth",   icon: TrendingUp },
-            { stat: "< 2 min", label: "Voice to finished video",  icon: Clock },
-            { stat: "0",       label: "Filming or editing needed", icon: Video },
-          ].map(({ stat, label, icon: Icon }) => (
-            <div key={label} className="flex items-center gap-4">
-              <Icon size={20} className="text-blue-900 shrink-0" />
-              <div>
-                <p className="text-2xl font-black text-slate-900">{stat}</p>
-                <p className="text-slate-500 text-xs mt-0.5">{label}</p>
+            {
+              stat: "49%",
+              label: "Faster revenue growth",
+              photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+              stat: "< 2 min",
+              label: "Voice to finished video",
+              photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+              stat: "0",
+              label: "Filming or editing needed",
+              photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+            },
+          ].map(({ stat, label, photo }) => (
+            <div key={label} className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo} alt={label} className="w-full h-36 object-cover" />
+              <div className="p-4">
+                <p className="text-3xl font-black text-blue-900">{stat}</p>
+                <p className="text-slate-500 text-sm mt-0.5">{label}</p>
               </div>
             </div>
           ))}
