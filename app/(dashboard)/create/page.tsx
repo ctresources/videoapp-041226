@@ -517,6 +517,59 @@ function CreatePageInner() {
                     </div>
                   </div>
 
+                  {/* Topic input */}
+                  <div className="mb-5">
+                    <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                      What&apos;s your topic? <span className="text-red-400">*</span>
+                    </label>
+                    <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                      <input
+                        id="loc-custom-topic"
+                        type="text"
+                        value={locCustomTopic}
+                        onChange={(e) => setLocCustomTopic(e.target.value)}
+                        placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
+                        className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                      />
+                      <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Tap the 🎤 mic on any field to speak instead of type
+                    </p>
+                  </div>
+
+                  {/* Templates toggle */}
+                  <div className="mb-5">
+                    <button
+                      onClick={() => setShowTemplates((v) => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">💡</span>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
+                          <p className="text-xs text-slate-400">
+                            24 templates · Real Estate · Location · Events &amp; Community News
+                            {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      {showTemplates
+                        ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
+                        : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+                    </button>
+
+                    {showTemplates && (
+                      <div className="mt-3">
+                        <ContentTemplates
+                          onSelect={handleTemplateSelect}
+                          city={locCity}
+                          state={locState}
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   {/* Location fields */}
                   <div className="mb-4">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
@@ -653,59 +706,6 @@ function CreatePageInner() {
                         if (v) setLocCta(v);
                       }} />
                     </div>
-                  </div>
-
-                  {/* Topic input */}
-                  <div className="mb-5">
-                    <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                      What&apos;s your topic? <span className="text-red-400">*</span>
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                      <input
-                        id="loc-custom-topic"
-                        type="text"
-                        value={locCustomTopic}
-                        onChange={(e) => setLocCustomTopic(e.target.value)}
-                        placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
-                        className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                      />
-                      <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Tap the 🎤 mic on any field to speak instead of type
-                    </p>
-                  </div>
-
-                  {/* Templates toggle */}
-                  <div className="mb-5">
-                    <button
-                      onClick={() => setShowTemplates((v) => !v)}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">💡</span>
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
-                          <p className="text-xs text-slate-400">
-                            24 templates · Real Estate · Location · Events &amp; Community News
-                            {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      {showTemplates
-                        ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
-                        : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
-                    </button>
-
-                    {showTemplates && (
-                      <div className="mt-3">
-                        <ContentTemplates
-                          onSelect={handleTemplateSelect}
-                          city={locCity}
-                          state={locState}
-                        />
-                      </div>
-                    )}
                   </div>
 
                   {/* Info banner */}
