@@ -550,7 +550,6 @@ function CreatePageInner() {
                           <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
                           <p className="text-xs text-slate-400">
                             24 templates · Real Estate · Location · Events &amp; Community News
-                            {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
                           </p>
                         </div>
                       </div>
