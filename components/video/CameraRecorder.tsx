@@ -249,70 +249,60 @@ export function CameraRecorder() {
   // ── Script step ─────────────────────────────────────────────────────────────
   if (step === "script") {
     return (
-      <div className="flex flex-col gap-5">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Your Script
-            </label>
-            <button
-              onClick={() => setShowAiGen((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <Sparkles size={12} />
-              Generate with AI
-            </button>
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="text-center pb-1">
+          <p className="text-sm font-semibold text-brand-text">What do you want to say?</p>
+          <p className="text-xs text-slate-400 mt-0.5">Write your script or let AI write it — the teleprompter scrolls while you record.</p>
+        </div>
+
+        {/* AI Generate — primary action */}
+        <div className="rounded-xl border-2 border-primary-200 bg-primary-50/40 p-4">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Sparkles size={14} className="text-primary-500" />
+            <p className="text-xs font-semibold text-primary-700">Generate with AI</p>
           </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={genTopic}
+              onChange={(e) => setGenTopic(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerateScript()}
+              placeholder="e.g. Why now is a great time to sell in Austin, TX"
+              className="flex-1 text-sm px-3 py-2.5 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            />
+            <Button
+              size="sm"
+              onClick={handleGenerateScript}
+              disabled={!genTopic.trim() || generating}
+              className="gap-1.5 shrink-0"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
+              {generating ? "Writing..." : "Go"}
+            </Button>
+          </div>
+          <p className="text-xs text-primary-600/70 mt-1.5">AI writes a 2–3 min teleprompter script for you</p>
+        </div>
 
-          {showAiGen && (
-            <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-              <p className="text-xs font-medium text-primary-700 mb-2">
-                What topic should the script cover?
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={genTopic}
-                  onChange={(e) => setGenTopic(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleGenerateScript()}
-                  placeholder="e.g. Why now is a great time to sell in Austin, TX"
-                  className="flex-1 text-sm px-3 py-2 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                />
-                <Button
-                  size="sm"
-                  onClick={handleGenerateScript}
-                  disabled={!genTopic.trim() || generating}
-                  className="gap-1.5 shrink-0"
-                >
-                  {generating ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                  {generating ? "Writing..." : "Generate"}
-                </Button>
-              </div>
-              <p className="text-xs text-primary-600/70 mt-1.5">
-                AI will write a 2–3 minute teleprompter script for you
-              </p>
-            </div>
-          )}
-
+        {/* Manual script */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-slate-500">Or write your own</label>
+            <span className="text-xs text-slate-400">
+              {script.trim().split(/\s+/).filter(Boolean).length} words
+            </span>
+          </div>
           <textarea
             value={script}
             onChange={(e) => setScript(e.target.value)}
-            placeholder="Type or paste your script here. It will scroll automatically while you record."
-            className="w-full h-44 text-sm px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+            placeholder="Type or paste your script here…"
+            className="w-full h-36 text-sm px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
           />
-          <p className="text-xs text-slate-400 mt-1">
-            {script.trim().split(/\s+/).filter(Boolean).length} words
-          </p>
         </div>
 
+        {/* Speed */}
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Teleprompter Speed
-          </p>
+          <p className="text-xs font-medium text-slate-500 mb-1.5">Teleprompter speed</p>
           <div className="flex gap-2">
             {SPEED_OPTIONS.map((opt, i) => (
               <button
@@ -338,17 +328,12 @@ export function CameraRecorder() {
           </div>
         )}
 
-        <Button
-          onClick={openCamera}
-          size="lg"
-          className="w-full gap-2"
-          disabled={!script.trim()}
-        >
+        <Button onClick={openCamera} size="lg" className="w-full gap-2">
           <Camera size={18} /> Open Camera
         </Button>
         {!script.trim() && (
-          <p className="text-xs text-slate-400 text-center -mt-3">
-            Enter or generate a script to continue
+          <p className="text-xs text-slate-400 text-center -mt-2">
+            No script? No problem — just speak freely.
           </p>
         )}
       </div>
