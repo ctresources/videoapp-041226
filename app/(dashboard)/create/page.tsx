@@ -25,7 +25,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-type InputMode = "record" | "upload" | "location" | "listing";
+type InputMode = "create" | "upload" | "listing";
 type RecordMode = "voice" | "camera";
 
 // ─── Inline voice-to-topic mic ─────────────────────────────────────────────
@@ -35,7 +35,6 @@ function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void
   const [busy, setBusy] = useState(false);
 
   const isRecording = state === "recording" || state === "requesting";
-  const isStopped = state === "stopped";
 
   async function handleStop() {
     stop();
@@ -103,7 +102,7 @@ function TopicMicButton({ onTranscript }: { onTranscript: (text: string) => void
   );
 }
 
-// ─── Hero voice recorder for the Record tab ──────────────────────────────────
+// ─── Hero voice recorder ─────────────────────────────────────────────────────
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
@@ -135,7 +134,6 @@ function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
       {/* Big mic button */}
       {(isIdle || isRecording || isPaused) && (
         <div className="relative flex items-center justify-center">
-          {/* Outer pulse ring — only while recording */}
           {isRecording && (
             <>
               <div className="absolute w-40 h-40 rounded-full bg-red-100 animate-ping opacity-30" />
@@ -194,7 +192,7 @@ function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
         </div>
       )}
 
-      {/* Waveform — only while recording */}
+      {/* Waveform */}
       {isRecording && (
         <div className="w-full h-14 flex items-center justify-center gap-0.5 bg-red-50 rounded-2xl px-4 overflow-hidden">
           {amplitudes.map((amp, i) => (
@@ -207,7 +205,7 @@ function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
         </div>
       )}
 
-      {/* Pause button while recording */}
+      {/* Pause button */}
       {isRecording && (
         <button
           onClick={pause}
@@ -217,7 +215,7 @@ function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
         </button>
       )}
 
-      {/* Resume button while paused */}
+      {/* Resume/Stop while paused */}
       {isPaused && (
         <div className="flex items-center gap-3">
           <button
@@ -243,9 +241,7 @@ function VoiceHero({ onRecordingComplete }: VoiceHeroProps) {
             <p className="text-sm font-semibold text-brand-text">{formatTime(seconds)} recorded</p>
             <p className="text-xs text-slate-400 mt-0.5">Listen back or use this recording</p>
           </div>
-          {audioUrl && (
-            <audio src={audioUrl} controls className="w-full h-10" />
-          )}
+          {audioUrl && <audio src={audioUrl} controls className="w-full h-10" />}
           <div className="flex gap-3">
             <button
               onClick={reset}
@@ -277,8 +273,7 @@ function CreatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Voice flow state
-  const [inputMode, setInputMode] = useState<InputMode>("record");
+  const [inputMode, setInputMode] = useState<InputMode>("create");
   const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
@@ -286,7 +281,6 @@ function CreatePageInner() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedBlob, setUploadedBlob] = useState<{ blob: Blob; duration: number } | null>(null);
 
-  // Location script state
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
   const [locZip, setLocZip] = useState("");
@@ -297,17 +291,16 @@ function CreatePageInner() {
   const [locGenerating, setLocGenerating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // ── Load profile defaults + pre-fill from URL params ─────────────────────
   useEffect(() => {
     const tab = searchParams.get("tab");
     const topic = searchParams.get("topic");
     const urlCity = searchParams.get("city");
     const urlState = searchParams.get("state");
 
-    if (tab === "location") setInputMode("location");
     if (tab === "upload") setInputMode("upload");
-    if (tab === "listing") setInputMode("listing");
-    if (topic) { setLocCustomTopic(topic); setInputMode("location"); }
+    else if (tab === "listing") setInputMode("listing");
+    // "record", "location", or no tab → unified "create" tab
+    if (topic) { setLocCustomTopic(topic); setInputMode("create"); }
 
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -326,35 +319,26 @@ function CreatePageInner() {
     });
   }, []); // eslint-disable-line
 
-  // ── Voice processing ────────────────────────────────────────────────────────
-
   async function processAudio(blob: Blob, durationSeconds: number, title = "New Recording") {
     setStep("uploading");
-
     try {
       const formData = new FormData();
       formData.append("audio", blob, `recording.${blob.type.includes("mp4") ? "mp4" : "webm"}`);
       formData.append("title", title);
       formData.append("duration", String(durationSeconds));
 
-      const uploadRes = await fetch("/api/voice/upload", {
-        method: "POST",
-        body: formData,
-      });
-
+      const uploadRes = await fetch("/api/voice/upload", { method: "POST", body: formData });
       const uploadBody = await safeJson(uploadRes);
       if (!uploadRes.ok) throw new Error((uploadBody.error as string) || `Upload failed (${uploadRes.status})`);
       const { recording, signedUrl } = uploadBody as { recording: { id: string }; signedUrl: string };
       setRecordingId(recording.id);
 
       setStep("transcribing");
-
       const transcribeRes = await fetch("/api/voice/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recordingId: recording.id, signedUrl }),
       });
-
       const transcribeBody = await safeJson(transcribeRes);
       if (!transcribeRes.ok) throw new Error((transcribeBody.error as string) || `Transcription failed (${transcribeRes.status})`);
       const { transcript: text } = transcribeBody as { transcript: string };
@@ -376,7 +360,7 @@ function CreatePageInner() {
   }
 
   async function handleContinue() {
-    if (inputMode === "record" && uploadedBlob) {
+    if (inputMode === "create" && uploadedBlob) {
       await processAudio(uploadedBlob.blob, uploadedBlob.duration);
     } else if (inputMode === "upload" && uploadedFile) {
       await processAudio(uploadedFile, 0, uploadedFile.name.replace(/\.[^/.]+$/, ""));
@@ -388,8 +372,6 @@ function CreatePageInner() {
     router.push(`/create/${recordingId}?source=recording`);
   }
 
-  // ── Location script ─────────────────────────────────────────────────────────
-
   function handleTemplateSelect(template: ContentTemplate) {
     setLocCustomTopic(template.topic);
     setShowTemplates(false);
@@ -399,18 +381,10 @@ function CreatePageInner() {
   }
 
   async function handleGenerateLocationScript() {
-    if (!locCity.trim() || !locState.trim()) {
-      return toast.error("City and state are required");
-    }
-    if (!locCustomTopic.trim()) {
-      return toast.error("Please describe your topic");
-    }
-    if (!locAudience) {
-      return toast.error("Please select a target audience");
-    }
-    if (!locTone) {
-      return toast.error("Please select a brand style");
-    }
+    if (!locCity.trim() || !locState.trim()) return toast.error("City and state are required");
+    if (!locCustomTopic.trim()) return toast.error("Please describe your topic");
+    if (!locAudience) return toast.error("Please select a target audience");
+    if (!locTone) return toast.error("Please select a brand style");
 
     setLocGenerating(true);
     try {
@@ -428,10 +402,8 @@ function CreatePageInner() {
           ctaPreference: locCta || undefined,
         }),
       });
-
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || `Script generation failed (${res.status})`);
-
       toast.success("Location script ready!");
       const project = data.project as { id: string };
       router.push(`/create/${project.id}?source=location`);
@@ -442,42 +414,25 @@ function CreatePageInner() {
     }
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  const readyToContinue =
-    step === "input" &&
-    ((inputMode === "record" && recordMode === "voice" && !!uploadedBlob) ||
-      (inputMode === "upload" && !!uploadedFile));
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-brand-text">Create New Video</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Speak your idea and we&apos;ll turn it into a professional real estate video.
+          Generate from a topic or record your voice — AI does the rest.
         </p>
       </div>
 
-      {/* Mode toggle — only show on input step */}
+      {/* Tab bar */}
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
-            onClick={() => setInputMode("record")}
+            onClick={() => setInputMode("create")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "record" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+              inputMode === "create" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
-            <Mic size={14} /> Record
-          </button>
-          <button
-            onClick={() => setInputMode("location")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <MapPin size={14} /> Templates
+            <Mic size={14} /> Create
           </button>
           <button
             onClick={() => setInputMode("upload")}
@@ -498,169 +453,124 @@ function CreatePageInner() {
         </div>
       )}
 
-      {/* ── Voice / Upload flow ── */}
-      {inputMode !== "location" && inputMode !== "listing" && (
-        <>
-          {/* Progress steps */}
-          {step !== "input" && (
-            <div className="flex items-center gap-2 mb-8">
-              {[
-                { key: "input", label: "Voice Input" },
-                { key: "uploading", label: "Uploading" },
-                { key: "transcribing", label: "Transcribing" },
-                { key: "done", label: "Ready" },
-              ].map(({ key, label }, i, arr) => {
-                const steps: Step[] = ["input", "uploading", "transcribing", "done"];
-                const currentIdx = steps.indexOf(step);
-                const thisIdx = steps.indexOf(key as Step);
-                const isActive = thisIdx === currentIdx;
-                const isDone = thisIdx < currentIdx;
-
-                return (
-                  <div key={key} className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 text-xs font-medium ${
-                      isActive ? "text-primary-500" : isDone ? "text-accent-500" : "text-slate-300"
-                    }`}>
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
-                        isActive ? "bg-primary-500 text-white" : isDone ? "bg-accent-500 text-white" : "bg-slate-200 text-slate-400"
-                      }`}>
-                        {isDone ? <CheckCircle size={12} /> : i + 1}
-                      </span>
-                      <span className="hidden sm:inline">{label}</span>
-                    </div>
-                    {i < arr.length - 1 && <div className={`flex-1 h-px w-8 ${isDone ? "bg-accent-500" : "bg-slate-200"}`} />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Input step */}
-          {step === "input" && (
-            <Card>
-              {inputMode === "record" ? (
-                <>
-                  {/* Record sub-mode toggle */}
-                  <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
-                    <button
-                      onClick={() => setRecordMode("voice")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        recordMode === "voice"
-                          ? "bg-white shadow-sm text-brand-text"
-                          : "text-slate-500 hover:text-brand-text"
-                      }`}
-                    >
-                      <Mic size={13} /> Voice Only
-                    </button>
-                    <button
-                      onClick={() => setRecordMode("camera")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        recordMode === "camera"
-                          ? "bg-white shadow-sm text-brand-text"
-                          : "text-slate-500 hover:text-brand-text"
-                      }`}
-                    >
-                      <Video size={13} /> Camera + Teleprompter
-                    </button>
-                  </div>
-
-                  {recordMode === "voice" ? (
-                    <VoiceHero onRecordingComplete={handleRecordingComplete} />
-                  ) : (
-                    <CameraRecorder />
-                  )}
-                </>
-              ) : (
-                <VoiceUploader onFileSelected={handleFileSelected} />
-              )}
-
-              {readyToContinue && (
-                <div className="mt-6 pt-5 border-t border-slate-100">
-                  <Button onClick={handleContinue} size="lg" className="w-full gap-2">
-                    Transcribe & Continue <ArrowRight size={16} />
-                  </Button>
+      {/* Progress steps */}
+      {step !== "input" && (
+        <div className="flex items-center gap-2 mb-8">
+          {[
+            { key: "input", label: "Voice Input" },
+            { key: "uploading", label: "Uploading" },
+            { key: "transcribing", label: "Transcribing" },
+            { key: "done", label: "Ready" },
+          ].map(({ key, label }, i, arr) => {
+            const steps: Step[] = ["input", "uploading", "transcribing", "done"];
+            const currentIdx = steps.indexOf(step);
+            const thisIdx = steps.indexOf(key as Step);
+            const isActive = thisIdx === currentIdx;
+            const isDone = thisIdx < currentIdx;
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 text-xs font-medium ${
+                  isActive ? "text-primary-500" : isDone ? "text-accent-500" : "text-slate-300"
+                }`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                    isActive ? "bg-primary-500 text-white" : isDone ? "bg-accent-500 text-white" : "bg-slate-200 text-slate-400"
+                  }`}>
+                    {isDone ? <CheckCircle size={12} /> : i + 1}
+                  </span>
+                  <span className="hidden sm:inline">{label}</span>
                 </div>
-              )}
-            </Card>
-          )}
-
-          {/* Uploading */}
-          {step === "uploading" && (
-            <Card className="flex flex-col items-center py-12 gap-4 text-center">
-              <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+                {i < arr.length - 1 && <div className={`flex-1 h-px w-8 ${isDone ? "bg-accent-500" : "bg-slate-200"}`} />}
               </div>
-              <div>
-                <p className="font-semibold text-brand-text">Uploading your recording...</p>
-                <p className="text-sm text-slate-400 mt-1">Securely storing your audio file</p>
-              </div>
-              <Skeleton className="h-2 w-48 mt-2" />
-            </Card>
-          )}
-
-          {/* Transcribing */}
-          {step === "transcribing" && (
-            <Card className="flex flex-col items-center py-12 gap-4 text-center">
-              <div className="w-16 h-16 bg-secondary-500/10 rounded-2xl flex items-center justify-center">
-                <FileText className="w-8 h-8 text-secondary-500 animate-pulse" />
-              </div>
-              <div>
-                <p className="font-semibold text-brand-text">Transcribing your voice...</p>
-                <p className="text-sm text-slate-400 mt-1">Converting your voice to text</p>
-              </div>
-              <Skeleton className="h-2 w-40 mt-2" />
-            </Card>
-          )}
-
-          {/* Done — show transcript */}
-          {step === "done" && (
-            <div className="flex flex-col gap-4">
-              <Card>
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle className="w-5 h-5 text-accent-500" />
-                  <h3 className="font-semibold text-brand-text">Transcript Ready</h3>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-4 max-h-56 overflow-y-auto">
-                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                    {transcript || "No transcript generated. Please try again."}
-                  </p>
-                </div>
-                <p className="text-xs text-slate-400 mt-3">
-                  {transcript.split(" ").length} words · Review before generating your video
-                </p>
-              </Card>
-
-              <Button onClick={handleGenerateVideo} size="lg" className="w-full gap-2">
-                Generate My Video <ArrowRight size={16} />
-              </Button>
-            </div>
-          )}
-        </>
+            );
+          })}
+        </div>
       )}
 
-      {/* ── Listing Video flow ── */}
-      {inputMode === "listing" && (
-        <Card>
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Building2 size={16} className="text-blue-500" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-brand-text">MLS Listing Auto-Video</p>
-              <p className="text-xs text-slate-400">Import from Zillow, Realtor.com, Redfin + more</p>
-            </div>
+      {/* Uploading */}
+      {step === "uploading" && (
+        <Card className="flex flex-col items-center py-12 gap-4 text-center">
+          <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
           </div>
-          <ListingVideoForm />
+          <div>
+            <p className="font-semibold text-brand-text">Uploading your recording...</p>
+            <p className="text-sm text-slate-400 mt-1">Securely storing your audio file</p>
+          </div>
+          <Skeleton className="h-2 w-48 mt-2" />
         </Card>
       )}
 
-      {/* ── Location Script flow ── */}
-      {inputMode === "location" && (
+      {/* Transcribing */}
+      {step === "transcribing" && (
+        <Card className="flex flex-col items-center py-12 gap-4 text-center">
+          <div className="w-16 h-16 bg-secondary-500/10 rounded-2xl flex items-center justify-center">
+            <FileText className="w-8 h-8 text-secondary-500 animate-pulse" />
+          </div>
+          <div>
+            <p className="font-semibold text-brand-text">Transcribing your voice...</p>
+            <p className="text-sm text-slate-400 mt-1">Converting your voice to text</p>
+          </div>
+          <Skeleton className="h-2 w-40 mt-2" />
+        </Card>
+      )}
+
+      {/* Done */}
+      {step === "done" && (
+        <div className="flex flex-col gap-4">
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <CheckCircle className="w-5 h-5 text-accent-500" />
+              <h3 className="font-semibold text-brand-text">Transcript Ready</h3>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4 max-h-56 overflow-y-auto">
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                {transcript || "No transcript generated. Please try again."}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 mt-3">
+              {transcript.split(" ").length} words · Review before generating your video
+            </p>
+          </Card>
+          <Button onClick={handleGenerateVideo} size="lg" className="w-full gap-2">
+            Generate My Video <ArrowRight size={16} />
+          </Button>
+        </div>
+      )}
+
+      {/* ── Unified Create card ── */}
+      {inputMode === "create" && step === "input" && (
         <Card>
-          {/* Location fields */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
-            <div className="grid grid-cols-2 gap-3">
+          {/* Section 1: Topic-based generation */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 bg-primary-50 rounded-lg flex items-center justify-center shrink-0">
+                <MapPin size={13} className="text-primary-500" />
+              </div>
+              <p className="text-sm font-bold text-brand-text">Generate Script from Topic</p>
+              <span className="text-xs text-slate-400 ml-auto hidden sm:block">AI researches in real time</span>
+            </div>
+
+            {/* Topic input with inline mic */}
+            <div className="mb-3">
+              <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                What&apos;s your video about? <span className="text-red-400">*</span>
+              </label>
+              <div className="flex items-center gap-1 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                <input
+                  id="loc-custom-topic"
+                  type="text"
+                  value={locCustomTopic}
+                  onChange={(e) => setLocCustomTopic(e.target.value)}
+                  placeholder="e.g. Market update, Why live here, New construction…  or tap 🎤"
+                  className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none rounded-xl"
+                />
+                <TopicMicButton onTranscript={(t) => setLocCustomTopic(t)} />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Type your topic or tap the mic to speak it</p>
+            </div>
+
+            {/* Location */}
+            <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">
                   City <span className="text-red-400">*</span>
@@ -686,163 +596,217 @@ function CreatePageInner() {
                   className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
                 />
               </div>
-            </div>
-            <div className="mt-3">
-              <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                ZIP Code <span className="text-slate-400">(optional — narrows results)</span>
-              </label>
-              <input
-                type="text"
-                value={locZip}
-                onChange={(e) => setLocZip(e.target.value)}
-                placeholder="78701"
-                maxLength={10}
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-          </div>
-
-          {/* Audience + Tone */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                Target Audience <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={locAudience}
-                  onChange={(e) => setLocAudience(e.target.value)}
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                >
-                  <option value="">Select...</option>
-                  <option value="Buyers">Buyers</option>
-                  <option value="Sellers">Sellers</option>
-                  <option value="Investors">Investors</option>
-                  <option value="First-Time Buyers">First-Time Buyers</option>
-                  <option value="Luxury">Luxury</option>
-                  <option value="Mixed">Mixed</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                Brand Style <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={locTone}
-                  onChange={(e) => setLocTone(e.target.value)}
-                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                >
-                  <option value="">Select...</option>
-                  <option value="Friendly">Friendly</option>
-                  <option value="Modern">Modern</option>
-                  <option value="Luxury">Luxury</option>
-                  <option value="High-Energy">High-Energy</option>
-                  <option value="Educational">Educational</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Preference */}
-          <div className="mb-5">
-            <label className="text-xs font-medium text-slate-500 block mb-1.5">
-              CTA Preference <span className="text-slate-400">(optional)</span>
-            </label>
-            <div className="relative">
-              <select
-                value={locCta}
-                onChange={(e) => setLocCta(e.target.value)}
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-              >
-                <option value="">Call or Text Today (default)</option>
-                <option value="call">Call Today</option>
-                <option value="text">Text Today</option>
-                <option value="website">Visit Website</option>
-                <option value="consultation">Schedule a Consultation</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Templates toggle */}
-          <div className="mb-5">
-            <button
-              onClick={() => setShowTemplates((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">💡</span>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-brand-text">Start from a Template</p>
-                  <p className="text-xs text-slate-400">
-                    24 templates · Real Estate · Location · Events &amp; Community News
-                    {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
-                  </p>
-                </div>
-              </div>
-              {showTemplates
-                ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
-                : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
-            </button>
-
-            {showTemplates && (
-              <div className="mt-3">
-                <ContentTemplates
-                  onSelect={handleTemplateSelect}
-                  city={locCity}
-                  state={locState}
+              <div>
+                <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                  ZIP <span className="text-slate-400 text-[10px]">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={locZip}
+                  onChange={(e) => setLocZip(e.target.value)}
+                  placeholder="78701"
+                  maxLength={10}
+                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
-            )}
-          </div>
-
-          {/* Topic input with inline mic */}
-          <div className="mb-5">
-            <label className="text-xs font-medium text-slate-500 block mb-1.5">
-              What&apos;s your topic? <span className="text-red-400">*</span>
-            </label>
-            <div className="flex items-center gap-1 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-              <input
-                id="loc-custom-topic"
-                type="text"
-                value={locCustomTopic}
-                onChange={(e) => setLocCustomTopic(e.target.value)}
-                placeholder="e.g. Market update, Why live here, New construction…  or tap 🎤 to speak"
-                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none rounded-xl"
-              />
-              <TopicMicButton onTranscript={(t) => setLocCustomTopic(t)} />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Type your topic or tap the mic to speak it — AI will research it for this specific location
-            </p>
+
+            {/* Audience + Tone */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                  Target Audience <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={locAudience}
+                    onChange={(e) => setLocAudience(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Buyers">Buyers</option>
+                    <option value="Sellers">Sellers</option>
+                    <option value="Investors">Investors</option>
+                    <option value="First-Time Buyers">First-Time Buyers</option>
+                    <option value="Luxury">Luxury</option>
+                    <option value="Mixed">Mixed</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                  Brand Style <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={locTone}
+                    onChange={(e) => setLocTone(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Friendly">Friendly</option>
+                    <option value="Modern">Modern</option>
+                    <option value="Luxury">Luxury</option>
+                    <option value="High-Energy">High-Energy</option>
+                    <option value="Educational">Educational</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Preference */}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                CTA Preference <span className="text-slate-400">(optional)</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={locCta}
+                  onChange={(e) => setLocCta(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                >
+                  <option value="">Call or Text Today (default)</option>
+                  <option value="call">Call Today</option>
+                  <option value="text">Text Today</option>
+                  <option value="website">Visit Website</option>
+                  <option value="consultation">Schedule a Consultation</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Templates toggle */}
+            <div className="mb-5">
+              <button
+                onClick={() => setShowTemplates((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">💡</span>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-brand-text">Browse Templates</p>
+                    <p className="text-xs text-slate-400">
+                      24 templates · Real Estate · Location · Events
+                      {locCity && locState ? ` · ${locCity}, ${locState.toUpperCase()}` : ""}
+                    </p>
+                  </div>
+                </div>
+                {showTemplates
+                  ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
+                  : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+              </button>
+              {showTemplates && (
+                <div className="mt-3">
+                  <ContentTemplates
+                    onSelect={handleTemplateSelect}
+                    city={locCity}
+                    state={locState}
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={handleGenerateLocationScript}
+              loading={locGenerating}
+              disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim() || !locAudience || !locTone}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Researching {locCity || "location"}...</>
+                : <>Generate Script <ArrowRight size={16} /></>}
+            </Button>
           </div>
 
-          {/* Info banner */}
-          <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-            <p className="text-xs text-primary-700 leading-relaxed">
-              <strong>AI-powered research</strong> — searches trusted real estate data sources
-              in real time and returns a structured script ready for video production. Takes ~10–20 seconds.
-            </p>
+          {/* OR divider */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-4 bg-white text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                or record your voice
+              </span>
+            </div>
           </div>
 
-          {/* Generate button */}
-          <Button
-            onClick={handleGenerateLocationScript}
-            loading={locGenerating}
-            disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim() || !locAudience || !locTone}
-            size="lg"
-            className="w-full gap-2"
-          >
-            {locGenerating ? (
-              <>Researching {locCity || "location"}...</>
+          {/* Section 2: Voice recording */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+                <Mic size={13} className="text-red-500" />
+              </div>
+              <p className="text-sm font-bold text-brand-text">Record a Voice Memo</p>
+              <span className="text-xs text-slate-400 ml-auto hidden sm:block">Speak for 30–60 seconds</span>
+            </div>
+
+            {/* Voice / Camera sub-toggle */}
+            <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
+              <button
+                onClick={() => setRecordMode("voice")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                  recordMode === "voice" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+                }`}
+              >
+                <Mic size={13} /> Voice Only
+              </button>
+              <button
+                onClick={() => setRecordMode("camera")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                  recordMode === "camera" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+                }`}
+              >
+                <Video size={13} /> Camera + Teleprompter
+              </button>
+            </div>
+
+            {recordMode === "voice" ? (
+              <VoiceHero onRecordingComplete={handleRecordingComplete} />
             ) : (
-              <>Generate Location Script <ArrowRight size={16} /></>
+              <CameraRecorder />
             )}
-          </Button>
+
+            {uploadedBlob && (
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <Button onClick={handleContinue} size="lg" className="w-full gap-2">
+                  Transcribe &amp; Continue <ArrowRight size={16} />
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Upload mode ── */}
+      {inputMode === "upload" && step === "input" && (
+        <Card>
+          <VoiceUploader onFileSelected={handleFileSelected} />
+          {uploadedFile && (
+            <div className="mt-6 pt-5 border-t border-slate-100">
+              <Button onClick={handleContinue} size="lg" className="w-full gap-2">
+                Transcribe &amp; Continue <ArrowRight size={16} />
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Listing mode ── */}
+      {inputMode === "listing" && (
+        <Card>
+          <div className="flex items-center gap-2 mb-5">
+            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+              <Building2 size={16} className="text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-brand-text">MLS Listing Auto-Video</p>
+              <p className="text-xs text-slate-400">Import from Zillow, Realtor.com, Redfin + more</p>
+            </div>
+          </div>
+          <ListingVideoForm />
         </Card>
       )}
     </div>
