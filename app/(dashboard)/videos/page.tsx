@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { createClient } from "@/lib/supabase/client";
-import { isExpiredHeygenUrl } from "@/lib/utils/store-video";
+import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/store-video";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film,
@@ -275,9 +275,10 @@ function VideosContent() {
     setVideos(videos);
     setLoading(false);
 
-    // Silently refresh any completed videos with expired HeyGen signed URLs
+    // Silently refresh any completed videos with HeyGen CDN URLs (expired or not)
+    // to ensure they are permanently stored in Supabase before they expire.
     const expired = videos.filter(
-      (v) => v.render_status === "completed" && v.video_url && isExpiredHeygenUrl(v.video_url)
+      (v) => v.render_status === "completed" && v.video_url && isHeygenUrl(v.video_url)
     );
     for (const v of expired) {
       fetch("/api/video/refresh-url", {

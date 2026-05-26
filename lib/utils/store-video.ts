@@ -47,3 +47,8 @@ export function isExpiredHeygenUrl(url: string): boolean {
   if (!match) return false;
   return parseInt(match[1], 10) < Math.floor(Date.now() / 1000);
 }
+
+/** Returns true if the URL is a temporary HeyGen CDN URL (expired or not). */
+export function isHeygenUrl(url: string): boolean {
+  return url.includes("heygen.ai") || url.includes("heygen.com/aws");
+}

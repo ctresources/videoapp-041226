@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { downloadAndStoreVideo, isExpiredHeygenUrl } from "@/lib/utils/store-video";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 120;
@@ -9,8 +9,9 @@ const HEYGEN_API = "https://api.heygen.com";
 
 /**
  * POST /api/video/refresh-url
- * Re-fetches a fresh video URL from HeyGen and permanently stores it in
- * Supabase Storage. Used to rescue videos with expired signed URLs.
+ * Permanently stores a video in Supabase Storage.
+ * If the current video_url is still valid, uses it directly.
+ * If it has expired, re-fetches a fresh URL from HeyGen first.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -29,6 +30,13 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
+
+  // If the stored URL is still valid, download it directly without hitting HeyGen API.
+  if (video.video_url && !isExpiredHeygenUrl(video.video_url)) {
+    const permanentUrl = await downloadAndStoreVideo(video.video_url, video.id);
+    if (permanentUrl) return NextResponse.json({ videoUrl: permanentUrl });
+    // Fall through to try HeyGen API if direct download failed.
+  }
 
   const apiKey = process.env.HEYGEN_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "HeyGen not configured" }, { status: 500 });
