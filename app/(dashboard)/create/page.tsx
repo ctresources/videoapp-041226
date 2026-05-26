@@ -503,24 +503,24 @@ function CreatePageInner() {
                       </p>
                     </div>
 
-                    {/* Templates toggle */}
-                    <div className="mb-5">
+                    {/* Templates toggle — prominent */}
+                    <div className="mb-4">
                       <button
                         onClick={() => setShowTemplates((v) => !v)}
-                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+                        className="w-full flex items-center justify-between px-4 py-4 rounded-xl border-2 border-primary-300 bg-primary-50 hover:bg-primary-100 hover:border-primary-400 transition-all"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xl">💡</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">💡</span>
                           <div className="text-left">
-                            <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
-                            <p className="text-xs text-slate-400">
-                              24 templates · Real Estate · Location · Events &amp; Community News
+                            <p className="text-sm font-bold text-brand-text">Need a topic idea? Browse templates</p>
+                            <p className="text-xs text-primary-600 mt-0.5">
+                              24 ready-to-use scripts · Market updates · Buyer &amp; seller tips · Community news
                             </p>
                           </div>
                         </div>
                         {showTemplates
-                          ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
-                          : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+                          ? <ChevronUp size={18} className="text-primary-500 shrink-0" />
+                          : <ChevronDown size={18} className="text-primary-500 shrink-0" />}
                       </button>
 
                       {showTemplates && (
@@ -534,99 +534,82 @@ function CreatePageInner() {
                       )}
                     </div>
 
-                    {/* Location fields */}
-                    <div className="mb-4">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
-                      <div className="grid grid-cols-2 gap-3">
+                    {/* Compact location + options */}
+                    <div className="bg-slate-50 rounded-xl p-3 mb-5 space-y-2">
+                      {/* Row 1: City + State + ZIP */}
+                      <div className="grid grid-cols-[1fr_80px_90px] gap-2">
                         <div>
-                          <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">
                             City <span className="text-red-400">*</span>
                           </label>
-                          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                          <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
                             <input
                               type="text"
                               value={locCity}
                               onChange={(e) => setLocCity(e.target.value)}
-                              placeholder="Austin"
-                              className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                              placeholder="Blue Bell"
+                              className="flex-1 text-xs px-2 py-1.5 bg-transparent focus:outline-none min-w-0"
                             />
                             <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">
                             State <span className="text-red-400">*</span>
                           </label>
-                          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                          <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
                             <input
                               type="text"
                               value={locState}
                               onChange={(e) => setLocState(e.target.value)}
-                              placeholder="TX"
+                              placeholder="PA"
                               maxLength={2}
-                              className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
+                              className="flex-1 text-xs px-2 py-1.5 bg-transparent focus:outline-none uppercase min-w-0"
                             />
                             <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
                           </div>
                         </div>
-                      </div>
-                      <div className="mt-3">
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                          ZIP Code <span className="text-slate-400">(optional)</span>
-                        </label>
-                        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">ZIP</label>
                           <input
                             type="text"
                             value={locZip}
                             onChange={(e) => setLocZip(e.target.value)}
-                            placeholder="78701"
+                            placeholder="19422"
                             maxLength={10}
-                            className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                            className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                           />
-                          <FieldMic onTranscript={(t) => setLocZip(t.replace(/\D/g, "").slice(0, 10))} title="Say your ZIP code" />
                         </div>
                       </div>
-                    </div>
 
-                    {/* Audience + Tone (optional) */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div>
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                          Target Audience <span className="text-slate-400">(optional)</span>
-                        </label>
-                        <div className="flex items-center gap-1">
-                          <div className="relative flex-1">
+                      {/* Row 2: Audience + Style + CTA */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Audience</label>
+                          <div className="relative">
                             <select
                               value={locAudience}
                               onChange={(e) => setLocAudience(e.target.value)}
-                              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                              className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
                               <option value="">Any</option>
                               <option value="Buyers">Buyers</option>
                               <option value="Sellers">Sellers</option>
                               <option value="Investors">Investors</option>
-                              <option value="First-Time Buyers">First-Time Buyers</option>
+                              <option value="First-Time Buyers">First-Time</option>
                               <option value="Luxury">Luxury</option>
                               <option value="Mixed">Mixed</option>
                             </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                           </div>
-                          <FieldMic title='Say "buyers", "sellers", "investors"…' onTranscript={(t) => {
-                            const v = matchAudience(t);
-                            if (v) setLocAudience(v);
-                          }} />
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                          Brand Style <span className="text-slate-400">(optional)</span>
-                        </label>
-                        <div className="flex items-center gap-1">
-                          <div className="relative flex-1">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Style</label>
+                          <div className="relative">
                             <select
                               value={locTone}
                               onChange={(e) => setLocTone(e.target.value)}
-                              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                              className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
                               <option value="">Any</option>
                               <option value="Friendly">Friendly</option>
@@ -635,40 +618,26 @@ function CreatePageInner() {
                               <option value="High-Energy">High-Energy</option>
                               <option value="Educational">Educational</option>
                             </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                           </div>
-                          <FieldMic title='Say "friendly", "modern", "luxury"…' onTranscript={(t) => {
-                            const v = matchTone(t);
-                            if (v) setLocTone(v);
-                          }} />
                         </div>
-                      </div>
-                    </div>
-
-                    {/* CTA Preference (optional) */}
-                    <div className="mb-5">
-                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                        CTA Preference <span className="text-slate-400">(optional)</span>
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <div className="relative flex-1">
-                          <select
-                            value={locCta}
-                            onChange={(e) => setLocCta(e.target.value)}
-                            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                          >
-                            <option value="">Call or Text Today (default)</option>
-                            <option value="call">Call Today</option>
-                            <option value="text">Text Today</option>
-                            <option value="website">Visit Website</option>
-                            <option value="consultation">Schedule a Consultation</option>
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">CTA</label>
+                          <div className="relative">
+                            <select
+                              value={locCta}
+                              onChange={(e) => setLocCta(e.target.value)}
+                              className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                              <option value="">Default</option>
+                              <option value="call">Call</option>
+                              <option value="text">Text</option>
+                              <option value="website">Website</option>
+                              <option value="consultation">Consult</option>
+                            </select>
+                            <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
                         </div>
-                        <FieldMic title='Say "call", "text", "website", or "consultation"' onTranscript={(t) => {
-                          const v = matchCta(t);
-                          if (v) setLocCta(v);
-                        }} />
                       </div>
                     </div>
 

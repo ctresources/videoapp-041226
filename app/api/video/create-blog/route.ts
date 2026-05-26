@@ -334,7 +334,7 @@ export async function POST(req: NextRequest) {
 
   if (!profile?.heygen_photo_id) {
     return NextResponse.json(
-      { error: "Please upload your photo in Settings to create your video avatar." },
+      { error: "Avatar photo not set up. Go to Settings → Profile and upload your photo to generate videos." },
       { status: 400 },
     );
   }
