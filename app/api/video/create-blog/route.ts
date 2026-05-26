@@ -11,10 +11,9 @@ import {
   type VideoType,
   type VideoAgentFile,
 } from "@/lib/api/heygen";
-import { generateSpeech, generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
+import { generateSpeech } from "@/lib/api/elevenlabs";
 import { NextRequest, NextResponse } from "next/server";
 
-// 300s to accommodate synchronous FFmpeg slideshow renders
 export const maxDuration = 300;
 
 const MAX_SCRIPT_WORDS = 200;
@@ -385,76 +384,6 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     const avatarId = lookId || profile.heygen_photo_id;
-
-    // ── FFmpeg slideshow path: listing photos available → render locally (free) ──
-    if (listingPhotos.length > 0) {
-      console.log(`[create-blog] FFmpeg slideshow path — ${listingPhotos.length} listing photos`);
-
-      const { data: videoRow, error: videoRowErr } = await admin
-        .from("generated_videos")
-        .insert({
-          project_id: projectId,
-          user_id: user.id,
-          video_type: videoType,
-          render_provider: "ffmpeg_slideshow",
-          render_status: "rendering",
-          metadata: { dimension, orientation, city, state, title },
-        })
-        .select()
-        .single();
-
-      if (videoRowErr || !videoRow) {
-        throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
-      }
-
-      const { audioBuffer, wordTimestamps } = await generateSpeechWithTimestamps(
-        safeScript,
-        profile.voice_clone_id,
-      );
-
-      const { renderPhotoSlideshow } = await import("@/lib/api/ffmpeg-render");
-      const videoBuffer = await renderPhotoSlideshow(
-        {
-          title,
-          audioBuffer,
-          photoUrls: listingPhotos,
-          wordTimestamps,
-          logoUrl: profile.logo_url || undefined,
-          avatarUrl: profile.avatar_url || undefined,
-          agentName: profile.full_name || undefined,
-          musicUrl: musicUrl || undefined,
-        },
-        videoType as import("@/lib/api/ffmpeg-render").VideoType,
-      );
-
-      const videoStoragePath = `${videoRow.id}.mp4`;
-      const { error: uploadErr } = await admin.storage
-        .from("videos")
-        .upload(videoStoragePath, videoBuffer, { contentType: "video/mp4", upsert: true });
-      if (uploadErr) throw new Error(`Video upload failed: ${uploadErr.message}`);
-
-      const { data: { publicUrl: videoUrl } } = admin.storage.from("videos").getPublicUrl(videoStoragePath);
-
-      await admin
-        .from("generated_videos")
-        .update({ render_status: "completed", video_url: videoUrl })
-        .eq("id", videoRow.id);
-
-      await admin.from("projects").update({ status: "complete" }).eq("id", projectId);
-
-      await admin.from("api_usage_log").insert({
-        user_id: user.id,
-        api_provider: "elevenlabs",
-        endpoint: "ffmpeg-slideshow",
-        credits_used: 1,
-        response_status: 200,
-      });
-
-      console.log(`[create-blog] FFmpeg slideshow complete: ${videoUrl}`);
-      return NextResponse.json({
-        video: { ...videoRow, render_status: "completed", video_url: videoUrl },
-      });
-    }
 
     // ── ElevenLabs TTS path: user has a cloned voice → generate audio and create v2 video ──
     if (profile.voice_clone_id) {
