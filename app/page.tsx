@@ -145,6 +145,17 @@ const pricingTiers = [
     highlighted: true,
     href: "/api/stripe/checkout?plan=pro",
   },
+  {
+    name: "Agency",
+    price: "$197",
+    period: "/month",
+    description: "Power your whole team",
+    badge: null,
+    features: ["100 videos/month", "Everything in Pro", "5 agent seats", "White-label branding", "Custom avatar per agent", "Team analytics", "Dedicated support"],
+    cta: "Get Started",
+    highlighted: false,
+    href: "/api/stripe/checkout?plan=agency",
+  },
 ];
 
 export default function LandingPage() {
