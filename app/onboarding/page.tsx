@@ -89,7 +89,7 @@ export default function OnboardingPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
-            src="https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif"
+            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo.svg"
             alt="XpressReel"
             width={160}
             height={52}
