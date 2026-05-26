@@ -374,6 +374,21 @@ function VideosContent() {
             const isRendering = video.render_status === "rendering" || video.render_status === "pending";
             const hookText = (video.projects as { title: string; ai_script?: { hook?: string } | null } | null)?.ai_script?.hook;
 
+            // Split hook at narrative break (em-dash or colon) for two-line thumbnail effect
+            let hookTopLine = "";
+            let hookBottomLine = hookText || "";
+            if (hookText) {
+              const dashIdx = hookText.indexOf(" — ");
+              const colonIdx = hookText.indexOf(": ");
+              if (dashIdx > 0 && dashIdx < 55) {
+                hookTopLine = hookText.slice(0, dashIdx);
+                hookBottomLine = hookText.slice(dashIdx + 3);
+              } else if (colonIdx > 0 && colonIdx < 40) {
+                hookTopLine = hookText.slice(0, colonIdx);
+                hookBottomLine = hookText.slice(colonIdx + 2);
+              }
+            }
+
             return (
               <Card
                 key={video.id}
@@ -399,12 +414,27 @@ function VideosContent() {
                           <Play size={22} className="text-transparent group-hover:text-slate-800 ml-1 transition-colors" fill="currentColor" />
                         </div>
                       </div>
-                      {/* Hook text overlay on first frame */}
+                      {/* Hook text — YouTube thumbnail stop-scroll style */}
                       {hookText && (
-                        <div className="absolute bottom-0 left-0 right-0 px-3 pt-8 pb-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:opacity-0 transition-opacity pointer-events-none">
-                          <p className="text-white text-[11px] font-semibold leading-snug line-clamp-2 drop-shadow-sm">
-                            {hookText}
-                          </p>
+                        <div className="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300">
+                          {/* Deep gradient anchored at bottom */}
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-[65%]"
+                            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.82) 35%, rgba(0,0,0,0.35) 65%, transparent 100%)" }}
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                            {hookTopLine && (
+                              <p className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider mb-1 line-clamp-1 drop-shadow-md">
+                                {hookTopLine}
+                              </p>
+                            )}
+                            <p
+                              className="text-white font-black text-[15px] leading-tight line-clamp-2"
+                              style={{ textShadow: "0 1px 4px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.8)" }}
+                            >
+                              {hookBottomLine}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </>
