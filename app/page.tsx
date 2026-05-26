@@ -255,6 +255,81 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Scrolling Video Strip ── */}
+      <section className="py-12 bg-slate-900 overflow-hidden border-y border-slate-800">
+        <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">
+          Video types agents are creating right now
+        </p>
+
+        {/* Row 1 — scrolls left */}
+        <div className="marquee-track mb-4 relative">
+          <div className="flex gap-4 animate-marquee whitespace-nowrap">
+            {[
+              { label: "Market Update",       img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
+              { label: "Listing Video",        img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
+              { label: "Neighborhood Tour",    img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
+              { label: "Just Sold",            img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
+              { label: "Buyer Tips",           img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
+              { label: "Interest Rate Update", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
+              { label: "Open House Recap",     img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
+              { label: "Local Market Stats",   img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
+              // duplicated for seamless loop
+              { label: "Market Update",       img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
+              { label: "Listing Video",        img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
+              { label: "Neighborhood Tour",    img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
+              { label: "Just Sold",            img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
+              { label: "Buyer Tips",           img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
+              { label: "Interest Rate Update", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
+              { label: "Open House Recap",     img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
+              { label: "Local Market Stats",   img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
+            ].map(({ label, img }, i) => (
+              <div key={i} className="inline-flex flex-col rounded-xl overflow-hidden border border-slate-700 shrink-0 w-52">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt={label} className="w-full h-32 object-cover" />
+                <div className="bg-slate-800 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-white truncate">{label}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · 60 sec</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2 — scrolls right */}
+        <div className="marquee-track relative">
+          <div className="flex gap-4 animate-marquee-reverse whitespace-nowrap">
+            {[
+              { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
+              { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
+              { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
+              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80" },
+              { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
+              { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
+              { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
+              { label: "Condo Showcase",       img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
+              // duplicated
+              { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
+              { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
+              { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
+              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80" },
+              { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
+              { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
+              { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
+              { label: "Condo Showcase",       img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
+            ].map(({ label, img }, i) => (
+              <div key={i} className="inline-flex flex-col rounded-xl overflow-hidden border border-slate-700 shrink-0 w-52">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt={label} className="w-full h-32 object-cover" />
+                <div className="bg-slate-800 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-white truncate">{label}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · 60 sec</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Who It's For ── */}
       <section id="who" className="py-20 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
         <div className="max-w-5xl mx-auto">
