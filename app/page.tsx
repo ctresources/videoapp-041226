@@ -154,7 +154,7 @@ export default function LandingPage() {
       {/* ── Navbar ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/">
+          <Link href="/" className="flex flex-col leading-none">
             <Image
               src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo.svg"
               alt="XpressReel"
@@ -163,6 +163,7 @@ export default function LandingPage() {
               unoptimized
               priority
             />
+            <span className="text-[10px] font-semibold text-blue-900 tracking-widest uppercase ml-0.5 -mt-1">Speak, Spark, Share</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <a href="#who"          className="hover:text-slate-900 transition-colors">Who It&apos;s For</a>
@@ -193,8 +194,11 @@ export default function LandingPage() {
                 Become the &ldquo;digital go-to-real estate agent&rdquo;<br />
                 <span className="text-blue-900">of your TOWN.</span>
               </h1>
-              <p className="text-base text-slate-500 mb-10 leading-relaxed">
+              <p className="text-base text-slate-500 mb-4 leading-relaxed">
                 The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
+              </p>
+              <p className="text-sm font-semibold text-blue-900 mb-10 tracking-wide">
+                Speak, Spark, Share — no filming, no editing, no glam required.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
@@ -560,7 +564,8 @@ export default function LandingPage() {
                 height={42}
                 unoptimized
               />
-              <p className="text-xs mt-3 text-slate-500 max-w-xs leading-relaxed">
+              <p className="text-xs mt-2 text-blue-400 font-semibold tracking-widest uppercase">Speak, Spark, Share</p>
+              <p className="text-xs mt-2 text-slate-500 max-w-xs leading-relaxed">
                 The one-button video platform for real estate agents. No camera. No editing. Just results.
               </p>
             </div>
