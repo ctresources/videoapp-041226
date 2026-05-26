@@ -494,6 +494,293 @@ async function buildAndRun(
   });
 }
 
+// ─── Photo Slideshow ──────────────────────────────────────────────────────────
+
+export interface SlideshowParams {
+  title: string;
+  audioBuffer: Buffer;
+  photoUrls: string[];
+  wordTimestamps: WordTimestamp[];
+  logoUrl?: string;
+  avatarUrl?: string;        // static profile headshot for PiP
+  agentName?: string;
+  captionColor?: string;
+  captionHighlightColor?: string;
+}
+
+/**
+ * Render a Ken Burns photo slideshow using FFmpeg.
+ * Accepts listing photos, ElevenLabs audio, and word timestamps.
+ * Returns the final MP4 as a Buffer. Zero HeyGen cost.
+ */
+export async function renderPhotoSlideshow(
+  params: SlideshowParams,
+  videoType: VideoType,
+): Promise<Buffer> {
+  const cfg = FORMAT_CONFIGS[videoType];
+  const renderTmpDir = join(tmpdir(), `slideshow-${randomUUID()}`);
+  await fs.mkdir(renderTmpDir, { recursive: true });
+
+  console.log(`[ffmpeg-slideshow] Temp dir: ${renderTmpDir}`);
+
+  try {
+    // ── 1. Write audio buffer ────────────────────────────────────────────────
+    const audioPath = join(renderTmpDir, "voiceover.mp3");
+    await fs.writeFile(audioPath, params.audioBuffer);
+
+    // ── 2. Download listing photos ───────────────────────────────────────────
+    const photoPaths: string[] = [];
+    for (let i = 0; i < params.photoUrls.length; i++) {
+      const p = join(renderTmpDir, `photo${i}.jpg`);
+      if (await downloadFile(params.photoUrls[i], p)) photoPaths.push(p);
+    }
+    if (photoPaths.length === 0) throw new Error("No listing photos could be downloaded");
+
+    // ── 3. Download logo and avatar ──────────────────────────────────────────
+    let logoPath: string | null = null;
+    if (params.logoUrl) {
+      const p = join(renderTmpDir, "logo.png");
+      if (await downloadFile(params.logoUrl, p)) logoPath = p;
+    }
+
+    let avatarPath: string | null = null;
+    if (params.avatarUrl) {
+      const p = join(renderTmpDir, "avatar.jpg");
+      if (await downloadFile(params.avatarUrl, p)) avatarPath = p;
+    }
+
+    // ── 4. Probe audio duration ──────────────────────────────────────────────
+    const audioDuration = await probeAudioDuration(audioPath);
+    console.log(`[ffmpeg-slideshow] ${photoPaths.length} photos, audio: ${audioDuration.toFixed(1)}s`);
+
+    // ── 5. Generate ASS captions ─────────────────────────────────────────────
+    const assPath = join(renderTmpDir, "captions.ass");
+    const assContent = generateASS(params.wordTimestamps, {
+      width: cfg.width,
+      height: cfg.height,
+      fontSize: cfg.captionFontSize,
+      fontColor: (params.captionColor || "#FFFFFF").replace("#", ""),
+      highlightColor: (params.captionHighlightColor || "#FACC15").replace("#", ""),
+      yPosition: Math.round(cfg.height * cfg.captionYPercent),
+    });
+    await fs.writeFile(assPath, assContent, "utf8");
+
+    const outputPath = join(renderTmpDir, "output.mp4");
+
+    // ── 6. Render (retry without captions if libass is missing) ─────────────
+    try {
+      await buildSlideshowAndRun(
+        photoPaths, audioPath, assPath, logoPath, avatarPath,
+        outputPath, params, cfg, audioDuration, videoType, true,
+      );
+    } catch (renderErr) {
+      const msg = renderErr instanceof Error ? renderErr.message : String(renderErr);
+      if (msg.toLowerCase().includes("ass") || msg.toLowerCase().includes("libass") || msg.toLowerCase().includes("subtitle")) {
+        console.warn("[ffmpeg-slideshow] ASS captions unavailable, retrying without...");
+        await buildSlideshowAndRun(
+          photoPaths, audioPath, assPath, logoPath, avatarPath,
+          outputPath, params, cfg, audioDuration, videoType, false,
+        );
+      } else {
+        throw renderErr;
+      }
+    }
+
+    // ── 7. Return output buffer ──────────────────────────────────────────────
+    const result = await fs.readFile(outputPath);
+    console.log(`[ffmpeg-slideshow] Output: ${(result.length / 1024 / 1024).toFixed(1)} MB`);
+    return result;
+
+  } finally {
+    await fs.rm(renderTmpDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function buildSlideshowAndRun(
+  photoPaths: string[],
+  audioPath: string,
+  assPath: string,
+  logoPath: string | null,
+  avatarPath: string | null,
+  outputPath: string,
+  params: SlideshowParams,
+  cfg: FormatConfig,
+  audioDuration: number,
+  videoType: VideoType,
+  withCaptions: boolean,
+): Promise<void> {
+  const { width, height } = cfg;
+  const N = photoPaths.length;
+  const FADE_DUR = 0.5;
+  // Per-photo duration accounting for crossfade overlap
+  const segDur = N > 1 ? (audioDuration + (N - 1) * FADE_DUR) / N : audioDuration;
+  const frames = Math.ceil(segDur * 30);
+
+  const filterParts: string[] = [];
+
+  // ── Ken Burns (zoompan) per photo ────────────────────────────────────────
+  // Scale each photo to 2× target first so zoompan has room to crop
+  for (let i = 0; i < N; i++) {
+    const zoomExpr = i % 2 === 0
+      ? `'min(zoom+0.0004,1.15)'`                                       // zoom in
+      : `'if(lte(zoom,1.0),1.15,max(1.0,zoom-0.0004))'`;               // zoom out
+    filterParts.push(
+      `[${i}:v]scale=${width * 2}:${height * 2}:force_original_aspect_ratio=increase,` +
+      `crop=${width * 2}:${height * 2},` +
+      `zoompan=z=${zoomExpr}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
+      `d=${frames}:s=${width}x${height}:fps=30[photo${i}]`,
+    );
+  }
+
+  // ── Crossfade transitions ────────────────────────────────────────────────
+  let slideshowLabel: string;
+  if (N === 1) {
+    filterParts.push(`[photo0]trim=duration=${audioDuration},setpts=PTS-STARTPTS[slideshow]`);
+    slideshowLabel = "slideshow";
+  } else {
+    let prevLabel = "photo0";
+    for (let i = 1; i < N; i++) {
+      const offset = (i * (segDur - FADE_DUR)).toFixed(3);
+      const outLabel = i < N - 1 ? `xf${i}` : "slidexf";
+      filterParts.push(
+        `[${prevLabel}][photo${i}]xfade=transition=fade:duration=${FADE_DUR}:offset=${offset}[${outLabel}]`,
+      );
+      prevLabel = outLabel;
+    }
+    // Trim to exact audio duration (xfade can produce a tiny overshoot)
+    filterParts.push(`[slidexf]trim=duration=${audioDuration},setpts=PTS-STARTPTS[slideshow]`);
+    slideshowLabel = "slideshow";
+  }
+
+  // ── Dark overlay ─────────────────────────────────────────────────────────
+  filterParts.push(
+    `[${slideshowLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.40:t=fill[bgdark]`,
+  );
+
+  // ── Font attributes ───────────────────────────────────────────────────────
+  const [titleFontAttr, nameFontAttr] = await Promise.all([
+    fontAttr("ExtraBold"),
+    fontAttr("SemiBold"),
+  ]);
+
+  // ── Title card (first 4 seconds) ─────────────────────────────────────────
+  const escapedTitle = escapeDrawtext(params.title);
+  const titleX = `(w-text_w)/2`;
+  const titleY = videoType === "reel_9x16"
+    ? `${Math.round(height * 0.12)}`
+    : `(h-text_h)/2-40`;
+  filterParts.push(
+    `[bgdark]drawtext=text='${escapedTitle}':` +
+    `${titleFontAttr}fontsize=${cfg.titleFontSize}:fontcolor=white:` +
+    `borderw=2:bordercolor=black:x=${titleX}:y=${titleY}:` +
+    `enable='between(t\\,0\\,4)'[titled]`,
+  );
+
+  // ── Captions ─────────────────────────────────────────────────────────────
+  if (withCaptions && params.wordTimestamps.length > 0) {
+    filterParts.push(`[titled]ass='${toFFmpegPath(assPath)}'[captioned]`);
+  } else {
+    filterParts.push(`[titled]copy[captioned]`);
+  }
+
+  // ── Input index bookkeeping ───────────────────────────────────────────────
+  // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar
+  const audioInputIdx = N;
+  let nextInputIdx = N + 1;
+  const logoInputIdx = logoPath ? nextInputIdx++ : -1;
+  const avatarInputIdx = avatarPath ? nextInputIdx++ : -1;
+
+  // ── Logo ──────────────────────────────────────────────────────────────────
+  let currentLabel = "captioned";
+  if (logoPath && logoInputIdx >= 0) {
+    filterParts.push(`[${logoInputIdx}:v]scale=${cfg.logoSize}:-1[logosc]`);
+    filterParts.push(`[captioned][logosc]overlay=x=20:y=20:format=auto[logoed]`);
+    currentLabel = "logoed";
+  }
+
+  // ── Avatar PiP (static circular headshot) ────────────────────────────────
+  if (avatarPath && avatarInputIdx >= 0) {
+    const aSize = cfg.avatarSize;
+    const aRadius = Math.floor(aSize / 2);
+    const avX = cfg.avatarX - aRadius;
+    const avY = cfg.avatarY - aRadius;
+    const borderSize = aSize + 8;
+    const borderX = cfg.avatarX - Math.floor(borderSize / 2);
+    const borderY = cfg.avatarY - Math.floor(borderSize / 2);
+    filterParts.push(
+      `[${avatarInputIdx}:v]scale=${aSize}:${aSize},format=rgba,` +
+      `geq=r='r(X\\,Y)':g='g(X\\,Y)':b='b(X\\,Y)':` +
+      `a='if(lte(pow(X-${aRadius}\\,2)+pow(Y-${aRadius}\\,2)\\,pow(${aRadius - 2}\\,2))\\,255\\,0)'` +
+      `[avatarcirc]`,
+    );
+    filterParts.push(
+      `[${currentLabel}]drawbox=x=${borderX}:y=${borderY}:w=${borderSize}:h=${borderSize}:color=white@1:t=fill[bordered]`,
+    );
+    filterParts.push(`[bordered][avatarcirc]overlay=x=${avX}:y=${avY}:format=auto[avatared]`);
+    currentLabel = "avatared";
+  }
+
+  // ── Agent name badge ──────────────────────────────────────────────────────
+  if (params.agentName && avatarPath) {
+    const escapedName = escapeDrawtext(params.agentName);
+    filterParts.push(
+      `[${currentLabel}]drawtext=text='${escapedName}':` +
+      `${nameFontAttr}fontsize=20:fontcolor=white:` +
+      `borderw=1:bordercolor=black@0.6:` +
+      `box=1:boxcolor=black@0.45:boxborderw=6:` +
+      `x=${cfg.avatarX}-text_w/2:y=${cfg.nameY}[named]`,
+    );
+    currentLabel = "named";
+  }
+
+  // ── Run FFmpeg ────────────────────────────────────────────────────────────
+  const filterGraph = filterParts.join(";\n");
+  console.log(`[ffmpeg-slideshow] ${filterParts.length} filter stages`);
+
+  return new Promise<void>((resolve, reject) => {
+    const cmd = ffmpeg();
+
+    // Photo inputs — loop each still image for slightly longer than segDur
+    for (const photoPath of photoPaths) {
+      cmd.input(photoPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(segDur) + 2}`]);
+    }
+    cmd.input(audioPath);
+    if (logoPath) cmd.input(logoPath);
+    if (avatarPath) cmd.input(avatarPath);
+
+    cmd
+      .complexFilter(filterGraph)
+      .outputOptions([
+        `-map [${currentLabel}]`,
+        `-map ${audioInputIdx}:a`,
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 22",
+        "-pix_fmt yuv420p",
+        "-c:a aac",
+        "-b:a 128k",
+        "-movflags +faststart",
+        `-t ${audioDuration}`,
+        "-y",
+      ])
+      .output(outputPath)
+      .on("start", (cmdLine) => console.log(`[ffmpeg-slideshow] cmd: ${cmdLine.slice(0, 300)}...`))
+      .on("progress", (p) => {
+        if (p.percent) console.log(`[ffmpeg-slideshow] ${Math.round(p.percent)}%`);
+      })
+      .on("error", (err, _stdout, stderr) => {
+        console.error("[ffmpeg-slideshow] FAILED:", err.message);
+        console.error("[ffmpeg-slideshow] stderr:", stderr?.slice(-1000));
+        reject(new Error(`FFmpeg slideshow failed: ${err.message}\n${stderr?.slice(-500) ?? ""}`));
+      })
+      .on("end", () => {
+        console.log("[ffmpeg-slideshow] Done");
+        resolve();
+      })
+      .run();
+  });
+}
+
 /** Generate a solid color video background (used when no stock clips). */
 async function generateColorBackground(
   outputPath: string,
