@@ -27,10 +27,10 @@ export async function POST(req: NextRequest) {
     if (!audioResponse.ok) throw new Error("Failed to fetch audio file");
     const audioBuffer = await audioResponse.arrayBuffer();
 
-    // Prepare form data for ElevenLabs STT
+    // Prepare form data for ElevenLabs STT — field must be "file" not "audio"
     const formData = new FormData();
     formData.append(
-      "audio",
+      "file",
       new Blob([audioBuffer], { type: "audio/webm" }),
       "recording.webm"
     );
