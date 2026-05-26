@@ -312,7 +312,7 @@ export function ListingVideoForm() {
         >
           <Upload size={16} />
           <span className="flex-1 text-left">
-            Upload listing file
+            Upload listing file / Listing Photos
             <span className="block text-xs text-slate-400 font-normal mt-0.5">
               Documents (PDF, MLS export, Word, CSV) up to 4 MB · or drop a property photo
             </span>

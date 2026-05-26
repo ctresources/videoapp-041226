@@ -395,20 +395,20 @@ function CreatePageInner() {
             <Mic size={14} /> Create
           </button>
           <button
-            onClick={() => setInputMode("upload")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "upload" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-            }`}
-          >
-            <Upload size={14} /> Upload
-          </button>
-          <button
             onClick={() => setInputMode("listing")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
               inputMode === "listing" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
             <Building2 size={14} /> Listing
+          </button>
+          <button
+            onClick={() => setInputMode("upload")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
+              inputMode === "upload" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+            }`}
+          >
+            <Upload size={14} /> Upload
           </button>
         </div>
       )}
