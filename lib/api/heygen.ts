@@ -562,7 +562,6 @@ export async function cloneVoice(
     method: "POST",
     headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      name,
       prompt: "A clear, professional voice for real estate video narration.",
       files: [{ type: "asset_id", asset_id: assetId }],
     }),
