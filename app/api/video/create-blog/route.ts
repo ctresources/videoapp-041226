@@ -388,59 +388,66 @@ export async function POST(req: NextRequest) {
     // ── ElevenLabs TTS path: user has a cloned voice → generate audio and create v2 video ──
     if (profile.voice_clone_id) {
       console.log(`[create-blog] EL voice path — cloning TTS for voice ${profile.voice_clone_id}`);
+      let elAudioBuffer: Buffer | null = null;
+      let audioAssetId: string | null = null;
+      try {
+        elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
+        audioAssetId = await uploadAudioAsset(elAudioBuffer);
+      } catch (elErr) {
+        console.error("[create-blog] EL TTS failed, falling back to HeyGen agent:", elErr instanceof Error ? elErr.message : elErr);
+      }
+      if (elAudioBuffer && audioAssetId) {
+        const { data: videoRow } = await admin
+          .from("generated_videos")
+          .insert({
+            project_id: projectId,
+            user_id: user.id,
+            video_type: videoType,
+            render_provider: "heygen_v2",
+            render_status: "rendering",
+            metadata: { dimension, orientation, city, state, title },
+          })
+          .select()
+          .single();
 
-      const elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
-      const audioAssetId = await uploadAudioAsset(elAudioBuffer);
+        const videoId = await generateVideo({
+          scenes: [{
+            scriptText: safeScript,
+            audioAssetId,
+            backgroundImageUrl: listingPhotos[0] ?? undefined,
+            backgroundColor: listingPhotos[0] ? undefined : "#0F172A",
+          }],
+          talkingPhotoId: avatarId,
+          photoPosition: "bottom-right",
+          dimension,
+          title,
+          callbackUrl,
+          callbackId: videoRow?.id,
+        });
 
-      const { data: videoRow } = await admin
-        .from("generated_videos")
-        .insert({
-          project_id: projectId,
+        await admin
+          .from("generated_videos")
+          .update({ render_job_id: videoId })
+          .eq("id", videoRow?.id);
+
+        await admin.from("api_usage_log").insert({
           user_id: user.id,
-          video_type: videoType,
-          render_provider: "heygen_v2",
-          render_status: "rendering",
-          metadata: { dimension, orientation, city, state, title },
-        })
-        .select()
-        .single();
+          api_provider: "heygen",
+          endpoint: "video-v2-el-tts",
+          credits_used: 1,
+          response_status: 202,
+        });
 
-      const videoId = await generateVideo({
-        scenes: [{
-          scriptText: safeScript,
-          audioAssetId,
-          backgroundImageUrl: listingPhotos[0] ?? undefined,
-          backgroundColor: listingPhotos[0] ? undefined : "#0F172A",
-        }],
-        talkingPhotoId: avatarId,
-        photoPosition: "bottom-right",
-        dimension,
-        title,
-        callbackUrl,
-        callbackId: videoRow?.id,
-      });
-
-      await admin
-        .from("generated_videos")
-        .update({ render_job_id: videoId })
-        .eq("id", videoRow?.id);
-
-      await admin.from("api_usage_log").insert({
-        user_id: user.id,
-        api_provider: "heygen",
-        endpoint: "video-v2-el-tts",
-        credits_used: 1,
-        response_status: 202,
-      });
-
-      console.log(`[create-blog] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
-      return NextResponse.json({
-        video: {
-          ...videoRow,
-          render_job_id: videoId,
-          render_status: "rendering",
-        },
-      });
+        console.log(`[create-blog] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
+        return NextResponse.json({
+          video: {
+            ...videoRow,
+            render_job_id: videoId,
+            render_status: "rendering",
+          },
+        });
+      }
+      // EL failed — fall through to HeyGen Video Agent path below
     }
 
     // ── Video Agent path: no EL voice → use HeyGen voice ID ──────────────────
