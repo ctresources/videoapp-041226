@@ -556,32 +556,25 @@ export async function cloneVoice(
   }
   console.log(`[heygen] Voice asset uploaded: ${assetId}`);
 
-  // Step 2 — create voice clone from asset
-  console.log(`[heygen] Creating voice clone "${name}"...`);
-  const cloneRes = await fetch(`${HEYGEN_API}/v3/voices`, {
-    method: "POST",
-    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: "A clear, professional voice for real estate video narration.",
-      files: [{ type: "asset_id", asset_id: assetId }],
-    }),
-  });
-
-  const rawText = await cloneRes.text();
-  console.log(`[heygen] Voice clone response (${cloneRes.status}):`, rawText.slice(0, 300));
-
-  if (!cloneRes.ok) {
-    throw new Error(`HeyGen voice clone failed (${cloneRes.status}): ${rawText.slice(0, 300)}`);
+  // HeyGen's POST /v3/voices no longer accepts audio files for cloning (API changed).
+  // Fall back to fetching the first private voice already in the HeyGen account,
+  // which was created via HeyGen Studio IVC. The uploaded asset is kept for future use.
+  console.log(`[heygen] Looking up existing private voice in HeyGen account...`);
+  const privateVoiceId = await getPrivateVoiceId();
+  if (privateVoiceId) {
+    console.log(`[heygen] Using existing private voice: ${privateVoiceId}`);
+    return privateVoiceId;
   }
 
-  const cloneData = JSON.parse(rawText);
-  const voiceId = cloneData.data?.voice_id || cloneData.data?.id;
-  if (!voiceId) {
-    throw new Error(`HeyGen returned no voice_id. Response: ${rawText.slice(0, 200)}`);
+  // No private voice found — fall back to a default English voice
+  console.log(`[heygen] No private voice found, falling back to default English voice...`);
+  const defaultVoiceId = await getDefaultEnglishVoiceId();
+  if (defaultVoiceId) {
+    console.log(`[heygen] Using default English voice: ${defaultVoiceId}`);
+    return defaultVoiceId;
   }
 
-  console.log(`[heygen] Voice clone created: ${voiceId}`);
-  return voiceId;
+  throw new Error("No voice available. Please create a voice clone in HeyGen Studio (app.heygen.com → Voices) and try again.");
 }
 
 // ─── V3 Avatar Video Generation (POST /v3/videos) ────────────────────────────
