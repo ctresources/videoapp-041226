@@ -391,7 +391,7 @@ export async function POST(req: NextRequest) {
     if (listingPhotos.length > 0) {
       console.log(`[create-blog] FFmpeg slideshow path — ${listingPhotos.length} listing photos`);
 
-      const { data: videoRow } = await admin
+      const { data: videoRow, error: videoRowErr } = await admin
         .from("generated_videos")
         .insert({
           project_id: projectId,
@@ -404,7 +404,9 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
-      if (!videoRow) throw new Error("Failed to create video record");
+      if (videoRowErr || !videoRow) {
+        throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
+      }
 
       const { audioBuffer, wordTimestamps } = await generateSpeechWithTimestamps(
         safeScript,
@@ -466,7 +468,7 @@ export async function POST(req: NextRequest) {
         console.error("[create-blog] EL TTS failed, falling back to HeyGen agent:", elErr instanceof Error ? elErr.message : elErr);
       }
       if (elAudioBuffer && audioAssetId) {
-        const { data: videoRow } = await admin
+        const { data: videoRow, error: videoRowErr } = await admin
           .from("generated_videos")
           .insert({
             project_id: projectId,
@@ -478,6 +480,10 @@ export async function POST(req: NextRequest) {
           })
           .select()
           .single();
+
+        if (videoRowErr || !videoRow) {
+          throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
+        }
 
         const videoId = await generateVideo({
           scenes: [{
@@ -546,7 +552,7 @@ export async function POST(req: NextRequest) {
       files.push({ type: "url", url });
     }
 
-    const { data: videoRow } = await admin
+    const { data: videoRow, error: videoRowErr } = await admin
       .from("generated_videos")
       .insert({
         project_id: projectId,
@@ -558,6 +564,10 @@ export async function POST(req: NextRequest) {
       })
       .select()
       .single();
+
+    if (videoRowErr || !videoRow) {
+      throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
+    }
 
     const sessionId = await generateVideoAgent({
       prompt,
