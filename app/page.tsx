@@ -191,8 +191,8 @@ export default function LandingPage() {
                 Stop waiting. Start dominating your local market.
               </p>
               <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                Become the &ldquo;digital go-to agent&rdquo;<br />
-                <span className="text-blue-900">of your TOWN.</span>
+                <span className="block">Become the &ldquo;digital go-to agent&rdquo;</span>
+                <span className="block text-blue-900">of your TOWN.</span>
               </h1>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
                 The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
