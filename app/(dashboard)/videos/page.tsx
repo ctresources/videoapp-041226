@@ -70,7 +70,7 @@ function useElapsedSeconds(startedAt: string, active: boolean) {
   return elapsed;
 }
 
-function RenderProgressBar({ video }: { video: GeneratedVideo }) {
+function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; isDeletingRef: React.RefObject<boolean> }) {
   const [progress, setProgress] = useState<RenderProgress>({ progressPct: 0, status: video.render_status });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsed = useElapsedSeconds(video.created_at, progress.status === "rendering" || progress.status === "pending");
@@ -96,8 +96,8 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
         setProgress(data);
         if (data.status === "completed" || data.status === "failed") {
           if (intervalRef.current) clearInterval(intervalRef.current);
-          // Reload page to show final state
-          window.location.reload();
+          // Don't reload if user is mid-delete — it would clear the confirm modal
+          if (!isDeletingRef.current) window.location.reload();
         }
       } catch { /* silent */ }
     }
@@ -241,9 +241,11 @@ function VideosContent() {
   const [previewVideo, setPreviewVideo] = useState<GeneratedVideo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<GeneratedVideo | null>(null);
+  const isDeletingRef = useRef(false);
 
   async function handleDelete(videoId: string) {
     setDeletingId(videoId);
+    isDeletingRef.current = true;
     try {
       const res = await fetch("/api/video/delete", {
         method: "DELETE",
@@ -260,6 +262,7 @@ function VideosContent() {
       }
     } finally {
       setDeletingId(null);
+      isDeletingRef.current = false;
     }
   }
 
@@ -515,7 +518,7 @@ function VideosContent() {
                   </div>
 
                   {/* Render progress bar */}
-                  {isRendering && <RenderProgressBar video={video} />}
+                  {isRendering && <RenderProgressBar video={video} isDeletingRef={isDeletingRef} />}
 
                   {/* Actions */}
                   {video.render_status === "completed" && video.video_url && (
