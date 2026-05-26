@@ -20,11 +20,11 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id, full_name, email")
+    .select("stripe_customer_id, stripe_subscription_id, full_name, email")
     .eq("id", user.id)
     .single();
 
-  const p = profile as { stripe_customer_id: string | null; full_name: string | null; email: string | null } | null;
+  const p = profile as { stripe_customer_id: string | null; stripe_subscription_id: string | null; full_name: string | null; email: string | null } | null;
 
   // Get or create Stripe customer
   let customerId = p?.stripe_customer_id;
@@ -40,6 +40,9 @@ export async function GET(req: NextRequest) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+  // Only offer trial to users who have never had a subscription
+  const isNewCustomer = !p?.stripe_subscription_id;
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
@@ -49,6 +52,9 @@ export async function GET(req: NextRequest) {
     metadata: { supabase_user_id: user.id, plan },
     allow_promotion_codes: true,
     billing_address_collection: "auto",
+    ...(isNewCustomer && {
+      subscription_data: { trial_period_days: 7 },
+    }),
   });
 
   return NextResponse.redirect(session.url!);
