@@ -58,22 +58,6 @@ const PLANS = [
       "Priority rendering",
     ],
   },
-  {
-    key: "agency",
-    name: "Agency",
-    price: 197,
-    videos: 100,
-    highlighted: false,
-    features: [
-      "100 videos/month",
-      "Everything in Pro",
-      "5 agent seats",
-      "White-label branding",
-      "Custom avatar per agent",
-      "Team analytics",
-      "Dedicated support",
-    ],
-  },
 ];
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
