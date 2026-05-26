@@ -95,6 +95,7 @@ export default async function BillingPage({
 
   const currentTier = profile?.subscription_tier || "free";
   const isActive = profile?.subscription_status === "active";
+  const isTrialing = profile?.subscription_status === "trialing";
   const isPastDue = profile?.subscription_status === "past_due";
   const hasSubscription = !!profile?.stripe_subscription_id;
   const periodEnd = profile?.current_period_end
@@ -116,7 +117,11 @@ export default async function BillingPage({
           <CheckCircle size={18} className="shrink-0 text-green-600" />
           <div>
             <p className="font-semibold text-sm">You&apos;re all set! 🎉</p>
-            <p className="text-xs text-green-700 mt-0.5">Your {searchParams.success} plan is now active. Start creating videos.</p>
+            <p className="text-xs text-green-700 mt-0.5">
+              {isTrialing
+                ? `Your 7-day free trial of the ${searchParams.success} plan has started. No charge until your trial ends.`
+                : `Your ${searchParams.success} plan is now active. Start creating videos.`}
+            </p>
           </div>
         </div>
       )}
@@ -153,8 +158,8 @@ export default async function BillingPage({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <p className="font-bold text-brand-text text-lg capitalize">{currentPlan?.name || "Free"} Plan</p>
-                <Badge variant={isActive ? "success" : isPastDue ? "error" : "default"}>
-                  {isActive ? "Active" : isPastDue ? "Past Due" : hasSubscription ? "Canceled" : "No Plan"}
+                <Badge variant={isActive ? "success" : isTrialing ? "success" : isPastDue ? "error" : "default"}>
+                  {isActive ? "Active" : isTrialing ? "Trial" : isPastDue ? "Past Due" : hasSubscription ? "Canceled" : "No Plan"}
                 </Badge>
               </div>
               {currentPlan && (
@@ -162,7 +167,7 @@ export default async function BillingPage({
               )}
               {periodEnd && (
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {profile?.cancel_at_period_end ? `Cancels on ${periodEnd}` : `Renews on ${periodEnd}`}
+                  {isTrialing ? `Free trial ends ${periodEnd}` : profile?.cancel_at_period_end ? `Cancels on ${periodEnd}` : `Renews on ${periodEnd}`}
                 </p>
               )}
               {!hasSubscription && (
@@ -209,7 +214,7 @@ export default async function BillingPage({
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {PLANS.map((plan) => {
-          const isCurrent = plan.key === currentTier && isActive;
+          const isCurrent = plan.key === currentTier && (isActive || isTrialing);
           const Icon = PLAN_ICONS[plan.key];
           return (
             <div
