@@ -515,13 +515,33 @@ export async function cloneVoice(
   const apiKey = getApiKey();
 
   // Step 1 — upload audio as asset
-  console.log(`[heygen] Uploading voice sample (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
-  const uploadForm = new FormData();
-  uploadForm.append("file", new Blob([audioBuffer], { type: contentType }), "voice.mp3");
+  // Normalise content type: strip codec params and map webm/ogg → mpeg for HeyGen compatibility
+  const normalizedType = contentType.startsWith("audio/webm") || contentType.startsWith("audio/ogg")
+    ? "audio/mpeg"
+    : contentType.split(";")[0].trim();
+
+  console.log(`[heygen] Uploading voice sample (${(audioBuffer.length / 1024).toFixed(0)} KB, type: ${normalizedType})...`);
+
+  // Manually construct multipart/form-data — more reliable than FormData+Blob in Node.js server envs
+  const boundary = `----HeyGenBoundary${Date.now().toString(36)}`;
+  const encoder = new TextEncoder();
+  const preamble = encoder.encode(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="voice.mp3"\r\nContent-Type: ${normalizedType}\r\n\r\n`
+  );
+  const epilogue = encoder.encode(`\r\n--${boundary}--\r\n`);
+  const audioBytes = new Uint8Array(audioBuffer);
+  const multipartBody = new Uint8Array(preamble.length + audioBytes.length + epilogue.length);
+  multipartBody.set(preamble, 0);
+  multipartBody.set(audioBytes, preamble.length);
+  multipartBody.set(epilogue, preamble.length + audioBytes.length);
+
   const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
-    headers: { "x-api-key": apiKey },
-    body: uploadForm,
+    headers: {
+      "x-api-key": apiKey,
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    },
+    body: multipartBody,
   });
 
   if (!uploadRes.ok) {
