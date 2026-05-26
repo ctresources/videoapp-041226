@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["fluent-ffmpeg", "@ffmpeg-installer/ffmpeg"],
+  experimental: {
+    serverComponentsExternalPackages: ["fluent-ffmpeg", "@ffmpeg-installer/ffmpeg"],
+  },
   images: {
     remotePatterns: [
       {

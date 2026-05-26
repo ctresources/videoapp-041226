@@ -12,7 +12,6 @@ import {
   type VideoAgentFile,
 } from "@/lib/api/heygen";
 import { generateSpeech, generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
-import { renderPhotoSlideshow } from "@/lib/api/ffmpeg-render";
 import { NextRequest, NextResponse } from "next/server";
 
 // 300s to accommodate synchronous FFmpeg slideshow renders
@@ -413,6 +412,7 @@ export async function POST(req: NextRequest) {
         profile.voice_clone_id,
       );
 
+      const { renderPhotoSlideshow } = await import("@/lib/api/ffmpeg-render");
       const videoBuffer = await renderPhotoSlideshow(
         {
           title,
