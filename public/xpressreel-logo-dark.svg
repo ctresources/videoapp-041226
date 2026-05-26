@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <defs>
+    <linearGradient id="xr-grad-dark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Gradient badge icon -->
+  <rect width="40" height="40" x="0" y="4" rx="10" fill="url(#xr-grad-dark)"/>
+  <!-- Play triangle -->
+  <polygon points="15,14 15,30 30,22" fill="#FFFFFF"/>
+
+  <!-- Wordmark: "Xpress" in gradient, "Reel" in white -->
+  <text
+    x="48"
+    y="36"
+    font-family="'Montserrat', 'Inter', ui-sans-serif, sans-serif"
+    font-weight="800"
+    font-size="28"
+    letter-spacing="-0.5"
+  >
+    <tspan fill="url(#xr-grad-dark)">Xpress</tspan><tspan fill="#FFFFFF">Reel</tspan>
+  </text>
+</svg>
