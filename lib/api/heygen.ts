@@ -212,7 +212,7 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading video asset (${(videoBuffer.length / 1024).toFixed(0)} KB)...`);
 
   const form = new FormData();
-  form.append("file", new Blob([videoBuffer], { type: "video/mp4" }), "video.mp4");
+  form.append("file", new Blob([new Uint8Array(videoBuffer)], { type: "video/mp4" }), "video.mp4");
 
   const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
@@ -243,7 +243,7 @@ export async function uploadAudioAsset(audioBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading audio asset (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
 
   const form = new FormData();
-  form.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "audio.mp3");
+  form.append("file", new Blob([new Uint8Array(audioBuffer)], { type: "audio/mpeg" }), "audio.mp3");
 
   const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
