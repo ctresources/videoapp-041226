@@ -12,8 +12,9 @@ export async function POST(req: NextRequest) {
   const file = formData.get("audio") as File | null;
   if (!file) return NextResponse.json({ error: "No audio file" }, { status: 400 });
 
+  // ElevenLabs STT requires field name "file" not "audio"
   const sttForm = new FormData();
-  sttForm.append("audio", file, file.name || "recording.webm");
+  sttForm.append("file", file, file.name || "recording.webm");
   sttForm.append("model_id", "scribe_v1");
   sttForm.append("language_code", "en");
   sttForm.append("timestamps_granularity", "none");
