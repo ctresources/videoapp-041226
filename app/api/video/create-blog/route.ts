@@ -10,6 +10,7 @@ import {
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
+  type SceneInput,
 } from "@/lib/api/heygen";
 import { generateSpeech } from "@/lib/api/elevenlabs";
 import { NextRequest, NextResponse } from "next/server";
@@ -22,6 +23,21 @@ function clampScript(text: string): string {
   const words = text.trim().split(/\s+/);
   if (words.length <= MAX_SCRIPT_WORDS) return text;
   return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
+}
+
+function splitScriptIntoChunks(text: string, n: number): string[] {
+  if (n <= 1) return [text];
+  const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
+  const count = Math.min(n, sentences.length);
+  if (count <= 1) return [text];
+  const chunks: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const start = Math.round((i * sentences.length) / count);
+    const end = Math.round(((i + 1) * sentences.length) / count);
+    const chunk = sentences.slice(start, end).join(" ").trim();
+    if (chunk) chunks.push(chunk);
+  }
+  return chunks.length > 0 ? chunks : [text];
 }
 
 /**
@@ -384,6 +400,84 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     const avatarId = lookId || profile.heygen_photo_id;
+
+    // ── ElevenLabs TTS + listing photos: multi-scene v2 API ──────────────────────
+    // Split the script into N chunks (one per photo, capped at 5), generate EL
+    // audio for each chunk, then submit a multi-scene v2 video where each scene
+    // uses that photo as its background.
+    if (profile.voice_clone_id && listingPhotos.length > 0) {
+      console.log(`[create-blog] EL multi-scene path — ${listingPhotos.length} photos, voice ${profile.voice_clone_id}`);
+      try {
+        const numScenes = Math.min(listingPhotos.length, 5);
+        const scriptChunks = splitScriptIntoChunks(safeScript, numScenes);
+        const photoSlice = listingPhotos.slice(0, scriptChunks.length);
+
+        const audioBuffers = await Promise.all(
+          scriptChunks.map((chunk) => generateSpeech(chunk, profile.voice_clone_id!)),
+        );
+        const audioAssetIds = await Promise.all(
+          audioBuffers.map((buf) => uploadAudioAsset(buf)),
+        );
+
+        const scenes: SceneInput[] = scriptChunks.map((scriptText, i) => ({
+          scriptText,
+          audioAssetId: audioAssetIds[i],
+          backgroundImageUrl: photoSlice[i],
+        }));
+
+        const { data: videoRow, error: videoRowErr } = await admin
+          .from("generated_videos")
+          .insert({
+            project_id: projectId,
+            user_id: user.id,
+            video_type: videoType,
+            render_provider: "heygen_v2",
+            render_status: "rendering",
+            metadata: { dimension, orientation, city, state, title },
+          })
+          .select()
+          .single();
+
+        if (videoRowErr || !videoRow) {
+          throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
+        }
+
+        const heygenVideoId = await generateVideo({
+          scenes,
+          talkingPhotoId: avatarId,
+          photoPosition: "bottom-right",
+          dimension,
+          title,
+          callbackUrl,
+          callbackId: videoRow.id,
+        });
+
+        await admin
+          .from("generated_videos")
+          .update({ render_job_id: heygenVideoId })
+          .eq("id", videoRow.id);
+
+        await admin.from("api_usage_log").insert({
+          user_id: user.id,
+          api_provider: "heygen",
+          endpoint: "video-v2-el-tts-photos",
+          credits_used: 1,
+          response_status: 202,
+        });
+
+        console.log(`[create-blog] v2 multi-scene video ${heygenVideoId} submitted (${scenes.length} scenes, EL voice)`);
+        return NextResponse.json({
+          video: {
+            ...videoRow,
+            render_job_id: heygenVideoId,
+            render_status: "rendering",
+          },
+        });
+      } catch (elErr) {
+        console.error("[create-blog] EL multi-scene failed, falling back to Video Agent:", elErr instanceof Error ? elErr.message : elErr);
+        // Fall through to Video Agent path below
+      }
+    }
 
     // ── ElevenLabs TTS path: user has a cloned voice AND no listing photos ──────
     // When listing photos are present we skip to Video Agent so HeyGen can use
