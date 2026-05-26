@@ -389,8 +389,16 @@ export async function POST(req: NextRequest) {
     if (profile.voice_clone_id) {
       console.log(`[create-blog] EL voice path — cloning TTS for voice ${profile.voice_clone_id}`);
 
-      const elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
-      const audioAssetId = await uploadAudioAsset(elAudioBuffer);
+      let elAudioBuffer: Buffer | null = null;
+      let audioAssetId: string | null = null;
+      try {
+        elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
+        audioAssetId = await uploadAudioAsset(elAudioBuffer);
+      } catch (elErr) {
+        console.error("[create-blog] EL TTS failed, falling back to HeyGen agent:", elErr instanceof Error ? elErr.message : elErr);
+      }
+
+      if (elAudioBuffer && audioAssetId) {
 
       const { data: videoRow } = await admin
         .from("generated_videos")
@@ -441,9 +449,11 @@ export async function POST(req: NextRequest) {
           render_status: "rendering",
         },
       });
-    }
+      } // end if (elAudioBuffer && audioAssetId)
+      // EL failed — fall through to HeyGen Video Agent path below
+    } // end if (profile.voice_clone_id)
 
-    // ── Video Agent path: no EL voice → use HeyGen voice ID ──────────────────
+    // ── Video Agent path: no EL voice (or EL failed) → use HeyGen voice ID ───
     let voiceId = profile.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);

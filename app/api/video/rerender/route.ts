@@ -3,12 +3,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoAgent,
+  generateVideo,
+  uploadAudioAsset,
   getCinematicStyleId,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
+import { generateSpeech } from "@/lib/api/elevenlabs";
 
 export const maxDuration = 60;
 
@@ -191,7 +194,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website")
+    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id")
     .eq("id", user.id)
     .single();
 
@@ -205,6 +208,7 @@ export async function POST(req: NextRequest) {
     location_city: string | null;
     location_state: string | null;
     website: string | null;
+    voice_clone_id: string | null;
   } | null;
 
   if (!p?.heygen_photo_id) {
@@ -246,6 +250,61 @@ export async function POST(req: NextRequest) {
       hookText,
     });
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    const callbackUrl = appUrl && !appUrl.includes("localhost")
+      ? `${appUrl}/api/video/webhook`
+      : undefined;
+
+    const avatarId = edits.avatarId || p.heygen_photo_id;
+
+    // ── ElevenLabs TTS path: user has a cloned voice ──────────────────────────
+    if (p.voice_clone_id) {
+      console.log(`[rerender] EL voice path — voice ${p.voice_clone_id}`);
+      const elAudioBuffer = await generateSpeech(safeScript, p.voice_clone_id);
+      const audioAssetId = await uploadAudioAsset(elAudioBuffer);
+
+      const { data: newVideo, error: insertErr } = await admin
+        .from("generated_videos")
+        .insert({
+          project_id: video.project_id,
+          user_id: user.id,
+          video_type: edits.format,
+          render_provider: "heygen_v2",
+          render_status: "rendering",
+          metadata: { dimension, orientation, city, state, title: edits.title },
+        })
+        .select()
+        .single();
+
+      if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
+      placeholderVideoId = newVideo.id;
+
+      const videoId = await generateVideo({
+        scenes: [{ scriptText: safeScript, audioAssetId }],
+        talkingPhotoId: avatarId,
+        photoPosition: "bottom-right",
+        dimension,
+        title: edits.title,
+        callbackUrl,
+        callbackId: newVideo.id,
+      });
+
+      await admin.from("generated_videos").update({ render_job_id: videoId }).eq("id", newVideo.id);
+      await admin.from("api_usage_log").insert({
+        user_id: user.id,
+        api_provider: "heygen",
+        endpoint: "video-v2-el-tts-rerender",
+        credits_used: 1,
+        response_status: 202,
+      });
+
+      console.log(`[rerender] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
+      return NextResponse.json({
+        video: { ...newVideo, render_job_id: videoId, render_status: "rendering" },
+      });
+    }
+
+    // ── Video Agent path: no EL voice → use HeyGen voice ID ──────────────────
     let voiceId = edits.voiceId || p.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);
@@ -276,48 +335,15 @@ export async function POST(req: NextRequest) {
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
     placeholderVideoId = newVideo.id;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-    const callbackUrl = appUrl && !appUrl.includes("localhost")
-      ? `${appUrl}/api/video/webhook`
-      : undefined;
-
-    const avatarId = edits.avatarId || p.heygen_photo_id;
-    let sessionId: string;
-    try {
-      sessionId = await generateVideoAgent({
-        prompt,
-        avatarId,
-        voiceId,
-        orientation,
-        callbackUrl,
-        callbackId: newVideo.id,
-        styleId: styleId || undefined,
-      });
-    } catch (err) {
-      // HeyGen rejects voice IDs that aren't in their system (e.g. legacy
-      // ElevenLabs IDs leaking through from profile.voice_clone_id). Retry
-      // once with a fallback HeyGen voice so the rerender still completes.
-      const msg = err instanceof Error ? err.message : "";
-      const isInvalidVoice = /invalid voice_id|voice not found/i.test(msg);
-      if (!isInvalidVoice) throw err;
-
-      const fallbackVoiceId =
-        (await getPrivateVoiceId().catch(() => null)) ||
-        (await getDefaultEnglishVoiceId().catch(() => null));
-      if (!fallbackVoiceId) throw err;
-
-      console.log(`[rerender] voice ${voiceId} rejected; retrying with fallback ${fallbackVoiceId}`);
-      sessionId = await generateVideoAgent({
-        prompt,
-        avatarId,
-        voiceId: fallbackVoiceId,
-        orientation,
-        callbackUrl,
-        callbackId: newVideo.id,
-        styleId: styleId || undefined,
-      });
-      voiceId = fallbackVoiceId;
-    }
+    const sessionId = await generateVideoAgent({
+      prompt,
+      avatarId,
+      voiceId,
+      orientation,
+      callbackUrl,
+      callbackId: newVideo.id,
+      styleId: styleId || undefined,
+    });
 
     await admin
       .from("generated_videos")
