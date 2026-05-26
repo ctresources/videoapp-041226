@@ -9,30 +9,23 @@ export const PLANS = {
   starter: {
     name: "Starter",
     priceId: process.env.STRIPE_PRICE_STARTER!,
-    price: 27,
+    price: 39,
     videos: 4,
     tier: "starter" as const,
   },
   agent: {
     name: "Agent",
     priceId: process.env.STRIPE_PRICE_AGENT!,
-    price: 47,
+    price: 69,
     videos: 12,
     tier: "agent" as const,
   },
   pro: {
     name: "Pro",
     priceId: process.env.STRIPE_PRICE_PRO!,
-    price: 97,
-    videos: 30,
+    price: 99,
+    videos: 16,
     tier: "pro" as const,
-  },
-  agency: {
-    name: "Agency",
-    priceId: process.env.STRIPE_PRICE_AGENCY!,
-    price: 197,
-    videos: 100,
-    tier: "agency" as const,
   },
 } as const;
 
