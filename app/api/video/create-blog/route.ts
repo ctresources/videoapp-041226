@@ -275,7 +275,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, musicUrl } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -420,6 +420,7 @@ export async function POST(req: NextRequest) {
           logoUrl: profile.logo_url || undefined,
           avatarUrl: profile.avatar_url || undefined,
           agentName: profile.full_name || undefined,
+          musicUrl: musicUrl || undefined,
         },
         videoType as import("@/lib/api/ffmpeg-render").VideoType,
       );

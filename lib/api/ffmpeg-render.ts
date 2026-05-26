@@ -506,6 +506,8 @@ export interface SlideshowParams {
   agentName?: string;
   captionColor?: string;
   captionHighlightColor?: string;
+  musicUrl?: string | null;  // background music (looped, mixed under voiceover)
+  musicVolume?: number;      // 0–1, default 0.15
 }
 
 /**
@@ -549,11 +551,19 @@ export async function renderPhotoSlideshow(
       if (await downloadFile(params.avatarUrl, p)) avatarPath = p;
     }
 
-    // ── 4. Probe audio duration ──────────────────────────────────────────────
-    const audioDuration = await probeAudioDuration(audioPath);
-    console.log(`[ffmpeg-slideshow] ${photoPaths.length} photos, audio: ${audioDuration.toFixed(1)}s`);
+    // ── 4. Download background music (optional) ──────────────────────────────
+    let musicPath: string | null = null;
+    if (params.musicUrl) {
+      const ext = params.musicUrl.split(".").pop()?.split("?")[0] || "mp3";
+      const mp = join(renderTmpDir, `music.${ext}`);
+      if (await downloadFile(params.musicUrl, mp)) musicPath = mp;
+    }
 
-    // ── 5. Generate ASS captions ─────────────────────────────────────────────
+    // ── 5. Probe audio duration ──────────────────────────────────────────────
+    const audioDuration = await probeAudioDuration(audioPath);
+    console.log(`[ffmpeg-slideshow] ${photoPaths.length} photos, audio: ${audioDuration.toFixed(1)}s, music: ${!!musicPath}`);
+
+    // ── 6. Generate ASS captions ─────────────────────────────────────────────
     const assPath = join(renderTmpDir, "captions.ass");
     const assContent = generateASS(params.wordTimestamps, {
       width: cfg.width,
@@ -567,10 +577,10 @@ export async function renderPhotoSlideshow(
 
     const outputPath = join(renderTmpDir, "output.mp4");
 
-    // ── 6. Render (retry without captions if libass is missing) ─────────────
+    // ── 7. Render (retry without captions if libass is missing) ─────────────
     try {
       await buildSlideshowAndRun(
-        photoPaths, audioPath, assPath, logoPath, avatarPath,
+        photoPaths, audioPath, assPath, logoPath, avatarPath, musicPath,
         outputPath, params, cfg, audioDuration, videoType, true,
       );
     } catch (renderErr) {
@@ -578,7 +588,7 @@ export async function renderPhotoSlideshow(
       if (msg.toLowerCase().includes("ass") || msg.toLowerCase().includes("libass") || msg.toLowerCase().includes("subtitle")) {
         console.warn("[ffmpeg-slideshow] ASS captions unavailable, retrying without...");
         await buildSlideshowAndRun(
-          photoPaths, audioPath, assPath, logoPath, avatarPath,
+          photoPaths, audioPath, assPath, logoPath, avatarPath, musicPath,
           outputPath, params, cfg, audioDuration, videoType, false,
         );
       } else {
@@ -602,6 +612,7 @@ async function buildSlideshowAndRun(
   assPath: string,
   logoPath: string | null,
   avatarPath: string | null,
+  musicPath: string | null,
   outputPath: string,
   params: SlideshowParams,
   cfg: FormatConfig,
@@ -684,11 +695,12 @@ async function buildSlideshowAndRun(
   }
 
   // ── Input index bookkeeping ───────────────────────────────────────────────
-  // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar
+  // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar, music
   const audioInputIdx = N;
   let nextInputIdx = N + 1;
   const logoInputIdx = logoPath ? nextInputIdx++ : -1;
   const avatarInputIdx = avatarPath ? nextInputIdx++ : -1;
+  const musicInputIdx = musicPath ? nextInputIdx++ : -1;
 
   // ── Logo ──────────────────────────────────────────────────────────────────
   let currentLabel = "captioned";
@@ -733,6 +745,20 @@ async function buildSlideshowAndRun(
     currentLabel = "named";
   }
 
+  // ── Background music mix ─────────────────────────────────────────────────
+  const musicVol = (params.musicVolume ?? 0.15).toFixed(2);
+  let audioOutLabel = `${audioInputIdx}:a`;
+  let audioMapFlag = audioOutLabel;
+  if (musicPath && musicInputIdx >= 0) {
+    // Loop music file over the full duration, mix under voiceover
+    filterParts.push(
+      `[${audioInputIdx}:a]volume=1.0[voice]`,
+      `[${musicInputIdx}:a]volume=${musicVol},aloop=loop=-1:size=2000000000,atrim=duration=${audioDuration}[musictrack]`,
+      `[voice][musictrack]amix=inputs=2:duration=first:dropout_transition=2[mixaudio]`,
+    );
+    audioMapFlag = "[mixaudio]";
+  }
+
   // ── Run FFmpeg ────────────────────────────────────────────────────────────
   const filterGraph = filterParts.join(";\n");
   console.log(`[ffmpeg-slideshow] ${filterParts.length} filter stages`);
@@ -747,12 +773,13 @@ async function buildSlideshowAndRun(
     cmd.input(audioPath);
     if (logoPath) cmd.input(logoPath);
     if (avatarPath) cmd.input(avatarPath);
+    if (musicPath) cmd.input(musicPath);
 
     cmd
       .complexFilter(filterGraph)
       .outputOptions([
         `-map [${currentLabel}]`,
-        `-map ${audioInputIdx}:a`,
+        `-map ${audioMapFlag}`,
         "-c:v libx264",
         "-preset fast",
         "-crf 22",
