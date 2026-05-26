@@ -27,7 +27,7 @@ interface GeneratedVideo {
   duration_seconds: number | null;
   created_at: string;
   project_id: string;
-  projects?: { title: string } | null;
+  projects?: { title: string; ai_script?: { hook?: string } | null } | null;
 }
 
 interface RenderProgress {
@@ -267,7 +267,7 @@ function VideosContent() {
     const supabase = createClient();
     const { data } = await supabase
       .from("generated_videos")
-      .select("*, projects(title, seo_data)")
+      .select("*, projects(title, seo_data, ai_script)")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -374,6 +374,8 @@ function VideosContent() {
             const isHighlighted = video.id === highlightId;
             const isRendering = video.render_status === "rendering" || video.render_status === "pending";
 
+            const hookText = (video.projects as { title: string; ai_script?: { hook?: string } | null } | null)?.ai_script?.hook;
+
             return (
               <Card
                 key={video.id}
@@ -399,6 +401,14 @@ function VideosContent() {
                           <Play size={22} className="text-transparent group-hover:text-slate-800 ml-1 transition-colors" fill="currentColor" />
                         </div>
                       </div>
+                      {/* Hook text overlay on first frame */}
+                      {hookText && (
+                        <div className="absolute bottom-0 left-0 right-0 px-3 pt-8 pb-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:opacity-0 transition-opacity pointer-events-none">
+                          <p className="text-white text-[11px] font-semibold leading-snug line-clamp-2 drop-shadow-sm">
+                            {hookText}
+                          </p>
+                        </div>
+                      )}
                     </>
                   ) : isRendering ? (
                     <>
