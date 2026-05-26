@@ -63,7 +63,7 @@ const tests = [
         },
         {
           type: "text",
-          text: "VoiceToVideos.AI",
+          text: "XpressReel",
           font_size: 60,
           fill_color: "#FFFFFF",
           x_alignment: "50%",

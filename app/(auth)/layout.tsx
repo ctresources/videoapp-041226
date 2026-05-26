@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Link href="/">
             <Image
               src="https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif"
-              alt="VoiceToVideos.AI"
+              alt="XpressReel"
               width={180}
               height={60}
               unoptimized

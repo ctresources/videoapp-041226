@@ -15,7 +15,7 @@ export type WebhookEvent =
 export interface WebhookPayload {
   event: WebhookEvent;
   timestamp: string;
-  source: "VoiceToVideos.AI";
+  source: "XpressReel";
   data: Record<string, unknown>;
 }
 
@@ -42,7 +42,7 @@ export async function publishWebhookEvent(
   const payload: WebhookPayload = {
     event,
     timestamp: new Date().toISOString(),
-    source: "VoiceToVideos.AI",
+    source: "XpressReel",
     data,
   };
 
@@ -53,7 +53,7 @@ export async function publishWebhookEvent(
     .map(async (webhook) => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "User-Agent": "VoiceToVideos.AI/1.0",
+        "User-Agent": "XpressReel/1.0",
         "X-VTV-Event": event,
         "X-VTV-Timestamp": payload.timestamp,
       };
