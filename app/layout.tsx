@@ -4,12 +4,12 @@ import { ToastProvider } from "@/providers/toast-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "XpressReel — Speak, Stream, Share",
+  title: "XpressReel — Speak, Spark, Share",
   description:
     "Real estate agents: transform your voice into viral video content and autopost to all social channels. Reclaim 10-15 hours every week.",
   keywords: ["real estate video", "voice to video", "AI video content", "real estate marketing"],
   openGraph: {
-    title: "XpressReel — Speak, Stream, Share",
+    title: "XpressReel — Speak, Spark, Share",
     description: "Transform your voice into viral real estate video content automatically.",
     type: "website",
     url: "https://xpressreel.com",
