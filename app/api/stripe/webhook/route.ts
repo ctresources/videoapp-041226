@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
         stripe_subscription_id: sub.id,
         subscription_tier: planInfo?.tier || "pro",
         subscription_status: sub.status,
-        credits_remaining: planInfo?.credits ?? 40,
+        // Trial users get 1 video credit; full credits granted when trial converts
+        credits_remaining: sub.status === "trialing" ? 1 : (planInfo?.credits ?? 40),
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         cancel_at_period_end: sub.cancel_at_period_end,
       });
@@ -70,6 +71,8 @@ export async function POST(req: NextRequest) {
       const priceId = item?.price.id;
       const planInfo = tierFromPriceId(priceId);
       const periodEnd = item?.current_period_end;
+      const previousStatus = (event.data.previous_attributes as Record<string, unknown>)?.status as string | undefined;
+      const trialJustConverted = previousStatus === "trialing" && sub.status === "active";
 
       await updateProfile(admin, userId, {
         stripe_subscription_id: sub.id,
@@ -77,6 +80,8 @@ export async function POST(req: NextRequest) {
         subscription_status: sub.status,
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         cancel_at_period_end: sub.cancel_at_period_end,
+        // Restore full credits when trial converts to paid
+        ...(trialJustConverted && { credits_remaining: planInfo?.credits ?? 40 }),
       });
       break;
     }
