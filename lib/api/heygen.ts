@@ -211,13 +211,13 @@ export async function addAvatarLook(
 export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading video asset (${(videoBuffer.length / 1024).toFixed(0)} KB)...`);
 
+  const form = new FormData();
+  form.append("file", new Blob([videoBuffer], { type: "video/mp4" }), "video.mp4");
+
   const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
-    headers: {
-      "x-api-key": getApiKey(),
-      "Content-Type": "video/mp4",
-    },
-    body: new Uint8Array(videoBuffer),
+    headers: { "x-api-key": getApiKey() },
+    body: form,
   });
 
   if (!res.ok) {
@@ -242,13 +242,13 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
 export async function uploadAudioAsset(audioBuffer: Buffer): Promise<string> {
   console.log(`[heygen] Uploading audio asset (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
 
+  const form = new FormData();
+  form.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "audio.mp3");
+
   const res = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
-    headers: {
-      "x-api-key": getApiKey(),
-      "Content-Type": "audio/mpeg",
-    },
-    body: new Uint8Array(audioBuffer),
+    headers: { "x-api-key": getApiKey() },
+    body: form,
   });
 
   if (!res.ok) {
@@ -516,10 +516,12 @@ export async function cloneVoice(
 
   // Step 1 — upload audio as asset
   console.log(`[heygen] Uploading voice sample (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
+  const uploadForm = new FormData();
+  uploadForm.append("file", new Blob([audioBuffer], { type: contentType }), "voice.mp3");
   const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
-    headers: { "x-api-key": apiKey, "Content-Type": contentType },
-    body: new Uint8Array(audioBuffer),
+    headers: { "x-api-key": apiKey },
+    body: uploadForm,
   });
 
   if (!uploadRes.ok) {
