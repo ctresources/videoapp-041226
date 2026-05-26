@@ -96,8 +96,10 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
         setProgress(data);
         if (data.status === "completed" || data.status === "failed") {
           if (intervalRef.current) clearInterval(intervalRef.current);
-          // Reload page to show final state
-          window.location.reload();
+          // Skip reload if user is mid-delete — would dismiss the confirm modal
+          if (!document.body.hasAttribute("data-video-deleting")) {
+            window.location.reload();
+          }
         }
       } catch { /* silent */ }
     }
@@ -244,6 +246,7 @@ function VideosContent() {
 
   async function handleDelete(videoId: string) {
     setDeletingId(videoId);
+    document.body.setAttribute("data-video-deleting", "1");
     try {
       const res = await fetch("/api/video/delete", {
         method: "DELETE",
@@ -260,6 +263,7 @@ function VideosContent() {
       }
     } finally {
       setDeletingId(null);
+      document.body.removeAttribute("data-video-deleting");
     }
   }
 
