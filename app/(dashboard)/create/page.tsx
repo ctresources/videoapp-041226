@@ -26,7 +26,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-type InputMode = "record" | "upload" | "location" | "listing";
+type InputMode = "speak" | "upload" | "listing";
 type RecordMode = "voice" | "camera";
 
 const STATE_MAP: Record<string, string> = {
@@ -223,7 +223,7 @@ function CreatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [inputMode, setInputMode] = useState<InputMode>("record");
+  const [inputMode, setInputMode] = useState<InputMode>("speak");
   const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
@@ -246,10 +246,10 @@ function CreatePageInner() {
     const urlCity = searchParams.get("city");
     const urlState = searchParams.get("state");
 
-    if (tab === "location") setInputMode("record");
     if (tab === "upload") setInputMode("upload");
-    if (tab === "listing") setInputMode("listing");
-    if (topic) { setLocCustomTopic(topic); setInputMode("record"); }
+    else if (tab === "listing") setInputMode("listing");
+    // "record", "location", "speak", or no tab → unified "speak" tab
+    if (topic) { setLocCustomTopic(topic); setInputMode("speak"); }
 
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -377,22 +377,22 @@ function CreatePageInner() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-brand-text">Speak, Stream, Share</h2>
+        <h2 className="text-2xl font-bold text-brand-text">Create New Video</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Hit the mic, talk about your market — we handle everything else.
+          Generate from a topic or record your voice — AI does the rest.
         </p>
       </div>
 
-      {/* Tab bar — 3 tabs */}
+      {/* Tab bar */}
       {step === "input" && (
         <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
           <button
-            onClick={() => setInputMode("record")}
+            onClick={() => setInputMode("speak")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all ${
-              inputMode === "record" || inputMode === "location" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
+              inputMode === "speak" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
             }`}
           >
-            <Mic size={14} /> Speak
+            <Mic size={14} /> Create
           </button>
           <button
             onClick={() => setInputMode("upload")}
@@ -414,7 +414,7 @@ function CreatePageInner() {
       )}
 
       {/* ── Speak / Upload shared flow ── */}
-      {(inputMode === "record" || inputMode === "upload") && (
+      {(inputMode === "speak" || inputMode === "upload") && (
         <>
           {/* Progress steps */}
           {step !== "input" && (
@@ -453,9 +453,262 @@ function CreatePageInner() {
           {/* Input step */}
           {step === "input" && (
             <>
-              <Card>
-                {inputMode === "record" ? (
-                  <>
+              {/* Upload mode */}
+              {inputMode === "upload" && (
+                <Card>
+                  <VoiceUploader onFileSelected={handleFileSelected} />
+                  {readyToContinue && (
+                    <div className="mt-6 pt-5 border-t border-slate-100">
+                      <Button onClick={handleContinue} size="lg" className="w-full gap-2">
+                        Transcribe &amp; Continue <ArrowRight size={16} />
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {/* Speak mode — unified card: topic + voice in one */}
+              {inputMode === "speak" && (
+                <Card>
+                  {/* ── Section 1: Topic-based generation ── */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-5">
+                      <div className="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center">
+                        <MapPin size={16} className="text-primary-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-brand-text">Generate a Script from Topic</p>
+                        <p className="text-xs text-slate-400">Pick a topic — AI researches and writes your script</p>
+                      </div>
+                    </div>
+
+                    {/* Topic input */}
+                    <div className="mb-5">
+                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                        What&apos;s your topic? <span className="text-red-400">*</span>
+                      </label>
+                      <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                        <input
+                          id="loc-custom-topic"
+                          type="text"
+                          value={locCustomTopic}
+                          onChange={(e) => setLocCustomTopic(e.target.value)}
+                          placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
+                          className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                        />
+                        <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Tap the 🎤 mic on any field to speak instead of type
+                      </p>
+                    </div>
+
+                    {/* Templates toggle */}
+                    <div className="mb-5">
+                      <button
+                        onClick={() => setShowTemplates((v) => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">💡</span>
+                          <div className="text-left">
+                            <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
+                            <p className="text-xs text-slate-400">
+                              24 templates · Real Estate · Location · Events &amp; Community News
+                            </p>
+                          </div>
+                        </div>
+                        {showTemplates
+                          ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
+                          : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
+                      </button>
+
+                      {showTemplates && (
+                        <div className="mt-3">
+                          <ContentTemplates
+                            onSelect={handleTemplateSelect}
+                            city={locCity}
+                            state={locState}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Location fields */}
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                            City <span className="text-red-400">*</span>
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                            <input
+                              type="text"
+                              value={locCity}
+                              onChange={(e) => setLocCity(e.target.value)}
+                              placeholder="Austin"
+                              className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                            />
+                            <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                            State <span className="text-red-400">*</span>
+                          </label>
+                          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                            <input
+                              type="text"
+                              value={locState}
+                              onChange={(e) => setLocState(e.target.value)}
+                              placeholder="TX"
+                              maxLength={2}
+                              className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
+                            />
+                            <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                          ZIP Code <span className="text-slate-400">(optional)</span>
+                        </label>
+                        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
+                          <input
+                            type="text"
+                            value={locZip}
+                            onChange={(e) => setLocZip(e.target.value)}
+                            placeholder="78701"
+                            maxLength={10}
+                            className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                          />
+                          <FieldMic onTranscript={(t) => setLocZip(t.replace(/\D/g, "").slice(0, 10))} title="Say your ZIP code" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Audience + Tone (optional) */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                          Target Audience <span className="text-slate-400">(optional)</span>
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <div className="relative flex-1">
+                            <select
+                              value={locAudience}
+                              onChange={(e) => setLocAudience(e.target.value)}
+                              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                            >
+                              <option value="">Any</option>
+                              <option value="Buyers">Buyers</option>
+                              <option value="Sellers">Sellers</option>
+                              <option value="Investors">Investors</option>
+                              <option value="First-Time Buyers">First-Time Buyers</option>
+                              <option value="Luxury">Luxury</option>
+                              <option value="Mixed">Mixed</option>
+                            </select>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+                          <FieldMic title='Say "buyers", "sellers", "investors"…' onTranscript={(t) => {
+                            const v = matchAudience(t);
+                            if (v) setLocAudience(v);
+                          }} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                          Brand Style <span className="text-slate-400">(optional)</span>
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <div className="relative flex-1">
+                            <select
+                              value={locTone}
+                              onChange={(e) => setLocTone(e.target.value)}
+                              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                            >
+                              <option value="">Any</option>
+                              <option value="Friendly">Friendly</option>
+                              <option value="Modern">Modern</option>
+                              <option value="Luxury">Luxury</option>
+                              <option value="High-Energy">High-Energy</option>
+                              <option value="Educational">Educational</option>
+                            </select>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+                          <FieldMic title='Say "friendly", "modern", "luxury"…' onTranscript={(t) => {
+                            const v = matchTone(t);
+                            if (v) setLocTone(v);
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CTA Preference (optional) */}
+                    <div className="mb-5">
+                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
+                        CTA Preference <span className="text-slate-400">(optional)</span>
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <div className="relative flex-1">
+                          <select
+                            value={locCta}
+                            onChange={(e) => setLocCta(e.target.value)}
+                            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
+                          >
+                            <option value="">Call or Text Today (default)</option>
+                            <option value="call">Call Today</option>
+                            <option value="text">Text Today</option>
+                            <option value="website">Visit Website</option>
+                            <option value="consultation">Schedule a Consultation</option>
+                          </select>
+                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                        <FieldMic title='Say "call", "text", "website", or "consultation"' onTranscript={(t) => {
+                          const v = matchCta(t);
+                          if (v) setLocCta(v);
+                        }} />
+                      </div>
+                    </div>
+
+                    {/* Info banner */}
+                    <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
+                      <p className="text-xs text-primary-700 leading-relaxed">
+                        <strong>AI-powered research</strong> — searches trusted real estate data sources
+                        in real time and returns a structured script ready for video production. Takes ~10–20 seconds.
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={handleGenerateLocationScript}
+                      loading={locGenerating}
+                      disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim()}
+                      size="lg"
+                      className="w-full gap-2"
+                    >
+                      {locGenerating ? (
+                        <>Researching {locCity || "location"}...</>
+                      ) : (
+                        <>Generate Location Script <ArrowRight size={16} /></>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* ── OR divider ── */}
+                  <div className="relative my-8">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200" />
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="px-4 bg-white text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                        or record your voice
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── Section 2: Voice recording ── */}
+                  <div>
                     {/* Voice / Camera sub-toggle */}
                     <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
                       <button
@@ -490,244 +743,7 @@ function CreatePageInner() {
                         <VoiceHero onRecordingComplete={handleRecordingComplete} />
                       </>
                     )}
-                  </>
-                ) : (
-                  <VoiceUploader onFileSelected={handleFileSelected} />
-                )}
-
-                {readyToContinue && (
-                  <div className="mt-6 pt-5 border-t border-slate-100">
-                    <Button onClick={handleContinue} size="lg" className="w-full gap-2">
-                      Transcribe & Continue <ArrowRight size={16} />
-                    </Button>
                   </div>
-                )}
-              </Card>
-
-              {/* Script generator — secondary option on Speak tab */}
-              {inputMode === "record" && recordMode === "voice" && (
-                <Card className="mt-4">
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center">
-                      <MapPin size={16} className="text-primary-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-brand-text">Or Generate a Script</p>
-                      <p className="text-xs text-slate-400">Pick a topic — AI researches and writes your script</p>
-                    </div>
-                  </div>
-
-                  {/* Topic input */}
-                  <div className="mb-5">
-                    <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                      What&apos;s your topic? <span className="text-red-400">*</span>
-                    </label>
-                    <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                      <input
-                        id="loc-custom-topic"
-                        type="text"
-                        value={locCustomTopic}
-                        onChange={(e) => setLocCustomTopic(e.target.value)}
-                        placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
-                        className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                      />
-                      <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Tap the 🎤 mic on any field to speak instead of type
-                    </p>
-                  </div>
-
-                  {/* Templates toggle */}
-                  <div className="mb-5">
-                    <button
-                      onClick={() => setShowTemplates((v) => !v)}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 hover:border-primary-400 hover:bg-primary-50/40 transition-all group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">💡</span>
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-brand-text">Need a topic idea? Browse templates</p>
-                          <p className="text-xs text-slate-400">
-                            24 templates · Real Estate · Location · Events &amp; Community News
-                          </p>
-                        </div>
-                      </div>
-                      {showTemplates
-                        ? <ChevronUp size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />
-                        : <ChevronDown size={16} className="text-slate-400 group-hover:text-primary-500 transition-colors" />}
-                    </button>
-
-                    {showTemplates && (
-                      <div className="mt-3">
-                        <ContentTemplates
-                          onSelect={handleTemplateSelect}
-                          city={locCity}
-                          state={locState}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Location fields */}
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Location</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                          City <span className="text-red-400">*</span>
-                        </label>
-                        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                          <input
-                            type="text"
-                            value={locCity}
-                            onChange={(e) => setLocCity(e.target.value)}
-                            placeholder="Austin"
-                            className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                          />
-                          <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                          State <span className="text-red-400">*</span>
-                        </label>
-                        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                          <input
-                            type="text"
-                            value={locState}
-                            onChange={(e) => setLocState(e.target.value)}
-                            placeholder="TX"
-                            maxLength={2}
-                            className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
-                          />
-                          <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                        ZIP Code <span className="text-slate-400">(optional)</span>
-                      </label>
-                      <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                        <input
-                          type="text"
-                          value={locZip}
-                          onChange={(e) => setLocZip(e.target.value)}
-                          placeholder="78701"
-                          maxLength={10}
-                          className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                        />
-                        <FieldMic onTranscript={(t) => setLocZip(t.replace(/\D/g, "").slice(0, 10))} title="Say your ZIP code" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Audience + Tone (optional) */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                        Target Audience <span className="text-slate-400">(optional)</span>
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <div className="relative flex-1">
-                          <select
-                            value={locAudience}
-                            onChange={(e) => setLocAudience(e.target.value)}
-                            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                          >
-                            <option value="">Any</option>
-                            <option value="Buyers">Buyers</option>
-                            <option value="Sellers">Sellers</option>
-                            <option value="Investors">Investors</option>
-                            <option value="First-Time Buyers">First-Time Buyers</option>
-                            <option value="Luxury">Luxury</option>
-                            <option value="Mixed">Mixed</option>
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
-                        <FieldMic title='Say "buyers", "sellers", "investors"…' onTranscript={(t) => {
-                          const v = matchAudience(t);
-                          if (v) setLocAudience(v);
-                        }} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                        Brand Style <span className="text-slate-400">(optional)</span>
-                      </label>
-                      <div className="flex items-center gap-1">
-                        <div className="relative flex-1">
-                          <select
-                            value={locTone}
-                            onChange={(e) => setLocTone(e.target.value)}
-                            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                          >
-                            <option value="">Any</option>
-                            <option value="Friendly">Friendly</option>
-                            <option value="Modern">Modern</option>
-                            <option value="Luxury">Luxury</option>
-                            <option value="High-Energy">High-Energy</option>
-                            <option value="Educational">Educational</option>
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
-                        <FieldMic title='Say "friendly", "modern", "luxury"…' onTranscript={(t) => {
-                          const v = matchTone(t);
-                          if (v) setLocTone(v);
-                        }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CTA Preference (optional) */}
-                  <div className="mb-5">
-                    <label className="text-xs font-medium text-slate-500 block mb-1.5">
-                      CTA Preference <span className="text-slate-400">(optional)</span>
-                    </label>
-                    <div className="flex items-center gap-1">
-                      <div className="relative flex-1">
-                        <select
-                          value={locCta}
-                          onChange={(e) => setLocCta(e.target.value)}
-                          className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white appearance-none pr-8"
-                        >
-                          <option value="">Call or Text Today (default)</option>
-                          <option value="call">Call Today</option>
-                          <option value="text">Text Today</option>
-                          <option value="website">Visit Website</option>
-                          <option value="consultation">Schedule a Consultation</option>
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                      <FieldMic title='Say "call", "text", "website", or "consultation"' onTranscript={(t) => {
-                        const v = matchCta(t);
-                        if (v) setLocCta(v);
-                      }} />
-                    </div>
-                  </div>
-
-                  {/* Info banner */}
-                  <div className="mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-                    <p className="text-xs text-primary-700 leading-relaxed">
-                      <strong>AI-powered research</strong> — searches trusted real estate data sources
-                      in real time and returns a structured script ready for video production. Takes ~10–20 seconds.
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handleGenerateLocationScript}
-                    loading={locGenerating}
-                    disabled={!locCity.trim() || !locState.trim() || !locCustomTopic.trim()}
-                    size="lg"
-                    className="w-full gap-2"
-                  >
-                    {locGenerating ? (
-                      <>Researching {locCity || "location"}...</>
-                    ) : (
-                      <>Generate Location Script <ArrowRight size={16} /></>
-                    )}
-                  </Button>
                 </Card>
               )}
             </>
