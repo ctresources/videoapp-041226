@@ -22,7 +22,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const title = Object.entries(pageTitles).find(([key]) =>
     pathname === key || (key !== "/dashboard" && pathname.startsWith(key))
-  )?.[1] ?? "VoiceToVideos.AI";
+  )?.[1] ?? "XpressReel";
 
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 md:px-6 shrink-0">

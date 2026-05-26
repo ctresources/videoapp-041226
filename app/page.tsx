@@ -76,7 +76,7 @@ const features = [
   },
   {
     title: "49% Faster Revenue Growth",
-    description: "Agents who post consistent video content grow revenue 49% faster. VoiceToVideos.AI gives you the output of a full content team without the cost or headache.",
+    description: "Agents who post consistent video content grow revenue 49% faster. XpressReel gives you the output of a full content team without the cost or headache.",
     photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
   },
 ];
@@ -157,7 +157,7 @@ export default function LandingPage() {
           <Link href="/">
             <Image
               src="https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif"
-              alt="VoiceToVideos.AI"
+              alt="XpressReel"
               width={160}
               height={48}
               unoptimized
@@ -194,7 +194,7 @@ export default function LandingPage() {
                 <span className="text-blue-900">of your TOWN.</span>
               </h1>
               <p className="text-base text-slate-500 mb-10 leading-relaxed">
-                The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
+                The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
@@ -289,7 +289,7 @@ export default function LandingPage() {
             <p className="text-sm text-slate-700">
               Agents who post consistent video content grow revenue{" "}
               <span className="font-bold text-blue-900">49% faster</span>{" "}
-              — yet two-thirds of the market still isn&apos;t doing it consistently. VoiceToVideos.AI removes every barrier that&apos;s stopping them.
+              — yet two-thirds of the market still isn&apos;t doing it consistently. XpressReel removes every barrier that&apos;s stopping them.
             </p>
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function LandingPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
-                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">VoiceToVideos.AI</th>
+                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">XpressReel</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor A</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor B</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor C</th>
@@ -467,7 +467,7 @@ export default function LandingPage() {
             Become the &ldquo;digital go-to-real estate agent&rdquo; of your TOWN.
           </h2>
           <p className="text-blue-200 text-lg mb-10 max-w-xl leading-relaxed">
-            The agents posting daily aren&apos;t working harder — they&apos;re using VoiceToVideos.AI. Join agents already ahead of their competition.
+            The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
           </p>
           <p className="text-blue-300 text-sm">No camera needed · Fair Housing compliant · Cancel anytime</p>
         </div>
@@ -480,7 +480,7 @@ export default function LandingPage() {
             <div>
               <Image
                 src="https://gfawbvsokbgrlbcfqrkh.supabase.co/storage/v1/object/public/logos/b1ed3314-78e1-4c73-bb4a-b6ad59460692/1774386361991-new_animated_logo_ver_2.gif"
-                alt="VoiceToVideos.AI"
+                alt="XpressReel"
                 width={140}
                 height={42}
                 unoptimized
@@ -499,7 +499,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
-            <p>© {new Date().getFullYear()} VoiceToVideos.AI. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} XpressReel. All rights reserved.</p>
             <p>All AI-generated content includes Fair Housing compliance guardrails per 42 U.S.C. § 3604.</p>
           </div>
         </div>

@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
   const payload = {
     event: "test",
     timestamp: new Date().toISOString(),
-    source: "VoiceToVideos.AI",
+    source: "XpressReel",
     data: {
-      message: `Test webhook from VoiceToVideos.AI — webhook "${webhook.name}" is working correctly.`,
+      message: `Test webhook from XpressReel — webhook "${webhook.name}" is working correctly.`,
       agent_name: (profile as { full_name: string } | null)?.full_name || "Agent",
       agent_email: user.email,
     },
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const body = JSON.stringify(payload);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "VoiceToVideos.AI/1.0",
+    "User-Agent": "XpressReel/1.0",
     "X-VTV-Event": "test",
   };
 
