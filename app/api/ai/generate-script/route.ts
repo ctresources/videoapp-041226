@@ -4,6 +4,9 @@ import { generateVideoScript, generateSeoData, generateYoutubeMetadata } from "@
 import { searchRealEstateContext } from "@/lib/api/yousearch";
 import { NextRequest, NextResponse } from "next/server";
 
+// sonar-pro web search can take 30-50s; SEO calls add another 15-20s
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -55,10 +58,18 @@ export async function POST(req: NextRequest) {
   const agentName = profile.full_name || "the agent";
 
   try {
-    // Generate script and SEO in parallel
+    // Script generation is required — uses sonar-pro with web search (~30-50s)
     const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType);
+
+    const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
+
+    // SEO enrichment is optional — uses sonar (fast, ~5-10s each). If they timeout
+    // after the script call consumed most of the 60s budget, proceed without them.
     const [baseSeo, ytMeta] = await Promise.all([
-      generateSeoData(aiScript.title, aiScript.script, aiScript.keywords),
+      generateSeoData(aiScript.title, aiScript.script, aiScript.keywords).catch((err) => {
+        console.error("[generate-script] SEO generation failed (non-fatal):", err);
+        return null;
+      }),
       generateYoutubeMetadata({
         title: aiScript.title,
         script: aiScript.script,
@@ -70,18 +81,15 @@ export async function POST(req: NextRequest) {
         website: profile.website || undefined,
         phone: profile.phone || profile.company_phone || undefined,
       }).catch((err) => {
-        console.error("[generate-script] YouTube metadata failed:", err);
+        console.error("[generate-script] YouTube metadata failed (non-fatal):", err);
         return null;
       }),
     ]);
 
-    const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
-
     const seoData = {
-      ...baseSeo,
-      // Prefer SEO/GEO/AEO-optimized YouTube copy when available
-      youtube_title: ytMeta?.youtube_title || baseSeo.youtube_title,
-      youtube_description: ytMeta?.youtube_description || baseSeo.youtube_description,
+      ...(baseSeo ?? {}),
+      youtube_title: ytMeta?.youtube_title || baseSeo?.youtube_title,
+      youtube_description: ytMeta?.youtube_description || baseSeo?.youtube_description,
       thumbnail_url: thumbnailUrl,
     };
 

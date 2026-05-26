@@ -228,10 +228,11 @@ Return ONLY valid JSON:
   "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5", "#hashtag6"]
 }`;
 
+  // sonar (non-pro) is 3-5× faster — no web search needed for SEO copy
   const raw = await perplexityChat([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
-  ]);
+  ], "sonar");
 
   return parseJson<YoutubeMetadata>(raw, "generateYoutubeMetadata");
 }
@@ -263,10 +264,11 @@ Return ONLY valid JSON:
   "instagram_caption": "Instagram caption (150-200 chars, punchy, ends with emoji, includes 3-5 hashtags inline)"
 }`;
 
+  // sonar (non-pro) is 3-5× faster — no web search needed for SEO metadata
   const raw = await perplexityChat([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
-  ]);
+  ], "sonar");
 
   return parseJson<SeoOutput>(raw, "generateSeoData");
 }
