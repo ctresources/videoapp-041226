@@ -78,6 +78,7 @@ export interface GenerateVideoParams {
   dimension: { width: number; height: number };
   title?: string;
   callbackUrl?: string;
+  callbackId?: string;
   /** Position the talking photo: "bottom-left" (default) or "bottom-right" */
   photoPosition?: "bottom-left" | "bottom-right";
 }
@@ -348,6 +349,7 @@ export async function generateVideo(params: GenerateVideoParams): Promise<string
     caption: !hasPerSceneAudio,
     dimension: params.dimension,
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
+    ...(params.callbackId && { callback_id: params.callbackId }),
     video_inputs: videoInputs,
   };
 

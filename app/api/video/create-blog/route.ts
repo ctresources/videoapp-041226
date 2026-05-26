@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
+  generateVideo,
+  uploadAudioAsset,
   getCinematicStyleId,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
@@ -9,6 +11,7 @@ import {
   type VideoType,
   type VideoAgentFile,
 } from "@/lib/api/heygen";
+import { generateSpeech } from "@/lib/api/elevenlabs";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -310,7 +313,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website")
+    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id")
     .eq("id", user.id)
     .single();
 
@@ -326,6 +329,7 @@ export async function POST(req: NextRequest) {
     location_city: string | null;
     location_state: string | null;
     website: string | null;
+    voice_clone_id: string | null;
   } | null;
 
   if (!profile?.heygen_photo_id) {
@@ -374,6 +378,72 @@ export async function POST(req: NextRequest) {
       listingPhotoCount: listingPhotos.length,
     });
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    const callbackUrl = appUrl && !appUrl.includes("localhost")
+      ? `${appUrl}/api/video/webhook`
+      : undefined;
+
+    const avatarId = lookId || profile.heygen_photo_id;
+
+    // ── ElevenLabs TTS path: user has a cloned voice → generate audio and create v2 video ──
+    if (profile.voice_clone_id) {
+      console.log(`[create-blog] EL voice path — cloning TTS for voice ${profile.voice_clone_id}`);
+
+      const elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
+      const audioAssetId = await uploadAudioAsset(elAudioBuffer);
+
+      const { data: videoRow } = await admin
+        .from("generated_videos")
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          video_type: videoType,
+          render_provider: "heygen_v2",
+          render_status: "rendering",
+          metadata: { dimension, orientation, city, state, title },
+        })
+        .select()
+        .single();
+
+      const videoId = await generateVideo({
+        scenes: [{
+          scriptText: safeScript,
+          audioAssetId,
+          backgroundImageUrl: listingPhotos[0] ?? undefined,
+          backgroundColor: listingPhotos[0] ? undefined : "#0F172A",
+        }],
+        talkingPhotoId: avatarId,
+        photoPosition: "bottom-right",
+        dimension,
+        title,
+        callbackUrl,
+        callbackId: videoRow?.id,
+      });
+
+      await admin
+        .from("generated_videos")
+        .update({ render_job_id: videoId })
+        .eq("id", videoRow?.id);
+
+      await admin.from("api_usage_log").insert({
+        user_id: user.id,
+        api_provider: "heygen",
+        endpoint: "video-v2-el-tts",
+        credits_used: 1,
+        response_status: 202,
+      });
+
+      console.log(`[create-blog] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
+      return NextResponse.json({
+        video: {
+          ...videoRow,
+          render_job_id: videoId,
+          render_status: "rendering",
+        },
+      });
+    }
+
+    // ── Video Agent path: no EL voice → use HeyGen voice ID ──────────────────
     let voiceId = profile.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);
@@ -413,12 +483,6 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-    const callbackUrl = appUrl && !appUrl.includes("localhost")
-      ? `${appUrl}/api/video/webhook`
-      : undefined;
-
-    const avatarId = lookId || profile.heygen_photo_id;
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId,
