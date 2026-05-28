@@ -194,7 +194,7 @@ export default function LandingPage() {
                 <span className="block text-blue-900">and become the go-to-agent of your town.</span>
               </h1>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
-                Real estate agents are invisible online. XpressReel fixes that — turning your 90-second voice recording into a publish-ready professional video, automatically.
+                Real estate agents are invisible online. XpressReel fixes that — turning your voice recording into a publish-ready professional video.
               </p>
               <p className="text-sm font-semibold text-blue-900 mb-10 tracking-wide">
                 Speak, Spark, Share — no filming, no editing, no glam required.
