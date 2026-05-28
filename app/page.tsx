@@ -190,7 +190,8 @@ export default function LandingPage() {
                 Agents who post video grow revenue 49% faster. Less than 8% do it consistently.
               </p>
               <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                <span className="block">Hit the Mic....Be Visible</span>
+                <span className="block">Hit the Mic....</span>
+                <span className="block">Be Visible</span>
                 <span className="block text-blue-900">and become the go-to-agent of your town.</span>
               </h1>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
