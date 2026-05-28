@@ -156,14 +156,13 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex flex-col leading-none">
             <Image
-              src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo.svg"
+              src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
               alt="XpressReel"
-              width={160}
-              height={48}
+              width={180}
+              height={52}
               unoptimized
               priority
             />
-            <span className="text-[10px] font-semibold text-blue-900 tracking-widest uppercase ml-0.5 -mt-1">Speak, Spark, Share</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <a href="#who"          className="hover:text-slate-900 transition-colors">Who It&apos;s For</a>
@@ -188,14 +187,14 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
-                Stop waiting. Start dominating your local market.
+                Agents who post video grow revenue 49% faster. Less than 8% do it consistently.
               </p>
               <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                <span className="block">Become the &ldquo;digital go-to agent&rdquo;</span>
-                <span className="block text-blue-900">of your TOWN.</span>
+                <span className="block">Hit the Mic.</span>
+                <span className="block text-blue-900">We handle everything else.</span>
               </h1>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
-                The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
+                Real estate agents are invisible online. XpressReel fixes that — turning your 90-second voice recording into a publish-ready professional video, automatically.
               </p>
               <p className="text-sm font-semibold text-blue-900 mb-10 tracking-wide">
                 Speak, Spark, Share — no filming, no editing, no glam required.
@@ -541,12 +540,12 @@ export default function LandingPage() {
       {/* ── Final CTA ── */}
       <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop waiting. Start dominating your local market.</p>
+          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Start owning your market.</p>
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight max-w-2xl">
-            Become the &ldquo;digital go-to agent&rdquo; of your TOWN.
+            Hit the Mic. Speak, Spark, Share.
           </h2>
           <p className="text-blue-200 text-lg mb-10 max-w-xl leading-relaxed">
-            The agents posting daily aren&apos;t working harder — they&apos;re using XpressReel. Join agents already ahead of their competition.
+            Your voice. Your expertise. Your market. XpressReel turns 90 seconds of talking into a week of content — no camera, no editing, no glam required.
           </p>
           <p className="text-blue-300 text-sm">No camera needed · Fair Housing compliant · Cancel anytime</p>
         </div>
@@ -558,13 +557,12 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8 pb-8 border-b border-slate-800">
             <div>
               <Image
-                src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo.svg"
+                src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
                 alt="XpressReel"
-                width={140}
-                height={42}
+                width={160}
+                height={48}
                 unoptimized
               />
-              <p className="text-xs mt-2 text-blue-400 font-semibold tracking-widest uppercase">Speak, Spark, Share</p>
               <p className="text-xs mt-2 text-slate-500 max-w-xs leading-relaxed">
                 The one-button video platform for real estate agents. No camera. No editing. Just results.
               </p>
