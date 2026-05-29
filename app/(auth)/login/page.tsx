@@ -35,7 +35,7 @@ export default function LoginPage() {
     }
 
     toast.success("Welcome back!");
-    router.push("/dashboard");
+    router.push("/create");
     router.refresh();
   }
 

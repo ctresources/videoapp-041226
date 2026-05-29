@@ -40,9 +40,9 @@ export async function middleware(request: NextRequest) {
   // After signOut(), getUser() returns null even if stale cookies remain.
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Authenticated users visiting login/register → dashboard
+  // Authenticated users visiting login/register → create
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/create", request.url));
   }
 
   // Unauthenticated users on protected routes → login
