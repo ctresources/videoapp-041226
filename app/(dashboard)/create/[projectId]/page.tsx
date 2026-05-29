@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  ImageIcon, Film, Palette, User
+  User
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -71,16 +71,8 @@ interface Project {
 type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 
 const videoTypes: { value: VideoType; label: string; desc: string }[] = [
-  { value: "blog_long", label: "Blog Video", desc: "Landscape 16:9, ~2 min" },
+  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min" },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min" },
-  { value: "youtube_16x9", label: "YouTube", desc: "Landscape 16:9, ~2 min" },
-];
-
-type BackgroundMode = "stock-video" | "animated";
-
-const backgroundModes: { value: BackgroundMode; label: string; desc: string; icon: typeof ImageIcon }[] = [
-  { value: "stock-video", label: "Video B-Roll", desc: "Real video footage matched to your topic", icon: Film },
-  { value: "animated", label: "Animated", desc: "Animated color gradient backgrounds", icon: Palette },
 ];
 
 export default function ProjectEditorPage() {
@@ -92,8 +84,7 @@ export default function ProjectEditorPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
-  const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("blog_long");
-  const [selectedBgMode, setSelectedBgMode] = useState<BackgroundMode>("stock-video");
+  const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("youtube_16x9");
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -268,7 +259,7 @@ export default function ProjectEditorPage() {
         body: JSON.stringify({
           projectId: project.id,
           videoType: selectedVideoType,
-          backgroundMode: selectedBgMode,
+          backgroundMode: "stock-video",
           script: fullScript,
           hook,
           lookId: selectedLookId || undefined,
@@ -530,25 +521,6 @@ export default function ProjectEditorPage() {
               ))}
             </div>
 
-            {/* Background style selector */}
-            <p className="text-xs font-medium text-slate-500 mb-2">Background Style</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              {backgroundModes.map(({ value, label, desc, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedBgMode(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedBgMode === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <Icon size={16} className={selectedBgMode === value ? "text-primary-500" : "text-slate-400"} />
-                  <p className="text-sm font-medium text-brand-text mt-1">{label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-tight">{desc}</p>
-                </button>
-              ))}
-            </div>
 
             {/* Avatar look selector */}
             {(looksLoading || looks.length > 1) && (
