@@ -194,14 +194,14 @@ export function ListingVideoForm() {
       toast(`Only the first ${remaining} photos will be used (max ${MAX_LISTING_PHOTOS}).`, { icon: "ℹ️" });
     }
 
-    // Client-side validation
+    // Client-side validation — collect all bad files, don't abort on first
+    const invalid: string[] = [];
     for (const f of batch) {
-      if (!f.type.startsWith("image/")) {
-        return toast.error(`${f.name} is not an image.`);
-      }
-      if (f.size > 15 * 1024 * 1024) {
-        return toast.error(`${f.name} is too large. Max 15 MB per photo.`);
-      }
+      if (!f.type.startsWith("image/")) invalid.push(`${f.name} is not an image`);
+      else if (f.size > 15 * 1024 * 1024) invalid.push(`${f.name} exceeds 15 MB`);
+    }
+    if (invalid.length > 0) {
+      return toast.error(invalid.join(" · "));
     }
 
     setUploadingPhotos(true);
@@ -598,25 +598,24 @@ export function ListingVideoForm() {
             type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={uploadingPhotos}
-            className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {uploadingPhotos ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
-                <span className="flex-1 text-left">Uploading photos…</span>
+                <Loader2 size={24} className="animate-spin text-blue-600" />
+                <span className="text-sm font-semibold text-blue-700">Uploading photos…</span>
               </>
             ) : (
               <>
-                <ImageIcon size={16} />
-                <span className="flex-1 text-left">
+                <ImageIcon size={24} className="text-blue-600" />
+                <span className="text-sm font-bold text-blue-900">
                   {listing.photoUrls.length === 0
-                    ? "Upload listing photos"
-                    : `Add more photos (${MAX_LISTING_PHOTOS - listing.photoUrls.length} left)`}
-                  <span className="block text-xs text-slate-400 font-normal mt-0.5">
-                    JPG, PNG, WEBP — up to 15 MB each. Select up to 12 at once.
-                  </span>
+                    ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
+                    : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
                 </span>
-                <Upload size={14} className="text-slate-400" />
+                <span className="text-xs text-blue-600 text-center">
+                  Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple files · JPG, PNG, WEBP · max 15 MB each
+                </span>
               </>
             )}
           </button>
