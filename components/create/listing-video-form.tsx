@@ -205,29 +205,25 @@ export function ListingVideoForm() {
     }
 
     setUploadingPhotos(true);
-    let okCount = 0;
+
+    const results = await Promise.allSettled(batch.map((f) => uploadPhotoToStorage(f)));
+
+    const urls: string[] = [];
     const failures: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") urls.push(r.value);
+      else failures.push(`${batch[i].name}: ${r.reason instanceof Error ? r.reason.message : "upload failed"}`);
+    });
 
-    // Upload each photo directly browser→Supabase (bypasses Vercel limits).
-    // Run sequentially so one failure doesn't kill the rest.
-    for (const f of batch) {
-      try {
-        const url = await uploadPhotoToStorage(f);
-        setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, url] }));
-        okCount++;
-      } catch (err) {
-        failures.push(`${f.name}: ${err instanceof Error ? err.message : "upload failed"}`);
-      }
-    }
-
-    setUploadingPhotos(false);
-
-    if (okCount > 0) {
-      toast.success(`Uploaded ${okCount} photo${okCount === 1 ? "" : "s"}`);
+    if (urls.length > 0) {
+      setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, ...urls] }));
+      toast.success(`Uploaded ${urls.length} photo${urls.length === 1 ? "" : "s"}`);
     }
     if (failures.length > 0) {
       toast.error(failures.length === 1 ? failures[0] : `${failures.length} photos failed to upload`);
     }
+
+    setUploadingPhotos(false);
   }
 
   function removePhoto(index: number) {
@@ -617,7 +613,7 @@ export function ListingVideoForm() {
                     ? "Upload listing photos"
                     : `Add more photos (${MAX_LISTING_PHOTOS - listing.photoUrls.length} left)`}
                   <span className="block text-xs text-slate-400 font-normal mt-0.5">
-                    JPG, PNG, WEBP — up to 15 MB each. Multiple at once.
+                    JPG, PNG, WEBP — up to 15 MB each. Select up to 12 at once.
                   </span>
                 </span>
                 <Upload size={14} className="text-slate-400" />
