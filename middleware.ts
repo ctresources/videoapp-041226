@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
 
   // Authenticated users visiting login/register → dashboard
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/create", request.url));
   }
 
   // Unauthenticated users on protected routes → login
