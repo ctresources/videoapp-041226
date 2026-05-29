@@ -385,11 +385,13 @@ function CreatePageInner() {
 
       {/* Tab bar */}
       {step === "input" && (
-        <div className="flex gap-1 mb-6 p-1 bg-slate-100 rounded-xl">
+        <div className="flex gap-2 mb-6">
           <button
             onClick={() => setInputMode("speak")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-              inputMode === "speak" ? "bg-blue-900 shadow-sm text-white" : "text-slate-500 hover:text-slate-700"
+              inputMode === "speak"
+                ? "bg-blue-900 text-white shadow-md"
+                : "bg-blue-100 text-blue-700 hover:bg-blue-200"
             }`}
           >
             <Mic size={14} /> Create
@@ -397,7 +399,9 @@ function CreatePageInner() {
           <button
             onClick={() => setInputMode("listing")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-              inputMode === "listing" ? "bg-blue-900 shadow-sm text-white" : "text-slate-500 hover:text-slate-700"
+              inputMode === "listing"
+                ? "bg-emerald-700 text-white shadow-md"
+                : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
             }`}
           >
             <Building2 size={14} /> Listing
@@ -405,7 +409,9 @@ function CreatePageInner() {
           <button
             onClick={() => setInputMode("upload")}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-              inputMode === "upload" ? "bg-blue-900 shadow-sm text-white" : "text-slate-500 hover:text-slate-700"
+              inputMode === "upload"
+                ? "bg-violet-700 text-white shadow-md"
+                : "bg-violet-100 text-violet-700 hover:bg-violet-200"
             }`}
           >
             <Upload size={14} /> Upload
