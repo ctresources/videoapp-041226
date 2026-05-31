@@ -17,14 +17,14 @@ export const PLANS = {
     name: "Agent",
     priceId: process.env.STRIPE_PRICE_AGENT!,
     price: 89,
-    videos: 12,
+    videos: 8,
     tier: "agent" as const,
   },
   pro: {
     name: "Pro",
     priceId: process.env.STRIPE_PRICE_PRO!,
     price: 119,
-    videos: 16,
+    videos: 12,
     tier: "pro" as const,
   },
 } as const;
