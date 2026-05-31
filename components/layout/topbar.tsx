@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Menu, Plus, Bell } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -33,7 +34,18 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         >
           <Menu size={20} className="text-slate-500" />
         </button>
-        <h1 className="text-base font-semibold text-brand-text">{title}</h1>
+        {/* Logo on mobile (sidebar hidden); page title on desktop */}
+        <Link href="/dashboard" className="md:hidden">
+          <Image
+            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
+            alt="XpressReel"
+            width={150}
+            height={46}
+            unoptimized
+            priority
+          />
+        </Link>
+        <h1 className="hidden md:block text-base font-semibold text-brand-text">{title}</h1>
       </div>
 
       <div className="flex items-center gap-2">
