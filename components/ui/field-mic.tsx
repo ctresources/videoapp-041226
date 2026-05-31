@@ -1,64 +1,79 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Mic, Square } from "lucide-react";
-import toast from "react-hot-toast";
+import { useState, useRef } from "react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 
 interface FieldMicProps {
   onTranscript: (text: string) => void;
   title?: string;
+  size?: "sm" | "lg";
 }
 
-export function FieldMic({ onTranscript, title = "Tap to speak" }: FieldMicProps) {
+export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMicProps) {
   const [listening, setListening] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recogRef = useRef<any>(null);
+  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
 
-  function start() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      toast.error("Speech recognition requires Chrome or Safari.");
+  function toggle() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
       return;
     }
-    const r = new SR();
-    r.continuous = false;
-    r.interimResults = false;
-    r.lang = "en-US";
-    r.onstart = () => setListening(true);
-    r.onend = () => setListening(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onresult = (e: any) => {
-      onTranscript((e.results[0][0].transcript as string).trim());
+
+    const SR = (window as typeof window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition }).SpeechRecognition
+      || (window as typeof window & { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition;
+
+    if (!SR) {
+      alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      onTranscript(e.results[0][0].transcript);
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onerror = (e: any) => {
-      setListening(false);
-      if (e.error === "not-allowed") toast.error("Microphone permission denied.");
-      else if (e.error !== "no-speech") toast.error("Could not hear you — try again.");
-    };
-    recogRef.current = r;
-    r.start();
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
   }
 
-  function stop() {
-    recogRef.current?.stop();
+  if (size === "lg") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all ${
+          listening
+            ? "bg-red-500 text-white"
+            : "bg-primary-600 hover:bg-primary-700 text-white"
+        }`}
+      >
+        {listening
+          ? <><MicOff size={18} /> Tap to stop</>
+          : <><Mic size={18} /> {title}</>}
+      </button>
+    );
   }
 
   return (
     <button
       type="button"
-      onClick={listening ? stop : start}
-      title={listening ? "Tap to stop" : title}
-      className={`p-2 rounded-lg transition-colors shrink-0 ${
+      onClick={toggle}
+      title={title}
+      className={`shrink-0 p-1.5 rounded-lg transition-colors ${
         listening
-          ? "bg-red-50 text-red-500 animate-pulse"
-          : "text-slate-400 hover:text-primary-500 hover:bg-primary-50"
+          ? "text-red-500 bg-red-50"
+          : "text-slate-400 hover:text-primary-600 hover:bg-primary-50"
       }`}
     >
       {listening
-        ? <Square size={14} fill="currentColor" />
-        : <Mic size={15} />}
+        ? <Loader2 size={14} className="animate-spin text-red-500" />
+        : <Mic size={14} />}
     </button>
   );
 }

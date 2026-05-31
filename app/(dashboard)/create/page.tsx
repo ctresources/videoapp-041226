@@ -547,20 +547,15 @@ function CreatePageInner() {
                       <label className="text-xs font-medium text-slate-500 block mb-1.5">
                         What&apos;s your topic? <span className="text-red-400">*</span>
                       </label>
-                      <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent">
-                        <input
-                          id="loc-custom-topic"
-                          type="text"
-                          value={locCustomTopic}
-                          onChange={(e) => setLocCustomTopic(e.target.value)}
-                          placeholder="e.g. Market update, Why live here, New construction… or tap 🎤"
-                          className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                        />
-                        <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Tap the 🎤 mic on any field to speak instead of type
-                      </p>
+                      <input
+                        id="loc-custom-topic"
+                        type="text"
+                        value={locCustomTopic}
+                        onChange={(e) => setLocCustomTopic(e.target.value)}
+                        placeholder="e.g. Market update, Why live here, New construction…"
+                        className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-2"
+                      />
+                      <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Tap Mic — Speak Your Topic" />
                     </div>
 
                     {/* Templates toggle — prominent */}

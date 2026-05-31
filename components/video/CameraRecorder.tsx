@@ -302,23 +302,20 @@ export function CameraRecorder() {
             </div>
           )}
 
-          <div className="relative">
-            <textarea
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
-              placeholder="Speak using the mic, type, or let AI write it for you…"
-              className="w-full h-44 text-sm px-3 py-3 pr-10 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
-            />
-            <div className="absolute bottom-3 right-2">
-              <FieldMic
-                onTranscript={(t) => setScript((s) => s ? `${s} ${t}` : t)}
-                title="Speak your script"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <textarea
+            value={script}
+            onChange={(e) => setScript(e.target.value)}
+            placeholder="Type your script, or use the mic below to speak it…"
+            className="w-full h-36 text-sm px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+          />
+          <p className="text-xs text-slate-400 mt-1 mb-2">
             {script.trim().split(/\s+/).filter(Boolean).length} words
           </p>
+          <FieldMic
+            size="lg"
+            onTranscript={(t) => setScript((s) => s ? `${s} ${t}` : t)}
+            title="Tap Mic — Speak Your Script"
+          />
         </div>
 
         <div>
