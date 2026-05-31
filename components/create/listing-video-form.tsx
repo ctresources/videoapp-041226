@@ -352,9 +352,9 @@ export function ListingVideoForm() {
 
         {/* ── Divider ── */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs text-slate-400">or import listing details</span>
-          <div className="flex-1 h-px bg-slate-200" />
+          <div className="flex-1 h-px bg-slate-300" />
+          <span className="text-sm font-semibold text-slate-600">or import listing details</span>
+          <div className="flex-1 h-px bg-slate-300" />
         </div>
 
         {/* ── URL import ── */}
@@ -386,7 +386,7 @@ export function ListingVideoForm() {
         >
           <Upload size={16} />
           <span className="flex-1 text-left">
-            Upload listing file
+            Upload file
             <span className="block text-xs text-slate-400 font-normal mt-0.5">
               PDF, MLS export, Word, CSV · up to 4 MB
             </span>
