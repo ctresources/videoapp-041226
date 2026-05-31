@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { FieldMic } from "@/components/ui/field-mic";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
@@ -270,10 +269,96 @@ export function ListingVideoForm() {
   if (step === "url") {
     return (
       <div className="flex flex-col gap-4">
+
+        {/* ── Primary: Photo upload ── */}
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">
-            Paste Listing URL
+            Listing Photos
           </label>
+
+          {listing.photoUrls.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {listing.photoUrls.map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Listing photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setListing((l) => ({ ...l, photoUrls: l.photoUrls.filter((_, j) => j !== i) }))}
+                    className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={11} />
+                  </button>
+                  <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhotos}
+              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {uploadingPhotos ? (
+                <>
+                  <Loader2 size={24} className="animate-spin text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-700">Uploading photos…</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon size={24} className="text-blue-600" />
+                  <span className="text-sm font-bold text-blue-900">
+                    {listing.photoUrls.length === 0
+                      ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
+                      : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
+                  </span>
+                  <span className="text-xs text-blue-600 text-center">
+                    Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple · JPG, PNG, WEBP · max 15 MB each
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files && files.length > 0) handlePhotosUpload(files);
+              if (photoInputRef.current) photoInputRef.current.value = "";
+            }}
+          />
+        </div>
+
+        {/* ── If photos uploaded, show Generate button ── */}
+        {listing.photoUrls.length > 0 && (
+          <Button
+            onClick={handleManual}
+            size="lg"
+            className="w-full gap-2"
+          >
+            Next: Add Listing Details <ArrowRight size={16} />
+          </Button>
+        )}
+
+        {/* ── Divider ── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">or import listing details</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* ── URL import ── */}
+        <div>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Link2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -295,22 +380,15 @@ export function ListingVideoForm() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 my-1">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs text-slate-400">or</span>
-          <div className="flex-1 h-px bg-slate-200" />
-        </div>
-
-        {/* Upload any file type — PDF flyer, MLS export, doc, image, etc. */}
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600"
         >
           <Upload size={16} />
           <span className="flex-1 text-left">
-            Upload listing file / Listing Photos
+            Upload listing file
             <span className="block text-xs text-slate-400 font-normal mt-0.5">
-              Documents (PDF, MLS export, Word, CSV) up to 4 MB · or drop a property photo
+              PDF, MLS export, Word, CSV · up to 4 MB
             </span>
           </span>
           <ArrowRight size={14} className="text-slate-400" />
@@ -322,7 +400,6 @@ export function ListingVideoForm() {
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) handleFileUpload(f);
-            // Reset so the same file can be re-selected
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
         />
@@ -420,16 +497,13 @@ export function ListingVideoForm() {
         <label className="text-xs font-medium text-slate-500 block mb-1.5">
           Address <span className="text-red-400">*</span>
         </label>
-        <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
-          <input
-            type="text"
-            value={listing.address}
-            onChange={(e) => setListing((l) => ({ ...l, address: e.target.value }))}
-            placeholder="123 Main St, Austin, TX 78701"
-            className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none"
-          />
-          <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, address: t }))} title="Speak address" />
-        </div>
+        <input
+          type="text"
+          value={listing.address}
+          onChange={(e) => setListing((l) => ({ ...l, address: e.target.value }))}
+          placeholder="123 Main St, Austin, TX 78701"
+          className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
       </div>
 
       {/* Price + Type */}
@@ -438,16 +512,13 @@ export function ListingVideoForm() {
           <label className="text-xs font-medium text-slate-500 flex items-center gap-1 mb-1.5">
             <DollarSign size={11} /> Price <span className="text-red-400">*</span>
           </label>
-          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
-            <input
-              type="text"
-              value={listing.price}
-              onChange={(e) => setListing((l) => ({ ...l, price: e.target.value }))}
-              placeholder="$450,000"
-              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none"
-            />
-            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, price: t }))} title="Speak price" />
-          </div>
+          <input
+            type="text"
+            value={listing.price}
+            onChange={(e) => setListing((l) => ({ ...l, price: e.target.value }))}
+            placeholder="$450,000"
+            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
         </div>
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Property Type</label>
@@ -491,44 +562,32 @@ export function ListingVideoForm() {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Garage</label>
-          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
-            <input
-              type="text"
-              value={listing.garage}
-              onChange={(e) => setListing((l) => ({ ...l, garage: e.target.value }))}
-              placeholder="2-car attached"
-              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none min-w-0"
-            />
-            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, garage: t }))} title="Speak garage" />
-          </div>
+          <input
+            type="text"
+            value={listing.garage}
+            onChange={(e) => setListing((l) => ({ ...l, garage: e.target.value }))}
+            placeholder="2-car attached"
+            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
         </div>
         <div>
           <label className="text-xs font-medium text-slate-500 block mb-1.5">Lot Size</label>
-          <div className="flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
-            <input
-              type="text"
-              value={listing.lotSize}
-              onChange={(e) => setListing((l) => ({ ...l, lotSize: e.target.value }))}
-              placeholder="0.25 acres"
-              className="flex-1 text-sm px-3 py-2.5 bg-transparent outline-none min-w-0"
-            />
-            <FieldMic onTranscript={(t) => setListing((l) => ({ ...l, lotSize: t }))} title="Speak lot size" />
-          </div>
+          <input
+            type="text"
+            value={listing.lotSize}
+            onChange={(e) => setListing((l) => ({ ...l, lotSize: e.target.value }))}
+            placeholder="0.25 acres"
+            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
         </div>
       </div>
 
       {/* Description */}
       <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-xs font-medium text-slate-500">
-            Property Description
-            <span className="text-slate-400 font-normal ml-1">(AI will use this in the script)</span>
-          </label>
-          <FieldMic
-            onTranscript={(t) => setListing((l) => ({ ...l, description: l.description ? l.description + " " + t : t }))}
-            title="Speak description"
-          />
-        </div>
+        <label className="text-xs font-medium text-slate-500 block mb-1.5">
+          Property Description
+          <span className="text-slate-400 font-normal ml-1">(AI will use this in the script)</span>
+        </label>
         <textarea
           value={listing.description}
           onChange={(e) => setListing((l) => ({ ...l, description: e.target.value }))}
@@ -559,20 +618,14 @@ export function ListingVideoForm() {
         </div>
         {listing.features.length < 8 && (
           <div className="flex gap-2">
-            <div className="flex-1 flex items-center border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-primary-500">
-              <input
-                type="text"
-                value={newFeature}
-                onChange={(e) => setNewFeature(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addFeature()}
-                placeholder="e.g. Quartz countertops, Pool, Smart home…"
-                className="flex-1 text-sm px-3 py-2 bg-transparent outline-none"
-              />
-              <FieldMic
-                onTranscript={(t) => { setNewFeature(t); }}
-                title="Speak a feature"
-              />
-            </div>
+            <input
+              type="text"
+              value={newFeature}
+              onChange={(e) => setNewFeature(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addFeature()}
+              placeholder="e.g. Quartz countertops, Pool, Smart home…"
+              className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
             <Button variant="outline" size="sm" onClick={addFeature} disabled={!newFeature.trim()}>
               Add
             </Button>
@@ -639,7 +692,7 @@ export function ListingVideoForm() {
                     : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
                 </span>
                 <span className="text-xs text-blue-600 text-center">
-                  Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple · JPG, PNG, WEBP · max 15 MB each
+                  Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple files · JPG, PNG, WEBP · max 15 MB each
                 </span>
               </>
             )}
