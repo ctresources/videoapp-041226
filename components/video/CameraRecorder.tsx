@@ -19,6 +19,7 @@ import {
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
 import { PublishModal } from "@/components/social/PublishModal";
+import { FieldMic } from "@/components/ui/field-mic";
 
 type CamStep = "script" | "camera" | "done";
 
@@ -251,9 +252,9 @@ export function CameraRecorder() {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Your Script
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-semibold text-brand-text">
+              What do you want to say?
             </label>
             <button
               onClick={() => setShowAiGen((v) => !v)}
@@ -263,6 +264,9 @@ export function CameraRecorder() {
               Generate with AI
             </button>
           </div>
+          <p className="text-xs text-slate-400 mb-2">
+            Write your script or let AI write it — the teleprompter scrolls while you record.
+          </p>
 
           {showAiGen && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
@@ -298,12 +302,20 @@ export function CameraRecorder() {
             </div>
           )}
 
-          <textarea
-            value={script}
-            onChange={(e) => setScript(e.target.value)}
-            placeholder="Type or paste your script here. It will scroll automatically while you record."
-            className="w-full h-44 text-sm px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
-          />
+          <div className="relative">
+            <textarea
+              value={script}
+              onChange={(e) => setScript(e.target.value)}
+              placeholder="Speak using the mic, type, or let AI write it for you…"
+              className="w-full h-44 text-sm px-3 py-3 pr-10 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+            />
+            <div className="absolute bottom-3 right-2">
+              <FieldMic
+                onTranscript={(t) => setScript((s) => s ? `${s} ${t}` : t)}
+                title="Speak your script"
+              />
+            </div>
+          </div>
           <p className="text-xs text-slate-400 mt-1">
             {script.trim().split(/\s+/).filter(Boolean).length} words
           </p>
