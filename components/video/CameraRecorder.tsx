@@ -314,7 +314,7 @@ export function CameraRecorder() {
           <FieldMic
             size="lg"
             onTranscript={(t) => setScript((s) => s ? `${s} ${t}` : t)}
-            title="Tap Mic — Speak Your Script"
+            title="Hit the Mic — Speak Your Script"
           />
         </div>
 
