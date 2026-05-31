@@ -102,7 +102,7 @@ const comparison = [
 const steps = [
   {
     step: "01",
-    title: "Hit Record. Say What You Know.",
+    title: "Hit the Mic. Speak, Spark, Share.",
     description: "Open the app, pick a topic — market update, listing, local trend — and talk for 60–90 seconds. No script, no prep, no camera. Just your expertise.",
   },
   {
@@ -219,7 +219,7 @@ export default function LandingPage() {
             <div className="relative hidden lg:block animate-float">
               <Image
                 src="/hit-record.png"
-                alt="Hit Record. Say What You Know."
+                alt="Hit the Mic. Speak, Spark, Share."
                 width={900}
                 height={1125}
                 className="w-full h-[520px] object-cover rounded-2xl shadow-2xl"
