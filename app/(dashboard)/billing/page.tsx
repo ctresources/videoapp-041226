@@ -14,7 +14,7 @@ const PLANS = [
   {
     key: "starter",
     name: "Starter",
-    price: 49,
+    price: 59,
     videos: 4,
     highlighted: false,
     features: [
