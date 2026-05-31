@@ -114,7 +114,7 @@ const steps = [
 const pricingTiers = [
   {
     name: "Starter",
-    price: "$49",
+    price: "$59",
     period: "/month",
     description: "Get in the game",
     badge: null,

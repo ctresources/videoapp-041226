@@ -9,7 +9,7 @@ export const PLANS = {
   starter: {
     name: "Starter",
     priceId: process.env.STRIPE_PRICE_STARTER!,
-    price: 49,
+    price: 59,
     videos: 4,
     tier: "starter" as const,
   },
