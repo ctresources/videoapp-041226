@@ -257,7 +257,7 @@ export default function SettingsPage() {
             <Webhook size={18} className="text-violet-500" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">CRM Integration</h3>
+            <h3 className="font-semibold text-brand-text">CRM Integration <span className="text-xs font-medium text-slate-400">(Coming Soon)</span></h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Auto-notify GoHighLevel, HubSpot, Follow Up Boss, BoldTrail when videos publish
             </p>
