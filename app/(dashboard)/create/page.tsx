@@ -27,7 +27,6 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 
 type Step = "input" | "uploading" | "transcribing" | "done";
 type InputMode = "speak" | "upload" | "listing";
-type RecordMode = "voice" | "camera";
 
 const STATE_MAP: Record<string, string> = {
   "alabama":"AL","alaska":"AK","arizona":"AZ","arkansas":"AR","california":"CA",
@@ -224,7 +223,6 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   const [inputMode, setInputMode] = useState<InputMode>("speak");
-  const [recordMode, setRecordMode] = useState<RecordMode>("voice");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -455,7 +453,7 @@ function CreatePageInner() {
                 : "bg-violet-100 text-violet-700 hover:bg-violet-200"
             }`}
           >
-            <Upload size={14} /> Video/Voice
+            <Video size={14} /> Camera + Voice
           </button>
         </div>
       )}
@@ -503,40 +501,7 @@ function CreatePageInner() {
               {/* Upload Video/Voice mode */}
               {inputMode === "upload" && (
                 <Card>
-                  {/* Voice / Camera recording */}
-                  <div className="flex gap-1 mb-5 p-1 bg-slate-100 rounded-xl">
-                    <button
-                      onClick={() => setRecordMode("voice")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        recordMode === "voice" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-                      }`}
-                    >
-                      <Mic size={13} /> Voice Only
-                    </button>
-                    <button
-                      onClick={() => setRecordMode("camera")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        recordMode === "camera" ? "bg-white shadow-sm text-brand-text" : "text-slate-500 hover:text-brand-text"
-                      }`}
-                    >
-                      <Video size={13} /> Camera + Teleprompter
-                    </button>
-                  </div>
-
-                  {recordMode === "voice" ? (
-                    <VoiceHero onRecordingComplete={handleRecordingComplete} />
-                  ) : (
-                    <>
-                      <CameraRecorder />
-                      <div className="relative my-5">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-slate-200" />
-                        </div>
-                        <div className="relative flex justify-center text-xs text-slate-400 bg-white px-2">or record voice only</div>
-                      </div>
-                      <VoiceHero onRecordingComplete={handleRecordingComplete} />
-                    </>
-                  )}
+                  <CameraRecorder />
 
                   {/* OR divider */}
                   <div className="relative my-8">
