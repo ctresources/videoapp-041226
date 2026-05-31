@@ -269,10 +269,96 @@ export function ListingVideoForm() {
   if (step === "url") {
     return (
       <div className="flex flex-col gap-4">
+
+        {/* ── Primary: Photo upload ── */}
         <div>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">
-            Paste Listing URL
+            Listing Photos
           </label>
+
+          {listing.photoUrls.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {listing.photoUrls.map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Listing photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setListing((l) => ({ ...l, photoUrls: l.photoUrls.filter((_, j) => j !== i) }))}
+                    className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={11} />
+                  </button>
+                  <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhotos}
+              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {uploadingPhotos ? (
+                <>
+                  <Loader2 size={24} className="animate-spin text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-700">Uploading photos…</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon size={24} className="text-blue-600" />
+                  <span className="text-sm font-bold text-blue-900">
+                    {listing.photoUrls.length === 0
+                      ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
+                      : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
+                  </span>
+                  <span className="text-xs text-blue-600 text-center">
+                    Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple · JPG, PNG, WEBP · max 15 MB each
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files && files.length > 0) handlePhotosUpload(files);
+              if (photoInputRef.current) photoInputRef.current.value = "";
+            }}
+          />
+        </div>
+
+        {/* ── If photos uploaded, show Generate button ── */}
+        {listing.photoUrls.length > 0 && (
+          <Button
+            onClick={handleManual}
+            size="lg"
+            className="w-full gap-2"
+          >
+            Next: Add Listing Details <ArrowRight size={16} />
+          </Button>
+        )}
+
+        {/* ── Divider ── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">or import listing details</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* ── URL import ── */}
+        <div>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Link2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -294,22 +380,15 @@ export function ListingVideoForm() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 my-1">
-          <div className="flex-1 h-px bg-slate-200" />
-          <span className="text-xs text-slate-400">or</span>
-          <div className="flex-1 h-px bg-slate-200" />
-        </div>
-
-        {/* Upload any file type — PDF flyer, MLS export, doc, image, etc. */}
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600"
         >
           <Upload size={16} />
           <span className="flex-1 text-left">
-            Upload listing file / Listing Photos
+            Upload listing file
             <span className="block text-xs text-slate-400 font-normal mt-0.5">
-              Documents (PDF, MLS export, Word, CSV) up to 4 MB · or drop a property photo
+              PDF, MLS export, Word, CSV · up to 4 MB
             </span>
           </span>
           <ArrowRight size={14} className="text-slate-400" />
@@ -321,7 +400,6 @@ export function ListingVideoForm() {
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) handleFileUpload(f);
-            // Reset so the same file can be re-selected
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
         />
