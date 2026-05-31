@@ -9,7 +9,7 @@ import { useVoiceRecorder } from "@/lib/hooks/use-voice-recorder";
 import {
   Mic, Upload, ArrowRight, CheckCircle, Loader2, FileText,
   MapPin, ChevronDown, ChevronUp, Building2, Video, Square,
-  Pause, AlertCircle,
+  Pause, AlertCircle, Film,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -229,6 +229,11 @@ function CreatePageInner() {
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [videosLeft, setVideosLeft] = useState<number | null>(null);
+  const [videosTotal, setVideosTotal] = useState<number | null>(null);
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+
+  const PLAN_VIDEOS: Record<string, number> = { free: 1, starter: 4, agent: 8, pro: 12 };
 
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
@@ -256,7 +261,7 @@ function CreatePageInner() {
       if (!user) return;
       supabase
         .from("profiles")
-        .select("location_city, location_state")
+        .select("location_city, location_state, credits_remaining, subscription_tier, current_period_end")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
@@ -264,6 +269,17 @@ function CreatePageInner() {
           if (data?.location_state && !urlState) setLocState(data.location_state);
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
+
+          if (data) {
+            const tier = (data.subscription_tier as string) ?? "free";
+            const total = PLAN_VIDEOS[tier] ?? 0;
+            setVideosLeft(data.credits_remaining ?? 0);
+            setVideosTotal(total);
+            if (data.current_period_end) {
+              const d = new Date(data.current_period_end as string);
+              setPeriodEnd(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+            }
+          }
         });
     });
   }, []); // eslint-disable-line
@@ -382,6 +398,31 @@ function CreatePageInner() {
           Generate from a topic or record your voice — AI does the rest.
         </p>
       </div>
+
+      {/* Videos remaining banner */}
+      {videosLeft !== null && videosTotal !== null && (
+        <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-5 text-sm ${
+          videosLeft === 0
+            ? "bg-red-50 border border-red-200"
+            : videosLeft <= 1
+            ? "bg-amber-50 border border-amber-200"
+            : "bg-blue-50 border border-blue-100"
+        }`}>
+          <div className="flex items-center gap-2">
+            <Film size={15} className={videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
+            <span className={`font-semibold ${videosLeft === 0 ? "text-red-700" : videosLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
+              {videosLeft === 0
+                ? "No videos remaining this month"
+                : `${videosLeft} of ${videosTotal} videos left this month`}
+            </span>
+          </div>
+          <span className={`text-xs shrink-0 ${videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
+            {videosLeft === 0
+              ? <a href="/billing" className="underline font-medium">Upgrade plan</a>
+              : periodEnd ? `Resets ${periodEnd}` : "Resets monthly"}
+          </span>
+        </div>
+      )}
 
       {/* Tab bar */}
       {step === "input" && (
