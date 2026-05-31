@@ -555,7 +555,7 @@ function CreatePageInner() {
                         placeholder="e.g. Market update, Why live here, New construction…"
                         className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-2"
                       />
-                      <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Tap Mic — Speak Your Topic" />
+                      <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Hit the Mic — Speak Your Topic" />
                     </div>
 
                     {/* Templates toggle — prominent */}

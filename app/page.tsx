@@ -72,7 +72,7 @@ const features = [
   {
     title: "Social Platform Publishing",
     description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags built in.",
-    photo: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "Listing Video Generator",
@@ -265,10 +265,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── Scrolling Video Strip ── */}
-      <section className="py-12 bg-slate-900 overflow-hidden border-y border-slate-800">
+      <section className="py-12 bg-slate-900 border-y border-slate-800">
         <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">
           Video types agents are creating right now
         </p>
+        <div className="max-w-6xl mx-auto overflow-hidden">
 
         {/* Row 1 — scrolls left */}
         <div className="marquee-track mb-4 relative">
@@ -311,7 +312,7 @@ export default function LandingPage() {
               { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
               { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
               { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
-              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80" },
+              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
               { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
               { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
               { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
@@ -320,7 +321,7 @@ export default function LandingPage() {
               { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
               { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
               { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
-              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80" },
+              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
               { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
               { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
               { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
@@ -336,6 +337,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
         </div>
       </section>
 
