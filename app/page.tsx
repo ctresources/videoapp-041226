@@ -40,6 +40,11 @@ const segments = [
 
 const features = [
   {
+    title: "Built-In Teleprompter",
+    description: "Want to appear on camera? Write or speak your script, then hit record — the teleprompter scrolls automatically while you film. No external app, no sticky notes, no memorizing lines.",
+    photo: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=600&q=80",
+  },
+  {
     title: "One-Button Video Creation",
     description: "Speak for 90 seconds about any market topic, listing, or local update. AI writes the script, builds visuals, adds captions, and renders broadcast-quality video — no filming or editing required.",
     photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
@@ -82,6 +87,7 @@ const features = [
 ];
 
 const comparison = [
+  { feature: "Built-in teleprompter + camera recorder", us: true, a: false, b: false, c: false },
   { feature: "No filming or on-camera requirement",  us: true,  a: false, b: false, c: false },
   { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
   { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
