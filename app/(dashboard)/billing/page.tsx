@@ -30,7 +30,7 @@ const PLANS = [
     name: "Agent",
     price: 89,
     videos: 8,
-    highlighted: false,
+    highlighted: true,
     features: [
       "8 videos/month",
       "Up to 2 min per video/reel",
@@ -45,7 +45,7 @@ const PLANS = [
     name: "Pro",
     price: 119,
     videos: 12,
-    highlighted: true,
+    highlighted: false,
     features: [
       "12 videos/month",
       "Up to 2 min per video/reel",
