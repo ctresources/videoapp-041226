@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No transcript found. Please transcribe the recording first." }, { status: 400 });
   }
   if (!profile || profile.credits_remaining < 1) {
-    return NextResponse.json({ error: "Insufficient credits." }, { status: 402 });
+    return NextResponse.json({ error: "No videos remaining this month. Please upgrade your plan." }, { status: 402 });
   }
 
   // Optionally enrich with real-time market data

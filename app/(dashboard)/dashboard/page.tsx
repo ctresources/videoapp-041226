@@ -33,7 +33,7 @@ async function DashboardStats() {
   const stats = [
     { label: "Videos Created", value: videoCount ?? 0, icon: Video, color: "text-primary-500", bg: "bg-primary-50" },
     { label: "Posts Published", value: postCount ?? 0, icon: Share2, color: "text-accent-500", bg: "bg-teal-50" },
-    { label: "Credits Left", value: profile?.credits_remaining ?? 0, icon: TrendingUp, color: "text-secondary-500", bg: "bg-purple-50" },
+    { label: "Videos Left", value: profile?.credits_remaining ?? 0, icon: TrendingUp, color: "text-secondary-500", bg: "bg-purple-50" },
   ];
 
   return (
