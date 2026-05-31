@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   if (!profile || (profile as { credits_remaining: number }).credits_remaining < 1) {
     return NextResponse.json(
-      { error: "No credits remaining. Please upgrade your plan." },
+      { error: "No videos remaining this month. Please upgrade your plan." },
       { status: 402 }
     );
   }

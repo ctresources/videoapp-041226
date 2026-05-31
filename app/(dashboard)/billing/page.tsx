@@ -184,13 +184,13 @@ export default async function BillingPage({
           </div>
         </div>
 
-        {/* Credits bar */}
+        {/* Videos remaining bar */}
         {currentPlan && (
           <div className="mt-5 pt-5 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-slate-500">Video credits remaining</p>
+              <p className="text-xs font-semibold text-slate-500">Videos remaining this month</p>
               <p className="text-xs font-bold text-brand-text">
-                {profile?.credits_remaining ?? 0} / {currentPlan.videos}
+                {profile?.credits_remaining ?? 0} of {currentPlan.videos} left
               </p>
             </div>
             <div className="w-full h-2 bg-slate-100 rounded-full">
@@ -286,7 +286,7 @@ export default async function BillingPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { q: "Can I cancel anytime?", a: "Yes. Cancel from the Manage Billing page and your plan stays active until the end of your billing period." },
-            { q: "What happens to unused videos?", a: "Credits reset each billing cycle and don't roll over. Use them or lose them." },
+            { q: "What happens to unused videos?", a: "Videos reset each billing cycle and don't roll over. Use them or lose them." },
             { q: "Can I upgrade mid-month?", a: "Yes. You're charged a prorated amount for the remainder of your current billing period." },
             { q: "Is my payment info secure?", a: "All payments are processed by Stripe. We never store your card details." },
           ].map(({ q, a }) => (
