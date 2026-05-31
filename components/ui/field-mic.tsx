@@ -9,9 +9,12 @@ interface FieldMicProps {
   size?: "sm" | "lg";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecognition = any;
+
 export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMicProps) {
   const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
+  const recognitionRef = useRef<AnyRecognition>(null);
 
   function toggle() {
     if (listening) {
@@ -20,8 +23,9 @@ export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMi
       return;
     }
 
-    const SR = (window as typeof window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition }).SpeechRecognition
-      || (window as typeof window & { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
 
     if (!SR) {
       alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
@@ -32,7 +36,7 @@ export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMi
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    recognition.onresult = (e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
       onTranscript(e.results[0][0].transcript);
     };
     recognition.onend = () => setListening(false);
