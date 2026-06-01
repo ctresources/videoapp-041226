@@ -633,28 +633,21 @@ export function ListingVideoForm() {
         )}
       </div>
 
-      {/* Listing Photos — used as b-roll in the generated video */}
-      <div>
-        <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5 flex-wrap">
-          <Camera size={12} /> Listing Photos
-          <span className="text-slate-400 font-normal">
-            (optional · up to {MAX_LISTING_PHOTOS} — if added, used as b-roll behind your avatar)
-          </span>
-        </label>
-
-        {listing.photoUrls.length > 0 && (
-          <div className="grid grid-cols-4 gap-2 mb-2">
+      {/* Listing Photos — show uploaded photos; no duplicate upload when already added */}
+      {listing.photoUrls.length > 0 ? (
+        <div>
+          <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
+            <Camera size={12} /> Listing Photos
+            <span className="text-slate-400 font-normal">({listing.photoUrls.length} uploaded · used as b-roll)</span>
+          </label>
+          <div className="grid grid-cols-4 gap-2">
             {listing.photoUrls.map((url, i) => (
               <div
                 key={`${url}-${i}`}
                 className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt={`Listing photo ${i + 1}`}
-                  className="w-full h-full object-cover"
-                />
+                <img src={url} alt={`Listing photo ${i + 1}`} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removePhoto(i)}
@@ -663,54 +656,39 @@ export function ListingVideoForm() {
                 >
                   <Trash2 size={11} />
                 </button>
-                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">
-                  {i + 1}
-                </span>
+                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
               </div>
             ))}
           </div>
-        )}
-
-        {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
+            <Camera size={12} /> Listing Photos <span className="text-slate-400 font-normal">(optional · used as b-roll)</span>
+          </label>
           <button
             type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={uploadingPhotos}
-            className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-sm font-medium text-slate-600 hover:text-blue-700 disabled:opacity-60"
           >
-            {uploadingPhotos ? (
-              <>
-                <Loader2 size={24} className="animate-spin text-blue-600" />
-                <span className="text-sm font-semibold text-blue-700">Uploading photos…</span>
-              </>
-            ) : (
-              <>
-                <ImageIcon size={24} className="text-blue-600" />
-                <span className="text-sm font-bold text-blue-900">
-                  {listing.photoUrls.length === 0
-                    ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
-                    : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
-                </span>
-                <span className="text-xs text-blue-600 text-center">
-                  Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple files · JPG, PNG, WEBP · max 15 MB each
-                </span>
-              </>
-            )}
+            {uploadingPhotos ? <Loader2 size={16} className="animate-spin text-blue-600" /> : <ImageIcon size={16} />}
+            {uploadingPhotos ? "Uploading…" : `Add photos (up to ${MAX_LISTING_PHOTOS})`}
           </button>
-        )}
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            if (files && files.length > 0) handlePhotosUpload(files);
-            if (photoInputRef.current) photoInputRef.current.value = "";
-          }}
-        />
-      </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files && files.length > 0) handlePhotosUpload(files);
+              if (photoInputRef.current) photoInputRef.current.value = "";
+            }}
+          />
+        </div>
+      )}
 
       {/* Fair Housing notice */}
       <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
