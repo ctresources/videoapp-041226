@@ -40,6 +40,16 @@ const segments = [
 
 const features = [
   {
+    title: "AI Topic Radar",
+    description: "Never stare at a blank screen. Before you record, AI scans your local market and hands you 5 trending, ready-to-record topics — tailored to your city this week. Click one. Hit the mic. Done.",
+    photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "One Video → Full Content Pack",
+    description: "Every video you create automatically generates a LinkedIn post, Instagram caption, YouTube description, and email newsletter blurb — all copy-ready. One recording session fuels your entire week of content.",
+    photo: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&w=600&q=80",
+  },
+  {
     title: "Built-In Teleprompter",
     description: "Want to appear on camera? Write or speak your script, then hit record — the teleprompter scrolls automatically while you film. No external app, no sticky notes, no memorizing lines.",
     photo: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=600&q=80",
@@ -70,8 +80,8 @@ const features = [
     photo: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "Social Platform Publishing",
-    description: "One approval publishes to YouTube, Instagram, TikTok, LinkedIn, Facebook, Threads, and more — with platform-optimized captions and hashtags built in.",
+    title: "YouTube Publishing",
+    description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. More platforms coming soon.",
     photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -94,7 +104,7 @@ const comparison = [
   { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
   { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
   { feature: "Listing Auto-Video (URL → Video)",      us: true,  a: false, b: true,  c: true  },
-  { feature: "Social platform auto-publishing",       us: true,  a: true,  b: true,  c: true  },
+  { feature: "AI-generated social captions (LinkedIn, Instagram, email)", us: true, a: false, b: false, c: false },
   { feature: "Fair Housing Guardrails Built-in",      us: true,  a: false, b: false, c: false },
   { feature: "Purpose-built for Real Estate",         us: true,  a: false, b: true,  c: true  },
 ];
@@ -103,7 +113,7 @@ const steps = [
   {
     step: "01",
     title: "Hit the Mic. Speak, Spark, Share.",
-    description: "Open the app, pick a topic — market update, listing, local trend — and talk for 60–90 seconds. No script, no prep, no camera. Just your expertise.",
+    description: "Open the app — AI hands you 5 trending local topics before you type a word. Pick one, or speak your own. Talk for 60–90 seconds. No script, no prep, no camera. Just your expertise.",
   },
   {
     step: "02",
@@ -113,7 +123,7 @@ const steps = [
   {
     step: "03",
     title: "Publish. Rank. Stay Top-of-Mind.",
-    description: "One click posts to social platforms with SEO-optimized metadata designed to rank in your town and keep you visible to buyers and sellers.",
+    description: "One click publishes to YouTube with SEO-optimized metadata designed to rank in your town. Your LinkedIn post, Instagram caption, and email blurb are already written and waiting to copy.",
   },
 ];
 
