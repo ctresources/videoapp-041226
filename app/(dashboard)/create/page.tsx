@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle, Film,
-  ChevronDown, ChevronUp, Sparkles, Pencil,
+  ChevronDown, ChevronUp, Sparkles, Pencil, LayoutGrid,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
+import { ContentTemplates } from "@/components/create/content-templates";
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
@@ -75,6 +76,9 @@ function CreatePageInner() {
 
   // Topic
   const [locCustomTopic, setLocCustomTopic] = useState("");
+
+  // Templates
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Advanced options
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -273,6 +277,37 @@ function CreatePageInner() {
               }}
             />
 
+            {/* Templates toggle */}
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={() => setShowTemplates(v => !v)}
+                className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                  showTemplates
+                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                }`}
+              >
+                <LayoutGrid size={13} />
+                Browse 24 Templates
+                {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
+              </button>
+
+              {showTemplates && (
+                <div className="mt-2 max-h-[480px] overflow-y-auto pr-0.5">
+                  <ContentTemplates
+                    city={locCity}
+                    state={locState}
+                    onSelect={(template) => {
+                      setLocCustomTopic(template.topic);
+                      setShowTemplates(false);
+                      setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Topic input */}
             <div>
               <input
@@ -414,7 +449,7 @@ function CreatePageInner() {
 
           {!locCustomTopic.trim() && (
             <p className="text-xs text-slate-400 text-center -mt-2">
-              Pick a topic from the Radar above or type your own to get started
+              Hit the Mic to speak, or pick from Radar topics or Templates above
             </p>
           )}
         </div>
