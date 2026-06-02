@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle, Film,
-  ChevronDown, ChevronUp, Sparkles, Pencil, LayoutGrid,
+  ChevronDown, ChevronUp, Sparkles, LayoutGrid,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -66,13 +66,14 @@ function CreatePageInner() {
   const [videosLeft, setVideosLeft] = useState<number | null>(null);
   const [videosTotal, setVideosTotal] = useState<number | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const PLAN_VIDEOS: Record<string, number> = { free: 1, starter: 4, agent: 8, pro: 12 };
 
   // Location
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
-  const [editingLocation, setEditingLocation] = useState(false);
+  const [savedMarkets, setSavedMarkets] = useState<{ city: string; state: string }[]>([]);
 
   // Topic
   const [locCustomTopic, setLocCustomTopic] = useState("");
@@ -101,9 +102,10 @@ function CreatePageInner() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
+      setUserId(user.id);
       supabase
         .from("profiles")
-        .select("location_city, location_state, credits_remaining, subscription_tier, current_period_end")
+        .select("location_city, location_state, credits_remaining, subscription_tier, current_period_end, saved_markets")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
@@ -111,6 +113,7 @@ function CreatePageInner() {
           if (data?.location_state && !urlState) setLocState(data.location_state);
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
+          if (Array.isArray(data?.saved_markets)) setSavedMarkets(data.saved_markets as { city: string; state: string }[]);
 
           if (data) {
             const tier = (data.subscription_tier as string) ?? "free";
@@ -167,14 +170,35 @@ function CreatePageInner() {
     router.push(`/create/${recordingId}?source=recording`);
   }
 
+  async function persistMarkets(markets: { city: string; state: string }[]) {
+    if (!userId) return;
+    const supabase = createClient();
+    await supabase.from("profiles").update({ saved_markets: markets }).eq("id", userId);
+  }
+
+  function addMarket(city: string, state: string) {
+    const c = city.trim(), s = state.trim().toUpperCase();
+    if (!c || !s) return;
+    if (savedMarkets.some(m => m.city.toLowerCase() === c.toLowerCase() && m.state.toUpperCase() === s)) return;
+    const updated = [...savedMarkets, { city: c, state: s }];
+    setSavedMarkets(updated);
+    persistMarkets(updated);
+  }
+
+  function removeMarket(city: string, state: string) {
+    const updated = savedMarkets.filter(m => !(m.city === city && m.state === state));
+    setSavedMarkets(updated);
+    persistMarkets(updated);
+  }
+
   async function handleGenerateScript() {
     if (!locCity.trim() || !locState.trim()) {
-      setEditingLocation(true);
-      return toast.error("Please set your city and state first");
+      return toast.error("Please enter your city and state first");
     }
     if (!locCustomTopic.trim()) {
       return toast.error("Please enter or pick a topic");
     }
+    addMarket(locCity, locState);
     setLocGenerating(true);
     try {
       const res = await fetch("/api/ai/generate-location-script", {
@@ -202,7 +226,10 @@ function CreatePageInner() {
   }
 
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
-  const locationSet = locCity.trim() && locState.trim();
+  const locationSet = !!(locCity.trim() && locState.trim());
+  const isMarketSaved = savedMarkets.some(
+    m => m.city.toLowerCase() === locCity.trim().toLowerCase() && m.state.toUpperCase() === locState.trim().toUpperCase()
+  );
 
   return (
     <div className="max-w-xl mx-auto">
@@ -263,14 +290,95 @@ function CreatePageInner() {
       {inputMode === "script" && step === "input" && (
         <div className="flex flex-col gap-4">
 
-          {/* Step 1 — Topic */}
+          {/* ── STEP 1: Your Market ── */}
           <Card>
             <div className="mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 1 · Your Topic</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 1 · Your Market</p>
+              <p className="text-xs text-slate-500 mt-0.5">Speak or Type your City and State</p>
+            </div>
+
+            {/* Saved market chips */}
+            {savedMarkets.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {savedMarkets.map((m) => {
+                  const isActive = m.city.toLowerCase() === locCity.trim().toLowerCase() && m.state.toUpperCase() === locState.trim().toUpperCase();
+                  return (
+                    <div
+                      key={`${m.city}-${m.state}`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700"
+                      }`}
+                      onClick={() => { setLocCity(m.city); setLocState(m.state); }}
+                    >
+                      📍 {m.city}, {m.state}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
+                        className={`ml-0.5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ${
+                          isActive ? "hover:bg-blue-500 text-white" : "hover:bg-slate-200 text-slate-400"
+                        }`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* City + State inputs */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">City *</label>
+                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                  <input
+                    type="text"
+                    value={locCity}
+                    onChange={(e) => setLocCity(e.target.value)}
+                    placeholder="Austin"
+                    className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none min-w-0"
+                  />
+                  <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
+                </div>
+              </div>
+              <div className="w-20">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">State *</label>
+                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                  <input
+                    type="text"
+                    value={locState}
+                    onChange={(e) => setLocState(e.target.value)}
+                    placeholder="TX"
+                    maxLength={2}
+                    className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none uppercase min-w-0"
+                  />
+                  <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
+                </div>
+              </div>
+            </div>
+
+            {/* Save market hint */}
+            {locationSet && !isMarketSaved && (
+              <button
+                type="button"
+                onClick={() => addMarket(locCity, locState)}
+                className="mt-2 text-[11px] text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                + Save {locCity}, {locState} as a quick-switch market
+              </button>
+            )}
+          </Card>
+
+          {/* ── STEP 2: Topic ── */}
+          <Card>
+            <div className="mb-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 2 · Your Topic</p>
               <p className="text-xs text-slate-500 mt-0.5">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
             </div>
 
-            {/* Mic button — primary action, above radar/templates */}
+            {/* Big mic — primary action */}
             <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Hit the Mic — Speak Your Topic" />
 
             {/* Topic Radar */}
@@ -287,9 +395,7 @@ function CreatePageInner() {
 
             {/* Templates toggle */}
             <div className="mb-3">
-              <p className="text-xs text-slate-500 mb-1.5">
-                Need a Spark? No problem — choose from Templates
-              </p>
+              <p className="text-xs text-slate-500 mb-1.5">Need a Spark? No problem — choose from Templates</p>
               <button
                 type="button"
                 onClick={() => setShowTemplates(v => !v)}
@@ -303,7 +409,6 @@ function CreatePageInner() {
                 Browse Templates
                 {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
               </button>
-
               {showTemplates && (
                 <div className="mt-2 max-h-[480px] overflow-y-auto pr-0.5">
                   <ContentTemplates
@@ -319,91 +424,27 @@ function CreatePageInner() {
               )}
             </div>
 
-            {/* Topic input — shows whatever was spoken, selected from radar, or chosen from a template */}
+            {/* Topic input with inline mic */}
             <div>
               <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">
                 Your topic — spoken, picked, or typed
               </label>
-              <input
-                id="topic-input"
-                type="text"
-                value={locCustomTopic}
-                onChange={(e) => setLocCustomTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
-                placeholder="Speak it, pick it above, or type it here…"
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                <input
+                  id="topic-input"
+                  type="text"
+                  value={locCustomTopic}
+                  onChange={(e) => setLocCustomTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
+                  placeholder="Speak it, pick above, or type here…"
+                  className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                />
+                <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+              </div>
             </div>
           </Card>
 
-          {/* Step 2 — Market */}
-          <Card>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 2 · Your Market</p>
-              {!editingLocation && locationSet && (
-                <button
-                  onClick={() => setEditingLocation(true)}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  <Pencil size={11} /> Edit
-                </button>
-              )}
-            </div>
-
-            {!editingLocation && locationSet ? (
-              /* Pre-filled display */
-              <div className="flex items-center gap-2 py-2 px-3 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm">📍</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{locCity}, {locState}</p>
-                  <p className="text-xs text-slate-400">AI will research real-time data for this market</p>
-                </div>
-              </div>
-            ) : (
-              /* Edit fields */
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">City *</label>
-                  <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
-                    <input
-                      type="text"
-                      value={locCity}
-                      onChange={(e) => setLocCity(e.target.value)}
-                      placeholder="Austin"
-                      className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none min-w-0"
-                    />
-                    <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
-                  </div>
-                </div>
-                <div className="w-20">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">State *</label>
-                  <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
-                    <input
-                      type="text"
-                      value={locState}
-                      onChange={(e) => setLocState(e.target.value)}
-                      placeholder="TX"
-                      maxLength={2}
-                      className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none uppercase min-w-0"
-                    />
-                    <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
-                  </div>
-                </div>
-                {locationSet && (
-                  <button
-                    onClick={() => setEditingLocation(false)}
-                    className="self-end mb-0.5 text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-2 whitespace-nowrap"
-                  >
-                    Done
-                  </button>
-                )}
-              </div>
-            )}
-          </Card>
-
-          {/* Advanced options (collapsed by default) */}
+          {/* Advanced options */}
           <button
             onClick={() => setShowAdvanced(v => !v)}
             className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors self-start px-1"
@@ -447,24 +488,27 @@ function CreatePageInner() {
             </Card>
           )}
 
-          {/* Generate button */}
-          <Button
-            onClick={handleGenerateScript}
-            loading={locGenerating}
-            disabled={!locCustomTopic.trim()}
-            size="lg"
-            className="w-full gap-2"
-          >
-            {locGenerating
-              ? <>Researching {locCity || "your market"}…</>
-              : <><Sparkles size={16} /> Generate My Script</>}
-          </Button>
+          {/* ── STEP 3: Generate ── */}
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Step 3 · Generate the Script</p>
+            <Button
+              onClick={handleGenerateScript}
+              loading={locGenerating}
+              disabled={!locCustomTopic.trim()}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Researching {locCity || "your market"}…</>
+                : <><Sparkles size={16} /> Generate My Script</>}
+            </Button>
+            {!locCustomTopic.trim() && (
+              <p className="text-xs text-slate-400 text-center mt-2">
+                Enter a topic in Step 2 to unlock this button
+              </p>
+            )}
+          </div>
 
-          {!locCustomTopic.trim() && (
-            <p className="text-xs text-slate-400 text-center -mt-2">
-              Hit the Mic to speak, or pick from Radar topics or Templates above
-            </p>
-          )}
         </div>
       )}
 
