@@ -701,20 +701,14 @@ export default function ProjectEditorPage() {
             </p>
 
             {/* Teleprompter option */}
-            <div className="border-t border-slate-100 pt-4 mt-2">
-              <p className="text-xs text-slate-400 mb-2">Or record yourself on camera reading the script:</p>
-              <button
-                type="button"
-                onClick={openTeleprompter}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/60 transition-all text-left group"
-              >
-                <Camera size={18} className="text-blue-500 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700">Record with Teleprompter</p>
-                  <p className="text-xs text-slate-400">Script scrolls on screen while you record yourself on camera</p>
-                </div>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={openTeleprompter}
+              className="flex items-center justify-center gap-2 w-full mt-3 text-base font-medium text-brand-text hover:text-primary-600 transition-colors"
+            >
+              <Camera size={18} className="shrink-0" />
+              Or record yourself on camera reading the script
+            </button>
           </Card>
 
           {/* Social Content Pack */}
