@@ -48,6 +48,8 @@ interface SeoOutput {
   youtube_title: string;
   youtube_description: string;
   instagram_caption: string;
+  linkedin_post: string;
+  email_blurb: string;
 }
 
 async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro") {
@@ -261,7 +263,9 @@ Return ONLY valid JSON:
   "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5"],
   "youtube_title": "YouTube video title (under 70 chars, includes keyword)",
   "youtube_description": "Full YouTube description (300-400 words, keywords in first 125 chars, includes timestamps placeholder, links placeholder)",
-  "instagram_caption": "Instagram caption (150-200 chars, punchy, ends with emoji, includes 3-5 hashtags inline)"
+  "instagram_caption": "Instagram caption (150-200 chars, punchy, ends with emoji, includes 3-5 hashtags inline)",
+  "linkedin_post": "LinkedIn post (150-200 words, professional tone, data-driven insight, ends with a question to drive comments, no hashtag spam)",
+  "email_blurb": "Email newsletter blurb (60-80 words, conversational tone, one clear CTA, no clickbait subject lines)"
 }`;
 
   // sonar (non-pro) is 3-5× faster — no web search needed for SEO metadata
