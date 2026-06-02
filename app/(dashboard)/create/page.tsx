@@ -265,7 +265,10 @@ function CreatePageInner() {
 
           {/* Step 1 — Topic */}
           <Card>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Step 1 · Your Topic</p>
+            <div className="mb-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 1 · Your Topic</p>
+              <p className="text-xs text-slate-500 mt-0.5">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
+            </div>
 
             {/* Topic Radar */}
             <TopicRadar
