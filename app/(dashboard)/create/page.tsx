@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ContentTemplates, ContentTemplate } from "@/components/create/content-templates";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
+import { TopicRadar } from "@/components/create/topic-radar";
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
@@ -541,6 +542,13 @@ function CreatePageInner() {
                         <p className="text-xs text-slate-400">Pick a topic — AI researches and writes your script</p>
                       </div>
                     </div>
+
+                    {/* Topic Radar — AI-suggested topics for this market */}
+                    <TopicRadar
+                      city={locCity || undefined}
+                      state={locState || undefined}
+                      onSelect={(topic) => setLocCustomTopic(topic)}
+                    />
 
                     {/* Topic input */}
                     <div className="mb-5">

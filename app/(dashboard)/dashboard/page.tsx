@@ -8,6 +8,24 @@ import Link from "next/link";
 import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight, CalendarDays, CheckCircle, Circle } from "lucide-react";
 import { Suspense } from "react";
 import { TrendingTopics } from "@/components/dashboard/trending-topics";
+import { DraftQueue } from "@/components/dashboard/draft-queue";
+
+async function DraftQueueWrapper() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("location_city, location_state")
+    .eq("id", user.id)
+    .single();
+  return (
+    <DraftQueue
+      city={profile?.location_city ?? undefined}
+      state={profile?.location_state ?? undefined}
+    />
+  );
+}
 
 async function DashboardStats() {
   const supabase = await createClient();
@@ -230,6 +248,10 @@ export default async function DashboardPage() {
         </div>
       }>
         <DashboardStats />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <DraftQueueWrapper />
       </Suspense>
 
       <Suspense fallback={null}>
