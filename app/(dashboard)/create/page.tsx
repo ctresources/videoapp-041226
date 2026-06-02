@@ -270,20 +270,25 @@ function CreatePageInner() {
               <p className="text-xs text-slate-500 mt-0.5">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
             </div>
 
+            {/* Mic button — primary action, above radar/templates */}
+            <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Hit the Mic — Speak Your Topic" />
+
             {/* Topic Radar */}
-            <TopicRadar
-              city={locCity || undefined}
-              state={locState || undefined}
-              onSelect={(topic) => {
-                setLocCustomTopic(topic);
-                document.getElementById("topic-input")?.focus();
-              }}
-            />
+            <div className="mt-3">
+              <TopicRadar
+                city={locCity || undefined}
+                state={locState || undefined}
+                onSelect={(topic) => {
+                  setLocCustomTopic(topic);
+                  document.getElementById("topic-input")?.focus();
+                }}
+              />
+            </div>
 
             {/* Templates toggle */}
-            <div className="mb-2">
+            <div className="mb-3">
               <p className="text-xs text-slate-500 mb-1.5">
-                Need a Spark? No problem — choose from 24 Templates
+                Need a Spark? No problem — choose from Templates
               </p>
               <button
                 type="button"
@@ -295,7 +300,7 @@ function CreatePageInner() {
                 }`}
               >
                 <LayoutGrid size={13} />
-                Browse 24 Templates
+                Browse Templates
                 {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
               </button>
 
@@ -314,18 +319,20 @@ function CreatePageInner() {
               )}
             </div>
 
-            {/* Topic input */}
+            {/* Topic input — shows whatever was spoken, selected from radar, or chosen from a template */}
             <div>
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">
+                Your topic — spoken, picked, or typed
+              </label>
               <input
                 id="topic-input"
                 type="text"
                 value={locCustomTopic}
                 onChange={(e) => setLocCustomTopic(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
-                placeholder="e.g. Market update, Why buy here, New construction…"
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                placeholder="Speak it, pick it above, or type it here…"
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Hit the Mic — Speak Your Topic" />
             </div>
           </Card>
 
