@@ -282,6 +282,9 @@ function CreatePageInner() {
 
             {/* Templates toggle */}
             <div className="mb-2">
+              <p className="text-xs text-slate-500 mb-1.5">
+                Need a Spark? No problem — choose from 24 Templates
+              </p>
               <button
                 type="button"
                 onClick={() => setShowTemplates(v => !v)}
