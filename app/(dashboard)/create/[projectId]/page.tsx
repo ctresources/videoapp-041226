@@ -8,11 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User
+  User, Square, Camera, Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 /** Safely parse JSON from a fetch Response — returns null if the body is HTML/empty */
@@ -102,6 +102,19 @@ export default function ProjectEditorPage() {
     company_phone: string | null;
     company_address: string | null;
   } | null>(null);
+
+  // Teleprompter
+  const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [tpAutoScroll, setTpAutoScroll] = useState(false);
+  const [tpSpeed, setTpSpeed] = useState(2.5);
+  const [tpRecording, setTpRecording] = useState(false);
+  const [tpUploading, setTpUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollAnimRef = useRef<number | null>(null);
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
@@ -309,6 +322,93 @@ export default function ProjectEditorPage() {
     setExpandedSections((p) => ({ ...p, [section]: !p[section] }));
   }
 
+  // ── Teleprompter ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!showTeleprompter || !tpAutoScroll) {
+      if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
+      return;
+    }
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    let lastTime: number | null = null;
+    function step(time: number) {
+      if (!lastTime) lastTime = time;
+      const delta = time - lastTime;
+      lastTime = time;
+      if (container) container.scrollTop += (tpSpeed * delta) / 600;
+      scrollAnimRef.current = requestAnimationFrame(step);
+    }
+    scrollAnimRef.current = requestAnimationFrame(step);
+    return () => { if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current); };
+  }, [showTeleprompter, tpAutoScroll, tpSpeed]);
+
+  async function openTeleprompter() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      cameraStreamRef.current = stream;
+      setShowTeleprompter(true);
+      setTimeout(() => {
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+          cameraVideoRef.current.play().catch(() => {});
+        }
+      }, 150);
+    } catch {
+      toast.error("Camera / microphone access is required for teleprompter recording");
+    }
+  }
+
+  function closeTeleprompter() {
+    if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current = null;
+    }
+    setTpAutoScroll(false);
+    setTpRecording(false);
+    setShowTeleprompter(false);
+  }
+
+  function startTpRecording() {
+    if (!cameraStreamRef.current) return;
+    recordedChunksRef.current = [];
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ? "video/webm;codecs=vp9,opus"
+      : "video/webm";
+    const mr = new MediaRecorder(cameraStreamRef.current, { mimeType });
+    mr.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+    mr.onstop = handleTpRecordingDone;
+    mr.start(500);
+    mediaRecorderRef.current = mr;
+    setTpRecording(true);
+  }
+
+  function stopTpRecording() {
+    mediaRecorderRef.current?.stop();
+    setTpRecording(false);
+  }
+
+  async function handleTpRecordingDone() {
+    const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+    setTpUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob, "teleprompter-recording.webm");
+      formData.append("title", `Teleprompter: ${project?.title ?? "Recording"}`);
+      formData.append("duration", "0");
+      const res = await fetch("/api/voice/upload", { method: "POST", body: formData });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
+      const { recording } = body as { recording: { id: string } };
+      closeTeleprompter();
+      router.push(`/create/${recording.id}?source=recording`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+      setTpUploading(false);
+    }
+  }
+
   // Loading / generating states
   if (loading || generating) {
     return (
@@ -497,6 +597,20 @@ export default function ProjectEditorPage() {
             </div>
           </Card>
 
+          {/* Settings nudge */}
+          <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <Settings size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-900">
+                If not done already,{" "}
+                <a href="/settings" className="underline hover:text-amber-700 font-semibold">add your photos and voice in Settings</a>
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Your avatar photo and voice clone are used to personalize your AI-generated videos.
+              </p>
+            </div>
+          </div>
+
           {/* Generate video */}
           <Card>
             <div className="flex items-center gap-2 mb-4">
@@ -585,6 +699,22 @@ export default function ProjectEditorPage() {
             <p className="text-xs text-slate-400 text-center mt-2">
               AI video generation takes 8-25 min depending on mode. You&apos;ll see it in My Videos when ready.
             </p>
+
+            {/* Teleprompter option */}
+            <div className="border-t border-slate-100 pt-4 mt-2">
+              <p className="text-xs text-slate-400 mb-2">Or record yourself on camera reading the script:</p>
+              <button
+                type="button"
+                onClick={openTeleprompter}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/60 transition-all text-left group"
+              >
+                <Camera size={18} className="text-blue-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700">Record with Teleprompter</p>
+                  <p className="text-xs text-slate-400">Script scrolls on screen while you record yourself on camera</p>
+                </div>
+              </button>
+            </div>
           </Card>
 
           {/* Social Content Pack */}
@@ -683,6 +813,114 @@ export default function ProjectEditorPage() {
             <Sparkles size={16} /> Generate Script
           </Button>
         </Card>
+      )}
+
+      {/* ── Teleprompter full-screen overlay ── */}
+      {showTeleprompter && script && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          {/* Top bar */}
+          <div className="flex items-center justify-between gap-4 px-4 py-3 bg-black/90 border-b border-white/10 shrink-0">
+            <div className="flex items-center gap-2">
+              <Camera size={15} className="text-white/60" />
+              <span className="text-white/80 text-sm font-semibold">Teleprompter</span>
+              {tpRecording && (
+                <span className="flex items-center gap-1 text-red-400 text-xs font-medium">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> REC
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Auto-scroll toggle */}
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <div
+                  onClick={() => setTpAutoScroll((v) => !v)}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${tpAutoScroll ? "bg-green-500" : "bg-white/20"}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${tpAutoScroll ? "left-[18px]" : "left-0.5"}`} />
+                </div>
+                <span className="text-white/60 text-xs">Auto-scroll</span>
+              </label>
+              {tpAutoScroll && (
+                <div className="flex items-center gap-1">
+                  <span className="text-white/40 text-[10px]">Slow</span>
+                  <input
+                    type="range" min={1} max={6} step={0.5} value={tpSpeed}
+                    onChange={(e) => setTpSpeed(Number(e.target.value))}
+                    className="w-20 accent-green-500"
+                  />
+                  <span className="text-white/40 text-[10px]">Fast</span>
+                </div>
+              )}
+              <button onClick={closeTeleprompter} className="text-white/50 hover:text-white text-lg leading-none ml-1">✕</button>
+            </div>
+          </div>
+
+          {/* Scrolling script */}
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 md:px-16 py-10">
+            <div className="max-w-2xl mx-auto space-y-10 pb-48">
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Opening Hook</p>
+                <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
+                  {selectedHook || script.hook}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Script</p>
+                <p className="text-white text-3xl md:text-4xl leading-relaxed whitespace-pre-wrap">
+                  {editedScript}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
+                <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
+                  {script.cta}
+                </p>
+                {buildContactLine() && (
+                  <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
+                    {buildContactLine()}
+                  </p>
+                )}
+              </div>
+              <div className="text-center pt-8">
+                <p className="text-white/20 text-xl">— End of Script —</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom bar: camera preview + record controls */}
+          <div className="shrink-0 flex items-center justify-between gap-4 px-4 py-3 bg-black/90 border-t border-white/10">
+            {/* Camera preview */}
+            <div className="w-28 h-16 rounded-xl overflow-hidden bg-white/10 shrink-0 relative">
+              <video ref={cameraVideoRef} muted autoPlay playsInline className="w-full h-full object-cover [transform:scaleX(-1)]" />
+              <div className="absolute bottom-0.5 left-1 text-[9px] text-white/50">Preview</div>
+            </div>
+
+            {/* Record controls */}
+            <div className="flex-1 flex items-center justify-center gap-3">
+              {tpUploading ? (
+                <div className="flex items-center gap-2 text-white/70 text-sm">
+                  <Loader2 size={15} className="animate-spin" /> Uploading recording…
+                </div>
+              ) : tpRecording ? (
+                <button
+                  onClick={stopTpRecording}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition-colors"
+                >
+                  <Square size={13} fill="white" /> Stop Recording
+                </button>
+              ) : (
+                <button
+                  onClick={startTpRecording}
+                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition-colors"
+                >
+                  <span className="w-3 h-3 rounded-full bg-white inline-block" /> Record Myself
+                </button>
+              )}
+            </div>
+
+            <div className="w-28 shrink-0" />
+          </div>
+        </div>
       )}
     </div>
   );
