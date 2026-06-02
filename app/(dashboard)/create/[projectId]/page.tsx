@@ -394,15 +394,17 @@ export default function ProjectEditorPage() {
     setTpUploading(true);
     try {
       const formData = new FormData();
-      formData.append("audio", blob, "teleprompter-recording.webm");
+      formData.append("video", blob, "teleprompter-recording.webm");
+      formData.append("projectId", projectId);
+      formData.append("videoType", selectedVideoType);
       formData.append("title", `Teleprompter: ${project?.title ?? "Recording"}`);
-      formData.append("duration", "0");
-      const res = await fetch("/api/voice/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/video/save-camera-recording", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
-      const { recording } = body as { recording: { id: string } };
+      const { video } = body as { video: { id: string } };
       closeTeleprompter();
-      router.push(`/create/${recording.id}?source=recording`);
+      toast.success("Recording saved! No AI charges — your video is ready.");
+      router.push(`/videos?highlight=${video.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
       setTpUploading(false);
