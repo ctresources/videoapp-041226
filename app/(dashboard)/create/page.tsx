@@ -401,7 +401,6 @@ function CreatePageInner() {
             <div className="mb-3">
               <p className="text-sm font-bold text-slate-700 mb-2">Need a Spark? No problem — choose from Templates</p>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-700 shrink-0">🏡 Real Estate Tips</span>
                 <button
                   type="button"
                   onClick={() => setShowTemplates(v => !v)}
