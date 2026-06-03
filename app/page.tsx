@@ -204,10 +204,10 @@ export default function LandingPage() {
           {/* Full-width centered header lines */}
           <div className="text-center mb-10">
             <p className="text-4xl font-black text-blue-900 mb-3 tracking-wide">
-              Speak, Spark, Share — no filming, no editing, no glam required.
+              Speak, Spark, Share —<br />no filming, no editing, no glam required.
             </p>
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest">
-              Agents who post video grow revenue 49% faster. Less than 8% do it consistently.
+              Agents who post video grow revenue 49% faster.<br />Less than 8% do it consistently.
             </p>
           </div>
 
