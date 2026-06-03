@@ -97,6 +97,7 @@ const features = [
 ];
 
 const comparison = [
+  { feature: "Unlimited camera recordings (no monthly cap)", us: true, a: false, b: false, c: false },
   { feature: "Built-in teleprompter + camera recorder", us: true, a: false, b: false, c: false },
   { feature: "No filming or on-camera requirement",  us: true,  a: false, b: false, c: false },
   { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
@@ -134,7 +135,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 videos/month", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)"],
+    features: ["4 AI videos/month", "Unlimited camera recordings", "Built-in teleprompter", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -145,7 +146,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["8 videos/month", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)"],
+    features: ["8 AI videos/month", "Unlimited camera recordings", "Built-in teleprompter", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -156,7 +157,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["12 videos/month", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)"],
+    features: ["12 AI videos/month", "Unlimited camera recordings", "Built-in teleprompter", "Up to 2 min per video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -226,7 +227,7 @@ export default function LandingPage() {
                   View Pricing <ChevronRight size={15} />
                 </a>
               </div>
-              <p className="mt-8 text-sm text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
+              <p className="mt-8 text-sm text-slate-400">No camera needed · Unlimited camera recordings · Fair Housing compliant · Cancel anytime</p>
             </div>
             {/* Hero image */}
             <div className="relative hidden lg:block animate-float pt-4">

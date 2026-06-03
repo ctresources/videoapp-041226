@@ -278,10 +278,13 @@ function CreatePageInner() {
           : videosLeft <= 1 ? "bg-amber-50 border border-amber-200"
           : "bg-blue-50 border border-blue-100"
         }`}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Film size={15} className={videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
             <span className={`font-semibold text-sm ${videosLeft === 0 ? "text-red-700" : videosLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
-              {videosLeft === 0 ? "No videos remaining this month" : `${videosLeft} of ${videosTotal} videos left`}
+              {videosLeft === 0 ? "No AI videos remaining this month" : `${videosLeft} of ${videosTotal} AI videos left`}
+            </span>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              ∞ camera recordings
             </span>
           </div>
           <span className={`text-xs shrink-0 ${videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
