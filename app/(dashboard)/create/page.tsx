@@ -95,6 +95,13 @@ function CreatePageInner() {
   const [pasteCity, setPasteCity] = useState("");
   const [pasteState, setPasteState] = useState("");
   const [pasteGenerating, setPasteGenerating] = useState(false);
+  const [pasteAiTopic, setPasteAiTopic] = useState("");
+  const [pasteAiGenerating, setPasteAiGenerating] = useState(false);
+
+  // Camera tab AI script
+  const [cameraAiTopic, setCameraAiTopic] = useState("");
+  const [cameraAiGenerating, setCameraAiGenerating] = useState(false);
+  const [cameraScript, setCameraScript] = useState("");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -253,6 +260,47 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setPasteGenerating(false);
+    }
+  }
+
+  async function handleAiWriteForPaste() {
+    if (!pasteAiTopic.trim()) return;
+    setPasteAiGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: pasteAiTopic }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Failed");
+      setPasteScript(data.script as string);
+      if (!pasteTitle) setPasteTitle(pasteAiTopic);
+      toast.success("Script ready — review and edit before generating your video.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setPasteAiGenerating(false);
+    }
+  }
+
+  async function handleAiWriteForCamera() {
+    if (!cameraAiTopic.trim()) return;
+    setCameraAiGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: cameraAiTopic }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Failed");
+      setCameraScript(data.script as string);
+      toast.success("Teleprompter script ready — scroll down to record!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setCameraAiGenerating(false);
     }
   }
 
@@ -581,8 +629,42 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
                 <p className="text-sm font-bold text-brand-text">Your Script</p>
-                <p className="text-xs text-slate-500">Paste or type your full script — skip AI generation entirely</p>
+                <p className="text-xs text-slate-500">Paste or type your full script — or let AI write it for you</p>
               </div>
+            </div>
+
+            {/* Trending Radar + AI Write */}
+            <div className="mb-5 pb-5 border-b border-slate-100">
+              <TopicRadar
+                city={locCity || undefined}
+                state={locState || undefined}
+                onSelect={(topic) => { setPasteAiTopic(topic); setPasteTitle(topic); }}
+              />
+              <p className="text-xs font-bold text-slate-600 mb-2">Let AI write the script</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={pasteAiTopic}
+                  onChange={(e) => setPasteAiTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !pasteAiGenerating && handleAiWriteForPaste()}
+                  placeholder="Enter a topic for AI to write about…"
+                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+                <Button
+                  size="sm"
+                  loading={pasteAiGenerating}
+                  disabled={!pasteAiTopic.trim()}
+                  onClick={handleAiWriteForPaste}
+                  className="bg-violet-600 hover:bg-violet-700 text-white whitespace-nowrap gap-1"
+                >
+                  <Sparkles size={13} /> Write It
+                </Button>
+              </div>
+              {pasteScript && !pasteAiGenerating && (
+                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                  <CheckCircle size={11} /> Script filled below — review and edit before generating.
+                </p>
+              )}
             </div>
 
             {/* Title */}
@@ -700,7 +782,41 @@ function CreatePageInner() {
             </div>
           </div>
 
-          <CameraRecorder />
+          {/* Trending Radar + AI Write for camera */}
+          <div className="mb-5 pb-5 border-b border-slate-200">
+            <TopicRadar
+              city={locCity || undefined}
+              state={locState || undefined}
+              onSelect={(topic) => setCameraAiTopic(topic)}
+            />
+            <p className="text-xs font-bold text-slate-600 mb-2">Let AI write your teleprompter script</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={cameraAiTopic}
+                onChange={(e) => setCameraAiTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !cameraAiGenerating && handleAiWriteForCamera()}
+                placeholder="Enter a topic for your teleprompter script…"
+                className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+              <Button
+                size="sm"
+                loading={cameraAiGenerating}
+                disabled={!cameraAiTopic.trim()}
+                onClick={handleAiWriteForCamera}
+                className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap gap-1"
+              >
+                <Sparkles size={13} /> Write It
+              </Button>
+            </div>
+            {cameraScript && !cameraAiGenerating && (
+              <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                <CheckCircle size={11} /> Teleprompter pre-filled — scroll down to review and record.
+              </p>
+            )}
+          </div>
+
+          <CameraRecorder initialScript={cameraScript} />
 
           {/* Divider */}
           <div className="relative my-6">
