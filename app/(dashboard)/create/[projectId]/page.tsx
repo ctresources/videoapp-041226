@@ -706,9 +706,8 @@ export default function ProjectEditorPage() {
               <button
                 type="button"
                 onClick={openTeleprompter}
-                className="flex items-center gap-1.5 text-base font-medium text-brand-text hover:text-primary-600 transition-colors shrink-0"
+                className="flex items-center justify-center px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-medium transition-colors shrink-0"
               >
-                <Camera size={18} className="shrink-0" />
                 Or record yourself on camera reading the script
               </button>
             </div>
