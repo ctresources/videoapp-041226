@@ -7,9 +7,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
+  Gift, Copy, Trash2, Plus, RefreshCw,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+interface InviteCode {
+  id: string;
+  code: string;
+  label: string | null;
+  credits: number;
+  used_by: string | null;
+  used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  profiles?: { email: string; full_name: string | null } | null;
+}
 
 interface UserRow {
   id: string;
@@ -38,6 +51,15 @@ export default function AdminPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  // Invite codes state
+  const [adminTab, setAdminTab] = useState<"users" | "invites">("users");
+  const [invites, setInvites] = useState<InviteCode[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [genCount, setGenCount] = useState("5");
+  const [genLabel, setGenLabel] = useState("");
+  const [genCredits, setGenCredits] = useState("1");
+  const [generating, setGenerating] = useState(false);
 
   const loadUsers = useCallback(async () => {
     const res = await fetch("/api/admin/users");
@@ -102,6 +124,38 @@ export default function AdminPage() {
 
   const isSuspended = (u: UserRow) => u.role === "suspended";
 
+  const loadInvites = useCallback(async () => {
+    setInvitesLoading(true);
+    const res = await fetch("/api/admin/invite-codes");
+    if (res.ok) { const { codes } = await res.json(); setInvites(codes); }
+    setInvitesLoading(false);
+  }, []);
+
+  useEffect(() => { if (adminTab === "invites") loadInvites(); }, [adminTab, loadInvites]);
+
+  async function generateCodes() {
+    setGenerating(true);
+    const res = await fetch("/api/admin/invite-codes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: parseInt(genCount) || 1, label: genLabel || undefined, credits: parseInt(genCredits) || 1 }),
+    });
+    if (res.ok) { toast.success("Codes generated!"); loadInvites(); }
+    else { const { error } = await res.json(); toast.error(error || "Failed"); }
+    setGenerating(false);
+  }
+
+  async function deleteCode(id: string) {
+    await fetch("/api/admin/invite-codes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setInvites((prev) => prev.filter((c) => c.id !== id));
+    toast.success("Code deleted");
+  }
+
+  function copyCode(code: string) {
+    navigator.clipboard.writeText(code);
+    toast.success(`Copied ${code}`);
+  }
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
@@ -128,6 +182,116 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* Tab switcher */}
+      <div className="flex gap-2 mb-5">
+        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"]] as const).map(([tab, Icon, label]) => (
+          <button key={tab} onClick={() => setAdminTab(tab)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
+            }`}>
+            <Icon size={14} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── INVITE CODES TAB ── */}
+      {adminTab === "invites" && (
+        <div className="flex flex-col gap-4">
+          {/* Generator */}
+          <Card>
+            <p className="text-sm font-bold text-brand-text mb-3 flex items-center gap-2"><Gift size={15} /> Generate Invite Codes</p>
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Count</label>
+                <input type="number" min="1" max="50" value={genCount} onChange={(e) => setGenCount(e.target.value)}
+                  className="w-20 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">AI Video Credits</label>
+                <input type="number" min="1" max="10" value={genCredits} onChange={(e) => setGenCredits(e.target.value)}
+                  className="w-20 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Label (optional)</label>
+                <input type="text" value={genLabel} onChange={(e) => setGenLabel(e.target.value)} placeholder="e.g. Agent Cohort 1"
+                  className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <Button onClick={generateCodes} loading={generating} className="gap-1.5 shrink-0">
+                <Plus size={14} /> Generate
+              </Button>
+              <button onClick={loadInvites} className="p-2 text-slate-400 hover:text-slate-600 transition-colors" title="Refresh">
+                <RefreshCw size={14} className={invitesLoading ? "animate-spin" : ""} />
+              </button>
+            </div>
+          </Card>
+
+          {/* Code list */}
+          <Card>
+            <p className="text-sm font-bold text-brand-text mb-3">
+              All Codes <span className="text-slate-400 font-normal">({invites.length})</span>
+            </p>
+            {invitesLoading ? (
+              <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10" />)}</div>
+            ) : invites.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-8">No codes yet — generate some above.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-slate-400 border-b border-slate-100">
+                      <th className="pb-2 font-semibold">Code</th>
+                      <th className="pb-2 font-semibold">Label</th>
+                      <th className="pb-2 font-semibold">Credits</th>
+                      <th className="pb-2 font-semibold">Status</th>
+                      <th className="pb-2 font-semibold">Used By</th>
+                      <th className="pb-2 font-semibold">Created</th>
+                      <th className="pb-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invites.map((inv) => (
+                      <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50">
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-semibold text-slate-800">{inv.code}</span>
+                            {!inv.used_by && (
+                              <button onClick={() => copyCode(inv.code)} className="text-slate-300 hover:text-blue-500 transition-colors" title="Copy">
+                                <Copy size={11} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 pr-4 text-slate-500">{inv.label || "—"}</td>
+                        <td className="py-2 pr-4 text-slate-700 font-medium">{inv.credits}</td>
+                        <td className="py-2 pr-4">
+                          {inv.used_by
+                            ? <span className="text-slate-400">Used</span>
+                            : <span className="text-emerald-600 font-semibold">Active</span>}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-500">
+                          {inv.profiles ? (inv.profiles.full_name || inv.profiles.email) : "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-400">
+                          {new Date(inv.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-2">
+                          {!inv.used_by && (
+                            <button onClick={() => deleteCode(inv.id)} className="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {adminTab === "users" && (<>
       {/* Filters */}
       <Card className="mb-4">
         <div className="flex flex-col sm:flex-row gap-3">
@@ -340,6 +504,7 @@ export default function AdminPage() {
           </div>
         )}
       </Card>
+      </>)}
     </div>
   );
 }

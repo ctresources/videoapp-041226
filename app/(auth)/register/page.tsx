@@ -5,15 +5,22 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import toast from "react-hot-toast";
+import { Gift } from "lucide-react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const searchParams = useSearchParams();
+  const [form, setForm] = useState({ fullName: "", email: "", password: "", inviteCode: "" });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) setForm((p) => ({ ...p, inviteCode: code.toUpperCase() }));
+  }, [searchParams]);
 
   function set(field: string, value: string) {
     setForm((p) => ({ ...p, [field]: value }));
@@ -45,7 +52,23 @@ export default function RegisterPage() {
       return;
     }
 
-    toast.success("Account created! Let's get you started.");
+    // Apply invite code if provided
+    if (form.inviteCode.trim()) {
+      const res = await fetch("/api/auth/apply-invite-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: form.inviteCode.trim() }),
+      });
+      if (res.ok) {
+        toast.success("Beta access activated! You have 1 free AI video + unlimited camera recordings.");
+      } else {
+        const { error: codeError } = await res.json();
+        toast.error(codeError || "Invite code could not be applied — continuing as free account.");
+      }
+    } else {
+      toast.success("Account created! Let's get you started.");
+    }
+
     router.push("/onboarding");
     router.refresh();
   }
@@ -58,10 +81,21 @@ export default function RegisterPage() {
     });
   }
 
+  const hasBetaCode = !!form.inviteCode.trim();
+
   return (
     <Card>
       <h1 className="text-2xl font-bold text-brand-text mb-1">Create your account</h1>
       <p className="text-sm text-slate-500 mb-6">Start creating viral real estate videos today</p>
+
+      {hasBetaCode && (
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-4">
+          <Gift size={16} className="text-emerald-600 shrink-0" />
+          <p className="text-sm text-emerald-700 font-medium">
+            Beta invite detected — you&apos;ll get <strong>1 free AI video + unlimited camera recordings</strong> on signup.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleRegister} className="flex flex-col gap-4">
         <Input
@@ -92,8 +126,27 @@ export default function RegisterPage() {
           hint="At least 8 characters"
           autoComplete="new-password"
         />
-        <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
-          Create Free Account
+
+        {/* Invite code */}
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">
+            Beta Invite Code <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={form.inviteCode}
+            onChange={(e) => set("inviteCode", e.target.value.toUpperCase())}
+            placeholder="BETA-XXXXXX"
+            className={`w-full text-sm px-3 py-2.5 border rounded-xl bg-white focus:outline-none focus:ring-2 uppercase tracking-widest font-mono ${
+              hasBetaCode
+                ? "border-emerald-300 focus:ring-emerald-400 bg-emerald-50"
+                : "border-slate-200 focus:ring-blue-500"
+            }`}
+          />
+        </div>
+
+        <Button type="submit" loading={loading} size="lg" className={`w-full mt-1 ${hasBetaCode ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
+          {hasBetaCode ? "Activate Beta Access" : "Create Free Account"}
         </Button>
       </form>
 
@@ -128,5 +181,13 @@ export default function RegisterPage() {
         </Link>
       </p>
     </Card>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-2xl" />}>
+      <RegisterForm />
+    </Suspense>
   );
 }
