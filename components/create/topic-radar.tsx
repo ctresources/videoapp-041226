@@ -69,7 +69,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-1.5">
           <Flame size={13} className="text-red-500" />
-          <span className="text-xs font-bold text-slate-700">Topic Radar</span>
+          <span className="text-xs font-bold text-slate-700">Trending Radar</span>
           {city && (
             <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
               <MapPin size={9} /> {city}
