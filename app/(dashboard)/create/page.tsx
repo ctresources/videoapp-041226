@@ -372,7 +372,7 @@ function CreatePageInner() {
               script:  "AI Sparks a broadcast-quality script from your topic — you review, then Share.",
               paste:   "You write the words or let AI Spark them — paste your script and Share.",
               listing: "Upload photos or import from Zillow — let your listing Spark your next video.",
-              camera:  "Speak directly to camera — the teleprompter scrolls as you record. Free, unlimited.",
+              camera:  "Speak and Spark directly in camera — the teleprompter scrolls as you record. Free, unlimited.",
             }[inputMode]}
           </p>
         </>
