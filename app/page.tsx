@@ -205,7 +205,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div>
               <p className="text-4xl font-black text-blue-900 mb-3 tracking-wide">
-                Speak, Spark, Share —<br />no filming, no editing, no glam required.
+                Speak, Spark, Share —<br /><span className="whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
                 Agents who post video grow revenue 49% faster.<br />Less than 8% do it consistently.
