@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Mic, Video, Share2, TrendingUp, Plus, ArrowRight, CalendarDays, CheckCircle, Circle } from "lucide-react";
+import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity } from "lucide-react";
 import { Suspense } from "react";
 import { TrendingTopics } from "@/components/dashboard/trending-topics";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
@@ -32,14 +32,16 @@ async function DashboardStats() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [videosResult, postsResult, profileResult] = await Promise.all([
-    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+  const [aiVideosResult, cameraVideosResult, postsResult, profileResult] = await Promise.all([
+    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
+    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
     supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, location_city, location_state").eq("id", user.id).single(),
   ]);
 
-  const videoCount = videosResult.count;
-  const postCount = postsResult.count;
+  const aiVideoCount = aiVideosResult.count ?? 0;
+  const cameraVideoCount = cameraVideosResult.count ?? 0;
+  const postCount = postsResult.count ?? 0;
   const profile = profileResult.data as {
     full_name: string | null;
     credits_remaining: number;
@@ -48,11 +50,7 @@ async function DashboardStats() {
     location_state: string | null;
   } | null;
 
-  const stats = [
-    { label: "Videos Created", value: videoCount ?? 0, icon: Video, color: "text-primary-500", bg: "bg-primary-50" },
-    { label: "Posts Published", value: postCount ?? 0, icon: Share2, color: "text-accent-500", bg: "bg-teal-50" },
-    { label: "Videos Left", value: profile?.credits_remaining ?? 0, icon: TrendingUp, color: "text-secondary-500", bg: "bg-purple-50" },
-  ];
+  const creditsLeft = profile?.credits_remaining ?? 0;
 
   return (
     <>
@@ -65,18 +63,53 @@ async function DashboardStats() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-              <Icon className={`w-6 h-6 ${color}`} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        {/* AI Videos Left */}
+        <Card className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+            <Zap className="w-5 h-5 text-purple-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-brand-text">{creditsLeft}</p>
+            <p className="text-xs text-slate-500 leading-tight">AI Videos Left</p>
+          </div>
+        </Card>
+
+        {/* Camera Recordings */}
+        <Card className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+            <Camera className="w-5 h-5 text-orange-500" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1">
+              <Infinity className="w-5 h-5 font-bold text-emerald-600" />
             </div>
-            <div>
-              <p className="text-2xl font-bold text-brand-text">{value}</p>
-              <p className="text-sm text-slate-500">{label}</p>
-            </div>
-          </Card>
-        ))}
+            <p className="text-xs text-slate-500 leading-tight">Camera Recordings</p>
+            <p className="text-[10px] text-emerald-600 font-semibold">{cameraVideoCount} recorded</p>
+          </div>
+        </Card>
+
+        {/* AI Videos Created */}
+        <Card className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+            <Video className="w-5 h-5 text-primary-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-brand-text">{aiVideoCount}</p>
+            <p className="text-xs text-slate-500 leading-tight">AI Videos Created</p>
+          </div>
+        </Card>
+
+        {/* Posts Published */}
+        <Card className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+            <Share2 className="w-5 h-5 text-accent-500" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-brand-text">{postCount}</p>
+            <p className="text-xs text-slate-500 leading-tight">Posts Published</p>
+          </div>
+        </Card>
       </div>
 
       <Card className="mb-6">
@@ -242,8 +275,8 @@ export default async function DashboardPage() {
       <Suspense fallback={
         <div className="space-y-4 mb-8">
           <Skeleton className="h-8 w-64" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
         </div>
       }>
