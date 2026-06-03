@@ -209,7 +209,7 @@ function SocialPageContent() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-brand-text">Other Platforms (Blotato)</h3>
+              <h3 className="font-semibold text-brand-text">Other Platforms</h3>
               {isBlotato && (
                 <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle size={11} /> Connected
