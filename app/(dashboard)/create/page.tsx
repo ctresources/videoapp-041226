@@ -432,8 +432,8 @@ function CreatePageInner() {
             </div>
 
             {/* Topic input with inline mic */}
-            <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">
+            <div className="mt-5">
+              <label className="text-sm font-bold text-slate-700 block mb-1">
                 Your topic — spoken, picked, or typed
               </label>
               <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
@@ -451,12 +451,12 @@ function CreatePageInner() {
             </div>
 
             {/* Advanced options — inside this card */}
-            <div className="border-t border-slate-100 mt-4 pt-3">
+            <div className="border-t border-slate-200 mt-5 pt-3">
               <button
                 onClick={() => setShowAdvanced(v => !v)}
-                className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors w-full"
+                className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors w-full"
               >
-                {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 {showAdvanced ? "Hide advanced options" : "Advanced options (audience, style, CTA)"}
               </button>
               {showAdvanced && (
