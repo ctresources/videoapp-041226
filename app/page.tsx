@@ -200,9 +200,9 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section className="pt-16 pb-20 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div>
-              <p className="text-2xl font-bold text-blue-900 mb-3 tracking-wide">
+              <p className="text-4xl font-black text-blue-900 mb-3 tracking-wide">
                 Speak, Spark, Share — no filming, no editing, no glam required.
               </p>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
