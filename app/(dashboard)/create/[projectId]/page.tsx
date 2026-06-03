@@ -342,17 +342,21 @@ export default function ProjectEditorPage() {
     return () => { if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current); };
   }, [showTeleprompter, tpAutoScroll, tpSpeed]);
 
+  // Attach camera stream once the overlay is in the DOM
+  useEffect(() => {
+    if (!showTeleprompter || !cameraStreamRef.current) return;
+    const video = cameraVideoRef.current;
+    if (video) {
+      video.srcObject = cameraStreamRef.current;
+      video.play().catch(() => {});
+    }
+  }, [showTeleprompter]);
+
   async function openTeleprompter() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       cameraStreamRef.current = stream;
       setShowTeleprompter(true);
-      setTimeout(() => {
-        if (cameraVideoRef.current) {
-          cameraVideoRef.current.srcObject = stream;
-          cameraVideoRef.current.play().catch(() => {});
-        }
-      }, 150);
     } catch {
       toast.error("Camera / microphone access is required for teleprompter recording");
     }
