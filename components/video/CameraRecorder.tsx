@@ -35,9 +35,13 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder() {
+export function CameraRecorder({ initialScript }: { initialScript?: string } = {}) {
   const [step, setStep] = useState<CamStep>("script");
-  const [script, setScript] = useState("");
+  const [script, setScript] = useState(initialScript ?? "");
+
+  useEffect(() => {
+    if (initialScript) setScript(initialScript);
+  }, [initialScript]);
   const [speedIdx, setSpeedIdx] = useState(1);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);

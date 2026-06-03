@@ -23,7 +23,7 @@ const STEP_CONFIG = [
 interface Props {
   city?: string;
   state?: string;
-  onSelect: (topic: string) => void;
+  onSelect?: (topic: string) => void;
 }
 
 export function TopicRadar({ city, state, onSelect }: Props) {
@@ -102,7 +102,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
             <button
               key={type}
               type="button"
-              onClick={() => onSelect(t.customTopic || t.title)}
+              onClick={() => onSelect?.(t.customTopic || t.title)}
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl bg-white border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
             >
               <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
