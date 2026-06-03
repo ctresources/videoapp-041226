@@ -202,6 +202,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
+              <p className="text-sm font-semibold text-blue-900 mb-3 tracking-wide">
+                Speak, Spark, Share — no filming, no editing, no glam required.
+              </p>
               <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
                 Agents who post video grow revenue 49% faster. Less than 8% do it consistently.
               </p>
@@ -211,9 +214,6 @@ export default function LandingPage() {
               </h1>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
                 Most real estate agents are invisible online. XpressReel fixes that — turning your voice recording into a publish-ready short-form video.
-              </p>
-              <p className="text-sm font-semibold text-blue-900 mb-10 tracking-wide">
-                Speak, Spark, Share — no filming, no editing, no glam required.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
