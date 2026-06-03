@@ -527,8 +527,8 @@ function CreatePageInner() {
 
             {/* Topic input with inline mic */}
             <div className="mt-5">
-              <label className="text-sm font-bold text-slate-700 block mb-1">
-                Your topic — spoken, picked, or typed
+              <label className="text-base font-bold text-slate-700 block mb-1">
+                Your topic — spoken, sparked, or typed
               </label>
               <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
                 <input
