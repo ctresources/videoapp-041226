@@ -246,36 +246,6 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-
-        {/* Stats bar */}
-        <div className="max-w-5xl mx-auto mt-16 border-t border-slate-200 pt-10 grid grid-cols-3 gap-6">
-          {[
-            {
-              stat: "49%",
-              label: "Faster revenue growth",
-              photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
-            },
-            {
-              stat: "< 2 min",
-              label: "Voice to finished video",
-              photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80",
-            },
-            {
-              stat: "0",
-              label: "Filming or editing needed",
-              photo: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
-            },
-          ].map(({ stat, label, photo }) => (
-            <div key={label} className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo} alt={label} className="w-full h-36 object-cover" />
-              <div className="p-4">
-                <p className="text-3xl font-black text-blue-900">{stat}</p>
-                <p className="text-slate-500 text-sm mt-0.5">{label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* ── Scrolling Video Strip ── */}
