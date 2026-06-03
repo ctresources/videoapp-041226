@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle, Film,
-  ChevronDown, ChevronUp, Sparkles, LayoutGrid,
+  ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -26,7 +26,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-type InputMode = "script" | "camera" | "listing";
+type InputMode = "script" | "camera" | "listing" | "paste";
 
 const STATE_MAP: Record<string, string> = {
   "alabama":"AL","alaska":"AK","arizona":"AZ","arkansas":"AR","california":"CA",
@@ -88,6 +88,13 @@ function CreatePageInner() {
   const [locCta, setLocCta] = useState("");
 
   const [locGenerating, setLocGenerating] = useState(false);
+
+  // Paste-script tab
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasteScript, setPasteScript] = useState("");
+  const [pasteCity, setPasteCity] = useState("");
+  const [pasteState, setPasteState] = useState("");
+  const [pasteGenerating, setPasteGenerating] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -225,6 +232,30 @@ function CreatePageInner() {
     }
   }
 
+  async function handlePasteScript() {
+    if (!pasteScript.trim()) return toast.error("Please paste or type your script first");
+    setPasteGenerating(true);
+    try {
+      const res = await fetch("/api/ai/paste-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: pasteTitle || undefined,
+          script: pasteScript,
+          city: pasteCity || undefined,
+          state: pasteState || undefined,
+        }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || `Failed (${res.status})`);
+      router.push(`/create/${(data.project as { id: string }).id}?source=paste`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setPasteGenerating(false);
+    }
+  }
+
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
   const isMarketSaved = savedMarkets.some(
@@ -263,9 +294,10 @@ function CreatePageInner() {
 
       {/* ── Tab bar ── */}
       {step === "input" && (
-        <div className="grid grid-cols-3 gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
+        <div className="grid grid-cols-4 gap-1.5 mb-6 bg-slate-100 p-1 rounded-xl">
           {[
             { mode: "script" as InputMode, icon: Sparkles, label: "AI Script" },
+            { mode: "paste" as InputMode, icon: PenLine, label: "Paste Script" },
             { mode: "listing" as InputMode, icon: Building2, label: "Listing" },
             { mode: "camera" as InputMode, icon: Video, label: "Camera" },
           ].map(({ mode, icon: Icon, label }) => (
@@ -518,6 +550,102 @@ function CreatePageInner() {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          PASTE SCRIPT TAB
+      ══════════════════════════════════════════ */}
+      {inputMode === "paste" && step === "input" && (
+        <div className="flex flex-col gap-4">
+          <Card>
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
+              <div>
+                <p className="text-sm font-bold text-brand-text">Your Script</p>
+                <p className="text-xs text-slate-500">Paste or type your full script — skip AI generation entirely</p>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="mb-4">
+              <label className="text-xs font-bold text-slate-600 block mb-1">Video Title (optional)</label>
+              <input
+                type="text"
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+                placeholder="e.g. Austin Market Update — June 2026"
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+
+            {/* Script textarea */}
+            <div className="mb-4">
+              <label className="text-xs font-bold text-slate-600 block mb-1">
+                Your Script *
+                {pasteScript && (
+                  <span className="ml-2 font-normal text-slate-400">
+                    {pasteScript.trim().split(/\s+/).length} words
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={pasteScript}
+                onChange={(e) => setPasteScript(e.target.value)}
+                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 200 words for best results."
+                rows={10}
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none leading-relaxed"
+              />
+              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 200 && (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> Over 200 words — the script will be trimmed at generation time.
+                </p>
+              )}
+            </div>
+
+            {/* Optional city/state */}
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Market (optional — used for metadata)</p>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={pasteCity}
+                    onChange={(e) => setPasteCity(e.target.value)}
+                    placeholder="City"
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+                <div className="w-20">
+                  <input
+                    type="text"
+                    value={pasteState}
+                    onChange={(e) => setPasteState(e.target.value)}
+                    placeholder="ST"
+                    maxLength={2}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Button
+            onClick={handlePasteScript}
+            loading={pasteGenerating}
+            disabled={!pasteScript.trim()}
+            size="lg"
+            className="w-full gap-2 bg-violet-600 hover:bg-violet-700"
+          >
+            {pasteGenerating
+              ? <>Saving script…</>
+              : <><ArrowRight size={16} /> Review &amp; Generate Video</>}
+          </Button>
+          {!pasteScript.trim() && (
+            <p className="text-xs text-slate-400 text-center -mt-2">
+              Paste your script above to continue
+            </p>
+          )}
         </div>
       )}
 
