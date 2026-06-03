@@ -7,7 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   CheckCircle, CreditCard, Zap, Building2, User,
-  AlertCircle, ArrowRight, ExternalLink, Sprout,
+  AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video,
 } from "lucide-react";
 
 const PLANS = [
@@ -18,11 +18,14 @@ const PLANS = [
     videos: 4,
     highlighted: false,
     features: [
-      "4 videos/month",
-      "Up to 2 min per video/reel",
+      "4 AI videos/month",
+      "Unlimited camera recordings (up to 30 mins each)",
+      "Built-in teleprompter",
+      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
       "1 social platform (YouTube)",
+      "Other platforms coming soon",
     ],
   },
   {
@@ -32,12 +35,15 @@ const PLANS = [
     videos: 8,
     highlighted: true,
     features: [
-      "8 videos/month",
-      "Up to 2 min per video/reel",
+      "8 AI videos/month",
+      "Unlimited camera recordings (up to 30 mins each)",
+      "Built-in teleprompter",
+      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
       "MLS listing auto-video",
       "1 social platform (YouTube)",
+      "Other platforms coming soon",
     ],
   },
   {
@@ -47,18 +53,23 @@ const PLANS = [
     videos: 12,
     highlighted: false,
     features: [
-      "12 videos/month",
-      "Up to 2 min per video/reel",
+      "12 AI videos/month",
+      "Unlimited camera recordings (up to 30 mins each)",
+      "Built-in teleprompter",
+      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
       "MLS listing auto-video",
       "Priority rendering",
       "1 social platform (YouTube)",
+      "Other platforms coming soon",
     ],
   },
 ];
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
+  free: User,
+  beta: Gift,
   starter: Sprout,
   agent: User,
   pro: Zap,
@@ -155,20 +166,28 @@ export default async function BillingPage({
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <p className="font-bold text-brand-text text-lg capitalize">{currentPlan?.name || "Free"} Plan</p>
-                <Badge variant={isActive ? "success" : isTrialing ? "success" : isPastDue ? "error" : "default"}>
-                  {isActive ? "Active" : isTrialing ? "Trial" : isPastDue ? "Past Due" : hasSubscription ? "Canceled" : "No Plan"}
-                </Badge>
+                <p className="font-bold text-brand-text text-lg capitalize">
+                  {currentTier === "beta" ? "Beta" : currentPlan?.name || "Free"} Plan
+                </p>
+                {currentTier === "beta" ? (
+                  <Badge variant="success">Beta Access</Badge>
+                ) : (
+                  <Badge variant={isActive ? "success" : isTrialing ? "success" : isPastDue ? "error" : "default"}>
+                    {isActive ? "Active" : isTrialing ? "Trial" : isPastDue ? "Past Due" : hasSubscription ? "Canceled" : "No Plan"}
+                  </Badge>
+                )}
               </div>
-              {currentPlan && (
-                <p className="text-sm text-slate-500">${currentPlan.price}/month · {currentPlan.videos} videos/month</p>
-              )}
-              {periodEnd && (
+              {currentTier === "beta" ? (
+                <p className="text-sm text-slate-500">Beta access · {profile?.credits_remaining ?? 0} AI video{(profile?.credits_remaining ?? 0) !== 1 ? "s" : ""} remaining · Unlimited camera recordings</p>
+              ) : currentPlan ? (
+                <p className="text-sm text-slate-500">${currentPlan.price}/month · {currentPlan.videos} AI videos/month · Unlimited camera recordings</p>
+              ) : null}
+              {periodEnd && currentTier !== "beta" && (
                 <p className="text-xs text-slate-400 mt-0.5">
                   {isTrialing ? `Free trial ends ${periodEnd}` : profile?.cancel_at_period_end ? `Cancels on ${periodEnd}` : `Renews on ${periodEnd}`}
                 </p>
               )}
-              {!hasSubscription && (
+              {!hasSubscription && currentTier !== "beta" && (
                 <p className="text-xs text-slate-400 mt-0.5">No active subscription</p>
               )}
             </div>
@@ -184,31 +203,64 @@ export default async function BillingPage({
           </div>
         </div>
 
-        {/* Videos remaining bar */}
-        {currentPlan && (
-          <div className="mt-5 pt-5 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-slate-500">Videos remaining this month</p>
-              <p className="text-xs font-bold text-brand-text">
-                {profile?.credits_remaining ?? 0} of {currentPlan.videos} left
+        {/* Usage summary */}
+        {(currentPlan || currentTier === "beta") && (
+          <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* AI videos */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                  <Zap size={11} className="text-primary-500" /> AI videos this month
+                </p>
+                <p className="text-xs font-bold text-brand-text">
+                  {profile?.credits_remaining ?? 0} of {currentPlan?.videos ?? 1} left
+                </p>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full">
+                <div
+                  className="h-2 bg-primary-500 rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, ((profile?.credits_remaining ?? 0) / (currentPlan?.videos ?? 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5">
+                {currentTier === "beta" ? "Included with beta access" : "Resets each billing period"}
               </p>
             </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full">
-              <div
-                className="h-2 bg-primary-500 rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, ((profile?.credits_remaining ?? 0) / currentPlan.videos) * 100)}%`,
-                }}
-              />
+            {/* Camera recordings */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                  <Video size={11} className="text-orange-500" /> Camera recordings
+                </p>
+                <p className="text-xs font-bold text-emerald-600">Unlimited</p>
+              </div>
+              <div className="w-full h-2 bg-emerald-100 rounded-full">
+                <div className="h-2 bg-emerald-400 rounded-full w-full" />
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5">Up to 30 mins each · no monthly cap</p>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">Resets at the start of your next billing period</p>
           </div>
         )}
       </Card>
 
+      {/* Beta notice — no plan needed */}
+      {currentTier === "beta" && (
+        <div className="mb-6 flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800">
+          <Gift size={18} className="shrink-0 text-emerald-600" />
+          <div>
+            <p className="font-semibold text-sm">You&apos;re on beta access — no payment needed.</p>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              When your beta credits run out, choose a plan below to keep creating AI videos. Camera recordings stay unlimited on any paid plan.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Plan comparison */}
       <h3 className="text-base font-bold text-brand-text mb-4">
-        {hasSubscription ? "Change Plan" : "Choose a Plan"}
+        {hasSubscription ? "Change Plan" : currentTier === "beta" ? "Upgrade to a Paid Plan" : "Choose a Plan"}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {PLANS.map((plan) => {
