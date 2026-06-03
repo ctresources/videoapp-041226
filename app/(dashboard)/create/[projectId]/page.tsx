@@ -694,27 +694,27 @@ export default function ProjectEditorPage() {
               </>
             )}
 
-            <Button
-              onClick={handleGenerateVideo}
-              loading={videoGenerating}
-              size="lg"
-              className="w-full gap-2"
-            >
-              <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
-            </Button>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                onClick={handleGenerateVideo}
+                loading={videoGenerating}
+                size="lg"
+                className="flex-1 gap-2"
+              >
+                <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+              </Button>
+              <button
+                type="button"
+                onClick={openTeleprompter}
+                className="flex items-center gap-1.5 text-base font-medium text-brand-text hover:text-primary-600 transition-colors shrink-0"
+              >
+                <Camera size={18} className="shrink-0" />
+                Or record yourself on camera reading the script
+              </button>
+            </div>
             <p className="text-xs text-slate-400 text-center mt-2">
               AI video generation takes 8-25 min depending on mode. You&apos;ll see it in My Videos when ready.
             </p>
-
-            {/* Teleprompter option */}
-            <button
-              type="button"
-              onClick={openTeleprompter}
-              className="flex items-center justify-center gap-2 w-full mt-3 text-base font-medium text-brand-text hover:text-primary-600 transition-colors"
-            >
-              <Camera size={18} className="shrink-0" />
-              Or record yourself on camera reading the script
-            </button>
           </Card>
 
           {/* Social Content Pack */}
