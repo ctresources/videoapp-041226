@@ -7,9 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity } from "lucide-react";
 import { Suspense } from "react";
-import { TrendingTopics } from "@/components/dashboard/trending-topics";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
-
 async function DraftQueueWrapper() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -36,7 +34,7 @@ async function DashboardStats() {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, location_city, location_state").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier").eq("id", user.id).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -46,8 +44,6 @@ async function DashboardStats() {
     full_name: string | null;
     credits_remaining: number;
     subscription_tier: string;
-    location_city: string | null;
-    location_state: string | null;
   } | null;
 
   const creditsLeft = profile?.credits_remaining ?? 0;
@@ -112,12 +108,6 @@ async function DashboardStats() {
         </Card>
       </div>
 
-      <Card className="mb-6">
-        <TrendingTopics
-          city={profile?.location_city ?? undefined}
-          state={profile?.location_state ?? undefined}
-        />
-      </Card>
     </>
   );
 }
