@@ -258,24 +258,24 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-semibold text-brand-text">
-              What do you want to say?
+              What do you want to Speak about?
             </label>
             <button
               onClick={() => setShowAiGen((v) => !v)}
               className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
             >
               <Sparkles size={12} />
-              Generate with AI
+              Spark with AI
             </button>
           </div>
           <p className="text-xs text-slate-400 mb-2">
-            Write your script or let AI write it — the teleprompter scrolls while you record.
+            Speak your script or let AI Spark one — the teleprompter scrolls as you record.
           </p>
 
           {showAiGen && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <p className="text-xs font-medium text-primary-700 mb-2">
-                What topic should the script cover?
+                What&apos;s your Spark? What topic should the script cover?
               </p>
               <div className="flex gap-2">
                 <input
@@ -297,11 +297,11 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
                   ) : (
                     <ChevronRight size={14} />
                   )}
-                  {generating ? "Writing..." : "Generate"}
+                  {generating ? "Sparking..." : "Spark It"}
                 </Button>
               </div>
               <p className="text-xs text-primary-600/70 mt-1.5">
-                AI will write a 2–3 minute teleprompter script for you
+                AI will Spark a 2–3 minute teleprompter script for you
               </p>
             </div>
           )}
@@ -361,7 +361,7 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
         </Button>
         {!script.trim() && (
           <p className="text-xs text-slate-400 text-center -mt-3">
-            Enter or generate a script to continue
+            Speak or Spark a script to continue
           </p>
         )}
       </div>

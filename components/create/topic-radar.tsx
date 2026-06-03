@@ -117,7 +117,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
       </div>
 
       {topics.length > 0 && (
-        <p className="text-[10px] text-slate-400 mt-2 text-center">Tap any row to fill your topic field</p>
+        <p className="text-[10px] text-slate-400 mt-2 text-center">Tap any row to Spark your topic</p>
       )}
     </div>
   );
