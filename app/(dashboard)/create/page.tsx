@@ -297,23 +297,22 @@ function CreatePageInner() {
 
       {/* ── Tab bar ── */}
       {step === "input" && (
-        <div className="grid grid-cols-4 gap-1.5 mb-6 bg-slate-100 p-1 rounded-xl">
+        <div className="grid grid-cols-4 gap-2 mb-6">
           {[
-            { mode: "script" as InputMode, icon: Sparkles, label: "AI Script" },
-            { mode: "paste" as InputMode, icon: PenLine, label: "Paste Script" },
-            { mode: "listing" as InputMode, icon: Building2, label: "Listing" },
-            { mode: "camera" as InputMode, icon: Video, label: "Camera" },
-          ].map(({ mode, icon: Icon, label }) => (
+            { mode: "script" as InputMode, icon: Sparkles, label: "AI Script",    active: "bg-blue-600 text-white shadow-md shadow-blue-200",    inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
+            { mode: "paste" as InputMode,  icon: PenLine,   label: "Paste Script", active: "bg-violet-600 text-white shadow-md shadow-violet-200", inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
+            { mode: "listing" as InputMode, icon: Building2, label: "Listing",     active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
+            { mode: "camera" as InputMode,  icon: Video,     label: "Camera",      active: "bg-orange-500 text-white shadow-md shadow-orange-200",  inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
+          ].map(({ mode, icon: Icon, label, active, inactive }) => (
             <button
               key={mode}
               onClick={() => setInputMode(mode)}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                inputMode === mode
-                  ? "bg-white text-blue-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+              className={`flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl text-xs font-bold transition-all ${
+                inputMode === mode ? active : inactive
               }`}
             >
-              <Icon size={13} /> {label}
+              <Icon size={15} />
+              <span className="leading-none">{label}</span>
             </button>
           ))}
         </div>
