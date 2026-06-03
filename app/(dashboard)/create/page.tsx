@@ -474,7 +474,7 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-brand-text">Your Topic</p>
-                <p className="text-xs text-slate-500">Hit the mic to speak, pick from topics or templates, or type below in text box</p>
+                <p className="text-xs text-slate-500">Hit the mic to speak, choose from Trending Radar or the Real Estate Tips templates, or type below in text box</p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
