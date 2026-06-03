@@ -439,10 +439,10 @@ function CreatePageInner() {
                 <button
                   type="button"
                   onClick={() => setShowTemplates(v => !v)}
-                  className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                     showTemplates
-                      ? "bg-blue-50 border-blue-200 text-blue-700"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                      ? "bg-indigo-700 text-white shadow-md shadow-indigo-200"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                   }`}
                 >
                   <LayoutGrid size={13} />
@@ -488,7 +488,11 @@ function CreatePageInner() {
             <div className="border-t border-slate-200 mt-5 pt-3">
               <button
                 onClick={() => setShowAdvanced(v => !v)}
-                className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors w-full"
+                className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  showAdvanced
+                    ? "bg-teal-700 text-white shadow-md shadow-teal-200"
+                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                }`}
               >
                 {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 {showAdvanced ? "Hide advanced options" : "Advanced options (audience, style, CTA)"}
