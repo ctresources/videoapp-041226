@@ -11,19 +11,14 @@ interface Topic {
   customTopic?: string;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  market_update: "bg-blue-100 text-blue-700",
-  why_live_here: "bg-emerald-100 text-emerald-700",
-  community_events: "bg-purple-100 text-purple-700",
-  custom: "bg-orange-100 text-orange-700",
-};
+// Show exactly one of each: Local → Market → Topic
+const PREFERRED_TYPES: Array<Topic["videoType"]> = ["why_live_here", "market_update", "custom"];
 
-const TYPE_LABELS: Record<string, string> = {
-  market_update: "Market",
-  why_live_here: "Local",
-  community_events: "Community",
-  custom: "Topic",
-};
+const STEP_CONFIG = [
+  { label: "Step 1 · Local",  bg: "bg-emerald-500", text: "text-white" },
+  { label: "Step 2 · Market", bg: "bg-blue-500",    text: "text-white" },
+  { label: "Step 3 · Topic",  bg: "bg-orange-500",  text: "text-white" },
+];
 
 interface Props {
   city?: string;
@@ -98,29 +93,31 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        {topics.map((t, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onSelect(t.customTopic || t.title)}
-            className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-lg bg-white border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
-          >
-            <span className="w-5 h-5 rounded bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover:text-blue-600 shrink-0 transition-colors">
-              {i + 1}
-            </span>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[t.videoType]}`}>
-              {TYPE_LABELS[t.videoType]}
-            </span>
-            <span className="text-xs font-medium text-slate-700 group-hover:text-blue-900 leading-snug truncate flex-1">
-              {t.title}
-            </span>
-          </button>
-        ))}
+      <div className="flex flex-col gap-2">
+        {PREFERRED_TYPES.map((type, i) => {
+          const t = topics.find((x) => x.videoType === type);
+          const cfg = STEP_CONFIG[i];
+          if (!t) return null;
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onSelect(t.customTopic || t.title)}
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl bg-white border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+            >
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
+                {cfg.label}
+              </span>
+              <span className="text-xs font-medium text-slate-700 group-hover:text-blue-900 leading-snug flex-1">
+                {t.title}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {topics.length > 0 && (
-        <p className="text-[10px] text-slate-400 mt-2 text-center">Click any topic to fill your topic field</p>
+        <p className="text-[10px] text-slate-400 mt-2 text-center">Tap any row to fill your topic field</p>
       )}
     </div>
   );

@@ -292,9 +292,12 @@ function CreatePageInner() {
 
           {/* ── STEP 1: Your Market ── */}
           <Card>
-            <div className="mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 1 · Your Market</p>
-              <p className="text-xs text-slate-500 mt-0.5">Speak or Type your City and State</p>
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
+              <div>
+                <p className="text-sm font-bold text-brand-text">Your Market</p>
+                <p className="text-xs text-slate-500">Speak or Type your City and State</p>
+              </div>
             </div>
 
             {/* Saved market chips */}
@@ -373,9 +376,12 @@ function CreatePageInner() {
 
           {/* ── STEP 2: Topic ── */}
           <Card>
-            <div className="mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 2 · Your Topic</p>
-              <p className="text-xs text-slate-500 mt-0.5">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
+            <div className="flex items-center gap-2.5 mb-4">
+              <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
+              <div>
+                <p className="text-sm font-bold text-brand-text">Your Topic</p>
+                <p className="text-xs text-slate-500">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
+              </div>
             </div>
 
             {/* Big mic — primary action */}
@@ -442,55 +448,57 @@ function CreatePageInner() {
                 <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
               </div>
             </div>
-          </Card>
 
-          {/* Advanced options */}
-          <button
-            onClick={() => setShowAdvanced(v => !v)}
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors self-start px-1"
-          >
-            {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            {showAdvanced ? "Hide advanced options" : "Advanced options (audience, style, CTA)"}
-          </button>
-
-          {showAdvanced && (
-            <Card>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {
-                    label: "Audience", value: locAudience, set: setLocAudience,
-                    options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
-                  },
-                  {
-                    label: "Style", value: locTone, set: setLocTone,
-                    options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
-                  },
-                  {
-                    label: "CTA", value: locCta, set: setLocCta,
-                    options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
-                  },
-                ].map(({ label, value, set, options }) => (
-                  <div key={label}>
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
-                    <div className="relative">
-                      <select
-                        value={value}
-                        onChange={(e) => set(e.target.value)}
-                        className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                      <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            {/* Advanced options — inside this card */}
+            <div className="border-t border-slate-100 mt-4 pt-3">
+              <button
+                onClick={() => setShowAdvanced(v => !v)}
+                className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors w-full"
+              >
+                {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                {showAdvanced ? "Hide advanced options" : "Advanced options (audience, style, CTA)"}
+              </button>
+              {showAdvanced && (
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  {[
+                    {
+                      label: "Audience", value: locAudience, set: setLocAudience,
+                      options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
+                    },
+                    {
+                      label: "Style", value: locTone, set: setLocTone,
+                      options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+                    },
+                    {
+                      label: "CTA", value: locCta, set: setLocCta,
+                      options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+                    },
+                  ].map(({ label, value, set, options }) => (
+                    <div key={label}>
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
+                      <div className="relative">
+                        <select
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
+                          className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                        <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* ── STEP 3: Generate ── */}
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Step 3 · Generate the Script</p>
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</span>
+              <p className="text-sm font-bold text-brand-text">Generate the Script</p>
+            </div>
             <Button
               onClick={handleGenerateScript}
               loading={locGenerating}
