@@ -378,14 +378,12 @@ function CreatePageInner() {
           <Card>
             <div className="flex items-center gap-2.5 mb-4">
               <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-brand-text">Your Topic</p>
-                <p className="text-xs text-slate-500">Hit the Mic to Speak, or Pick from Topics or Templates Below</p>
+                <p className="text-xs text-slate-500">Pick from Topics or Templates, or Type Below</p>
               </div>
+              <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
-
-            {/* Big mic — primary action */}
-            <FieldMic size="lg" onTranscript={(t) => setLocCustomTopic(t)} title="Hit the Mic — Speak Your Topic" />
 
             {/* Topic Radar */}
             <div className="mt-3">

@@ -6,7 +6,7 @@ import { Mic, MicOff, Loader2 } from "lucide-react";
 interface FieldMicProps {
   onTranscript: (text: string) => void;
   title?: string;
-  size?: "sm" | "lg";
+  size?: "sm" | "md" | "lg";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,6 +60,25 @@ export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMi
         {listening
           ? <><MicOff size={18} /> Tap to stop</>
           : <><Mic size={18} /> {title}</>}
+      </button>
+    );
+  }
+
+  if (size === "md") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        title={listening ? "Tap to stop" : title}
+        className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm ${
+          listening
+            ? "bg-red-500 text-white"
+            : "bg-primary-600 hover:bg-primary-700 text-white"
+        }`}
+      >
+        {listening
+          ? <Loader2 size={20} className="animate-spin" />
+          : <Mic size={20} />}
       </button>
     );
   }
