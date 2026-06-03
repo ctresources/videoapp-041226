@@ -178,7 +178,7 @@ export function PublishModal({
                   <p className="text-sm text-yellow-700">
                     No social accounts connected.{" "}
                     <Link href="/social" className="underline font-medium" onClick={onClose}>
-                      Connect YouTube or Blotato →
+                      Connect YouTube →
                     </Link>
                   </p>
                 </div>
