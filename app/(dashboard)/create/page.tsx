@@ -68,7 +68,7 @@ function CreatePageInner() {
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  const PLAN_VIDEOS: Record<string, number> = { free: 1, starter: 4, agent: 8, pro: 12 };
+  const PLAN_VIDEOS: Record<string, number> = { free: 1, beta: 1, starter: 4, agent: 8, pro: 12 };
 
   // Location
   const [locCity, setLocCity] = useState("");
