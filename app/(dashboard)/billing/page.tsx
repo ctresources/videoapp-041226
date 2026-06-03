@@ -117,7 +117,7 @@ export default async function BillingPage({
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-brand-text">Billing & Plan</h2>
-        <p className="text-sm text-slate-500 mt-1">Manage your subscription and usage</p>
+        <p className="text-sm text-slate-500 mt-1">Manage Your Subscription And Usage</p>
       </div>
 
       {/* Success / canceled banners */}
@@ -188,7 +188,7 @@ export default async function BillingPage({
                 </p>
               )}
               {!hasSubscription && currentTier !== "beta" && (
-                <p className="text-xs text-slate-400 mt-0.5">No active subscription</p>
+                <p className="text-xs text-slate-400 mt-0.5">No Active Subscription</p>
               )}
             </div>
           </div>
@@ -210,10 +210,10 @@ export default async function BillingPage({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Zap size={11} className="text-primary-500" /> AI videos this month
+                  <Zap size={11} className="text-primary-500" /> AI Videos This Month
                 </p>
                 <p className="text-xs font-bold text-brand-text">
-                  {profile?.credits_remaining ?? 0} of {currentPlan?.videos ?? 1} left
+                  {profile?.credits_remaining ?? 0} Of {currentPlan?.videos ?? 1} Left
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
@@ -225,21 +225,21 @@ export default async function BillingPage({
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
-                {currentTier === "beta" ? "Included with beta access" : "Resets each billing period"}
+                {currentTier === "beta" ? "Included With Beta Access" : "Resets Each Billing Period"}
               </p>
             </div>
             {/* Camera recordings */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Video size={11} className="text-orange-500" /> Camera recordings
+                  <Video size={11} className="text-orange-500" /> Camera Recordings
                 </p>
                 <p className="text-xs font-bold text-emerald-600">Unlimited</p>
               </div>
               <div className="w-full h-2 bg-emerald-100 rounded-full">
                 <div className="h-2 bg-emerald-400 rounded-full w-full" />
               </div>
-              <p className="text-xs text-slate-400 mt-1.5">Up to 30 mins each · no monthly cap</p>
+              <p className="text-xs text-slate-400 mt-1.5">Up To 30 Mins Each · No Monthly Cap</p>
             </div>
           </div>
         )}
@@ -260,7 +260,7 @@ export default async function BillingPage({
 
       {/* Plan comparison */}
       <h3 className="text-base font-bold text-brand-text mb-4">
-        {hasSubscription ? "Change Plan" : currentTier === "beta" ? "Upgrade to a Paid Plan" : "Choose a Plan"}
+        {hasSubscription ? "Change Plan" : currentTier === "beta" ? "Upgrade To A Paid Plan" : "Choose A Plan"}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {PLANS.map((plan) => {

@@ -329,16 +329,16 @@ function CreatePageInner() {
           <div className="flex items-center gap-2 flex-wrap">
             <Film size={15} className={videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
             <span className={`font-semibold text-sm ${videosLeft === 0 ? "text-red-700" : videosLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
-              {videosLeft === 0 ? "No AI videos remaining this month" : `${videosLeft} of ${videosTotal} AI videos left`}
+              {videosLeft === 0 ? "No AI Videos Remaining This Month" : `${videosLeft} Of ${videosTotal} AI Videos Left`}
             </span>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              ∞ camera recordings
+              ∞ Camera Recordings
             </span>
           </div>
           <span className={`text-xs shrink-0 ${videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
             {videosLeft === 0
-              ? <a href="/billing" className="underline font-medium">Upgrade plan</a>
-              : periodEnd ? `Resets ${periodEnd}` : "Resets monthly"}
+              ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
+              : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
           </span>
         </div>
       )}
@@ -369,10 +369,10 @@ function CreatePageInner() {
           {/* Dynamic tab description */}
           <p className="text-xs text-slate-500 text-center mb-5">
             {{
-              script:  "AI Sparks a broadcast-quality script from your topic — you review, then Share.",
-              paste:   "You write the words or let AI Spark them — paste your script and Share.",
-              listing: "Upload photos or import from Zillow — let your listing Spark your next video.",
-              camera:  "Speak and Spark directly in camera — the teleprompter scrolls as you record. Free, unlimited.",
+              script:  "AI Sparks A Broadcast-Quality Script From Your Topic — You Review, Then Share.",
+              paste:   "You Write The Words Or Let AI Spark Them — Paste Your Script And Share.",
+              listing: "Upload Photos Or Import From Zillow — Let Your Listing Spark Your Next Video.",
+              camera:  "Speak And Spark Directly In Camera — The Teleprompter Scrolls As You Record. Free, Unlimited.",
             }[inputMode]}
           </p>
         </>
@@ -390,7 +390,7 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
                 <p className="text-sm font-bold text-brand-text">Your Market</p>
-                <p className="text-xs text-slate-500">Speak or Type your City and State</p>
+                <p className="text-xs text-slate-500">Speak Or Type Your City And State</p>
               </div>
             </div>
 
@@ -463,7 +463,7 @@ function CreatePageInner() {
                 onClick={() => addMarket(locCity, locState)}
                 className="mt-2 text-[11px] text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
               >
-                + Save {locCity}, {locState} as a quick-switch market
+                + Save {locCity}, {locState} As A Quick-Switch Market
               </button>
             )}
           </Card>
@@ -474,7 +474,7 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-brand-text">Your Topic</p>
-                <p className="text-xs text-slate-500">Hit the mic to speak, choose from Trending Radar or the Real Estate Tips templates, or type below in text box</p>
+                <p className="text-xs text-slate-500">Hit The Mic To Speak, Choose From Trending Radar Or The Real Estate Tips Templates, Or Type Below In Text Box</p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
@@ -493,7 +493,7 @@ function CreatePageInner() {
 
             {/* Templates toggle */}
             <div className="mb-3">
-              <p className="text-sm font-bold text-slate-700 mb-2">Need a Spark? No problem — choose from Templates</p>
+              <p className="text-sm font-bold text-slate-700 mb-2">Need A Spark? No Problem — Choose From Templates</p>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-700 shrink-0">🏡 Real Estate Tips</span>
                 <button
@@ -528,7 +528,7 @@ function CreatePageInner() {
             {/* Topic input with inline mic */}
             <div className="mt-5">
               <label className="text-base font-bold text-slate-700 block mb-1">
-                Your topic — spoken, sparked, or typed
+                Your Topic — Spoken, Sparked, Or Typed
               </label>
               <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
                 <input
@@ -555,7 +555,7 @@ function CreatePageInner() {
                 }`}
               >
                 {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                {showAdvanced ? "Hide advanced options" : "Advanced options (audience, style, CTA)"}
+                {showAdvanced ? "Hide Advanced Options" : "Advanced Options (Audience, Style, CTA)"}
               </button>
               {showAdvanced && (
                 <div className="grid grid-cols-3 gap-3 mt-3">
@@ -596,7 +596,7 @@ function CreatePageInner() {
           <div>
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</span>
-              <p className="text-sm font-bold text-brand-text">Generate the Script</p>
+              <p className="text-sm font-bold text-brand-text">Generate The Script</p>
             </div>
             <Button
               onClick={handleGenerateScript}
@@ -611,7 +611,7 @@ function CreatePageInner() {
             </Button>
             {!locCustomTopic.trim() && (
               <p className="text-xs text-slate-400 text-center mt-2">
-                Enter a topic in Step 2 to unlock this button
+                Enter A Topic In Step 2 To Unlock This Button
               </p>
             )}
           </div>
@@ -629,7 +629,7 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
                 <p className="text-sm font-bold text-brand-text">Your Script</p>
-                <p className="text-xs text-slate-500">Paste or type your script — or let AI Spark it for you</p>
+                <p className="text-xs text-slate-500">Paste Or Type Your Script — Or Let AI Spark It For You</p>
               </div>
             </div>
 
@@ -640,7 +640,7 @@ function CreatePageInner() {
                 state={locState || undefined}
                 onSelect={(topic) => { setPasteAiTopic(topic); setPasteTitle(topic); }}
               />
-              <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark the script</p>
+              <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -662,7 +662,7 @@ function CreatePageInner() {
               </div>
               {pasteScript && !pasteAiGenerating && (
                 <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <CheckCircle size={11} /> Script Sparked — review and edit below before generating.
+                  <CheckCircle size={11} /> Script Sparked — Review And Edit Below Before Generating.
                 </p>
               )}
             </div>
@@ -698,14 +698,14 @@ function CreatePageInner() {
               />
               {pasteScript.trim().split(/\s+/).filter(Boolean).length > 200 && (
                 <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Over 200 words — the script will be trimmed at generation time.
+                  <AlertCircle size={12} /> Over 200 Words — The Script Will Be Trimmed At Generation Time.
                 </p>
               )}
             </div>
 
             {/* Optional city/state */}
             <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Market (optional — used for metadata)</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Market (Optional — Used For Metadata)</p>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <input
@@ -738,12 +738,12 @@ function CreatePageInner() {
             className="w-full gap-2 bg-violet-600 hover:bg-violet-700"
           >
             {pasteGenerating
-              ? <>Saving script…</>
+              ? <>Saving Script…</>
               : <><ArrowRight size={16} /> Review &amp; Generate Video</>}
           </Button>
           {!pasteScript.trim() && (
             <p className="text-xs text-slate-400 text-center -mt-2">
-              Paste your script above to continue
+              Paste Your Script Above To Continue
             </p>
           )}
         </div>
@@ -760,7 +760,7 @@ function CreatePageInner() {
             </div>
             <div>
               <p className="text-sm font-semibold text-brand-text">Listing Video</p>
-              <p className="text-xs text-slate-400">Upload photos · Import from Zillow · Enter manually</p>
+              <p className="text-xs text-slate-400">Upload Photos · Import From Zillow · Enter Manually</p>
             </div>
           </div>
           <ListingVideoForm />
@@ -778,7 +778,7 @@ function CreatePageInner() {
             </div>
             <div>
               <p className="text-sm font-semibold text-brand-text">Speak + Teleprompter</p>
-              <p className="text-xs text-slate-400">Speak your script — the teleprompter scrolls as you record</p>
+              <p className="text-xs text-slate-400">Speak Your Script — The Teleprompter Scrolls As You Record</p>
             </div>
           </div>
 
@@ -789,7 +789,7 @@ function CreatePageInner() {
               state={locState || undefined}
               onSelect={(topic) => setCameraAiTopic(topic)}
             />
-            <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark your teleprompter script</p>
+            <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark Your Teleprompter Script</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -811,7 +811,7 @@ function CreatePageInner() {
             </div>
             {cameraScript && !cameraAiGenerating && (
               <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                <CheckCircle size={11} /> Teleprompter Sparked — scroll down to review and Speak!
+                <CheckCircle size={11} /> Teleprompter Sparked — Scroll Down To Review And Speak!
               </p>
             )}
           </div>
@@ -871,8 +871,8 @@ function CreatePageInner() {
                 <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />
               </div>
               <div>
-                <p className="font-semibold text-brand-text">Uploading your recording…</p>
-                <p className="text-sm text-slate-400 mt-1">Securely storing your audio</p>
+                <p className="font-semibold text-brand-text">Uploading Your Recording…</p>
+                <p className="text-sm text-slate-400 mt-1">Securely Storing Your Audio</p>
               </div>
               <Skeleton className="h-1.5 w-48" />
             </Card>
@@ -884,8 +884,8 @@ function CreatePageInner() {
                 <FileText className="w-7 h-7 text-purple-500 animate-pulse" />
               </div>
               <div>
-                <p className="font-semibold text-brand-text">Transcribing your voice…</p>
-                <p className="text-sm text-slate-400 mt-1">Converting speech to text</p>
+                <p className="font-semibold text-brand-text">Transcribing Your Voice…</p>
+                <p className="text-sm text-slate-400 mt-1">Converting Speech To Text</p>
               </div>
               <Skeleton className="h-1.5 w-40" />
             </Card>
@@ -901,7 +901,7 @@ function CreatePageInner() {
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 max-h-52 overflow-y-auto">
                   <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                    {transcript || "No transcript generated. Please try again."}
+                    {transcript || "No Transcript Generated. Please Try Again."}
                   </p>
                 </div>
               </Card>

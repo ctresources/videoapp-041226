@@ -55,7 +55,7 @@ async function DashboardStats() {
           Welcome back{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}! 👋
         </h2>
         <p className="text-slate-500 text-sm mt-1">
-          Ready to create your next viral video?
+          Ready To Create Your Next Viral Video?
         </p>
       </div>
 
@@ -81,7 +81,7 @@ async function DashboardStats() {
               <Infinity className="w-5 h-5 font-bold text-emerald-600" />
             </div>
             <p className="text-xs text-slate-500 leading-tight">Camera Recordings</p>
-            <p className="text-[10px] text-emerald-600 font-semibold">{cameraVideoCount} recorded</p>
+            <p className="text-[10px] text-emerald-600 font-semibold">{cameraVideoCount} Recorded</p>
           </div>
         </Card>
 
@@ -128,11 +128,11 @@ async function GettingStarted() {
   const socialCount = socialResult.count ?? 0;
 
   const steps = [
-    { label: "Create your account", done: true },
-    { label: "Set up your voice clone", done: !!profile?.voice_clone_id, href: "/settings" },
-    { label: "Upload your avatar photo", done: !!profile?.avatar_url, href: "/settings" },
-    { label: "Generate your first video", done: videoCount > 0, href: "/create" },
-    { label: "Connect a social account", done: socialCount > 0, href: "/social" },
+    { label: "Create Your Account", done: true },
+    { label: "Set Up Your Voice Clone", done: !!profile?.voice_clone_id, href: "/settings" },
+    { label: "Upload Your Avatar Photo", done: !!profile?.avatar_url, href: "/settings" },
+    { label: "Generate Your First Video", done: videoCount > 0, href: "/create" },
+    { label: "Connect A Social Account", done: socialCount > 0, href: "/social" },
   ];
 
   const allDone = steps.every((s) => s.done);
@@ -146,7 +146,7 @@ async function GettingStarted() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-brand-text">Getting Started</p>
-          <p className="text-xs text-slate-400">{completedCount} of {steps.length} complete</p>
+          <p className="text-xs text-slate-400">{completedCount} Of {steps.length} Complete</p>
         </div>
         <span className="text-xs font-bold text-primary-500">{pct}%</span>
       </div>
@@ -162,7 +162,7 @@ async function GettingStarted() {
             <span className={done ? "line-through" : ""}>{label}</span>
             {!done && href && (
               <Link href={href} className="ml-auto text-xs text-primary-500 hover:underline shrink-0">
-                Set up →
+                Set Up →
               </Link>
             )}
           </div>
@@ -200,7 +200,7 @@ async function RecentProjects() {
         <h3 className="font-semibold text-brand-text">Recent Projects</h3>
         <Link href="/videos">
           <Button variant="ghost" size="sm" className="text-primary-500 gap-1">
-            View all <ArrowRight size={14} />
+            View All <ArrowRight size={14} />
           </Button>
         </Link>
       </div>
@@ -208,8 +208,8 @@ async function RecentProjects() {
       {!projects?.length ? (
         <div className="text-center py-10">
           <Mic className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No videos yet</p>
-          <p className="text-slate-400 text-xs mt-1">Record your first voice to get started</p>
+          <p className="text-slate-500 text-sm">No Videos Yet</p>
+          <p className="text-slate-400 text-xs mt-1">Record Your First Voice To Get Started</p>
           <Link href="/create">
             <Button size="sm" className="mt-4 gap-2">
               <Plus size={14} /> Create First Video
@@ -285,7 +285,7 @@ export default async function DashboardPage() {
         <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1">Create a New Video</h3>
           <p className="text-primary-100 text-sm mb-4">
-            Record your voice or pick a template — we handle the rest.
+            Record Your Voice Or Pick A Template — We Handle The Rest.
           </p>
           <Link href="/create">
             <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
@@ -296,7 +296,7 @@ export default async function DashboardPage() {
         <div className="bg-gradient-to-r from-teal-500 to-accent-500 rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1">Content Calendar</h3>
           <p className="text-teal-100 text-sm mb-4">
-            View and manage all your scheduled posts across every platform.
+            View And Manage All Your Scheduled Posts Across Every Platform.
           </p>
           <Link href="/calendar">
             <Button className="bg-white text-teal-600 hover:bg-teal-50 gap-2" size="md">

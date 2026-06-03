@@ -269,13 +269,13 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
             </button>
           </div>
           <p className="text-xs text-slate-400 mb-2">
-            Speak your script or let AI Spark one — the teleprompter scrolls as you record.
+            Speak Your Script Or Let AI Spark One — The Teleprompter Scrolls As You Record.
           </p>
 
           {showAiGen && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <p className="text-xs font-medium text-primary-700 mb-2">
-                What&apos;s your Spark? What topic should the script cover?
+                What&apos;s Your Spark? What Topic Should The Script Cover?
               </p>
               <div className="flex gap-2">
                 <input
@@ -301,7 +301,7 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
                 </Button>
               </div>
               <p className="text-xs text-primary-600/70 mt-1.5">
-                AI will Spark a 2–3 minute teleprompter script for you
+                AI Will Spark A 2–3 Minute Teleprompter Script For You
               </p>
             </div>
           )}
@@ -361,7 +361,7 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
         </Button>
         {!script.trim() && (
           <p className="text-xs text-slate-400 text-center -mt-3">
-            Speak or Spark a script to continue
+            Speak Or Spark A Script To Continue
           </p>
         )}
       </div>
@@ -414,8 +414,8 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
           <div className="flex items-center gap-2 bg-primary-50 border border-primary-100 rounded-xl px-4 py-3">
             <Video size={15} className="text-primary-500 shrink-0" />
             <p className="text-xs text-primary-700">
-              Camera is live. Press{" "}
-              <strong>Start Recording</strong> — the teleprompter will scroll automatically.
+              Camera Is Live. Press{" "}
+              <strong>Start Recording</strong> — The Teleprompter Will Scroll Automatically.
             </p>
           </div>
         )}
