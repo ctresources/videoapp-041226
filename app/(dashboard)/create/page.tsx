@@ -316,7 +316,7 @@ function CreatePageInner() {
       {/* Header */}
       <div className="mb-5">
         <h2 className="text-xl font-bold text-brand-text">Create New Video</h2>
-        <p className="text-slate-400 text-sm mt-0.5">4 ways to create — pick the one that fits you.</p>
+        <p className="text-slate-400 text-sm mt-0.5">4 ways to create — choose the one that Speaks to you or Sparks you.</p>
       </div>
 
       {/* Videos remaining banner */}
@@ -369,10 +369,10 @@ function CreatePageInner() {
           {/* Dynamic tab description */}
           <p className="text-xs text-slate-500 text-center mb-5">
             {{
-              script:  "AI writes a broadcast-quality script from your topic — you review, then generate.",
-              paste:   "Paste or type your own script — go straight to video, no AI writing needed.",
-              listing: "Upload photos or import from Zillow — AI builds your listing video automatically.",
-              camera:  "Teleprompter scrolls your script while you record on camera — free, unlimited recordings.",
+              script:  "AI Sparks a broadcast-quality script from your topic — you review, then Share.",
+              paste:   "You write the words or let AI Spark them — paste your script and Share.",
+              listing: "Upload photos or import from Zillow — let your listing Spark your next video.",
+              camera:  "Speak directly to camera — the teleprompter scrolls as you record. Free, unlimited.",
             }[inputMode]}
           </p>
         </>
@@ -629,7 +629,7 @@ function CreatePageInner() {
               <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
                 <p className="text-sm font-bold text-brand-text">Your Script</p>
-                <p className="text-xs text-slate-500">Paste or type your full script — or let AI write it for you</p>
+                <p className="text-xs text-slate-500">Paste or type your script — or let AI Spark it for you</p>
               </div>
             </div>
 
@@ -640,14 +640,14 @@ function CreatePageInner() {
                 state={locState || undefined}
                 onSelect={(topic) => { setPasteAiTopic(topic); setPasteTitle(topic); }}
               />
-              <p className="text-xs font-bold text-slate-600 mb-2">Let AI write the script</p>
+              <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark the script</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={pasteAiTopic}
                   onChange={(e) => setPasteAiTopic(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !pasteAiGenerating && handleAiWriteForPaste()}
-                  placeholder="Enter a topic for AI to write about…"
+                  placeholder="What's your Spark? Enter a topic…"
                   className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
                 <Button
@@ -657,12 +657,12 @@ function CreatePageInner() {
                   onClick={handleAiWriteForPaste}
                   className="bg-violet-600 hover:bg-violet-700 text-white whitespace-nowrap gap-1"
                 >
-                  <Sparkles size={13} /> Write It
+                  <Sparkles size={13} /> Spark It
                 </Button>
               </div>
               {pasteScript && !pasteAiGenerating && (
                 <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <CheckCircle size={11} /> Script filled below — review and edit before generating.
+                  <CheckCircle size={11} /> Script Sparked — review and edit below before generating.
                 </p>
               )}
             </div>
@@ -777,8 +777,8 @@ function CreatePageInner() {
               <Video size={16} className="text-violet-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-brand-text">Camera + Teleprompter</p>
-              <p className="text-xs text-slate-400">Write your script — teleprompter scrolls while you record</p>
+              <p className="text-sm font-semibold text-brand-text">Speak + Teleprompter</p>
+              <p className="text-xs text-slate-400">Speak your script — the teleprompter scrolls as you record</p>
             </div>
           </div>
 
@@ -789,14 +789,14 @@ function CreatePageInner() {
               state={locState || undefined}
               onSelect={(topic) => setCameraAiTopic(topic)}
             />
-            <p className="text-xs font-bold text-slate-600 mb-2">Let AI write your teleprompter script</p>
+            <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark your teleprompter script</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={cameraAiTopic}
                 onChange={(e) => setCameraAiTopic(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !cameraAiGenerating && handleAiWriteForCamera()}
-                placeholder="Enter a topic for your teleprompter script…"
+                placeholder="What do you want to Speak about?"
                 className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
               <Button
@@ -806,12 +806,12 @@ function CreatePageInner() {
                 onClick={handleAiWriteForCamera}
                 className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap gap-1"
               >
-                <Sparkles size={13} /> Write It
+                <Sparkles size={13} /> Spark It
               </Button>
             </div>
             {cameraScript && !cameraAiGenerating && (
               <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                <CheckCircle size={11} /> Teleprompter pre-filled — scroll down to review and record.
+                <CheckCircle size={11} /> Teleprompter Sparked — scroll down to review and Speak!
               </p>
             )}
           </div>
