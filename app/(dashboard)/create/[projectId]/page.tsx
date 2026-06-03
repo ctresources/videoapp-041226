@@ -713,7 +713,7 @@ export default function ProjectEditorPage() {
               </button>
             </div>
             <p className="text-xs text-slate-400 text-center mt-2">
-              AI video generation takes 8-25 min depending on mode. You&apos;ll see it in My Videos when ready.
+              AI video generation takes 5 to 8 min. You&apos;ll see it in My Videos when ready.
             </p>
           </Card>
 
