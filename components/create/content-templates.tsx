@@ -319,9 +319,11 @@ export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProp
         const templates = CONTENT_TEMPLATES.filter((t) => t.category === key);
         return (
           <div key={key}>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              {emoji} {label}
-            </p>
+            {key !== "general" && (
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                {emoji} {label}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {templates.map((template) => {
                 const Icon = template.icon;
