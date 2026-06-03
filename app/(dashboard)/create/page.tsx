@@ -268,7 +268,7 @@ function CreatePageInner() {
       {/* Header */}
       <div className="mb-5">
         <h2 className="text-xl font-bold text-brand-text">Create New Video</h2>
-        <p className="text-slate-400 text-sm mt-0.5">AI writes your script — you approve, then generate.</p>
+        <p className="text-slate-400 text-sm mt-0.5">4 ways to create — pick the one that fits you.</p>
       </div>
 
       {/* Videos remaining banner */}
@@ -297,25 +297,37 @@ function CreatePageInner() {
 
       {/* ── Tab bar ── */}
       {step === "input" && (
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          {[
-            { mode: "script" as InputMode,  icon: Sparkles,   label: "AI Writes It",             active: "bg-blue-600 text-white shadow-md shadow-blue-200",     inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
-            { mode: "paste" as InputMode,   icon: PenLine,    label: "I'll Write or Paste It",   active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
-            { mode: "listing" as InputMode, icon: Building2,  label: "My Listing",               active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
-            { mode: "camera" as InputMode,  icon: Video,      label: "Hit Record – Use My Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",  inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
-          ].map(({ mode, icon: Icon, label, active, inactive }) => (
-            <button
-              key={mode}
-              onClick={() => setInputMode(mode)}
-              className={`flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl text-xs font-bold transition-all ${
-                inputMode === mode ? active : inactive
-              }`}
-            >
-              <Icon size={15} />
-              <span className="leading-tight text-center">{label}</span>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {[
+              { mode: "script" as InputMode,  icon: Sparkles,   label: "AI Writes It",               active: "bg-blue-600 text-white shadow-md shadow-blue-200",     inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
+              { mode: "paste" as InputMode,   icon: PenLine,    label: "I'll Write or Paste It",     active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
+              { mode: "listing" as InputMode, icon: Building2,  label: "My Listing",                 active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
+              { mode: "camera" as InputMode,  icon: Video,      label: "Hit Record – Use My Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",   inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
+            ].map(({ mode, icon: Icon, label, active, inactive }) => (
+              <button
+                key={mode}
+                onClick={() => setInputMode(mode)}
+                className={`flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl text-xs font-bold transition-all ${
+                  inputMode === mode ? active : inactive
+                }`}
+              >
+                <Icon size={15} />
+                <span className="leading-tight text-center">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Dynamic tab description */}
+          <p className="text-xs text-slate-500 text-center mb-5">
+            {{
+              script:  "AI writes a broadcast-quality script from your topic — you review, then generate.",
+              paste:   "Paste or type your own script — go straight to video, no AI writing needed.",
+              listing: "Upload photos or import from Zillow — AI builds your listing video automatically.",
+              camera:  "Teleprompter scrolls your script while you record on camera — free, unlimited recordings.",
+            }[inputMode]}
+          </p>
+        </>
       )}
 
       {/* ══════════════════════════════════════════
