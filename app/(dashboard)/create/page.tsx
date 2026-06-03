@@ -334,7 +334,7 @@ function CreatePageInner() {
             {/* City + State inputs */}
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">City *</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">City *</label>
                 <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
                   <input
                     type="text"
@@ -347,7 +347,7 @@ function CreatePageInner() {
                 </div>
               </div>
               <div className="w-20">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">State *</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">State *</label>
                 <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
                   <input
                     type="text"
@@ -401,20 +401,23 @@ function CreatePageInner() {
 
             {/* Templates toggle */}
             <div className="mb-3">
-              <p className="text-xs text-slate-500 mb-1.5">Need a Spark? No problem — choose from Templates</p>
-              <button
-                type="button"
-                onClick={() => setShowTemplates(v => !v)}
-                className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                  showTemplates
-                    ? "bg-blue-50 border-blue-200 text-blue-700"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
-                }`}
-              >
-                <LayoutGrid size={13} />
-                Browse Templates
-                {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
-              </button>
+              <p className="text-sm font-bold text-slate-700 mb-2">Need a Spark? No problem — choose from Templates</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-700 shrink-0">🏡 Real Estate Tips</span>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(v => !v)}
+                  className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                    showTemplates
+                      ? "bg-blue-50 border-blue-200 text-blue-700"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                  }`}
+                >
+                  <LayoutGrid size={13} />
+                  Browse Templates
+                  {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
+                </button>
+              </div>
               {showTemplates && (
                 <div className="mt-2 max-h-[480px] overflow-y-auto pr-0.5">
                   <ContentTemplates
@@ -432,7 +435,7 @@ function CreatePageInner() {
 
             {/* Topic input with inline mic */}
             <div>
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">
+              <label className="text-xs font-bold text-slate-600 block mb-1">
                 Your topic — spoken, picked, or typed
               </label>
               <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
