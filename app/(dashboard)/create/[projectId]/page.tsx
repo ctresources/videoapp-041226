@@ -119,11 +119,22 @@ export default function ProjectEditorPage() {
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
 
+  // For paste source: auto-trigger video generation once project + looks are ready
+  const autoGeneratePending = useRef(source === "paste");
+
   useEffect(() => {
     loadProject();
     loadProfile();
     loadLooks();
   }, [projectId]); // eslint-disable-line
+
+  // Auto-generate video for paste source once project and looks are loaded
+  useEffect(() => {
+    if (!autoGeneratePending.current) return;
+    if (!project || looksLoading) return;
+    autoGeneratePending.current = false;
+    handleGenerateVideo();
+  }, [project, looksLoading]); // eslint-disable-line
 
   async function loadLooks() {
     setLooksLoading(true);
@@ -413,6 +424,28 @@ export default function ProjectEditorPage() {
       toast.error(err instanceof Error ? err.message : "Upload failed");
       setTpUploading(false);
     }
+  }
+
+  // Auto-generating video from paste — show simple spinner, not the full review UI
+  if (source === "paste" && videoGenerating) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Card className="flex flex-col items-center py-16 gap-4 text-center">
+          <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center">
+            <Wand2 className="w-8 h-8 text-primary-500 animate-pulse" />
+          </div>
+          <div>
+            <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
+            <p className="text-slate-400 text-sm mt-1">Your script is being turned into a video. This takes 5–8 minutes.</p>
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="w-2 h-2 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   // Loading / generating states

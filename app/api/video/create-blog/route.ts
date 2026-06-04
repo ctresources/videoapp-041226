@@ -480,9 +480,10 @@ export async function POST(req: NextRequest) {
     }
 
     // ── ElevenLabs TTS path: user has a cloned voice AND no listing photos ──────
-    // When listing photos are present we skip to Video Agent so HeyGen can use
-    // the photos as proper b-roll; the v2 API only supports a static background.
-    if (profile.voice_clone_id && listingPhotos.length === 0) {
+    // Skipped intentionally — the v2 API only supports a static background image,
+    // so non-listing videos would have no b-roll. Fall through to Video Agent
+    // which provides proper cinematic b-roll via the prompt.
+    if (false && profile.voice_clone_id && listingPhotos.length === 0) {
       console.log(`[create-blog] EL voice path — cloning TTS for voice ${profile.voice_clone_id}`);
 
       let elAudioBuffer: Buffer | null = null;
