@@ -119,22 +119,11 @@ export default function ProjectEditorPage() {
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
 
-  // For paste source: auto-trigger video generation once project + looks are ready
-  const autoGeneratePending = useRef(source === "paste");
-
   useEffect(() => {
     loadProject();
     loadProfile();
     loadLooks();
   }, [projectId]); // eslint-disable-line
-
-  // Auto-generate video for paste source once project and looks are loaded
-  useEffect(() => {
-    if (!autoGeneratePending.current) return;
-    if (!project || looksLoading) return;
-    autoGeneratePending.current = false;
-    handleGenerateVideo();
-  }, [project, looksLoading]); // eslint-disable-line
 
   async function loadLooks() {
     setLooksLoading(true);
@@ -426,28 +415,6 @@ export default function ProjectEditorPage() {
     }
   }
 
-  // Auto-generating video from paste — show simple spinner, not the full review UI
-  if (source === "paste" && videoGenerating) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <Card className="flex flex-col items-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center">
-            <Wand2 className="w-8 h-8 text-primary-500 animate-pulse" />
-          </div>
-          <div>
-            <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
-            <p className="text-slate-400 text-sm mt-1">Your script is being turned into a video. This takes 5–8 minutes.</p>
-          </div>
-          <div className="flex gap-1.5 mt-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="w-2 h-2 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   // Loading / generating states
   if (loading || generating) {
     return (
@@ -491,6 +458,129 @@ export default function ProjectEditorPage() {
   if (!project) return null;
 
   const script = project.ai_script as AiScript | null;
+
+  // ── Paste source: minimal format + avatar picker before generating ────────
+  if (source === "paste" && !videoGenerating) {
+    return (
+      <div className="max-w-xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/create">
+            <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+              <ArrowLeft size={18} className="text-slate-400" />
+            </button>
+          </Link>
+          <div>
+            <h2 className="text-lg font-bold text-brand-text leading-tight">{project.title}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{(script?.script || "").trim().split(/\s+/).length} words · ready to generate</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* Video format */}
+          <Card>
+            <p className="text-sm font-semibold text-brand-text mb-3">Video Format</p>
+            <div className="grid grid-cols-2 gap-2">
+              {videoTypes.map(({ value, label, desc }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedVideoType(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedVideoType === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-brand-text">{label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Avatar look */}
+          {(looksLoading || looks.length > 0) && (
+            <Card>
+              <p className="text-sm font-semibold text-brand-text mb-3">Choose Your Avatar</p>
+              {looksLoading ? (
+                <div className="flex gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="w-20 h-24 rounded-xl bg-slate-100 animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {looks.map((look) => (
+                    <button
+                      key={look.id}
+                      onClick={() => setSelectedLookId(look.id)}
+                      title={look.name}
+                      className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
+                        selectedLookId === look.id
+                          ? "border-primary-500 ring-2 ring-primary-200"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                      style={{ width: 72, height: 88 }}
+                    >
+                      {look.preview_image_url ? (
+                        <img src={look.preview_image_url} alt={look.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                          <User size={24} className="text-slate-300" />
+                        </div>
+                      )}
+                      {selectedLookId === look.id && (
+                        <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
+                          <CheckCircle size={10} className="text-white" />
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
+                        <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Generate button */}
+          <Button
+            onClick={handleGenerateVideo}
+            loading={videoGenerating}
+            size="lg"
+            className="w-full gap-2"
+          >
+            <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+          </Button>
+          <p className="text-xs text-slate-400 text-center -mt-2">
+            Video ready in 5–8 minutes · you&apos;ll see it in My Videos
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Paste source: generating spinner ─────────────────────────────────────
+  if (source === "paste" && videoGenerating) {
+    return (
+      <div className="max-w-xl mx-auto">
+        <Card className="flex flex-col items-center py-16 gap-4 text-center">
+          <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center">
+            <Wand2 className="w-8 h-8 text-primary-500 animate-pulse" />
+          </div>
+          <div>
+            <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
+            <p className="text-slate-400 text-sm mt-1">This takes 5–8 minutes. You&apos;ll see it in My Videos when ready.</p>
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="w-2 h-2 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
+  }
   const seo = project.seo_data as SeoData | null;
 
   return (
