@@ -370,8 +370,8 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Make a video in under 2 minutes</h2>
-            <p className="text-slate-500">No camera. No editing. No technical skill. Just your voice.</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Script ready instantly. Video generated in 5–8 minutes.</h2>
+            <p className="text-slate-500">What used to take a full Saturday now takes one conversation.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
@@ -422,7 +422,7 @@ export default function LandingPage() {
 
           {/* Bottom CTA */}
           <div className="mt-12 text-center">
-            <p className="text-sm text-slate-400">Start to finish — <span className="font-semibold text-blue-900">under 2 minutes.</span> What used to take a full Saturday.</p>
+            <p className="text-sm text-slate-400">Script generated instantly. Video ready in 5–8 minutes — <span className="font-semibold text-blue-900">while you&apos;re out doing your job.</span></p>
           </div>
         </div>
       </section>
