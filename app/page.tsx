@@ -368,27 +368,61 @@ export default function LandingPage() {
       {/* ── How It Works ── */}
       <section id="how-it-works" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
+          <div className="text-center mb-14">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">No technical skill. No camera. No editing.</h2>
-            <p className="text-slate-500">Just your voice — and your local expertise.</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Make a video in under 2 minutes</h2>
+            <p className="text-slate-500">No camera. No editing. No technical skill. Just your voice.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            {/* Connector line desktop */}
+            <div className="hidden md:block absolute top-[88px] left-[calc(33%+16px)] right-[calc(33%+16px)] h-px bg-blue-100 z-0" />
+
             {[
-              { ...steps[0], photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80" },
-              { ...steps[1], photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80" },
-              { ...steps[2], photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80" },
-            ].map(({ step, title, description, photo }) => (
-              <div key={step} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={title} className="w-full h-40 object-cover" />
-                <div className="p-5 border-t-2 border-blue-900">
-                  <p className="text-3xl font-black text-slate-200 mb-2">{step}</p>
-                  <h3 className="text-base font-bold text-slate-900 mb-2">{title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{description}</p>
+              {
+                num: "1",
+                color: "bg-blue-900",
+                title: "Speak your topic",
+                description: "Hit the mic — or type a topic. AI hands you trending local ideas before you start. 60–90 seconds is all you need.",
+                photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+                alt: "Agent speaking into mic",
+              },
+              {
+                num: "2",
+                color: "bg-blue-700",
+                title: "AI builds your video",
+                description: "Script written. AI avatar rendered. Captions added. B-roll included. A broadcast-quality video — fully produced, zero editing.",
+                photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80",
+                alt: "AI generating video",
+              },
+              {
+                num: "3",
+                color: "bg-blue-500",
+                title: "Publish and share",
+                description: "One click to YouTube with SEO-optimized title, description, and tags. Your LinkedIn post and Instagram caption are already written.",
+                photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+                alt: "Published video on social",
+              },
+            ].map(({ num, color, title, description, photo, alt }) => (
+              <div key={num} className="flex flex-col items-center text-center relative z-10">
+                {/* Step image with number badge */}
+                <div className="relative w-full mb-5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo} alt={alt} className="w-full h-44 object-cover rounded-2xl" />
+                  <div className={`absolute -top-3 -left-3 w-9 h-9 rounded-full ${color} text-white text-sm font-black flex items-center justify-center shadow-lg`}>
+                    {num}
+                  </div>
                 </div>
+                {/* Text */}
+                <h3 className="text-base font-black text-slate-900 mb-2">{title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed max-w-xs">{description}</p>
               </div>
             ))}
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="mt-12 text-center">
+            <p className="text-sm text-slate-400">Start to finish — <span className="font-semibold text-blue-900">under 2 minutes.</span> What used to take a full Saturday.</p>
           </div>
         </div>
       </section>
