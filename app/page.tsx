@@ -422,7 +422,7 @@ export default function LandingPage() {
 
           {/* Bottom CTA */}
           <div className="mt-12 text-center">
-            <p className="text-sm text-slate-400">Script generated instantly. Video ready in 5–8 minutes — <span className="font-semibold text-blue-900">while you&apos;re out doing your job.</span></p>
+            <p className="text-sm text-slate-400">Script generated instantly. Video ready in 5–8 minutes — <span className="font-semibold text-blue-900">while you&apos;re creating another video or out to see a client.</span></p>
           </div>
         </div>
       </section>
