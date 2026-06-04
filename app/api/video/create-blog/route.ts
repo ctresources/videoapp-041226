@@ -479,82 +479,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── ElevenLabs TTS path: user has a cloned voice AND no listing photos ──────
-    // Skipped intentionally — the v2 API only supports a static background image,
-    // so non-listing videos would have no b-roll. Fall through to Video Agent
-    // which provides proper cinematic b-roll via the prompt.
-    if (false && profile.voice_clone_id && listingPhotos.length === 0) {
-      console.log(`[create-blog] EL voice path — cloning TTS for voice ${profile.voice_clone_id}`);
-
-      let elAudioBuffer: Buffer | null = null;
-      let audioAssetId: string | null = null;
-      try {
-        elAudioBuffer = await generateSpeech(safeScript, profile.voice_clone_id);
-        audioAssetId = await uploadAudioAsset(elAudioBuffer);
-      } catch (elErr) {
-        console.error("[create-blog] EL TTS failed, falling back to HeyGen agent:", elErr instanceof Error ? elErr.message : elErr);
-      }
-
-      if (elAudioBuffer && audioAssetId) {
-
-      const { data: videoRow, error: videoRowErr } = await admin
-        .from("generated_videos")
-        .insert({
-          project_id: projectId,
-          user_id: user.id,
-          video_type: videoType,
-          render_provider: "heygen_v2",
-          render_status: "rendering",
-          metadata: { dimension, orientation, city, state, title },
-        })
-        .select()
-        .single();
-
-      if (videoRowErr || !videoRow) {
-        throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
-      }
-
-      const videoId = await generateVideo({
-        scenes: [{
-          scriptText: safeScript,
-          audioAssetId,
-          backgroundImageUrl: listingPhotos[0] ?? undefined,
-          backgroundColor: listingPhotos[0] ? undefined : "#0F172A",
-        }],
-        talkingPhotoId: avatarId,
-        photoPosition: "bottom-right",
-        dimension,
-        title,
-        callbackUrl,
-        callbackId: videoRow?.id,
-      });
-
-      await admin
-        .from("generated_videos")
-        .update({ render_job_id: videoId })
-        .eq("id", videoRow?.id);
-
-      await admin.from("api_usage_log").insert({
-        user_id: user.id,
-        api_provider: "heygen",
-        endpoint: "video-v2-el-tts",
-        credits_used: 1,
-        response_status: 202,
-      });
-
-      console.log(`[create-blog] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
-      return NextResponse.json({
-        video: {
-          ...videoRow,
-          render_job_id: videoId,
-          render_status: "rendering",
-        },
-      });
-      } // end if (elAudioBuffer && audioAssetId)
-      // EL failed — fall through to HeyGen Video Agent path below
-    } // end if (profile.voice_clone_id)
-
     // ── Video Agent path: no EL voice (or EL failed) → use HeyGen voice ID ───
+    // Note: EL single-scene path removed — it used a static solid background with
+    // no b-roll. All non-listing videos now use the Video Agent for cinematic b-roll.
     let voiceId = profile.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);
