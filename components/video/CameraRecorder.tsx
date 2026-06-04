@@ -24,9 +24,9 @@ import { FieldMic } from "@/components/ui/field-mic";
 type CamStep = "script" | "camera" | "done";
 
 const SPEED_OPTIONS = [
-  { label: "Slow", px: 18 },
-  { label: "Medium", px: 36 },
-  { label: "Fast", px: 58 },
+  { label: "Slow", px: 12 },
+  { label: "Medium", px: 24 },
+  { label: "Fast", px: 42 },
 ];
 
 function formatTime(s: number) {
@@ -373,7 +373,10 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
     return (
       <div className="flex flex-col gap-3">
         {/* Camera preview */}
-        <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+        <div className={cn(
+          "relative bg-black rounded-2xl overflow-hidden transition-all duration-300",
+          isRecording ? "aspect-[4/3]" : "aspect-video"
+        )}>
           <video
             ref={videoRef}
             autoPlay
@@ -393,21 +396,20 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
               <span className="text-white text-xs font-medium">{formatTime(seconds)}</span>
             </div>
           )}
-        </div>
 
-        {/* Teleprompter (only while recording) */}
-        {isRecording && (
-          <div
-            ref={teleRef}
-            className="h-28 bg-slate-900 rounded-xl px-5 py-3 overflow-hidden select-none"
-          >
-            <p className="text-white text-base leading-8 font-medium whitespace-pre-wrap">
-              {script}
-            </p>
-            {/* Trailing space so last words scroll to the top */}
-            <div className="h-24" />
-          </div>
-        )}
+          {/* Teleprompter overlay at bottom of camera while recording */}
+          {isRecording && (
+            <div
+              ref={teleRef}
+              className="absolute bottom-0 left-0 right-0 h-32 bg-black/70 backdrop-blur-sm px-5 py-3 overflow-hidden select-none"
+            >
+              <p className="text-white text-base leading-8 font-medium whitespace-pre-wrap">
+                {script}
+              </p>
+              <div className="h-24" />
+            </div>
+          )}
+        </div>
 
         {/* Pre-record hint */}
         {!isRecording && (
