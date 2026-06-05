@@ -205,6 +205,10 @@ export default function LandingPage() {
           {/* Two-column grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div>
+              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4 hover:bg-emerald-100 transition-colors">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                First 100 agents get 1 free AI video — no credit card
+              </a>
               <p className="font-black text-blue-900 mb-3 tracking-wide">
                 <span className="text-4xl">Speak, Spark, Share —</span><br />
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
@@ -220,11 +224,11 @@ export default function LandingPage() {
                 Most real estate agents are invisible online. XpressReel fixes that — turning your voice recording into a publish-ready short-form video.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
-                <a href="#how-it-works" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                  See How It Works <ArrowRight size={15} />
+                <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+                  Try Free — 1 AI Video <ArrowRight size={15} />
                 </a>
-                <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-                  View Pricing <ChevronRight size={15} />
+                <a href="#how-it-works" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                  See How It Works <ChevronRight size={15} />
                 </a>
               </div>
               <p className="mt-8 text-sm text-slate-400">No camera needed · Unlimited camera recordings · Fair Housing compliant · Cancel anytime</p>
@@ -570,10 +574,18 @@ export default function LandingPage() {
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight max-w-2xl">
             Hit the Mic. Speak, Spark, Share.
           </h2>
-          <p className="text-blue-200 text-lg mb-10 max-w-xl leading-relaxed">
+          <p className="text-blue-200 text-lg mb-8 max-w-xl leading-relaxed">
             Your voice. Your expertise. Your market. XpressReel turns 90 seconds of talking into a week of content — no camera, no editing, no glam required.
           </p>
-          <p className="text-blue-300 text-sm">No camera needed · Fair Housing compliant · Cancel anytime</p>
+          <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-sm font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
+              Claim Your Free Video <ArrowRight size={15} />
+            </a>
+            <a href="#pricing" className="inline-flex items-center gap-2 border border-blue-700 text-blue-200 text-sm font-semibold px-6 py-3 hover:border-blue-500 hover:text-white transition-colors">
+              View Pricing <ChevronRight size={15} />
+            </a>
+          </div>
+          <p className="text-blue-300 text-sm">First 100 agents · 1 free AI video · No credit card · Cancel anytime</p>
         </div>
       </section>
 
