@@ -94,6 +94,7 @@ export default function ProjectEditorPage() {
     script: true, seo: false, blog: false,
   });
   const [editedScript, setEditedScript] = useState("");
+  const [editedCta, setEditedCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
   const [contactInfo, setContactInfo] = useState<{
     full_name: string | null;
@@ -184,6 +185,7 @@ export default function ProjectEditorPage() {
     setProject(p);
     if (p.ai_script) {
       setEditedScript((p.ai_script as AiScript).script || "");
+      setEditedCta((p.ai_script as AiScript).cta || "");
       const hooks = (p.ai_script as AiScript).hooks;
       setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
     }
@@ -263,7 +265,7 @@ export default function ProjectEditorPage() {
       // Build the full video script: hook → body → CTA + contact info
       const bodyScript = editedScript || project.ai_script?.script || "";
       const hook = selectedHook || project.ai_script?.hook || "";
-      const cta = (project.ai_script as AiScript | null)?.cta || "";
+      const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
       const contactLine = buildContactLine();
       const ctaWithContact = [cta, contactLine].filter(Boolean).join("\n");
       const fullScript = [hook, bodyScript, ctaWithContact].filter(Boolean).join("\n\n");
@@ -542,6 +544,34 @@ export default function ProjectEditorPage() {
               )}
             </Card>
           )}
+
+          {/* Editable script */}
+          <Card>
+            <p className="text-sm font-semibold text-brand-text mb-2">
+              Script
+              <span className="ml-2 text-xs font-normal text-slate-400">{editedScript.trim().split(/\s+/).filter(Boolean).length} words</span>
+            </p>
+            <textarea
+              value={editedScript}
+              onChange={(e) => setEditedScript(e.target.value)}
+              rows={8}
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Edit before generating — your changes will be used.</p>
+          </Card>
+
+          {/* Editable CTA */}
+          <Card>
+            <p className="text-sm font-semibold text-brand-text mb-2">Call To Action</p>
+            <textarea
+              value={editedCta}
+              onChange={(e) => setEditedCta(e.target.value)}
+              rows={3}
+              placeholder="e.g. Call or text me to get started — I'd love to help!"
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">Spoken at the end of your video. Leave blank to skip.</p>
+          </Card>
 
           {/* Generate button */}
           <Button

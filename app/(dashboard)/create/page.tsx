@@ -92,6 +92,7 @@ function CreatePageInner() {
   // Paste-script tab
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasteScript, setPasteScript] = useState("");
+  const [pasteHook, setPasteHook] = useState("");
   const [pasteCity, setPasteCity] = useState("");
   const [pasteState, setPasteState] = useState("");
   const [pasteGenerating, setPasteGenerating] = useState(false);
@@ -249,6 +250,7 @@ function CreatePageInner() {
         body: JSON.stringify({
           title: pasteTitle || undefined,
           script: pasteScript,
+          hook: pasteHook.trim() || undefined,
           city: pasteCity || undefined,
           state: pasteState || undefined,
         }),
@@ -677,6 +679,23 @@ function CreatePageInner() {
                 placeholder="e.g. Austin Market Update — June 2026"
                 className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
+            </div>
+
+            {/* Optional thumbnail hook */}
+            <div className="mb-4">
+              <label className="text-xs font-bold text-slate-600 block mb-1">
+                First Frame Title / Thumbnail Hook <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={pasteHook}
+                onChange={(e) => setPasteHook(e.target.value)}
+                placeholder="e.g. Why Austin Buyers Are Moving Fast Right Now"
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Shown as bold text on the video&apos;s first frame — thumbnail-style visual. Your spoken script is unchanged.
+              </p>
             </div>
 
             {/* Script textarea */}
