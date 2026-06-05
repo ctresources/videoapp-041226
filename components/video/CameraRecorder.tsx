@@ -9,8 +9,10 @@ import {
   Download,
   Play,
   Pause,
+  Sparkles,
   Loader2,
   AlertCircle,
+  ChevronRight,
   Video,
   Share2,
 } from "lucide-react";
@@ -18,6 +20,7 @@ import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic } from "@/components/ui/field-mic";
+import { TopicRadar } from "@/components/create/topic-radar";
 
 type CamStep = "script" | "camera" | "done";
 
@@ -33,13 +36,12 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ initialScript }: { initialScript?: string } = {}) {
+export function CameraRecorder({ city, state }: { city?: string; state?: string } = {}) {
   const [step, setStep] = useState<CamStep>("script");
-  const [script, setScript] = useState(initialScript ?? "");
-
-  useEffect(() => {
-    if (initialScript) setScript(initialScript);
-  }, [initialScript]);
+  const [script, setScript] = useState("");
+  const [showSpark, setShowSpark] = useState(false);
+  const [sparkTopic, setSparkTopic] = useState("");
+  const [sparking, setSparking] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -192,6 +194,28 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
     toast.success("Download started!");
   }
 
+  async function handleSpark() {
+    if (!sparkTopic.trim()) return;
+    setSparking(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: sparkTopic.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Generation failed");
+      setScript(data.script);
+      setShowSpark(false);
+      setSparkTopic("");
+      toast.success("Script ready!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setSparking(false);
+    }
+  }
+
   async function handleSaveForSocial() {
     if (!videoBlob) return;
     setSaving(true);
@@ -229,12 +253,41 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <label className="text-sm font-semibold text-brand-text block mb-1">
-            Your Script
-          </label>
-          <p className="text-xs text-slate-400 mb-2">
-            Type or speak your script — the teleprompter scrolls as you record.
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-semibold text-brand-text">Your Script</label>
+            <button
+              onClick={() => setShowSpark((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+            >
+              <Sparkles size={12} />
+              {showSpark ? "Hide" : "Spark with AI"}
+            </button>
+          </div>
+
+          {showSpark && (
+            <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
+              <TopicRadar city={city} state={state} onSelect={(t) => setSparkTopic(t)} />
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={sparkTopic}
+                  onChange={(e) => setSparkTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !sparking && handleSpark()}
+                  placeholder="What do you want to speak about?"
+                  className="flex-1 text-sm px-3 py-2 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSpark}
+                  disabled={!sparkTopic.trim() || sparking}
+                  className="gap-1.5 shrink-0"
+                >
+                  {sparking ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
+                  {sparking ? "Sparking..." : "Spark It"}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="relative">
             <textarea

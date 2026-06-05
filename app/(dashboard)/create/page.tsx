@@ -94,10 +94,6 @@ function CreatePageInner() {
   const [pasteAiTopic, setPasteAiTopic] = useState("");
   const [pasteAiGenerating, setPasteAiGenerating] = useState(false);
 
-  // Camera tab AI script
-  const [cameraAiTopic, setCameraAiTopic] = useState("");
-  const [cameraAiGenerating, setCameraAiGenerating] = useState(false);
-  const [cameraScript, setCameraScript] = useState("");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -271,25 +267,6 @@ function CreatePageInner() {
     }
   }
 
-  async function handleAiWriteForCamera() {
-    if (!cameraAiTopic.trim()) return;
-    setCameraAiGenerating(true);
-    try {
-      const res = await fetch("/api/ai/generate-camera-script", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: cameraAiTopic }),
-      });
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error((data.error as string) || "Failed");
-      setCameraScript(data.script as string);
-      toast.success("Teleprompter script ready — scroll down to record!");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate script");
-    } finally {
-      setCameraAiGenerating(false);
-    }
-  }
 
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
@@ -764,41 +741,7 @@ function CreatePageInner() {
             </div>
           </div>
 
-          {/* Trending Radar + AI Write for camera */}
-          <div className="mb-5 pb-5 border-b border-slate-200">
-            <TopicRadar
-              city={locCity || undefined}
-              state={locState || undefined}
-              onSelect={(topic) => setCameraAiTopic(topic)}
-            />
-            <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark Your Teleprompter Script</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={cameraAiTopic}
-                onChange={(e) => setCameraAiTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !cameraAiGenerating && handleAiWriteForCamera()}
-                placeholder="What do you want to Speak about?"
-                className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-              <Button
-                size="sm"
-                loading={cameraAiGenerating}
-                disabled={!cameraAiTopic.trim()}
-                onClick={handleAiWriteForCamera}
-                className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap gap-1"
-              >
-                <Sparkles size={13} /> Spark It
-              </Button>
-            </div>
-            {cameraScript && !cameraAiGenerating && (
-              <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                <CheckCircle size={11} /> Teleprompter Sparked — Scroll Down To Review And Speak!
-              </p>
-            )}
-          </div>
-
-          <CameraRecorder initialScript={cameraScript} />
+          <CameraRecorder city={locCity || undefined} state={locState || undefined} />
 
           {/* Divider */}
           <div className="relative my-6">
