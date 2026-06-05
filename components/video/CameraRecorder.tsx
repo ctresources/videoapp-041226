@@ -9,10 +9,8 @@ import {
   Download,
   Play,
   Pause,
-  Sparkles,
   Loader2,
   AlertCircle,
-  ChevronRight,
   Video,
   Share2,
 } from "lucide-react";
@@ -49,9 +47,6 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
-  const [genTopic, setGenTopic] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [showAiGen, setShowAiGen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
@@ -197,28 +192,6 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
     toast.success("Download started!");
   }
 
-  async function handleGenerateScript() {
-    if (!genTopic.trim()) return;
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/ai/generate-camera-script", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: genTopic.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
-      setScript(data.script);
-      setShowAiGen(false);
-      setGenTopic("");
-      toast.success("Script ready!");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate script");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
   async function handleSaveForSocial() {
     if (!videoBlob) return;
     setSaving(true);
@@ -256,55 +229,12 @@ export function CameraRecorder({ initialScript }: { initialScript?: string } = {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-semibold text-brand-text">
-              What do you want to Speak about?
-            </label>
-            <button
-              onClick={() => setShowAiGen((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <Sparkles size={12} />
-              Spark with AI
-            </button>
-          </div>
+          <label className="text-sm font-semibold text-brand-text block mb-1">
+            Your Script
+          </label>
           <p className="text-xs text-slate-400 mb-2">
-            Speak Your Script Or Let AI Spark One — The Teleprompter Scrolls As You Record.
+            Type or speak your script — the teleprompter scrolls as you record.
           </p>
-
-          {showAiGen && (
-            <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-              <p className="text-xs font-medium text-primary-700 mb-2">
-                What&apos;s Your Spark? What Topic Should The Script Cover?
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={genTopic}
-                  onChange={(e) => setGenTopic(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleGenerateScript()}
-                  placeholder="e.g. Why now is a great time to sell in Austin, TX"
-                  className="flex-1 text-sm px-3 py-2 border border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                />
-                <Button
-                  size="sm"
-                  onClick={handleGenerateScript}
-                  disabled={!genTopic.trim() || generating}
-                  className="gap-1.5 shrink-0"
-                >
-                  {generating ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <ChevronRight size={14} />
-                  )}
-                  {generating ? "Sparking..." : "Spark It"}
-                </Button>
-              </div>
-              <p className="text-xs text-primary-600/70 mt-1.5">
-                AI Will Spark A 2–3 Minute Teleprompter Script For You
-              </p>
-            </div>
-          )}
 
           <div className="relative">
             <textarea
