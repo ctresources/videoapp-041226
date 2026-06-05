@@ -205,10 +205,6 @@ export default function LandingPage() {
           {/* Two-column grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div>
-              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4 hover:bg-emerald-100 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                First 100 agents get 1 free AI video — no credit card
-              </a>
               <p className="font-black text-blue-900 mb-3 tracking-wide">
                 <span className="text-4xl">Speak, Spark, Share —</span><br />
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
@@ -225,13 +221,17 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                  Try Free — 1 AI Video <ArrowRight size={15} />
+                  Sign up for free <ArrowRight size={15} />
                 </a>
                 <a href="#how-it-works" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
                   See How It Works <ChevronRight size={15} />
                 </a>
               </div>
-              <p className="mt-8 text-sm text-slate-400">No camera needed · Unlimited camera recordings · Fair Housing compliant · Cancel anytime</p>
+              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full mt-4 hover:bg-emerald-100 transition-colors">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                First 100 agents get 1 free AI video — no credit card
+              </a>
+              <p className="mt-4 text-sm text-slate-400">No camera needed · Unlimited camera recordings · Fair Housing compliant · Cancel anytime</p>
             </div>
             {/* Hero image */}
             <div className="relative hidden lg:block animate-float pt-4">
