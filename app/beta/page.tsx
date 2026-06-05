@@ -5,7 +5,7 @@ export const metadata = { title: "Join the XpressReel Beta" };
 
 const perks = [
   { icon: Camera, text: "Unlimited camera recordings — record yourself on camera, free forever, no cap." },
-  { icon: Sparkles, text: "1 free AI-generated video — see the full HeyGen avatar + voice experience." },
+  { icon: Sparkles, text: "1 free AI-generated video — see your AI avatar + voice come to life." },
   { icon: CheckCircle, text: "Built-in teleprompter — your script scrolls while you record." },
   { icon: CheckCircle, text: "AI script writer — speak a topic, AI writes a broadcast-quality script in seconds." },
   { icon: CheckCircle, text: "No credit card required." },
