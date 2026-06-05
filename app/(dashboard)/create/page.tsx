@@ -291,7 +291,7 @@ function CreatePageInner() {
               { mode: "script" as InputMode,  icon: Sparkles,   label: "AI Writes It",               active: "bg-blue-600 text-white shadow-md shadow-blue-200",     inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
               { mode: "paste" as InputMode,   icon: PenLine,    label: "I'll Write or Paste It",     active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
               { mode: "listing" as InputMode, icon: Building2,  label: "My Listing",                 active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
-              { mode: "camera" as InputMode,  icon: Video,      label: "Hit Record – Use My Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",   inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
+              { mode: "camera" as InputMode,  icon: Video,      label: "Use Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",   inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
             ].map(({ mode, icon: Icon, label, active, inactive }) => (
               <button
                 key={mode}
