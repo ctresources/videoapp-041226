@@ -649,13 +649,13 @@ function CreatePageInner() {
               <textarea
                 value={pasteScript}
                 onChange={(e) => setPasteScript(e.target.value)}
-                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 300 words for best results."
+                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 400 words for best results."
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none leading-relaxed"
               />
-              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 300 && (
+              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 400 && (
                 <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Over 300 Words — The Script Will Be Trimmed At Generation Time.
+                  <AlertCircle size={12} /> Over 400 Words — The Script Will Be Trimmed At Generation Time.
                 </p>
               )}
             </div>
