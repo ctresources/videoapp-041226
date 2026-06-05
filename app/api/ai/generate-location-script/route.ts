@@ -63,24 +63,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Check credits ───────────────────────────────────────────────────────────
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("credits_remaining, full_name, company_name, phone, company_phone, website")
+    .select("full_name, company_name, phone, company_phone, website")
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile as { credits_remaining: number }).credits_remaining < 1) {
-    return NextResponse.json(
-      { error: "No videos remaining this month. Please upgrade your plan." },
-      { status: 402 }
-    );
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
   const params: LocationParams = { city, state, zip, month, year, customTopic, audience, tone, ctaPreference };
-  const agentName = (profile as { credits_remaining: number; full_name?: string | null }).full_name || undefined;
+  const agentName = (profile as { full_name?: string | null }).full_name || undefined;
 
   let raw: string;
   try {
@@ -120,7 +116,6 @@ export async function POST(req: NextRequest) {
   // failures are tolerated; the script flow shouldn't fail because the YouTube
   // copy step had an upstream hiccup.
   const prof = profile as {
-    credits_remaining: number;
     full_name?: string | null;
     company_name?: string | null;
     phone?: string | null;
@@ -179,20 +174,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save project" }, { status: 500 });
   }
 
-  // ── Deduct 1 credit ─────────────────────────────────────────────────────────
-  await admin
-    .from("profiles")
-    .update({
-      credits_remaining: (profile as { credits_remaining: number }).credits_remaining - 1,
-    })
-    .eq("id", user.id);
-
-  // ── Log API usage ───────────────────────────────────────────────────────────
   await admin.from("api_usage_log").insert({
     user_id: user.id,
     api_provider: "perplexity",
     endpoint: "generate-location-script",
-    credits_used: 1,
+    credits_used: 0,
     response_status: 200,
   });
 

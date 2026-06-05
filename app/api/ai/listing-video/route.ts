@@ -99,22 +99,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Listing data is required" }, { status: 400 });
   }
 
-  // Check credits
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("credits_remaining, full_name, company_name, phone, company_phone, website, location_city, location_state")
+    .select("full_name, company_name, phone, company_phone, website, location_city, location_state")
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile as { credits_remaining: number }).credits_remaining < 1) {
-    return NextResponse.json({ error: "No videos remaining this month. Please upgrade your plan." }, { status: 402 });
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
 
   // Generate script
   let scriptData: Awaited<ReturnType<typeof generateListingScript>>;
   try {
-    const agentName = (profile as { credits_remaining: number; full_name?: string | null }).full_name || undefined;
+    const agentName = (profile as { full_name?: string | null }).full_name || undefined;
     scriptData = await generateListingScript(listing, agentName);
   } catch (err) {
     console.error("Listing script error:", err);
@@ -139,7 +138,6 @@ export async function POST(req: NextRequest) {
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata — non-blocking
   const prof = profile as {
-    credits_remaining: number;
     full_name?: string | null;
     company_name?: string | null;
     phone?: string | null;
@@ -200,17 +198,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save project" }, { status: 500 });
   }
 
-  // Deduct credit
-  await admin
-    .from("profiles")
-    .update({ credits_remaining: (profile as { credits_remaining: number }).credits_remaining - 1 })
-    .eq("id", user.id);
-
   await admin.from("api_usage_log").insert({
     user_id: user.id,
     api_provider: "perplexity",
     endpoint: "listing-video",
-    credits_used: 1,
+    credits_used: 0,
     response_status: 200,
   });
 

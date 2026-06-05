@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id")
+    .select("heygen_voice_id, heygen_photo_id, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining")
     .eq("id", user.id)
     .single();
 
@@ -209,12 +209,20 @@ export async function POST(req: NextRequest) {
     location_state: string | null;
     website: string | null;
     voice_clone_id: string | null;
+    credits_remaining: number;
   } | null;
 
   if (!p?.heygen_photo_id) {
     return NextResponse.json(
       { error: "Upload your photo in Settings to create your video avatar." },
       { status: 400 },
+    );
+  }
+
+  if (p.credits_remaining < 1) {
+    return NextResponse.json(
+      { error: "No videos remaining this month. Please upgrade your plan." },
+      { status: 402 },
     );
   }
 
@@ -290,6 +298,7 @@ export async function POST(req: NextRequest) {
       });
 
       await admin.from("generated_videos").update({ render_job_id: videoId }).eq("id", newVideo.id);
+      await admin.from("profiles").update({ credits_remaining: p.credits_remaining - 1 }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
@@ -350,6 +359,7 @@ export async function POST(req: NextRequest) {
       .update({ render_job_id: sessionId })
       .eq("id", newVideo.id);
 
+    await admin.from("profiles").update({ credits_remaining: p.credits_remaining - 1 }).eq("id", user.id);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
