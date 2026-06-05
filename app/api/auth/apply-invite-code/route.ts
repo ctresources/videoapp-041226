@@ -16,20 +16,23 @@ export async function POST(req: NextRequest) {
     .from("beta_invites")
     .select("*")
     .eq("code", code.trim().toUpperCase())
-    .is("used_by", null)
     .single();
 
-  if (!invite) return NextResponse.json({ error: "Invalid or already used invite code." }, { status: 400 });
+  if (!invite) return NextResponse.json({ error: "Invalid invite code." }, { status: 400 });
 
-  const inv = invite as { id: string; credits: number; expires_at: string | null };
+  const inv = invite as { id: string; credits: number; expires_at: string | null; max_uses: number; uses_count: number };
 
   if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
     return NextResponse.json({ error: "This invite code has expired." }, { status: 400 });
   }
 
-  // Mark code as used and upgrade profile to beta
+  if (inv.uses_count >= inv.max_uses) {
+    return NextResponse.json({ error: "This invite code has reached its usage limit." }, { status: 400 });
+  }
+
+  // Increment usage count and upgrade profile to beta
   await Promise.all([
-    admin.from("beta_invites").update({ used_by: user.id, used_at: new Date().toISOString() }).eq("id", inv.id),
+    admin.from("beta_invites").update({ uses_count: inv.uses_count + 1, used_by: user.id, used_at: new Date().toISOString() }).eq("id", inv.id),
     admin.from("profiles").update({ subscription_tier: "beta", credits_remaining: inv.credits }).eq("id", user.id),
   ]);
 
