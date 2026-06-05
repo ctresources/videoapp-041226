@@ -59,6 +59,8 @@ export default function AdminPage() {
   const [genCount, setGenCount] = useState("5");
   const [genLabel, setGenLabel] = useState("");
   const [genCredits, setGenCredits] = useState("1");
+  const [genCustomCode, setGenCustomCode] = useState("");
+  const [genMaxUses, setGenMaxUses] = useState("50");
   const [generating, setGenerating] = useState(false);
 
   const loadUsers = useCallback(async () => {
@@ -138,7 +140,13 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/invite-codes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count: parseInt(genCount) || 1, label: genLabel || undefined, credits: parseInt(genCredits) || 1 }),
+      body: JSON.stringify({
+        count: parseInt(genCount) || 1,
+        label: genLabel || undefined,
+        credits: parseInt(genCredits) || 1,
+        customCode: genCustomCode.trim() || undefined,
+        maxUses: parseInt(genMaxUses) || 50,
+      }),
     });
     if (res.ok) { toast.success("Codes generated!"); loadInvites(); }
     else { const { error } = await res.json(); toast.error(error || "Failed"); }
@@ -201,14 +209,24 @@ export default function AdminPage() {
           <Card>
             <p className="text-sm font-bold text-brand-text mb-3 flex items-center gap-2"><Gift size={15} /> Generate Invite Codes</p>
             <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Custom Code (optional)</label>
+                <input type="text" value={genCustomCode} onChange={(e) => setGenCustomCode(e.target.value)} placeholder="e.g. WELCOME2026"
+                  className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono uppercase" />
+              </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Count</label>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Max Uses</label>
+                <input type="number" min="1" max="1000" value={genMaxUses} onChange={(e) => setGenMaxUses(e.target.value)}
+                  className="w-20 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Count (bulk only)</label>
                 <input type="number" min="1" max="50" value={genCount} onChange={(e) => setGenCount(e.target.value)}
                   className="w-20 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">AI Video Credits</label>
-                <input type="number" min="1" max="10" value={genCredits} onChange={(e) => setGenCredits(e.target.value)}
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Credits</label>
+                <input type="number" min="1" max="100" value={genCredits} onChange={(e) => setGenCredits(e.target.value)}
                   className="w-20 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex-1 min-w-[160px]">
@@ -242,8 +260,8 @@ export default function AdminPage() {
                       <th className="pb-2 font-semibold">Code</th>
                       <th className="pb-2 font-semibold">Label</th>
                       <th className="pb-2 font-semibold">Credits</th>
-                      <th className="pb-2 font-semibold">Status</th>
-                      <th className="pb-2 font-semibold">Used By</th>
+                      <th className="pb-2 font-semibold">Uses</th>
+                      <th className="pb-2 font-semibold">Last Used By</th>
                       <th className="pb-2 font-semibold">Created</th>
                       <th className="pb-2" />
                     </tr>
@@ -263,10 +281,12 @@ export default function AdminPage() {
                         </td>
                         <td className="py-2 pr-4 text-slate-500">{inv.label || "—"}</td>
                         <td className="py-2 pr-4 text-slate-700 font-medium">{inv.credits}</td>
-                        <td className="py-2 pr-4">
-                          {inv.used_by
-                            ? <span className="text-slate-400">Used</span>
-                            : <span className="text-emerald-600 font-semibold">Active</span>}
+                        <td className="py-2 pr-4 text-slate-700 font-medium">
+                          {(inv as unknown as { uses_count: number; max_uses: number }).uses_count ?? 0}
+                          <span className="text-slate-400 font-normal"> / {(inv as unknown as { max_uses: number }).max_uses ?? 1}</span>
+                          {((inv as unknown as { uses_count: number; max_uses: number }).uses_count ?? 0) >= ((inv as unknown as { max_uses: number }).max_uses ?? 1)
+                            ? <span className="ml-1 text-slate-400">(full)</span>
+                            : <span className="ml-1 text-emerald-600">(active)</span>}
                         </td>
                         <td className="py-2 pr-4 text-slate-500">
                           {inv.profiles ? (inv.profiles.full_name || inv.profiles.email) : "—"}
