@@ -4,8 +4,6 @@ import { CheckCircle, Camera, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-const MAX_USERS = 100;
-
 const perks = [
   { icon: Camera, text: "Unlimited camera recordings — record yourself on camera, free forever, no cap." },
   { icon: Sparkles, text: "1 free AI-generated video — see your AI avatar + voice come to life." },
@@ -15,14 +13,14 @@ const perks = [
 ];
 
 export default function BetaPage() {
-  const [capacity, setCapacity] = useState<{ open: boolean; count: number; max: number } | null>(null);
+  const [capacity, setCapacity] = useState<{ open: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/capacity")
       .then((r) => r.json())
       .then(setCapacity)
-      .catch(() => setCapacity({ open: true, count: 0, max: MAX_USERS }));
+      .catch(() => setCapacity({ open: true }));
   }, []);
 
   async function handleGoogle() {
@@ -35,7 +33,6 @@ export default function BetaPage() {
     });
   }
 
-  const spotsLeft = capacity ? capacity.max - capacity.count : MAX_USERS;
   const isFull = capacity ? !capacity.open : false;
 
   return (
@@ -56,18 +53,10 @@ export default function BetaPage() {
           Be one of the first 100 agents<br />
           <span className="text-blue-900">to get free access.</span>
         </h1>
-        <p className="text-lg text-slate-500 mb-2 max-w-xl">
+        <p className="text-lg text-slate-500 mb-8 max-w-xl">
           Sign up with Google — no credit card, no invite code needed.
           You get 1 free AI video + unlimited camera recordings.
         </p>
-
-        {/* Spots counter */}
-        {capacity && (
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-8 ${isFull ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
-            <span className={`w-2 h-2 rounded-full ${isFull ? "bg-red-500" : "bg-emerald-500 animate-pulse"}`} />
-            {isFull ? "All spots have been claimed" : `${spotsLeft} of ${MAX_USERS} spots remaining`}
-          </div>
-        )}
 
         {/* Perks */}
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-8 max-w-md w-full text-left">
