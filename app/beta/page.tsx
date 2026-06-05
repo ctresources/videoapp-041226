@@ -1,7 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { CheckCircle, Camera, Sparkles, ArrowRight } from "lucide-react";
-
-export const metadata = { title: "Join the XpressReel Beta" };
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const perks = [
   { icon: Camera, text: "Unlimited camera recordings — record yourself on camera, free forever, no cap." },
@@ -11,7 +13,11 @@ const perks = [
   { icon: CheckCircle, text: "No credit card required." },
 ];
 
-export default function BetaPage() {
+function BetaPageContent() {
+  const searchParams = useSearchParams();
+  const code = searchParams.get("code");
+  const registerHref = code ? `/register?code=${encodeURIComponent(code)}` : "/register";
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
 
@@ -51,12 +57,12 @@ export default function BetaPage() {
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <Link
-            href="/register"
+            href={registerHref}
             className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-800 transition-colors"
           >
-            Sign up with an invite code <ArrowRight size={15} />
+            {code ? "Claim Your Invite" : "Sign up with an invite code"} <ArrowRight size={15} />
           </Link>
-          <p className="text-xs text-slate-400">Already have a code? Enter it on the sign-up page.</p>
+          {!code && <p className="text-xs text-slate-400">Already have a code? Enter it on the sign-up page.</p>}
         </div>
 
         <p className="mt-10 text-xs text-slate-400 max-w-sm">
@@ -68,5 +74,13 @@ export default function BetaPage() {
         </p>
       </main>
     </div>
+  );
+}
+
+export default function BetaPage() {
+  return (
+    <Suspense>
+      <BetaPageContent />
+    </Suspense>
   );
 }
