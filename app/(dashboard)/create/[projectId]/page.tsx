@@ -268,7 +268,7 @@ export default function ProjectEditorPage() {
       const bodyScript = editedScript || project.ai_script?.script || "";
       const hook = selectedHook || project.ai_script?.hook || "";
       const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
-      const contactLine = buildContactLine();
+      const contactLine = cta ? buildContactLine() : "";
       const ctaWithContact = [cta, contactLine].filter(Boolean).join("\n");
       const fullScript = [hook, bodyScript, ctaWithContact].filter(Boolean).join("\n\n");
 
