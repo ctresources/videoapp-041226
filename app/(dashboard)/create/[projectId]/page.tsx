@@ -213,6 +213,7 @@ export default function ProjectEditorPage() {
       setProject(p);
       if (p.ai_script) {
         setEditedScript((p.ai_script as AiScript).script || "");
+        setEditedCta((p.ai_script as AiScript).cta || "");
         const hooks = (p.ai_script as AiScript).hooks;
         setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
       }
@@ -245,6 +246,7 @@ export default function ProjectEditorPage() {
       const { aiScript, seoData } = body as { aiScript: AiScript; seoData: SeoData };
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
+      setEditedCta(aiScript.cta || "");
       setSelectedHook(aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "");
       toast.success("Script regenerated!");
     } catch (err) {
@@ -725,7 +727,7 @@ export default function ProjectEditorPage() {
               <button
                 onClick={() => {
                   const contactLine = buildContactLine();
-                  const full = contactLine ? `${script.cta}\n\n${contactLine}` : script.cta;
+                  const full = contactLine ? `${editedCta}\n\n${contactLine}` : editedCta;
                   copyToClipboard(full, "CTA");
                 }}
                 className="flex items-center gap-1 text-xs text-primary-500 hover:underline"
@@ -733,27 +735,31 @@ export default function ProjectEditorPage() {
                 <Copy size={12} /> Copy with contact
               </button>
             </div>
-            <div className="bg-accent-500/5 border border-accent-500/20 rounded-xl px-4 py-3 text-sm text-slate-700 flex flex-col gap-2">
-              <p className="leading-relaxed">{script.cta}</p>
-              {buildContactLine() ? (
-                <div className="border-t border-accent-500/20 pt-2 flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
-                  <button
-                    onClick={() => copyToClipboard(buildContactLine(), "Contact info")}
-                    className="shrink-0"
-                    title="Copy contact info"
-                  >
-                    <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 italic border-t border-accent-500/20 pt-2">
-                  Add your name, phone & address in{" "}
-                  <a href="/settings" className="text-primary-500 hover:underline">Settings</a>{" "}
-                  to auto-append contact info here.
-                </p>
-              )}
-            </div>
+            <textarea
+              value={editedCta}
+              onChange={(e) => setEditedCta(e.target.value)}
+              rows={3}
+              placeholder="e.g. Call or text me to get started — I'd love to help!"
+              className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100"
+            />
+            {buildContactLine() ? (
+              <div className="flex items-center justify-between gap-2 mt-2 px-1">
+                <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
+                <button
+                  onClick={() => copyToClipboard(buildContactLine(), "Contact info")}
+                  className="shrink-0"
+                  title="Copy contact info"
+                >
+                  <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic mt-2 px-1">
+                Add your name, phone & address in{" "}
+                <a href="/settings" className="text-primary-500 hover:underline">Settings</a>{" "}
+                to auto-append contact info here.
+              </p>
+            )}
           </Card>
 
           {/* Settings nudge */}
@@ -1025,7 +1031,7 @@ export default function ProjectEditorPage() {
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
-                  {script.cta}
+                  {editedCta}
                 </p>
                 {buildContactLine() && (
                   <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
