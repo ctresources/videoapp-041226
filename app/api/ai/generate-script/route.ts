@@ -20,13 +20,12 @@ export async function POST(req: NextRequest) {
   // Get recording + profile
   const [recordingResult, profileResult] = await Promise.all([
     admin.from("voice_recordings").select("transcript, title").eq("id", recordingId).eq("user_id", user.id).single(),
-    admin.from("profiles").select("full_name, credits_remaining, company_name, phone, company_phone, website, location_city, location_state").eq("id", user.id).single(),
+    admin.from("profiles").select("full_name, company_name, phone, company_phone, website, location_city, location_state").eq("id", user.id).single(),
   ]);
 
   const recording = recordingResult.data as { transcript: string | null; title: string | null } | null;
   const profile = profileResult.data as {
     full_name: string | null;
-    credits_remaining: number;
     company_name: string | null;
     phone: string | null;
     company_phone: string | null;
@@ -38,8 +37,8 @@ export async function POST(req: NextRequest) {
   if (!recording?.transcript) {
     return NextResponse.json({ error: "No transcript found. Please transcribe the recording first." }, { status: 400 });
   }
-  if (!profile || profile.credits_remaining < 1) {
-    return NextResponse.json({ error: "No videos remaining this month. Please upgrade your plan." }, { status: 402 });
+  if (!profile) {
+    return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
 
   // Optionally enrich with real-time market data
@@ -110,11 +109,7 @@ export async function POST(req: NextRequest) {
 
     if (projectError) throw new Error(projectError.message);
 
-    // Deduct credit + log usage
-    await Promise.all([
-      admin.from("profiles").update({ credits_remaining: profile.credits_remaining - 1 }).eq("id", user.id),
-      admin.from("api_usage_log").insert({ user_id: user.id, api_provider: "perplexity", endpoint: "generate-script", credits_used: 1, response_status: 200 }),
-    ]);
+    await admin.from("api_usage_log").insert({ user_id: user.id, api_provider: "perplexity", endpoint: "generate-script", credits_used: 0, response_status: 200 });
 
     return NextResponse.json({ project, aiScript, seoData });
   } catch (err) {
