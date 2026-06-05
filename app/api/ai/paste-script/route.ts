@@ -24,6 +24,20 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
+  // ── Check credits ─────────────────────────────────────────────────────────
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("credits_remaining")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile as { credits_remaining: number }).credits_remaining < 1) {
+    return NextResponse.json(
+      { error: "No videos remaining this month. Please upgrade your plan." },
+      { status: 402 },
+    );
+  }
+
   // Use provided hook, or fall back to first sentence of script
   const firstSentence = script.trim().split(/(?<=[.!?])\s+/)[0] ?? script.trim().slice(0, 120);
   const hookText = body.hook?.trim() || firstSentence;
@@ -72,6 +86,11 @@ export async function POST(req: NextRequest) {
     console.error("paste-script project insert error:", projectError);
     return NextResponse.json({ error: "Failed to save project" }, { status: 500 });
   }
+
+  await admin
+    .from("profiles")
+    .update({ credits_remaining: (profile as { credits_remaining: number }).credits_remaining - 1 })
+    .eq("id", user.id);
 
   return NextResponse.json({ project });
 }
