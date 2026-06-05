@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity } from "lucide-react";
+import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity, Film } from "lucide-react";
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
 async function DraftQueueWrapper() {
@@ -34,7 +34,7 @@ async function DashboardStats() {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, current_period_end").eq("id", user.id).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -44,19 +44,47 @@ async function DashboardStats() {
     full_name: string | null;
     credits_remaining: number;
     subscription_tier: string;
+    current_period_end: string | null;
   } | null;
 
   const creditsLeft = profile?.credits_remaining ?? 0;
+  const PLAN_VIDEOS: Record<string, number> = { free: 1, beta: 1, starter: 4, agent: 8, pro: 12 };
+  const videosTotal = PLAN_VIDEOS[(profile?.subscription_tier ?? "free")] ?? 0;
+  const periodEnd = profile?.current_period_end
+    ? new Date(profile.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null;
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-5">
         <h2 className="text-2xl font-bold text-brand-text">
           Welcome back{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}! 👋
         </h2>
         <p className="text-slate-500 text-sm mt-1">
           Ready To Create Your Next Viral Video?
         </p>
+      </div>
+
+      {/* Videos remaining banner */}
+      <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm ${
+        creditsLeft === 0 ? "bg-red-50 border border-red-200"
+        : creditsLeft <= 1 ? "bg-amber-50 border border-amber-200"
+        : "bg-blue-50 border border-blue-100"
+      }`}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
+          <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
+            {creditsLeft === 0 ? "No AI Videos Remaining This Month" : `${creditsLeft} Of ${videosTotal} AI Videos Left`}
+          </span>
+          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+            ∞ Camera Recordings
+          </span>
+        </div>
+        <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
+          {creditsLeft === 0
+            ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
+            : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
