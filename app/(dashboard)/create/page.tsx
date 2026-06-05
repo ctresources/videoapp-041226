@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
-  Building2, Video, Square, Pause, AlertCircle, Film,
+  Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
@@ -63,12 +63,7 @@ function CreatePageInner() {
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [videosLeft, setVideosLeft] = useState<number | null>(null);
-  const [videosTotal, setVideosTotal] = useState<number | null>(null);
-  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-
-  const PLAN_VIDEOS: Record<string, number> = { free: 1, beta: 1, starter: 4, agent: 8, pro: 12 };
 
   // Location
   const [locCity, setLocCity] = useState("");
@@ -120,7 +115,7 @@ function CreatePageInner() {
       setUserId(user.id);
       supabase
         .from("profiles")
-        .select("location_city, location_state, credits_remaining, subscription_tier, current_period_end, saved_markets")
+        .select("location_city, location_state, saved_markets")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
@@ -129,16 +124,6 @@ function CreatePageInner() {
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
           if (Array.isArray(data?.saved_markets)) setSavedMarkets(data.saved_markets as { city: string; state: string }[]);
-
-          if (data) {
-            const tier = (data.subscription_tier as string) ?? "free";
-            setVideosLeft(data.credits_remaining ?? 0);
-            setVideosTotal(PLAN_VIDEOS[tier] ?? 0);
-            if (data.current_period_end) {
-              const d = new Date(data.current_period_end as string);
-              setPeriodEnd(d.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
-            }
-          }
         });
     });
   }, []); // eslint-disable-line
@@ -321,29 +306,7 @@ function CreatePageInner() {
         <p className="text-slate-400 text-sm mt-0.5">4 ways to create — choose the one that Speaks to you or Sparks you.</p>
       </div>
 
-      {/* Videos remaining banner */}
-      {videosLeft !== null && videosTotal !== null && (
-        <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-5 text-sm ${
-          videosLeft === 0 ? "bg-red-50 border border-red-200"
-          : videosLeft <= 1 ? "bg-amber-50 border border-amber-200"
-          : "bg-blue-50 border border-blue-100"
-        }`}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Film size={15} className={videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
-            <span className={`font-semibold text-sm ${videosLeft === 0 ? "text-red-700" : videosLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
-              {videosLeft === 0 ? "No AI Videos Remaining This Month" : `${videosLeft} Of ${videosTotal} AI Videos Left`}
-            </span>
-            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              ∞ Camera Recordings
-            </span>
-          </div>
-          <span className={`text-xs shrink-0 ${videosLeft === 0 ? "text-red-500" : videosLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
-            {videosLeft === 0
-              ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
-              : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
-          </span>
-        </div>
-      )}
+
 
       {/* ── Tab bar ── */}
       {step === "input" && (
