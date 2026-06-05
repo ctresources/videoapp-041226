@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as {
     title?: string;
     script: string;
+    hook?: string;
     city?: string;
     state?: string;
   };
@@ -23,13 +24,14 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Use first sentence as hook
+  // Use provided hook, or fall back to first sentence of script
   const firstSentence = script.trim().split(/(?<=[.!?])\s+/)[0] ?? script.trim().slice(0, 120);
+  const hookText = body.hook?.trim() || firstSentence;
 
   const aiScript = {
     title,
-    hook: firstSentence,
-    hooks: [firstSentence],
+    hook: hookText,
+    hooks: [hookText],
     script: script.trim(),
     cta: "",
     description: "",
