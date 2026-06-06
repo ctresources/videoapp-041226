@@ -571,7 +571,7 @@ export default function LandingPage() {
       <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
           <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with xpressreel.com</p>
-          <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight max-w-2xl">
+          <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight whitespace-nowrap">
             Hit the Mic. Speak, Spark, Share.
           </h2>
           <p className="text-blue-200 text-lg mb-8 max-w-xl leading-relaxed">
