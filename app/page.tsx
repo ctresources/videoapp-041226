@@ -209,7 +209,7 @@ export default function LandingPage() {
                 <span className="text-4xl">Speak, Spark, Share —</span><br />
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
-              <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-5">
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-5">
                 Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
               </p>
               <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-6 text-slate-900">
