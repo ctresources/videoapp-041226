@@ -209,16 +209,16 @@ export default function LandingPage() {
                 <span className="text-4xl">Speak, Spark, Share —</span><br />
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
+              <p className="text-base text-slate-500 mb-4 leading-relaxed">
+                Most real estate agents are invisible online. XpressReel.com fixes that — turning your voice recording into a publish-ready short-form video.
+              </p>
               <p className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-5">
                 Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
               </p>
               <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-6 text-slate-900">
                 <span className="block">Hit the Mic....Be Visible</span>
-                <span className="block text-blue-900">and become the go-to-agent of your town.</span>
+                <span className="block text-blue-900">and become the go-to-local expert of your town.</span>
               </h1>
-              <p className="text-base text-slate-500 mb-4 leading-relaxed">
-                Most real estate agents are invisible online. XpressReel fixes that — turning your voice recording into a publish-ready short-form video.
-              </p>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
                   Sign up for free <ArrowRight size={15} />
