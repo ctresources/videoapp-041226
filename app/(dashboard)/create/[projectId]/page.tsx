@@ -585,7 +585,7 @@ export default function ProjectEditorPage() {
             <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
           </Button>
           <p className="text-xs text-slate-400 text-center -mt-2">
-            Video ready in 5–8 minutes · you&apos;ll see it in My Videos
+            Video ready in less than 10 minutes · you&apos;ll see it in My Videos
           </p>
         </div>
       </div>
@@ -602,7 +602,7 @@ export default function ProjectEditorPage() {
           </div>
           <div>
             <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
-            <p className="text-slate-400 text-sm mt-1">This takes 5–8 minutes. You&apos;ll see it in My Videos when ready.</p>
+            <p className="text-slate-400 text-sm mt-1">This takes less than 10 minutes. You&apos;ll see it in My Videos when ready.</p>
           </div>
           <div className="flex gap-1.5 mt-2">
             {[0, 1, 2].map((i) => (
