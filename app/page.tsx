@@ -91,7 +91,7 @@ const features = [
   },
   {
     title: "49% Faster Revenue Growth",
-    description: "Agents who post consistent video content grow revenue 49% faster. XpressReel gives you the output of a full content team without the cost or headache.",
+    description: "Agents who post consistent video content grow revenue 49% faster. XpressReel.com gives you the output of a full content team without the cost or headache.",
     photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
   },
 ];
@@ -363,7 +363,7 @@ export default function LandingPage() {
             <p className="text-sm text-slate-700">
               Agents who post consistent video content grow revenue{" "}
               <span className="font-bold text-blue-900">49% faster</span>{" "}
-              — yet two-thirds of the market still isn&apos;t doing it consistently. XpressReel removes every barrier that&apos;s stopping them.
+              — yet two-thirds of the market still isn&apos;t doing it consistently. XpressReel.com removes every barrier that&apos;s stopping them.
             </p>
           </div>
         </div>
@@ -467,7 +467,7 @@ export default function LandingPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
-                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">XpressReel</th>
+                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">XpressReel.com</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor A</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor B</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor C</th>
@@ -575,7 +575,7 @@ export default function LandingPage() {
             Hit the Mic. Speak, Spark, Share.
           </h2>
           <p className="text-blue-200 text-lg mb-8 max-w-xl leading-relaxed">
-            Your voice. Your expertise. Your market. XpressReel turns 90 seconds of talking into a week of content — no camera, no editing, no glam required.
+            Your voice. Your expertise. Your market. XpressReel.com turns 90 seconds of talking into a week of content — no camera, no editing, no glam required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
             <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-sm font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
@@ -615,7 +615,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
-            <p>© {new Date().getFullYear()} XpressReel. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} XpressReel.com. All rights reserved.</p>
             <p>All AI-generated content includes Fair Housing compliance guardrails per 42 U.S.C. § 3604.</p>
           </div>
         </div>
