@@ -602,7 +602,14 @@ export default function LandingPage() {
                 unoptimized
               />
               <p className="text-xs mt-2 text-slate-500 max-w-xs leading-relaxed">
-                The one-button video platform for real estate agents. No camera. No editing. Just results.
+                The one-button video platform for real estate agents. No camera. No editing. Just Visibility.
+              </p>
+              <p className="text-xs mt-3 text-slate-500 max-w-xs leading-relaxed">
+                Visibility creates credibility.<br />
+                Credibility creates trust.<br />
+                Trust creates opportunities.<br />
+                And opportunities create business.<br /><br />
+                If you&apos;re ready to stop being invisible and become the go-to expert in your market, visit XpressReel.com
               </p>
             </div>
             <div className="grid grid-cols-2 gap-x-16 gap-y-2 text-sm">
