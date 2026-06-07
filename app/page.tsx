@@ -591,7 +591,7 @@ export default function LandingPage() {
                 Credibility creates trust.<br />
                 Trust creates opportunities.<br />
                 And opportunities create business.<br /><br />
-                If you&apos;re ready to stop being invisible and become the go-to expert in your market, visit XpressReel.com
+                Stop being invisible and become the go-to expert in your market!
               </p>
             </div>
             <div className="grid grid-cols-2 gap-x-16 gap-y-2 text-sm">
