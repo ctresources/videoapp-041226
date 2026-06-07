@@ -374,7 +374,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">From Speak Or Topic, To AI Script And Video Generated In 5–8 Minutes.</h2>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated In 10 minutes.</h2>
             <p className="text-slate-500">What used to take a full Saturday now takes one conversation.</p>
           </div>
 
