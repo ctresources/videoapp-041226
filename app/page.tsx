@@ -556,8 +556,14 @@ export default function LandingPage() {
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight whitespace-nowrap">
             Hit the Mic. Speak, Spark, Share.
           </h2>
-          <p className="text-blue-200 text-lg mb-8 max-w-xl leading-relaxed">
-            Your voice. Your expertise. Your market. XpressReel.com turns 90 seconds of talking into a week of content — no camera, no editing, no glam required.
+          <p className="text-blue-200 text-lg mb-3 max-w-xl leading-relaxed">
+            The one-button video platform for real estate agents. No camera. No editing. Just Visibility.
+          </p>
+          <p className="text-blue-300 text-base mb-8 max-w-xl leading-relaxed">
+            Visibility creates credibility.<br />
+            Credibility creates trust.<br />
+            Trust creates opportunities.<br />
+            And opportunities create business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
             <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-sm font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
@@ -584,13 +590,6 @@ export default function LandingPage() {
                 unoptimized
               />
               <p className="text-xs mt-2 text-slate-500 max-w-xs leading-relaxed">
-                The one-button video platform for real estate agents. No camera. No editing. Just Visibility.
-              </p>
-              <p className="text-xs mt-3 text-slate-500 max-w-xs leading-relaxed">
-                Visibility creates credibility.<br />
-                Credibility creates trust.<br />
-                Trust creates opportunities.<br />
-                And opportunities create business.<br /><br />
                 Stop being invisible and become the go-to expert in your market!
               </p>
             </div>
