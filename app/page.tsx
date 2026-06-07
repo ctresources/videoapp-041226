@@ -589,7 +589,7 @@ export default function LandingPage() {
                 height={48}
                 unoptimized
               />
-              <p className="text-xs mt-2 text-slate-500 max-w-xs leading-relaxed">
+              <p className="text-sm mt-2 text-slate-400 whitespace-nowrap">
                 Stop being invisible and become the go-to expert in your market!
               </p>
             </div>
