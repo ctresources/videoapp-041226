@@ -437,7 +437,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="mb-12">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Everything Included</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Built to make you the digital expert in your market.</h2>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Built to make you Visible and the digital local expert in your market.</h2>
             <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 border border-slate-200">
