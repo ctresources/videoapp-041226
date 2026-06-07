@@ -413,7 +413,7 @@ export default function LandingPage() {
                 {/* Step image with number badge */}
                 <div className="relative w-full mb-5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo} alt={alt} className="w-full h-44 object-cover rounded-2xl" />
+                  <img src={photo} alt={alt} className="w-full h-32 object-cover rounded-2xl" />
                   <div className={`absolute -top-3 -left-3 w-9 h-9 rounded-full ${color} text-white text-sm font-black flex items-center justify-center shadow-lg`}>
                     {num}
                   </div>
