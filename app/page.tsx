@@ -86,7 +86,7 @@ const features = [
   },
   {
     title: "Listing Video Generator",
-    description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post in minutes.",
+    description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post.",
     photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -375,7 +375,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated In 10 minutes.</h2>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated.</h2>
             <p className="text-slate-500">What used to take a full Saturday now takes one conversation.</p>
           </div>
 
@@ -427,7 +427,7 @@ export default function LandingPage() {
 
           {/* Bottom CTA */}
           <div className="mt-12 text-center">
-            <p className="text-sm text-slate-400">Script generated instantly. Video ready in less than 10 minutes — <span className="font-semibold text-blue-900">while you&apos;re creating another video or out to see a client.</span></p>
+            <p className="text-sm text-slate-400">Script generated instantly. Video ready — <span className="font-semibold text-blue-900">while you&apos;re creating another video or out to see a client.</span></p>
           </div>
         </div>
       </section>
