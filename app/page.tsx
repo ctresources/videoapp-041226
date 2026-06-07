@@ -388,7 +388,7 @@ export default function LandingPage() {
                 num: "1",
                 color: "bg-blue-900",
                 title: "Speak your topic",
-                description: "Hit the mic — or type a topic. AI hands you trending local ideas before you start. 60–90 seconds is all you need.",
+                description: "Hit the mic — or pick a trending local topic before you start. 60–90 seconds is all you need.",
                 photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },
