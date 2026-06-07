@@ -231,6 +231,7 @@ export default function LandingPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 First 100 agents get 1 free AI video — no credit card
               </a>
+              <p className="mt-3 text-xs font-semibold text-slate-400 tracking-wide">Visibility → Credibility → Trust → Business</p>
               <p className="mt-4 text-sm text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
             </div>
             {/* Hero image */}
