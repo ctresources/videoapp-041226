@@ -499,8 +499,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="mb-12">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Pricing</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">Less than one lost commission covers a year.</h2>
-            <p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
+<p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
             {pricingTiers.map(({ name, price, period, description, features: f, cta, highlighted, badge, href }) => (
