@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  CheckCircle, Star, ArrowRight,
+  CheckCircle, ArrowRight,
   Clock,
   X, Camera, Users, UserPlus, ChevronRight,
 } from "lucide-react";
@@ -536,24 +536,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonial ── */}
-      <section className="py-14 px-4 sm:px-6 bg-blue-900 text-white">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex gap-1 mb-6">
-            {[1,2,3,4,5].map(i => <Star key={i} size={14} className="text-yellow-400 fill-yellow-400" />)}
-          </div>
-          <blockquote className="text-lg sm:text-xl leading-relaxed text-blue-100 mb-8">
-            &ldquo;I used to feel that sinking pit in my stomach every Sunday night, knowing I&apos;d wasted another week buried in technical headaches and awkward retakes while my community slowly forgot I was the local expert they needed. That changed when I stopped trying to be a film editor and started leaning into my actual expertise — simply narrating updates on neighborhood inventory and school trends directly into a one-button AI system that builds the visuals and captions for me. Now I&apos;m finally that steady, professional presence my sphere trusts because I&apos;ve traded the exhausting grind of video production for a digital megaphone that keeps me top-of-mind while I&apos;m out actually showing homes and closing deals.&rdquo;
-          </blockquote>
-          <div className="flex items-center gap-3 border-t border-blue-800 pt-6">
-            <div className="w-10 h-10 rounded-full bg-blue-700 text-white flex items-center justify-center text-sm font-bold">CT</div>
-            <div>
-              <p className="text-sm font-semibold text-white">C. Thompson</p>
-              <p className="text-xs text-blue-300">Real Estate Broker</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── Fair Housing ── */}
       <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
