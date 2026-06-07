@@ -347,7 +347,7 @@ export default function LandingPage() {
             {segments.map(({ icon: Icon, segment, driver, desire, photo }) => (
               <div key={segment} className="bg-white border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={segment} className="w-full h-44 object-cover" />
+                <img src={photo} alt={segment} className="w-full h-32 object-cover" />
                 <div className="p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Icon size={16} className="text-blue-900 shrink-0" />
