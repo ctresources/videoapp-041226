@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings, Paperclip, X,
+  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -103,6 +103,10 @@ export default function ProjectEditorPage() {
     company_phone: string | null;
     company_address: string | null;
   } | null>(null);
+
+  // Photo uploads
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
   const [pdfUploading, setPdfUploading] = useState(false);
@@ -262,6 +266,37 @@ export default function ProjectEditorPage() {
     }
   }
 
+  async function handlePhotosUpload(files: FileList) {
+    const remaining = 12 - uploadedPhotos.length;
+    if (remaining <= 0) return;
+    const toUpload = Array.from(files).slice(0, remaining);
+    setPhotoUploading(true);
+    try {
+      const results = await Promise.all(
+        toUpload.map(async (file) => {
+          const preview = URL.createObjectURL(file);
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
+          const body = await safeJson(res);
+          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
+          const { url, name } = body as { url: string; name: string };
+          return { url, name, preview };
+        })
+      );
+      setUploadedPhotos((prev) => [...prev, ...results].slice(0, 12));
+      toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  function removePhoto(index: number) {
+    setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handlePdfUpload(file: File) {
     setPdfUploading(true);
     try {
@@ -308,6 +343,7 @@ export default function ProjectEditorPage() {
           script: fullScript,
           hook,
           lookId: selectedLookId || undefined,
+          ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
         }),
@@ -601,6 +637,31 @@ export default function ProjectEditorPage() {
               className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
             />
             <p className="text-[11px] text-slate-400 mt-1">Spoken at the end of your video. Leave blank to skip.</p>
+          </Card>
+
+          {/* Photo Upload */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-brand-text">Add Photos <span className="text-xs font-normal text-slate-400">(optional · up to 12)</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {uploadedPhotos.map((photo, i) => (
+                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                  <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                  <button onClick={() => removePhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+              ))}
+              {uploadedPhotos.length < 12 && (
+                <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                  {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                  <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
+                </label>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">Uploaded photos will be used as primary b-roll in your video.</p>
           </Card>
 
           {/* PDF Attachment */}
@@ -901,6 +962,31 @@ export default function ProjectEditorPage() {
                 )}
               </>
             )}
+
+            {/* Photo Upload */}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 12)</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
+            </div>
+            <div className="flex flex-wrap gap-2 mb-5">
+              {uploadedPhotos.map((photo, i) => (
+                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                  <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                  <button onClick={() => removePhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+              ))}
+              {uploadedPhotos.length < 12 && (
+                <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                  {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                  <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
+                </label>
+              )}
+              {uploadedPhotos.length === 0 && !photoUploading && (
+                <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos — they&apos;ll be used as primary b-roll.</p>
+              )}
+            </div>
 
             {/* PDF Attachment */}
             <p className="text-xs font-medium text-slate-500 mb-2">Attach PDF <span className="font-normal text-slate-400">(optional)</span></p>

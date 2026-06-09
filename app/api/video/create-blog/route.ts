@@ -155,6 +155,7 @@ function buildVideoAgentPrompt(params: {
   hookText?: string;
   listingAddress?: string;
   listingPhotoCount?: number;
+  extraPhotoCount?: number;
   pdfContent?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
@@ -183,20 +184,34 @@ function buildVideoAgentPrompt(params: {
   const audienceVisual = params.audience ? AUDIENCE_VISUALS[params.audience] || "" : "";
   const toneVisual = params.tone ? TONE_VISUALS[params.tone] || "" : "";
 
-  const hasListingPhotos = (params.listingPhotoCount ?? 0) > 0;
-  const listingPhotoBlock = hasListingPhotos
+  const listingCount = params.listingPhotoCount ?? 0;
+  const extraCount = params.extraPhotoCount ?? 0;
+  const totalPhotos = listingCount + extraCount;
+  const hasPhotos = totalPhotos > 0;
+
+  const photoLines = [
+    listingCount > 0
+      ? `- ${listingCount} listing photo(s) of the property at ${params.listingAddress || "the listing address"}`
+      : "",
+    extraCount > 0
+      ? `- ${extraCount} additional photo(s) uploaded by the user`
+      : "",
+  ].filter(Boolean).join("\n");
+
+  const listingPhotoBlock = hasPhotos
     ? `
 
 =====================================
-LISTING PHOTOS (PRIMARY B-ROLL — USE THESE)
+ATTACHED PHOTOS (PRIMARY B-ROLL — USE THESE)
 =====================================
-${params.listingPhotoCount} actual photos of THIS property at ${params.listingAddress || "the listing address"} are attached as files.
-- Use the attached listing photos as the PRIMARY b-roll throughout the video — these are the actual property
-- Cycle through ALL provided photos so every photo gets screen time (~5–10 seconds each)
+${totalPhotos} photo(s) are attached as files:
+${photoLines}
+- Use ALL attached photos as the PRIMARY b-roll throughout the video
+- Cycle through every photo so each gets screen time (~5–10 seconds)
 - Apply gentle Ken Burns motion (slow pan + zoom) on each photo to keep the frame alive
-- Match each photo to whatever room/feature the script is describing at that moment
-- DO NOT replace these photos with stock or generated imagery for the property itself
-- Stock cinematic b-roll of ${params.city || "the area"} may ONLY be used between listing photos for transitions or for neighborhood/lifestyle context`
+- Match photos to whatever the script is describing at each moment
+- DO NOT replace these photos with stock or generated imagery
+- Stock cinematic b-roll of ${params.city || "the area"} may ONLY be used between photos for transitions or neighborhood context`
     : "";
 
   return `You are producing a high-end, professional real estate marketing video.
@@ -298,7 +313,10 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText, extraPhotoUrls } = await req.json();
+  const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
+    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 12)
+    : [];
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -409,6 +427,7 @@ export async function POST(req: NextRequest) {
       hookText,
       listingAddress,
       listingPhotoCount: listingPhotos.length,
+      extraPhotoCount: safeExtraPhotos.length,
       pdfContent: pdfText ? String(pdfText).slice(0, 3000) : undefined,
     });
 
@@ -519,9 +538,9 @@ export async function POST(req: NextRequest) {
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
     }
-    // Attach listing photos as files so the Video Agent uses them as primary b-roll.
-    // Cap at 12 to keep the agent responsive — matches the upload limit.
-    for (const url of listingPhotos.slice(0, 12)) {
+    // Attach listing photos + user-uploaded photos, combined cap of 12.
+    const combinedPhotos = [...listingPhotos, ...safeExtraPhotos].slice(0, 12);
+    for (const url of combinedPhotos) {
       files.push({ type: "url", url });
     }
     // Attach user-uploaded PDF as a reference document for the Video Agent.
