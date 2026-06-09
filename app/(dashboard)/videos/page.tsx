@@ -38,7 +38,7 @@ interface RenderProgress {
 
 const statusConfig: Record<string, { label: string; variant: "default" | "warning" | "success" | "error"; icon: React.ElementType }> = {
   pending:   { label: "In queue",     variant: "default",  icon: Clock },
-  rendering: { label: "Processing…",  variant: "warning",  icon: RefreshCw },
+  rendering: { label: "Rendering…",   variant: "warning",  icon: RefreshCw },
   completed: { label: "Ready",        variant: "success",  icon: CheckCircle },
   failed:    { label: "Failed",       variant: "error",    icon: XCircle },
 };
@@ -80,9 +80,11 @@ function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; is
   const timePct = Math.min(99, Math.round((elapsed / estimated) * 100));
   const displayPct = progress.progressPct > 0 ? progress.progressPct : timePct;
   const remaining = Math.max(0, estimated - elapsed);
-  const remainingLabel = remaining >= 60
-    ? `~${Math.ceil(remaining / 60)} min left`
-    : `~${remaining}s left`;
+  const remainingLabel = elapsed > estimated
+    ? "Almost done…"
+    : remaining >= 60
+      ? `~${Math.ceil(remaining / 60)} min left`
+      : `~${remaining}s left`;
 
   useEffect(() => {
     if (!video.render_job_id) return;
@@ -112,7 +114,7 @@ function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; is
       <div className="flex items-center justify-between text-xs text-slate-500">
         <span className="flex items-center gap-1">
           <RefreshCw size={11} className="animate-spin text-primary-500" />
-          Rendering…
+          AI is creating your video…
         </span>
         <span className="font-medium text-primary-600">{displayPct}%</span>
       </div>
@@ -468,7 +470,7 @@ function VideosContent() {
                         </div>
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm border border-white/10">
                           <RefreshCw size={11} className="animate-spin text-primary-300" />
-                          <span className="text-xs font-medium text-white">Generating…</span>
+                          <span className="text-xs font-medium text-white">Rendering…</span>
                         </div>
                       </div>
                       <style jsx>{`
