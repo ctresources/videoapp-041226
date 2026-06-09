@@ -9,6 +9,7 @@ import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
+  Plus, X, Paperclip,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -94,6 +95,13 @@ function CreatePageInner() {
   const [pasteAiTopic, setPasteAiTopic] = useState("");
   const [pasteAiGenerating, setPasteAiGenerating] = useState(false);
 
+  // Paste tab uploads
+  const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
+  const [pastePhotoUploading, setPastePhotoUploading] = useState(false);
+  const [pastePdfUploading, setPastePdfUploading] = useState(false);
+  const [pastePdfText, setPastePdfText] = useState("");
+  const [pastePdfUrl, setPastePdfUrl] = useState("");
+  const [pastePdfName, setPastePdfName] = useState("");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -221,10 +229,68 @@ function CreatePageInner() {
     }
   }
 
+  async function handlePastePhotosUpload(files: FileList) {
+    const remaining = 12 - pastePhotos.length;
+    if (remaining <= 0) return;
+    const toUpload = Array.from(files).slice(0, remaining);
+    setPastePhotoUploading(true);
+    try {
+      const results = await Promise.all(
+        toUpload.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
+          const body = await safeJson(res);
+          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
+          return { url: body.url as string, name: body.name as string, preview: body.url as string };
+        })
+      );
+      setPastePhotos((prev) => [...prev, ...results].slice(0, 12));
+      toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+    } finally {
+      setPastePhotoUploading(false);
+    }
+  }
+
+  function removePastePhoto(index: number) {
+    setPastePhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handlePastePdfUpload(file: File) {
+    setPastePdfUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
+      setPastePdfText(body.text as string);
+      setPastePdfUrl(body.url as string);
+      setPastePdfName(body.name as string);
+      toast.success("PDF attached and content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process PDF");
+    } finally {
+      setPastePdfUploading(false);
+    }
+  }
+
   async function handlePasteScript() {
     if (!pasteScript.trim()) return toast.error("Please paste or type your script first");
     setPasteGenerating(true);
     try {
+      if (pastePhotos.length > 0 || pastePdfUrl) {
+        try {
+          sessionStorage.setItem("paste-uploads", JSON.stringify({
+            photos: pastePhotos.map((p) => ({ url: p.url, name: p.name, preview: p.url })),
+            pdfText: pastePdfText,
+            pdfUrl: pastePdfUrl,
+            pdfName: pastePdfName,
+          }));
+        } catch { /* sessionStorage unavailable */ }
+      }
       const res = await fetch("/api/ai/paste-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -291,7 +357,7 @@ function CreatePageInner() {
           <div className="grid grid-cols-4 gap-2 mb-3">
             {[
               { mode: "script" as InputMode,  icon: Sparkles,   label: "AI Writes It",               active: "bg-blue-600 text-white shadow-md shadow-blue-200",     inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
-              { mode: "paste" as InputMode,   icon: PenLine,    label: "I'll Write or Paste It",     active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
+              { mode: "paste" as InputMode,   icon: PenLine,    label: "Paste / Upload Docs & Images",     active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
               { mode: "listing" as InputMode, icon: Building2,  label: "My Listing",                 active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
               { mode: "camera" as InputMode,  icon: Video,      label: "Use Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",   inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
             ].map(({ mode, icon: Icon, label, active, inactive }) => (
@@ -312,7 +378,7 @@ function CreatePageInner() {
           <p className="text-xs text-slate-500 text-center mb-5">
             {{
               script:  "AI Sparks A Broadcast-Quality Script From Your Topic — You Review, Then Share.",
-              paste:   "You Write The Words Or Let AI Spark Them — Paste Your Script And Share.",
+              paste:   "Paste Your Script, Upload Photos & Docs — Your Content Builds The Video.",
               listing: "Upload Photos Or Import From Zillow — Let Your Listing Spark Your Next Video.",
               camera:  "Speak And Spark Directly In Camera — The Teleprompter Scrolls As You Record. Free, Unlimited.",
             }[inputMode]}
@@ -570,18 +636,64 @@ function CreatePageInner() {
             <div className="flex items-center gap-2.5 mb-4">
               <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
-                <p className="text-sm font-bold text-brand-text">Your Script</p>
-                <p className="text-xs text-slate-500">Paste Or Type Your Script — Or Let AI Spark It For You</p>
+                <p className="text-sm font-bold text-brand-text">Your Script &amp; Media</p>
+                <p className="text-xs text-slate-500">Upload Photos &amp; Docs, Paste Your Script, Or Let AI Spark It</p>
               </div>
             </div>
 
-            {/* Trending Radar + AI Write */}
+            {/* Photo Upload */}
+            <div className="mb-4 pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-600">Photos <span className="font-normal text-slate-400">(optional · up to 12 · used as b-roll)</span></p>
+                {pastePhotos.length > 0 && <span className="text-xs text-slate-400">{pastePhotos.length}/12</span>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {pastePhotos.map((photo, i) => (
+                  <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                    <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removePastePhoto(i)}
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} className="text-white" />
+                    </button>
+                  </div>
+                ))}
+                {pastePhotos.length < 12 && (
+                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${pastePhotoUploading ? "border-violet-300 bg-violet-50" : "border-slate-200 hover:border-violet-300"}`}>
+                    {pastePhotoUploading ? <Loader2 size={18} className="text-violet-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                    <input type="file" accept="image/*" multiple className="sr-only" disabled={pastePhotoUploading} onChange={(e) => { if (e.target.files?.length) handlePastePhotosUpload(e.target.files); }} />
+                  </label>
+                )}
+                {pastePhotos.length === 0 && !pastePhotoUploading && (
+                  <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos — they&apos;ll be used as b-roll.</p>
+                )}
+              </div>
+            </div>
+
+            {/* PDF Attachment */}
+            <div className="mb-4 pb-4 border-b border-slate-100">
+              <p className="text-xs font-bold text-slate-600 mb-2">Attach a PDF <span className="font-normal text-slate-400">(optional)</span></p>
+              {pastePdfUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 flex-1 truncate">{pastePdfName}</span>
+                  <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
+                    <X size={14} className="text-green-700" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-violet-300 bg-violet-50" : "border-slate-200 hover:border-violet-300"}`}>
+                  {pastePdfUploading ? <Loader2 size={16} className="text-violet-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                  <span className="text-sm text-slate-500">{pastePdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pastePdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePastePdfUpload(f); }} />
+                </label>
+              )}
+              <p className="text-[11px] text-slate-400 mt-1">PDF content will be extracted and used to enrich your video.</p>
+            </div>
+
+            {/* Let AI Spark The Script */}
             <div className="mb-5 pb-5 border-b border-slate-100">
-              <TopicRadar
-                city={locCity || undefined}
-                state={locState || undefined}
-                onSelect={(topic) => { setPasteAiTopic(topic); setPasteTitle(topic); }}
-              />
               <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
               <div className="flex gap-2">
                 <input
