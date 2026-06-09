@@ -155,6 +155,7 @@ function buildVideoAgentPrompt(params: {
   hookText?: string;
   listingAddress?: string;
   listingPhotoCount?: number;
+  pdfContent?: string;
 }): string {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationOr = location || "the local area";
@@ -212,7 +213,15 @@ AGENT + MARKET DETAILS
 NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
 =====================================
 ${params.script}
+${params.pdfContent ? `
+=====================================
+PDF REFERENCE DOCUMENT
+=====================================
+The user attached a PDF with supplemental context. Use its content to inform the
+video's b-roll choices, on-screen statistics, and key talking points:
 
+${params.pdfContent}
+` : ""}
 =====================================
 PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 =====================================
@@ -289,7 +298,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, musicUrl } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText } = await req.json();
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -400,6 +409,7 @@ export async function POST(req: NextRequest) {
       hookText,
       listingAddress,
       listingPhotoCount: listingPhotos.length,
+      pdfContent: pdfText ? String(pdfText).slice(0, 3000) : undefined,
     });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -513,6 +523,10 @@ export async function POST(req: NextRequest) {
     // Cap at 12 to keep the agent responsive — matches the upload limit.
     for (const url of listingPhotos.slice(0, 12)) {
       files.push({ type: "url", url });
+    }
+    // Attach user-uploaded PDF as a reference document for the Video Agent.
+    if (pdfUrl && typeof pdfUrl === "string") {
+      files.push({ type: "url", url: pdfUrl });
     }
 
     const { data: videoRow, error: videoRowErr } = await admin
