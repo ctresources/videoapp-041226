@@ -351,6 +351,7 @@ export default function ProjectEditorPage() {
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      if (!body) throw new Error("Failed to fetch URL");
       setPdfText(body.text as string);
       setPdfUrl(body.url as string);
       try { setPdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPdfName("URL"); }
