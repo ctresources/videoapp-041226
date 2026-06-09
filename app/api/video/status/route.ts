@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     const { data: video } = await admin
       .from("generated_videos")
-      .select("id, project_id, user_id, video_type, render_status, video_url, render_provider, render_job_id, metadata")
+      .select("id, project_id, user_id, video_type, render_status, video_url, render_provider, render_job_id, metadata, created_at")
       .eq("render_job_id", renderId)
       .eq("user_id", user.id)
       .single();
@@ -43,6 +43,17 @@ export async function GET(req: NextRequest) {
 
     // If still rendering, query HeyGen directly (webhook fallback)
     if (status === "rendering" || status === "pending") {
+      // Auto-fail jobs stuck for more than 30 minutes
+      const ageMs = Date.now() - new Date(video.created_at as string).getTime();
+      if (ageMs > 30 * 60 * 1000) {
+        status = "failed";
+        errorMsg = "Render timed out after 30 minutes";
+        await admin.from("generated_videos").update({ render_status: "failed" }).eq("id", video.id);
+        if (video.project_id) {
+          await admin.from("projects").update({ status: "error" }).eq("id", video.project_id);
+        }
+        console.warn(`[status] Auto-failed ${video.id} after 30-min timeout`);
+      } else {
       try {
         const provider = video.render_provider as string;
 
@@ -178,6 +189,7 @@ export async function GET(req: NextRequest) {
         // Don't fail the status check if HeyGen poll fails; keep DB value
         console.warn("[status] HeyGen direct poll failed:", pollErr);
       }
+      } // end 30-min timeout else
     }
 
     const progress = status === "completed" ? 1 : status === "failed" ? 0 : 0.5;
