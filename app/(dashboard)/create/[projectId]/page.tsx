@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus,
+  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -113,6 +113,10 @@ export default function ProjectEditorPage() {
   const [pdfText, setPdfText] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfName, setPdfName] = useState("");
+
+  const [pdfMode, setPdfMode] = useState<"upload" | "url">("upload");
+  const [pdfUrlInput, setPdfUrlInput] = useState("");
+  const [pdfUrlExtracting, setPdfUrlExtracting] = useState(false);
 
   // Teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
@@ -333,6 +337,28 @@ export default function ProjectEditorPage() {
       toast.error(err instanceof Error ? err.message : "Failed to process PDF");
     } finally {
       setPdfUploading(false);
+    }
+  }
+
+  async function handleUrlExtract() {
+    if (!pdfUrlInput.trim()) return;
+    setPdfUrlExtracting(true);
+    try {
+      const res = await fetch("/api/ai/extract-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: pdfUrlInput.trim() }),
+      });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      setPdfText(body.text as string);
+      setPdfUrl(body.url as string);
+      try { setPdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPdfName("URL"); }
+      toast.success("URL content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
+    } finally {
+      setPdfUrlExtracting(false);
     }
   }
 
@@ -683,25 +709,49 @@ export default function ProjectEditorPage() {
             <p className="text-[11px] text-slate-400 mt-2">Uploaded photos will be used as primary b-roll in your video.</p>
           </Card>
 
-          {/* PDF Attachment */}
+          {/* PDF / URL Attachment */}
           <Card>
-            <p className="text-sm font-semibold text-brand-text mb-3">Attach PDF <span className="text-xs font-normal text-slate-400">(optional)</span></p>
-            {pdfUrl ? (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-brand-text">Attach Doc / URL <span className="text-xs font-normal text-slate-400">(optional)</span></p>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
+                <button onClick={() => setPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pdfMode === "upload" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                <button onClick={() => setPdfMode("url")} className={`px-2.5 py-1 transition-colors ${pdfMode === "url" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+              </div>
+            </div>
+            {pdfMode === "upload" ? (
+              pdfUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
+                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                </div>
+              ) : (
+                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                  {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                  <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
+                </label>
+              )
+            ) : pdfUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <FileText size={16} className="text-green-600 shrink-0" />
+                <Globe size={16} className="text-green-600 shrink-0" />
                 <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
-                  <X size={14} className="text-green-700" />
-                </button>
+                <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); setPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
               </div>
             ) : (
-              <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
-                {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
-              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={pdfUrlInput}
+                  onChange={(e) => setPdfUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !pdfUrlExtracting && pdfUrlInput.trim()) handleUrlExtract(); }}
+                  placeholder="https://example.com/article"
+                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <Button size="sm" loading={pdfUrlExtracting} disabled={!pdfUrlInput.trim()} onClick={handleUrlExtract} className="bg-primary-500 hover:bg-primary-600 text-white whitespace-nowrap">Fetch</Button>
+              </div>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5">PDF content will be extracted and used to enrich your video.</p>
+            <p className="text-[11px] text-slate-400 mt-1.5">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
           </Card>
 
           {/* Generate button */}
@@ -1007,25 +1057,49 @@ export default function ProjectEditorPage() {
               )}
             </div>
 
-            {/* PDF Attachment */}
-            <p className="text-xs font-medium text-slate-500 mb-2">Attach PDF <span className="font-normal text-slate-400">(optional)</span></p>
+            {/* PDF / URL Attachment */}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-slate-500">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
+                <button onClick={() => setPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pdfMode === "upload" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                <button onClick={() => setPdfMode("url")} className={`px-2.5 py-1 transition-colors ${pdfMode === "url" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+              </div>
+            </div>
             <div className="mb-5">
-              {pdfUrl ? (
+              {pdfMode === "upload" ? (
+                pdfUrl ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={16} className="text-green-600 shrink-0" />
+                    <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
+                    <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                  </div>
+                ) : (
+                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                    {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                    <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
+                  </label>
+                )
+              ) : pdfUrl ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <Globe size={16} className="text-green-600 shrink-0" />
                   <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
-                    <X size={14} className="text-green-700" />
-                  </button>
+                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); setPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
                 </div>
               ) : (
-                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
-                  {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                  <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
-                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={pdfUrlInput}
+                    onChange={(e) => setPdfUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !pdfUrlExtracting && pdfUrlInput.trim()) handleUrlExtract(); }}
+                    placeholder="https://example.com/article"
+                    className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <Button size="sm" loading={pdfUrlExtracting} disabled={!pdfUrlInput.trim()} onClick={handleUrlExtract} className="bg-primary-500 hover:bg-primary-600 text-white whitespace-nowrap">Fetch</Button>
+                </div>
               )}
-              <p className="text-[11px] text-slate-400 mt-1">PDF content will be extracted and used to enrich your video.</p>
+              <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
