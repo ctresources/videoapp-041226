@@ -81,5 +81,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: videoErr?.message || "Failed to save video" }, { status: 500 });
   }
 
+  await admin
+    .from("projects")
+    .update({ status: "ready" })
+    .eq("id", resolvedProjectId);
+
   return NextResponse.json({ video: { id: (videoRow as { id: string }).id } });
 }
