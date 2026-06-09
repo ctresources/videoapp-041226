@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings,
+  User, Square, Camera, Settings, Paperclip, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -103,6 +103,12 @@ export default function ProjectEditorPage() {
     company_phone: string | null;
     company_address: string | null;
   } | null>(null);
+
+  // PDF attachment
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfText, setPdfText] = useState("");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfName, setPdfName] = useState("");
 
   // Teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
@@ -256,6 +262,26 @@ export default function ProjectEditorPage() {
     }
   }
 
+  async function handlePdfUpload(file: File) {
+    setPdfUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
+      const { text, url, name } = body as { text: string; url: string; name: string };
+      setPdfText(text);
+      setPdfUrl(url);
+      setPdfName(name);
+      toast.success("PDF attached and content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process PDF");
+    } finally {
+      setPdfUploading(false);
+    }
+  }
+
   async function handleGenerateVideo() {
     if (!project) return;
     setVideoGenerating(true);
@@ -282,6 +308,8 @@ export default function ProjectEditorPage() {
           script: fullScript,
           hook,
           lookId: selectedLookId || undefined,
+          ...(pdfUrl && { pdfUrl }),
+          ...(pdfText && { pdfText }),
         }),
       });
 
@@ -575,6 +603,27 @@ export default function ProjectEditorPage() {
             <p className="text-[11px] text-slate-400 mt-1">Spoken at the end of your video. Leave blank to skip.</p>
           </Card>
 
+          {/* PDF Attachment */}
+          <Card>
+            <p className="text-sm font-semibold text-brand-text mb-3">Attach PDF <span className="text-xs font-normal text-slate-400">(optional)</span></p>
+            {pdfUrl ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                <FileText size={16} className="text-green-600 shrink-0" />
+                <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
+                <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
+                  <X size={14} className="text-green-700" />
+                </button>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
+              </label>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1.5">PDF content will be extracted and used to enrich your video.</p>
+          </Card>
+
           {/* Generate button */}
           <Button
             onClick={handleGenerateVideo}
@@ -852,6 +901,27 @@ export default function ProjectEditorPage() {
                 )}
               </>
             )}
+
+            {/* PDF Attachment */}
+            <p className="text-xs font-medium text-slate-500 mb-2">Attach PDF <span className="font-normal text-slate-400">(optional)</span></p>
+            <div className="mb-5">
+              {pdfUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
+                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
+                    <X size={14} className="text-green-700" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
+                  {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                  <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
+                </label>
+              )}
+              <p className="text-[11px] text-slate-400 mt-1">PDF content will be extracted and used to enrich your video.</p>
+            </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <Button
