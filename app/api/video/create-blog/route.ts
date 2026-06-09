@@ -258,7 +258,7 @@ AVATAR PRESENTATION
 =====================================
 B-ROLL
 =====================================${listingPhotoBlock}
-${hasListingPhotos ? "\nSECONDARY / FILLER B-ROLL (only between listing photos):" : ""}
+${hasPhotos ? "\nSECONDARY / FILLER B-ROLL (only between listing photos):" : ""}
 - Aerial drone shots of ${locationOr} neighborhoods
 - Tree-lined streets, home exteriors, curb appeal${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
 - Interior shots: modern kitchens, open living spaces
