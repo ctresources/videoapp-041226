@@ -9,7 +9,7 @@ import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
-  Plus, X, Paperclip, ImageIcon,
+  Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -102,6 +102,9 @@ function CreatePageInner() {
   const [pastePdfText, setPastePdfText] = useState("");
   const [pastePdfUrl, setPastePdfUrl] = useState("");
   const [pastePdfName, setPastePdfName] = useState("");
+  const [pastePdfMode, setPastePdfMode] = useState<"upload" | "url">("upload");
+  const [pastePdfUrlInput, setPastePdfUrlInput] = useState("");
+  const [pastePdfUrlExtracting, setPastePdfUrlExtracting] = useState(false);
 
   // Camera tab uploads
   const [cameraPhotos, setCameraPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
@@ -110,6 +113,9 @@ function CreatePageInner() {
   const [cameraPdfText, setCameraPdfText] = useState("");
   const [cameraPdfUrl, setCameraPdfUrl] = useState("");
   const [cameraPdfName, setCameraPdfName] = useState("");
+  const [cameraPdfMode, setCameraPdfMode] = useState<"upload" | "url">("upload");
+  const [cameraPdfUrlInput, setCameraPdfUrlInput] = useState("");
+  const [cameraPdfUrlExtracting, setCameraPdfUrlExtracting] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -340,6 +346,50 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Failed to process PDF");
     } finally {
       setPastePdfUploading(false);
+    }
+  }
+
+  async function handlePasteUrlExtract() {
+    if (!pastePdfUrlInput.trim()) return;
+    setPastePdfUrlExtracting(true);
+    try {
+      const res = await fetch("/api/ai/extract-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: pastePdfUrlInput.trim() }),
+      });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      setPastePdfText(body.text as string);
+      setPastePdfUrl(body.url as string);
+      try { setPastePdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPastePdfName("URL"); }
+      toast.success("URL content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
+    } finally {
+      setPastePdfUrlExtracting(false);
+    }
+  }
+
+  async function handleCameraUrlExtract() {
+    if (!cameraPdfUrlInput.trim()) return;
+    setCameraPdfUrlExtracting(true);
+    try {
+      const res = await fetch("/api/ai/extract-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: cameraPdfUrlInput.trim() }),
+      });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      setCameraPdfText(body.text as string);
+      setCameraPdfUrl(body.url as string);
+      try { setCameraPdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setCameraPdfName("URL"); }
+      toast.success("URL content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
+    } finally {
+      setCameraPdfUrlExtracting(false);
     }
   }
 
@@ -737,25 +787,49 @@ function CreatePageInner() {
               </div>
             </div>
 
-            {/* PDF Attachment */}
+            {/* PDF / URL Attachment */}
             <div className="mb-4 pb-4 border-b border-slate-100">
-              <p className="text-xs font-bold text-slate-600 mb-2">Attach a PDF <span className="font-normal text-slate-400">(optional)</span></p>
-              {pastePdfUrl ? (
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
+                  <button onClick={() => setPastePdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "upload" ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                  <button onClick={() => setPastePdfMode("url")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "url" ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+                </div>
+              </div>
+              {pastePdfMode === "upload" ? (
+                pastePdfUrl ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={16} className="text-green-600 shrink-0" />
+                    <span className="text-sm text-green-800 flex-1 truncate">{pastePdfName}</span>
+                    <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                  </div>
+                ) : (
+                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-violet-300 bg-violet-50" : "border-slate-200 hover:border-violet-300"}`}>
+                    {pastePdfUploading ? <Loader2 size={16} className="text-violet-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                    <span className="text-sm text-slate-500">{pastePdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pastePdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePastePdfUpload(f); }} />
+                  </label>
+                )
+              ) : pastePdfUrl ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <Globe size={16} className="text-green-600 shrink-0" />
                   <span className="text-sm text-green-800 flex-1 truncate">{pastePdfName}</span>
-                  <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
-                    <X size={14} className="text-green-700" />
-                  </button>
+                  <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
                 </div>
               ) : (
-                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-violet-300 bg-violet-50" : "border-slate-200 hover:border-violet-300"}`}>
-                  {pastePdfUploading ? <Loader2 size={16} className="text-violet-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                  <span className="text-sm text-slate-500">{pastePdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pastePdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePastePdfUpload(f); }} />
-                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={pastePdfUrlInput}
+                    onChange={(e) => setPastePdfUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !pastePdfUrlExtracting && pastePdfUrlInput.trim()) handlePasteUrlExtract(); }}
+                    placeholder="https://example.com/article"
+                    className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                  <Button size="sm" loading={pastePdfUrlExtracting} disabled={!pastePdfUrlInput.trim()} onClick={handlePasteUrlExtract} className="bg-violet-600 hover:bg-violet-700 text-white whitespace-nowrap">Fetch</Button>
+                </div>
               )}
-              <p className="text-[11px] text-slate-400 mt-1">PDF content will be extracted and used to enrich your video.</p>
+              <p className="text-[11px] text-slate-400 mt-1">{pastePdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
             {/* Let AI Spark The Script */}
@@ -979,23 +1053,48 @@ function CreatePageInner() {
               </div>
             </div>
 
-            {/* PDF */}
-            <p className="text-xs font-medium text-slate-600 mb-2">Attach a PDF <span className="font-normal text-slate-400">(optional)</span></p>
-            {cameraPdfUrl ? (
+            {/* PDF / URL */}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
+                <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+              </div>
+            </div>
+            {cameraPdfMode === "upload" ? (
+              cameraPdfUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
+                  <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                </div>
+              ) : (
+                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
+                  {cameraPdfUploading ? <Loader2 size={16} className="text-orange-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                  <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
+                </label>
+              )
+            ) : cameraPdfUrl ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <FileText size={16} className="text-green-600 shrink-0" />
+                <Globe size={16} className="text-green-600 shrink-0" />
                 <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
-                <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
-                  <X size={14} className="text-green-700" />
-                </button>
+                <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
               </div>
             ) : (
-              <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
-                {cameraPdfUploading ? <Loader2 size={16} className="text-orange-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
-              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={cameraPdfUrlInput}
+                  onChange={(e) => setCameraPdfUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !cameraPdfUrlExtracting && cameraPdfUrlInput.trim()) handleCameraUrlExtract(); }}
+                  placeholder="https://example.com/article"
+                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap">Fetch</Button>
+              </div>
             )}
+            <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
           </Card>
         </>
       )}
