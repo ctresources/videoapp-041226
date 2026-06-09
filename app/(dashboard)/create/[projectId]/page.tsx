@@ -134,6 +134,24 @@ export default function ProjectEditorPage() {
     loadProject();
     loadProfile();
     loadLooks();
+    if (source === "paste") {
+      try {
+        const stored = sessionStorage.getItem("paste-uploads");
+        if (stored) {
+          const saved = JSON.parse(stored) as {
+            photos: { url: string; name: string; preview: string }[];
+            pdfText: string; pdfUrl: string; pdfName: string;
+          };
+          if (saved.photos?.length) setUploadedPhotos(saved.photos);
+          if (saved.pdfUrl) {
+            setPdfUrl(saved.pdfUrl);
+            setPdfText(saved.pdfText || "");
+            setPdfName(saved.pdfName || "");
+          }
+          sessionStorage.removeItem("paste-uploads");
+        }
+      } catch { /* ignore */ }
+    }
   }, [projectId]); // eslint-disable-line
 
   async function loadLooks() {
