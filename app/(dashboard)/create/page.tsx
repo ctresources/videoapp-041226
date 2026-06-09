@@ -9,7 +9,7 @@ import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
-  Plus, X, Paperclip,
+  Plus, X, Paperclip, ImageIcon,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { useState, useEffect, Suspense } from "react";
@@ -103,6 +103,14 @@ function CreatePageInner() {
   const [pastePdfUrl, setPastePdfUrl] = useState("");
   const [pastePdfName, setPastePdfName] = useState("");
 
+  // Camera tab uploads
+  const [cameraPhotos, setCameraPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
+  const [cameraPhotoUploading, setCameraPhotoUploading] = useState(false);
+  const [cameraPdfUploading, setCameraPdfUploading] = useState(false);
+  const [cameraPdfText, setCameraPdfText] = useState("");
+  const [cameraPdfUrl, setCameraPdfUrl] = useState("");
+  const [cameraPdfName, setCameraPdfName] = useState("");
+
   useEffect(() => {
     const tab = searchParams.get("tab");
     const topic = searchParams.get("topic");
@@ -169,8 +177,66 @@ function CreatePageInner() {
     if (uploadedFile) await processAudio(uploadedFile, 0, uploadedFile.name.replace(/\.[^/.]+$/, ""));
   }
 
+  async function handleCameraPhotosUpload(files: FileList) {
+    const remaining = 12 - cameraPhotos.length;
+    if (remaining <= 0) return;
+    const toUpload = Array.from(files).slice(0, remaining);
+    setCameraPhotoUploading(true);
+    try {
+      const results = await Promise.all(
+        toUpload.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
+          const body = await safeJson(res);
+          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
+          return { url: body.url as string, name: body.name as string, preview: body.url as string };
+        })
+      );
+      setCameraPhotos((prev) => [...prev, ...results].slice(0, 12));
+      toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+    } finally {
+      setCameraPhotoUploading(false);
+    }
+  }
+
+  function removeCameraPhoto(index: number) {
+    setCameraPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleCameraPdfUpload(file: File) {
+    setCameraPdfUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
+      setCameraPdfText(body.text as string);
+      setCameraPdfUrl(body.url as string);
+      setCameraPdfName(body.name as string);
+      toast.success("PDF attached and content extracted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process PDF");
+    } finally {
+      setCameraPdfUploading(false);
+    }
+  }
+
   async function handleGenerateVideo() {
     if (!recordingId) return;
+    if (cameraPhotos.length > 0 || cameraPdfUrl) {
+      try {
+        sessionStorage.setItem("camera-uploads", JSON.stringify({
+          photos: cameraPhotos.map((p) => ({ url: p.url, name: p.name, preview: p.url })),
+          pdfText: cameraPdfText,
+          pdfUrl: cameraPdfUrl,
+          pdfName: cameraPdfName,
+        }));
+      } catch { /* sessionStorage unavailable */ }
+    }
     router.push(`/create/${recordingId}?source=recording`);
   }
 
@@ -842,40 +908,96 @@ function CreatePageInner() {
           CAMERA TAB
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
-        <Card>
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
-              <Video size={16} className="text-violet-600" />
+        <>
+          <Card>
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
+                <Video size={16} className="text-violet-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-brand-text">Speak + Teleprompter</p>
+                <p className="text-xs text-slate-400">Speak Your Script — The Teleprompter Scrolls As You Record</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-brand-text">Speak + Teleprompter</p>
-              <p className="text-xs text-slate-400">Speak Your Script — The Teleprompter Scrolls As You Record</p>
-            </div>
-          </div>
 
-          <CameraRecorder city={locCity || undefined} state={locState || undefined} />
+            <CameraRecorder city={locCity || undefined} state={locState || undefined} />
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="px-3 bg-white text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  or upload a file
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center">
-              <span className="px-3 bg-white text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                or upload a file
-              </span>
-            </div>
-          </div>
 
-          <VoiceUploader onFileSelected={handleFileSelected} />
-          {readyToContinue && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <Button onClick={handleContinue} size="lg" className="w-full gap-2">
-                Transcribe &amp; Continue <ArrowRight size={16} />
-              </Button>
+            <VoiceUploader onFileSelected={handleFileSelected} />
+            {readyToContinue && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <Button onClick={handleContinue} size="lg" className="w-full gap-2">
+                  Transcribe &amp; Continue <ArrowRight size={16} />
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Photos & PDF — shown as reference in teleprompter + used as b-roll */}
+          <Card>
+            <div className="flex items-center gap-2 mb-1">
+              <ImageIcon size={15} className="text-orange-500" />
+              <p className="text-sm font-semibold text-brand-text">Add Photos &amp; Docs <span className="text-xs font-normal text-slate-400">(optional)</span></p>
             </div>
-          )}
-        </Card>
+            <p className="text-[11px] text-slate-400 mb-3">Photos appear as reference thumbnails in the teleprompter so you can describe what you see. They&apos;ll also be used as b-roll in your video.</p>
+
+            {/* Photo grid */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-slate-600">Photos <span className="font-normal text-slate-400">(up to 12)</span></p>
+                {cameraPhotos.length > 0 && <span className="text-xs text-slate-400">{cameraPhotos.length}/12</span>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {cameraPhotos.map((photo, i) => (
+                  <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                    <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                    <button onClick={() => removeCameraPhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={14} className="text-white" />
+                    </button>
+                  </div>
+                ))}
+                {cameraPhotos.length < 12 && (
+                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
+                    {cameraPhotoUploading ? <Loader2 size={18} className="text-orange-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                    <input type="file" accept="image/*" multiple className="sr-only" disabled={cameraPhotoUploading} onChange={(e) => { if (e.target.files?.length) handleCameraPhotosUpload(e.target.files); }} />
+                  </label>
+                )}
+                {cameraPhotos.length === 0 && !cameraPhotoUploading && (
+                  <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos.</p>
+                )}
+              </div>
+            </div>
+
+            {/* PDF */}
+            <p className="text-xs font-medium text-slate-600 mb-2">Attach a PDF <span className="font-normal text-slate-400">(optional)</span></p>
+            {cameraPdfUrl ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                <FileText size={16} className="text-green-600 shrink-0" />
+                <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
+                <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100">
+                  <X size={14} className="text-green-700" />
+                </button>
+              </div>
+            ) : (
+              <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
+                {cameraPdfUploading ? <Loader2 size={16} className="text-orange-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
+              </label>
+            )}
+          </Card>
+        </>
       )}
 
       {/* ── Shared processing states (uploading / transcribing / done) ── */}

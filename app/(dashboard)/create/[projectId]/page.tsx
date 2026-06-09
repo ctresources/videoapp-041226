@@ -134,9 +134,10 @@ export default function ProjectEditorPage() {
     loadProject();
     loadProfile();
     loadLooks();
-    if (source === "paste") {
+    const uploadKey = source === "paste" ? "paste-uploads" : source === "recording" ? "camera-uploads" : null;
+    if (uploadKey) {
       try {
-        const stored = sessionStorage.getItem("paste-uploads");
+        const stored = sessionStorage.getItem(uploadKey);
         if (stored) {
           const saved = JSON.parse(stored) as {
             photos: { url: string; name: string; preview: string }[];
@@ -148,7 +149,7 @@ export default function ProjectEditorPage() {
             setPdfText(saved.pdfText || "");
             setPdfName(saved.pdfName || "");
           }
-          sessionStorage.removeItem("paste-uploads");
+          sessionStorage.removeItem(uploadKey);
         }
       } catch { /* ignore */ }
     }
@@ -1224,6 +1225,23 @@ export default function ProjectEditorPage() {
               </div>
             </div>
           </div>
+
+          {/* Photo reference strip */}
+          {uploadedPhotos.length > 0 && (
+            <div className="shrink-0 overflow-x-auto px-4 pt-2 pb-2 bg-black/80 border-t border-white/10">
+              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1.5">Photo Reference</p>
+              <div className="flex gap-2 pb-0.5">
+                {uploadedPhotos.map((photo, i) => (
+                  <img
+                    key={i}
+                    src={photo.preview}
+                    alt={photo.name}
+                    className="h-14 w-auto rounded-lg border border-white/20 object-cover shrink-0"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bottom bar: camera preview + record controls */}
           <div className="shrink-0 flex items-center justify-between gap-4 px-4 py-3 bg-black/90 border-t border-white/10">
