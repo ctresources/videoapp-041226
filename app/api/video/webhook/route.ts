@@ -5,6 +5,11 @@ import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 
 export const maxDuration = 120;
 
+// HeyGen pings GET to verify the endpoint is reachable before registering it
+export async function GET() {
+  return NextResponse.json({ ok: true });
+}
+
 /**
  * POST /api/video/webhook
  *
@@ -33,14 +38,14 @@ export async function POST(req: NextRequest) {
     eventType === "avatar_video.success" ||
     eventType === "video.success" ||
     eventType === "video.completed" ||
-    eventType === "video_agent.completed" ||
+    eventType === "video_agent.success" ||
     body.status === "completed";
 
   const failed =
     eventType === "avatar_video.fail" ||
     eventType === "video.fail" ||
     eventType === "video.failed" ||
-    eventType === "video_agent.failed" ||
+    eventType === "video_agent.fail" ||
     body.status === "failed";
 
   const renderStatus = success ? "completed" : failed ? "failed" : null;
