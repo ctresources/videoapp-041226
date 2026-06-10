@@ -1,0 +1,34 @@
+{
+  "name": "XpressReel",
+  "short_name": "XpressReel",
+  "description": "Speak, Spark, Share — turn your voice into real estate video content in minutes.",
+  "start_url": "/create",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F5F9",
+  "theme_color": "#3B82F6",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Video",
+      "short_name": "Create",
+      "description": "Start a new video",
+      "url": "/create",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
