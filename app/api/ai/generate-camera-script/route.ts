@@ -11,9 +11,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic } = await req.json();
-  if (!topic?.trim()) {
-    return NextResponse.json({ error: "topic is required" }, { status: 400 });
+  const { topic, pdfText, photoCount } = await req.json();
+  const hasTopic = !!(topic?.trim());
+  const hasDocs = !!(pdfText?.trim());
+
+  if (!hasTopic && !hasDocs) {
+    return NextResponse.json({ error: "topic or document content is required" }, { status: 400 });
   }
 
   if (!process.env.PERPLEXITY_API_KEY) {
@@ -24,7 +27,27 @@ export async function POST(req: NextRequest) {
 
 ${FAIR_HOUSING_SHORT}`;
 
-  const userPrompt = `Write a 2–3 minute teleprompter script for a real estate agent video about: "${topic}"
+  let userPrompt: string;
+  if (hasDocs) {
+    const photoLine = photoCount > 0 ? `\nThe agent also has ${photoCount} property photo${photoCount > 1 ? "s" : ""} to reference during the video.` : "";
+    const topicLine = hasTopic ? `\nFocus the script specifically on: "${topic}"` : "";
+    userPrompt = `Write a 2–3 minute teleprompter script for a real estate agent video based on the following source material.
+
+Source material:
+"""
+${(pdfText as string).slice(0, 3000)}
+"""
+${photoLine}${topicLine}
+
+Rules:
+- Open with a strong hook sentence that grabs attention immediately
+- Natural spoken language, short punchy sentences
+- Draw on specific details from the source material
+- End with a clear call to action (e.g. "Give me a call" or "Send me a message today")
+- 300–420 words
+- Return ONLY the script text — no title, no labels, no markdown`;
+  } else {
+    userPrompt = `Write a 2–3 minute teleprompter script for a real estate agent video about: "${topic}"
 
 Rules:
 - Open with a strong hook sentence that grabs attention immediately
@@ -33,6 +56,7 @@ Rules:
 - End with a clear call to action (e.g. "Give me a call" or "Send me a message today")
 - 300–420 words
 - Return ONLY the script text — no title, no labels, no markdown`;
+  }
 
   try {
     const controller = new AbortController();
