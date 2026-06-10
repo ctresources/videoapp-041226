@@ -116,6 +116,11 @@ function CreatePageInner() {
   const [cameraPdfMode, setCameraPdfMode] = useState<"upload" | "url">("upload");
   const [cameraPdfUrlInput, setCameraPdfUrlInput] = useState("");
   const [cameraPdfUrlExtracting, setCameraPdfUrlExtracting] = useState(false);
+  const [cameraGeneratedScript, setCameraGeneratedScript] = useState("");
+  const [cameraScriptGenerating, setCameraScriptGenerating] = useState(false);
+
+  // Paste tab upload-based script generation
+  const [pasteUploadGenerating, setPasteUploadGenerating] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -390,6 +395,44 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
       setCameraPdfUrlExtracting(false);
+    }
+  }
+
+  async function handleGenerateScriptFromPasteUploads() {
+    setPasteUploadGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
+      setPasteScript(data.script as string);
+      toast.success("Script ready — review and edit before generating your video.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setPasteUploadGenerating(false);
+    }
+  }
+
+  async function handleGenerateScriptFromCameraUploads() {
+    setCameraScriptGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdfText: cameraPdfText || undefined, photoCount: cameraPhotos.length }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
+      setCameraGeneratedScript(data.script as string);
+      toast.success("Script ready — it's now loaded in your teleprompter above.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setCameraScriptGenerating(false);
     }
   }
 
@@ -890,6 +933,23 @@ function CreatePageInner() {
               </p>
             </div>
 
+            {/* Generate script from uploads */}
+            {(pastePdfText || pastePhotos.length > 0) && (
+              <div className="mb-4">
+                <Button
+                  size="sm"
+                  loading={pasteUploadGenerating}
+                  onClick={handleGenerateScriptFromPasteUploads}
+                  className="w-full gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+                >
+                  {pasteUploadGenerating
+                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
+                    : <><Sparkles size={13} /> Generate Script from My Uploads</>}
+                </Button>
+                <p className="text-[11px] text-slate-400 mt-1 text-center">AI will write a script based on your attached doc{pastePhotos.length > 0 ? " and photos" : ""}.</p>
+              </div>
+            )}
+
             {/* Script textarea */}
             <div className="mb-4">
               <label className="text-xs font-bold text-slate-600 block mb-1">
@@ -994,7 +1054,7 @@ function CreatePageInner() {
               </div>
             </div>
 
-            <CameraRecorder city={locCity || undefined} state={locState || undefined} />
+            <CameraRecorder city={locCity || undefined} state={locState || undefined} initialScript={cameraGeneratedScript || undefined} />
 
             {/* Divider */}
             <div className="relative my-6">
@@ -1095,6 +1155,22 @@ function CreatePageInner() {
               </div>
             )}
             <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
+
+            {(cameraPdfText || cameraPhotos.length > 0) && (
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  loading={cameraScriptGenerating}
+                  onClick={handleGenerateScriptFromCameraUploads}
+                  className="w-full gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {cameraScriptGenerating
+                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
+                    : <><Sparkles size={13} /> Generate Teleprompter Script from My Uploads</>}
+                </Button>
+                <p className="text-[11px] text-slate-400 mt-1 text-center">Script will be loaded into your teleprompter above.</p>
+              </div>
+            )}
           </Card>
         </>
       )}
