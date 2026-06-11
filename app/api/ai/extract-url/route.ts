@@ -21,6 +21,25 @@ function extractTextFromHtml(html: string): string {
   return text;
 }
 
+// Mirrors the parser in /api/ai/extract-pdf so PDF links pasted into the
+// "Add URL" box get the same text extraction as an uploaded PDF.
+function extractPdfText(buffer: Buffer): string {
+  const raw = buffer.toString("latin1");
+  const matches: string[] = [];
+  const regex = /BT([\s\S]*?)ET/g;
+  let m;
+  while ((m = regex.exec(raw)) !== null) {
+    const inside = m[1];
+    const textRegex = /\((.*?)\)\s*Tj/g;
+    let t;
+    while ((t = textRegex.exec(inside)) !== null) {
+      matches.push(t[1]);
+    }
+  }
+  if (matches.length > 0) return matches.join(" ");
+  return raw.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").slice(0, 20000);
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,7 +70,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(parsedUrl.toString(), {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; XpressReel/1.0; +https://xpressreel.com)",
-        Accept: "text/html,text/plain,application/xhtml+xml",
+        Accept: "text/html,text/plain,application/xhtml+xml,application/pdf",
       },
       signal: AbortSignal.timeout(12000),
     });
@@ -61,13 +80,31 @@ export async function POST(req: NextRequest) {
     }
 
     const contentType = res.headers.get("content-type") || "";
+    const isPdf =
+      contentType.includes("application/pdf") ||
+      parsedUrl.pathname.toLowerCase().endsWith(".pdf");
+
+    // PDF links: extract text the same way the Upload PDF flow does. The original
+    // URL is public, so we return it directly for use as a video reference file.
+    if (isPdf) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.byteLength > 20 * 1024 * 1024) {
+        return NextResponse.json({ error: "PDF is too large (max 20MB)" }, { status: 413 });
+      }
+      const pdfText = extractPdfText(buffer);
+      if (!pdfText || pdfText.trim().length < 30) {
+        return NextResponse.json({ error: "Could not extract meaningful content from this PDF" }, { status: 400 });
+      }
+      return NextResponse.json({ text: pdfText.slice(0, 5000), url: parsedUrl.toString() });
+    }
+
     if (
       !contentType.includes("text/html") &&
       !contentType.includes("text/plain") &&
       !contentType.includes("application/xhtml")
     ) {
       return NextResponse.json(
-        { error: "URL must point to a web page (HTML). For PDFs, use the Upload PDF option." },
+        { error: "URL must point to a web page (HTML) or a PDF." },
         { status: 400 }
       );
     }
