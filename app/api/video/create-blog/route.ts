@@ -247,6 +247,7 @@ ${totalPhotos} photo(s) are attached as files:
 ${photoLines}
 - Use ALL attached photos as the PRIMARY b-roll throughout the video
 - Cycle through every photo so each gets screen time (~5–10 seconds)
+- CROP/SCALE every photo to FILL the entire frame edge-to-edge (cover/crop scaling) — NEVER letterbox or pillarbox. No black bars on the sides or top/bottom, even for portrait/vertical photos. Zoom and crop to fill rather than fitting the whole photo with empty space around it.
 - Apply gentle Ken Burns motion (slow pan + zoom) on each photo to keep the frame alive
 - Match photos to whatever the script is describing at each moment
 - DO NOT replace these photos with stock or generated imagery
@@ -274,8 +275,10 @@ AGENT + MARKET DETAILS
 - Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Mobile (PRIMARY — the only phone the avatar should ever read aloud if any phone is spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Office (DISPLAY ONLY — appears on-screen but is NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website: ${params.website}` : ""}
 
 =====================================
-NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
+NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
 =====================================
+Speak ONLY the script below, start to finish, exactly once. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
+
 ${params.script}
 ${params.pdfContent ? `
 =====================================
@@ -318,6 +321,7 @@ When stats or numbers are spoken:
 - Bar charts → home prices
 - Line graphs → market trends
 - Infographic overlays → inventory/demand levels
+- Position ALL charts and data graphics on the TOP or LEFT of the frame — NEVER in the bottom-right quadrant where the avatar PiP sits
 
 =====================================
 TEXT OVERLAYS
@@ -327,15 +331,19 @@ TEXT OVERLAYS
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
-- CRITICAL POSITIONING: All text overlays must appear at the TOP or BOTTOM of the frame ONLY
-- NEVER place any text overlay in the vertical center of the frame — the avatar's face occupies that area
-- Safe zones: top 25% of frame (above avatar face) or bottom 15% of frame (below avatar chin)
+- CRITICAL POSITIONING — THE AVATAR PiP IS ANCHORED TO THE BOTTOM-RIGHT CORNER:
+  • Place ALL text overlays and data visualizations along the TOP edge or the LEFT side of the frame
+  • NEVER place any text, stat, chart, or caption in the BOTTOM-RIGHT quadrant — that is where the avatar's face/PiP lives and text there lands ON the presenter's face
+  • Preferred safe zone: top 20% strip across the frame, or the left 40% column
+  • Keep the entire bottom-right quadrant (right half × bottom half) completely clear of overlays at all times
 
 =====================================
-FIRST FRAME (THUMBNAIL-STYLE OPENER)
+FIRST FRAME (THUMBNAIL-STYLE OPENER) — REQUIRED, DO NOT SKIP
 =====================================
+- The video's VERY FIRST FRAME must be a designed thumbnail-style title card (this frame becomes the video thumbnail).
 - Full-frame warm lifestyle image of ${locationOr} filling the entire background
 - Bold headline at the TOP of the frame, left-aligned or horizontally centered: "${params.hookText || "Your Local Real Estate Expert"}"
+- This headline is a VISUAL OVERLAY ONLY — DO NOT read it aloud, DO NOT narrate it, DO NOT speak any text shown on this title card. The voiceover begins with the first line of the NARRATION SCRIPT and nothing before it.
 - Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
 - Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
 - Style like a scroll-stopping YouTube thumbnail
