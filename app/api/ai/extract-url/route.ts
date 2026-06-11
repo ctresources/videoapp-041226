@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export const maxDuration = 30;
 
@@ -21,23 +22,12 @@ function extractTextFromHtml(html: string): string {
   return text;
 }
 
-// Mirrors the parser in /api/ai/extract-pdf so PDF links pasted into the
-// "Add URL" box get the same text extraction as an uploaded PDF.
-function extractPdfText(buffer: Buffer): string {
-  const raw = buffer.toString("latin1");
-  const matches: string[] = [];
-  const regex = /BT([\s\S]*?)ET/g;
-  let m;
-  while ((m = regex.exec(raw)) !== null) {
-    const inside = m[1];
-    const textRegex = /\((.*?)\)\s*Tj/g;
-    let t;
-    while ((t = textRegex.exec(inside)) !== null) {
-      matches.push(t[1]);
-    }
-  }
-  if (matches.length > 0) return matches.join(" ");
-  return raw.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").slice(0, 20000);
+// Extract text from a PDF buffer using unpdf (pdf.js under the hood). Handles
+// compressed content streams and modern PDF layouts that a regex scan misses.
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
+  return (Array.isArray(text) ? text.join(" ") : text).replace(/\s{3,}/g, "  ").trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -91,9 +81,15 @@ export async function POST(req: NextRequest) {
       if (buffer.byteLength > 20 * 1024 * 1024) {
         return NextResponse.json({ error: "PDF is too large (max 20MB)" }, { status: 413 });
       }
-      const pdfText = extractPdfText(buffer);
+      let pdfText: string;
+      try {
+        pdfText = await extractPdfText(buffer);
+      } catch (pdfErr) {
+        console.error("PDF parse error:", pdfErr);
+        return NextResponse.json({ error: "Could not read this PDF — it may be scanned/image-only or corrupted." }, { status: 400 });
+      }
       if (!pdfText || pdfText.trim().length < 30) {
-        return NextResponse.json({ error: "Could not extract meaningful content from this PDF" }, { status: 400 });
+        return NextResponse.json({ error: "This PDF has no readable text (it may be scanned/image-only). Try a text-based PDF." }, { status: 400 });
       }
       return NextResponse.json({ text: pdfText.slice(0, 5000), url: parsedUrl.toString() });
     }
