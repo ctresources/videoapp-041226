@@ -286,12 +286,15 @@ TEXT OVERLAYS
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
+- CRITICAL POSITIONING: All text overlays must appear at the TOP or BOTTOM of the frame ONLY
+- NEVER place any text overlay in the vertical center of the frame — the avatar's face occupies that area
+- Safe zones: top 25% of frame (above avatar face) or bottom 15% of frame (below avatar chin)
 
 =====================================
 FIRST FRAME (THUMBNAIL-STYLE OPENER)
 =====================================
 - Full-frame warm lifestyle image of ${locationOr} filling the entire background
-- Bold headline centered or left-aligned: "${params.hookText || "Your Local Real Estate Expert"}"
+- Bold headline at the TOP of the frame, left-aligned or horizontally centered: "${params.hookText || "Your Local Real Estate Expert"}"
 - Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
 - Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
 - Style like a scroll-stopping YouTube thumbnail
