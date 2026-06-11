@@ -5,7 +5,6 @@ import {
   generateVideoAgent,
   generateVideo,
   uploadAudioAsset,
-  getCinematicStyleId,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
@@ -329,8 +328,6 @@ export async function POST(req: NextRequest) {
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-    const styleId = isShortForm ? null : await getCinematicStyleId().catch(() => null);
-
     const { data: newVideo, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
@@ -354,7 +351,6 @@ export async function POST(req: NextRequest) {
       orientation,
       callbackUrl,
       callbackId: newVideo.id,
-      styleId: styleId || undefined,
     });
 
     await admin
