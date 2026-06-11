@@ -4,7 +4,6 @@ import {
   generateVideoAgent,
   generateVideo,
   uploadAudioAsset,
-  getCinematicStyleId,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   DIMENSIONS,
@@ -534,9 +533,6 @@ export async function POST(req: NextRequest) {
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-    // Fetch cinematic style for landscape videos to get proper b-roll composition
-    const styleId = isShortForm ? null : await getCinematicStyleId().catch(() => null);
-
     const files: VideoAgentFile[] = [];
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
@@ -576,7 +572,6 @@ export async function POST(req: NextRequest) {
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
-      styleId: styleId || undefined,
     });
 
     await admin
