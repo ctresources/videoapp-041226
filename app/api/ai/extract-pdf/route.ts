@@ -1,25 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export const maxDuration = 60;
-
-function extractPdfText(buffer: Buffer): string {
-  const raw = buffer.toString("latin1");
-  const matches: string[] = [];
-  const regex = /BT([\s\S]*?)ET/g;
-  let m;
-  while ((m = regex.exec(raw)) !== null) {
-    const inside = m[1];
-    const textRegex = /\((.*?)\)\s*Tj/g;
-    let t;
-    while ((t = textRegex.exec(inside)) !== null) {
-      matches.push(t[1]);
-    }
-  }
-  if (matches.length > 0) return matches.join(" ");
-  return raw.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").slice(0, 20000);
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -34,7 +18,28 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const text = extractPdfText(buffer);
+
+  let text = "";
+  try {
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const { text: extracted } = await extractText(pdf, { mergePages: true });
+    text = (Array.isArray(extracted) ? extracted.join(" ") : extracted)
+      .replace(/\s{3,}/g, "  ")
+      .trim();
+  } catch (pdfErr) {
+    console.error("PDF parse error:", pdfErr);
+    return NextResponse.json(
+      { error: "Could not read this PDF — it may be scanned/image-only or corrupted." },
+      { status: 400 },
+    );
+  }
+
+  if (!text || text.trim().length < 30) {
+    return NextResponse.json(
+      { error: "This PDF has no readable text (it may be scanned/image-only). Try a text-based PDF." },
+      { status: 400 },
+    );
+  }
 
   const admin = createAdminClient();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
