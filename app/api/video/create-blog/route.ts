@@ -216,6 +216,16 @@ ${photoLines}
   return `You are producing a high-end, professional real estate marketing video.
 
 =====================================
+AVATAR — NON-NEGOTIABLE REQUIREMENT
+=====================================
+The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
+- Show the avatar as a circular picture-in-picture (PiP) anchored to the BOTTOM-RIGHT corner
+- PiP size: ~20–25% of screen width, with a clean white or soft gold circular border
+- B-roll fills the full frame BEHIND the PiP — the avatar never disappears
+- NEVER show a frame without the avatar visible
+- NEVER show the avatar full-screen — circular bottom-right PiP only
+
+=====================================
 AGENT + MARKET DETAILS
 =====================================
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
@@ -244,15 +254,6 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - Pronounce directional words in full: "North", "South", "East", "West", "Northeast", "Northwest", "Southeast", "Southwest" — never as single letters.
 - Phone numbers: read each digit naturally (e.g. "five five five, one two three, four five six seven"). DO NOT prepend "one" or "plus one" — never add a "1" country-code in front of any phone number, even if you see one. If two phone numbers appear in the agent details, ONLY the Mobile number is ever spoken; the Office number is for on-screen display only and must NEVER be read aloud.
 - If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
-
-=====================================
-AVATAR PRESENTATION
-=====================================
-- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
-- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
-- Apply a clean white or soft gold circular border around the PiP
-- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
-- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
 
 =====================================
 B-ROLL

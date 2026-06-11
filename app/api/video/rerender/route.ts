@@ -78,6 +78,16 @@ function buildPrompt(params: {
   return `You are producing a high-end, professional real estate marketing video.
 
 =====================================
+AVATAR — NON-NEGOTIABLE REQUIREMENT
+=====================================
+The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
+- Show the avatar as a circular picture-in-picture (PiP) anchored to the BOTTOM-RIGHT corner
+- PiP size: ~20–25% of screen width, with a clean white or soft gold circular border
+- B-roll fills the full frame BEHIND the PiP — the avatar never disappears
+- NEVER show a frame without the avatar visible
+- NEVER show the avatar full-screen — circular bottom-right PiP only
+
+=====================================
 AGENT + MARKET DETAILS
 =====================================
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
@@ -89,15 +99,6 @@ AGENT + MARKET DETAILS
 NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
 =====================================
 ${params.script}
-
-=====================================
-AVATAR PRESENTATION
-=====================================
-- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
-- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
-- Apply a clean white or soft gold circular border around the PiP
-- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
-- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
 
 =====================================
 B-ROLL
