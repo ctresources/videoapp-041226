@@ -85,6 +85,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         await videoRef.current.play();
       }
       setStep("camera");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
       setCamError(
@@ -121,6 +122,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     chunksRef.current = [];
     scrollPosRef.current = 0;
     if (teleRef.current) teleRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     const mimeType =
       ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find(
