@@ -454,7 +454,11 @@ export async function POST(req: NextRequest) {
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 
-    const prompt = buildVideoAgentPrompt({
+    // HeyGen's Video Agent caps the prompt at 10,000 characters. The PDF/URL
+    // reference text is the largest variable part, so fit it to whatever room
+    // is left after the structural instructions rather than letting it overflow.
+    const HEYGEN_PROMPT_LIMIT = 10000;
+    const promptParams = {
       script: safeScript,
       city,
       state,
@@ -472,8 +476,24 @@ export async function POST(req: NextRequest) {
       listingAddress,
       listingPhotoCount: listingPhotos.length,
       extraPhotoCount: safeExtraPhotos.length,
-      pdfContent: pdfText ? String(pdfText).slice(0, 3000) : undefined,
-    });
+    };
+
+    const fullPdf = pdfText ? String(pdfText) : undefined;
+    let prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: fullPdf?.slice(0, 3000) });
+
+    if (prompt.length > HEYGEN_PROMPT_LIMIT && fullPdf) {
+      // Measure the prompt with no PDF, then allocate the remaining budget
+      // (minus a small margin for the section wrapper) to the PDF text.
+      const baseLength = buildVideoAgentPrompt({ ...promptParams, pdfContent: undefined }).length;
+      const room = HEYGEN_PROMPT_LIMIT - baseLength - 200;
+      const trimmedPdf = room > 200 ? fullPdf.slice(0, room) : undefined;
+      prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: trimmedPdf });
+    }
+
+    // Final hard safety clamp in case the base prompt alone is still too long.
+    if (prompt.length > HEYGEN_PROMPT_LIMIT) {
+      prompt = prompt.slice(0, HEYGEN_PROMPT_LIMIT);
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")

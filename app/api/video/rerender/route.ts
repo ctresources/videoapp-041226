@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
       website: p.website || undefined,
       isShortForm,
       hookText,
-    });
+    }).slice(0, 10000); // HeyGen Video Agent caps the prompt at 10,000 chars
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
