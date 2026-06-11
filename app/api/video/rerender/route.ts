@@ -130,12 +130,15 @@ TEXT OVERLAYS
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
+- CRITICAL POSITIONING: All text overlays must appear at the TOP or BOTTOM of the frame ONLY
+- NEVER place any text overlay in the vertical center of the frame — the avatar's face occupies that area
+- Safe zones: top 25% of frame (above avatar face) or bottom 15% of frame (below avatar chin)
 
 =====================================
 FIRST FRAME (THUMBNAIL-STYLE OPENER)
 =====================================
 RIGHT side: full-body avatar against a warm, bright lifestyle image of ${locationOr}
-LEFT side: bold headline — "${params.hookText || "Your Local Real Estate Expert"}"
+LEFT side: bold headline at the TOP-LEFT — "${params.hookText || "Your Local Real Estate Expert"}"
 
 - LEFT panel: dark gray blending into deep navy gradient (high contrast, text readable)
 - RIGHT panel: warm natural tones behind the agent (inviting, lifestyle feel)
