@@ -388,11 +388,11 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             </div>
           )}
 
-          {/* Teleprompter overlay at bottom of camera while recording */}
+          {/* Teleprompter overlay at top of camera while recording */}
           {isRecording && (
             <div
               ref={teleRef}
-              className="absolute bottom-0 left-0 right-0 h-32 bg-black/70 backdrop-blur-sm px-5 py-3 overflow-hidden select-none"
+              className="absolute top-0 left-0 right-0 h-32 bg-black/70 backdrop-blur-sm px-5 py-3 overflow-hidden select-none"
             >
               <p className="text-white text-base leading-8 font-medium whitespace-pre-wrap">
                 {script}
