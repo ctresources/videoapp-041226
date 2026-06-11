@@ -7,6 +7,7 @@ import {
   uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
+  getAvatarLooks,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
@@ -303,7 +304,23 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const avatarId = edits.avatarId || p.heygen_photo_id;
+    // p.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render directly
+    // as the on-screen avatar — it needs a concrete look id. If the caller didn't
+    // pass an explicit avatarId, resolve the group's first completed look here so
+    // the avatar appears on screen instead of being dropped.
+    let avatarId = edits.avatarId || p.heygen_photo_id;
+    if (!edits.avatarId && p.heygen_photo_id) {
+      try {
+        const looks = await getAvatarLooks(p.heygen_photo_id);
+        const ready = looks.find((l) => l.status === "completed") || looks[0];
+        if (ready?.id) {
+          avatarId = ready.id;
+          console.log(`[rerender] Resolved group ${p.heygen_photo_id} → look ${avatarId}`);
+        }
+      } catch (e) {
+        console.warn("[rerender] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
+      }
+    }
 
     // ── ElevenLabs TTS path: user has a cloned voice ──────────────────────────
     if (p.voice_clone_id) {

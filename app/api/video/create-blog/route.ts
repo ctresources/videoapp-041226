@@ -6,6 +6,7 @@ import {
   uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
+  getAvatarLooks,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -479,7 +480,24 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const avatarId = lookId || profile.heygen_photo_id;
+    // profile.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render
+    // directly as the on-screen avatar — it needs a concrete look id. The client
+    // normally passes one as lookId, but if it didn't (looks failed to load, or
+    // none were completed yet), resolve the group's first completed look here so
+    // the avatar still appears on screen instead of being dropped.
+    let avatarId = lookId || profile.heygen_photo_id;
+    if (!lookId && profile.heygen_photo_id) {
+      try {
+        const looks = await getAvatarLooks(profile.heygen_photo_id);
+        const ready = looks.find((l) => l.status === "completed") || looks[0];
+        if (ready?.id) {
+          avatarId = ready.id;
+          console.log(`[create-blog] Resolved group ${profile.heygen_photo_id} → look ${avatarId}`);
+        }
+      } catch (e) {
+        console.warn("[create-blog] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
+      }
+    }
 
     // ── ElevenLabs TTS + listing photos: multi-scene v2 API ──────────────────────
     // Split the script into N chunks (one per photo, capped at 5), generate EL

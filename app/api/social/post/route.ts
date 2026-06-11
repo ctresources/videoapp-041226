@@ -85,11 +85,11 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         video_id: videoId,
         platform: "youtube",
-        post_url: result.youtubeUrl,
+        platform_post_id: result.videoId,
         caption: target.description || defaultYouTubeDesc,
+        scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
-        status: "published",
-        metadata: { youtube_video_id: result.videoId, source: "native_youtube" },
+        post_status: "published",
       });
 
       results.push({ platform: "youtube", status: "published", url: result.youtubeUrl });
@@ -136,11 +136,11 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         video_id: videoId,
         platform: blotatoTargets.map((t) => t.platform).join(","),
-        post_id: result.id,
+        platform_post_id: result.id,
         caption: defaultCaption,
+        scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
-        status: scheduledAt ? "scheduled" : "published",
-        metadata: result as unknown as Record<string, unknown>,
+        post_status: scheduledAt ? "scheduled" : "published",
       });
 
       results.push({
