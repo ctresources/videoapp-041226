@@ -79,12 +79,6 @@ function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; is
   // Time-based fallback progress (fills over estimated duration)
   const timePct = Math.min(99, Math.round((elapsed / estimated) * 100));
   const displayPct = progress.progressPct > 0 ? progress.progressPct : timePct;
-  const remaining = Math.max(0, estimated - elapsed);
-  const remainingLabel = elapsed > estimated
-    ? "Almost done…"
-    : remaining >= 60
-      ? `~${Math.ceil(remaining / 60)} min left`
-      : `~${remaining}s left`;
 
   useEffect(() => {
     if (!video.render_job_id) return;
@@ -124,7 +118,6 @@ function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; is
           style={{ width: `${displayPct}%` }}
         />
       </div>
-      <p className="text-xs text-slate-400 text-right">{remainingLabel}</p>
     </div>
   );
 }
