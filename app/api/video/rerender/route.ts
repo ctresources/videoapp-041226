@@ -39,6 +39,42 @@ const TONE_VISUALS: Record<string, string> = {
   "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
 };
 
+/**
+ * Build explicit b-roll accuracy guidance so the Video Agent never shows
+ * scenery that contradicts the listing's location or the current season —
+ * e.g. snow in June, or palm trees in Pennsylvania.
+ */
+function buildLocationSeasonGuidance(state: string, city: string): string {
+  const place = [city, state].filter(Boolean).join(", ") || "the local market";
+  const stateName = state || "the listing's state";
+
+  const month = new Date().getMonth(); // 0 = Jan
+  const season =
+    month <= 1 || month === 11 ? "Winter" :
+    month <= 4 ? "Spring" :
+    month <= 7 ? "Summer" :
+    "Fall";
+
+  const seasonVisual: Record<string, string> = {
+    Winter: "bare or evergreen trees, cool low sun, possible light snow ONLY if the state genuinely has snowy winters",
+    Spring: "budding green trees, blooming flowers, fresh grass, mild bright daylight",
+    Summer: "full green foliage, lush lawns, warm bright sunlight, leafy mature trees",
+    Fall: "autumn foliage in warm tones, crisp clear light, fallen leaves",
+  };
+
+  return `=====================================
+LOCATION + SEASON ACCURACY (CRITICAL — READ CAREFULLY)
+=====================================
+- This listing is in ${place}. The current season is ${season}.
+- Every outdoor scene MUST be believable for ${stateName} in ${season}: ${seasonVisual[season]}.
+- NEVER show snow unless it is Winter AND ${stateName} actually gets snow. It is currently ${season} — do not show snow this season.
+- NEVER show palm trees, tropical beaches, deserts, or mountains unless ${stateName} genuinely has them. (e.g. Pennsylvania has NO palm trees, NO beaches, NO deserts — show northeastern deciduous trees, rolling green hills, and brick/colonial architecture instead.)
+- Match home architecture, landscaping, and plant life to what is typical for ${stateName}.
+- When in doubt, use generic neighborhood and interior shots that cannot contradict the location — do NOT invent dramatic scenery.
+
+`;
+}
+
 function buildPrompt(params: {
   script: string;
   city: string;
@@ -100,13 +136,14 @@ NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
 =====================================
 ${params.script}
 
-=====================================
+${buildLocationSeasonGuidance(params.state, params.city)}=====================================
 B-ROLL
 =====================================
-- Aerial drone shots of ${locationOr} neighborhoods
-- Tree-lined streets, home exteriors, curb appeal${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
+- Aerial drone shots of ${locationOr} neighborhoods (season- and region-accurate per the rules above)
+- Tree-lined streets, home exteriors, curb appeal — foliage must match the current season${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
 - Interior shots: modern kitchens, open living spaces
 - Lifestyle: cafes, parks, families, walkability scenes
+- Do NOT show any scenery that contradicts ${params.state || "the listing's state"} or the current season
 
 =====================================
 COLOR + STYLE
