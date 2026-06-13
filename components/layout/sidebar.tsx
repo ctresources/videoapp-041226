@@ -39,7 +39,7 @@ export function Sidebar() {
       <div className="px-5 py-5 border-b border-slate-100">
         <Link href="/dashboard">
           <Image
-            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo_with_new_tagline.svg"
+            src="/logo_navbar_transparent.png"
             alt="SparkReels"
             width={170}
             height={52}
