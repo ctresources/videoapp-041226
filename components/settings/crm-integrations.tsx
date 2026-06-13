@@ -364,7 +364,7 @@ export function CrmIntegrations() {
         <pre className="text-[10px] text-slate-500 leading-relaxed overflow-x-auto">{`{
   "event": "video.published",
   "timestamp": "2025-12-29T00:00:00.000Z",
-  "source": "XpressReel",
+  "source": "SparkReels",
   "data": {
     "video_id": "uuid",
     "title": "Austin Market Update Q1",

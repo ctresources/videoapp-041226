@@ -4,7 +4,7 @@ import { ToastProvider } from "@/providers/toast-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "XpressReel — Speak, Spark, Share",
+  title: "SparkReels — Speak, Spark, Share",
   description:
     "Real estate agents: transform your voice into viral video content and autopost to all social channels. Reclaim 10-15 hours every week.",
   keywords: ["real estate video", "voice to video", "AI video content", "real estate marketing"],
@@ -12,13 +12,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "XpressReel",
+    title: "SparkReels",
   },
   openGraph: {
-    title: "XpressReel — Speak, Spark, Share",
+    title: "SparkReels — Speak, Spark, Share",
     description: "Transform your voice into viral real estate video content automatically.",
     type: "website",
-    url: "https://xpressreel.com",
+    url: "https://sparkreels.ai",
   },
 };
 

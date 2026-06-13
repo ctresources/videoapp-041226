@@ -40,7 +40,7 @@ export default function BetaPage() {
 
       {/* Nav */}
       <nav className="border-b border-slate-200 px-6 h-14 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <span className="text-sm font-bold text-blue-900">XpressReel</span>
+        <span className="text-sm font-bold text-blue-900">SparkReels</span>
         <a href="/login" className="text-sm text-slate-500 hover:text-slate-700">Already have an account? Sign in</a>
       </nav>
 
@@ -77,8 +77,8 @@ export default function BetaPage() {
             <p className="text-slate-600 font-semibold mb-2">All beta spots are taken.</p>
             <p className="text-sm text-slate-400">
               Email us at{" "}
-              <a href="mailto:support@xpressreel.com" className="text-blue-600 hover:underline">
-                support@xpressreel.com
+              <a href="mailto:support@sparkreels.ai" className="text-blue-600 hover:underline">
+                support@sparkreels.ai
               </a>{" "}
               to get on the waitlist.
             </p>
@@ -104,8 +104,8 @@ export default function BetaPage() {
 
         <p className="mt-10 text-xs text-slate-400 max-w-sm">
           Questions? Email{" "}
-          <a href="mailto:support@xpressreel.com" className="text-blue-600 hover:underline">
-            support@xpressreel.com
+          <a href="mailto:support@sparkreels.ai" className="text-blue-600 hover:underline">
+            support@sparkreels.ai
           </a>
         </p>
       </main>

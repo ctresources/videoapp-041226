@@ -91,7 +91,7 @@ const features = [
   },
   {
     title: "49% Faster Revenue Growth",
-    description: "Agents who post consistent video content grow revenue 49% faster. XpressReel.com gives you the output of a full content team without the cost or headache.",
+    description: "Agents who post consistent video content grow revenue 49% faster. SparkReels.ai gives you the output of a full content team without the cost or headache.",
     photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
   },
 ];
@@ -173,8 +173,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex flex-col leading-none">
             <Image
-              src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
-              alt="XpressReel"
+              src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo_with_new_tagline.svg"
+              alt="SparkReels"
               width={180}
               height={52}
               unoptimized
@@ -210,7 +210,7 @@ export default function LandingPage() {
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
-                Most real estate agents are invisible online. XpressReel.com fixes that — turning your voice recording into a publish-ready short-form video.
+                Most real estate agents are invisible online. SparkReels.ai fixes that — turning your voice recording into a publish-ready short-form video.
               </p>
               <p className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-5">
                 Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
@@ -364,7 +364,7 @@ export default function LandingPage() {
             <p className="text-sm text-slate-700">
               Agents who post consistent video content grow revenue{" "}
               <span className="font-bold text-blue-900">49% faster</span>{" "}
-              — yet two-thirds of the market still isn&apos;t doing it consistently. XpressReel.com removes every barrier that&apos;s stopping them.
+              — yet two-thirds of the market still isn&apos;t doing it consistently. SparkReels.ai removes every barrier that&apos;s stopping them.
             </p>
           </div>
         </div>
@@ -468,7 +468,7 @@ export default function LandingPage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
-                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">XpressReel.com</th>
+                  <th className="p-4 text-center font-bold text-blue-900 text-xs bg-blue-50">SparkReels.ai</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor A</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor B</th>
                   <th className="p-4 text-center font-semibold text-slate-400 text-xs">Competitor C</th>
@@ -539,7 +539,7 @@ export default function LandingPage() {
       {/* ── Final CTA ── */}
       <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with xpressreel.com</p>
+          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight whitespace-nowrap">
             Hit the Mic. Speak, Spark, Share.
           </h2>
@@ -583,8 +583,8 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8 pb-8 border-b border-slate-800">
             <div>
               <Image
-                src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
-                alt="XpressReel"
+                src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo_with_new_tagline.svg"
+                alt="SparkReels"
                 width={160}
                 height={48}
                 unoptimized
@@ -603,7 +603,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-600">
-            <p>© {new Date().getFullYear()} XpressReel.com. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} SparkReels.ai. All rights reserved.</p>
             <p>All AI-generated content includes Fair Housing compliance guardrails per 42 U.S.C. § 3604.</p>
           </div>
         </div>

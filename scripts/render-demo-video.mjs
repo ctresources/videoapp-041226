@@ -1,5 +1,5 @@
 /**
- * XpressReel — Demo Video Renderer  (v2)
+ * SparkReels — Demo Video Renderer  (v2)
  * 75-second walkthrough using Creatomate rect + text + audio (ElevenLabs)
  * Run: node scripts/render-demo-video.mjs
  */
@@ -153,7 +153,7 @@ function chip(emoji, name, x, y, color, delay = 0) {
 // ─── Narration script ───────────────────────────────────────────────────────
 const NARRATION = `Real estate agents lose listings every day — not because of bad service, but because competitors show up online consistently and they don't.
 
-XpressReel changes that.
+SparkReels changes that.
 
 Start by recording your voice for 90 seconds. Or choose from 10 done-for-you real estate content templates — homebuyer tips, market updates, luxury sellers, relocation guides, and more. Our AI instantly writes a Fair Housing-compliant script and produces a broadcast-quality video narrated in your cloned voice.
 
@@ -163,7 +163,7 @@ Then auto-schedule and publish to YouTube, Instagram, TikTok, LinkedIn, Facebook
 
 Track what's working with built-in analytics. See which videos drive leads, which platforms deliver the best reach, and what content resonates most with your audience.
 
-XpressReel. Speak. Stream. Share. Start free today.`;
+SparkReels. Speak. Stream. Share. Start free today.`;
 
 // ─── Build all scenes ───────────────────────────────────────────────────────
 
@@ -220,7 +220,7 @@ const allScenes = [
       border_radius: 24, border_width: 1, border_color: "rgba(99,102,241,0.4)" }),
 
     // Logo text
-    t({ text: "XpressReel", font_size: 72, font_weight: "900",
+    t({ text: "SparkReels", font_size: 72, font_weight: "900",
       fill_color: W, x: "50%", y: "30%", x_anchor: "50%", y_anchor: "50%",
       animations: fade(0.3, 0.7) }),
 
@@ -598,7 +598,7 @@ const allScenes = [
       text_wrap: true, width: "80%", x_alignment: "50%",
       animations: fade(0.2, 0.6) }),
 
-    t({ text: "XpressReel", font_size: 46, font_weight: "800",
+    t({ text: "SparkReels", font_size: 46, font_weight: "800",
       fill_color: "rgba(255,255,255,0.92)",
       x: "50%", y: "54%", x_anchor: "50%", y_anchor: "50%",
       animations: fade(0.5, 0.5) }),
