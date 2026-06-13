@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex justify-center mb-8">
           <Link href="/">
             <Image
-              src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo_with_new_tagline.svg"
+              src="/logo_navbar_transparent.png"
               alt="SparkReels"
               width={200}
               height={60}
