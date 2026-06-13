@@ -13,28 +13,26 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const newErrors: { password?: string; confirm?: string } = {};
 
-    if (password.length < 8) newErrors.password = "Password must be at least 8 characters";
-    if (password !== confirm) newErrors.confirm = "Passwords do not match";
-    if (Object.keys(newErrors).length) return setErrors(newErrors);
+    if (password.length < 8) return toast.error("Password must be at least 8 characters");
+    if (password !== confirm) return toast.error("Passwords don't match");
 
     setLoading(true);
     const supabase = createClient();
 
     const { error } = await supabase.auth.updateUser({ password });
 
+    setLoading(false);
+
     if (error) {
       toast.error(error.message);
-      setLoading(false);
       return;
     }
 
-    toast.success("Password updated! Signing you in…");
+    toast.success("Password updated! Signing you in...");
     router.push("/create");
     router.refresh();
   }
@@ -50,22 +48,21 @@ export default function ResetPasswordPage() {
           type="password"
           placeholder="Min. 8 characters"
           value={password}
-          onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })); }}
-          error={errors.password}
+          onChange={(e) => setPassword(e.target.value)}
           hint="At least 8 characters"
           autoComplete="new-password"
+          autoFocus
         />
         <Input
           label="Confirm Password"
           type="password"
-          placeholder="Re-enter your password"
+          placeholder="Repeat your password"
           value={confirm}
-          onChange={(e) => { setConfirm(e.target.value); setErrors((p) => ({ ...p, confirm: undefined })); }}
-          error={errors.confirm}
+          onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
         />
         <Button type="submit" loading={loading} size="lg" className="w-full">
-          Update password
+          Update Password
         </Button>
       </form>
     </Card>
