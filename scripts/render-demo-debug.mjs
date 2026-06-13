@@ -63,7 +63,7 @@ const tests = [
         },
         {
           type: "text",
-          text: "XpressReel",
+          text: "SparkReels",
           font_size: 60,
           fill_color: "#FFFFFF",
           x_alignment: "50%",

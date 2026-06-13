@@ -43,14 +43,14 @@ export default function LoginPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/create` },
     });
   }
 
   return (
     <Card>
       <h1 className="text-2xl font-bold text-brand-text mb-1">Welcome back</h1>
-      <p className="text-sm text-slate-500 mb-6">Sign in to your XpressReel account</p>
+      <p className="text-sm text-slate-500 mb-6">Sign in to your SparkReels account</p>
 
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
         <Input

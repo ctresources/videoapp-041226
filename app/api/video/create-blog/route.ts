@@ -4,9 +4,9 @@ import {
   generateVideoAgent,
   generateVideo,
   uploadAudioAsset,
-  getCinematicStyleId,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
+  getAvatarLooks,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -138,6 +138,45 @@ const TONE_VISUALS: Record<string, string> = {
   "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
 };
 
+/**
+ * Build explicit b-roll accuracy guidance so the Video Agent never shows
+ * scenery that contradicts the listing's location or the current season —
+ * e.g. snow in June, or palm trees in Pennsylvania. We derive the current
+ * meteorological season from the server date and pass the state through so
+ * the agent only composes scenes that are believable for that market.
+ */
+function buildLocationSeasonGuidance(state: string, city: string): string {
+  const place = [city, state].filter(Boolean).join(", ") || "the local market";
+  const stateName = state || "the listing's state";
+
+  // Meteorological season (Northern Hemisphere) from the current month.
+  const month = new Date().getMonth(); // 0 = Jan
+  const season =
+    month <= 1 || month === 11 ? "Winter" :
+    month <= 4 ? "Spring" :
+    month <= 7 ? "Summer" :
+    "Fall";
+
+  const seasonVisual: Record<string, string> = {
+    Winter: "bare or evergreen trees, cool low sun, possible light snow ONLY if the state genuinely has snowy winters",
+    Spring: "budding green trees, blooming flowers, fresh grass, mild bright daylight",
+    Summer: "full green foliage, lush lawns, warm bright sunlight, leafy mature trees",
+    Fall: "autumn foliage in warm tones, crisp clear light, fallen leaves",
+  };
+
+  return `=====================================
+LOCATION + SEASON ACCURACY (CRITICAL — READ CAREFULLY)
+=====================================
+- This listing is in ${place}. The current season is ${season}.
+- Every outdoor scene MUST be believable for ${stateName} in ${season}: ${seasonVisual[season]}.
+- NEVER show snow unless it is Winter AND ${stateName} actually gets snow. It is currently ${season} — do not show snow this season.
+- NEVER show palm trees, tropical beaches, deserts, or mountains unless ${stateName} genuinely has them. (e.g. Pennsylvania has NO palm trees, NO beaches, NO deserts — show northeastern deciduous trees, rolling green hills, and brick/colonial architecture instead.)
+- Match home architecture, landscaping, and plant life to what is typical for ${stateName}.
+- When in doubt, use generic neighborhood and interior shots that cannot contradict the location — do NOT invent dramatic scenery.
+
+`;
+}
+
 function buildVideoAgentPrompt(params: {
   script: string;
   city: string;
@@ -208,6 +247,7 @@ ${totalPhotos} photo(s) are attached as files:
 ${photoLines}
 - Use ALL attached photos as the PRIMARY b-roll throughout the video
 - Cycle through every photo so each gets screen time (~5–10 seconds)
+- CROP/SCALE every photo to FILL the entire frame edge-to-edge (cover/crop scaling) — NEVER letterbox or pillarbox. No black bars on the sides or top/bottom, even for portrait/vertical photos. Zoom and crop to fill rather than fitting the whole photo with empty space around it.
 - Apply gentle Ken Burns motion (slow pan + zoom) on each photo to keep the frame alive
 - Match photos to whatever the script is describing at each moment
 - DO NOT replace these photos with stock or generated imagery
@@ -215,6 +255,16 @@ ${photoLines}
     : "";
 
   return `You are producing a high-end, professional real estate marketing video.
+
+=====================================
+AVATAR — NON-NEGOTIABLE REQUIREMENT
+=====================================
+The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
+- Show the avatar as a circular picture-in-picture (PiP) anchored to the BOTTOM-RIGHT corner
+- PiP size: ~20–25% of screen width, with a clean white or soft gold circular border
+- B-roll fills the full frame BEHIND the PiP — the avatar never disappears
+- NEVER show a frame without the avatar visible
+- NEVER show the avatar full-screen — circular bottom-right PiP only
 
 =====================================
 AGENT + MARKET DETAILS
@@ -225,8 +275,10 @@ AGENT + MARKET DETAILS
 - Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Mobile (PRIMARY — the only phone the avatar should ever read aloud if any phone is spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Office (DISPLAY ONLY — appears on-screen but is NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website: ${params.website}` : ""}
 
 =====================================
-NARRATION SCRIPT (DELIVER WORD-FOR-WORD)
+NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
 =====================================
+Speak ONLY the script below, start to finish, exactly once. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
+
 ${params.script}
 ${params.pdfContent ? `
 =====================================
@@ -246,23 +298,15 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - Phone numbers: read each digit naturally (e.g. "five five five, one two three, four five six seven"). DO NOT prepend "one" or "plus one" — never add a "1" country-code in front of any phone number, even if you see one. If two phone numbers appear in the agent details, ONLY the Mobile number is ever spoken; the Office number is for on-screen display only and must NEVER be read aloud.
 - If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
 
-=====================================
-AVATAR PRESENTATION
-=====================================
-- Display the presenter as a circular picture-in-picture (PiP) overlay anchored to the BOTTOM-RIGHT corner
-- The circular PiP should be approximately 20–25% of screen width — professional and non-intrusive
-- Apply a clean white or soft gold circular border around the PiP
-- B-roll fills the FULL frame behind the PiP at all times — no black background, no blank space behind the avatar
-- NEVER show the avatar full-screen — circular bottom-right PiP only, throughout the entire video
-
-=====================================
+${buildLocationSeasonGuidance(params.state, params.city)}=====================================
 B-ROLL
 =====================================${listingPhotoBlock}
 ${hasPhotos ? "\nSECONDARY / FILLER B-ROLL (only between listing photos):" : ""}
-- Aerial drone shots of ${locationOr} neighborhoods
-- Tree-lined streets, home exteriors, curb appeal${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
+- Aerial drone shots of ${locationOr} neighborhoods (season- and region-accurate per the rules above)
+- Tree-lined streets, home exteriors, curb appeal — foliage must match the current season${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
 - Interior shots: modern kitchens, open living spaces
 - Lifestyle: cafes, parks, families, walkability scenes${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
+- Do NOT show any scenery that contradicts ${params.state || "the listing's state"} or the current season
 
 =====================================
 COLOR + STYLE
@@ -277,6 +321,7 @@ When stats or numbers are spoken:
 - Bar charts → home prices
 - Line graphs → market trends
 - Infographic overlays → inventory/demand levels
+- Position ALL charts and data graphics on the TOP or LEFT of the frame — NEVER in the bottom-right quadrant where the avatar PiP sits
 
 =====================================
 TEXT OVERLAYS
@@ -286,12 +331,19 @@ TEXT OVERLAYS
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
+- CRITICAL POSITIONING — THE AVATAR PiP IS ANCHORED TO THE BOTTOM-RIGHT CORNER:
+  • Place ALL text overlays and data visualizations along the TOP edge or the LEFT side of the frame
+  • NEVER place any text, stat, chart, or caption in the BOTTOM-RIGHT quadrant — that is where the avatar's face/PiP lives and text there lands ON the presenter's face
+  • Preferred safe zone: top 20% strip across the frame, or the left 40% column
+  • Keep the entire bottom-right quadrant (right half × bottom half) completely clear of overlays at all times
 
 =====================================
-FIRST FRAME (THUMBNAIL-STYLE OPENER)
+FIRST FRAME (THUMBNAIL-STYLE OPENER) — REQUIRED, DO NOT SKIP
 =====================================
+- The video's VERY FIRST FRAME must be a designed thumbnail-style title card (this frame becomes the video thumbnail).
 - Full-frame warm lifestyle image of ${locationOr} filling the entire background
-- Bold headline centered or left-aligned: "${params.hookText || "Your Local Real Estate Expert"}"
+- Bold headline at the TOP of the frame, left-aligned or horizontally centered: "${params.hookText || "Your Local Real Estate Expert"}"
+- This headline is a VISUAL OVERLAY ONLY — DO NOT read it aloud, DO NOT narrate it, DO NOT speak any text shown on this title card. The voiceover begins with the first line of the NARRATION SCRIPT and nothing before it.
 - Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
 - Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
 - Style like a scroll-stopping YouTube thumbnail
@@ -410,7 +462,11 @@ export async function POST(req: NextRequest) {
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 
-    const prompt = buildVideoAgentPrompt({
+    // HeyGen's Video Agent caps the prompt at 10,000 characters. The PDF/URL
+    // reference text is the largest variable part, so fit it to whatever room
+    // is left after the structural instructions rather than letting it overflow.
+    const HEYGEN_PROMPT_LIMIT = 10000;
+    const promptParams = {
       script: safeScript,
       city,
       state,
@@ -428,15 +484,48 @@ export async function POST(req: NextRequest) {
       listingAddress,
       listingPhotoCount: listingPhotos.length,
       extraPhotoCount: safeExtraPhotos.length,
-      pdfContent: pdfText ? String(pdfText).slice(0, 3000) : undefined,
-    });
+    };
+
+    const fullPdf = pdfText ? String(pdfText) : undefined;
+    let prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: fullPdf?.slice(0, 3000) });
+
+    if (prompt.length > HEYGEN_PROMPT_LIMIT && fullPdf) {
+      // Measure the prompt with no PDF, then allocate the remaining budget
+      // (minus a small margin for the section wrapper) to the PDF text.
+      const baseLength = buildVideoAgentPrompt({ ...promptParams, pdfContent: undefined }).length;
+      const room = HEYGEN_PROMPT_LIMIT - baseLength - 200;
+      const trimmedPdf = room > 200 ? fullPdf.slice(0, room) : undefined;
+      prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: trimmedPdf });
+    }
+
+    // Final hard safety clamp in case the base prompt alone is still too long.
+    if (prompt.length > HEYGEN_PROMPT_LIMIT) {
+      prompt = prompt.slice(0, HEYGEN_PROMPT_LIMIT);
+    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    const avatarId = lookId || profile.heygen_photo_id;
+    // profile.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render
+    // directly as the on-screen avatar — it needs a concrete look id. The client
+    // normally passes one as lookId, but if it didn't (looks failed to load, or
+    // none were completed yet), resolve the group's first completed look here so
+    // the avatar still appears on screen instead of being dropped.
+    let avatarId = lookId || profile.heygen_photo_id;
+    if (!lookId && profile.heygen_photo_id) {
+      try {
+        const looks = await getAvatarLooks(profile.heygen_photo_id);
+        const ready = looks.find((l) => l.status === "completed") || looks[0];
+        if (ready?.id) {
+          avatarId = ready.id;
+          console.log(`[create-blog] Resolved group ${profile.heygen_photo_id} → look ${avatarId}`);
+        }
+      } catch (e) {
+        console.warn("[create-blog] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
+      }
+    }
 
     // ── ElevenLabs TTS + listing photos: multi-scene v2 API ──────────────────────
     // Split the script into N chunks (one per photo, capped at 5), generate EL
@@ -531,9 +620,6 @@ export async function POST(req: NextRequest) {
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-    // Fetch cinematic style for landscape videos to get proper b-roll composition
-    const styleId = isShortForm ? null : await getCinematicStyleId().catch(() => null);
-
     const files: VideoAgentFile[] = [];
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
@@ -573,7 +659,6 @@ export async function POST(req: NextRequest) {
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
-      styleId: styleId || undefined,
     });
 
     await admin

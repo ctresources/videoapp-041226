@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export const maxDuration = 30;
 
@@ -19,6 +20,14 @@ function extractTextFromHtml(html: string): string {
     .replace(/&#39;/g, "'");
   text = text.replace(/\s{3,}/g, "  ").trim();
   return text;
+}
+
+// Extract text from a PDF buffer using unpdf (pdf.js under the hood). Handles
+// compressed content streams and modern PDF layouts that a regex scan misses.
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
+  return (Array.isArray(text) ? text.join(" ") : text).replace(/\s{3,}/g, "  ").trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -50,8 +59,8 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(parsedUrl.toString(), {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; XpressReel/1.0; +https://xpressreel.com)",
-        Accept: "text/html,text/plain,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
+        Accept: "text/html,text/plain,application/xhtml+xml,application/pdf",
       },
       signal: AbortSignal.timeout(12000),
     });
@@ -61,13 +70,37 @@ export async function POST(req: NextRequest) {
     }
 
     const contentType = res.headers.get("content-type") || "";
+    const isPdf =
+      contentType.includes("application/pdf") ||
+      parsedUrl.pathname.toLowerCase().endsWith(".pdf");
+
+    // PDF links: extract text the same way the Upload PDF flow does. The original
+    // URL is public, so we return it directly for use as a video reference file.
+    if (isPdf) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.byteLength > 20 * 1024 * 1024) {
+        return NextResponse.json({ error: "PDF is too large (max 20MB)" }, { status: 413 });
+      }
+      let pdfText: string;
+      try {
+        pdfText = await extractPdfText(buffer);
+      } catch (pdfErr) {
+        console.error("PDF parse error:", pdfErr);
+        return NextResponse.json({ error: "Could not read this PDF — it may be scanned/image-only or corrupted." }, { status: 400 });
+      }
+      if (!pdfText || pdfText.trim().length < 30) {
+        return NextResponse.json({ error: "This PDF has no readable text (it may be scanned/image-only). Try a text-based PDF." }, { status: 400 });
+      }
+      return NextResponse.json({ text: pdfText.slice(0, 5000), url: parsedUrl.toString() });
+    }
+
     if (
       !contentType.includes("text/html") &&
       !contentType.includes("text/plain") &&
       !contentType.includes("application/xhtml")
     ) {
       return NextResponse.json(
-        { error: "URL must point to a web page (HTML). For PDFs, use the Upload PDF option." },
+        { error: "URL must point to a web page (HTML) or a PDF." },
         { status: 400 }
       );
     }

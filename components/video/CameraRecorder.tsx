@@ -85,6 +85,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         await videoRef.current.play();
       }
       setStep("camera");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
       setCamError(
@@ -121,6 +122,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     chunksRef.current = [];
     scrollPosRef.current = 0;
     if (teleRef.current) teleRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     const mimeType =
       ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find(
@@ -362,12 +364,23 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   // ── Camera step (preview + recording) ─────────────────────────────────────
   if (step === "camera") {
     return (
-      <div className="flex flex-col gap-3">
-        {/* Camera preview */}
-        <div className={cn(
-          "relative bg-black rounded-2xl overflow-hidden transition-all duration-300",
-          isRecording ? "aspect-[4/3]" : "aspect-video"
-        )}>
+      <div className="fixed inset-0 z-50 flex flex-col bg-black">
+        {/* Teleprompter pinned to the very top (right under the device lens) so
+            you read while looking at the camera. Shown once recording starts. */}
+        {isRecording && (
+          <div
+            ref={teleRef}
+            className="shrink-0 h-40 sm:h-44 bg-black/85 backdrop-blur-sm px-5 py-4 overflow-hidden select-none border-b border-white/10"
+          >
+            <p className="text-white text-xl sm:text-2xl leading-9 font-semibold whitespace-pre-wrap text-center">
+              {script}
+            </p>
+            <div className="h-40" />
+          </div>
+        )}
+
+        {/* Camera preview fills the remaining space — as large as possible */}
+        <div className="relative flex-1 overflow-hidden bg-black">
           <video
             ref={videoRef}
             autoPlay
@@ -388,84 +401,74 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             </div>
           )}
 
-          {/* Teleprompter overlay at bottom of camera while recording */}
-          {isRecording && (
-            <div
-              ref={teleRef}
-              className="absolute bottom-0 left-0 right-0 h-32 bg-black/70 backdrop-blur-sm px-5 py-3 overflow-hidden select-none"
-            >
-              <p className="text-white text-base leading-8 font-medium whitespace-pre-wrap">
-                {script}
+          {/* Pre-record hint, centered over the live camera */}
+          {!isRecording && (
+            <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3">
+              <Video size={15} className="text-primary-300 shrink-0" />
+              <p className="text-xs text-white/90">
+                Camera Is Live. Press{" "}
+                <strong>Start Recording</strong> — The Teleprompter Will Scroll Automatically.
               </p>
-              <div className="h-24" />
             </div>
           )}
         </div>
 
-        {/* Pre-record hint */}
-        {!isRecording && (
-          <div className="flex items-center gap-2 bg-primary-50 border border-primary-100 rounded-xl px-4 py-3">
-            <Video size={15} className="text-primary-500 shrink-0" />
-            <p className="text-xs text-primary-700">
-              Camera Is Live. Press{" "}
-              <strong>Start Recording</strong> — The Teleprompter Will Scroll Automatically.
-            </p>
-          </div>
-        )}
-
-        {/* Speed control while paused */}
-        {isPaused && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 shrink-0">Speed:</span>
-            {SPEED_OPTIONS.map((opt, i) => (
-              <button
-                key={opt.label}
-                onClick={() => setSpeedIdx(i)}
-                className={cn(
-                  "flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                  speedIdx === i
-                    ? "border-primary-500 bg-primary-50 text-primary-600"
-                    : "border-slate-200 text-slate-500",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Controls */}
-        <div className="flex gap-2">
-          {!isRecording && (
-            <>
-              <Button onClick={handleReset} variant="ghost" size="lg" className="gap-2 flex-1">
-                <RotateCcw size={15} /> Back
-              </Button>
-              <Button onClick={startRecording} size="lg" className="gap-2 flex-[2]">
-                <Video size={17} /> Start Recording
-              </Button>
-            </>
-          )}
-          {isRecording && !isPaused && (
-            <>
-              <Button onClick={pauseRecording} variant="outline" size="lg" className="gap-2 flex-1">
-                <Pause size={17} /> Pause
-              </Button>
-              <Button onClick={stopRecording} variant="danger" size="lg" className="gap-2 flex-1">
-                <Square size={17} /> Stop
-              </Button>
-            </>
-          )}
+        {/* Bottom control bar */}
+        <div className="shrink-0 flex flex-col gap-2 bg-black/90 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {/* Speed control while paused */}
           {isPaused && (
-            <>
-              <Button onClick={resumeRecording} variant="primary" size="lg" className="gap-2 flex-1">
-                <Play size={17} /> Resume
-              </Button>
-              <Button onClick={stopRecording} variant="danger" size="lg" className="gap-2 flex-1">
-                <Square size={17} /> Stop
-              </Button>
-            </>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/60 shrink-0">Speed:</span>
+              {SPEED_OPTIONS.map((opt, i) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setSpeedIdx(i)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                    speedIdx === i
+                      ? "border-primary-400 bg-primary-500/20 text-primary-200"
+                      : "border-white/20 text-white/60",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           )}
+
+          {/* Controls */}
+          <div className="flex gap-2">
+            {!isRecording && (
+              <>
+                <Button onClick={handleReset} variant="ghost" size="lg" className="gap-2 flex-1 text-white hover:bg-white/10">
+                  <RotateCcw size={15} /> Back
+                </Button>
+                <Button onClick={startRecording} size="lg" className="gap-2 flex-[2]">
+                  <Video size={17} /> Start Recording
+                </Button>
+              </>
+            )}
+            {isRecording && !isPaused && (
+              <>
+                <Button onClick={pauseRecording} variant="outline" size="lg" className="gap-2 flex-1 bg-white/10 text-white border-white/20 hover:bg-white/20">
+                  <Pause size={17} /> Pause
+                </Button>
+                <Button onClick={stopRecording} variant="danger" size="lg" className="gap-2 flex-1">
+                  <Square size={17} /> Stop
+                </Button>
+              </>
+            )}
+            {isPaused && (
+              <>
+                <Button onClick={resumeRecording} variant="primary" size="lg" className="gap-2 flex-1">
+                  <Play size={17} /> Resume
+                </Button>
+                <Button onClick={stopRecording} variant="danger" size="lg" className="gap-2 flex-1">
+                  <Square size={17} /> Stop
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -116,7 +116,7 @@ export default function SettingsPage() {
       "Are you sure? This will permanently delete your account and all your videos. This cannot be undone."
     );
     if (!confirmed) return;
-    toast.error("To delete your account, please contact support@xpressreel.com");
+    toast.error("To delete your account, please contact support@sparkreels.ai");
   }
 
   if (!loaded || !user) {

@@ -94,7 +94,7 @@ export function clampScript(text: string, maxWords = 500): string {
 // ─── Background builders ─────────────────────────────────────────────────────
 
 const DEFAULT_LOGO =
-  "https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo.svg";
+  "https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo.svg";
 
 /**
  * Stock video clips as b-roll background.

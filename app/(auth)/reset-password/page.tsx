@@ -1,0 +1,70 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import toast from "react-hot-toast";
+
+export default function ResetPasswordPage() {
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (password.length < 8) return toast.error("Password must be at least 8 characters");
+    if (password !== confirm) return toast.error("Passwords don't match");
+
+    setLoading(true);
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.updateUser({ password });
+
+    setLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Password updated! Signing you in...");
+    router.push("/create");
+    router.refresh();
+  }
+
+  return (
+    <Card>
+      <h1 className="text-2xl font-bold text-brand-text mb-1">Set new password</h1>
+      <p className="text-sm text-slate-500 mb-6">Choose a strong password for your account.</p>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          label="New Password"
+          type="password"
+          placeholder="Min. 8 characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          hint="At least 8 characters"
+          autoComplete="new-password"
+          autoFocus
+        />
+        <Input
+          label="Confirm Password"
+          type="password"
+          placeholder="Repeat your password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          autoComplete="new-password"
+        />
+        <Button type="submit" loading={loading} size="lg" className="w-full">
+          Update Password
+        </Button>
+      </form>
+    </Card>
+  );
+}

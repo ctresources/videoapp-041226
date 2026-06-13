@@ -23,7 +23,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const title = Object.entries(pageTitles).find(([key]) =>
     pathname === key || (key !== "/dashboard" && pathname.startsWith(key))
-  )?.[1] ?? "XpressReel";
+  )?.[1] ?? "SparkReels";
 
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 md:px-6 shrink-0">
@@ -37,8 +37,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         {/* Logo on mobile (sidebar hidden); page title on desktop */}
         <Link href="/dashboard" className="md:hidden">
           <Image
-            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
-            alt="XpressReel"
+            src="/logo_navbar_transparent.png"
+            alt="SparkReels"
             width={150}
             height={46}
             unoptimized
