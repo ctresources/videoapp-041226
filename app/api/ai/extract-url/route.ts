@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(parsedUrl.toString(), {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; XpressReel/1.0; +https://xpressreel.com)",
+        "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
         Accept: "text/html,text/plain,application/xhtml+xml,application/pdf",
       },
       signal: AbortSignal.timeout(12000),

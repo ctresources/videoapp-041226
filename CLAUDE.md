@@ -1,4 +1,4 @@
-# XpressReel – Claude Code Instructions
+# SparkReels – Claude Code Instructions
 
 ## Git Workflow
 

@@ -1,6 +1,6 @@
 {
-  "name": "XpressReel",
-  "short_name": "XpressReel",
+  "name": "SparkReels",
+  "short_name": "SparkReels",
   "description": "Speak, Spark, Share — turn your voice into real estate video content in minutes.",
   "start_url": "/create",
   "display": "standalone",

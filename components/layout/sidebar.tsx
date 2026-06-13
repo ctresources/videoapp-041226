@@ -39,8 +39,8 @@ export function Sidebar() {
       <div className="px-5 py-5 border-b border-slate-100">
         <Link href="/dashboard">
           <Image
-            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/xpressreel-logo_with_new_tagline.svg"
-            alt="XpressReel"
+            src="https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/sparkreels-logo_with_new_tagline.svg"
+            alt="SparkReels"
             width={170}
             height={52}
             unoptimized

@@ -29,7 +29,7 @@ export function DemoVideo() {
           <span className="w-3 h-3 rounded-full bg-green-500/70" />
         </div>
         <span className="text-xs text-slate-400 mx-auto pr-10">
-          XpressReel — Platform Demo
+          SparkReels — Platform Demo
         </span>
       </div>
 
