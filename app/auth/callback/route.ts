@@ -35,14 +35,17 @@ export async function GET(req: NextRequest) {
   if (user) {
     const { data: profile } = await admin
       .from("profiles")
-      .select("onboarding_done, subscription_tier")
+      .select("onboarding_done, subscription_tier, credits_remaining")
       .eq("id", user.id)
       .single();
 
     if (profile?.onboarding_done) {
-      const paidPlans = ["starter", "agent", "pro", "beta"];
-      const hasPaidPlan = paidPlans.includes(profile.subscription_tier ?? "free");
-      return NextResponse.redirect(`${origin}${hasPaidPlan ? "/create" : "/billing"}`);
+      const tier = profile.subscription_tier ?? "free";
+      const paidPlans = ["starter", "agent", "pro"];
+      // Beta users go to billing once they've used their 1 free video
+      const isBetaExhausted = tier === "beta" && (profile.credits_remaining ?? 0) <= 0;
+      const hasPaidAccess = paidPlans.includes(tier) || (tier === "beta" && !isBetaExhausted);
+      return NextResponse.redirect(`${origin}${hasPaidAccess ? "/create" : "/billing"}`);
     }
   }
 
