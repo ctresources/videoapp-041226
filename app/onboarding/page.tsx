@@ -73,7 +73,7 @@ export default function OnboardingPage() {
     if (user) {
       await supabase.from("profiles").update({ onboarding_done: true }).eq("id", user.id);
     }
-    router.push("/create");
+    router.push("/billing");
     router.refresh();
   }
 
@@ -203,13 +203,13 @@ export default function OnboardingPage() {
               Time to create your first video. Record 1-2 minutes about a listing, market update, or real estate tip — and watch the magic happen.
             </p>
             <Button onClick={handleSkipToApp} loading={loading} size="lg" className="w-full gap-2">
-              <Mic size={18} /> Create My First Video
+              Choose My Plan <ArrowRight size={18} />
             </Button>
             <button
               onClick={handleSkipToApp}
               className="text-xs text-slate-400 mt-4 hover:text-slate-600 transition-colors"
             >
-              Go to dashboard instead →
+              View plans & pricing →
             </button>
           </Card>
         )}
