@@ -69,7 +69,7 @@ function RegisterForm() {
       toast.success("Account created! Let's get you started.");
     }
 
-    router.push("/onboarding");
+    router.push("/create");
     router.refresh();
   }
 

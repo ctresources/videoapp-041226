@@ -55,8 +55,10 @@ export default function SettingsPage() {
             city: row.location_city || "",
             state: row.location_state || "",
           });
+          // Fall back to auth metadata name (set during Google OAuth or email signup)
+          const metaName = (user.user_metadata?.full_name as string | null) ?? null;
           setBrandData({
-            full_name:       row.full_name,
+            full_name:       row.full_name ?? metaName,
             company_name:    row.company_name,
             phone:           row.phone,
             company_phone:   row.company_phone,

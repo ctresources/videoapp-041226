@@ -635,6 +635,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         logo_url:        fields.logo_url               || null,
         website:         fields.website.trim()         || null,
         license_number:  fields.license_number.trim()  || null,
+        onboarding_done: true,
       })
       .eq("id", userId);
 

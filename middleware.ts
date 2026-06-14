@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (!profile?.onboarding_done) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
+      return NextResponse.redirect(new URL("/create", request.url));
     }
 
     if (profile.role === "admin") {
