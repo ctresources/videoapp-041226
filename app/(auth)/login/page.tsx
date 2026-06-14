@@ -35,7 +35,29 @@ export default function LoginPage() {
     }
 
     toast.success("Welcome back!");
-    router.push("/create");
+
+    // Route based on subscription and credits — same logic as auth callback
+    const { data: { user } } = await supabase.auth.getUser();
+    let destination = "/create";
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_done, subscription_tier, credits_remaining, role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.onboarding_done) {
+        if (profile.role !== "admin") {
+          const tier = profile.subscription_tier ?? "free";
+          const paidPlans = ["starter", "agent", "pro"];
+          const hasCredits = (profile.credits_remaining ?? 0) > 0;
+          const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
+          if (!hasPaidAccess) destination = "/billing";
+        }
+      }
+    }
+
+    router.push(destination);
     router.refresh();
   }
 
