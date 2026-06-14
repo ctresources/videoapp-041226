@@ -1,6 +1,6 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const NOTIFY_EMAIL = "support@sparkreels.ai";
-const FROM_EMAIL = process.env.NOTIFY_FROM_EMAIL || "SparkReels <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.NOTIFY_FROM_EMAIL || "SparkReels <noreply@sparkreels.ai>";
 
 export async function notifyNewUser({
   name,
