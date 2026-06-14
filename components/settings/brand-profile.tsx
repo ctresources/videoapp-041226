@@ -211,13 +211,24 @@ function TalkingAvatarUploader({
               <Loader2 size={10} className="animate-spin" /> {statusLabel}
             </p>
           ) : (
-            <button
-              onClick={() => inputRef.current?.click()}
-              disabled={busy}
-              className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 mt-1.5 disabled:opacity-40"
-            >
-              <Upload size={11} /> {preview ? "Change photo" : "Upload headshot"}
-            </button>
+            <div className="flex items-center gap-3 mt-1.5">
+              <button
+                onClick={() => inputRef.current?.click()}
+                disabled={busy}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 disabled:opacity-40"
+              >
+                <Upload size={11} /> {preview ? "Upload new photo" : "Upload headshot"}
+              </button>
+              {preview && (
+                <button
+                  onClick={() => { setPreview(null); setPhotoId(null); onUpdate(null, ""); }}
+                  disabled={busy}
+                  className="text-xs font-medium text-red-400 hover:text-red-600 flex items-center gap-1 disabled:opacity-40"
+                >
+                  <Trash2 size={11} /> Remove
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
