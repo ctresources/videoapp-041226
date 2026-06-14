@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/apple_touch_180x180.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#3B82F6" />
+        <meta name="google-site-verification" content="uAWjEr9Xm843nq9tUGWMqYkSpUlvvlTmoIjn8ffkYlA" />
       </head>
       <body className="bg-brand-bg text-brand-text font-body antialiased">
         <SupabaseProvider>
