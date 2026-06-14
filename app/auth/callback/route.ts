@@ -46,9 +46,8 @@ export async function GET(req: NextRequest) {
       }
       const tier = profile.subscription_tier ?? "free";
       const paidPlans = ["starter", "agent", "pro"];
-      // Beta users go to billing once they've used their 1 free video
-      const isBetaExhausted = tier === "beta" && (profile.credits_remaining ?? 0) <= 0;
-      const hasPaidAccess = paidPlans.includes(tier) || (tier === "beta" && !isBetaExhausted);
+      const hasCredits = (profile.credits_remaining ?? 0) > 0;
+      const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
       return NextResponse.redirect(`${origin}${hasPaidAccess ? "/create" : "/billing"}`);
     }
   }
