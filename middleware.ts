@@ -40,9 +40,27 @@ export async function middleware(request: NextRequest) {
   // After signOut(), getUser() returns null even if stale cookies remain.
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Authenticated users visiting login/register → create
+  // Authenticated users visiting public/auth pages → route based on profile status
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
-    return NextResponse.redirect(new URL("/create", request.url));
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_done, subscription_tier, credits_remaining, role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.onboarding_done) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+
+    if (profile.role === "admin") {
+      return NextResponse.redirect(new URL("/create", request.url));
+    }
+
+    const tier = profile.subscription_tier ?? "free";
+    const paidPlans = ["starter", "agent", "pro"];
+    const isBetaExhausted = tier === "beta" && (profile.credits_remaining ?? 0) <= 0;
+    const hasPaidAccess = paidPlans.includes(tier) || (tier === "beta" && !isBetaExhausted);
+    return NextResponse.redirect(new URL(hasPaidAccess ? "/create" : "/billing", request.url));
   }
 
   // Unauthenticated users on protected routes → login
