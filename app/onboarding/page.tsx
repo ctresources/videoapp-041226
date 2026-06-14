@@ -5,7 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { VoiceRecorder } from "@/components/voice/voice-recorder";
 import { createClient } from "@/lib/supabase/client";
-import { CheckCircle, Mic, ArrowRight, Sparkles, Camera, Upload } from "lucide-react";
+import {
+  CheckCircle, Mic, ArrowRight, Sparkles, Camera, Upload,
+  Phone, Globe, FileText, MapPin, ImageIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -13,61 +16,80 @@ import toast from "react-hot-toast";
 
 type Step = 1 | 2 | 3 | 4;
 
+const INPUT_CLS = "w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500";
+const LABEL_CLS = "block text-xs font-medium text-slate-500 mb-1.5";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState({ fullName: "", company: "" });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Step 1 — contact fields
+  const [fields, setFields] = useState({
+    full_name: "", company_name: "", phone: "", company_phone: "",
+    company_address: "", website: "", license_number: "",
+  });
+
+  // Step 2 — photos
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploaded, setAvatarUploaded] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Step 3 — voice
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voiceDuration, setVoiceDuration] = useState(0);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
+  function setField(key: string, value: string) {
+    setFields((f) => ({ ...f, [key]: value }));
+  }
+
+  // ── Step 1 ────────────────────────────────────────────────────────────────
   async function handleStep1() {
-    if (!profile.fullName.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-    if (!agreedToTerms) {
-      toast.error("Please agree to the Terms of Service and Privacy Policy");
-      return;
-    }
+    if (!fields.full_name.trim()) { toast.error("Please enter your name"); return; }
+    if (!agreedToTerms) { toast.error("Please agree to the Terms of Service and Privacy Policy"); return; }
     setLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("profiles").update({
-        full_name: profile.fullName.trim(),
-        company_name: profile.company.trim() || null,
+        full_name:       fields.full_name.trim()       || null,
+        company_name:    fields.company_name.trim()    || null,
+        phone:           fields.phone.trim()           || null,
+        company_phone:   fields.company_phone.trim()   || null,
+        company_address: fields.company_address.trim() || null,
+        website:         fields.website.trim()         || null,
+        license_number:  fields.license_number.trim()  || null,
       }).eq("id", user.id);
     }
     setLoading(false);
     setStep(2);
   }
 
-  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+  // ── Step 2 — Avatar ───────────────────────────────────────────────────────
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
     if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
 
-    setLoading(true);
+    setUploadingAvatar(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) { setUploadingAvatar(false); return; }
 
-    // Upload to Supabase Storage
     const ext = file.name.split(".").pop();
     const filePath = `${user.id}/headshot.${ext}?t=${Date.now()}`;
     const { error: upErr } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
-    if (upErr) { toast.error(upErr.message); setLoading(false); return; }
+    if (upErr) { toast.error(upErr.message); setUploadingAvatar(false); return; }
 
     const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
     setAvatarPreview(publicUrl);
 
-    // Register with HeyGen Talking Photo API
     try {
       const res = await fetch("/api/profile/heygen-avatar", {
         method: "POST",
@@ -76,22 +98,42 @@ export default function OnboardingPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success("Avatar photo saved!");
+      toast.success("Headshot saved!");
     } catch {
-      // HeyGen failed — avatar_url still saved, will register on first video
       await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
-      toast.success("Photo saved! AI avatar will activate on your first video.");
+      toast.success("Photo saved! AI avatar activates on your first video.");
     }
-
     setAvatarUploaded(true);
-    setLoading(false);
+    setUploadingAvatar(false);
   }
 
+  // ── Step 2 — Logo ─────────────────────────────────────────────────────────
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Logo must be under 5MB"); return; }
+
+    setUploadingLogo(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setUploadingLogo(false); return; }
+
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/logo.${ext}?t=${Date.now()}`;
+    const { error: upErr } = await supabase.storage.from("assets").upload(filePath, file, { upsert: true });
+    if (upErr) { toast.error(upErr.message); setUploadingLogo(false); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(filePath);
+    await supabase.from("profiles").update({ logo_url: publicUrl }).eq("id", user.id);
+    setLogoPreview(publicUrl);
+    toast.success("Logo saved!");
+    setUploadingLogo(false);
+  }
+
+  // ── Step 3 — Voice ────────────────────────────────────────────────────────
   async function handleStep3() {
-    if (!voiceBlob) {
-      toast.error("Please record a voice sample first");
-      return;
-    }
+    if (!voiceBlob) { toast.error("Please record a voice sample first"); return; }
     setLoading(true);
     try {
       const formData = new FormData();
@@ -110,6 +152,7 @@ export default function OnboardingPage() {
     }
   }
 
+  // ── Finish ────────────────────────────────────────────────────────────────
   async function handleFinish() {
     setLoading(true);
     const supabase = createClient();
@@ -123,7 +166,7 @@ export default function OnboardingPage() {
 
   const stepMeta = [
     { n: 1, label: "Profile" },
-    { n: 2, label: "Your Photo" },
+    { n: 2, label: "Photos" },
     { n: 3, label: "Voice" },
     { n: 4, label: "Choose Plan" },
   ];
@@ -131,16 +174,8 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50/60 to-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
-          <Image
-            src="/logo_navbar_transparent.png"
-            alt="SparkReels"
-            width={160}
-            height={52}
-            unoptimized
-            priority
-          />
+          <Image src="/logo_navbar_transparent.png" alt="SparkReels" width={160} height={52} unoptimized priority />
         </div>
 
         {/* Step indicators */}
@@ -149,7 +184,7 @@ export default function OnboardingPage() {
             <div key={n} className="flex flex-col items-center gap-1.5">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                 step === n ? "bg-primary-500 text-white shadow-md" :
-                step > n ? "bg-accent-500 text-white" : "bg-slate-200 text-slate-400"
+                step > n  ? "bg-accent-500 text-white" : "bg-slate-200 text-slate-400"
               }`}>
                 {step > n ? <CheckCircle size={16} /> : n}
               </div>
@@ -160,7 +195,7 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        {/* Step 1 — Profile */}
+        {/* ── Step 1 — Profile & Contact ───────────────────────────────────── */}
         {step === 1 && (
           <Card>
             <div className="flex items-center gap-3 mb-5">
@@ -169,30 +204,54 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <h2 className="font-bold text-brand-text">Welcome! Let&apos;s set up your profile</h2>
-                <p className="text-xs text-slate-400">Takes less than 2 minutes</p>
+                <p className="text-xs text-slate-400">Takes about 2 minutes</p>
               </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <Input
-                label="Your Full Name"
-                placeholder="Jane Smith"
-                value={profile.fullName}
-                onChange={(e) => setProfile((p) => ({ ...p, fullName: e.target.value }))}
-                autoFocus
-              />
-              <Input
-                label="Company / Brokerage (optional)"
-                placeholder="Smith Realty Group"
-                value={profile.company}
-                onChange={(e) => setProfile((p) => ({ ...p, company: e.target.value }))}
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={LABEL_CLS}>Full Name <span className="text-red-400">*</span></label>
+                <input type="text" className={INPUT_CLS} placeholder="Jane Smith"
+                  value={fields.full_name} onChange={(e) => setField("full_name", e.target.value)} autoFocus />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Company / Brokerage</label>
+                <input type="text" className={INPUT_CLS} placeholder="Smith Realty Group"
+                  value={fields.company_name} onChange={(e) => setField("company_name", e.target.value)} />
+              </div>
+              <div>
+                <label className={`${LABEL_CLS} flex items-center gap-1`}><Phone size={11} /> Mobile Phone</label>
+                <input type="tel" className={INPUT_CLS} placeholder="+1 (555) 000-0000"
+                  value={fields.phone} onChange={(e) => setField("phone", e.target.value)} />
+              </div>
+              <div>
+                <label className={`${LABEL_CLS} flex items-center gap-1`}><Phone size={11} /> Company Phone <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="tel" className={INPUT_CLS} placeholder="+1 (555) 000-0000"
+                  value={fields.company_phone} onChange={(e) => setField("company_phone", e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`${LABEL_CLS} flex items-center gap-1`}><MapPin size={11} /> Company Address <span className="text-slate-400 font-normal">(optional)</span></label>
+                <input type="text" className={INPUT_CLS} placeholder="123 Main St, Austin, TX 78701"
+                  value={fields.company_address} onChange={(e) => setField("company_address", e.target.value)} />
+              </div>
+              <div>
+                <label className={`${LABEL_CLS} flex items-center gap-1`}><Globe size={11} /> Website</label>
+                <input type="url" className={INPUT_CLS} placeholder="https://youragentwebsite.com"
+                  value={fields.website} onChange={(e) => setField("website", e.target.value)} />
+              </div>
+              <div>
+                <label className={`${LABEL_CLS} flex items-center gap-1`}><FileText size={11} /> RE License Number</label>
+                <input type="text" className={INPUT_CLS} placeholder="DRE #01234567"
+                  value={fields.license_number} onChange={(e) => setField("license_number", e.target.value)} />
+              </div>
             </div>
+
             <label className="flex items-start gap-3 mt-5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-500 accent-blue-500 cursor-pointer"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-500 cursor-pointer"
               />
               <span className="text-sm text-slate-500 leading-snug">
                 I agree to the{" "}
@@ -201,13 +260,14 @@ export default function OnboardingPage() {
                 <a href="/privacy" target="_blank" className="text-blue-500 hover:underline">Privacy Policy</a>
               </span>
             </label>
+
             <Button onClick={handleStep1} loading={loading} size="lg" className="w-full mt-4 gap-2">
               Continue <ArrowRight size={16} />
             </Button>
           </Card>
         )}
 
-        {/* Step 2 — Avatar Photo */}
+        {/* ── Step 2 — Photos ──────────────────────────────────────────────── */}
         {step === 2 && (
           <Card>
             <div className="flex items-center gap-3 mb-5">
@@ -215,78 +275,101 @@ export default function OnboardingPage() {
                 <Camera className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <h2 className="font-bold text-brand-text">Upload your headshot</h2>
-                <p className="text-xs text-slate-400">Required · Used as your AI talking avatar in videos</p>
+                <h2 className="font-bold text-brand-text">Upload your photos</h2>
+                <p className="text-xs text-slate-400">Headshot required · Logo optional</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-500 mb-5 bg-slate-50 rounded-xl p-3">
-              Upload a clear, front-facing photo of yourself. This becomes your AI avatar that appears speaking in all your videos.
-            </p>
-
-            {/* Upload area */}
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoFile}
-            />
-
-            {avatarPreview ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary-200 shadow-lg">
-                  <Image src={avatarPreview} alt="Your avatar" fill className="object-cover" unoptimized />
+            {/* Headshot */}
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                Your Headshot <span className="text-red-400 normal-case font-normal">· Required for AI avatar</span>
+              </p>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
+              {avatarPreview ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-primary-200 shadow shrink-0">
+                    <Image src={avatarPreview} alt="Headshot" fill className="object-cover" unoptimized />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Headshot uploaded ✓</p>
+                    <button onClick={() => avatarInputRef.current?.click()}
+                      className="text-xs text-blue-500 hover:underline mt-1">Upload a different photo</button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => photoInputRef.current?.click()}
-                  className="text-sm text-blue-500 hover:underline"
-                >
-                  Upload a different photo
+              ) : (
+                <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar}
+                  className="w-full border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary-300 hover:bg-primary-50/30 transition-colors disabled:opacity-50">
+                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                    {uploadingAvatar ? (
+                      <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Upload className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-slate-600">
+                    {uploadingAvatar ? "Uploading…" : "Click to upload headshot"}
+                  </p>
+                  <p className="text-xs text-slate-400">JPG, PNG, WEBP · Max 10MB · Clear, front-facing photo</p>
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => photoInputRef.current?.click()}
-                disabled={loading}
-                className="w-full border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-primary-300 hover:bg-primary-50/30 transition-colors disabled:opacity-50"
-              >
-                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-slate-400" />
+              )}
+            </div>
+
+            {/* Logo */}
+            <div className="border-t border-slate-100 pt-5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                Brokerage Logo <span className="normal-case font-normal text-slate-400">· Optional · Appears as watermark on videos</span>
+              </p>
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
+              {logoPreview ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0">
+                    <img src={logoPreview} alt="Logo" className="max-w-full max-h-full object-contain p-1" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Logo uploaded ✓</p>
+                    <button onClick={() => logoInputRef.current?.click()}
+                      className="text-xs text-blue-500 hover:underline mt-1">Upload a different logo</button>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-slate-600">Click to upload your photo</p>
-                  <p className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP · Max 10MB</p>
-                </div>
-              </button>
-            )}
+              ) : (
+                <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}
+                  className="w-full border-2 border-dashed border-slate-200 rounded-xl p-5 flex items-center gap-4 hover:border-primary-300 hover:bg-primary-50/30 transition-colors disabled:opacity-50">
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
+                    {uploadingLogo ? (
+                      <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-slate-600">
+                      {uploadingLogo ? "Uploading…" : "Click to upload brokerage logo"}
+                    </p>
+                    <p className="text-xs text-slate-400">PNG with transparent background recommended · Max 5MB</p>
+                  </div>
+                </button>
+              )}
+            </div>
 
             <div className="flex gap-3 mt-6">
               {!avatarUploaded && (
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => setStep(3)}
-                  className="flex-1 text-slate-400"
-                  disabled={loading}
-                >
+                <Button variant="ghost" size="md" onClick={() => setStep(3)}
+                  className="flex-1 text-slate-400" disabled={uploadingAvatar || uploadingLogo}>
                   Skip for now
                 </Button>
               )}
-              <Button
-                onClick={() => setStep(3)}
-                loading={loading}
-                disabled={!avatarUploaded && loading}
-                size="md"
-                className="flex-1 gap-2"
-              >
-                {avatarUploaded ? "Continue" : loading ? "Uploading…" : "Continue"} <ArrowRight size={15} />
+              <Button onClick={() => setStep(3)} size="md"
+                loading={uploadingAvatar || uploadingLogo}
+                disabled={uploadingAvatar || uploadingLogo}
+                className="flex-1 gap-2">
+                Continue <ArrowRight size={15} />
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Step 3 — Voice Sample */}
+        {/* ── Step 3 — Voice ───────────────────────────────────────────────── */}
         {step === 3 && (
           <Card>
             <div className="flex items-center gap-3 mb-5">
@@ -302,35 +385,21 @@ export default function OnboardingPage() {
               Speak naturally for 30 seconds — introduce yourself, talk about a listing, or describe your local market. Our AI will learn your voice.
             </p>
             <VoiceRecorder
-              onRecordingComplete={(blob, duration) => {
-                setVoiceBlob(blob);
-                setVoiceDuration(duration);
-              }}
+              onRecordingComplete={(blob, duration) => { setVoiceBlob(blob); setVoiceDuration(duration); }}
               maxSeconds={120}
             />
             <div className="flex gap-3 mt-6">
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={() => setStep(4)}
-                className="flex-1 text-slate-400"
-              >
+              <Button variant="ghost" size="md" onClick={() => setStep(4)} className="flex-1 text-slate-400">
                 Skip for now
               </Button>
-              <Button
-                onClick={handleStep3}
-                loading={loading}
-                disabled={!voiceBlob}
-                size="md"
-                className="flex-2 gap-2 flex-1"
-              >
+              <Button onClick={handleStep3} loading={loading} disabled={!voiceBlob} size="md" className="flex-1 gap-2">
                 Save & Continue <ArrowRight size={15} />
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Step 4 — Done */}
+        {/* ── Step 4 — Done ────────────────────────────────────────────────── */}
         {step === 4 && (
           <Card className="text-center">
             <div className="w-16 h-16 bg-accent-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -343,10 +412,8 @@ export default function OnboardingPage() {
             <Button onClick={handleFinish} loading={loading} size="lg" className="w-full gap-2">
               Choose My Plan <ArrowRight size={18} />
             </Button>
-            <button
-              onClick={handleFinish}
-              className="text-xs text-slate-400 mt-4 hover:text-slate-600 transition-colors"
-            >
+            <button onClick={handleFinish}
+              className="text-xs text-slate-400 mt-4 hover:text-slate-600 transition-colors block w-full">
               View plans & pricing →
             </button>
           </Card>
