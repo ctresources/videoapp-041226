@@ -20,14 +20,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
   }
 
-  // Check if we've hit the user cap
   const admin = createAdminClient();
+
+  // Check if we've hit the user cap
   const { count } = await admin.from("profiles").select("*", { count: "exact", head: true });
 
   if ((count ?? 0) > MAX_USERS) {
-    // Over the cap — sign them out and redirect with an error
     await supabase.auth.signOut();
     return NextResponse.redirect(`${origin}/register?error=full`);
+  }
+
+  // Skip onboarding for returning users who already completed it
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("onboarding_done")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.onboarding_done) {
+      return NextResponse.redirect(`${origin}/create`);
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`);
