@@ -18,12 +18,17 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({ fullName: "", company: "" });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voiceDuration, setVoiceDuration] = useState(0);
 
   async function handleStep1() {
     if (!profile.fullName.trim()) {
       toast.error("Please enter your name");
+      return;
+    }
+    if (!agreedToTerms) {
+      toast.error("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
     setLoading(true);
@@ -142,7 +147,21 @@ export default function OnboardingPage() {
                 onChange={(e) => setProfile((p) => ({ ...p, company: e.target.value }))}
               />
             </div>
-            <Button onClick={handleStep1} loading={loading} size="lg" className="w-full mt-6 gap-2">
+            <label className="flex items-start gap-3 mt-5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-500 accent-blue-500 cursor-pointer"
+              />
+              <span className="text-sm text-slate-500 leading-snug">
+                I agree to the{" "}
+                <a href="/terms" target="_blank" className="text-blue-500 hover:underline">Terms of Service</a>
+                {" "}and{" "}
+                <a href="/privacy" target="_blank" className="text-blue-500 hover:underline">Privacy Policy</a>
+              </span>
+            </label>
+            <Button onClick={handleStep1} loading={loading} size="lg" className="w-full mt-4 gap-2">
               Continue <ArrowRight size={16} />
             </Button>
           </Card>
