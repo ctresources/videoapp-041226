@@ -35,11 +35,15 @@ export async function GET(req: NextRequest) {
   if (user) {
     const { data: profile } = await admin
       .from("profiles")
-      .select("onboarding_done, subscription_tier, credits_remaining")
+      .select("onboarding_done, subscription_tier, credits_remaining, role")
       .eq("id", user.id)
       .single();
 
     if (profile?.onboarding_done) {
+      // Admins always go straight to the app with no billing check
+      if (profile.role === "admin") {
+        return NextResponse.redirect(`${origin}/create`);
+      }
       const tier = profile.subscription_tier ?? "free";
       const paidPlans = ["starter", "agent", "pro"];
       // Beta users go to billing once they've used their 1 free video
