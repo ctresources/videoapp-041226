@@ -786,6 +786,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
           {/* Avatar looks — different outfits/backgrounds for the same avatar */}
           <AvatarLooksManager
             userId={userId}
+            hasPhoto={!!fields.avatar_url}
             hasAvatar={!!fields.heygen_photo_id}
           />
         </div>
