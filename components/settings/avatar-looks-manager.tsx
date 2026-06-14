@@ -12,7 +12,7 @@ interface AvatarLook {
   status: string | null;
 }
 
-export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasAvatar: boolean }) {
+export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: string; hasPhoto: boolean; hasAvatar: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
@@ -158,9 +158,15 @@ export function AvatarLooksManager({ userId, hasAvatar }: { userId: string; hasA
         )}
       </div>
 
-      {!hasAvatar && (
+      {!hasPhoto && (
         <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
           Upload your headshot above first, then come back here to add multiple looks.
+        </p>
+      )}
+
+      {hasPhoto && !hasAvatar && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+          Your headshot is being registered with the AI — you can add unlimited looks after your first video generates.
         </p>
       )}
 
