@@ -30,17 +30,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/register?error=full`);
   }
 
-  // Skip onboarding for returning users who already completed it
+  // Route returning users based on onboarding and subscription status
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const { data: profile } = await admin
       .from("profiles")
-      .select("onboarding_done")
+      .select("onboarding_done, subscription_tier")
       .eq("id", user.id)
       .single();
 
     if (profile?.onboarding_done) {
-      return NextResponse.redirect(`${origin}/create`);
+      const paidPlans = ["starter", "agent", "pro", "beta"];
+      const hasPaidPlan = paidPlans.includes(profile.subscription_tier ?? "free");
+      return NextResponse.redirect(`${origin}${hasPaidPlan ? "/create" : "/billing"}`);
     }
   }
 
