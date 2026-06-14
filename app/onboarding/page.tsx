@@ -5,13 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { VoiceRecorder } from "@/components/voice/voice-recorder";
 import { createClient } from "@/lib/supabase/client";
-import { CheckCircle, Mic, ArrowRight, Sparkles } from "lucide-react";
+import { CheckCircle, Mic, ArrowRight, Sparkles, Camera, Upload } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,8 +19,11 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({ fullName: "", company: "" });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarUploaded, setAvatarUploaded] = useState(false);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voiceDuration, setVoiceDuration] = useState(0);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function handleStep1() {
     if (!profile.fullName.trim()) {
@@ -44,34 +47,67 @@ export default function OnboardingPage() {
     setStep(2);
   }
 
-  async function handleStep2() {
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
+
+    setLoading(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/headshot.${ext}?t=${Date.now()}`;
+    const { error: upErr } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (upErr) { toast.error(upErr.message); setLoading(false); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    setAvatarPreview(publicUrl);
+
+    try {
+      const res = await fetch("/api/profile/heygen-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: publicUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Avatar photo saved!");
+    } catch {
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+      toast.success("Photo saved! AI avatar will activate on your first video.");
+    }
+
+    setAvatarUploaded(true);
+    setLoading(false);
+  }
+
+  async function handleStep3() {
     if (!voiceBlob) {
       toast.error("Please record a voice sample first");
       return;
     }
     setLoading(true);
-
     try {
-      // Upload voice sample for ElevenLabs clone
       const formData = new FormData();
       formData.append("audio", voiceBlob, "voice-sample.webm");
       formData.append("title", "Voice Sample - Onboarding");
       formData.append("duration", String(voiceDuration));
-
       const res = await fetch("/api/voice/upload", { method: "POST", body: formData });
       if (!res.ok) throw new Error("Upload failed");
-
       toast.success("Voice sample saved!");
-      setStep(3);
+      setStep(4);
     } catch {
       toast.error("Failed to save voice sample. You can set this up later in Settings.");
-      setStep(3);
+      setStep(4);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSkipToApp() {
+  async function handleFinish() {
     setLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -83,15 +119,15 @@ export default function OnboardingPage() {
   }
 
   const stepMeta = [
-    { n: 1, label: "Your Profile" },
-    { n: 2, label: "Voice Sample" },
-    { n: 3, label: "First Video" },
+    { n: 1, label: "Profile" },
+    { n: 2, label: "Your Photo" },
+    { n: 3, label: "Voice" },
+    { n: 4, label: "Choose Plan" },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50/60 to-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
             src="/logo_navbar_transparent.png"
@@ -103,7 +139,6 @@ export default function OnboardingPage() {
           />
         </div>
 
-        {/* Step indicators */}
         <div className="flex justify-center gap-4 mb-8">
           {stepMeta.map(({ n, label }) => (
             <div key={n} className="flex flex-col items-center gap-1.5">
@@ -129,7 +164,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <h2 className="font-bold text-brand-text">Welcome! Let&apos;s set up your profile</h2>
-                <p className="text-xs text-slate-400">Takes less than 30 seconds</p>
+                <p className="text-xs text-slate-400">Takes less than 2 minutes</p>
               </div>
             </div>
             <div className="flex flex-col gap-4">
@@ -167,8 +202,86 @@ export default function OnboardingPage() {
           </Card>
         )}
 
-        {/* Step 2 — Voice Sample */}
+        {/* Step 2 — Avatar Photo */}
         {step === 2 && (
+          <Card>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                <Camera className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <h2 className="font-bold text-brand-text">Upload your headshot</h2>
+                <p className="text-xs text-slate-400">Required · Used as your AI talking avatar in videos</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 mb-5 bg-slate-50 rounded-xl p-3">
+              Upload a clear, front-facing photo of yourself. This becomes your AI avatar that appears speaking in all your videos.
+            </p>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoFile}
+            />
+
+            {avatarPreview ? (
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary-200 shadow-lg">
+                  <Image src={avatarPreview} alt="Your avatar" fill className="object-cover" unoptimized />
+                </div>
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  className="text-sm text-blue-500 hover:underline"
+                >
+                  Upload a different photo
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={loading}
+                className="w-full border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-primary-300 hover:bg-primary-50/30 transition-colors disabled:opacity-50"
+              >
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-slate-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-600">Click to upload your photo</p>
+                  <p className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP · Max 10MB</p>
+                </div>
+              </button>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              {!avatarUploaded && (
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setStep(3)}
+                  className="flex-1 text-slate-400"
+                  disabled={loading}
+                >
+                  Skip for now
+                </Button>
+              )}
+              <Button
+                onClick={() => setStep(3)}
+                loading={loading}
+                disabled={!avatarUploaded && loading}
+                size="md"
+                className="flex-1 gap-2"
+              >
+                {avatarUploaded ? "Continue" : loading ? "Uploading…" : "Continue"} <ArrowRight size={15} />
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 3 — Voice Sample */}
+        {step === 3 && (
           <Card>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
@@ -193,13 +306,13 @@ export default function OnboardingPage() {
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="flex-1 text-slate-400"
               >
                 Skip for now
               </Button>
               <Button
-                onClick={handleStep2}
+                onClick={handleStep3}
                 loading={loading}
                 disabled={!voiceBlob}
                 size="md"
@@ -211,21 +324,21 @@ export default function OnboardingPage() {
           </Card>
         )}
 
-        {/* Step 3 — First video CTA */}
-        {step === 3 && (
+        {/* Step 4 — Done */}
+        {step === 4 && (
           <Card className="text-center">
             <div className="w-16 h-16 bg-accent-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-accent-500" />
             </div>
             <h2 className="text-xl font-bold text-brand-text mb-2">You&apos;re all set!</h2>
             <p className="text-slate-500 text-sm mb-6">
-              Time to create your first video. Record 1-2 minutes about a listing, market update, or real estate tip — and watch the magic happen.
+              Choose your plan to start creating AI-powered real estate videos.
             </p>
-            <Button onClick={handleSkipToApp} loading={loading} size="lg" className="w-full gap-2">
+            <Button onClick={handleFinish} loading={loading} size="lg" className="w-full gap-2">
               Choose My Plan <ArrowRight size={18} />
             </Button>
             <button
-              onClick={handleSkipToApp}
+              onClick={handleFinish}
               className="text-xs text-slate-400 mt-4 hover:text-slate-600 transition-colors"
             >
               View plans & pricing →
