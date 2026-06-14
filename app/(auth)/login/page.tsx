@@ -14,11 +14,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
+    setUnconfirmed(false);
 
     if (!email) return setErrors((p) => ({ ...p, email: "Email is required" }));
     if (!password) return setErrors((p) => ({ ...p, password: "Password is required" }));
@@ -29,7 +32,11 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setUnconfirmed(true);
+      } else {
+        toast.error(error.message);
+      }
       setLoading(false);
       return;
     }
@@ -61,6 +68,23 @@ export default function LoginPage() {
     router.refresh();
   }
 
+  async function handleResendConfirmation() {
+    if (!email) {
+      setErrors((p) => ({ ...p, email: "Enter your email above first" }));
+      return;
+    }
+    setResending(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Confirmation email sent — check your inbox.");
+      setUnconfirmed(false);
+    }
+    setResending(false);
+  }
+
   async function handleGoogleLogin() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
@@ -80,7 +104,7 @@ export default function LoginPage() {
           type="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => { setEmail(e.target.value); setUnconfirmed(false); }}
           error={errors.email}
           autoComplete="email"
         />
@@ -102,6 +126,25 @@ export default function LoginPage() {
           Sign In
         </Button>
       </form>
+
+      {/* Email not confirmed banner */}
+      {unconfirmed && (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <p className="text-sm font-semibold text-amber-800 mb-1">Please confirm your email</p>
+          <p className="text-xs text-amber-700 mb-3">
+            We sent a confirmation link to <strong>{email}</strong>. Check your inbox (and spam folder).
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={resending}
+            onClick={handleResendConfirmation}
+            className="w-full border-amber-300 text-amber-700 hover:bg-amber-100"
+          >
+            Resend confirmation email
+          </Button>
+        </div>
+      )}
 
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
