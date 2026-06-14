@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
     await admin
       .from("profiles")
-      .update({ heygen_photo_id: photoId, avatar_url: image_url })
+      .update({ heygen_photo_id: photoId })
       .eq("id", user.id);
 
     console.log(`[heygen-avatar] Registered talking photo for user ${user.id}: ${photoId}`);
