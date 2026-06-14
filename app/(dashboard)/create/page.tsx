@@ -506,14 +506,18 @@ function CreatePageInner() {
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
-        <a href="/settings" className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 hover:bg-amber-100 transition-colors group">
+        <button
+          type="button"
+          onClick={() => router.push("/settings")}
+          className="w-full text-left flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 hover:bg-amber-100 transition-colors group"
+        >
           <span className="text-amber-500 text-lg leading-none mt-0.5">⚡</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-amber-800">Complete your profile to get the most out of your videos</p>
             <p className="text-xs text-amber-600 mt-0.5">Add your headshot, AI avatar photo, voice, logo, and contact info in Settings — they appear in every video you create.</p>
           </div>
           <span className="text-amber-500 text-sm font-semibold shrink-0 group-hover:underline">Go to Settings →</span>
-        </a>
+        </button>
       )}
 
       {/* Header */}
