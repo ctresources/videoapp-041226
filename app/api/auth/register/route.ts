@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyNewUser } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const { email, password, fullName } = await req.json();
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  notifyNewUser({ name: fullName, email, provider: "email" });
 
   return NextResponse.json({ user_id: data.user.id });
 }

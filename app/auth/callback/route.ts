@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { notifyNewUser } from "@/lib/email";
 
 const MAX_USERS = 100;
 
@@ -33,6 +34,13 @@ export async function GET(req: NextRequest) {
   // Route returning users based on onboarding and subscription status
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
+    // Notify on new Google OAuth signups (created within the last 60 seconds)
+    const isNew = user.created_at && (Date.now() - new Date(user.created_at).getTime()) < 60_000;
+    if (isNew) {
+      const name = (user.user_metadata?.full_name as string | null) ?? null;
+      notifyNewUser({ name, email: user.email ?? null, provider: "google" });
+    }
+
     const { data: profile } = await admin
       .from("profiles")
       .select("onboarding_done, subscription_tier, credits_remaining, role")
