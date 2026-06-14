@@ -14,7 +14,7 @@ export async function POST() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sparkreels.ai";
   const response = NextResponse.redirect(`${appUrl}/login`, { status: 302 });
 
   // NextResponse.redirect() creates a new response — cookie-clearing headers
