@@ -41,8 +41,25 @@ export async function POST(req: NextRequest) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = (session.metadata?.supabase_user_id as string | undefined);
-      if (!userId || !session.subscription) break;
+      if (!userId) break;
 
+      // One-time credit pack purchase
+      if (session.mode === "payment") {
+        const creditsToAdd = parseInt(session.metadata?.credits_to_add ?? "0", 10);
+        if (creditsToAdd > 0) {
+          const { data: profileRow } = await admin
+            .from("profiles")
+            .select("credits_remaining")
+            .eq("id", userId)
+            .single();
+          const current = (profileRow as { credits_remaining: number } | null)?.credits_remaining ?? 0;
+          await updateProfile(admin, userId, { credits_remaining: current + creditsToAdd });
+        }
+        break;
+      }
+
+      // Subscription checkout
+      if (!session.subscription) break;
       const sub = await stripe.subscriptions.retrieve(session.subscription as string);
       const item = sub.items.data[0];
       const priceId = item?.price.id;
