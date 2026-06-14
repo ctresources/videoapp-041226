@@ -35,34 +35,45 @@ function RegisterForm() {
     if (Object.keys(newErrors).length) return setErrors(newErrors);
 
     setLoading(true);
-    const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    // Create user server-side (auto-confirmed, no email verification needed)
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: form.email, password: form.password, fullName: form.fullName }),
+    });
+    const body = await res.json();
+
+    if (!res.ok) {
+      toast.error(body.error || "Registration failed");
+      setLoading(false);
+      return;
+    }
+
+    // Sign in immediately — user is already confirmed
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
-      options: {
-        data: { full_name: form.fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
     });
 
-    if (error) {
-      toast.error(error.message);
+    if (signInError) {
+      toast.error(signInError.message);
       setLoading(false);
       return;
     }
 
     // Apply invite code if provided
     if (form.inviteCode.trim()) {
-      const res = await fetch("/api/auth/apply-invite-code", {
+      const codeRes = await fetch("/api/auth/apply-invite-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: form.inviteCode.trim() }),
       });
-      if (res.ok) {
+      if (codeRes.ok) {
         toast.success("Beta access activated! You have 1 free AI video + unlimited camera recordings.");
       } else {
-        const { error: codeError } = await res.json();
+        const { error: codeError } = await codeRes.json();
         toast.error(codeError || "Invite code could not be applied — continuing as free account.");
       }
     } else {
