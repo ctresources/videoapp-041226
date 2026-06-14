@@ -274,6 +274,9 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   const [voiceId, setVoiceId] = useState(currentVoiceId);
   const [heygenVoiceId, setHeygenVoiceId] = useState(currentHeygenVoiceId);
   const [submitting, setSubmitting] = useState(false);
+  const [sampleScript, setSampleScript] = useState(
+    `Hi, my name is [your name] and I'm a real estate agent. I help buyers and sellers navigate the market with confidence. Whether you're looking for your first home, upgrading to something bigger, or selling to start a new chapter — I'm here to guide you every step of the way. With years of local market experience, I know how to get results for my clients. Let's find your perfect home together. Give me a call anytime — I'd love to help.`
+  );
 
   // Recording state
   const [recState, setRecState] = useState<"idle" | "recording" | "recorded">("idle");
@@ -475,16 +478,14 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
           {recState !== "recorded" && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-800 mb-1.5 flex items-center gap-1">
-                <Mic size={11} /> Sample script — read this aloud when recording
+                <Mic size={11} /> Script to read aloud — edit or replace with your own
               </p>
-              <p className="text-xs text-amber-900 leading-relaxed italic">
-                "Hi, my name is [your name] and I'm a real estate agent. I help buyers and sellers
-                navigate the market with confidence. Whether you're looking for your first home,
-                upgrading to something bigger, or selling to start a new chapter — I'm here to guide
-                you every step of the way. With years of local market experience, I know how to get
-                results for my clients. Let's find your perfect home together. Give me a call anytime
-                — I'd love to help."
-              </p>
+              <textarea
+                value={sampleScript}
+                onChange={(e) => setSampleScript(e.target.value)}
+                rows={5}
+                className="w-full text-xs text-amber-900 leading-relaxed bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+              />
             </div>
           )}
 
