@@ -279,15 +279,6 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_done")
-    .eq("id", user.id)
-    .single();
-  if (profile && !profile.onboarding_done) {
-    redirect("/onboarding");
-  }
-
   return (
     <div>
       <Suspense fallback={
