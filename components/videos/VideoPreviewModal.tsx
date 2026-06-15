@@ -77,11 +77,13 @@ export function VideoPreviewModal({ videoUrl, title, videoType, onClose, onPubli
         <div className={`relative bg-black flex items-center justify-center ${isPortrait ? "aspect-[9/16]" : "aspect-video"}`}>
           <video
             ref={videoRef}
-            src={videoUrl}
             controls
             className="w-full h-full object-contain"
             playsInline
-          />
+            crossOrigin="anonymous"
+          >
+            <source src={videoUrl} type="video/mp4" />
+          </video>
 
           {/* Overlay controls */}
           <div className="absolute top-3 right-3 flex gap-1.5">
