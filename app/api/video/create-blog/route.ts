@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining")
+    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role")
     .eq("id", user.id)
     .single();
 
@@ -427,6 +427,7 @@ export async function POST(req: NextRequest) {
     website: string | null;
     voice_clone_id: string | null;
     credits_remaining: number;
+    role: string | null;
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
@@ -452,7 +453,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (profile.credits_remaining < 1) {
+  if (profile.role !== "admin" && profile.credits_remaining < 1) {
     return NextResponse.json(
       { error: "No videos remaining this month. Please upgrade your plan." },
       { status: 402 },
