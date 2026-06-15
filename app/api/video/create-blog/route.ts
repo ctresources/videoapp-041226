@@ -430,7 +430,7 @@ export async function POST(req: NextRequest) {
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
-  if (!profile?.heygen_photo_id && profile?.avatar_url) {
+  if (profile && !profile.heygen_photo_id && profile.avatar_url) {
     try {
       const imgRes = await fetch(profile.avatar_url);
       if (imgRes.ok) {
