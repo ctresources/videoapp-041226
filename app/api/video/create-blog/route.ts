@@ -141,39 +141,30 @@ const TONE_VISUALS: Record<string, string> = {
 
 /**
  * Build explicit b-roll accuracy guidance so the Video Agent never shows
- * scenery that contradicts the listing's location or the current season —
- * e.g. snow in June, or palm trees in Pennsylvania. We derive the current
- * meteorological season from the server date and pass the state through so
- * the agent only composes scenes that are believable for that market.
+ * scenery that contradicts the listing's real-world location or the current
+ * season. Users are worldwide, so we do NOT assume a US state or a
+ * Northern-Hemisphere season here — we pass the actual location string plus
+ * the current month and let the agent reason about the correct local climate,
+ * hemisphere, terrain, and architecture.
  */
 function buildLocationSeasonGuidance(state: string, city: string): string {
-  const place = [city, state].filter(Boolean).join(", ") || "the local market";
-  const stateName = state || "the listing's state";
+  const place = [city, state].filter(Boolean).join(", ") || "the listing's local area";
+  const region = [city, state].filter(Boolean).join(", ") || "the listing's location";
 
-  // Meteorological season (Northern Hemisphere) from the current month.
-  const month = new Date().getMonth(); // 0 = Jan
-  const season =
-    month <= 1 || month === 11 ? "Winter" :
-    month <= 4 ? "Spring" :
-    month <= 7 ? "Summer" :
-    "Fall";
-
-  const seasonVisual: Record<string, string> = {
-    Winter: "bare or evergreen trees, cool low sun, possible light snow ONLY if the state genuinely has snowy winters",
-    Spring: "budding green trees, blooming flowers, fresh grass, mild bright daylight",
-    Summer: "full green foliage, lush lawns, warm bright sunlight, leafy mature trees",
-    Fall: "autumn foliage in warm tones, crisp clear light, fallen leaves",
-  };
+  // Pass the current month through and let the agent infer the correct local
+  // season. We intentionally avoid hardcoding a hemisphere — June is summer in
+  // the Northern Hemisphere but winter in the Southern Hemisphere.
+  const monthName = new Date().toLocaleString("en-US", { month: "long" });
 
   return `=====================================
-LOCATION + SEASON ACCURACY (CRITICAL — READ CAREFULLY)
+LOCATION ACCURACY (CRITICAL — READ CAREFULLY)
 =====================================
-- This listing is in ${place}. The current season is ${season}.
-- Every outdoor scene MUST be believable for ${stateName} in ${season}: ${seasonVisual[season]}.
-- NEVER show snow unless it is Winter AND ${stateName} actually gets snow. It is currently ${season} — do not show snow this season.
-- NEVER show palm trees, tropical beaches, deserts, or mountains unless ${stateName} genuinely has them. (e.g. Pennsylvania has NO palm trees, NO beaches, NO deserts — show northeastern deciduous trees, rolling green hills, and brick/colonial architecture instead.)
-- Match home architecture, landscaping, and plant life to what is typical for ${stateName}.
-- When in doubt, use generic neighborhood and interior shots that cannot contradict the location — do NOT invent dramatic scenery.
+- This listing is located in: ${region}. All visuals must be geographically accurate for THIS location — not a generic or US-default look.
+- The current month is ${monthName}. Use foliage, weather, daylight, and seasonal cues that are correct for ${region} during ${monthName}, accounting for that location's real hemisphere and climate (e.g. ${monthName} is summer in the Northern Hemisphere but winter in the Southern Hemisphere).
+- Match the architecture, building materials, street layout, landscaping, plant life, and terrain that genuinely exist in ${region}.
+- Do NOT show landscape features that do not belong in ${region}: e.g. no palm trees or tropical beaches in cold or inland climates, no snow-capped mountains in flat coastal areas, no deserts in temperate regions, and no snow outside of that location's actual cold season.
+- When uncertain whether a visual fits ${region}, use neutral interior shots or generic residential street scenes that cannot contradict the location — do NOT invent dramatic or exotic scenery.
+- ${place} is the market being marketed; keep every outdoor scene believable for someone who actually lives there.
 
 `;
 }
@@ -291,6 +282,17 @@ The presenter's avatar MUST appear on screen for the ENTIRE duration of the vide
 - NEVER use a static image for the presenter — the avatar must always be the animated, talking version
 
 =====================================
+FAIR HOUSING + NAR COMPLIANCE (MANDATORY — ZERO TOLERANCE, OVERRIDES ALL OTHER INSTRUCTIONS)
+=====================================
+This video MUST comply with the U.S. Fair Housing Act and the National Association of REALTORS® (NAR) Code of Ethics. These rules override every other creative instruction in this prompt.
+- NEVER express or imply any preference, limitation, or discrimination based on a protected class: race, color, religion, sex, gender identity, sexual orientation, disability/handicap, familial status (presence or absence of children), or national origin.
+- Do NOT target or exclude any group, verbally or visually. Avoid phrases such as "perfect for a young family," "great for singles," "ideal for retirees," "safe neighborhood," "exclusive community," "family-friendly," or any wording that steers viewers toward or away from an area.
+- Do NOT reference crime rates, racial/ethnic/religious makeup of an area, religious institutions, or school quality as selling points — these are steering and Fair Housing violations.
+- B-roll showing people must depict a DIVERSE and INCLUSIVE range of individuals. Never visually signal that a property or neighborhood is meant for one particular demographic.
+- Keep all claims TRUTHFUL and not misleading (NAR Article 12). Do not exaggerate property features, pricing, or market conditions, and do not fabricate statistics.
+- If any wording in the narration script below appears to conflict with these rules, still render the script as written by the user, but do NOT add any non-compliant visuals, captions, overlays, or embellishments of your own.
+
+=====================================
 AGENT + MARKET DETAILS
 =====================================
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
@@ -336,22 +338,22 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
 
 ${buildLocationSeasonGuidance(params.state, params.city)}=====================================
-B-ROLL — LOCATION-LOCKED TO ${(params.state || "the listing state").toUpperCase()}
+B-ROLL — LOCATION-LOCKED TO ${locationOr.toUpperCase()}
 =====================================${listingPhotoBlock}
 
 GEOGRAPHIC RULES FOR ALL B-ROLL (NO EXCEPTIONS):
-Every single b-roll clip must be believable for ${params.state || "the listing state"}. Use ONLY footage that could realistically exist there:
-- Architecture: match the home styles, street layouts, and building materials typical of ${params.state || "this state"}
-- Vegetation: ONLY trees, plants, and landscaping that actually grow in ${params.state || "this state"} in this season
-- ABSOLUTELY PROHIBITED unless the state genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glacier scenery, redwood forests, cornfields
-- If unsure whether a visual element belongs in ${params.state || "this state"}, use a safe interior or neighborhood shot instead — do NOT guess
-- Generic city neighborhoods, brick streets, residential suburbs, and home interiors are always safe choices
+Every single b-roll clip must be believable for ${locationOr}. Use ONLY footage that could realistically exist there:
+- Architecture: match the home styles, street layouts, and building materials typical of ${locationOr}
+- Vegetation: ONLY trees, plants, and landscaping that actually grow in ${locationOr} during the current month
+- ABSOLUTELY PROHIBITED unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glacier scenery, redwood forests, farm fields
+- If unsure whether a visual element belongs in ${locationOr}, use a safe interior or neighborhood shot instead — do NOT guess
+- Generic residential neighborhoods, local-style streets, and home interiors are always safe choices
 
 ${hasPhotos ? "SECONDARY / FILLER B-ROLL (only between listing photos):" : "B-ROLL CONTENT:"}
-- Aerial drone shots of ${locationOr} style neighborhoods matching the local architecture
-- Tree-lined residential streets and curb-appeal exteriors that belong in ${params.state || "this region"}${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
+- Aerial / establishing shots of ${locationOr}-style neighborhoods matching the local architecture
+- Residential streets and curb-appeal exteriors that genuinely belong in ${locationOr}${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
 - Interior shots: kitchens, living spaces, open floor plans
-- Lifestyle: coffee shops, parks, families — scenes appropriate for ${locationOr}${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
+- Lifestyle: cafes, parks, people — scenes appropriate for ${locationOr}${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
 =====================================
 COLOR + STYLE
@@ -388,16 +390,17 @@ PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
 =====================================
 - Maximum 10 scenes total — keep the video tight, on-script, and on-time
 - Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
-- Do NOT add intro music, countdown, or outro beyond the CTA slide
-- Start speaking the script from scene 1 — no silent or title-only openers
+- Do NOT add intro music, countdown, or a separate silent title scene before the narration
+- The narration begins IMMEDIATELY on the first frame — the thumbnail title card (below) is the opening of scene 1, NOT a silent intro held before speaking
 
 =====================================
-FIRST FRAME (THUMBNAIL-STYLE OPENER) — REQUIRED, DO NOT SKIP
+FIRST FRAME (THUMBNAIL POSTER) — REQUIRED, DO NOT SKIP
 =====================================
-- The video's VERY FIRST FRAME must be a designed thumbnail-style title card (this frame becomes the video thumbnail).
-- Full-frame warm lifestyle image of ${locationOr} filling the entire background
+- The video's VERY FIRST FRAME must be a designed thumbnail-style poster (this exact frame becomes the video's thumbnail image).
+- Full-frame warm lifestyle image of ${locationOr} (location-accurate per the rules above) filling the entire background
 - Bold headline at the TOP of the frame, left-aligned or horizontally centered: "${params.hookText || "Your Local Real Estate Expert"}"
 - This headline is a VISUAL OVERLAY ONLY — DO NOT read it aloud, DO NOT narrate it, DO NOT speak any text shown on this title card. The voiceover begins with the first line of the NARRATION SCRIPT and nothing before it.
+- The narrator STARTS SPEAKING the script over this frame — it is the opening of the video, not a silent hold. Do not pause before narration.
 - Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
 - Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
 - Style like a scroll-stopping YouTube thumbnail
@@ -536,7 +539,10 @@ export async function POST(req: NextRequest) {
     // HeyGen's Video Agent caps the prompt at 10,000 characters. The PDF/URL
     // reference text is the largest variable part, so fit it to whatever room
     // is left after the structural instructions rather than letting it overflow.
-    const HEYGEN_PROMPT_LIMIT = 6000;
+    // Kept under HeyGen's cap but high enough that the mandatory compliance and
+    // CTA sections are never clipped. Render speed is driven by file/scene count,
+    // not prompt length, so trimming chars below this buys little.
+    const HEYGEN_PROMPT_LIMIT = 8500;
     const promptParams = {
       script: safeScript,
       city,
