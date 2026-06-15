@@ -47,11 +47,12 @@ export async function GET(req: NextRequest) {
       .eq("id", user.id)
       .single();
 
+    // Admins always go straight to the app — no billing or onboarding check
+    if (profile?.role === "admin") {
+      return NextResponse.redirect(`${origin}/create`);
+    }
+
     if (profile?.onboarding_done) {
-      // Admins always go straight to the app with no billing check
-      if (profile.role === "admin") {
-        return NextResponse.redirect(`${origin}/create`);
-      }
       const tier = profile.subscription_tier ?? "free";
       const paidPlans = ["starter", "agent", "pro"];
       const hasCredits = (profile.credits_remaining ?? 0) > 0;
