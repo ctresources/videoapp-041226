@@ -7,6 +7,7 @@ import {
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   getAvatarLooks,
+  uploadTalkingPhoto,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -427,6 +428,22 @@ export async function POST(req: NextRequest) {
     voice_clone_id: string | null;
     credits_remaining: number;
   } | null;
+
+  // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
+  if (!profile?.heygen_photo_id && profile?.avatar_url) {
+    try {
+      const imgRes = await fetch(profile.avatar_url);
+      if (imgRes.ok) {
+        const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
+        const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+        const photoId = await uploadTalkingPhoto(imageBuffer, contentType);
+        await admin.from("profiles").update({ heygen_photo_id: photoId }).eq("id", user.id);
+        profile.heygen_photo_id = photoId;
+      }
+    } catch (err) {
+      console.warn("[create-blog] HeyGen auto-register failed:", err);
+    }
+  }
 
   if (!profile?.heygen_photo_id) {
     return NextResponse.json(
