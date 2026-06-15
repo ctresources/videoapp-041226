@@ -109,10 +109,10 @@ export async function uploadTalkingPhoto(
   const apiKey = getApiKey();
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);
 
-  // ── Step 1: Upload image as asset (v3 endpoint) ───────────────────────────
+  // ── Step 1: Upload photo via the dedicated photo-avatar endpoint ─────────────
   const formData = new FormData();
   formData.append("file", new Blob([new Uint8Array(imageBuffer)], { type: contentType }), "headshot.jpg");
-  const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
+  const uploadRes = await fetch(`${HEYGEN_API}/v1/photo_avatar/photo/upload`, {
     method: "POST",
     headers: { "x-api-key": apiKey },
     body: formData,
@@ -120,14 +120,13 @@ export async function uploadTalkingPhoto(
 
   if (!uploadRes.ok) {
     const err = await uploadRes.text().catch(() => "unknown");
-    throw new Error(`HeyGen image asset upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
+    throw new Error(`HeyGen photo upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
   }
 
   const uploadData = await uploadRes.json();
-  console.log("[heygen] Asset upload response:", JSON.stringify(uploadData).slice(0, 300));
+  console.log("[heygen] Photo upload response:", JSON.stringify(uploadData).slice(0, 300));
 
-  // v3 returns asset_id; v2 photo avatar group creation still uses image_key
-  const imageKey = uploadData.data?.image_key || uploadData.data?.asset_id;
+  const imageKey = uploadData.data?.image_key;
   if (!imageKey) {
     throw new Error(`HeyGen returned no image_key. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
   }
