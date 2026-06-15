@@ -646,10 +646,8 @@ export async function POST(req: NextRequest) {
     for (const url of combinedPhotos) {
       files.push({ type: "url", url });
     }
-    // Attach user-uploaded PDF as a reference document for the Video Agent.
-    if (pdfUrl && typeof pdfUrl === "string") {
-      files.push({ type: "url", url: pdfUrl });
-    }
+    // PDF content is already injected into the prompt via pdfText — don't pass
+    // the PDF URL to HeyGen as a file since it rejects application/pdf content type.
 
     const { data: videoRow, error: videoRowErr } = await admin
       .from("generated_videos")
