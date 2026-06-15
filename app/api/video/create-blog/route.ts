@@ -279,11 +279,13 @@ ${orientationBlock}=====================================
 AVATAR — NON-NEGOTIABLE REQUIREMENT
 =====================================
 The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
+- ANIMATED TALKING AVATAR: the avatar face MUST move and lip-sync to the narration throughout the entire video. This is a talking photo avatar — the mouth, face, and expressions must animate in real time as the narrator speaks. NEVER render a still/static photo of the presenter. The avatar must be talking and animated for every single frame.
 - Show the avatar as a circular picture-in-picture (PiP) anchored to the BOTTOM-RIGHT corner
 - PiP size: ~20–25% of screen width, with a clean white or soft gold circular border
 - B-roll fills the full frame BEHIND the PiP — the avatar never disappears
 - NEVER show a frame without the avatar visible
 - NEVER show the avatar full-screen — circular bottom-right PiP only
+- NEVER use a static image for the presenter — the avatar must always be the animated, talking version
 
 =====================================
 AGENT + MARKET DETAILS
@@ -308,6 +310,19 @@ video's b-roll choices, on-screen statistics, and key talking points:
 
 ${params.pdfContent}
 ` : ""}
+=====================================
+SCENE-BY-SCENE VISUAL SYNC (CRITICAL — READ CAREFULLY)
+=====================================
+Every b-roll clip MUST visually match exactly what is being spoken at that moment in the script. This is the single most important visual rule — generic or unrelated footage is not acceptable.
+- When the script mentions a specific room (kitchen, bedroom, backyard, living room), show footage of THAT room
+- When the script mentions the neighborhood, street, or area, show THAT neighborhood or street type
+- When the script mentions a market statistic or price, immediately show a data overlay for that EXACT number
+- When the script mentions a lifestyle benefit (walkability, schools, parks, commute), show that benefit visually at that moment
+- When the script mentions the property address, show the exterior or curb of a matching home style
+- If listing photos are attached, match each photo to the sentence in the script that describes what is shown in that photo
+- Cut to a new b-roll clip every time the script topic changes — do NOT hold one clip while multiple unrelated topics are discussed
+- NEVER show footage of Topic B while the narrator is speaking about Topic A
+
 =====================================
 PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 =====================================

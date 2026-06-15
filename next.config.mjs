@@ -6,6 +6,19 @@ const pwa = withPWA({
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   buildExcludes: [/middleware-manifest\.json$/],
+  // Videos require HTTP Range requests for seeking/streaming.
+  // The service worker must not intercept these — use NetworkOnly so
+  // the browser talks directly to the CDN and range headers are preserved.
+  runtimeCaching: [
+    {
+      urlPattern: /\.mp4(\?|$)/i,
+      handler: "NetworkOnly",
+    },
+    {
+      urlPattern: /supabase\.co\/storage/i,
+      handler: "NetworkOnly",
+    },
+  ],
 });
 
 /** @type {import('next').NextConfig} */
