@@ -16,6 +16,7 @@
  */
 
 const HEYGEN_API = "https://api.heygen.com";
+const HEYGEN_UPLOAD_API = "https://upload.heygen.com";
 
 function getApiKey(): string {
   const key = process.env.HEYGEN_API_KEY;
@@ -109,13 +110,17 @@ export async function uploadTalkingPhoto(
   const apiKey = getApiKey();
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);
 
-  // ── Step 1: Upload photo via the dedicated photo-avatar endpoint ─────────────
-  const formData = new FormData();
-  formData.append("file", new Blob([new Uint8Array(imageBuffer)], { type: contentType }), "headshot.jpg");
-  const uploadRes = await fetch(`${HEYGEN_API}/v1/photo_avatar/photo/upload`, {
+  // ── Step 1: Upload image to HeyGen's asset host ──────────────────────────────
+  // The asset upload service lives on upload.heygen.com (NOT api.heygen.com) and
+  // takes a raw binary body with the image Content-Type. It returns an image_key
+  // that the v2 photo-avatar group create call references.
+  const uploadRes = await fetch(`${HEYGEN_UPLOAD_API}/v1/asset`, {
     method: "POST",
-    headers: { "x-api-key": apiKey },
-    body: formData,
+    headers: {
+      "x-api-key": apiKey,
+      "Content-Type": contentType,
+    },
+    body: new Uint8Array(imageBuffer),
   });
 
   if (!uploadRes.ok) {
