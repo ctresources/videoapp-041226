@@ -126,6 +126,31 @@ function TalkingAvatarUploader({
   const [preview, setPreview] = useState<string | null>(currentAvatarUrl);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [registeringHeyGen, setRegisteringHeyGen] = useState(false);
+  const [heygenError, setHeygenError] = useState<string | null>(null);
+
+  async function retryHeyGenRegistration() {
+    if (!preview) return;
+    setHeygenError(null);
+    setRegisteringHeyGen(true);
+    try {
+      const res = await fetch("/api/profile/heygen-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: preview }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPhotoId(data.photo_id);
+      onUpdate(data.photo_id, preview);
+      toast.success("Talking avatar registered! Your videos will now show you speaking.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      setHeygenError(msg);
+      toast.error("AI registration failed — try uploading a clearer front-facing photo.");
+    } finally {
+      setRegisteringHeyGen(false);
+    }
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -158,12 +183,13 @@ function TalkingAvatarUploader({
       onUpdate(data.photo_id, publicUrl);
       toast.success("Talking avatar photo saved! Your videos will now show you speaking.");
     } catch (err) {
-      // HeyGen registration failed — still save avatar_url so static PiP works
+      // HeyGen registration failed — still save avatar_url so user can retry later
       const supabaseClient = createClient();
       await supabaseClient.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId);
       onUpdate(null, publicUrl);
-      toast.success("Photo saved! Talking avatar will activate on first video render.");
-      console.warn("HeyGen registration skipped:", err);
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      setHeygenError(msg);
+      toast.error("Photo saved but AI registration failed — use a clear front-facing headshot and click Retry.");
     } finally {
       setRegisteringHeyGen(false);
     }
@@ -247,11 +273,22 @@ function TalkingAvatarUploader({
       ) : preview ? (
         <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
           <Video size={15} className="text-amber-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Photo saved · avatar activates on first render</p>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-800">AI registration pending</p>
             <p className="text-xs text-amber-600 mt-0.5">
-              Your headshot will be registered with the AI on your next video generation.
+              Upload a clear front-facing face photo, then click Retry to activate your talking avatar.
             </p>
+            {heygenError && (
+              <p className="text-xs text-red-600 mt-1 font-medium">Error: {heygenError}</p>
+            )}
+            <button
+              onClick={retryHeyGenRegistration}
+              disabled={busy}
+              className="mt-2 flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-900 disabled:opacity-40"
+            >
+              {registeringHeyGen ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+              {registeringHeyGen ? "Registering…" : "Retry AI registration"}
+            </button>
           </div>
         </div>
       ) : null}
