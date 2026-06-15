@@ -110,13 +110,12 @@ export async function uploadTalkingPhoto(
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);
 
   // ── Step 1: Upload image as asset (v3 endpoint) ───────────────────────────
+  const formData = new FormData();
+  formData.append("file", new Blob([imageBuffer], { type: contentType }), "headshot.jpg");
   const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "Content-Type": contentType,
-    },
-    body: new Uint8Array(imageBuffer),
+    headers: { "x-api-key": apiKey },
+    body: formData,
   });
 
   if (!uploadRes.ok) {
