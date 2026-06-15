@@ -111,7 +111,7 @@ export async function uploadTalkingPhoto(
 
   // ── Step 1: Upload image as asset (v3 endpoint) ───────────────────────────
   const formData = new FormData();
-  formData.append("file", new Blob([imageBuffer], { type: contentType }), "headshot.jpg");
+  formData.append("file", new Blob([new Uint8Array(imageBuffer)], { type: contentType }), "headshot.jpg");
   const uploadRes = await fetch(`${HEYGEN_API}/v3/assets`, {
     method: "POST",
     headers: { "x-api-key": apiKey },
