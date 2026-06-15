@@ -224,6 +224,24 @@ function buildVideoAgentPrompt(params: {
   const audienceVisual = params.audience ? AUDIENCE_VISUALS[params.audience] || "" : "";
   const toneVisual = params.tone ? TONE_VISUALS[params.tone] || "" : "";
 
+  const orientationBlock = params.isShortForm
+    ? `=====================================
+OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
+=====================================
+- Produce this video in VERTICAL 9:16 (1080×1920 portrait), like an Instagram Reel / TikTok.
+- Fill the entire vertical frame edge-to-edge — no black bars.
+
+`
+    : `=====================================
+OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
+=====================================
+- Produce this video in HORIZONTAL 16:9 WIDESCREEN (1920×1080 landscape), like a standard YouTube video — NOT a vertical reel.
+- Use the FULL widescreen canvas edge-to-edge: background b-roll and photos fill the entire wide 16:9 frame.
+- NEVER render this as a vertical/portrait video. NEVER add black side bars (pillarboxing) to fake a narrower frame.
+- Compose every shot for a wide horizontal frame — wide landscape b-roll, generous horizontal headroom.
+
+`;
+
   const listingCount = params.listingPhotoCount ?? 0;
   const extraCount = params.extraPhotoCount ?? 0;
   const totalPhotos = listingCount + extraCount;
@@ -257,7 +275,7 @@ ${photoLines}
 
   return `You are producing a high-end, professional real estate marketing video.
 
-=====================================
+${orientationBlock}=====================================
 AVATAR — NON-NEGOTIABLE REQUIREMENT
 =====================================
 The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
@@ -332,11 +350,12 @@ TEXT OVERLAYS
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
-- CRITICAL POSITIONING — THE AVATAR PiP IS ANCHORED TO THE BOTTOM-RIGHT CORNER:
-  • Place ALL text overlays and data visualizations along the TOP edge or the LEFT side of the frame
-  • NEVER place any text, stat, chart, or caption in the BOTTOM-RIGHT quadrant — that is where the avatar's face/PiP lives and text there lands ON the presenter's face
-  • Preferred safe zone: top 20% strip across the frame, or the left 40% column
-  • Keep the entire bottom-right quadrant (right half × bottom half) completely clear of overlays at all times
+- CRITICAL POSITIONING — TEXT MUST NEVER COVER THE PRESENTER'S FACE:
+  • The avatar PiP is anchored to the BOTTOM-RIGHT corner. Its face must always stay fully visible and unobstructed.
+  • Place ALL text overlays, captions, stats, and data visualizations in the TOP BAND of the frame (top 25% strip across the full width). This is the default and strongly preferred zone for every overlay.
+  • If a second overlay zone is needed, use the BOTTOM-LEFT corner only — NEVER the bottom-right.
+  • ABSOLUTELY NO text, caption, stat, chart, or graphic anywhere in the bottom-right quadrant (right half × bottom half) — that area belongs to the avatar and any text there lands directly ON the presenter's face.
+  • When in doubt, put the text at the very TOP of the frame.
 
 =====================================
 FIRST FRAME (THUMBNAIL-STYLE OPENER) — REQUIRED, DO NOT SKIP
