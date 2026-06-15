@@ -228,17 +228,20 @@ function buildVideoAgentPrompt(params: {
     ? `=====================================
 OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
 =====================================
-- Produce this video in VERTICAL 9:16 (1080×1920 portrait), like an Instagram Reel / TikTok.
+CANVAS: 1080 pixels wide × 1920 pixels tall. Vertical portrait orientation — taller than wide.
+- Produce this video in VERTICAL 9:16 format, like an Instagram Reel / TikTok.
 - Fill the entire vertical frame edge-to-edge — no black bars.
 
 `
     : `=====================================
 OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
 =====================================
-- Produce this video in HORIZONTAL 16:9 WIDESCREEN (1920×1080 landscape), like a standard YouTube video — NOT a vertical reel.
-- Use the FULL widescreen canvas edge-to-edge: background b-roll and photos fill the entire wide 16:9 frame.
-- NEVER render this as a vertical/portrait video. NEVER add black side bars (pillarboxing) to fake a narrower frame.
-- Compose every shot for a wide horizontal frame — wide landscape b-roll, generous horizontal headroom.
+CANVAS: 1920 pixels wide × 1080 pixels tall. Horizontal landscape orientation — wider than tall.
+- This is a LANDSCAPE video. The frame is wider than it is tall. Do NOT produce portrait/vertical output.
+- Fill the entire 1920×1080 canvas edge-to-edge — ZERO black bars on any side, left, right, top, or bottom.
+- NEVER render this as a vertical or portrait video. The output MUST be horizontal widescreen.
+- All b-roll, backgrounds, and photo crops must fill the full 1920×1080 widescreen frame.
+- The avatar PiP circle sits in the bottom-right corner of this wide 1920×1080 canvas.
 
 `;
 
@@ -333,14 +336,22 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
 
 ${buildLocationSeasonGuidance(params.state, params.city)}=====================================
-B-ROLL
+B-ROLL — LOCATION-LOCKED TO ${(params.state || "the listing state").toUpperCase()}
 =====================================${listingPhotoBlock}
-${hasPhotos ? "\nSECONDARY / FILLER B-ROLL (only between listing photos):" : ""}
-- Aerial drone shots of ${locationOr} neighborhoods (season- and region-accurate per the rules above)
-- Tree-lined streets, home exteriors, curb appeal — foliage must match the current season${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
-- Interior shots: modern kitchens, open living spaces
-- Lifestyle: cafes, parks, families, walkability scenes${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
-- Do NOT show any scenery that contradicts ${params.state || "the listing's state"} or the current season
+
+GEOGRAPHIC RULES FOR ALL B-ROLL (NO EXCEPTIONS):
+Every single b-roll clip must be believable for ${params.state || "the listing state"}. Use ONLY footage that could realistically exist there:
+- Architecture: match the home styles, street layouts, and building materials typical of ${params.state || "this state"}
+- Vegetation: ONLY trees, plants, and landscaping that actually grow in ${params.state || "this state"} in this season
+- ABSOLUTELY PROHIBITED unless the state genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glacier scenery, redwood forests, cornfields
+- If unsure whether a visual element belongs in ${params.state || "this state"}, use a safe interior or neighborhood shot instead — do NOT guess
+- Generic city neighborhoods, brick streets, residential suburbs, and home interiors are always safe choices
+
+${hasPhotos ? "SECONDARY / FILLER B-ROLL (only between listing photos):" : "B-ROLL CONTENT:"}
+- Aerial drone shots of ${locationOr} style neighborhoods matching the local architecture
+- Tree-lined residential streets and curb-appeal exteriors that belong in ${params.state || "this region"}${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
+- Interior shots: kitchens, living spaces, open floor plans
+- Lifestyle: coffee shops, parks, families — scenes appropriate for ${locationOr}${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
 =====================================
 COLOR + STYLE
@@ -373,6 +384,14 @@ TEXT OVERLAYS
   • When in doubt, put the text at the very TOP of the frame.
 
 =====================================
+PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
+=====================================
+- Maximum 10 scenes total — keep the video tight, on-script, and on-time
+- Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
+- Do NOT add intro music, countdown, or outro beyond the CTA slide
+- Start speaking the script from scene 1 — no silent or title-only openers
+
+=====================================
 FIRST FRAME (THUMBNAIL-STYLE OPENER) — REQUIRED, DO NOT SKIP
 =====================================
 - The video's VERY FIRST FRAME must be a designed thumbnail-style title card (this frame becomes the video thumbnail).
@@ -402,7 +421,7 @@ export async function POST(req: NextRequest) {
 
   const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText, extraPhotoUrls } = await req.json();
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
-    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 12)
+    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 3)
     : [];
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
@@ -517,7 +536,7 @@ export async function POST(req: NextRequest) {
     // HeyGen's Video Agent caps the prompt at 10,000 characters. The PDF/URL
     // reference text is the largest variable part, so fit it to whatever room
     // is left after the structural instructions rather than letting it overflow.
-    const HEYGEN_PROMPT_LIMIT = 10000;
+    const HEYGEN_PROMPT_LIMIT = 6000;
     const promptParams = {
       script: safeScript,
       city,
@@ -676,8 +695,9 @@ export async function POST(req: NextRequest) {
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
     }
-    // Attach listing photos + user-uploaded photos, combined cap of 12.
-    const combinedPhotos = [...listingPhotos, ...safeExtraPhotos].slice(0, 12);
+    // Attach listing photos + user-uploaded photos, capped at 5 total.
+    // Fewer files = faster Video Agent processing time.
+    const combinedPhotos = [...listingPhotos, ...safeExtraPhotos].slice(0, 5);
     for (const url of combinedPhotos) {
       files.push({ type: "url", url });
     }
