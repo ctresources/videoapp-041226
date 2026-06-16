@@ -27,6 +27,7 @@ interface GeneratedVideo {
   duration_seconds: number | null;
   created_at: string;
   project_id: string;
+  metadata?: { render_error?: string } | null;
   projects?: { title: string; ai_script?: { hook?: string } | null } | null;
 }
 
@@ -558,7 +559,13 @@ function VideosContent() {
 
                   {/* Failed state */}
                   {video.render_status === "failed" && (
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 space-y-2">
+                      {video.metadata?.render_error && (
+                        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-2.5 py-1.5 break-words">
+                          {video.metadata.render_error}
+                        </p>
+                      )}
+                    <div className="flex gap-2">
                       <Link href="/create" className="flex-1">
                         <Button variant="outline" size="sm" className="w-full gap-1.5 text-red-600 border-red-200">
                           <Plus size={13} /> Try Again
@@ -574,6 +581,7 @@ function VideosContent() {
                       >
                         <Trash2 size={13} />
                       </Button>
+                    </div>
                     </div>
                   )}
 
