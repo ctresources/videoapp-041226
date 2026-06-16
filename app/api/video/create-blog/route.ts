@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
   generateVideo,
+  generateVideoV3,
   uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
@@ -427,7 +428,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText, extraPhotoUrls } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine } = await req.json();
+  // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
+  // Direct Video API (single talking-head) instead of the default Video Agent,
+  // so its output can be compared. Any other value keeps existing behavior.
+  const useDirectVideo = engine === "direct";
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
     ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 3)
     : [];
@@ -610,6 +615,77 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         console.warn("[create-blog] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
       }
+    }
+
+    // ── Direct Video path (opt-in via engine="direct") ──────────────────────────
+    // Experimental: HeyGen v3 Direct Video — a single talking-head from the
+    // avatar look + a HeyGen voice + the full script. No photo/b-roll
+    // composition (that's the Video Agent's job); used to compare raw avatar
+    // output. Polled single-step via getVideoV3Status (render_provider tag).
+    if (useDirectVideo) {
+      console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${avatarId}`);
+
+      // Direct Video needs a HeyGen voice_id (not the ElevenLabs voice_clone_id).
+      let directVoiceId = profile.heygen_voice_id;
+      if (!directVoiceId) {
+        const privateVoiceId = await getPrivateVoiceId().catch(() => null);
+        if (privateVoiceId) {
+          directVoiceId = privateVoiceId;
+          void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
+        }
+      }
+      directVoiceId = directVoiceId || await getDefaultEnglishVoiceId().catch(() => null);
+      if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
+
+      const { data: videoRow, error: videoRowErr } = await admin
+        .from("generated_videos")
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          video_type: videoType,
+          render_provider: "heygen_v3_direct",
+          render_status: "rendering",
+          metadata: { dimension, orientation, city, state, title },
+        })
+        .select()
+        .single();
+
+      if (videoRowErr || !videoRow) {
+        throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
+      }
+
+      const directVideoId = await generateVideoV3({
+        avatarId,
+        voiceId: directVoiceId,
+        scriptText: safeScript,
+        dimension,
+        title,
+        callbackUrl,
+        callbackId: videoRow.id,
+      });
+
+      await admin
+        .from("generated_videos")
+        .update({ render_job_id: directVideoId })
+        .eq("id", videoRow.id);
+
+      await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - 1 }).eq("id", user.id);
+      await admin.from("api_usage_log").insert({
+        user_id: user.id,
+        api_provider: "heygen",
+        endpoint: "video-v3-direct",
+        credits_used: 1,
+        response_status: 202,
+      });
+
+      console.log(`[create-blog] Direct Video ${directVideoId} submitted (avatar: ${avatarId}, voice: ${directVoiceId})`);
+      return NextResponse.json({
+        video: {
+          ...videoRow,
+          render_job_id: directVideoId,
+          render_status: "rendering",
+        },
+      });
     }
 
     // ── ElevenLabs TTS + listing photos: multi-scene v2 API ──────────────────────
