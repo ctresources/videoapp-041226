@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     // terminal row, so we can recover the real failure_message that the webhook
     // discarded when it marked the row failed. HeyGen retains it keyed by the
     // video_id (== renderId for the v3 direct path).
-    if (req.nextUrl.searchParams.get("refresh") === "1" && video.render_provider === "heygen_v3_direct") {
+    if (req.nextUrl.searchParams.get("refresh") === "1") {
       try {
         const fresh = await getVideoV3Status(renderId);
         errorMsg = fresh.error || errorMsg;
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
         }
         return NextResponse.json({
           renderId,
+          provider: video.render_provider,
           status: fresh.status,
           videoUrl: fresh.videoUrl,
           error: errorMsg,
@@ -71,6 +72,7 @@ export async function GET(req: NextRequest) {
       } catch (e) {
         return NextResponse.json({
           renderId,
+          provider: video.render_provider,
           status: "failed",
           error: e instanceof Error ? e.message : "HeyGen query failed",
         });
