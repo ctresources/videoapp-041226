@@ -653,8 +653,6 @@ export interface GenerateVideoAgentParams {
   avatarId?: string;
   voiceId?: string;
   orientation?: "landscape" | "portrait" | "square";
-  /** Explicit pixel dimensions — belt-and-suspenders alongside orientation. */
-  dimension?: { width: number; height: number };
   files?: VideoAgentFile[];
   callbackUrl?: string;
   callbackId?: string;
@@ -809,7 +807,6 @@ export async function generateVideoAgent(
     ...(params.avatarId && { avatar_id: params.avatarId }),
     ...(params.voiceId && { voice_id: params.voiceId }),
     ...(params.orientation && { orientation: params.orientation }),
-    ...(params.dimension && { dimension: params.dimension }),
     ...(params.files?.length && { files: params.files }),
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),

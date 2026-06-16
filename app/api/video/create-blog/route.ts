@@ -737,7 +737,6 @@ export async function POST(req: NextRequest) {
       avatarId,
       voiceId,
       orientation,
-      dimension,
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
