@@ -617,22 +617,31 @@ export interface GenerateVideoV3Params {
   backgroundColor?: string;
 }
 
+/** Map pixel dimensions to the aspect_ratio string the v3 Videos API expects. */
+function dimensionToAspectRatio(d: { width: number; height: number }): "16:9" | "9:16" | "1:1" {
+  if (d.width > d.height) return "16:9";
+  if (d.width < d.height) return "9:16";
+  return "1:1";
+}
+
 /**
- * Generate an avatar video using HeyGen's v3 Videos API (POST /v3/videos).
- * Uses the April 2026 discriminated union schema: type "CreateVideoFromAvatar".
- * The user's photo avatar (avatar_id) and cloned voice (voice_id) are passed
- * within the typed schema. Returns video_id for polling via GET /v3/videos/{id}.
+ * Generate an avatar video using HeyGen's v3 Videos API (POST /v3/videos) —
+ * the "Direct Video" path: a single talking-head from one avatar look + voice +
+ * script. Unlike the Video Agent, it does NOT compose listing photos / b-roll.
+ *
+ * Request shape follows the published v3 docs: type "avatar" with avatar_id,
+ * voice_id, script, aspect_ratio, and resolution. Returns video_id for polling
+ * via GET /v3/videos/{id} (getVideoV3Status).
  */
 export async function generateVideoV3(params: GenerateVideoV3Params): Promise<string> {
-  // April 2026 breaking change: discriminated union replaces flat request body.
-  // type "CreateVideoFromAvatar" → avatar_id, voice_id, script are nested here.
   const body = {
-    type: "CreateVideoFromAvatar",
+    type: "avatar",
     avatar_id: params.avatarId,
     voice_id: params.voiceId,
     script: params.scriptText,
     title: params.title || "Generated Video",
-    dimension: params.dimension,
+    aspect_ratio: dimensionToAspectRatio(params.dimension),
+    resolution: "1080p",
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
   };

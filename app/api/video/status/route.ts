@@ -135,6 +135,57 @@ export async function GET(req: NextRequest) {
           }
           // session.videoId is null → agent still working, keep "rendering"
 
+        } else if (provider === "heygen_v3_direct") {
+          // ── Direct Video single-step polling ───────────────────────────
+          // POST /v3/videos returns a video_id immediately (no agent session),
+          // so we poll GET /v3/videos/{id} directly via renderId.
+          const videoStatus = await getVideoV3Status(renderId);
+          console.log(`[status] V3 direct video ${renderId}: ${videoStatus.status}`);
+
+          if (videoStatus.status === "completed" && videoStatus.videoUrl) {
+            status = "completed";
+            videoUrl = videoStatus.videoUrl;
+
+            await admin
+              .from("generated_videos")
+              .update({ render_status: "completed", video_url: videoUrl })
+              .eq("id", video.id);
+
+            if (video.project_id) {
+              await admin
+                .from("projects")
+                .update({ status: "ready" })
+                .eq("id", video.project_id);
+            }
+
+            if (video.user_id && videoUrl) {
+              publishWebhookEvent(video.user_id, "video.published", {
+                video_id: video.id,
+                video_url: videoUrl,
+                video_type: video.video_type,
+                project_id: video.project_id,
+              }).catch(console.error);
+            }
+
+            console.log(`[status] HeyGen Direct ${renderId} completed`);
+          } else if (videoStatus.status === "failed") {
+            status = "failed";
+            errorMsg = videoStatus.error || "HeyGen v3 direct render failed";
+
+            await admin
+              .from("generated_videos")
+              .update({ render_status: "failed" })
+              .eq("id", video.id);
+
+            if (video.project_id) {
+              await admin
+                .from("projects")
+                .update({ status: "error" })
+                .eq("id", video.project_id);
+            }
+          }
+          // Still processing — keep status as "rendering"
+
         } else {
           // ── Legacy v2 single-step polling ──────────────────────────────
           const heygenStatus = await getVideoStatus(renderId);
