@@ -34,6 +34,13 @@ export async function POST(req: NextRequest) {
   const videoUrl: string | undefined =
     eventData.video_url || eventData.url || eventData.video_download_url;
 
+  // Failure events carry the reason in event_data — capture it so failed renders
+  // can explain themselves (HeyGen uses varying field names across event types).
+  const failureDetail: string | undefined =
+    eventData.failure_message || eventData.error || eventData.msg ||
+    eventData.message || eventData.reason ||
+    (eventData.failure_code ? String(eventData.failure_code) : undefined);
+
   const success =
     eventType === "avatar_video.success" ||
     eventType === "video.success" ||
@@ -60,14 +67,14 @@ export async function POST(req: NextRequest) {
 
   // ── Find the generated_videos row ─────────────────────────────────────────
   // Try to match by: callback_id (most reliable) → video_id → session_id
-  let video: { id: string; project_id: string | null; user_id: string; video_type: string } | null = null;
+  let video: { id: string; project_id: string | null; user_id: string; video_type: string; metadata: Record<string, unknown> | null } | null = null;
 
   if (callbackId) {
     const { data } = await admin
       .from("generated_videos")
       .update({ render_status: renderStatus, video_url: videoUrl || null })
       .eq("id", callbackId)
-      .select("id, project_id, user_id, video_type")
+      .select("id, project_id, user_id, video_type, metadata")
       .single();
     video = data;
   }
@@ -77,7 +84,7 @@ export async function POST(req: NextRequest) {
       .from("generated_videos")
       .update({ render_status: renderStatus, video_url: videoUrl || null })
       .eq("render_job_id", videoId)
-      .select("id, project_id, user_id, video_type")
+      .select("id, project_id, user_id, video_type, metadata")
       .single();
     video = data;
   }
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
         ...(videoId && success ? { render_job_id: videoId } : {}),
       })
       .eq("render_job_id", sessionId)
-      .select("id, project_id, user_id, video_type")
+      .select("id, project_id, user_id, video_type, metadata")
       .single();
     video = data;
   }
@@ -100,6 +107,16 @@ export async function POST(req: NextRequest) {
   if (!video) {
     console.warn(`[webhook] No video row matched for event ${eventType}`);
     return NextResponse.json({ received: true });
+  }
+
+  // ── Persist the failure reason so the render can explain itself ───────────
+  if (failed) {
+    const reason = failureDetail || `${eventType} (no detail in payload)`;
+    await admin
+      .from("generated_videos")
+      .update({ metadata: { ...(video.metadata ?? {}), render_error: reason } })
+      .eq("id", video.id);
+    console.warn(`[webhook] Render ${video.id} failed: ${reason}`);
   }
 
   // ── Update parent project status ──────────────────────────────────────────
