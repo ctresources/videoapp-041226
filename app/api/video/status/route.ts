@@ -47,6 +47,36 @@ export async function GET(req: NextRequest) {
       ? ((storedMeta.render_error as string | undefined) || "Render failed")
       : null;
 
+    // Diagnostic: ?refresh=1 forces a fresh HeyGen query even for an already
+    // terminal row, so we can recover the real failure_message that the webhook
+    // discarded when it marked the row failed. HeyGen retains it keyed by the
+    // video_id (== renderId for the v3 direct path).
+    if (req.nextUrl.searchParams.get("refresh") === "1" && video.render_provider === "heygen_v3_direct") {
+      try {
+        const fresh = await getVideoV3Status(renderId);
+        errorMsg = fresh.error || errorMsg;
+        if (fresh.error) {
+          await admin
+            .from("generated_videos")
+            .update({ metadata: { ...storedMeta, render_error: fresh.error } })
+            .eq("id", video.id);
+        }
+        return NextResponse.json({
+          renderId,
+          status: fresh.status,
+          videoUrl: fresh.videoUrl,
+          error: errorMsg,
+          _heygen: fresh,
+        });
+      } catch (e) {
+        return NextResponse.json({
+          renderId,
+          status: "failed",
+          error: e instanceof Error ? e.message : "HeyGen query failed",
+        });
+      }
+    }
+
     // If still rendering, query HeyGen directly (webhook fallback)
     if (status === "rendering" || status === "pending") {
       // Auto-fail jobs stuck for more than 30 minutes
