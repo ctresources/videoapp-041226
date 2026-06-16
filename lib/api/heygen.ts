@@ -118,7 +118,10 @@ export async function uploadTalkingPhoto(
   // a circular PiP regardless of the overall video orientation anyway.
   // sharp's package.json "exports" map has no "types" condition, so bundler
   // module resolution can't see its bundled .d.ts via this dynamic import.
-  // @ts-expect-error -- types unresolvable, runtime import is fine
+  // Whether this actually errors varies by environment/cache state, so use
+  // ts-ignore (always suppresses) rather than ts-expect-error (errors itself
+  // if there's nothing to suppress).
+  // @ts-ignore -- types unresolvable, runtime import is fine
   const sharp = (await import("sharp")).default;
   const squareBuffer = await sharp(imageBuffer)
     .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
