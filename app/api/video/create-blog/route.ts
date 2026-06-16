@@ -294,6 +294,39 @@ This video MUST comply with the U.S. Fair Housing Act and the National Associati
 - If any wording in the narration script below appears to conflict with these rules, still render the script as written by the user, but do NOT add any non-compliant visuals, captions, overlays, or embellishments of your own.
 
 =====================================
+SCENE 1 — TITLE CARD (OPENING FRAME / THUMBNAIL)
+=====================================
+The very first scene of the video MUST be a designed title card. This is mandatory — do not skip it or replace it with plain b-roll.
+
+Title card layout:
+• BACKGROUND: Full-frame lifestyle photo of ${locationOr} — warm, inviting, fills edge-to-edge, no black bars
+• TOP TEXT OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in large font at the very top of the frame. Use a semi-transparent dark bar or drop shadow behind the text so it is readable.
+• PRESENTER: Circular talking-photo PiP in the bottom-right corner as always
+• NO OTHER TEXT on this title card
+• The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
+
+This first-scene title card also serves as the video's thumbnail image — make it bold and scroll-stopping.
+
+=====================================
+FINAL SCENE — CTA CONTACT CARD
+=====================================
+The last scene must be a dedicated contact card. Layout:
+${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is attached as a file) prominently — top-left corner or top-center of the frame` : ""}
+• CONTACT TEXT (on screen only — do NOT narrate): ${contactLine}
+• Phone numbers must be displayed exactly as provided — no leading "1", no country code
+• Bold CTA headline on screen: "${ctaText}"
+• Presenter PiP remains visible in the bottom-right corner
+
+=====================================
+PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
+=====================================
+- Maximum 10 scenes total — keep the video tight, on-script, and on-time
+- Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
+- Do NOT add intro music, countdown, or a separate silent title scene before the narration
+- The narration begins IMMEDIATELY on the first frame — the SCENE 1 title card above is the opening of scene 1, NOT a silent intro held before speaking
+- The FINAL SCENE contact card above must be the last scene rendered, after the narration ends
+
+=====================================
 AGENT + MARKET DETAILS
 =====================================
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
@@ -385,38 +418,6 @@ TEXT OVERLAYS
   • If a second overlay zone is needed, use the BOTTOM-LEFT corner only — NEVER the bottom-right.
   • ABSOLUTELY NO text, caption, stat, chart, or graphic anywhere in the bottom-right quadrant (right half × bottom half) — that area belongs to the avatar and any text there lands directly ON the presenter's face.
   • When in doubt, put the text at the very TOP of the frame.
-
-=====================================
-PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
-=====================================
-- Maximum 10 scenes total — keep the video tight, on-script, and on-time
-- Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
-- Do NOT add intro music, countdown, or a separate silent title scene before the narration
-- The narration begins IMMEDIATELY on the first frame — the thumbnail title card (below) is the opening of scene 1, NOT a silent intro held before speaking
-
-=====================================
-SCENE 1 — TITLE CARD (OPENING FRAME / THUMBNAIL)
-=====================================
-The very first scene of the video MUST be a designed title card. This is mandatory — do not skip it or replace it with plain b-roll.
-
-Title card layout:
-• BACKGROUND: Full-frame lifestyle photo of ${locationOr} — warm, inviting, fills edge-to-edge, no black bars
-• TOP TEXT OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in large font at the very top of the frame. Use a semi-transparent dark bar or drop shadow behind the text so it is readable.
-• PRESENTER: Circular talking-photo PiP in the bottom-right corner as always
-• NO OTHER TEXT on this title card
-• The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
-
-This first-scene title card also serves as the video's thumbnail image — make it bold and scroll-stopping.
-
-=====================================
-FINAL SCENE — CTA CONTACT CARD
-=====================================
-The last scene must be a dedicated contact card. Layout:
-${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is attached as a file) prominently — top-left corner or top-center of the frame` : ""}
-• CONTACT TEXT (on screen only — do NOT narrate): ${contactLine}
-• Phone numbers must be displayed exactly as provided — no leading "1", no country code
-• Bold CTA headline on screen: "${ctaText}"
-• Presenter PiP remains visible in the bottom-right corner
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
 }
@@ -540,12 +541,14 @@ export async function POST(req: NextRequest) {
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 
-    // HeyGen's Video Agent caps the prompt at 10,000 characters. The PDF/URL
-    // reference text is the largest variable part, so fit it to whatever room
-    // is left after the structural instructions rather than letting it overflow.
-    // Kept under HeyGen's cap but high enough that the mandatory compliance and
-    // CTA sections are never clipped. Render speed is driven by file/scene count,
-    // not prompt length, so trimming chars below this buys little.
+    // HeyGen's Video Agent caps the prompt at 10,000 characters. The
+    // structural sections in buildVideoAgentPrompt() are ordered so every
+    // must-have instruction (orientation, avatar, fair housing, title card,
+    // CTA/logo, scene cap, agent details, narration script) appears BEFORE
+    // the elaboration/refinement sections (scene sync detail, pronunciation,
+    // b-roll geography, color, data viz, text overlay positioning). If the
+    // hard clamp below ever fires, it only ever truncates that trailing
+    // elaboration content — never the title card or CTA contact card.
     const HEYGEN_PROMPT_LIMIT = 8500;
     const promptParams = {
       script: safeScript,
