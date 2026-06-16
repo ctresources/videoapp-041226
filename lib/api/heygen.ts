@@ -813,7 +813,11 @@ export async function generateVideoAgent(
     ...(params.styleId && { style_id: params.styleId }),
   };
 
-  console.log(`[heygen] Submitting Video Agent v3 (${params.prompt.length} chars)...`);
+  console.log(
+    `[heygen] Submitting Video Agent v3 (${params.prompt.length} chars, ` +
+    `orientation=${params.orientation ?? "auto"}, avatar=${params.avatarId ?? "none"}, ` +
+    `voice=${params.voiceId ?? "none"}, files=${params.files?.length ?? 0})`,
+  );
 
   const res = await fetch(`${HEYGEN_API}/v3/video-agents`, {
     method: "POST",
