@@ -16,6 +16,13 @@
 # production
 /build
 
+# next-pwa generated service worker (regenerated every build)
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/worker-*.js
+
 # misc
 .DS_Store
 *.pem
