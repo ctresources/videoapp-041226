@@ -39,7 +39,13 @@ export async function GET(req: NextRequest) {
 
     let status = video.render_status as string;
     let videoUrl = video.video_url as string | null;
-    let errorMsg: string | null = status === "failed" ? "Render failed" : null;
+    // Surface the stored failure reason (persisted into metadata.render_error by
+    // the fail branches below) so a failed render can explain itself even after
+    // the live poll that detected it is long gone.
+    const storedMeta = (video.metadata as Record<string, unknown> | null) ?? {};
+    let errorMsg: string | null = status === "failed"
+      ? ((storedMeta.render_error as string | undefined) || "Render failed")
+      : null;
 
     // If still rendering, query HeyGen directly (webhook fallback)
     if (status === "rendering" || status === "pending") {
@@ -174,7 +180,7 @@ export async function GET(req: NextRequest) {
 
             await admin
               .from("generated_videos")
-              .update({ render_status: "failed" })
+              .update({ render_status: "failed", metadata: { ...storedMeta, render_error: errorMsg } })
               .eq("id", video.id);
 
             if (video.project_id) {
