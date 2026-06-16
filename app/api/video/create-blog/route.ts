@@ -181,6 +181,7 @@ function buildVideoAgentPrompt(params: {
   phone1?: string;
   phone2?: string;
   website?: string;
+  logoUrl?: string;
   keywords: string[];
   isShortForm: boolean;
   hookText?: string;
@@ -394,25 +395,28 @@ PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
 - The narration begins IMMEDIATELY on the first frame — the thumbnail title card (below) is the opening of scene 1, NOT a silent intro held before speaking
 
 =====================================
-FIRST FRAME (THUMBNAIL POSTER) — REQUIRED, DO NOT SKIP
+SCENE 1 — TITLE CARD (OPENING FRAME / THUMBNAIL)
 =====================================
-- The video's VERY FIRST FRAME must be a designed thumbnail-style poster (this exact frame becomes the video's thumbnail image).
-- Full-frame warm lifestyle image of ${locationOr} (location-accurate per the rules above) filling the entire background
-- Bold headline at the TOP of the frame, left-aligned or horizontally centered: "${params.hookText || "Your Local Real Estate Expert"}"
-- This headline is a VISUAL OVERLAY ONLY — DO NOT read it aloud, DO NOT narrate it, DO NOT speak any text shown on this title card. The voiceover begins with the first line of the NARRATION SCRIPT and nothing before it.
-- The narrator STARTS SPEAKING the script over this frame — it is the opening of the video, not a silent hold. Do not pause before narration.
-- Presenter as circular PiP in the bottom-right corner (same as the rest of the video)
-- Fill ENTIRE frame edge-to-edge — zero empty pixels, zero black areas
-- Style like a scroll-stopping YouTube thumbnail
+The very first scene of the video MUST be a designed title card. This is mandatory — do not skip it or replace it with plain b-roll.
+
+Title card layout:
+• BACKGROUND: Full-frame lifestyle photo of ${locationOr} — warm, inviting, fills edge-to-edge, no black bars
+• TOP TEXT OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in large font at the very top of the frame. Use a semi-transparent dark bar or drop shadow behind the text so it is readable.
+• PRESENTER: Circular talking-photo PiP in the bottom-right corner as always
+• NO OTHER TEXT on this title card
+• The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
+
+This first-scene title card also serves as the video's thumbnail image — make it bold and scroll-stopping.
 
 =====================================
-FINAL FRAME (CTA)
+FINAL SCENE — CTA CONTACT CARD
 =====================================
-Clean contact overlay (TEXT ON SCREEN ONLY — do not narrate): ${contactLine}
-- Both Mobile and Office numbers are visible in the overlay, but only the Mobile may ever be spoken (and only if the script explicitly says it).
-- Phone numbers in the overlay must be displayed exactly as provided — no leading "1", no country code added.
-
-Bold CTA on screen: "${ctaText}"
+The last scene must be a dedicated contact card. Layout:
+${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is attached as a file) prominently — top-left corner or top-center of the frame` : ""}
+• CONTACT TEXT (on screen only — do NOT narrate): ${contactLine}
+• Phone numbers must be displayed exactly as provided — no leading "1", no country code
+• Bold CTA headline on screen: "${ctaText}"
+• Presenter PiP remains visible in the bottom-right corner
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
 }
@@ -555,6 +559,7 @@ export async function POST(req: NextRequest) {
       phone1: phones[0],
       phone2: phones[1],
       website: profile.website || undefined,
+      logoUrl: profile.logo_url || undefined,
       keywords: aiKeywords,
       isShortForm,
       hookText,
@@ -732,6 +737,7 @@ export async function POST(req: NextRequest) {
       avatarId,
       voiceId,
       orientation,
+      dimension,
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
