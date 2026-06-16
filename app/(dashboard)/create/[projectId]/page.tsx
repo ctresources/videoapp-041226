@@ -987,7 +987,7 @@ export default function ProjectEditorPage() {
 
 
             {/* Avatar look selector */}
-            {(looksLoading || looks.length > 1) && (
+            {(looksLoading || looks.length > 0) && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-2">Avatar Look</p>
                 {looksLoading ? (
