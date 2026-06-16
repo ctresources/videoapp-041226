@@ -77,6 +77,11 @@ const videoTypes: { value: VideoType; label: string; desc: string }[] = [
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min" },
 ];
 
+// Dev-only: show the experimental "Direct Video" engine toggle on local and
+// preview deploys, but never in production. Vercel exposes NEXT_PUBLIC_VERCEL_ENV
+// as "production" | "preview" | "development"; it's undefined locally.
+const SHOW_DEV_ENGINE_TOGGLE = process.env.NEXT_PUBLIC_VERCEL_ENV !== "production";
+
 export default function ProjectEditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const searchParams = useSearchParams();
@@ -87,6 +92,9 @@ export default function ProjectEditorPage() {
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("youtube_16x9");
+  // Experimental: route this render through HeyGen's v3 Direct Video API instead
+  // of the default Video Agent (dev/preview only — see SHOW_DEV_ENGINE_TOGGLE).
+  const [useDirectEngine, setUseDirectEngine] = useState(false);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -389,6 +397,7 @@ export default function ProjectEditorPage() {
           script: fullScript,
           hook,
           lookId: selectedLookId || undefined,
+          ...(SHOW_DEV_ENGINE_TOGGLE && useDirectEngine && { engine: "direct" }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
@@ -414,6 +423,28 @@ export default function ProjectEditorPage() {
     } finally {
       setVideoGenerating(false);
     }
+  }
+
+  // Dev/preview-only toggle to A/B HeyGen's Direct Video engine against the
+  // default Video Agent. Renders nothing in production.
+  function renderEngineToggle() {
+    if (!SHOW_DEV_ENGINE_TOGGLE) return null;
+    return (
+      <label className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={useDirectEngine}
+          onChange={(e) => setUseDirectEngine(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          <span className="font-semibold">Use Direct Video engine (experimental)</span>
+          <br />
+          Single talking-head from your avatar — skips photo/b-roll composition.
+          Dev &amp; preview only.
+        </span>
+      </label>
+    );
   }
 
   function buildContactLine(): string {
@@ -759,6 +790,7 @@ export default function ProjectEditorPage() {
           </Card>
 
           {/* Generate button */}
+          {renderEngineToggle()}
           <Button
             onClick={handleGenerateVideo}
             loading={videoGenerating}
@@ -1109,6 +1141,7 @@ export default function ProjectEditorPage() {
               <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
+            {renderEngineToggle()}
             <div className="flex items-center gap-3 flex-wrap">
               <Button
                 onClick={handleGenerateVideo}
