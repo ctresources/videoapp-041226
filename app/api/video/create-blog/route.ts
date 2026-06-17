@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
 
-const MAX_SCRIPT_WORDS = 300;
+const MAX_SCRIPT_WORDS = 500;
 
 function clampScript(text: string): string {
   const words = text.trim().split(/\s+/);
