@@ -971,15 +971,15 @@ function CreatePageInner() {
               <label className="text-xs font-bold text-slate-600 block mb-1">
                 Your Script *
                 {pasteScript && (
-                  <span className="ml-2 font-normal text-slate-400">
-                    {pasteScript.trim().split(/\s+/).length} words
+                  <span className={`ml-2 font-normal ${pasteScript.trim().split(/\s+/).length > 500 ? "text-red-500" : "text-slate-400"}`}>
+                    {pasteScript.trim().split(/\s+/).length} / 500 words
                   </span>
                 )}
               </label>
               <textarea
                 value={pasteScript}
                 onChange={(e) => setPasteScript(e.target.value)}
-                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 400 words for best results."
+                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 500 words for best results."
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none leading-relaxed"
               />
