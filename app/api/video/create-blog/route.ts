@@ -607,7 +607,7 @@ export async function POST(req: NextRequest) {
     if (!lookId && profile.heygen_photo_id) {
       try {
         const looks = await getAvatarLooks(profile.heygen_photo_id);
-        const ready = looks.find((l) => l.status === "completed") || looks[0];
+        const ready = looks.find((l) => l.status === "completed" || l.status === "active") || looks[0];
         if (ready?.id) {
           avatarId = ready.id;
           console.log(`[create-blog] Resolved group ${profile.heygen_photo_id} → look ${avatarId}`);
