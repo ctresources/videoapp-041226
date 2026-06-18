@@ -195,7 +195,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
                   </div>
                 )}
                 <div className="absolute bottom-1 right-1">
-                  {look.status === "completed" || !look.status ? (
+                  {look.status === "completed" || look.status === "active" || !look.status ? (
                     <CheckCircle size={14} className="text-green-500 bg-white rounded-full" />
                   ) : look.status === "processing" ? (
                     <Clock size={14} className="text-amber-500 bg-white rounded-full" />
