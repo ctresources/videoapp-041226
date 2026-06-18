@@ -24,6 +24,8 @@ export interface BrandProfileInitial {
   heygen_photo_id: string | null;
   website: string | null;
   license_number: string | null;
+  heygen_digital_twin_group_id: string | null;
+  heygen_digital_twin_look_id: string | null;
 }
 
 interface BrandProfileProps {
@@ -301,6 +303,292 @@ function TalkingAvatarUploader({
       </div>
 
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+    </div>
+  );
+}
+
+// ── Digital Twin Creator ─────────────────────────────────────────────────────
+function DigitalTwinCreator({
+  userId,
+  initialGroupId,
+  initialLookId,
+}: {
+  userId: string;
+  initialGroupId: string | null;
+  initialLookId: string | null;
+}) {
+  const [groupId, setGroupId] = useState(initialGroupId);
+  const [dtStatus, setDtStatus] = useState<"none" | "loading" | "processing" | "pending_consent" | "active" | "failed">(
+    initialGroupId ? "loading" : "none",
+  );
+  const [inputMode, setInputMode] = useState<"camera" | "url">("camera");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [recordings, setRecordings] = useState<{ id: string; video_url: string; created_at: string }[]>([]);
+  const [selectedRec, setSelectedRec] = useState("");
+  const [dtName, setDtName] = useState("My Digital Twin");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load camera recordings on mount
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("generated_videos")
+      .select("id, video_url, created_at")
+      .eq("user_id", userId)
+      .eq("render_provider", "camera")
+      .not("video_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        const recs = (data ?? []) as { id: string; video_url: string; created_at: string }[];
+        setRecordings(recs);
+        if (recs.length) setSelectedRec(recs[0].video_url);
+      });
+  }, [userId]);
+
+  const checkStatus = useCallback(async () => {
+    const res = await fetch("/api/avatar/digital-twin");
+    if (!res.ok) return;
+    const d = await res.json();
+    const s = d.status as string;
+    if (s === "active" || s === "completed") setDtStatus("active");
+    else if (s === "pending_consent") setDtStatus("pending_consent");
+    else if (s === "processing") setDtStatus("processing");
+    else if (s === "failed") setDtStatus("failed");
+    else if (s === "none") setDtStatus("none");
+    if (d.groupId) setGroupId(d.groupId);
+  }, []);
+
+  // Initial status fetch when group exists
+  useEffect(() => {
+    if (initialGroupId) checkStatus();
+  }, [initialGroupId, checkStatus]);
+
+  // Poll every 20 s while training or awaiting consent
+  useEffect(() => {
+    if (dtStatus !== "processing" && dtStatus !== "pending_consent") return;
+    const id = setInterval(checkStatus, 20_000);
+    return () => clearInterval(id);
+  }, [dtStatus, checkStatus]);
+
+  async function handleSubmit() {
+    const url = (inputMode === "camera" ? selectedRec : videoUrl).trim();
+    if (!url) { toast.error("Please select or paste a video URL"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/avatar/digital-twin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: url, name: dtName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setGroupId(data.groupId);
+      setDtStatus(data.status === "pending_consent" ? "pending_consent" : "processing");
+      toast.success("Digital Twin training started!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create Digital Twin");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleGetConsent() {
+    if (!groupId) return;
+    try {
+      const res = await fetch("/api/avatar/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: groupId, reroute_url: window.location.href }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.open(data.url, "_blank");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to get consent URL");
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm("Remove your Digital Twin? This only clears the link in SparkReels — the avatar stays in HeyGen.")) return;
+    await fetch("/api/avatar/digital-twin", { method: "DELETE" });
+    setGroupId(null);
+    setDtStatus("none");
+    toast.success("Digital Twin removed");
+  }
+
+  // ── Render states ────────────────────────────────────────────────────────────
+
+  if (dtStatus === "active") {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2.5 p-3 bg-green-50 border border-green-200 rounded-xl">
+          <CheckCircle size={15} className="text-green-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-800">Digital Twin Active</p>
+            <p className="text-xs text-green-600 mt-0.5">
+              Your photorealistic AI avatar is ready — select it when creating Avatar + Voice videos.
+            </p>
+          </div>
+          <button
+            onClick={handleDelete}
+            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 shrink-0"
+          >
+            <Trash2 size={11} /> Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (dtStatus === "pending_consent") {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+          <CheckCircle size={15} className="text-blue-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-blue-800">Approval Required</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              Your Digital Twin is trained! Click below to approve usage on HeyGen — required once.
+            </p>
+            <button
+              onClick={handleGetConsent}
+              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              Approve My Digital Twin →
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-slate-400">After approving, come back — we'll activate automatically.</p>
+        <button
+          onClick={checkStatus}
+          className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 self-start"
+        >
+          <RefreshCw size={11} /> Refresh status
+        </button>
+      </div>
+    );
+  }
+
+  if (dtStatus === "processing" || dtStatus === "loading") {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <Loader2 size={15} className="text-amber-500 animate-spin shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Training in progress…</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              HeyGen is building your Digital Twin. This usually takes 15–30 minutes.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={checkStatus}
+          className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 self-start"
+        >
+          <RefreshCw size={11} /> Check status
+        </button>
+      </div>
+    );
+  }
+
+  if (dtStatus === "failed") {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-sm font-semibold text-red-800">Training failed</p>
+          <p className="text-xs text-red-600 mt-0.5">Use a clear well-lit video, then try again.</p>
+        </div>
+        <button
+          onClick={() => { setDtStatus("none"); setGroupId(null); }}
+          className="text-xs font-medium text-primary-600 hover:text-primary-700 self-start"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // "none" — create form
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-slate-500 leading-relaxed">
+        Create a photorealistic AI version of yourself from a video. Use one of your camera recordings or paste a URL.
+      </p>
+
+      <Input
+        label="Digital Twin Name"
+        value={dtName}
+        onChange={(e) => setDtName(e.target.value)}
+        placeholder="My Digital Twin"
+      />
+
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1.5">Video Source</label>
+        <div className="flex rounded-xl border border-slate-200 overflow-hidden mb-3">
+          {(["camera", "url"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setInputMode(mode)}
+              className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                inputMode === mode
+                  ? "bg-primary-600 text-white"
+                  : "bg-white text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {mode === "camera" ? "My Camera Recordings" : "Paste Video URL"}
+            </button>
+          ))}
+        </div>
+
+        {inputMode === "camera" && recordings.length === 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-xs text-amber-700">
+              No camera recordings found. Record a video using the Camera tab in the video creator, then return here.
+            </p>
+          </div>
+        )}
+
+        {inputMode === "camera" && recordings.length > 0 && (
+          <select
+            value={selectedRec}
+            onChange={(e) => setSelectedRec(e.target.value)}
+            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {recordings.map((r) => (
+              <option key={r.id} value={r.video_url}>
+                Recording — {new Date(r.created_at).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {inputMode === "url" && (
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://..."
+            className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        )}
+      </div>
+
+      <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+        <p className="text-xs text-blue-700 leading-relaxed flex items-start gap-1.5">
+          <Sparkles size={11} className="text-blue-500 mt-0.5 shrink-0" />
+          <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, no background noise or distractions.</span>
+        </p>
+      </div>
+
+      <Button
+        onClick={handleSubmit}
+        loading={submitting}
+        disabled={inputMode === "camera" ? !selectedRec : !videoUrl.trim()}
+        className="self-start"
+      >
+        Train Digital Twin
+      </Button>
     </div>
   );
 }
@@ -827,6 +1115,21 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
             hasAvatar={!!fields.heygen_photo_id}
           />
         </div>
+      </div>
+
+      <div className="border-t border-slate-100" />
+
+      {/* ── Digital Twin ─────────────────────────────────────────────────── */}
+      <div>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Digital Twin</p>
+        <p className="text-xs text-slate-400 mb-4">
+          A full-body AI replica trained from a video of you — more realistic than a talking photo.
+        </p>
+        <DigitalTwinCreator
+          userId={userId}
+          initialGroupId={initial.heygen_digital_twin_group_id ?? null}
+          initialLookId={initial.heygen_digital_twin_look_id ?? null}
+        />
       </div>
 
       <Button onClick={handleSave} loading={saving} className="self-start">

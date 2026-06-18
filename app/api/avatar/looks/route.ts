@@ -11,14 +11,26 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_photo_id")
+    .select("heygen_photo_id, heygen_digital_twin_group_id")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.heygen_photo_id) {
+  const photoGroupId = profile?.heygen_photo_id ?? null;
+  const dtGroupId = profile?.heygen_digital_twin_group_id ?? null;
+
+  if (!photoGroupId && !dtGroupId) {
     return NextResponse.json({ looks: [] });
   }
 
-  const looks = await getAvatarLooks(profile.heygen_photo_id);
+  const [photoResult, dtResult] = await Promise.allSettled([
+    photoGroupId ? getAvatarLooks(photoGroupId) : Promise.resolve([]),
+    dtGroupId ? getAvatarLooks(dtGroupId) : Promise.resolve([]),
+  ]);
+
+  const looks = [
+    ...(photoResult.status === "fulfilled" ? photoResult.value : []),
+    ...(dtResult.status === "fulfilled" ? dtResult.value : []),
+  ];
+
   return NextResponse.json({ looks });
 }

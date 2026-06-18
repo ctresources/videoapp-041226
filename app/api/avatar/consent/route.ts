@@ -21,13 +21,12 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!profile?.heygen_photo_id) {
-    return NextResponse.json({ error: "No avatar group found" }, { status: 400 });
-  }
-
   try {
     const body = await req.json().catch(() => ({}));
-    const url = await getAvatarConsentUrl(profile.heygen_photo_id, body.reroute_url);
+    // Allow caller to override the group (e.g., Digital Twin group vs photo avatar group)
+    const groupId = (body.group_id as string | undefined) || profile?.heygen_photo_id;
+    if (!groupId) return NextResponse.json({ error: "No avatar group found" }, { status: 400 });
+    const url = await getAvatarConsentUrl(groupId, body.reroute_url);
     return NextResponse.json({ url });
   } catch (err) {
     console.error("[avatar-consent] Error:", err);
