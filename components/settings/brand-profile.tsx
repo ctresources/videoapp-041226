@@ -321,12 +321,15 @@ function DigitalTwinCreator({
   const [dtStatus, setDtStatus] = useState<"none" | "loading" | "processing" | "pending_consent" | "active" | "failed">(
     initialGroupId ? "loading" : "none",
   );
-  const [inputMode, setInputMode] = useState<"camera" | "url">("camera");
+  const [inputMode, setInputMode] = useState<"camera" | "upload" | "url">("upload");
   const [videoUrl, setVideoUrl] = useState("");
   const [recordings, setRecordings] = useState<{ id: string; video_url: string; created_at: string }[]>([]);
   const [selectedRec, setSelectedRec] = useState("");
   const [dtName, setDtName] = useState("My Digital Twin");
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -368,9 +371,39 @@ function DigitalTwinCreator({
     return () => clearInterval(id);
   }, [dtStatus, checkStatus]);
 
+  async function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("video/")) { toast.error("Please select a video file"); return; }
+    if (file.size > 500 * 1024 * 1024) { toast.error("Video must be under 500 MB"); return; }
+
+    setUploading(true);
+    setUploadedUrl(null);
+    try {
+      const supabase = createClient();
+      const ts = Date.now();
+      const ext = file.name.split(".").pop() || "mp4";
+      const filePath = `camera-recordings/${userId}/${ts}.${ext}`;
+      const { error } = await supabase.storage.from("assets").upload(filePath, file, { upsert: true });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(filePath);
+      setUploadedUrl(publicUrl);
+      toast.success("Video uploaded — click Train Digital Twin to continue");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   async function handleSubmit() {
-    const url = (inputMode === "camera" ? selectedRec : videoUrl).trim();
-    if (!url) { toast.error("Please select or paste a video URL"); return; }
+    let url = "";
+    if (inputMode === "camera") url = selectedRec;
+    else if (inputMode === "upload") url = uploadedUrl ?? "";
+    else url = videoUrl;
+    url = url.trim();
+    if (!url) { toast.error("Please select or upload a video first"); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/avatar/digital-twin", {
@@ -504,10 +537,15 @@ function DigitalTwinCreator({
     );
   }
 
+  const canSubmit =
+    (inputMode === "camera" && !!selectedRec) ||
+    (inputMode === "upload" && !!uploadedUrl) ||
+    (inputMode === "url" && !!videoUrl.trim());
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-slate-500 leading-relaxed">
-        Create a photorealistic AI version of yourself from a video. Use one of your camera recordings or paste a URL.
+        Create a photorealistic AI version of yourself from a video of you speaking.
       </p>
 
       <Input
@@ -520,7 +558,7 @@ function DigitalTwinCreator({
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-1.5">Video Source</label>
         <div className="flex rounded-xl border border-slate-200 overflow-hidden mb-3">
-          {(["camera", "url"] as const).map((mode) => (
+          {(["upload", "camera", "url"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => setInputMode(mode)}
@@ -530,19 +568,55 @@ function DigitalTwinCreator({
                   : "bg-white text-slate-500 hover:bg-slate-50"
               }`}
             >
-              {mode === "camera" ? "My Camera Recordings" : "Paste Video URL"}
+              {mode === "upload" ? "Upload File" : mode === "camera" ? "In-App Recordings" : "Paste URL"}
             </button>
           ))}
         </div>
 
-        {inputMode === "camera" && recordings.length === 0 && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-xs text-amber-700">
-              No camera recordings found. Record a video using the Camera tab in the video creator, then return here.
-            </p>
+        {/* Upload from device */}
+        {inputMode === "upload" && (
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-3 w-full p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 size={20} className="text-primary-500 animate-spin shrink-0" />
+              ) : (
+                <Upload size={20} className="text-slate-400 shrink-0" />
+              )}
+              <div className="text-left">
+                <p className="text-sm font-medium text-slate-700">
+                  {uploading ? "Uploading…" : uploadedUrl ? "Change video" : "Choose video file"}
+                </p>
+                <p className="text-xs text-slate-400">MP4, MOV, WebM · up to 500 MB</p>
+              </div>
+            </button>
+            {uploadedUrl && !uploading && (
+              <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle size={13} className="text-green-500 shrink-0" />
+                <p className="text-xs text-green-700 font-medium">Video uploaded — ready to train</p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*,.mp4,.mov,.webm,.avi"
+              className="hidden"
+              onChange={handleVideoFileChange}
+            />
           </div>
         )}
 
+        {/* In-app camera recordings */}
+        {inputMode === "camera" && recordings.length === 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-xs text-amber-700">
+              No in-app recordings found. Record a video using the Camera tab, or use <strong>Upload File</strong> to upload from your device.
+            </p>
+          </div>
+        )}
         {inputMode === "camera" && recordings.length > 0 && (
           <select
             value={selectedRec}
@@ -557,6 +631,7 @@ function DigitalTwinCreator({
           </select>
         )}
 
+        {/* Paste URL */}
         {inputMode === "url" && (
           <input
             type="url"
@@ -571,14 +646,14 @@ function DigitalTwinCreator({
       <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
         <p className="text-xs text-blue-700 leading-relaxed flex items-start gap-1.5">
           <Sparkles size={11} className="text-blue-500 mt-0.5 shrink-0" />
-          <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, no background distractions.</span>
+          <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, speak naturally. No sunglasses or hats.</span>
         </p>
       </div>
 
       <Button
         onClick={handleSubmit}
         loading={submitting}
-        disabled={inputMode === "camera" ? !selectedRec : !videoUrl.trim()}
+        disabled={!canSubmit || uploading}
         className="self-start"
       >
         Train Digital Twin
