@@ -943,6 +943,44 @@ export async function getVideoV3Status(videoId: string): Promise<VideoStatus> {
   };
 }
 
+// ─── Digital Twin Creation ────────────────────────────────────────────────────
+
+export interface DigitalTwinResult {
+  lookId: string;
+  groupId: string;
+  status: string;
+}
+
+/**
+ * Create a Digital Twin avatar from a video URL via POST /v3/avatars.
+ * Returns the look ID and group ID for consent + polling.
+ * Training takes 15–30 minutes; poll via getAvatarLooks(groupId).
+ */
+export async function createDigitalTwin(
+  videoUrl: string,
+  name: string,
+): Promise<DigitalTwinResult> {
+  const apiKey = getApiKey();
+  const res = await fetch(`${HEYGEN_API}/v3/avatars`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "digital_twin",
+      name,
+      file: { type: "url", url: videoUrl },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen Digital Twin creation failed (${res.status}): ${err.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const item = data.data?.avatar_item;
+  if (!item) throw new Error(`HeyGen returned no avatar_item: ${JSON.stringify(data).slice(0, 200)}`);
+  console.log(`[heygen] Digital Twin: look=${item.id}, group=${item.avatar_group_id}, status=${item.status}`);
+  return { lookId: item.id, groupId: item.avatar_group_id, status: item.status };
+}
+
 // ─── 6. Poll V3 Agent Until Complete ─────────────────────────────────────────
 
 /**

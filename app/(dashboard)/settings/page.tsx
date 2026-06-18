@@ -37,7 +37,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number")
+      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -48,6 +48,7 @@ export default function SettingsPage() {
           avatar_url: string | null; logo_url: string | null; voice_clone_id: string | null;
           heygen_voice_id: string | null; heygen_photo_id: string | null;
           website: string | null; license_number: string | null;
+          heygen_digital_twin_group_id: string | null; heygen_digital_twin_look_id: string | null;
         } | null;
         if (row) {
           setPrefs({
@@ -70,6 +71,8 @@ export default function SettingsPage() {
             heygen_photo_id: row.heygen_photo_id,
             website:         row.website,
             license_number:  row.license_number,
+            heygen_digital_twin_group_id: row.heygen_digital_twin_group_id,
+            heygen_digital_twin_look_id:  row.heygen_digital_twin_look_id,
           });
         }
         setLoaded(true);
