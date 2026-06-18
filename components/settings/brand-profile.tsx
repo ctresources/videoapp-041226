@@ -386,7 +386,7 @@ function DigitalTwinCreator({
       const supabase = createClient();
       const ts = Date.now();
       const ext = file.name.split(".").pop() || "mp4";
-      const filePath = `camera-recordings/${userId}/${ts}.${ext}`;
+      const filePath = `${userId}/camera-recordings/${ts}.${ext}`;
       const { error } = await supabase.storage.from("assets").upload(filePath, file, { upsert: true });
       if (error) throw new Error(error.message);
       const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(filePath);
