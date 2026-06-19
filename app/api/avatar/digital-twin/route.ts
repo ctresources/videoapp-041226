@@ -24,13 +24,15 @@ export async function POST(req: NextRequest) {
     const result = await createDigitalTwin(videoUrl, name);
 
     const admin = createAdminClient();
-    await admin
+    console.log(`[digital-twin] saving groupId=${result.groupId} lookId=${result.lookId} for user=${user.id}`);
+    const { error: updateErr } = await admin
       .from("profiles")
       .update({
-        heygen_digital_twin_group_id: result.groupId,
-        heygen_digital_twin_look_id: result.lookId,
+        heygen_digital_twin_group_id: result.groupId || null,
+        heygen_digital_twin_look_id: result.lookId || null,
       })
       .eq("id", user.id);
+    if (updateErr) console.error("[digital-twin] profile update error:", updateErr);
 
     return NextResponse.json(result);
   } catch (err) {

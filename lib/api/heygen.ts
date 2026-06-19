@@ -750,6 +750,35 @@ export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
 }
 
 /**
+ * Fetch all private looks across all groups (no group_id filter).
+ * Used to recover a Digital Twin look when only the look_id is known.
+ * Returns an empty array if HeyGen doesn't support this query.
+ */
+export async function getAllPrivateLooks(): Promise<AvatarLook[]> {
+  const looks: AvatarLook[] = [];
+  let token: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      ownership: "private",
+      limit: "50",
+      ...(token ? { token } : {}),
+    });
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/looks?${params}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    const page: AvatarLook[] = data.data || [];
+    looks.push(...page);
+    token = data.has_more ? data.next_token : undefined;
+  } while (token);
+
+  console.log(`[heygen] getAllPrivateLooks: ${looks.length} total looks`);
+  return looks;
+}
+
+/**
  * Initiate the HeyGen consent flow for an avatar group.
  * Returns the URL the user must visit to approve their avatar.
  * Only needed when a look has status "pending_consent".
@@ -975,10 +1004,18 @@ export async function createDigitalTwin(
     throw new Error(`HeyGen Digital Twin creation failed (${res.status}): ${err.slice(0, 300)}`);
   }
   const data = await res.json();
+  console.log(`[heygen] Digital Twin raw response: ${JSON.stringify(data).slice(0, 500)}`);
   const item = data.data?.avatar_item;
   if (!item) throw new Error(`HeyGen returned no avatar_item: ${JSON.stringify(data).slice(0, 200)}`);
-  console.log(`[heygen] Digital Twin: look=${item.id}, group=${item.avatar_group_id}, status=${item.status}`);
-  return { lookId: item.id, groupId: item.avatar_group_id, status: item.status };
+  // group_id may be named differently across API versions; try all known locations
+  const groupId =
+    (item.avatar_group_id as string | undefined) ||
+    (item.group_id as string | undefined) ||
+    (data.data?.avatar_group_id as string | undefined) ||
+    (data.data?.group_id as string | undefined) ||
+    "";
+  console.log(`[heygen] Digital Twin: look=${item.id}, group=${groupId}, status=${item.status}`);
+  return { lookId: item.id, groupId, status: item.status };
 }
 
 // ─── 6. Poll V3 Agent Until Complete ─────────────────────────────────────────
