@@ -972,6 +972,36 @@ export async function getVideoV3Status(videoId: string): Promise<VideoStatus> {
   };
 }
 
+// ─── Generate New Look for Existing Avatar ───────────────────────────────────
+
+/**
+ * Generate a new look (outfit/setting/style) for an existing avatar via prompt.
+ * Uses POST /v3/avatars with type "prompt" and avatar_id as the visual reference.
+ * The new look is saved to the same group as the referenced avatar automatically.
+ * Cost: $1.00 per generated look.
+ */
+export async function generateAvatarLook(
+  avatarId: string,
+  prompt: string,
+  name: string,
+): Promise<AvatarLook> {
+  const res = await fetch(`${HEYGEN_API}/v3/avatars`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "prompt", name, prompt, avatar_id: avatarId }),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen generate look failed (${res.status}): ${err.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  console.log(`[heygen] generateAvatarLook response: ${JSON.stringify(data).slice(0, 400)}`);
+  const item = data.data?.avatar_item;
+  if (!item) throw new Error(`HeyGen returned no avatar_item: ${JSON.stringify(data).slice(0, 200)}`);
+  console.log(`[heygen] New look generated: ${item.id} (status: ${item.status})`);
+  return item as AvatarLook;
+}
+
 // ─── Digital Twin Creation ────────────────────────────────────────────────────
 
 export interface DigitalTwinResult {
