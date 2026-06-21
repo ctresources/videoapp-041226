@@ -111,11 +111,10 @@ function RenderProgressBar({ video, isDeletingRef }: { video: GeneratedVideo; is
           <RefreshCw size={11} className="animate-spin text-primary-500" />
           AI is creating your video…
         </span>
-        <span className="font-medium text-primary-600">{displayPct}%</span>
       </div>
       <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-1000"
+          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full animate-pulse"
           style={{ width: `${displayPct}%` }}
         />
       </div>
