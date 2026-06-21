@@ -270,14 +270,14 @@ ${photoLines}
   return `You are producing a high-end, professional real estate marketing video.
 
 ${orientationBlock}=====================================
-AVATAR — NON-NEGOTIABLE REQUIREMENT
+AVATAR + B-ROLL — INTERCUTTING FORMAT (NON-NEGOTIABLE)
 =====================================
-The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
-- ANIMATED TALKING AVATAR: the avatar face MUST move and lip-sync to the narration throughout the entire video. This is a talking photo avatar — the mouth, face, and expressions must animate in real time as the narrator speaks. NEVER render a still/static photo of the presenter. The avatar must be talking and animated for every single frame.
-- Show the avatar FULL SCREEN, filling the entire 16:9 canvas edge-to-edge — NO PiP, no corner bubble, no circular crop
-- The presenter is the primary visual for the entire video; b-roll clips play as short interstitial segments between presenter moments, not layered behind a PiP
-- NEVER show a frame without the avatar visible during narration
-- NEVER use a static image for the presenter — the avatar must always be the animated, talking version
+This video uses the talking-head + b-roll intercut format — like a TV news segment or documentary.
+- PRESENTER ON CAMERA: When the presenter appears, show the avatar FULL SCREEN, filling the entire 16:9 canvas edge-to-edge — NO PiP, no corner bubble, no circular crop. The avatar face MUST move and lip-sync to the narration (animated talking photo — never a static image).
+- B-ROLL CUTAWAYS ARE MANDATORY: Every time the script mentions a property feature, neighborhood detail, market statistic, or lifestyle benefit, CUT AWAY from the presenter to relevant b-roll footage. Do NOT keep the presenter on screen for the full video — intercut with b-roll throughout.
+- After each b-roll clip, CUT BACK to the full-screen presenter to continue narration.
+- Target roughly 40–60% presenter / 40–60% b-roll split across the video — the presenter should NOT dominate every scene.
+- NEVER use a static image for the presenter — the avatar must always be the animated, talking version when on screen.
 
 =====================================
 FAIR HOUSING + NAR COMPLIANCE (MANDATORY — ZERO TOLERANCE, OVERRIDES ALL OTHER INSTRUCTIONS)
