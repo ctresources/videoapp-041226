@@ -673,7 +673,9 @@ export async function POST(req: NextRequest) {
     // Split the script into N chunks (one per photo, capped at 5), generate EL
     // audio for each chunk, then submit a multi-scene v2 video where each scene
     // uses that photo as its background.
-    if (profile.voice_clone_id && listingPhotos.length > 0) {
+    // Only use the EL multi-scene path for voice-only videos (no avatar selected).
+    // When a look is selected, the Video Agent handles photos + presenter + b-roll correctly.
+    if (!avatarId && profile.voice_clone_id && listingPhotos.length > 0) {
       console.log(`[create-blog] EL multi-scene path — ${listingPhotos.length} photos, voice ${profile.voice_clone_id}`);
       try {
         const numScenes = Math.min(listingPhotos.length, 5);
