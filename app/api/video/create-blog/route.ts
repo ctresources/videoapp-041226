@@ -296,9 +296,8 @@ SCENE 1 — TITLE CARD (OPENING FRAME / THUMBNAIL)
 The very first scene of the video MUST be a designed title card. This is mandatory — do not skip it or replace it with plain b-roll.
 
 Title card layout:
-• BACKGROUND: Full-frame lifestyle photo of ${locationOr} — warm, inviting, fills edge-to-edge, no black bars
-• TOP TEXT OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in large font at the very top of the frame. Use a semi-transparent dark bar or drop shadow behind the text so it is readable.
-• PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas
+• PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas — the avatar IS the thumbnail image, no separate background photo
+• LOWER-THIRD OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in the LOWER THIRD of the frame (bottom 20% strip), inside a semi-transparent dark bar spanning the full width. This text MUST NOT cover the presenter's face — keep it at the very bottom of the frame.
 • NO OTHER TEXT on this title card
 • The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
 
