@@ -7,8 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -165,10 +166,17 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-brand-text">Admin Panel</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Manage users and monitor system activity</p>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="flex items-center gap-3 mb-6">
+        <Link href="/dashboard">
+          <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+            <ArrowLeft size={18} className="text-slate-400" />
+          </button>
+        </Link>
+        <div>
+          <h2 className="text-2xl font-bold text-brand-text">Admin Panel</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Manage users and monitor system activity</p>
+        </div>
       </div>
 
       {/* Stats */}
