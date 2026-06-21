@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink } from "lucide-react";
+import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface AvatarLook {
@@ -24,7 +24,12 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [consentLoading, setConsentLoading] = useState(false);
 
-  const PENDING_STATUSES = ["processing", "pending_consent"];
+  // Generate-with-AI state
+  const [showGeneratePanel, setShowGeneratePanel] = useState(false);
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const PENDING_STATUSES = ["processing", "pending_consent", "pending"];
 
   const fetchLooks = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -39,15 +44,16 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     }
   }, []);
 
-  // Start/stop polling based on whether any look is still in a pending state
+  // Start/stop polling based on whether any look is still pending
   useEffect(() => {
     const hasPending = looks.some((l) => l.status && PENDING_STATUSES.includes(l.status));
 
     if (hasPending && !pollRef.current) {
-      pollRef.current = setInterval(() => fetchLooks(true), 15_000);
+      pollRef.current = setInterval(() => fetchLooks(true), 20_000);
     } else if (!hasPending && pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
+      toast.success("Your new look is ready!");
     }
 
     return () => {
@@ -70,7 +76,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     setPendingFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setShowNameInput(true);
-    // Reset input so same file can be re-selected
+    setShowGeneratePanel(false);
     e.target.value = "";
   }
 
@@ -109,7 +115,6 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
 
     setAdding(true);
     try {
-      // Upload photo to Supabase Storage first
       const supabase = createClient();
       const ext = pendingFile.name.split(".").pop() || "jpg";
       const filePath = `${userId}/looks/${Date.now()}.${ext}`;
@@ -119,7 +124,6 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       if (upErr) throw new Error(upErr.message);
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      // Register look with HeyGen
       const res = await fetch("/api/avatar/add-look", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,13 +142,67 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     }
   }
 
+  async function handleGenerateLook() {
+    if (generatePrompt.trim().length < 10) {
+      toast.error("Describe the look in at least 10 characters");
+      return;
+    }
+    const baseLook = looks.find((l) => l.status === "completed" || l.status === "active" || !l.status);
+    if (!baseLook) {
+      toast.error("You need at least one completed look to generate from");
+      return;
+    }
+
+    setGenerating(true);
+    const name = `AI Look ${new Date().toLocaleDateString()}`;
+    try {
+      const res = await fetch("/api/avatar/generate-look", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarId: baseLook.id, prompt: generatePrompt.trim(), name }),
+      });
+      const data = await res.json();
+
+      if (res.status === 402) {
+        if (data.upgrade) {
+          toast((t) => (
+            <span>
+              No credits left.{" "}
+              <a href="/billing" className="underline font-medium" onClick={() => toast.dismiss(t.id)}>
+                Upgrade your plan
+              </a>
+            </span>
+          ), { duration: 6000 });
+        } else {
+          toast.error(data.error || "Insufficient credits");
+        }
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || "Generation failed");
+
+      await fetchLooks(true);
+      setShowGeneratePanel(false);
+      setGeneratePrompt("");
+      toast.success(
+        data.freeUsed
+          ? "Generating your new look · free this month · ready in ~2 min"
+          : "Generating your new look · 1 credit used · ready in ~2 min",
+        { duration: 5000 }
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Look generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">Avatar Looks</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Upload different photos of yourself (outfits, backgrounds) · choose a look per video
+            Upload different photos or generate AI looks · choose a look per video
           </p>
         </div>
         {hasAvatar && (
@@ -180,49 +238,69 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {looks.map((look) => (
-            <div key={look.id} className="flex flex-col items-center gap-1" style={{ width: 72 }}>
-              <div className="relative w-[72px] h-[88px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                {look.preview_image_url ? (
-                  <img
-                    src={look.preview_image_url}
-                    alt={look.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User size={24} className="text-slate-300" />
-                  </div>
-                )}
-                <div className="absolute bottom-1 right-1">
-                  {look.status === "completed" || look.status === "active" || !look.status ? (
-                    <CheckCircle size={14} className="text-green-500 bg-white rounded-full" />
-                  ) : look.status === "processing" ? (
-                    <Clock size={14} className="text-amber-500 bg-white rounded-full" />
-                  ) : look.status === "pending_consent" ? (
-                    <ShieldAlert size={14} className="text-purple-500 bg-white rounded-full" />
-                  ) : look.status === "failed" ? (
-                    <AlertCircle size={14} className="text-red-500 bg-white rounded-full" />
-                  ) : null}
+          {looks.map((look) => {
+            const isProcessing = look.status === "processing" || look.status === "pending";
+            return (
+              <div key={look.id} className="flex flex-col items-center gap-1" style={{ width: 72 }}>
+                <div className="relative w-[72px] h-[88px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                  {look.preview_image_url ? (
+                    <img
+                      src={look.preview_image_url}
+                      alt={look.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User size={24} className="text-slate-300" />
+                    </div>
+                  )}
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
+                      <Loader2 size={16} className="text-white animate-spin" />
+                      <p className="text-white text-[8px] font-medium">Generating</p>
+                    </div>
+                  )}
+                  {!isProcessing && (
+                    <div className="absolute bottom-1 right-1">
+                      {look.status === "completed" || look.status === "active" || !look.status ? (
+                        <CheckCircle size={14} className="text-green-500 bg-white rounded-full" />
+                      ) : look.status === "pending_consent" ? (
+                        <ShieldAlert size={14} className="text-purple-500 bg-white rounded-full" />
+                      ) : look.status === "failed" ? (
+                        <AlertCircle size={14} className="text-red-500 bg-white rounded-full" />
+                      ) : null}
+                    </div>
+                  )}
                 </div>
+                <p className="text-[10px] text-slate-500 text-center leading-tight truncate w-full">
+                  {look.name}
+                </p>
               </div>
-              <p className="text-[10px] text-slate-500 text-center leading-tight truncate w-full">
-                {look.name}
-              </p>
-            </div>
-          ))}
+            );
+          })}
 
-          {/* Add look tile */}
-          {!showNameInput && (
-            <div className="flex flex-col items-center gap-1" style={{ width: 72 }}>
-              <button
-                onClick={() => inputRef.current?.click()}
-                className="w-[72px] h-[88px] rounded-xl border-2 border-dashed border-slate-300 hover:border-primary-400 bg-slate-50 hover:bg-primary-50 transition-colors flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-primary-500"
-              >
-                <Plus size={20} />
-              </button>
-              <p className="text-[10px] text-slate-400 text-center">Add look</p>
-            </div>
+          {/* Action tiles */}
+          {!showNameInput && !showGeneratePanel && (
+            <>
+              <div className="flex flex-col items-center gap-1" style={{ width: 72 }}>
+                <button
+                  onClick={() => inputRef.current?.click()}
+                  className="w-[72px] h-[88px] rounded-xl border-2 border-dashed border-slate-300 hover:border-primary-400 bg-slate-50 hover:bg-primary-50 transition-colors flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-primary-500"
+                >
+                  <Plus size={20} />
+                </button>
+                <p className="text-[10px] text-slate-400 text-center">Upload photo</p>
+              </div>
+              <div className="flex flex-col items-center gap-1" style={{ width: 72 }}>
+                <button
+                  onClick={() => setShowGeneratePanel(true)}
+                  className="w-[72px] h-[88px] rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 bg-slate-50 hover:bg-amber-50 transition-colors flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-amber-500"
+                >
+                  <Sparkles size={20} />
+                </button>
+                <p className="text-[10px] text-slate-400 text-center">Generate AI</p>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -264,9 +342,45 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
         </div>
       )}
 
-      {looks.some((l) => l.status === "processing") && (
+      {/* Generate with AI panel */}
+      {showGeneratePanel && (
+        <div className="border border-amber-200 rounded-xl p-3 bg-amber-50 flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={13} className="text-amber-500" />
+            <p className="text-xs font-medium text-amber-800">Generate a look with AI</p>
+            <span className="ml-auto text-[10px] text-amber-600">1st look/month free · then 1 credit · ~2 min</span>
+          </div>
+          <textarea
+            autoFocus
+            rows={3}
+            placeholder="Describe the outfit, setting, and style — e.g. 'Professional navy blue blazer, bright office background, confident expression'"
+            value={generatePrompt}
+            onChange={(e) => setGeneratePrompt(e.target.value)}
+            className="text-xs px-3 py-2 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 w-full resize-none bg-white"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleGenerateLook}
+              disabled={generating || generatePrompt.trim().length < 10}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg py-2 hover:bg-amber-600 disabled:opacity-50 transition-colors"
+            >
+              {generating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {generating ? "Generating…" : "Generate Look"}
+            </button>
+            <button
+              onClick={() => { setShowGeneratePanel(false); setGeneratePrompt(""); }}
+              disabled={generating}
+              className="px-3 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg bg-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {looks.some((l) => l.status === "processing" || l.status === "pending") && (
         <p className="text-xs text-amber-600 flex items-center gap-1">
-          <Loader2 size={11} className="animate-spin" /> Training in progress — status updates automatically.
+          <Loader2 size={11} className="animate-spin" /> Generating — status updates automatically.
         </p>
       )}
 
