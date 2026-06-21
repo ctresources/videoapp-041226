@@ -138,6 +138,7 @@ export default function ProjectEditorPage() {
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollAnimRef = useRef<number | null>(null);
+  const lookPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
@@ -167,22 +168,39 @@ export default function ProjectEditorPage() {
     }
   }, [projectId]); // eslint-disable-line
 
-  async function loadLooks() {
-    setLooksLoading(true);
+  // Cleanup polling interval on unmount
+  useEffect(() => () => {
+    if (lookPollingRef.current) clearInterval(lookPollingRef.current);
+  }, []);
+
+  async function loadLooks(silent = false) {
+    if (!silent) setLooksLoading(true);
     try {
       const res = await fetch("/api/avatar/looks");
       if (res.ok) {
         const data = await res.json();
-        const list: AvatarLook[] = (data.looks || []).filter(
-          (l: AvatarLook) => !l.status || l.status === "completed" || l.status === "active"
-        );
-        setLooks(list);
-        if (list.length > 0) setSelectedLookId(list[0].id);
+        // Show all looks including processing ones (displayed differently in the grid)
+        const all: AvatarLook[] = data.looks || [];
+        setLooks(all);
+        // Auto-select first ready look on initial (non-silent) load only
+        if (!silent) {
+          const ready = all.filter((l) => !l.status || l.status === "completed" || l.status === "active");
+          if (ready.length > 0) setSelectedLookId(ready[0].id);
+        }
+        // Auto-poll while any look is still generating; stop and notify when done
+        const hasProcessing = all.some((l) => l.status === "processing" || l.status === "pending");
+        if (hasProcessing && !lookPollingRef.current) {
+          lookPollingRef.current = setInterval(() => loadLooks(true), 20_000);
+        } else if (!hasProcessing && lookPollingRef.current) {
+          clearInterval(lookPollingRef.current);
+          lookPollingRef.current = null;
+          toast.success("Your new avatar look is ready — select it below!");
+        }
       }
     } catch {
       // silently ignore — look picker just won't appear
     } finally {
-      setLooksLoading(false);
+      if (!silent) setLooksLoading(false);
     }
   }
 
@@ -225,10 +243,16 @@ export default function ProjectEditorPage() {
         }
         return;
       }
-      toast.success("New look is generating — check back in ~2 minutes");
+      const wasFree = data?.freeUsed === true;
+      toast.success(
+        wasFree
+          ? "Generating your new look — it'll appear below when ready! (Free this month)"
+          : "Generating your new look — 1 credit used",
+      );
       setGenerateLookPrompt("");
       setShowGenerateLook(false);
-      setTimeout(() => loadLooks(), 5000);
+      // Immediately reload so the processing tile appears; polling takes over from there
+      await loadLooks(true);
     } catch {
       toast.error("Failed to generate look");
     } finally {
@@ -782,40 +806,54 @@ export default function ProjectEditorPage() {
                 </div>
               ) : (
                 <div className="flex gap-2 flex-wrap">
-                  {looks.map((look) => (
-                    <button
-                      key={look.id}
-                      onClick={() => setSelectedLookId(look.id)}
-                      title={look.name}
-                      className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
-                        selectedLookId === look.id
-                          ? "border-primary-500 ring-2 ring-primary-200"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                      style={{ width: 72, height: 88 }}
-                    >
-                      {look.preview_image_url ? (
-                        <img src={look.preview_image_url} alt={look.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                          <User size={24} className="text-slate-300" />
-                        </div>
-                      )}
-                      {look.avatar_type === "digital_twin" && (
-                        <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
-                          <p className="text-white text-[7px] font-bold leading-none">DT</p>
-                        </div>
-                      )}
-                      {selectedLookId === look.id && (
-                        <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
-                          <CheckCircle size={10} className="text-white" />
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
-                        <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
-                      </div>
-                    </button>
-                  ))}
+                  {looks.map((look) => {
+                    const isProcessing = look.status === "processing" || look.status === "pending";
+                    return (
+                      <button
+                        key={look.id}
+                        onClick={() => { if (!isProcessing) setSelectedLookId(look.id); }}
+                        title={look.name}
+                        disabled={isProcessing}
+                        className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
+                          isProcessing
+                            ? "border-slate-200 opacity-60 cursor-wait"
+                            : selectedLookId === look.id
+                              ? "border-primary-500 ring-2 ring-primary-200"
+                              : "border-slate-200 hover:border-slate-300"
+                        }`}
+                        style={{ width: 72, height: 88 }}
+                      >
+                        {look.preview_image_url ? (
+                          <img src={look.preview_image_url} alt={look.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                            <User size={24} className="text-slate-300" />
+                          </div>
+                        )}
+                        {isProcessing && (
+                          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
+                            <Loader2 size={16} className="text-white animate-spin" />
+                            <p className="text-white text-[8px] font-medium">Generating</p>
+                          </div>
+                        )}
+                        {!isProcessing && look.avatar_type === "digital_twin" && (
+                          <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                            <p className="text-white text-[7px] font-bold leading-none">DT</p>
+                          </div>
+                        )}
+                        {!isProcessing && selectedLookId === look.id && (
+                          <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
+                            <CheckCircle size={10} className="text-white" />
+                          </div>
+                        )}
+                        {!isProcessing && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
+                            <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
@@ -1170,44 +1208,58 @@ export default function ProjectEditorPage() {
                   </div>
                 ) : (
                   <div className="flex gap-2 mb-5 flex-wrap">
-                    {looks.map((look) => (
-                      <button
-                        key={look.id}
-                        onClick={() => setSelectedLookId(look.id)}
-                        title={look.name}
-                        className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
-                          selectedLookId === look.id
-                            ? "border-primary-500 ring-2 ring-primary-200"
-                            : "border-slate-200 hover:border-slate-300"
-                        }`}
-                        style={{ width: 72, height: 88 }}
-                      >
-                        {look.preview_image_url ? (
-                          <img
-                            src={look.preview_image_url}
-                            alt={look.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                            <User size={24} className="text-slate-300" />
-                          </div>
-                        )}
-                        {look.avatar_type === "digital_twin" && (
-                          <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
-                            <p className="text-white text-[7px] font-bold leading-none">DT</p>
-                          </div>
-                        )}
-                        {selectedLookId === look.id && (
-                          <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
-                            <CheckCircle size={10} className="text-white" />
-                          </div>
-                        )}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
-                          <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
-                        </div>
-                      </button>
-                    ))}
+                    {looks.map((look) => {
+                      const isProcessing = look.status === "processing" || look.status === "pending";
+                      return (
+                        <button
+                          key={look.id}
+                          onClick={() => { if (!isProcessing) setSelectedLookId(look.id); }}
+                          title={look.name}
+                          disabled={isProcessing}
+                          className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
+                            isProcessing
+                              ? "border-slate-200 opacity-60 cursor-wait"
+                              : selectedLookId === look.id
+                                ? "border-primary-500 ring-2 ring-primary-200"
+                                : "border-slate-200 hover:border-slate-300"
+                          }`}
+                          style={{ width: 72, height: 88 }}
+                        >
+                          {look.preview_image_url ? (
+                            <img
+                              src={look.preview_image_url}
+                              alt={look.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                              <User size={24} className="text-slate-300" />
+                            </div>
+                          )}
+                          {isProcessing && (
+                            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
+                              <Loader2 size={16} className="text-white animate-spin" />
+                              <p className="text-white text-[8px] font-medium">Generating</p>
+                            </div>
+                          )}
+                          {!isProcessing && look.avatar_type === "digital_twin" && (
+                            <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                              <p className="text-white text-[7px] font-bold leading-none">DT</p>
+                            </div>
+                          )}
+                          {!isProcessing && selectedLookId === look.id && (
+                            <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
+                              <CheckCircle size={10} className="text-white" />
+                            </div>
+                          )}
+                          {!isProcessing && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
+                              <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
                 {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
