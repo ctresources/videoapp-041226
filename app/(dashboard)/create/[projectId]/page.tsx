@@ -27,6 +27,7 @@ interface AvatarLook {
   name: string;
   preview_image_url: string | null;
   status: string | null;
+  avatar_type?: string;
 }
 
 type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
@@ -657,10 +658,19 @@ export default function ProjectEditorPage() {
             </div>
           </Card>
 
+          {/* Video style selector */}
+          <Card>
+            {renderModeSelector()}
+          </Card>
+
           {/* Avatar look */}
           {(looksLoading || looks.length > 0) && (
             <Card>
-              <p className="text-sm font-semibold text-brand-text mb-3">Choose Your Avatar</p>
+              <p className="text-sm font-semibold text-brand-text mb-1">Choose Your Avatar</p>
+              <p className="text-xs text-slate-400 mb-3">
+                📸 <span className="font-medium text-slate-500">Photo Avatar</span> — created from your headshot &nbsp;·&nbsp;
+                🎬 <span className="font-medium text-slate-500">Digital Twin</span> — created from your video recording
+              </p>
               {looksLoading ? (
                 <div className="flex gap-2">
                   {[0, 1, 2].map((i) => (
@@ -686,6 +696,11 @@ export default function ProjectEditorPage() {
                       ) : (
                         <div className="w-full h-full bg-slate-100 flex items-center justify-center">
                           <User size={24} className="text-slate-300" />
+                        </div>
+                      )}
+                      {look.avatar_type === "digital_twin" && (
+                        <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                          <p className="text-white text-[7px] font-bold leading-none">DT</p>
                         </div>
                       )}
                       {selectedLookId === look.id && (
@@ -802,7 +817,6 @@ export default function ProjectEditorPage() {
           </Card>
 
           {/* Generate button */}
-          {renderModeSelector()}
           <Button
             onClick={handleGenerateVideo}
             loading={videoGenerating}
@@ -1030,11 +1044,17 @@ export default function ProjectEditorPage() {
               ))}
             </div>
 
+            {/* Video style selector */}
+            <div className="mb-5">{renderModeSelector()}</div>
 
             {/* Avatar look selector */}
             {(looksLoading || looks.length > 0) && (
               <>
-                <p className="text-xs font-medium text-slate-500 mb-2">Avatar Look</p>
+                <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  📸 <span className="font-medium">Photo Avatar</span> — from your headshot &nbsp;·&nbsp;
+                  🎬 <span className="font-medium">Digital Twin</span> — from your video
+                </p>
                 {looksLoading ? (
                   <div className="flex gap-2 mb-5">
                     {[0, 1, 2].map((i) => (
@@ -1064,6 +1084,11 @@ export default function ProjectEditorPage() {
                         ) : (
                           <div className="w-full h-full bg-slate-100 flex items-center justify-center">
                             <User size={24} className="text-slate-300" />
+                          </div>
+                        )}
+                        {look.avatar_type === "digital_twin" && (
+                          <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                            <p className="text-white text-[7px] font-bold leading-none">DT</p>
                           </div>
                         )}
                         {selectedLookId === look.id && (
@@ -1151,7 +1176,6 @@ export default function ProjectEditorPage() {
               <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
-            {renderModeSelector()}
             <div className="flex items-center gap-3 flex-wrap">
               <Button
                 onClick={handleGenerateVideo}
