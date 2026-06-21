@@ -121,6 +121,11 @@ export default function ProjectEditorPage() {
   const [pdfUrlInput, setPdfUrlInput] = useState("");
   const [pdfUrlExtracting, setPdfUrlExtracting] = useState(false);
 
+  // Generate new avatar look
+  const [showGenerateLook, setShowGenerateLook] = useState(false);
+  const [generateLookPrompt, setGenerateLookPrompt] = useState("");
+  const [generateLookLoading, setGenerateLookLoading] = useState(false);
+
   // Teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [tpAutoScroll, setTpAutoScroll] = useState(false);
@@ -178,6 +183,38 @@ export default function ProjectEditorPage() {
       // silently ignore — look picker just won't appear
     } finally {
       setLooksLoading(false);
+    }
+  }
+
+  async function generateNewLook() {
+    if (!selectedLookId) {
+      toast.error("Select an avatar look first to use as the visual reference");
+      return;
+    }
+    if (generateLookPrompt.trim().length < 10) {
+      toast.error("Describe the new look in more detail");
+      return;
+    }
+    setGenerateLookLoading(true);
+    try {
+      const res = await fetch("/api/avatar/generate-look", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarId: selectedLookId, prompt: generateLookPrompt.trim() }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) {
+        toast.error((data?.error as string) || "Look generation failed");
+        return;
+      }
+      toast.success("New look is generating — check back in ~2 minutes");
+      setGenerateLookPrompt("");
+      setShowGenerateLook(false);
+      setTimeout(() => loadLooks(), 5000);
+    } catch {
+      toast.error("Failed to generate look");
+    } finally {
+      setGenerateLookLoading(false);
     }
   }
 
@@ -422,6 +459,54 @@ export default function ProjectEditorPage() {
     } finally {
       setVideoGenerating(false);
     }
+  }
+
+  function renderGenerateLookPanel() {
+    return (
+      <div className="mt-3 pt-3 border-t border-slate-100">
+        {!showGenerateLook ? (
+          <button
+            onClick={() => setShowGenerateLook(true)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary-600 transition-colors"
+          >
+            <Plus size={12} />
+            Generate new look for selected avatar
+          </button>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-slate-600">Generate new look</p>
+              <button onClick={() => setShowGenerateLook(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={14} />
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-2">
+              Based on your selected avatar · $1.00 per look · ready in ~2 min
+            </p>
+            {!selectedLookId && (
+              <p className="text-[10px] text-amber-500 mb-2">Select an avatar above first</p>
+            )}
+            <textarea
+              value={generateLookPrompt}
+              onChange={(e) => setGenerateLookPrompt(e.target.value)}
+              placeholder="e.g. navy blazer, modern office with plants, warm natural light"
+              rows={2}
+              className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+            />
+            <button
+              onClick={generateNewLook}
+              disabled={generateLookLoading || !selectedLookId || generateLookPrompt.trim().length < 10}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {generateLookLoading
+                ? <><Loader2 size={12} className="animate-spin" /> Generating…</>
+                : <><Wand2 size={12} /> Generate Look</>
+              }
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function renderModeSelector() {
@@ -715,6 +800,7 @@ export default function ProjectEditorPage() {
                   ))}
                 </div>
               )}
+              {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
             </Card>
           )}
 
@@ -1106,6 +1192,7 @@ export default function ProjectEditorPage() {
                     ))}
                   </div>
                 )}
+                {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
               </>
             )}
 
