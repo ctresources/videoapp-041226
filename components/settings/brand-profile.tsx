@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import {
   Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
-  RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle,
+  RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck,
 } from "lucide-react";
 
 export interface BrandProfileInitial {
@@ -450,17 +450,21 @@ function DigitalTwinCreator({
   if (dtStatus === "active") {
     return (
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2.5 p-3 bg-green-50 border border-green-200 rounded-xl">
-          <CheckCircle size={15} className="text-green-500 shrink-0" />
+        <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+          <CheckCircle size={18} className="text-green-500 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">Digital Twin Active</p>
-            <p className="text-xs text-green-600 mt-0.5">
+            <p className="text-sm font-bold text-green-800">Digital Twin Active</p>
+            <p className="text-xs text-green-700 mt-0.5">
               Your photorealistic AI avatar is ready — select it when creating Avatar + Voice videos.
             </p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700 font-medium bg-green-100 border border-green-300 rounded-lg px-2.5 py-1.5 w-fit">
+              <ShieldCheck size={13} className="text-green-600 shrink-0" />
+              Consent approved · HeyGen usage authorized
+            </div>
           </div>
           <button
             onClick={handleDelete}
-            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 shrink-0"
+            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1 shrink-0 mt-0.5"
           >
             <Trash2 size={11} /> Remove
           </button>
