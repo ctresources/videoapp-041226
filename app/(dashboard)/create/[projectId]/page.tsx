@@ -204,7 +204,25 @@ export default function ProjectEditorPage() {
       });
       const data = await safeJson(res);
       if (!res.ok) {
-        toast.error((data?.error as string) || "Look generation failed");
+        if (res.status === 402 && data?.upgrade) {
+          toast(
+            (t) => (
+              <span className="text-sm">
+                No credits left.{" "}
+                <a
+                  href="/billing"
+                  className="font-semibold underline text-primary-600"
+                  onClick={() => toast.dismiss(t.id)}
+                >
+                  Upgrade your plan
+                </a>
+              </span>
+            ),
+            { duration: 6000 },
+          );
+        } else {
+          toast.error((data?.error as string) || "Look generation failed");
+        }
         return;
       }
       toast.success("New look is generating — check back in ~2 minutes");
@@ -481,7 +499,7 @@ export default function ProjectEditorPage() {
               </button>
             </div>
             <p className="text-[10px] text-slate-400 mb-2">
-              Based on your selected avatar · $1.00 per look · ready in ~2 min
+              Based on your selected avatar · 1st look/month free, then 1 credit · ready in ~2 min
             </p>
             {!selectedLookId && (
               <p className="text-[10px] text-amber-500 mb-2">Select an avatar above first</p>
