@@ -109,13 +109,10 @@ export async function uploadTalkingPhoto(
 ): Promise<string> {
   const apiKey = getApiKey();
 
-  // HeyGen's photo avatar bakes in the source image's aspect ratio as its
-  // default render orientation (per HeyGen docs: aspect_ratio "auto" matches
-  // the source, falling back to 16:9). Most uploaded headshots are portrait,
-  // which can bias the avatar — and the scene composed around it — toward
-  // portrait even when an explicit landscape orientation is requested.
-  // Square-crop to neutralize that bias, since the avatar always renders as
-  // a circular PiP regardless of the overall video orientation anyway.
+  // HeyGen's Video Agent renders the avatar in the photo's registered aspect
+  // ratio. Portrait headshots produce portrait-pillarboxed output even when
+  // orientation:"landscape" is sent. Cropping to 16:9 before registration
+  // ensures the Video Agent renders the presenter full-screen in landscape.
   // sharp's package.json "exports" map has no "types" condition, so bundler
   // module resolution can't see its bundled .d.ts via this dynamic import.
   // Whether this actually errors varies by environment/cache state, so use
@@ -123,11 +120,11 @@ export async function uploadTalkingPhoto(
   // if there's nothing to suppress).
   // @ts-ignore -- types unresolvable, runtime import is fine
   const sharp = (await import("sharp")).default;
-  const squareBuffer = await sharp(imageBuffer)
-    .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
+  const landscapeBuffer = await sharp(imageBuffer)
+    .resize({ width: 1280, height: 720, fit: "cover", position: "attention" })
     .jpeg({ quality: 92 })
     .toBuffer();
-  imageBuffer = squareBuffer;
+  imageBuffer = landscapeBuffer;
   contentType = "image/jpeg";
 
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);

@@ -39,9 +39,41 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Crop image to 16:9 (1280×720) before registering with HeyGen.
+    // HeyGen's Video Agent renders the avatar in the photo's registered aspect
+    // ratio — portrait photos produce pillarboxed portrait output even when
+    // orientation:"landscape" is requested. A landscape crop fixes this.
+    let finalImageUrl = image_url;
+    try {
+      const imgResponse = await fetch(image_url);
+      if (imgResponse.ok) {
+        const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+        // @ts-ignore -- types unresolvable, runtime import is fine
+        const sharp = (await import("sharp")).default;
+        const croppedBuffer = await sharp(imgBuffer)
+          .resize({ width: 1280, height: 720, fit: "cover", position: "attention" })
+          .jpeg({ quality: 92 })
+          .toBuffer();
+
+        const filePath = `${user.id}/looks/landscape_${Date.now()}.jpg`;
+        const { error: uploadErr } = await admin.storage
+          .from("avatars")
+          .upload(filePath, croppedBuffer, { contentType: "image/jpeg", upsert: false });
+
+        if (!uploadErr) {
+          const { data: { publicUrl } } = admin.storage
+            .from("avatars")
+            .getPublicUrl(filePath);
+          finalImageUrl = publicUrl;
+        }
+      }
+    } catch (cropErr) {
+      console.warn("[add-look] Image crop failed, using original:", cropErr);
+    }
+
     const look = await addAvatarLook(
       profile.heygen_photo_id,
-      image_url,
+      finalImageUrl,
       name.trim(),
     );
 
