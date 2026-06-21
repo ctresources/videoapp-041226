@@ -108,16 +108,13 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
 
   return (
     <div className="mt-3 space-y-1.5">
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <span className="flex items-center gap-1">
-          <RefreshCw size={11} className="animate-spin text-primary-500" />
-          AI is creating your video…
-        </span>
-        <span className="font-medium text-primary-600">{displayPct}%</span>
-      </div>
+      <span className="flex items-center gap-1 text-xs text-slate-500">
+        <RefreshCw size={11} className="animate-spin text-primary-500" />
+        AI is creating your video…
+      </span>
       <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-1000"
+          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full animate-pulse"
           style={{ width: `${displayPct}%` }}
         />
       </div>
