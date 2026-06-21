@@ -297,7 +297,7 @@ The very first scene of the video MUST be a designed title card. This is mandato
 
 Title card layout:
 • PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas — the avatar IS the thumbnail image, no separate background photo
-• LOWER-THIRD OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in the LOWER THIRD of the frame (bottom 20% strip), inside a semi-transparent dark bar spanning the full width. This text MUST NOT cover the presenter's face — keep it at the very bottom of the frame.
+• STOP-SCROLLING HOOK TEXT: Display this attention-grabbing headline — "${params.hookText || "Your Local Real Estate Expert"}" — as a LOWER-THIRD overlay at the very bottom of the frame (bottom 20% strip). Style it as a bold social-media stop-scrolling hook: oversized font, ALL CAPS or title case, high-contrast white text with a strong semi-transparent dark bar behind it spanning the full frame width. It must look like something that would stop a viewer mid-scroll. This text MUST NOT cover the presenter's face — keep it at the very bottom of the frame.
 • NO OTHER TEXT on this title card
 • The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
 
