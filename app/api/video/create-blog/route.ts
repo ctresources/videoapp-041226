@@ -233,7 +233,6 @@ CANVAS: 1920 pixels wide × 1080 pixels tall. Horizontal landscape orientation �
 - Fill the entire 1920×1080 canvas edge-to-edge — ZERO black bars on any side, left, right, top, or bottom.
 - NEVER render this as a vertical or portrait video. The output MUST be horizontal widescreen.
 - All b-roll, backgrounds, and photo crops must fill the full 1920×1080 widescreen frame.
-- The avatar PiP circle sits in the bottom-right corner of this wide 1920×1080 canvas.
 
 `;
 
@@ -275,11 +274,9 @@ AVATAR — NON-NEGOTIABLE REQUIREMENT
 =====================================
 The presenter's avatar MUST appear on screen for the ENTIRE duration of the video — no exceptions.
 - ANIMATED TALKING AVATAR: the avatar face MUST move and lip-sync to the narration throughout the entire video. This is a talking photo avatar — the mouth, face, and expressions must animate in real time as the narrator speaks. NEVER render a still/static photo of the presenter. The avatar must be talking and animated for every single frame.
-- Show the avatar as a circular picture-in-picture (PiP) anchored to the BOTTOM-RIGHT corner
-- PiP size: ~20–25% of screen width, with a clean white or soft gold circular border
-- B-roll fills the full frame BEHIND the PiP — the avatar never disappears
-- NEVER show a frame without the avatar visible
-- NEVER show the avatar full-screen — circular bottom-right PiP only
+- Show the avatar FULL SCREEN, filling the entire 16:9 canvas edge-to-edge — NO PiP, no corner bubble, no circular crop
+- The presenter is the primary visual for the entire video; b-roll clips play as short interstitial segments between presenter moments, not layered behind a PiP
+- NEVER show a frame without the avatar visible during narration
 - NEVER use a static image for the presenter — the avatar must always be the animated, talking version
 
 =====================================
@@ -301,7 +298,7 @@ The very first scene of the video MUST be a designed title card. This is mandato
 Title card layout:
 • BACKGROUND: Full-frame lifestyle photo of ${locationOr} — warm, inviting, fills edge-to-edge, no black bars
 • TOP TEXT OVERLAY: Display the bold white headline text — "${params.hookText || "Your Local Real Estate Expert"}" — in large font at the very top of the frame. Use a semi-transparent dark bar or drop shadow behind the text so it is readable.
-• PRESENTER: Circular talking-photo PiP in the bottom-right corner as always
+• PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas
 • NO OTHER TEXT on this title card
 • The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
 
@@ -315,7 +312,7 @@ ${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is atta
 • CONTACT TEXT (on screen only — do NOT narrate): ${contactLine}
 • Phone numbers must be displayed exactly as provided — no leading "1", no country code
 • Bold CTA headline on screen: "${ctaText}"
-• Presenter PiP remains visible in the bottom-right corner
+• Presenter visible full-screen or alongside the contact card elements
 
 =====================================
 PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
@@ -402,7 +399,7 @@ When stats or numbers are spoken:
 - Bar charts → home prices
 - Line graphs → market trends
 - Infographic overlays → inventory/demand levels
-- Position ALL charts and data graphics on the TOP or LEFT of the frame — NEVER in the bottom-right quadrant where the avatar PiP sits
+- Position ALL charts and data graphics in the LOWER THIRD band (bottom 20% of frame) only — never overlapping the presenter's face in the center or upper portion of the frame
 
 =====================================
 TEXT OVERLAYS
@@ -413,11 +410,11 @@ TEXT OVERLAYS
 - Accent lines/icons: gold or navy
 - Bold, minimal, readable — no clutter
 - CRITICAL POSITIONING — TEXT MUST NEVER COVER THE PRESENTER'S FACE:
-  • The avatar PiP is anchored to the BOTTOM-RIGHT corner. Its face must always stay fully visible and unobstructed.
-  • Place ALL text overlays, captions, stats, and data visualizations in the TOP BAND of the frame (top 25% strip across the full width). This is the default and strongly preferred zone for every overlay.
-  • If a second overlay zone is needed, use the BOTTOM-LEFT corner only — NEVER the bottom-right.
-  • ABSOLUTELY NO text, caption, stat, chart, or graphic anywhere in the bottom-right quadrant (right half × bottom half) — that area belongs to the avatar and any text there lands directly ON the presenter's face.
-  • When in doubt, put the text at the very TOP of the frame.
+  • The avatar is FULL SCREEN. The presenter's face occupies the upper-center portion of the frame.
+  • Place ALL text overlays, captions, stats, and data visualizations in the LOWER THIRD of the frame — the bottom 20% strip (approximately the bottom 216 pixels of a 1080p frame). This is the broadcast-standard lower-third zone.
+  • NEVER place any text, caption, stat, chart, or graphic in the upper 80% of the frame while the presenter is visible — overlays in that zone will land directly on the presenter's face.
+  • Lower-third style: a semi-transparent dark bar spanning the full width near the bottom of the frame, with white or gold text inside.
+  • When in doubt, keep all text at the very BOTTOM of the frame.
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
 }
