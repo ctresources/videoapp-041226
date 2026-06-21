@@ -297,7 +297,7 @@ The very first scene of the video MUST be a designed title card. This is mandato
 
 Title card layout:
 • PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas — the avatar IS the thumbnail image, no separate background photo
-• STOP-SCROLLING HOOK TEXT: Display this attention-grabbing headline — "${params.hookText || "Your Local Real Estate Expert"}" — as a LOWER-THIRD overlay at the very bottom of the frame (bottom 20% strip). Style it as a bold social-media stop-scrolling hook: oversized font, ALL CAPS or title case, high-contrast white text with a strong semi-transparent dark bar behind it spanning the full frame width. It must look like something that would stop a viewer mid-scroll. This text MUST NOT cover the presenter's face — keep it at the very bottom of the frame.
+• MANDATORY TEXT OVERLAY — render a full-width dark semi-transparent bar across the very bottom 20% of the frame (lower-third). Inside that bar display this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. This overlay MUST appear and stay visible for the entire duration of Scene 1. Do NOT omit it. Do NOT change the wording. Style it as a bold social-media stop-scrolling hook — oversized font, high contrast, impossible to miss.
 • NO OTHER TEXT on this title card
 • The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
 
@@ -423,7 +423,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine } = await req.json();
   // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
   // Direct Video API (single talking-head) instead of the default Video Agent,
   // so its output can be compared. Any other value keeps existing behavior.
@@ -533,7 +533,7 @@ export async function POST(req: NextRequest) {
     const state = scriptLocation?.split(",")[1]?.trim() || profile.location_state || "";
     const aiKeywords = (aiScript?.keywords as string[]) || [];
 
-    const hookText = (aiScript?.hook as string) || undefined;
+    const hookText = requestHook || (aiScript?.hook as string) || undefined;
     const audience = (aiScript?.audience as string) || undefined;
     const tone = (aiScript?.tone as string) || undefined;
     const ctaPreference = (aiScript?.cta_preference as string) || undefined;
