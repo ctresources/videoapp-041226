@@ -7,7 +7,6 @@ import {
   uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
-  getAvatarLooks,
   uploadTalkingPhoto,
   DIMENSIONS,
   type VideoType,
@@ -598,24 +597,9 @@ export async function POST(req: NextRequest) {
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    // profile.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render
-    // directly as the on-screen avatar — it needs a concrete look id. The client
-    // normally passes one as lookId, but if it didn't (looks failed to load, or
-    // none were completed yet), resolve the group's first completed look here so
-    // the avatar still appears on screen instead of being dropped.
-    let avatarId = lookId || profile.heygen_photo_id;
-    if (!lookId && profile.heygen_photo_id) {
-      try {
-        const looks = await getAvatarLooks(profile.heygen_photo_id);
-        const ready = looks.find((l) => l.status === "completed" || l.status === "active") || looks[0];
-        if (ready?.id) {
-          avatarId = ready.id;
-          console.log(`[create-blog] Resolved group ${profile.heygen_photo_id} → look ${avatarId}`);
-        }
-      } catch (e) {
-        console.warn("[create-blog] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
-      }
-    }
+    // avatarId is only set when the client explicitly selected a look (Avatar + Voice mode).
+    // Voice Only mode sends no lookId, so no avatar is placed on screen.
+    const avatarId: string | undefined = lookId || undefined;
 
     // ── Direct Video path (opt-in via engine="direct") ──────────────────────────
     // Experimental: HeyGen v3 Direct Video — a single talking-head from the
@@ -623,6 +607,7 @@ export async function POST(req: NextRequest) {
     // composition (that's the Video Agent's job); used to compare raw avatar
     // output. Polled single-step via getVideoV3Status (render_provider tag).
     if (useDirectVideo) {
+      if (!avatarId) throw new Error("Select an avatar look before generating a Direct Video.");
       console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${avatarId}`);
 
       // Direct Video needs a HeyGen voice_id (not the ElevenLabs voice_clone_id).
@@ -731,7 +716,7 @@ export async function POST(req: NextRequest) {
 
         const heygenVideoId = await generateVideo({
           scenes,
-          talkingPhotoId: avatarId,
+          talkingPhotoId: avatarId ?? "",
           photoPosition: "bottom-right",
           dimension,
           title,

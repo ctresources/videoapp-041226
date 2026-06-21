@@ -394,8 +394,8 @@ export default function ProjectEditorPage() {
           backgroundMode: "stock-video",
           script: fullScript,
           hook,
-          lookId: selectedLookId || undefined,
-          ...(renderMode === "direct" && { engine: "direct" }),
+          // Only pass lookId in Avatar + Voice mode — Voice Only gets no avatar
+          ...(renderMode === "direct" && selectedLookId && { lookId: selectedLookId }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
@@ -438,7 +438,7 @@ export default function ProjectEditorPage() {
             }`}
           >
             <span className="text-sm font-semibold text-slate-800">🎙️ Voice Only</span>
-            <span className="text-xs text-slate-500 leading-snug">AI composes scenes with b-roll and your voice — no avatar on screen</span>
+            <span className="text-xs text-slate-500 leading-snug">AI generates b-roll scenes from your script — voice narrates, no avatar on screen</span>
           </button>
           <button
             type="button"
@@ -450,7 +450,7 @@ export default function ProjectEditorPage() {
             }`}
           >
             <span className="text-sm font-semibold text-slate-800">🎥 Avatar + Voice</span>
-            <span className="text-xs text-slate-500 leading-snug">Your AI avatar speaks the script — you appear on screen throughout</span>
+            <span className="text-xs text-slate-500 leading-snug">AI generates b-roll from your script with your avatar on screen — pick a look below</span>
           </button>
         </div>
         {!renderMode && (
