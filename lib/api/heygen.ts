@@ -111,8 +111,9 @@ export async function uploadTalkingPhoto(
 
   // HeyGen's Video Agent renders the avatar in the photo's registered aspect
   // ratio. Portrait headshots produce portrait-pillarboxed output even when
-  // orientation:"landscape" is sent. Cropping to 16:9 before registration
-  // ensures the Video Agent renders the presenter full-screen in landscape.
+  // orientation:"landscape" is sent. Square-cropping neutralises the bias so
+  // the Video Agent is more likely to respect the requested orientation rather
+  // than inheriting a strong portrait or landscape bias from the source image.
   // sharp's package.json "exports" map has no "types" condition, so bundler
   // module resolution can't see its bundled .d.ts via this dynamic import.
   // Whether this actually errors varies by environment/cache state, so use
@@ -120,11 +121,11 @@ export async function uploadTalkingPhoto(
   // if there's nothing to suppress).
   // @ts-ignore -- types unresolvable, runtime import is fine
   const sharp = (await import("sharp")).default;
-  const landscapeBuffer = await sharp(imageBuffer)
-    .resize({ width: 1280, height: 720, fit: "cover", position: "attention" })
+  const squareBuffer = await sharp(imageBuffer)
+    .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
     .jpeg({ quality: 92 })
     .toBuffer();
-  imageBuffer = landscapeBuffer;
+  imageBuffer = squareBuffer;
   contentType = "image/jpeg";
 
   console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);

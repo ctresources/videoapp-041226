@@ -51,11 +51,11 @@ export async function POST(req: NextRequest) {
         // @ts-ignore -- types unresolvable, runtime import is fine
         const sharp = (await import("sharp")).default;
         const croppedBuffer = await sharp(imgBuffer)
-          .resize({ width: 1280, height: 720, fit: "cover", position: "attention" })
+          .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
           .jpeg({ quality: 92 })
           .toBuffer();
 
-        const filePath = `${user.id}/looks/landscape_${Date.now()}.jpg`;
+        const filePath = `${user.id}/looks/square_${Date.now()}.jpg`;
         const { error: uploadErr } = await admin.storage
           .from("avatars")
           .upload(filePath, croppedBuffer, { contentType: "image/jpeg", upsert: false });
