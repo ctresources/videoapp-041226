@@ -52,7 +52,7 @@ interface SeoOutput {
   email_blurb: string;
 }
 
-async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro") {
+export async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro") {
   if (!process.env.PERPLEXITY_API_KEY) {
     throw new Error("PERPLEXITY_API_KEY is not set. Add it to .env.local and restart the server.");
   }

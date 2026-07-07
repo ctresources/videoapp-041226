@@ -15,6 +15,7 @@ import {
   CalendarDays,
   BarChart2,
   CreditCard,
+  Wand2,
 } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/create",    icon: Mic,             label: "Create Video" },
   { href: "/videos",    icon: Video,           label: "My Videos" },
+  { href: "/tools",     icon: Wand2,           label: "AI Tools" },
   { href: "/calendar",  icon: CalendarDays,    label: "Calendar" },
   { href: "/analytics", icon: BarChart2,       label: "Analytics" },
   { href: "/social",    icon: Share2,          label: "Social Media" },
