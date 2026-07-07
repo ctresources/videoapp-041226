@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
+import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
@@ -227,15 +228,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     setSaving(true);
     try {
       const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
-      const ext = videoBlob.type.includes("mp4") ? "mp4" : "webm";
-      const fd = new FormData();
-      fd.append("video", videoBlob, `recording.${ext}`);
-      fd.append("title", title);
-      const res = await fetch("/api/video/save-camera-recording", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      setSavedVideoId(data.videoId);
-      setSavedTitle(data.title);
+      const { videoId, title: savedName } = await uploadCameraRecording(videoBlob, { title });
+      setSavedVideoId(videoId);
+      setSavedTitle(savedName);
       setShowPublish(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");

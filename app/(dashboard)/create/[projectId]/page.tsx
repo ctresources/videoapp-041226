@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
+import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -685,18 +686,14 @@ export default function ProjectEditorPage() {
     const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
     setTpUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("video", blob, "teleprompter-recording.webm");
-      formData.append("projectId", projectId);
-      formData.append("videoType", selectedVideoType);
-      formData.append("title", `Teleprompter: ${project?.title ?? "Recording"}`);
-      const res = await fetch("/api/video/save-camera-recording", { method: "POST", body: formData });
-      const body = await safeJson(res);
-      if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
-      const { video } = body as { video: { id: string } };
+      const { videoId } = await uploadCameraRecording(blob, {
+        projectId,
+        videoType: selectedVideoType,
+        title: `Teleprompter: ${project?.title ?? "Recording"}`,
+      });
       closeTeleprompter();
       toast.success("Recording saved! No AI charges — your video is ready.");
-      router.push(`/videos?highlight=${video.id}`);
+      router.push(`/videos?highlight=${videoId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
       setTpUploading(false);
