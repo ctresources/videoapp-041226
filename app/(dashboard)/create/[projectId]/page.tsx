@@ -90,7 +90,7 @@ type VideoChoice = VideoType | "youtube_long";
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
   { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min · 1 credit", credits: 1 },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min · 1 credit", credits: 1 },
-  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, up to 15 min · 6 credits", proOnly: true, credits: 6 },
+  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–15 min · unlocks mid-roll ads · 6 credits", proOnly: true, credits: 6 },
 ];
 
 export default function ProjectEditorPage() {
@@ -668,7 +668,11 @@ export default function ProjectEditorPage() {
 
   async function openTeleprompter() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // Ask for 1080p at 60fps — browsers gracefully fall back to the best the camera supports
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+        audio: true,
+      });
       cameraStreamRef.current = stream;
       setShowTeleprompter(true);
     } catch {
@@ -1665,7 +1669,7 @@ export default function ProjectEditorPage() {
                   >
                     <span className="w-3 h-3 rounded-full bg-white inline-block" /> Record Myself
                   </button>
-                  <span className="text-white/40 text-[10px]">Record Up To 15 Minutes — Ideal For Long-Form</span>
+                  <span className="text-white/40 text-[10px]">8–15 Min Is YouTube&apos;s Sweet Spot — 8+ Min Unlocks Mid-Roll Ads · 15 Min Max</span>
                 </div>
               )}
             </div>

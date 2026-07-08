@@ -24,7 +24,7 @@ const PLANS = [
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
-      "Long-form AI videos (up to 15 min) — pay-as-you-go, 6 credits",
+      "Long-form AI videos (8–15 min, mid-roll ad ready) — pay-as-you-go, 6 credits",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -42,7 +42,7 @@ const PLANS = [
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
-      "Long-form AI videos (up to 15 min) — pay-as-you-go, 6 credits",
+      "Long-form AI videos (8–15 min, mid-roll ad ready) — pay-as-you-go, 6 credits",
       "MLS listing auto-video",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
@@ -56,7 +56,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "12 AI videos/month",
-      "Long-form AI videos (up to 15 min) included — 6 credits each",
+      "Long-form AI videos (8–15 min, mid-roll ad ready) included — 6 credits each",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
@@ -406,7 +406,7 @@ export default async function BillingPage({
               <span className="text-3xl font-black text-brand-text">$39</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">6 credits ($6.50 each) — exactly one long-form AI video up to 15 min, on any plan.</p>
+            <p className="text-xs text-slate-500">6 credits ($6.50 each) — one long-form AI video (8–15 min, mid-roll ad ready), on any plan.</p>
             <a href="/api/stripe/credits?pack=6">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy Long-Form Pack <ArrowRight size={12} />
