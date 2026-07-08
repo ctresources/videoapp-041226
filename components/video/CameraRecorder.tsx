@@ -16,9 +16,12 @@ import {
   Video,
   Share2,
   Lightbulb,
+  Megaphone,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
+import { createClient } from "@/lib/supabase/client";
+import { resolveCta } from "@/lib/utils/default-cta";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic } from "@/components/ui/field-mic";
@@ -64,6 +67,11 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
   const [showPublish, setShowPublish] = useState(false);
+  const [ctaProfile, setCtaProfile] = useState<{
+    full_name: string | null; company_name: string | null;
+    location_city: string | null; location_state: string | null;
+    default_cta: string | null; market_years: string | null;
+  } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -78,6 +86,36 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   useEffect(() => {
     speedRef.current = SPEED_OPTIONS[speedIdx].px;
   }, [speedIdx]);
+
+  // Load the user's default CTA + profile details for the "Add Channel CTA" button
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name, company_name, location_city, location_state, default_cta, market_years")
+          .eq("id", user.id)
+          .single();
+        if (data) setCtaProfile(data as typeof ctaProfile);
+      } catch { /* CTA button simply stays hidden */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function addChannelCta() {
+    const cta = resolveCta(ctaProfile?.default_cta, {
+      city: city || ctaProfile?.location_city,
+      state: state || ctaProfile?.location_state,
+      name: ctaProfile?.full_name,
+      company: ctaProfile?.company_name,
+      years: ctaProfile?.market_years,
+    });
+    setScript((s) => (s.trim() ? `${s.trimEnd()}\n\n${cta}` : cta));
+    toast.success("Channel CTA added to the end of your script!");
+  }
 
   // Auto-stop at the 15-minute cap so the video stays YouTube-publishable
   useEffect(() => {
@@ -272,13 +310,23 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-semibold text-brand-text">Your Script</label>
-            <button
-              onClick={() => setShowSpark((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <Sparkles size={12} />
-              {showSpark ? "Hide" : "Spark with AI"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={addChannelCta}
+                className="flex items-center gap-1.5 text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                title="Append your subscribe & contact CTA to the script"
+              >
+                <Megaphone size={12} />
+                Add Channel CTA
+              </button>
+              <button
+                onClick={() => setShowSpark((v) => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+              >
+                <Sparkles size={12} />
+                {showSpark ? "Hide" : "Spark with AI"}
+              </button>
+            </div>
           </div>
 
           {showSpark && (
@@ -359,6 +407,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             <li>Face a window or light source — never sit with a bright light behind you</li>
             <li>Keep the camera at eye level and record in a quiet room</li>
             <li><strong>8–15 minutes</strong> is YouTube&apos;s algorithm sweet spot — and 8+ minutes unlocks mid-roll ads</li>
+            <li>End with a subscribe CTA — tap <strong>Add Channel CTA</strong> above to drop yours into the script so the teleprompter reads it for you</li>
           </ul>
         </div>
 
