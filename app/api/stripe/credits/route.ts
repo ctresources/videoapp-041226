@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 const CREDIT_PACKS = {
   "1": { credits: 1, amount: 1000, label: "1 AI Video Credit" },
   "2": { credits: 2, amount: 1500, label: "2 AI Video Credits" },
+  // Covers exactly one long-form AI video (up to 15 min) at $6.50/credit
+  "6": { credits: 6, amount: 3900, label: "Long-Form AI Video Pack (6 Credits)" },
 } as const;
 
 export async function GET(req: NextRequest) {

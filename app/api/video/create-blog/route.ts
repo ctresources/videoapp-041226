@@ -529,20 +529,16 @@ export async function POST(req: NextRequest) {
 
   const isAdmin = profile.role === "admin";
 
-  if (isLongForm && !isAdmin && profile.subscription_tier !== "pro") {
-    return NextResponse.json(
-      { error: "Long-form AI videos (up to 15 min) are a Pro plan feature. Upgrade to Pro to unlock them — or record long-form free with the built-in teleprompter." },
-      { status: 403 },
-    );
-  }
-
+  // Long-form is included in Pro's monthly credits; every other plan can use it
+  // pay-as-you-go — any user with enough credits (e.g. the 6-credit Long-Form
+  // pack) may render one. The only gate is the credit balance below.
   const creditCost = isLongForm ? LONG_FORM_CREDIT_COST : 1;
 
   if (!isAdmin && profile.credits_remaining < creditCost) {
     return NextResponse.json(
       {
         error: isLongForm
-          ? `Long-form AI videos use ${LONG_FORM_CREDIT_COST} credits and you have ${profile.credits_remaining} left. Add credits in Billing or record long-form free with the teleprompter.`
+          ? `Long-form AI videos use ${LONG_FORM_CREDIT_COST} credits and you have ${profile.credits_remaining}. Upgrade to Pro (12 credits/month) or buy the 6-credit Long-Form pack in Billing — or record long-form free with the teleprompter.`
           : "No videos remaining this month. Please upgrade your plan.",
       },
       { status: 402 },

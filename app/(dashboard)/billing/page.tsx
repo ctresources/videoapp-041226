@@ -24,6 +24,7 @@ const PLANS = [
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
+      "Long-form AI videos (up to 15 min) — pay-as-you-go, 6 credits",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -41,6 +42,7 @@ const PLANS = [
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
+      "Long-form AI videos (up to 15 min) — pay-as-you-go, 6 credits",
       "MLS listing auto-video",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
@@ -54,7 +56,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "12 AI videos/month",
-      "Long-form AI videos (up to 15 min) — Pro exclusive, 6 credits each",
+      "Long-form AI videos (up to 15 min) included — 6 credits each",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
@@ -350,7 +352,7 @@ export default async function BillingPage({
       <div className="mb-8">
         <h3 className="text-base font-bold text-brand-text mb-1">Buy More Videos</h3>
         <p className="text-sm text-slate-500 mb-4">Need more AI videos this month? Add credits anytime — no plan change needed.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* 1-video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -389,6 +391,25 @@ export default async function BillingPage({
             <a href="/api/stripe/credits?pack=2">
               <Button variant="primary" size="sm" className="w-full gap-1.5">
                 Buy 2 Videos <ArrowRight size={12} />
+              </Button>
+            </a>
+          </div>
+          {/* Long-form 6-credit pack */}
+          <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
+                <Video size={15} className="text-purple-500" />
+              </div>
+              <p className="font-bold text-brand-text">Long-Form Pack</p>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-black text-brand-text">$39</span>
+              <span className="text-slate-400 text-sm">one-time</span>
+            </div>
+            <p className="text-xs text-slate-500">6 credits ($6.50 each) — exactly one long-form AI video up to 15 min, on any plan.</p>
+            <a href="/api/stripe/credits?pack=6">
+              <Button variant="outline" size="sm" className="w-full gap-1.5">
+                Buy Long-Form Pack <ArrowRight size={12} />
               </Button>
             </a>
           </div>
