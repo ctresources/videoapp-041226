@@ -517,13 +517,13 @@ export default function ProjectEditorPage() {
     const endpoint = "/api/video/create-blog";
 
     try {
-      // Build the full video script: hook → body → CTA + contact info
+      // Build the full video script: hook → body → CTA. Contact info is
+      // deliberately NOT included — it is display-only (the end-frame contact
+      // card renders it); anything in this script gets spoken by the avatar.
       const bodyScript = editedScript || project.ai_script?.script || "";
       const hook = selectedHook || project.ai_script?.hook || "";
       const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
-      const contactLine = cta ? buildContactLine() : "";
-      const ctaWithContact = [cta, contactLine].filter(Boolean).join("\n");
-      const fullScript = [hook, bodyScript, ctaWithContact].filter(Boolean).join("\n\n");
+      const fullScript = [hook, bodyScript, cta].filter(Boolean).join("\n\n");
 
       const res = await fetch(endpoint, {
         method: "POST",
