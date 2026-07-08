@@ -5,10 +5,10 @@ import {
   ArrowDownToLine, HardHat, Shield, UserCheck,
   CalendarDays, Music2, Utensils, Trees, BookOpen,
   Newspaper, Store, GraduationCap, ShoppingBag, Heart,
-  Sun, Star,
+  Sun, Star, Clapperboard, ListOrdered, Scale, Map, DoorOpen,
 } from "lucide-react";
 
-export type TemplateCategory = "general" | "location" | "community";
+export type TemplateCategory = "general" | "format" | "location" | "community";
 
 export interface ContentTemplate {
   id: string;
@@ -130,6 +130,63 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     description: "Down payment help, FHA loans, step-by-step process",
     color: "bg-pink-50", iconColor: "text-pink-500",
     category: "general",
+    needsLocation: true,
+  },
+
+  // ── Video style formats ───────────────────────────────────────────────────
+  {
+    id: "day_in_life_vlog",
+    label: "Day-in-the-Life Vlog",
+    emoji: "🎥",
+    icon: Clapperboard,
+    topic: "A day in the life of living in {city}, {state} — vlog-style walkthrough of a typical morning, favorite coffee spots, neighborhoods, commute, and what daily life really feels like",
+    description: "Casual first-person vlog: morning-to-evening local life",
+    color: "bg-rose-50", iconColor: "text-rose-500",
+    category: "format",
+    needsLocation: true,
+  },
+  {
+    id: "listicle",
+    label: "Listicle (Top 5)",
+    emoji: "🔢",
+    icon: ListOrdered,
+    topic: "Top 5 things you need to know before moving to {city}, {state} — a numbered countdown with quick, punchy facts and one surprising item at the end",
+    description: "Numbered countdown format — fast, snackable, shareable",
+    color: "bg-amber-50", iconColor: "text-amber-600",
+    category: "format",
+    needsLocation: true,
+  },
+  {
+    id: "pros_cons",
+    label: "Pros & Cons",
+    emoji: "⚖️",
+    icon: Scale,
+    topic: "The honest pros and cons of living in {city}, {state} — a balanced breakdown of cost of living, lifestyle, weather, jobs, schools, and housing, ending with who it's right for",
+    description: "Balanced two-sided breakdown — builds trust and authority",
+    color: "bg-indigo-50", iconColor: "text-indigo-500",
+    category: "format",
+    needsLocation: true,
+  },
+  {
+    id: "map_video",
+    label: "Map Video",
+    emoji: "🗺️",
+    icon: Map,
+    topic: "Map tour of {city}, {state} — breaking down the best areas and neighborhoods as if pointing at a map: where to live by budget, lifestyle, commute, and schools, area by area",
+    description: "Area-by-area neighborhood breakdown, map-style visuals",
+    color: "bg-emerald-50", iconColor: "text-emerald-600",
+    category: "format",
+    needsLocation: true,
+  },
+  {
+    id: "home_tour",
+    label: "Home Tour",
+    emoji: "🚪",
+    icon: DoorOpen,
+    topic: "Narrated home tour of a featured listing in {city}, {state} — a room-by-room walkthrough highlighting standout features, finishes, layout, and the lifestyle each space offers",
+    description: "Room-by-room walkthrough — pairs great with listing photos",
+    color: "bg-cyan-50", iconColor: "text-cyan-600",
+    category: "format",
     needsLocation: true,
   },
 
@@ -284,6 +341,7 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
 
 const CATEGORIES: { key: TemplateCategory; label: string; emoji: string }[] = [
   { key: "general",   label: "Real Estate Tips",          emoji: "🏡" },
+  { key: "format",    label: "Video Style Formats",        emoji: "🎬" },
   { key: "location",  label: "Location Spotlight",         emoji: "📍" },
   { key: "community", label: "Local Events & Community News", emoji: "🎉" },
 ];
