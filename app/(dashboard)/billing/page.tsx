@@ -54,6 +54,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "12 AI videos/month",
+      "Long-form AI videos (up to 15 min) — Pro exclusive, 6 credits each",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
