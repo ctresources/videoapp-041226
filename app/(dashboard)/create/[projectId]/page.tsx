@@ -84,10 +84,13 @@ interface Project {
 }
 
 type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
+// "youtube_long" is a client-side choice that maps to youtube_16x9 + longForm:true
+type VideoChoice = VideoType | "youtube_long";
 
-const videoTypes: { value: VideoType; label: string; desc: string }[] = [
-  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min" },
-  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min" },
+const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
+  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min · 1 credit", credits: 1 },
+  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min · 1 credit", credits: 1 },
+  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, up to 15 min · 6 credits", proOnly: true, credits: 6 },
 ];
 
 export default function ProjectEditorPage() {
@@ -99,7 +102,8 @@ export default function ProjectEditorPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
-  const [selectedVideoType, setSelectedVideoType] = useState<VideoType>("youtube_16x9");
+  const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
+  const [canUseLongForm, setCanUseLongForm] = useState(false);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
   const [renderMode, setRenderMode] = useState<"agent" | "direct" | null>(null);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
@@ -280,10 +284,14 @@ export default function ProjectEditorPage() {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address")
+      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role")
       .eq("id", user.id)
       .single();
-    if (data) setContactInfo(data as typeof contactInfo);
+    if (data) {
+      setContactInfo(data as typeof contactInfo);
+      const p = data as { subscription_tier?: string | null; role?: string | null };
+      setCanUseLongForm(p.subscription_tier === "pro" || p.role === "admin");
+    }
   }
 
   async function loadProject() {
@@ -484,7 +492,9 @@ export default function ProjectEditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
-          videoType: selectedVideoType,
+          // "youtube_long" is a client-side choice: 16:9 render + longForm flag
+          videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
+          longForm: selectedVideoType === "youtube_long",
           backgroundMode: "stock-video",
           script: fullScript,
           hook,
@@ -715,7 +725,7 @@ export default function ProjectEditorPage() {
     try {
       const { videoId } = await uploadCameraRecording(blob, {
         projectId,
-        videoType: selectedVideoType,
+        videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
         title: `Teleprompter: ${project?.title ?? "Recording"}`,
       });
       closeTeleprompter();
@@ -792,20 +802,38 @@ export default function ProjectEditorPage() {
           <Card>
             <p className="text-sm font-semibold text-brand-text mb-3">Video Format</p>
             <div className="grid grid-cols-2 gap-2">
-              {videoTypes.map(({ value, label, desc }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedVideoType(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <p className="text-sm font-medium text-brand-text">{label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </button>
-              ))}
+              {videoTypes.map(({ value, label, desc, proOnly }) => {
+                const locked = proOnly && !canUseLongForm;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      if (locked) {
+                        toast("Long-form AI videos are a Pro plan feature. Upgrade in Billing — or record long-form free with the teleprompter.", { icon: "🔒" });
+                        return;
+                      }
+                      setSelectedVideoType(value);
+                    }}
+                    className={`text-left p-3 rounded-xl border-2 transition-all ${
+                      selectedVideoType === value
+                        ? "border-primary-500 bg-primary-50"
+                        : locked
+                          ? "border-slate-200 opacity-60"
+                          : "border-slate-200 hover:border-slate-300"
+                    } ${proOnly ? "col-span-2" : ""}`}
+                  >
+                    <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
+                      {label}
+                      {proOnly && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
+                          {locked ? "🔒 Pro" : "Pro"}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
@@ -1194,20 +1222,38 @@ export default function ProjectEditorPage() {
             {/* Video format selector */}
             <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
             <div className="grid grid-cols-2 gap-2 mb-5">
-              {videoTypes.map(({ value, label, desc }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedVideoType(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <p className="text-sm font-medium text-brand-text">{label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </button>
-              ))}
+              {videoTypes.map(({ value, label, desc, proOnly }) => {
+                const locked = proOnly && !canUseLongForm;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      if (locked) {
+                        toast("Long-form AI videos are a Pro plan feature. Upgrade in Billing — or record long-form free with the teleprompter.", { icon: "🔒" });
+                        return;
+                      }
+                      setSelectedVideoType(value);
+                    }}
+                    className={`text-left p-3 rounded-xl border-2 transition-all ${
+                      selectedVideoType === value
+                        ? "border-primary-500 bg-primary-50"
+                        : locked
+                          ? "border-slate-200 opacity-60"
+                          : "border-slate-200 hover:border-slate-300"
+                    } ${proOnly ? "col-span-2" : ""}`}
+                  >
+                    <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
+                      {label}
+                      {proOnly && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
+                          {locked ? "🔒 Pro" : "Pro"}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Video style selector */}

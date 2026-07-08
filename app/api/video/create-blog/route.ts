@@ -19,11 +19,17 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 300;
 
 const MAX_SCRIPT_WORDS = 500;
+// ~15 min at a natural ~145 wpm speaking pace — matches the long-form cap.
+const MAX_LONG_FORM_SCRIPT_WORDS = 2200;
 
-function clampScript(text: string): string {
+// Long-form AI videos (up to 15 min) cost more credits because HeyGen bills
+// per rendered minute — a 15-min render costs ~7× a standard 2-min video.
+const LONG_FORM_CREDIT_COST = 6;
+
+function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
   const words = text.trim().split(/\s+/);
-  if (words.length <= MAX_SCRIPT_WORDS) return text;
-  return words.slice(0, MAX_SCRIPT_WORDS).join(" ") + ".";
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ") + ".";
 }
 
 function splitScriptIntoChunks(text: string, n: number): string[] {
@@ -184,6 +190,7 @@ function buildVideoAgentPrompt(params: {
   logoUrl?: string;
   keywords: string[];
   isShortForm: boolean;
+  isLongForm?: boolean;
   hookText?: string;
   listingAddress?: string;
   listingPhotoCount?: number;
@@ -316,7 +323,7 @@ ${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is atta
 =====================================
 PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
 =====================================
-- Maximum 10 scenes total — keep the video tight, on-script, and on-time
+- Maximum ${params.isLongForm ? "40 scenes total — vary visuals every 20–30 seconds to hold attention across the full runtime" : "10 scenes total — keep the video tight, on-script, and on-time"}
 - Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
 - Do NOT add intro music, countdown, or a separate silent title scene before the narration
 - The narration begins IMMEDIATELY on the first frame — the SCENE 1 title card above is the opening of scene 1, NOT a silent intro held before speaking
@@ -423,7 +430,9 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm } = await req.json();
+  // Long-form (up to 15 min) is landscape-only and Pro-plan-only; costs more credits.
+  const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
   // Direct Video API (single talking-head) instead of the default Video Agent,
   // so its output can be compared. Any other value keeps existing behavior.
@@ -461,7 +470,10 @@ export async function POST(req: NextRequest) {
   ) ?? [];
 
   const rawScript = script || (aiScript?.script as string) || project.title;
-  const safeScript = clampScript(normalizeScriptForTTS(rawScript));
+  const safeScript = clampScript(
+    normalizeScriptForTTS(rawScript),
+    isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : MAX_SCRIPT_WORDS,
+  );
 
   const title =
     videoType === "youtube_16x9"
@@ -470,7 +482,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role")
+    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -489,6 +501,7 @@ export async function POST(req: NextRequest) {
     voice_clone_id: string | null;
     credits_remaining: number;
     role: string | null;
+    subscription_tier: string | null;
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
@@ -514,9 +527,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (profile.role !== "admin" && profile.credits_remaining < 1) {
+  const isAdmin = profile.role === "admin";
+
+  if (isLongForm && !isAdmin && profile.subscription_tier !== "pro") {
     return NextResponse.json(
-      { error: "No videos remaining this month. Please upgrade your plan." },
+      { error: "Long-form AI videos (up to 15 min) are a Pro plan feature. Upgrade to Pro to unlock them — or record long-form free with the built-in teleprompter." },
+      { status: 403 },
+    );
+  }
+
+  const creditCost = isLongForm ? LONG_FORM_CREDIT_COST : 1;
+
+  if (!isAdmin && profile.credits_remaining < creditCost) {
+    return NextResponse.json(
+      {
+        error: isLongForm
+          ? `Long-form AI videos use ${LONG_FORM_CREDIT_COST} credits and you have ${profile.credits_remaining} left. Add credits in Billing or record long-form free with the teleprompter.`
+          : "No videos remaining this month. Please upgrade your plan.",
+      },
       { status: 402 },
     );
   }
@@ -565,6 +593,7 @@ export async function POST(req: NextRequest) {
       logoUrl: profile.logo_url || undefined,
       keywords: aiKeywords,
       isShortForm,
+      isLongForm,
       hookText,
       listingAddress,
       listingPhotoCount: listingPhotos.length,
@@ -650,12 +679,12 @@ export async function POST(req: NextRequest) {
         .update({ render_job_id: directVideoId })
         .eq("id", videoRow.id);
 
-      await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - 1 }).eq("id", user.id);
+      await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
         endpoint: "video-v3-direct",
-        credits_used: 1,
+        credits_used: creditCost,
         response_status: 202,
       });
 
@@ -727,12 +756,12 @@ export async function POST(req: NextRequest) {
           .update({ render_job_id: heygenVideoId })
           .eq("id", videoRow.id);
 
-        await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - 1 }).eq("id", user.id);
+        await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
         await admin.from("api_usage_log").insert({
           user_id: user.id,
           api_provider: "heygen",
           endpoint: "video-v2-el-tts-photos",
-          credits_used: 1,
+          credits_used: creditCost,
           response_status: 202,
         });
 
@@ -809,12 +838,12 @@ export async function POST(req: NextRequest) {
       .update({ render_job_id: sessionId })
       .eq("id", videoRow?.id);
 
-    await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - 1 }).eq("id", user.id);
+    await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
       endpoint: "video-agent-v3",
-      credits_used: 1,
+      credits_used: creditCost,
       response_status: 202,
     });
 
