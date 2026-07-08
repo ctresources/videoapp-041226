@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
+import { resolveCta } from "@/lib/utils/default-cta";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -80,6 +81,8 @@ interface Project {
   ai_script: AiScript | null;
   seo_data: SeoData | null;
   thumbnail_url: string | null;
+  location_city?: string | null;
+  location_state?: string | null;
   created_at: string;
 }
 
@@ -324,11 +327,43 @@ export default function ProjectEditorPage() {
     setProject(p);
     if (p.ai_script) {
       setEditedScript((p.ai_script as AiScript).script || "");
-      setEditedCta((p.ai_script as AiScript).cta || "");
+      const defaultCta = await loadDefaultCta(p);
+      setEditedCta(defaultCta || (p.ai_script as AiScript).cta || "");
       const hooks = (p.ai_script as AiScript).hooks;
       setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
     }
     setLoading(false);
+  }
+
+  // Resolves the user's default CTA template with this video's market city
+  // (falling back to their home market). Returns "" when unavailable so the
+  // AI-generated CTA can be used instead.
+  async function loadDefaultCta(proj: Project): Promise<string> {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return "";
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, company_name, location_city, location_state, default_cta, market_years")
+        .eq("id", user.id)
+        .single();
+      if (!data) return "";
+      const prof = data as {
+        full_name: string | null; company_name: string | null;
+        location_city: string | null; location_state: string | null;
+        default_cta: string | null; market_years: string | null;
+      };
+      return resolveCta(prof.default_cta, {
+        city: proj.location_city || prof.location_city,
+        state: proj.location_state || prof.location_state,
+        name: prof.full_name,
+        company: prof.company_name,
+        years: prof.market_years,
+      });
+    } catch {
+      return "";
+    }
   }
 
   async function generateScript(recordingId: string) {
@@ -352,7 +387,8 @@ export default function ProjectEditorPage() {
       setProject(p);
       if (p.ai_script) {
         setEditedScript((p.ai_script as AiScript).script || "");
-        setEditedCta((p.ai_script as AiScript).cta || "");
+        const defaultCta = await loadDefaultCta(p);
+        setEditedCta(defaultCta || (p.ai_script as AiScript).cta || "");
         const hooks = (p.ai_script as AiScript).hooks;
         setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
       }

@@ -5,9 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic } from "lucide-react";
+import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone } from "lucide-react";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
+import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,6 +24,10 @@ export default function SettingsPage() {
   const [prefs, setPrefs] = useState({ language: "en", city: "", state: "" });
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [brandData, setBrandData] = useState<BrandProfileInitial | null>(null);
+  const [ctaTemplate, setCtaTemplate] = useState(DEFAULT_CTA_TEMPLATE);
+  const [marketYears, setMarketYears] = useState("");
+  const [savingCta, setSavingCta] = useState(false);
+  const [showCtaPreview, setShowCtaPreview] = useState(false);
 
   // Redirect to login if user signs out while on this page
   useEffect(() => {
@@ -37,7 +42,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id")
+      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -49,6 +54,7 @@ export default function SettingsPage() {
           heygen_voice_id: string | null; heygen_photo_id: string | null;
           website: string | null; license_number: string | null;
           heygen_digital_twin_group_id: string | null; heygen_digital_twin_look_id: string | null;
+          default_cta: string | null; market_years: string | null;
         } | null;
         if (row) {
           setPrefs({
@@ -56,6 +62,8 @@ export default function SettingsPage() {
             city: row.location_city || "",
             state: row.location_state || "",
           });
+          if (row.default_cta?.trim()) setCtaTemplate(row.default_cta);
+          setMarketYears(row.market_years || "");
           // Fall back to auth metadata name (set during Google OAuth or email signup)
           const metaName = (user.user_metadata?.full_name as string | null) ?? null;
           setBrandData({
@@ -107,6 +115,23 @@ export default function SettingsPage() {
     if (error) toast.error(error.message);
     else toast.success("Preferences saved!");
     setSavingPrefs(false);
+  }
+
+  async function handleSaveCta(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setSavingCta(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        default_cta: ctaTemplate.trim() || null,
+        market_years: marketYears.trim() || null,
+      })
+      .eq("id", user.id);
+    if (error) toast.error(error.message);
+    else toast.success("Default CTA saved!");
+    setSavingCta(false);
   }
 
   async function handleLogout() {
@@ -254,6 +279,81 @@ export default function SettingsPage() {
           />
         </Card>
       )}
+
+      {/* Default Video CTA */}
+      <Card>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
+            <Megaphone size={18} className="text-orange-500" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-brand-text">Default Video CTA</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Spoken at the end of your AI avatar, Digital Twin, and teleprompter videos
+            </p>
+          </div>
+        </div>
+        <form onSubmit={handleSaveCta} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Years In Real Estate</label>
+            <input
+              type="text"
+              value={marketYears}
+              onChange={(e) => setMarketYears(e.target.value)}
+              placeholder='e.g. 20+ or "over 15"'
+              className="w-40 text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <p className="text-xs text-slate-400 mt-1">Fills the &ldquo;I&apos;ve been guiding buyers and sellers… for ___ years&rdquo; line</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">CTA Template</label>
+            <textarea
+              value={ctaTemplate}
+              onChange={(e) => setCtaTemplate(e.target.value)}
+              rows={9}
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 leading-relaxed resize-y"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              <code className="bg-slate-100 rounded px-1">{"{city}"}</code> and{" "}
+              <code className="bg-slate-100 rounded px-1">{"{state}"}</code> auto-fill with each video&apos;s market
+              (falling back to your home market) ·{" "}
+              <code className="bg-slate-100 rounded px-1">{"{name}"}</code>,{" "}
+              <code className="bg-slate-100 rounded px-1">{"{i_or_team}"}</code> and{" "}
+              <code className="bg-slate-100 rounded px-1">{"{years}"}</code> come from your profile
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCtaPreview((v) => !v)}
+            className="self-start text-xs font-medium text-primary-600 hover:text-primary-700"
+          >
+            {showCtaPreview ? "Hide preview" : "Preview with my details"}
+          </button>
+          {showCtaPreview && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+              {resolveCta(ctaTemplate, {
+                city: prefs.city,
+                state: prefs.state,
+                name: brandData?.full_name,
+                company: brandData?.company_name,
+                years: marketYears,
+              })}
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <Button type="submit" loading={savingCta} className="self-start">
+              Save Default CTA
+            </Button>
+            <button
+              type="button"
+              onClick={() => setCtaTemplate(DEFAULT_CTA_TEMPLATE)}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Reset to recommended template
+            </button>
+          </div>
+        </form>
+      </Card>
 
       {/* CRM Integrations */}
       <Card>
