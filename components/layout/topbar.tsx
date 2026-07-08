@@ -12,6 +12,7 @@ const pageTitles: Record<string, string> = {
   "/videos": "My Videos",
   "/social": "Social Media",
   "/settings": "Settings",
+  "/help": "How It Works",
   "/admin": "Admin Panel",
 };
 

@@ -16,6 +16,7 @@ import {
   BarChart2,
   CreditCard,
   Wand2,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/social",    icon: Share2,          label: "Social Media" },
   { href: "/billing",   icon: CreditCard,      label: "Billing" },
   { href: "/settings",  icon: Settings,        label: "Settings" },
+  { href: "/help",      icon: HelpCircle,      label: "How It Works" },
 ];
 
 export function Sidebar() {
