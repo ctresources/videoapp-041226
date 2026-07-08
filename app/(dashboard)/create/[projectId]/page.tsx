@@ -23,6 +23,17 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
   try { return JSON.parse(text); } catch { return null; }
 }
 
+// YouTube requires phone verification to upload videos longer than 15 minutes,
+// so teleprompter recordings are capped at 15:00 to keep every video publishable.
+const TP_MAX_RECORD_SECONDS = 15 * 60;
+const TP_WARN_RECORD_SECONDS = 13 * 60;
+
+function formatRecordTime(s: number) {
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
+  const sec = (s % 60).toString().padStart(2, "0");
+  return `${m}:${sec}`;
+}
+
 interface AvatarLook {
   id: string;
   name: string;
@@ -133,6 +144,8 @@ export default function ProjectEditorPage() {
   const [tpSpeed, setTpSpeed] = useState(2.5);
   const [tpRecording, setTpRecording] = useState(false);
   const [tpUploading, setTpUploading] = useState(false);
+  const [tpSeconds, setTpSeconds] = useState(0);
+  const tpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -653,6 +666,7 @@ export default function ProjectEditorPage() {
 
   function closeTeleprompter() {
     if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
+    if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -674,13 +688,26 @@ export default function ProjectEditorPage() {
     mr.onstop = handleTpRecordingDone;
     mr.start(500);
     mediaRecorderRef.current = mr;
+    setTpSeconds(0);
+    if (tpTimerRef.current) clearInterval(tpTimerRef.current);
+    tpTimerRef.current = setInterval(() => setTpSeconds((s) => s + 1), 1000);
     setTpRecording(true);
   }
 
   function stopTpRecording() {
     mediaRecorderRef.current?.stop();
+    if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
     setTpRecording(false);
   }
+
+  // Auto-stop at 15:00 — YouTube requires phone verification for longer uploads
+  useEffect(() => {
+    if (tpRecording && tpSeconds >= TP_MAX_RECORD_SECONDS) {
+      stopTpRecording();
+      toast("15-minute limit reached — your recording is being saved.", { icon: "⏱️" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tpSeconds, tpRecording]);
 
   async function handleTpRecordingDone() {
     const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
@@ -1468,6 +1495,11 @@ export default function ProjectEditorPage() {
               {tpRecording && (
                 <span className="flex items-center gap-1 text-red-400 text-xs font-medium">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> REC
+                  <span
+                    className={`ml-1 font-mono ${tpSeconds >= TP_WARN_RECORD_SECONDS ? "text-amber-400" : "text-white/70"}`}
+                  >
+                    {formatRecordTime(tpSeconds)} / 15:00
+                  </span>
                 </span>
               )}
             </div>
@@ -1568,12 +1600,15 @@ export default function ProjectEditorPage() {
                   <Square size={13} fill="white" /> Stop Recording
                 </button>
               ) : (
-                <button
-                  onClick={startTpRecording}
-                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition-colors"
-                >
-                  <span className="w-3 h-3 rounded-full bg-white inline-block" /> Record Myself
-                </button>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={startTpRecording}
+                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2.5 rounded-full text-sm transition-colors"
+                  >
+                    <span className="w-3 h-3 rounded-full bg-white inline-block" /> Record Myself
+                  </button>
+                  <span className="text-white/40 text-[10px]">Record Up To 15 Minutes — Ideal For Long-Form</span>
+                </div>
               )}
             </div>
 
