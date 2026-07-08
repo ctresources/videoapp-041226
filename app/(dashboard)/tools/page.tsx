@@ -91,7 +91,7 @@ function ProjectSelector({
 
 // ─── TAG GENERATOR ────────────────────────────────────────────────────────────
 
-function TagGenerator({ projects }: { projects: Project[] }) {
+function TagGenerator({ projects, initialProjectId }: { projects: Project[]; initialProjectId?: string }) {
   const [projectId, setProjectId] = useState("");
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -103,6 +103,14 @@ function TagGenerator({ projects }: { projects: Project[] }) {
     setProjectId(p?.id ?? "");
     if (p?.title) setTitle(p.title);
   };
+
+  // Deep link from the project editor: ?project=<id> preselects that project
+  useEffect(() => {
+    if (!initialProjectId || projectId) return;
+    const p = projects.find((x) => x.id === initialProjectId);
+    if (p) handleProjectSelect(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, initialProjectId]);
 
   const generate = async () => {
     if (!title.trim()) { toast.error("Enter a video title"); return; }
@@ -217,7 +225,7 @@ function TagGenerator({ projects }: { projects: Project[] }) {
 
 // ─── DESCRIPTION GENERATOR ────────────────────────────────────────────────────
 
-function DescriptionGenerator({ projects }: { projects: Project[] }) {
+function DescriptionGenerator({ projects, initialProjectId }: { projects: Project[]; initialProjectId?: string }) {
   const [projectId, setProjectId] = useState("");
   const [title, setTitle] = useState("");
   const [script, setScript] = useState("");
@@ -230,6 +238,14 @@ function DescriptionGenerator({ projects }: { projects: Project[] }) {
     if (p?.title) setTitle(p.title);
     if (p?.ai_script?.script) setScript(p.ai_script.script.slice(0, 600));
   };
+
+  // Deep link from the project editor: ?project=<id> preselects that project
+  useEffect(() => {
+    if (!initialProjectId || projectId) return;
+    const p = projects.find((x) => x.id === initialProjectId);
+    if (p) handleProjectSelect(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, initialProjectId]);
 
   const generate = async () => {
     if (!title.trim()) { toast.error("Enter a video title"); return; }
@@ -731,6 +747,17 @@ export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("title");
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
+
+  // Deep links from the project editor: /tools?tab=description&project=<id>
+  // (window.location keeps this client page free of a useSearchParams Suspense boundary)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab") as Tab | null;
+    if (tab && TABS.some((t) => t.id === tab && !t.soon)) setActiveTab(tab);
+    const project = params.get("project");
+    if (project) setInitialProjectId(project);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -796,8 +823,8 @@ export default function ToolsPage() {
 
       {/* Tool panel */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        {activeTab === "tags"        && <TagGenerator projects={projects} />}
-        {activeTab === "description" && <DescriptionGenerator projects={projects} />}
+        {activeTab === "tags"        && <TagGenerator projects={projects} initialProjectId={initialProjectId} />}
+        {activeTab === "description" && <DescriptionGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "title"       && <TitleGenerator projects={projects} />}
         {activeTab === "script"      && <ScriptGenerator />}
         {activeTab === "channel"     && <ChannelNameGenerator />}

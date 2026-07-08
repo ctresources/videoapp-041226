@@ -114,7 +114,7 @@ export default function ProjectEditorPage() {
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    script: true, seo: false, blog: false,
+    script: true, seo: true, blog: false,
   });
   const [editedScript, setEditedScript] = useState("");
   const [editedCta, setEditedCta] = useState("");
@@ -1493,7 +1493,7 @@ export default function ProjectEditorPage() {
               >
                 <div className="flex items-center gap-2">
                   <Search size={16} className="text-secondary-500" />
-                  <h3 className="font-semibold text-sm text-brand-text">Social Content Pack</h3>
+                  <h3 className="font-semibold text-sm text-brand-text">Title, Description &amp; Hashtags</h3>
                   <span className="text-[10px] font-semibold bg-secondary-100 text-secondary-600 px-1.5 py-0.5 rounded-full">AI-generated</span>
                 </div>
                 {expandedSections.seo ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
@@ -1502,12 +1502,13 @@ export default function ProjectEditorPage() {
                 <div className="flex flex-col gap-3 px-2">
                   {[
                     { label: "YouTube Title", value: seo.youtube_title },
+                    { label: "YouTube Description", value: seo.youtube_description },
                     { label: "Instagram Caption", value: seo.instagram_caption },
                     ...(seo.linkedin_post ? [{ label: "LinkedIn Post", value: seo.linkedin_post }] : []),
                     ...(seo.email_blurb ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
                     { label: "Meta Description", value: seo.meta_description },
                     { label: "URL Slug", value: seo.slug },
-                  ].map(({ label, value }) => (
+                  ].filter(({ value }) => !!value?.trim()).map(({ label, value }) => (
                     <div key={label}>
                       <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
                       <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 flex items-start justify-between gap-2">
@@ -1532,6 +1533,12 @@ export default function ProjectEditorPage() {
                       ))}
                     </div>
                   </div>
+                  <Link
+                    href={`/tools?tab=description&project=${project.id}`}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 pt-2 border-t border-slate-100"
+                  >
+                    <Wand2 size={12} /> Improve With AI Tools — Regenerate Title, Description &amp; Tags →
+                  </Link>
                 </div>
               )}
             </Card>
