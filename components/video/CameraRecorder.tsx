@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Video,
   Share2,
+  Lightbulb,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
@@ -90,8 +91,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   async function openCamera() {
     setCamError(null);
     try {
+      // Ask for 1080p at 60fps — browsers gracefully fall back to the best the camera supports
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 }, facingMode: "user" },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
@@ -346,6 +348,20 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           </div>
         </div>
 
+        {/* Tips for best video */}
+        <div className="p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
+          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <Lightbulb size={13} className="text-amber-500" /> Tips For Best Video
+          </p>
+          <ul className="text-xs text-slate-500 space-y-1.5 list-disc pl-4">
+            <li>Film in <strong>1080p (Full HD) or higher at 60 fps</strong> — set this in your phone&apos;s camera settings before recording</li>
+            <li>The <strong>back camera</strong> is much sharper than the selfie camera — use it when you don&apos;t need the teleprompter (or have someone film you)</li>
+            <li>Face a window or light source — never sit with a bright light behind you</li>
+            <li>Keep the camera at eye level and record in a quiet room</li>
+            <li><strong>8–15 minutes</strong> is YouTube&apos;s algorithm sweet spot — and 8+ minutes unlocks mid-roll ads</li>
+          </ul>
+        </div>
+
         {camError && (
           <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
@@ -367,7 +383,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           </p>
         ) : (
           <p className="text-xs text-slate-400 text-center -mt-3">
-            Record Up To 15 Minutes — Ideal For Long-Form YouTube Videos
+            8–15 Min Is YouTube&apos;s Sweet Spot — 8+ Min Unlocks Mid-Roll Ads · 15 Min Max
           </p>
         )}
       </div>
