@@ -672,7 +672,8 @@ export async function POST(req: NextRequest) {
 
       await admin
         .from("generated_videos")
-        .update({ render_job_id: directVideoId })
+        // credit_cost enables an automatic refund if the render later fails
+        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost } })
         .eq("id", videoRow.id);
 
       await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
@@ -749,7 +750,8 @@ export async function POST(req: NextRequest) {
 
         await admin
           .from("generated_videos")
-          .update({ render_job_id: heygenVideoId })
+          // credit_cost enables an automatic refund if the render later fails
+          .update({ render_job_id: heygenVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost } })
           .eq("id", videoRow.id);
 
         await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
@@ -831,7 +833,8 @@ export async function POST(req: NextRequest) {
 
     await admin
       .from("generated_videos")
-      .update({ render_job_id: sessionId })
+      // credit_cost enables an automatic refund if the render later fails
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost } })
       .eq("id", videoRow?.id);
 
     await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);

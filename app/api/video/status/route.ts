@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus, getVideoAgentSession, getVideoV3Status } from "@/lib/api/heygen";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
+import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
         if (video.project_id) {
           await admin.from("projects").update({ status: "error" }).eq("id", video.project_id);
         }
+        await refundVideoCredits(admin, video.id as string);
         console.warn(`[status] Auto-failed ${video.id} after 30-min timeout`);
       } else {
       try {
@@ -116,6 +118,7 @@ export async function GET(req: NextRequest) {
                 .update({ status: "error" })
                 .eq("id", video.project_id);
             }
+            await refundVideoCredits(admin, video.id as string);
           } else if (session.videoId) {
             // Step 2: we have a video_id — poll v3 videos endpoint
             const videoStatus = await getVideoV3Status(session.videoId);
@@ -168,6 +171,7 @@ export async function GET(req: NextRequest) {
                   .update({ status: "error" })
                   .eq("id", video.project_id);
               }
+              await refundVideoCredits(admin, video.id as string);
             }
             // Still processing — keep status as "rendering"
           }
@@ -221,6 +225,7 @@ export async function GET(req: NextRequest) {
                 .update({ status: "error" })
                 .eq("id", video.project_id);
             }
+            await refundVideoCredits(admin, video.id as string);
           }
           // Still processing — keep status as "rendering"
 
@@ -269,6 +274,7 @@ export async function GET(req: NextRequest) {
                 .update({ status: "error" })
                 .eq("id", video.project_id);
             }
+            await refundVideoCredits(admin, video.id as string);
 
             console.warn(`[status] HeyGen ${renderId} failed via direct poll: ${errorMsg}`);
           }
