@@ -103,7 +103,8 @@ export default function ProjectEditorPage() {
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
-  const [canUseLongForm, setCanUseLongForm] = useState(false);
+  const [isProPlan, setIsProPlan] = useState(false);
+  const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
   const [renderMode, setRenderMode] = useState<"agent" | "direct" | null>(null);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
@@ -284,13 +285,14 @@ export default function ProjectEditorPage() {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role")
+      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, credits_remaining")
       .eq("id", user.id)
       .single();
     if (data) {
       setContactInfo(data as typeof contactInfo);
-      const p = data as { subscription_tier?: string | null; role?: string | null };
-      setCanUseLongForm(p.subscription_tier === "pro" || p.role === "admin");
+      const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
+      setIsProPlan(p.subscription_tier === "pro" || p.role === "admin");
+      setCreditsLeft(typeof p.credits_remaining === "number" ? p.credits_remaining : null);
     }
   }
 
@@ -802,39 +804,44 @@ export default function ProjectEditorPage() {
           <Card>
             <p className="text-sm font-semibold text-brand-text mb-3">Video Format</p>
             <div className="grid grid-cols-2 gap-2">
-              {videoTypes.map(({ value, label, desc, proOnly }) => {
-                const locked = proOnly && !canUseLongForm;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => {
-                      if (locked) {
-                        toast("Long-form AI videos are a Pro plan feature. Upgrade in Billing — or record long-form free with the teleprompter.", { icon: "🔒" });
-                        return;
-                      }
-                      setSelectedVideoType(value);
-                    }}
-                    className={`text-left p-3 rounded-xl border-2 transition-all ${
-                      selectedVideoType === value
-                        ? "border-primary-500 bg-primary-50"
-                        : locked
-                          ? "border-slate-200 opacity-60"
-                          : "border-slate-200 hover:border-slate-300"
-                    } ${proOnly ? "col-span-2" : ""}`}
-                  >
-                    <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
-                      {label}
-                      {proOnly && (
-                        <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                          {locked ? "🔒 Pro" : "Pro"}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                  </button>
-                );
-              })}
+              {videoTypes.map(({ value, label, desc, proOnly }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedVideoType(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedVideoType === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  } ${proOnly ? "col-span-2" : ""}`}
+                >
+                  <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
+                    {label}
+                    {proOnly && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
+                        {isProPlan ? "Included In Pro" : "Pro · Pay As You Go"}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                </button>
+              ))}
             </div>
+            {selectedVideoType === "youtube_long" && !isProPlan && (
+              <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
+                <p className="text-xs text-slate-600">
+                  Long-form uses <strong>6 credits</strong>
+                  {creditsLeft !== null ? ` — you have ${creditsLeft}` : ""}. Included every month with Pro, or buy credits as you go.
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <Link href="/billing" className="flex-1">
+                    <Button size="sm" variant="primary" className="w-full">Upgrade To Pro</Button>
+                  </Link>
+                  <a href="/api/stripe/credits?pack=6" className="flex-1">
+                    <Button size="sm" variant="outline" className="w-full">6-Credit Pack · $39</Button>
+                  </a>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Video style selector — before avatar look so user knows context */}
@@ -1225,39 +1232,44 @@ export default function ProjectEditorPage() {
             {/* Video format selector */}
             <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
             <div className="grid grid-cols-2 gap-2 mb-5">
-              {videoTypes.map(({ value, label, desc, proOnly }) => {
-                const locked = proOnly && !canUseLongForm;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => {
-                      if (locked) {
-                        toast("Long-form AI videos are a Pro plan feature. Upgrade in Billing — or record long-form free with the teleprompter.", { icon: "🔒" });
-                        return;
-                      }
-                      setSelectedVideoType(value);
-                    }}
-                    className={`text-left p-3 rounded-xl border-2 transition-all ${
-                      selectedVideoType === value
-                        ? "border-primary-500 bg-primary-50"
-                        : locked
-                          ? "border-slate-200 opacity-60"
-                          : "border-slate-200 hover:border-slate-300"
-                    } ${proOnly ? "col-span-2" : ""}`}
-                  >
-                    <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
-                      {label}
-                      {proOnly && (
-                        <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                          {locked ? "🔒 Pro" : "Pro"}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                  </button>
-                );
-              })}
+              {videoTypes.map(({ value, label, desc, proOnly }) => (
+                <button
+                  key={value}
+                  onClick={() => setSelectedVideoType(value)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedVideoType === value
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-slate-200 hover:border-slate-300"
+                  } ${proOnly ? "col-span-2" : ""}`}
+                >
+                  <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
+                    {label}
+                    {proOnly && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
+                        {isProPlan ? "Included In Pro" : "Pro · Pay As You Go"}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                </button>
+              ))}
             </div>
+            {selectedVideoType === "youtube_long" && !isProPlan && (
+              <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
+                <p className="text-xs text-slate-600">
+                  Long-form uses <strong>6 credits</strong>
+                  {creditsLeft !== null ? ` — you have ${creditsLeft}` : ""}. Included every month with Pro, or buy credits as you go.
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <Link href="/billing" className="flex-1">
+                    <Button size="sm" variant="primary" className="w-full">Upgrade To Pro</Button>
+                  </Link>
+                  <a href="/api/stripe/credits?pack=6" className="flex-1">
+                    <Button size="sm" variant="outline" className="w-full">6-Credit Pack · $39</Button>
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Video style selector */}
             <div className="mb-5">{renderModeSelector()}</div>
