@@ -75,9 +75,6 @@ function CreatePageInner() {
   // Topic
   const [locCustomTopic, setLocCustomTopic] = useState("");
 
-  // Templates
-  const [showTemplates, setShowTemplates] = useState(false);
-
   // Advanced options
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [locAudience, setLocAudience] = useState("");
@@ -502,7 +499,10 @@ function CreatePageInner() {
   );
 
   return (
-    <div className="max-w-xl mx-auto">
+    // The AI-script input step uses a wide two-column layout (form + always-
+    // visible templates); every other tab/step keeps the original narrow column.
+    <div className={inputMode === "script" && step === "input" ? "max-w-5xl mx-auto" : "max-w-xl mx-auto"}>
+      <div className="max-w-xl mx-auto">
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -552,7 +552,7 @@ function CreatePageInner() {
           </div>
 
           {/* Dynamic tab description */}
-          <p className="text-xs text-slate-500 text-center mb-5">
+          <p className="text-xs text-slate-500 text-center mb-4">
             {{
               script:  "AI Sparks A Broadcast-Quality Script From Your Topic — You Review, Then Share.",
               paste:   "Paste Your Script, Upload Photos & Docs — Your Content Builds The Video.",
@@ -562,16 +562,20 @@ function CreatePageInner() {
           </p>
         </>
       )}
+      </div>{/* end centered header column */}
 
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-4">
+        <div className="grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] gap-4 items-start">
+
+          {/* Left column: market + topic */}
+          <div className="flex flex-col gap-4 min-w-0">
 
           {/* ── STEP 1: Your Market ── */}
-          <Card>
-            <div className="flex items-center gap-2.5 mb-4">
+          <Card padding="sm">
+            <div className="flex items-center gap-2.5 mb-3">
               <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
               <div>
                 <p className="text-sm font-bold text-brand-text">Your Market</p>
@@ -654,14 +658,28 @@ function CreatePageInner() {
           </Card>
 
           {/* ── STEP 2: Topic ── */}
-          <Card>
-            <div className="flex items-center gap-2.5 mb-4">
+          <Card padding="sm">
+            <div className="flex items-center gap-2.5 mb-3">
               <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-brand-text">Your Topic</p>
-                <p className="text-xs text-slate-500">Hit The Mic To Speak, Choose From Trending Radar Or The Real Estate Tips Templates, Or Type Below In Text Box</p>
+                <p className="text-xs text-slate-500">Hit The Mic, Type It, Or Tap A Trending Topic Or Template</p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+            </div>
+
+            {/* Topic input with inline mic — the primary action, right up top */}
+            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
+              <input
+                id="topic-input"
+                type="text"
+                value={locCustomTopic}
+                onChange={(e) => setLocCustomTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
+                placeholder="Speak it, tap a suggestion, or type here…"
+                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+              />
+              <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
 
             {/* Topic Radar */}
@@ -676,61 +694,8 @@ function CreatePageInner() {
               />
             </div>
 
-            {/* Templates toggle */}
-            <div className="mb-3">
-              <p className="text-sm font-bold text-slate-700 mb-2">Need A Spark? No Problem — Choose From Templates</p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-700 shrink-0">🏡 Real Estate Tips</span>
-                <button
-                  type="button"
-                  onClick={() => setShowTemplates(v => !v)}
-                  className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                    showTemplates
-                      ? "bg-indigo-700 text-white shadow-md shadow-indigo-200"
-                      : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                  }`}
-                >
-                  <LayoutGrid size={13} />
-                  Browse Templates
-                  {showTemplates ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
-                </button>
-              </div>
-              {showTemplates && (
-                <div className="mt-2 max-h-[480px] overflow-y-auto pr-0.5">
-                  <ContentTemplates
-                    city={locCity}
-                    state={locState}
-                    onSelect={(template) => {
-                      setLocCustomTopic(template.topic);
-                      setShowTemplates(false);
-                      setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Topic input with inline mic */}
-            <div className="mt-5">
-              <label className="text-base font-bold text-slate-700 block mb-1">
-                Your Topic — Spoken, Sparked, Or Typed
-              </label>
-              <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
-                <input
-                  id="topic-input"
-                  type="text"
-                  value={locCustomTopic}
-                  onChange={(e) => setLocCustomTopic(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
-                  placeholder="Speak it, pick above, or type here…"
-                  className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                />
-                <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-              </div>
-            </div>
-
             {/* Advanced options — inside this card */}
-            <div className="border-t border-slate-200 mt-5 pt-3">
+            <div className="border-t border-slate-200 mt-4 pt-3">
               <button
                 onClick={() => setShowAdvanced(v => !v)}
                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -777,8 +742,35 @@ function CreatePageInner() {
             </div>
           </Card>
 
-          {/* ── STEP 3: Generate ── */}
-          <div>
+          </div>{/* end left column */}
+
+          {/* ── Templates — always visible ── */}
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <LayoutGrid size={15} />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-brand-text">Templates — Tap To Fill Your Topic</p>
+                <p className="text-xs text-slate-500">
+                  {locCity.trim() ? `Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into The Topic` : "Set Your Market In Step 1 To Localize These"}
+                </p>
+              </div>
+            </div>
+            <div className="lg:max-h-[calc(100vh-11rem)] overflow-y-auto pr-1">
+              <ContentTemplates
+                city={locCity}
+                state={locState}
+                onSelect={(template) => {
+                  setLocCustomTopic(template.topic);
+                  setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
+                }}
+              />
+            </div>
+          </Card>
+
+          {/* ── STEP 3: Generate — spans both columns ── */}
+          <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</span>
               <p className="text-sm font-bold text-brand-text">Generate The Script</p>
