@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { refundVideoCredits } from "@/lib/utils/refund-credits";
 
 export const maxDuration = 120;
 
@@ -117,6 +118,9 @@ export async function POST(req: NextRequest) {
       .update({ metadata: { ...(video.metadata ?? {}), render_error: reason } })
       .eq("id", video.id);
     console.warn(`[webhook] Render ${video.id} failed: ${reason}`);
+
+    // Give the charged credits back — a failed render should never cost anything
+    await refundVideoCredits(admin, video.id);
   }
 
   // ── Update parent project status ──────────────────────────────────────────

@@ -361,7 +361,8 @@ export async function POST(req: NextRequest) {
         callbackId: newVideo.id,
       });
 
-      await admin.from("generated_videos").update({ render_job_id: videoId }).eq("id", newVideo.id);
+      // credit_cost enables an automatic refund if the render later fails
+      await admin.from("generated_videos").update({ render_job_id: videoId, metadata: { ...(newVideo.metadata ?? {}), credit_cost: 1 } }).eq("id", newVideo.id);
       await admin.from("profiles").update({ credits_remaining: p.credits_remaining - 1 }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
@@ -417,7 +418,8 @@ export async function POST(req: NextRequest) {
 
     await admin
       .from("generated_videos")
-      .update({ render_job_id: sessionId })
+      // credit_cost enables an automatic refund if the render later fails
+      .update({ render_job_id: sessionId, metadata: { ...(newVideo.metadata ?? {}), credit_cost: 1 } })
       .eq("id", newVideo.id);
 
     await admin.from("profiles").update({ credits_remaining: p.credits_remaining - 1 }).eq("id", user.id);
