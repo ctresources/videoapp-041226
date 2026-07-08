@@ -51,10 +51,9 @@ function splitScriptIntoChunks(text: string, n: number): string[] {
  * Expand common address/unit abbreviations into full words so the TTS engine
  * pronounces "Ln" as "Lane" instead of "L-N", "St" as "Street", etc.
  *
- * Also strips any leading "+1 " or "1 " country-code prefix from phone-number
- * patterns the user may have included in the script — phones are shown on
- * screen, not spoken, but if one slips into narration we don't want the avatar
- * to say "one ..." in front of it.
+ * Also removes phone numbers from the narration entirely — contact info is
+ * display-only (end-frame contact card / video description) and the avatar
+ * must never speak it.
  */
 function normalizeScriptForTTS(text: string): string {
   if (!text) return text;
@@ -118,12 +117,15 @@ function normalizeScriptForTTS(text: string): string {
     out = out.replace(re, `$1${full}$2`);
   }
 
-  // Strip leading "+1 " or "1-" or "1 " in front of a 10-digit phone pattern
-  // (e.g. "+1 555-123-4567" or "1 (555) 123-4567"). Keep the local number.
+  // Remove phone numbers from the narration entirely — contact info is
+  // display-only (end-frame contact card / video description) and the avatar
+  // must never speak it. Also swallows a leading "call/text (me/us) at" so
+  // the sentence doesn't dangle.
   out = out.replace(
-    /(?:\+?1[\s.\-])(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/g,
-    "$1",
+    /(?:(?:call|text)(?:\s+or\s+(?:call|text))?(?:\s+(?:me|us))?\s+(?:at|on)\s+)?\+?1?[\s.\-]?\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]?\d{4}\b/gi,
+    "",
   );
+  out = out.replace(/ {2,}/g, " ").replace(/\s+([,.!?])/g, "$1");
 
   return out;
 }
@@ -335,7 +337,7 @@ AGENT + MARKET DETAILS
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
 - Market: ${locationOr}
 - Audience: ${params.audience || "Mixed"}
-- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Mobile (PRIMARY — the only phone the avatar should ever read aloud if any phone is spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Office (DISPLAY ONLY — appears on-screen but is NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website: ${params.website}` : ""}
+- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Mobile (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Office (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website (DISPLAY ONLY — appears on-screen, NEVER spoken as a URL): ${params.website}` : ""}
 
 =====================================
 NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
@@ -371,8 +373,8 @@ PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
 - The script above has already been normalized for speech. Read every word as written.
 - ALWAYS pronounce street-suffix words in full — never spell letters: "Lane" (not "L-N"), "Street" (not "S-T"), "Road", "Avenue", "Boulevard", "Drive", "Court", "Circle", "Place", "Parkway", "Highway", "Terrace", "Trail", "Point", "Square", "Apartment", "Suite", "Building".
 - Pronounce directional words in full: "North", "South", "East", "West", "Northeast", "Northwest", "Southeast", "Southwest" — never as single letters.
-- Phone numbers: read each digit naturally (e.g. "five five five, one two three, four five six seven"). DO NOT prepend "one" or "plus one" — never add a "1" country-code in front of any phone number, even if you see one. If two phone numbers appear in the agent details, ONLY the Mobile number is ever spoken; the Office number is for on-screen display only and must NEVER be read aloud.
-- If the script does not contain a phone number, do not add one to the narration. Phone numbers belong in the on-screen contact overlay, not the spoken track.
+- CONTACT INFO IS NEVER SPOKEN. Phone numbers, email addresses, and website URLs must NEVER be read aloud under any circumstances — they are DISPLAY ONLY and belong exclusively in the on-screen contact overlay (final-scene contact card). If any phone number, email, or URL somehow appears in the narration script, OMIT it from the voiceover and show it on screen instead.
+- Do NOT add any contact information to the narration that is not in the script. The spoken close directs viewers to the description and the on-screen card — that is intentional.
 
 ${buildLocationSeasonGuidance(params.state, params.city)}=====================================
 B-ROLL — LOCATION-LOCKED TO ${locationOr.toUpperCase()}

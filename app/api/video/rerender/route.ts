@@ -130,12 +130,12 @@ AGENT + MARKET DETAILS
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
 - Market: ${locationOr}
 - Audience: ${params.audience || "Mixed"}
-- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Phone 1: ${params.phone1}` : ""}${params.phone2 ? `\n- Phone 2: ${params.phone2}` : ""}${params.website ? `\n- Website: ${params.website}` : ""}
+- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Phone 1 (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Phone 2 (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website (DISPLAY ONLY — appears on-screen, NEVER spoken as a URL): ${params.website}` : ""}
 
 =====================================
 NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
 =====================================
-Speak ONLY the script below, start to finish, exactly once. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
+Speak ONLY the script below, start to finish, exactly once. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. CONTACT INFO IS NEVER SPOKEN: phone numbers, email addresses, and website URLs are display-only — if one appears in the script, omit it from the voiceover and show it on screen instead. The first words of the voiceover are the first words of this script:
 
 ${params.script}
 
