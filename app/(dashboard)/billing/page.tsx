@@ -19,7 +19,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "4 AI videos/month",
-      "Unlimited camera recordings (up to 30 mins each)",
+      "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
@@ -36,7 +36,7 @@ const PLANS = [
     highlighted: true,
     features: [
       "8 AI videos/month",
-      "Unlimited camera recordings (up to 30 mins each)",
+      "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
@@ -54,7 +54,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "12 AI videos/month",
-      "Unlimited camera recordings (up to 30 mins each)",
+      "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Up to 2 min per AI video/reel",
       "Voice recording + AI script",

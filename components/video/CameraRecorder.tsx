@@ -31,6 +31,11 @@ const SPEED_OPTIONS = [
   { label: "Fast", px: 42 },
 ];
 
+// YouTube requires phone verification to upload videos longer than 15 minutes,
+// so recordings are capped at 15:00 to keep every video publishable.
+const MAX_RECORD_SECONDS = 15 * 60;
+const WARN_RECORD_SECONDS = 13 * 60;
+
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
   const sec = (s % 60).toString().padStart(2, "0");
@@ -72,6 +77,15 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   useEffect(() => {
     speedRef.current = SPEED_OPTIONS[speedIdx].px;
   }, [speedIdx]);
+
+  // Auto-stop at the 15-minute cap so the video stays YouTube-publishable
+  useEffect(() => {
+    if (isRecording && seconds >= MAX_RECORD_SECONDS) {
+      stopRecording();
+      toast("15-minute limit reached — your recording has been saved.", { icon: "⏱️" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seconds, isRecording]);
 
   async function openCamera() {
     setCamError(null);
@@ -347,9 +361,13 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         >
           <Camera size={18} /> Open Camera
         </Button>
-        {!script.trim() && (
+        {!script.trim() ? (
           <p className="text-xs text-slate-400 text-center -mt-3">
             Speak Or Spark A Script To Continue
+          </p>
+        ) : (
+          <p className="text-xs text-slate-400 text-center -mt-3">
+            Record Up To 15 Minutes — Ideal For Long-Form YouTube Videos
           </p>
         )}
       </div>
@@ -386,7 +404,14 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           {isRecording && !isPaused && (
             <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-white text-xs font-medium font-mono">{formatTime(seconds)}</span>
+              <span
+                className={cn(
+                  "text-xs font-medium font-mono",
+                  seconds >= WARN_RECORD_SECONDS ? "text-amber-400" : "text-white",
+                )}
+              >
+                {formatTime(seconds)} / 15:00
+              </span>
             </div>
           )}
           {isPaused && (
@@ -403,6 +428,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
               <p className="text-xs text-white/90">
                 Camera Is Live. Press{" "}
                 <strong>Start Recording</strong> — The Teleprompter Will Scroll Automatically.
+                Record Up To <strong>15 Minutes</strong>.
               </p>
             </div>
           )}
