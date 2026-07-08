@@ -3,9 +3,10 @@
 import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
-  Sparkles, ChevronDown, Save, Loader2,
+  Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail";
@@ -17,10 +18,12 @@ interface Project {
   seo_data?: { hashtags?: string[]; youtube_title?: string } | null;
 }
 
+// Ordered to match the video workflow: title & script BEFORE rendering,
+// description & tags AFTER — channel name is a one-time setup tool.
 const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[] = [
-  { id: "description", label: "Description Generator", icon: FileText },
-  { id: "script",      label: "Script Generator",     icon: ScrollText },
   { id: "title",       label: "Title Generator",      icon: Heading },
+  { id: "script",      label: "Script Generator",     icon: ScrollText },
+  { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image, soon: true },
@@ -649,9 +652,69 @@ function ThumbnailSoon() {
 
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
 
+// ─── HOW TO USE PANEL ──────────────────────────────────────────────────────────
+
+const HOW_TO_STEPS: { step: string; title: string; when: string; detail: string }[] = [
+  { step: "1", title: "Title Generator", when: "Before you commit to a topic",
+    detail: "Generate 8 title angles (question, data hook, urgency…), pick the strongest — a sharp title keeps the whole video focused." },
+  { step: "2", title: "Script Generator", when: "Draft & compare without creating a project",
+    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → Paste / Upload when you're ready to render." },
+  { step: "3", title: "Create Your Video", when: "The main event",
+    detail: "Use the Create Video page — it researches your market and generates the script, title, description, and tags in one flow." },
+  { step: "4", title: "Description Generator", when: "After the video renders",
+    detail: "A keyword-rich YouTube description with an FAQ block — regenerate a better one, or refresh an older video's description." },
+  { step: "5", title: "Tag Generator", when: "Same moment — the YouTube upload form",
+    detail: "20 tags mixing broad, local, and long-tail. Copy All into YouTube's tag field and save them to the project." },
+];
+
+function HowToUsePanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="mb-6 bg-white border border-slate-200 rounded-2xl p-5 relative">
+      <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600" title="Close">
+        <X size={16} />
+      </button>
+      <p className="text-sm font-bold text-brand-text mb-3">How These Tools Fit Your Workflow</p>
+
+      {/* The de-confusion callout — Create Video already does all of this */}
+      <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl mb-4">
+        <Video size={15} className="text-blue-500 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-600 leading-relaxed">
+          <strong>Making a video? You don&apos;t need to start here.</strong>{" "}
+          <Link href="/create" className="text-blue-600 font-semibold hover:underline">Create Video</Link>{" "}
+          automatically generates the script, title, description, and tags for every project. These tools
+          are your workbench — brainstorm angles, compare versions, or refresh older videos.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        {HOW_TO_STEPS.map(({ step, title, when, detail }) => (
+          <div key={step} className="flex items-start gap-3">
+            <span className="w-6 h-6 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{step}</span>
+            <div>
+              <p className="text-sm font-semibold text-brand-text">
+                {title} <span className="font-normal text-slate-400">· {when}</span>
+              </p>
+              <p className="text-xs text-slate-500 leading-relaxed">{detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100">
+        <strong>Rule of thumb:</strong> titles &amp; scripts <em>before</em> you render, descriptions &amp; tags{" "}
+        <em>after</em> — so the metadata matches what the video actually says. The Channel Name Generator is
+        one-time: use it when setting up or rebranding your YouTube channel.
+      </p>
+    </div>
+  );
+}
+
+// ─── MAIN PAGE (cont.) ─────────────────────────────────────────────────────────
+
 export default function ToolsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("tags");
+  const [activeTab, setActiveTab] = useState<Tab>("title");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -668,15 +731,26 @@ export default function ToolsPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-primary-500 to-orange-400 text-white">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-            <Sparkles size={18} />
+      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-primary-500 to-orange-400 text-white">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <Sparkles size={18} />
+            </div>
+            <h1 className="text-xl font-bold">AI Tools</h1>
           </div>
-          <h1 className="text-xl font-bold">AI Tools</h1>
+          <button
+            onClick={() => setShowHelp((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-full px-3 py-1.5 transition-colors"
+          >
+            <HelpCircle size={13} /> How To Use
+          </button>
         </div>
-        <p className="text-sm text-white/80">Supercharge your content creation with AI</p>
+        <p className="text-sm text-white/80 mt-1">Supercharge your content creation with AI</p>
       </div>
+
+      {/* How-to-use workflow panel */}
+      {showHelp && <HowToUsePanel onClose={() => setShowHelp(false)} />}
 
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto pb-1 mb-6 border-b border-slate-200">
