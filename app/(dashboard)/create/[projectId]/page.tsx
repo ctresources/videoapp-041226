@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
+import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -33,6 +34,18 @@ function formatRecordTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
   const sec = (s % 60).toString().padStart(2, "0");
   return `${m}:${sec}`;
+}
+
+/** Wraps each word in a data-w span so Flow mode can follow the reader. */
+function FlowWords({ text, offset }: { text: string; offset: number }) {
+  let w = 0;
+  return (
+    <>
+      {text.split(/(\s+)/).map((part, i) =>
+        /\S/.test(part) ? <span key={i} data-w={offset + w++}>{part}</span> : part,
+      )}
+    </>
+  );
 }
 
 interface AvatarLook {
@@ -153,6 +166,10 @@ export default function ProjectEditorPage() {
   const [tpRecording, setTpRecording] = useState(false);
   const [tpUploading, setTpUploading] = useState(false);
   const [tpSeconds, setTpSeconds] = useState(0);
+  // "flow" = teleprompter follows the reader's voice; "auto" = manual toggle + speed
+  const [tpFlowMode, setTpFlowMode] = useState(false);
+  const [tpFlowSupported, setTpFlowSupported] = useState(false);
+  const tpFollowerRef = useRef<VoiceFollower | null>(null);
   const tpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -164,6 +181,14 @@ export default function ProjectEditorPage() {
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
+
+  // Default to voice-follow when the browser supports it
+  useEffect(() => {
+    if (isVoiceFollowSupported()) {
+      setTpFlowSupported(true);
+      setTpFlowMode(true);
+    }
+  }, []);
 
   useEffect(() => {
     loadProject();
@@ -719,6 +744,8 @@ export default function ProjectEditorPage() {
   function closeTeleprompter() {
     if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
     if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
+    tpFollowerRef.current?.stop();
+    tpFollowerRef.current = null;
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -744,11 +771,32 @@ export default function ProjectEditorPage() {
     if (tpTimerRef.current) clearInterval(tpTimerRef.current);
     tpTimerRef.current = setInterval(() => setTpSeconds((s) => s + 1), 1000);
     setTpRecording(true);
+
+    // Flow mode: the prompter listens and follows the reader's voice
+    if (tpFlowMode && tpFlowSupported) {
+      setTpAutoScroll(false);
+      const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
+      const flowText = [tpHook, editedScript, editedCta].filter(Boolean).join(" ");
+      tpFollowerRef.current?.stop();
+      const follower = new VoiceFollower(
+        flowText,
+        (i) => followWordInContainer(scrollContainerRef.current, i),
+        () => {
+          tpFollowerRef.current = null;
+          toast("Voice-follow unavailable — use the Auto-scroll toggle instead.", { icon: "🎚️" });
+          setTpFlowMode(false);
+        },
+      );
+      tpFollowerRef.current = follower;
+      follower.start();
+    }
   }
 
   function stopTpRecording() {
     mediaRecorderRef.current?.stop();
     if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
+    tpFollowerRef.current?.stop();
+    tpFollowerRef.current = null;
     setTpRecording(false);
   }
 
@@ -1584,7 +1632,11 @@ export default function ProjectEditorPage() {
       )}
 
       {/* ── Teleprompter full-screen overlay ── */}
-      {showTeleprompter && script && (
+      {showTeleprompter && script && (() => {
+        const tpHook = selectedHook || script.hook || "";
+        const tpHookLen = tokenizeScript(tpHook).length;
+        const tpScriptLen = tokenizeScript(editedScript).length;
+        return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
           {/* Top bar */}
           <div className="flex items-center justify-between gap-4 px-4 py-3 bg-black/90 border-b border-white/10 shrink-0">
@@ -1603,26 +1655,42 @@ export default function ProjectEditorPage() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              {/* Auto-scroll toggle */}
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <div
-                  onClick={() => setTpAutoScroll((v) => !v)}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${tpAutoScroll ? "bg-green-500" : "bg-white/20"}`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${tpAutoScroll ? "left-[18px]" : "left-0.5"}`} />
-                </div>
-                <span className="text-white/60 text-xs">Auto-scroll</span>
-              </label>
-              {tpAutoScroll && (
-                <div className="flex items-center gap-1">
-                  <span className="text-white/40 text-[10px]">Slow</span>
-                  <input
-                    type="range" min={1} max={6} step={0.5} value={tpSpeed}
-                    onChange={(e) => setTpSpeed(Number(e.target.value))}
-                    className="w-20 accent-green-500"
-                  />
-                  <span className="text-white/40 text-[10px]">Fast</span>
-                </div>
+              {/* Flow (voice-follow) toggle — the prompter follows your voice */}
+              {tpFlowSupported && (
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <div
+                    onClick={() => setTpFlowMode((v) => !v)}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${tpFlowMode ? "bg-amber-500" : "bg-white/20"}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${tpFlowMode ? "left-[18px]" : "left-0.5"}`} />
+                  </div>
+                  <span className="text-white/60 text-xs">🎙 Flow</span>
+                </label>
+              )}
+              {/* Auto-scroll toggle + speed (hidden while Flow paces the scroll) */}
+              {!tpFlowMode && (
+                <>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <div
+                      onClick={() => setTpAutoScroll((v) => !v)}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${tpAutoScroll ? "bg-green-500" : "bg-white/20"}`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${tpAutoScroll ? "left-[18px]" : "left-0.5"}`} />
+                    </div>
+                    <span className="text-white/60 text-xs">Auto-scroll</span>
+                  </label>
+                  {tpAutoScroll && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-white/40 text-[10px]">Slow</span>
+                      <input
+                        type="range" min={1} max={6} step={0.5} value={tpSpeed}
+                        onChange={(e) => setTpSpeed(Number(e.target.value))}
+                        className="w-20 accent-green-500"
+                      />
+                      <span className="text-white/40 text-[10px]">Fast</span>
+                    </div>
+                  )}
+                </>
               )}
               <button onClick={closeTeleprompter} className="text-white/50 hover:text-white text-lg leading-none ml-1">✕</button>
             </div>
@@ -1634,19 +1702,19 @@ export default function ProjectEditorPage() {
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Opening Hook</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
-                  {selectedHook || script.hook}
+                  <FlowWords text={tpHook} offset={0} />
                 </p>
               </div>
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Script</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed whitespace-pre-wrap">
-                  {editedScript}
+                  <FlowWords text={editedScript} offset={tpHookLen} />
                 </p>
               </div>
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
-                  {editedCta}
+                  <FlowWords text={editedCta} offset={tpHookLen + tpScriptLen} />
                 </p>
                 {buildContactLine() && (
                   <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
@@ -1714,7 +1782,8 @@ export default function ProjectEditorPage() {
             <div className="w-28 shrink-0" />
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
