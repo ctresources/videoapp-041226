@@ -135,7 +135,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month", "Unlimited camera recordings (up to 30 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 AI videos/month", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Long-form AI videos (8–15 min) — pay-as-you-go, 6 credits", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -146,7 +146,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["8 AI videos/month", "Unlimited camera recordings (up to 30 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["8 AI videos/month", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Long-form AI videos (8–15 min) — pay-as-you-go, 6 credits", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -157,7 +157,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["12 AI videos/month", "Unlimited camera recordings (up to 30 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["12 AI videos/month", "Long-form AI videos (8–15 min, mid-roll ad ready) included — 6 credits each", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -531,6 +531,30 @@ export default function LandingPage() {
                 </a>
               </div>
             ))}
+          </div>
+
+          {/* Add-on credits — pay-as-you-go on any plan */}
+          <div className="mt-8 bg-white border border-slate-200 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-slate-900 mb-1">Need more videos some months? Add credits anytime.</p>
+                <p className="text-xs text-slate-500">One-time purchases on any plan — no plan change needed. Credits never interrupt your subscription.</p>
+              </div>
+              <div className="flex flex-wrap gap-3 shrink-0 text-sm">
+                <div className="border border-slate-200 px-4 py-2">
+                  <span className="font-black text-slate-900">$10</span>
+                  <span className="text-slate-500 text-xs"> · 1 AI video credit</span>
+                </div>
+                <div className="border border-slate-200 px-4 py-2">
+                  <span className="font-black text-slate-900">$15</span>
+                  <span className="text-slate-500 text-xs"> · 2 credits ($7.50 each)</span>
+                </div>
+                <div className="border border-blue-900 px-4 py-2 bg-blue-50">
+                  <span className="font-black text-blue-900">$39</span>
+                  <span className="text-slate-600 text-xs"> · Long-Form pack — 6 credits, one 8–15 min video</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
