@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
+import { VoiceFollower, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
@@ -57,6 +58,10 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   const [sparkTopic, setSparkTopic] = useState("");
   const [sparking, setSparking] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
+  // "flow" = teleprompter follows the reader's voice; "auto" = constant speed
+  const [scrollMode, setScrollMode] = useState<"auto" | "flow">("auto");
+  const [flowSupported, setFlowSupported] = useState(false);
+  const followerRef = useRef<VoiceFollower | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -86,6 +91,14 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   useEffect(() => {
     speedRef.current = SPEED_OPTIONS[speedIdx].px;
   }, [speedIdx]);
+
+  // Default to Flow when the browser supports it — it's the better experience
+  useEffect(() => {
+    if (isVoiceFollowSupported()) {
+      setFlowSupported(true);
+      setScrollMode("flow");
+    }
+  }, []);
 
   // Load the user's default CTA + profile details for the "Add Channel CTA" button
   useEffect(() => {
@@ -203,34 +216,64 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     setIsPaused(false);
     setSeconds(0);
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    startScroll();
+    startPrompter();
+  }
+
+  // Starts the scroll engine for the current mode: Flow (voice-follow) with
+  // automatic fallback to constant-speed auto-scroll if recognition dies.
+  function startPrompter() {
+    if (scrollMode === "flow" && flowSupported) {
+      followerRef.current?.stop();
+      const follower = new VoiceFollower(
+        script,
+        (i) => followWordInContainer(teleRef.current, i),
+        () => {
+          followerRef.current = null;
+          toast("Voice-follow unavailable — switching to auto-scroll.", { icon: "🎚️" });
+          setScrollMode("auto");
+          startScroll();
+        },
+      );
+      followerRef.current = follower;
+      follower.start();
+    } else {
+      startScroll();
+    }
+  }
+
+  function stopPrompter() {
+    stopScroll();
+    followerRef.current?.stop();
+    followerRef.current = null;
   }
 
   function pauseRecording() {
     recorderRef.current?.pause();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     stopScroll();
+    followerRef.current?.pause();
     setIsPaused(true);
   }
 
   function resumeRecording() {
     recorderRef.current?.resume();
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    startScroll();
+    if (followerRef.current) followerRef.current.resume();
+    else if (scrollMode === "auto") startScroll();
     setIsPaused(false);
   }
 
   function stopRecording() {
     recorderRef.current?.stop();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    stopScroll();
+    stopPrompter();
     setIsRecording(false);
     setIsPaused(false);
   }
 
   function handleReset() {
     closeCamera();
-    stopScroll();
+    stopPrompter();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(null);
@@ -297,6 +340,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     return () => {
       closeCamera();
       stopScroll();
+      followerRef.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
       if (videoUrl) URL.revokeObjectURL(videoUrl);
     };
@@ -376,24 +420,56 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
 
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Teleprompter Speed
+            Teleprompter Mode
           </p>
-          <div className="flex gap-2">
-            {SPEED_OPTIONS.map((opt, i) => (
+          {flowSupported && (
+            <div className="flex gap-2 mb-2">
               <button
-                key={opt.label}
-                onClick={() => setSpeedIdx(i)}
+                onClick={() => setScrollMode("flow")}
                 className={cn(
-                  "flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all",
-                  speedIdx === i
+                  "flex-1 py-2 px-2 rounded-xl text-xs font-medium border-2 transition-all",
+                  scrollMode === "flow"
                     ? "border-primary-500 bg-primary-50 text-primary-600"
                     : "border-slate-200 text-slate-500 hover:border-slate-300",
                 )}
               >
-                {opt.label}
+                🎙 Flow — Follows Your Voice
               </button>
-            ))}
-          </div>
+              <button
+                onClick={() => setScrollMode("auto")}
+                className={cn(
+                  "flex-1 py-2 px-2 rounded-xl text-xs font-medium border-2 transition-all",
+                  scrollMode === "auto"
+                    ? "border-primary-500 bg-primary-50 text-primary-600"
+                    : "border-slate-200 text-slate-500 hover:border-slate-300",
+                )}
+              >
+                Auto — Constant Speed
+              </button>
+            </div>
+          )}
+          {scrollMode === "flow" && flowSupported ? (
+            <p className="text-xs text-slate-400">
+              The Teleprompter Listens And Scrolls At Your Pace — Pause To Think And It Waits For You
+            </p>
+          ) : (
+            <div className="flex gap-2">
+              {SPEED_OPTIONS.map((opt, i) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setSpeedIdx(i)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-all",
+                    speedIdx === i
+                      ? "border-primary-500 bg-primary-50 text-primary-600"
+                      : "border-slate-200 text-slate-500 hover:border-slate-300",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tips for best video */}
@@ -451,7 +527,13 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             className="shrink-0 h-40 sm:h-44 bg-black/85 backdrop-blur-sm px-5 py-4 overflow-hidden select-none border-b border-white/10"
           >
             <p className="text-white text-xl sm:text-2xl leading-9 font-semibold whitespace-pre-wrap text-center">
-              {script}
+              {/* Words carry data-w indices so Flow mode can scroll to and highlight the reader's position */}
+              {(() => {
+                let w = 0;
+                return script.split(/(\s+)/).map((part, i) =>
+                  /\S/.test(part) ? <span key={i} data-w={w++}>{part}</span> : part,
+                );
+              })()}
             </p>
             <div className="h-40" />
           </div>
@@ -492,7 +574,10 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
               <Video size={15} className="text-primary-300 shrink-0" />
               <p className="text-xs text-white/90">
                 Camera Is Live. Press{" "}
-                <strong>Start Recording</strong> — The Teleprompter Will Scroll Automatically.
+                <strong>Start Recording</strong> —{" "}
+                {scrollMode === "flow" && flowSupported
+                  ? <>The Teleprompter Will <strong>Follow Your Voice</strong> As You Read.</>
+                  : <>The Teleprompter Will Scroll Automatically.</>}{" "}
                 Record Up To <strong>15 Minutes</strong>.
               </p>
             </div>
@@ -501,8 +586,8 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
 
         {/* Bottom control bar */}
         <div className="shrink-0 flex flex-col gap-2 bg-black/90 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {/* Speed control while paused */}
-          {isPaused && (
+          {/* Speed control while paused (auto mode only — Flow paces itself) */}
+          {isPaused && scrollMode === "auto" && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-white/60 shrink-0">Speed:</span>
               {SPEED_OPTIONS.map((opt, i) => (
