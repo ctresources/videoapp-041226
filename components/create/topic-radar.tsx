@@ -37,7 +37,9 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         const cached = sessionStorage.getItem(key);
         if (cached) {
           const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 4 * 3600 * 1000) { setTopics(data); return; }
+          // Only accept a well-formed array cache — a stale/corrupt entry must
+          // never reach state, or topics.find() below throws and crashes render.
+          if (Array.isArray(data) && Date.now() - ts < 4 * 3600 * 1000) { setTopics(data); return; }
         }
       } catch { /* ignore */ }
     }
@@ -49,7 +51,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         body: JSON.stringify({ city, state }),
       });
       const data = await res.json();
-      if (data.topics) {
+      if (Array.isArray(data.topics)) {
         setTopics(data.topics);
         sessionStorage.setItem(key, JSON.stringify({ data: data.topics, ts: Date.now() }));
       }
@@ -63,6 +65,9 @@ export function TopicRadar({ city, state, onSelect }: Props) {
   }, [city, state]); // eslint-disable-line
 
   if (!city && !state) return null;
+
+  // Backstop: never call array methods on a non-array, whatever state holds.
+  const safeTopics = Array.isArray(topics) ? topics : [];
 
   return (
     <div className="mb-5 bg-slate-50 rounded-xl border border-slate-200 p-3">
@@ -86,7 +91,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         </button>
       </div>
 
-      {loading && topics.length === 0 && (
+      {loading && safeTopics.length === 0 && (
         <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
           <Loader2 size={12} className="animate-spin text-blue-500" />
           Scanning your market for trending topics…
@@ -95,7 +100,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
 
       <div className="flex flex-col gap-2">
         {PREFERRED_TYPES.map((type, i) => {
-          const t = topics.find((x) => x.videoType === type);
+          const t = safeTopics.find((x) => x.videoType === type);
           const cfg = STEP_CONFIG[i];
           if (!t) return null;
           return (
@@ -116,7 +121,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         })}
       </div>
 
-      {topics.length > 0 && (
+      {safeTopics.length > 0 && (
         <p className="text-[10px] text-slate-400 mt-2 text-center">Tap any row to Spark your topic</p>
       )}
     </div>
