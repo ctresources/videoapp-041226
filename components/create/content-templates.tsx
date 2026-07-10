@@ -383,10 +383,11 @@ export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProp
         const hiddenCount = allTemplates.length - 4;
         return (
           <div key={key}>
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              <span className="w-1.5 h-4 rounded-full bg-gradient-to-b from-primary-400 to-orange-400 shrink-0" />
               {emoji} {label}
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {templates.map((template) => {
                 const Icon = template.icon;
                 const previewTopic = substitutePlaceholders(template.topic, city?.trim(), state?.trim());
