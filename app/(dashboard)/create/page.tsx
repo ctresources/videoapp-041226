@@ -499,9 +499,9 @@ function CreatePageInner() {
   );
 
   return (
-    // The AI-script input step uses a wide two-column layout (form + always-
-    // visible templates); every other tab/step keeps the original narrow column.
-    <div className={inputMode === "script" && step === "input" ? "max-w-5xl mx-auto" : "max-w-xl mx-auto"}>
+    // The AI-script input step uses a full-width two-column layout (form +
+    // always-visible templates); every other tab/step keeps the narrow column.
+    <div className={inputMode === "script" && step === "input" ? "w-full" : "max-w-xl mx-auto"}>
       <div className="max-w-xl mx-auto">
 
       {/* Settings banner — shown until profile is saved */}
@@ -568,18 +568,18 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] gap-4 items-start">
+        <div className="grid lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] gap-4 items-start">
 
-          {/* Left column: market + topic */}
+          {/* Left column: market + topic + generate */}
           <div className="flex flex-col gap-4 min-w-0">
 
           {/* ── STEP 1: Your Market ── */}
           <Card padding="sm">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
+              <span className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-base font-bold shrink-0">1</span>
               <div>
-                <p className="text-sm font-bold text-brand-text">Your Market</p>
-                <p className="text-xs text-slate-500">Speak Or Type Your City And State</p>
+                <p className="text-base font-bold text-brand-text">Your Market</p>
+                <p className="text-sm text-slate-500">Speak Or Type Your City And State</p>
               </div>
             </div>
 
@@ -660,10 +660,10 @@ function CreatePageInner() {
           {/* ── STEP 2: Topic ── */}
           <Card padding="sm">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">2</span>
+              <span className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center text-base font-bold shrink-0">2</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-brand-text">Your Topic</p>
-                <p className="text-xs text-slate-500">Hit The Mic, Type It, Or Tap A Trending Topic Or Template</p>
+                <p className="text-base font-bold text-brand-text">Your Topic</p>
+                <p className="text-sm text-slate-500">Hit The Mic, Type It, Or Tap A Trending Topic Or Template</p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
@@ -742,17 +742,41 @@ function CreatePageInner() {
             </div>
           </Card>
 
+          {/* ── STEP 3: Generate — inline under Step 2 ── */}
+          <Card padding="sm">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-base font-bold shrink-0">3</span>
+              <p className="text-base font-bold text-brand-text">Generate The Script</p>
+            </div>
+            <Button
+              onClick={handleGenerateScript}
+              loading={locGenerating}
+              disabled={!locCustomTopic.trim()}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Researching {locCity || "your market"}…</>
+                : <><Sparkles size={16} /> Generate My Script</>}
+            </Button>
+            {!locCustomTopic.trim() && (
+              <p className="text-sm text-slate-400 text-center mt-2">
+                Enter A Topic In Step 2 To Unlock This Button
+              </p>
+            )}
+          </Card>
+
           </div>{/* end left column */}
 
           {/* ── Templates — always visible ── */}
           <Card padding="sm" className="min-w-0 lg:sticky lg:top-4">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                <LayoutGrid size={15} />
+              <span className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <LayoutGrid size={17} />
               </span>
               <div>
-                <p className="text-sm font-bold text-brand-text">Templates — Tap To Fill Your Topic</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-base font-bold text-brand-text">Templates — Tap To Fill Your Topic</p>
+                <p className="text-sm text-slate-500">
                   {locCity.trim() ? `Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into The Topic` : "Set Your Market In Step 1 To Localize These"}
                 </p>
               </div>
@@ -768,30 +792,6 @@ function CreatePageInner() {
               />
             </div>
           </Card>
-
-          {/* ── STEP 3: Generate — spans both columns ── */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold shrink-0">3</span>
-              <p className="text-sm font-bold text-brand-text">Generate The Script</p>
-            </div>
-            <Button
-              onClick={handleGenerateScript}
-              loading={locGenerating}
-              disabled={!locCustomTopic.trim()}
-              size="lg"
-              className="w-full gap-2"
-            >
-              {locGenerating
-                ? <>Researching {locCity || "your market"}…</>
-                : <><Sparkles size={16} /> Generate My Script</>}
-            </Button>
-            {!locCustomTopic.trim() && (
-              <p className="text-xs text-slate-400 text-center mt-2">
-                Enter A Topic In Step 2 To Unlock This Button
-              </p>
-            )}
-          </div>
 
         </div>
       )}
