@@ -954,9 +954,12 @@ export default function ProjectEditorPage() {
           {(looksLoading || looks.length > 0) && (
             <Card>
               <p className="text-sm font-semibold text-brand-text mb-1">Choose Your Avatar</p>
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="text-xs text-slate-400 mb-1">
                 📸 <span className="font-medium text-slate-500">Photo Avatar</span> — created from your headshot &nbsp;·&nbsp;
                 🎬 <span className="font-medium text-slate-500">Digital Twin</span> — created from your video recording
+              </p>
+              <p className="text-xs text-slate-400 mb-3">
+                📐 Tip: pick a look made from a <span className="font-medium text-slate-500">horizontal photo</span> for YouTube videos, a <span className="font-medium text-slate-500">vertical photo</span> for Reels — it fills the frame without black bars.
               </p>
               {looksLoading ? (
                 <div className="flex gap-2">
@@ -1390,9 +1393,12 @@ export default function ProjectEditorPage() {
             {(looksLoading || looks.length > 0) && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
-                <p className="text-[10px] text-slate-400 mb-2">
+                <p className="text-xs text-slate-400 mb-1">
                   📸 <span className="font-medium">Photo Avatar</span> — from your headshot &nbsp;·&nbsp;
                   🎬 <span className="font-medium">Digital Twin</span> — from your video
+                </p>
+                <p className="text-xs text-slate-400 mb-2">
+                  📐 Tip: pick a look from a <span className="font-medium">horizontal photo</span> for YouTube, a <span className="font-medium">vertical photo</span> for Reels — fills the frame, no black bars.
                 </p>
                 {looksLoading ? (
                   <div className="flex gap-2 mb-5">
