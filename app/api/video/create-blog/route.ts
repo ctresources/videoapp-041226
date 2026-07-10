@@ -193,6 +193,7 @@ function buildVideoAgentPrompt(params: {
   keywords: string[];
   isShortForm: boolean;
   isLongForm?: boolean;
+  burnCaptions?: boolean;
   hookText?: string;
   listingAddress?: string;
   listingPhotoCount?: number;
@@ -412,7 +413,8 @@ When stats or numbers are spoken:
 =====================================
 TEXT OVERLAYS
 =====================================
-- Highlight key stats and insights as they are mentioned in the script
+${params.burnCaptions ? `- SPOKEN-WORD CAPTIONS (REQUIRED): Burn synchronized captions of the narration throughout the ENTIRE video — every spoken sentence appears as on-screen text in sync with the voiceover. Style: 4–6 words at a time, bold white text on a semi-transparent dark backing, social-media caption style. Position captions INSIDE the lower-third band. On Scene 1, captions must sit ABOVE the title-card hook bar (never overlapping it); on the final scene, captions sit above the contact card. Captions must never cover the presenter's face or any other overlay.
+` : ""}- Highlight key stats and insights as they are mentioned in the script
 - Background: semi-transparent dark gray
 - Text: white or soft gold
 - Accent lines/icons: gold or navy
@@ -432,7 +434,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm } = await req.json();
+  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
   // Long-form (up to 15 min) is landscape-only and Pro-plan-only; costs more credits.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
@@ -592,6 +594,7 @@ export async function POST(req: NextRequest) {
       keywords: aiKeywords,
       isShortForm,
       isLongForm,
+      burnCaptions: captions !== false,
       hookText,
       listingAddress,
       listingPhotoCount: listingPhotos.length,

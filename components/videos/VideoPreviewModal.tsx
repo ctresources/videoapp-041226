@@ -1,13 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { X, Download, Send, Maximize2, Volume2, VolumeX } from "lucide-react";
+import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 interface VideoPreviewModalProps {
   videoUrl: string;
   title: string;
   videoType: string;
+  videoId?: string;
   onClose: () => void;
   onPublish: () => void;
 }
@@ -19,11 +21,12 @@ const typeLabel: Record<string, string> = {
   short_1x1:    "Square (1:1)",
 };
 
-export function VideoPreviewModal({ videoUrl, title, videoType, onClose, onPublish }: VideoPreviewModalProps) {
+export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose, onPublish }: VideoPreviewModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [srtLoading, setSrtLoading] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -51,6 +54,39 @@ export function VideoPreviewModal({ videoUrl, title, videoType, onClose, onPubli
       document.exitFullscreen?.();
     }
     setFullscreen(!fullscreen);
+  }
+
+  // Transcribes the video and downloads an .srt caption file — upload it in
+  // YouTube Studio for accurate captions (also boosts caption-text SEO).
+  async function handleDownloadSrt() {
+    if (!videoId) return;
+    setSrtLoading(true);
+    try {
+      const res = await fetch("/api/video/captions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Caption generation failed");
+      }
+      const srt = await res.text();
+      const blob = new Blob([srt], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.replace(/[^\w\s-]/g, "").trim() || "captions"}.srt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Captions downloaded! Upload the .srt in YouTube Studio → Subtitles.", { duration: 5000 });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Caption generation failed");
+    } finally {
+      setSrtLoading(false);
+    }
   }
 
   const isPortrait = videoType === "reel_9x16";
@@ -114,6 +150,18 @@ export function VideoPreviewModal({ videoUrl, title, videoType, onClose, onPubli
               <Download size={14} /> Download
             </Button>
           </a>
+          {videoId && (
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={handleDownloadSrt}
+              disabled={srtLoading}
+              title="Transcribe this video and download an .srt caption file for YouTube Studio"
+            >
+              {srtLoading ? <Loader2 size={14} className="animate-spin" /> : <Captions size={14} />}
+              {srtLoading ? "Transcribing…" : "Captions (SRT)"}
+            </Button>
+          )}
         </div>
       </div>
     </div>

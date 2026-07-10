@@ -23,7 +23,8 @@ import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
-import { VoiceFollower, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
+import { BrandedComposite } from "@/lib/utils/branded-recorder";
+import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
@@ -40,6 +41,17 @@ const SPEED_OPTIONS = [
 // so recordings are capped at 15:00 to keep every video publishable.
 const MAX_RECORD_SECONDS = 15 * 60;
 const WARN_RECORD_SECONDS = 13 * 60;
+
+// Royalty-free music beds for Branded Look (same Mixkit tracks as the editor)
+const MUSIC_OPTIONS = [
+  { id: "none",      label: "No Music",   url: null as string | null },
+  { id: "calm",      label: "Calm Piano", url: "https://assets.mixkit.co/music/download/mixkit-soft-piano-ballad-1590.mp3" },
+  { id: "corporate", label: "Upbeat",     url: "https://assets.mixkit.co/music/download/mixkit-corporate-motivational-254.mp3" },
+  { id: "inspiring", label: "Inspiring",  url: "https://assets.mixkit.co/music/download/mixkit-serene-view-443.mp3" },
+];
+
+// End card duration appended after Stop in Branded Look
+const END_CARD_MS = 3200;
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
@@ -62,6 +74,16 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   const [scrollMode, setScrollMode] = useState<"auto" | "flow">("auto");
   const [flowSupported, setFlowSupported] = useState(false);
   const followerRef = useRef<VoiceFollower | null>(null);
+  // Branded Look — opt-in record-time compositing (logo, name bar, captions,
+  // music, end card). Off = the plain recording path runs untouched.
+  const [brandedLook, setBrandedLook] = useState(false);
+  const [brandedSupported, setBrandedSupported] = useState(false);
+  const [liveCaptions, setLiveCaptions] = useState(true);
+  const [musicId, setMusicId] = useState("none");
+  const [brandedActive, setBrandedActive] = useState(false);
+  const compositeRef = useRef<BrandedComposite | null>(null);
+  const transcriberRef = useRef<LiveTranscriber | null>(null);
+  const stoppingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -76,6 +98,8 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     full_name: string | null; company_name: string | null;
     location_city: string | null; location_state: string | null;
     default_cta: string | null; market_years: string | null;
+    avatar_url: string | null; logo_url: string | null;
+    license_number: string | null; phone: string | null;
   } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -98,6 +122,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
       setFlowSupported(true);
       setScrollMode("flow");
     }
+    setBrandedSupported(BrandedComposite.isSupported());
   }, []);
 
   // Load the user's default CTA + profile details for the "Add Channel CTA" button
@@ -109,7 +134,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         if (!user) return;
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, company_name, location_city, location_state, default_cta, market_years")
+          .select("full_name, company_name, location_city, location_state, default_cta, market_years, avatar_url, logo_url, license_number, phone")
           .eq("id", user.id)
           .single();
         if (data) setCtaProfile(data as typeof ctaProfile);
@@ -130,14 +155,16 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     toast.success("Channel CTA added to the end of your script!");
   }
 
-  // Auto-stop at the 15-minute cap so the video stays YouTube-publishable
+  // Auto-stop at the 15-minute cap so the video stays YouTube-publishable.
+  // Branded Look appends a ~3s end card, so it stops early enough to fit.
   useEffect(() => {
-    if (isRecording && seconds >= MAX_RECORD_SECONDS) {
+    const cap = brandedActive ? MAX_RECORD_SECONDS - Math.ceil(END_CARD_MS / 1000) - 1 : MAX_RECORD_SECONDS;
+    if (isRecording && seconds >= cap) {
       stopRecording();
       toast("15-minute limit reached — your recording has been saved.", { icon: "⏱️" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seconds, isRecording]);
+  }, [seconds, isRecording, brandedActive]);
 
   async function openCamera() {
     setCamError(null);
@@ -148,8 +175,43 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
+
+      // Branded Look: route the camera through the compositing canvas so the
+      // preview shows exactly what gets recorded. Any failure falls back to
+      // the plain path — the recording itself is never blocked.
+      let previewStream: MediaStream = stream;
+      if (brandedLook && brandedSupported) {
+        try {
+          const music = MUSIC_OPTIONS.find((m) => m.id === musicId)?.url ?? null;
+          const composite = new BrandedComposite(
+            {
+              name: ctaProfile?.full_name,
+              brokerage: ctaProfile?.company_name,
+              license: ctaProfile?.license_number,
+              phone: ctaProfile?.phone,
+              city: city || ctaProfile?.location_city,
+              state: state || ctaProfile?.location_state,
+              logoUrl: ctaProfile?.logo_url,
+              headshotUrl: ctaProfile?.avatar_url,
+            },
+            music,
+          );
+          previewStream = await composite.init(stream);
+          compositeRef.current = composite;
+          setBrandedActive(true);
+        } catch (err) {
+          console.warn("[camera] Branded Look unavailable, recording plain:", err);
+          compositeRef.current = null;
+          setBrandedActive(false);
+          toast("Branded Look unavailable on this device — recording without overlays.", { icon: "🎬" });
+        }
+      } else {
+        setBrandedActive(false);
+      }
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        videoRef.current.srcObject = previewStream;
+        videoRef.current.muted = true;
         await videoRef.current.play();
       }
       setStep("camera");
@@ -165,6 +227,11 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   }
 
   function closeCamera() {
+    compositeRef.current?.destroy();
+    compositeRef.current = null;
+    setBrandedActive(false);
+    transcriberRef.current?.stop();
+    transcriberRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }
@@ -186,7 +253,10 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   }
 
   function startRecording() {
-    if (!streamRef.current) return;
+    // Branded Look records the composited canvas stream; plain mode records
+    // the raw camera stream exactly as before.
+    const sourceStream = compositeRef.current?.stream ?? streamRef.current;
+    if (!sourceStream) return;
     chunksRef.current = [];
     scrollPosRef.current = 0;
     if (teleRef.current) teleRef.current.scrollTop = 0;
@@ -197,7 +267,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         (t) => MediaRecorder.isTypeSupported(t),
       ) || "";
 
-    const recorder = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : {});
+    const recorder = new MediaRecorder(sourceStream, mimeType ? { mimeType } : {});
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
@@ -216,12 +286,20 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     setIsPaused(false);
     setSeconds(0);
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    compositeRef.current?.startMusic();
     startPrompter();
   }
 
   // Starts the scroll engine for the current mode: Flow (voice-follow) with
   // automatic fallback to constant-speed auto-scroll if recognition dies.
+  // When Branded Look live captions are on, the same recognizer also feeds
+  // the burned-in caption overlay (only one recognizer ever runs).
   function startPrompter() {
+    const wantCaptions = brandedActive && liveCaptions && flowSupported;
+    const feedCaption = wantCaptions
+      ? (text: string) => compositeRef.current?.setCaption(text)
+      : undefined;
+
     if (scrollMode === "flow" && flowSupported) {
       followerRef.current?.stop();
       const follower = new VoiceFollower(
@@ -233,11 +311,21 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           setScrollMode("auto");
           startScroll();
         },
+        feedCaption,
       );
       followerRef.current = follower;
       follower.start();
     } else {
       startScroll();
+      if (wantCaptions) {
+        transcriberRef.current?.stop();
+        const transcriber = new LiveTranscriber(
+          (text) => compositeRef.current?.setCaption(text),
+          () => { transcriberRef.current = null; },
+        );
+        transcriberRef.current = transcriber;
+        transcriber.start();
+      }
     }
   }
 
@@ -245,6 +333,8 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     stopScroll();
     followerRef.current?.stop();
     followerRef.current = null;
+    transcriberRef.current?.stop();
+    transcriberRef.current = null;
   }
 
   function pauseRecording() {
@@ -252,6 +342,8 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     stopScroll();
     followerRef.current?.pause();
+    transcriberRef.current?.pause();
+    compositeRef.current?.pauseMusic();
     setIsPaused(true);
   }
 
@@ -260,15 +352,30 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     if (followerRef.current) followerRef.current.resume();
     else if (scrollMode === "auto") startScroll();
+    transcriberRef.current?.resume();
+    compositeRef.current?.startMusic();
     setIsPaused(false);
   }
 
   function stopRecording() {
-    recorderRef.current?.stop();
+    if (stoppingRef.current) return;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     stopPrompter();
     setIsRecording(false);
     setIsPaused(false);
+
+    // Branded Look: show the branded end card for ~3s before finalizing —
+    // music keeps playing underneath, then recorder.onstop tears everything down.
+    if (brandedActive && compositeRef.current) {
+      stoppingRef.current = true;
+      compositeRef.current.beginEndCard(END_CARD_MS);
+      setTimeout(() => {
+        stoppingRef.current = false;
+        recorderRef.current?.stop();
+      }, END_CARD_MS + 150);
+    } else {
+      recorderRef.current?.stop();
+    }
   }
 
   function handleReset() {
@@ -472,6 +579,70 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           )}
         </div>
 
+        {/* Branded Look — record-time overlays baked into the file */}
+        {brandedSupported && (
+          <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl">
+            <label className="flex items-center justify-between cursor-pointer select-none">
+              <span className="text-sm font-semibold text-brand-text">✨ Branded Look</span>
+              <div
+                onClick={(e) => { e.preventDefault(); setBrandedLook((v) => !v); }}
+                className={cn(
+                  "relative w-10 h-6 rounded-full transition-colors",
+                  brandedLook ? "bg-indigo-500" : "bg-slate-300",
+                )}
+              >
+                <div className={cn(
+                  "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
+                  brandedLook ? "left-[18px]" : "left-0.5",
+                )} />
+              </div>
+            </label>
+            <p className="text-xs text-slate-500 mt-1">
+              Burns your logo, name bar, and a 3-second branded end card into the recording — no editing needed.
+            </p>
+            {brandedLook && (
+              <div className="mt-3 flex flex-col gap-2.5">
+                {flowSupported && (
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={liveCaptions}
+                      onChange={(e) => setLiveCaptions(e.target.checked)}
+                      className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
+                    />
+                    <span className="text-xs text-slate-600">
+                      <strong>Live captions</strong> — burned in as you speak.{" "}
+                      <span className="text-slate-400">~95% accuracy; a misheard word is permanent.</span>
+                    </span>
+                  </label>
+                )}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">Music Bed <span className="font-normal text-slate-400">(mixed softly under your voice — permanent)</span></p>
+                  <div className="flex gap-2">
+                    {MUSIC_OPTIONS.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setMusicId(m.id)}
+                        className={cn(
+                          "flex-1 py-1.5 px-1 rounded-lg text-xs font-medium border transition-all",
+                          musicId === m.id
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-600"
+                            : "border-slate-200 text-slate-500 hover:border-slate-300",
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  What you see in the camera preview is exactly what gets recorded — overlays can&apos;t be removed afterwards.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tips for best video */}
         <div className="p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -546,7 +717,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover [transform:scaleX(-1)]"
+            // Branded preview shows the composited canvas (unmirrored, WYSIWYG);
+            // plain preview mirrors like a selfie camera.
+            className={cn("w-full h-full object-cover", !brandedActive && "[transform:scaleX(-1)]")}
           />
           {isRecording && !isPaused && (
             <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5">

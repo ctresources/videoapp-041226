@@ -26,7 +26,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
-  { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image, soon: true },
+  { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
 ];
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
@@ -649,19 +649,88 @@ function ChannelNameGenerator() {
   );
 }
 
-// ─── THUMBNAIL GENERATOR (SOON) ───────────────────────────────────────────────
+// ─── THUMBNAIL GENERATOR ──────────────────────────────────────────────────────
 
-function ThumbnailSoon() {
+function ThumbnailGenerator({ projects }: { projects: Project[] }) {
+  const [projectId, setProjectId] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [thumbUrl, setThumbUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleProjectSelect = (p: Project | null) => {
+    setProjectId(p?.id ?? "");
+    if (p?.title) setHeadline(p.title);
+  };
+
+  const generate = async () => {
+    if (!headline.trim()) { toast.error("Enter a headline for the thumbnail"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tools/thumbnail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ headline, projectId: projectId || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setThumbUrl(data.url);
+      toast.success(projectId ? "Thumbnail generated and saved to the project!" : "Thumbnail generated!");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate thumbnail");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-        <Image size={28} className="text-slate-400" />
+    <div>
+      <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Thumbnail Headline</label>
+        <input
+          type="text"
+          value={headline}
+          onChange={(e) => setHeadline(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !loading && generate()}
+          placeholder="e.g. Moving To Blue Bell? Watch This First"
+          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400"
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Short and punchy wins — 5–8 bold words. Your headshot, logo, and market badge are added automatically from your profile.
+        </p>
       </div>
-      <p className="text-base font-semibold text-slate-700 mb-1.5">Thumbnail Generator</p>
-      <p className="text-sm text-slate-400 max-w-xs">
-        AI-powered thumbnail creation is coming soon. Generate click-worthy YouTube thumbnails automatically from your video content.
-      </p>
-      <span className="mt-4 inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">Coming Soon</span>
+
+      <button
+        onClick={generate}
+        disabled={loading}
+        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+      >
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {loading ? "Rendering…" : "Generate Thumbnail"}
+      </button>
+
+      {thumbUrl && (
+        <div className="mt-6">
+          <div className="rounded-xl overflow-hidden border border-slate-200 max-w-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <a href={thumbUrl} download target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
+              <Save size={12} /> Download PNG (1280×720)
+            </a>
+            <button
+              onClick={generate}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+            >
+              <Sparkles size={12} /> Regenerate
+            </button>
+            <p className="text-xs text-slate-400">Upload it in YouTube Studio when you publish.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -812,7 +881,7 @@ export default function ToolsPage() {
         {activeTab === "title"       && <TitleGenerator />}
         {activeTab === "script"      && <ScriptGenerator />}
         {activeTab === "channel"     && <ChannelNameGenerator />}
-        {activeTab === "thumbnail"   && <ThumbnailSoon />}
+        {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
       </div>
     </div>
   );
