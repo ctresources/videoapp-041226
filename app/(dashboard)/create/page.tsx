@@ -144,7 +144,15 @@ function CreatePageInner() {
           if (data?.location_state && !urlState) setLocState(data.location_state);
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
-          if (Array.isArray(data?.saved_markets)) setSavedMarkets(data.saved_markets as { city: string; state: string }[]);
+          if (Array.isArray(data?.saved_markets)) {
+            // Drop any malformed entries (null/missing city or state) so render-time
+            // string ops like m.city.toLowerCase() can never throw and crash the page.
+            const clean = (data.saved_markets as unknown[])
+              .filter((m): m is { city: string; state: string } =>
+                !!m && typeof (m as { city?: unknown }).city === "string" && typeof (m as { state?: unknown }).state === "string")
+              .map((m) => ({ city: m.city, state: m.state }));
+            setSavedMarkets(clean);
+          }
           setOnboardingDone(!!(data as { onboarding_done?: boolean } | null)?.onboarding_done);
         });
     });
@@ -259,7 +267,7 @@ function CreatePageInner() {
   function addMarket(city: string, state: string) {
     const c = city.trim(), s = state.trim().toUpperCase();
     if (!c || !s) return;
-    if (savedMarkets.some(m => m.city.toLowerCase() === c.toLowerCase() && m.state.toUpperCase() === s)) return;
+    if (savedMarkets.some(m => (m.city ?? "").toLowerCase() === c.toLowerCase() && (m.state ?? "").toUpperCase() === s)) return;
     const updated = [...savedMarkets, { city: c, state: s }];
     setSavedMarkets(updated);
     persistMarkets(updated);
@@ -495,7 +503,7 @@ function CreatePageInner() {
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
   const isMarketSaved = savedMarkets.some(
-    m => m.city.toLowerCase() === locCity.trim().toLowerCase() && m.state.toUpperCase() === locState.trim().toUpperCase()
+    m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
 
   return (
@@ -583,7 +591,7 @@ function CreatePageInner() {
             {savedMarkets.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {savedMarkets.map((m) => {
-                  const isActive = m.city.toLowerCase() === locCity.trim().toLowerCase() && m.state.toUpperCase() === locState.trim().toUpperCase();
+                  const isActive = (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
                   return (
                     <div
                       key={`${m.city}-${m.state}`}
