@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Home, Tag, Gem, Truck, TrendingUp, Building2,
   ArrowDownToLine, HardHat, Shield, UserCheck,
@@ -364,6 +365,8 @@ function substitutePlaceholders(text: string, city?: string, state?: string): st
 
 export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProps) {
   const hasLocation = !!(city?.trim() && state?.trim());
+  // Each category shows 4 templates by default with a per-category Show More
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   return (
     <div className="flex flex-col gap-5">
@@ -374,14 +377,15 @@ export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProp
       )}
 
       {CATEGORIES.map(({ key, label, emoji }) => {
-        const templates = CONTENT_TEMPLATES.filter((t) => t.category === key);
+        const allTemplates = CONTENT_TEMPLATES.filter((t) => t.category === key);
+        const isExpanded = !!expanded[key];
+        const templates = isExpanded ? allTemplates : allTemplates.slice(0, 4);
+        const hiddenCount = allTemplates.length - 4;
         return (
           <div key={key}>
-            {key !== "general" && (
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                {emoji} {label}
-              </p>
-            )}
+            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              {emoji} {label}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {templates.map((template) => {
                 const Icon = template.icon;
@@ -414,6 +418,15 @@ export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProp
                 );
               })}
             </div>
+            {hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                className="mt-2 w-full py-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg border border-dashed border-primary-200 transition-colors"
+              >
+                {isExpanded ? "Show Less ▲" : `Show ${hiddenCount} More ▼`}
+              </button>
+            )}
           </div>
         );
       })}
