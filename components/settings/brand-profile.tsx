@@ -234,6 +234,12 @@ function TalkingAvatarUploader({
           <p className="text-xs text-slate-400 mt-0.5">
             Appears as a talking avatar in your videos · Front-facing, plain background
           </p>
+          <p className="text-xs text-slate-400 mt-1">
+            📐 We auto-crop to a square so one photo works for YouTube (16:9) and Reels (9:16).
+            Mostly making widescreen videos? Add a look from a <strong>horizontal (landscape)</strong> photo
+            — it fills 16:9 best. Mostly Reels? A <strong>vertical</strong> photo fills 9:16 best.
+            You can add a look for each format.
+          </p>
           {statusLabel ? (
             <p className="text-xs text-primary-600 font-medium mt-1.5 flex items-center gap-1">
               <Loader2 size={10} className="animate-spin" /> {statusLabel}

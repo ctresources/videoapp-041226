@@ -204,6 +204,10 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
           <p className="text-xs text-slate-400 mt-0.5">
             Upload different photos or generate AI looks · choose a look per video
           </p>
+          <p className="text-xs text-slate-400 mt-1">
+            📐 Best results: add a <strong>horizontal (landscape)</strong> look for YouTube/blog videos and a{" "}
+            <strong>vertical</strong> look for Reels — then pick the matching look when you generate.
+          </p>
         </div>
         {hasAvatar && (
           <button
