@@ -520,7 +520,7 @@ function CreatePageInner() {
       )}
 
       {/* Hero header */}
-      <div className="relative overflow-hidden mb-5 p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-orange-400 text-white shadow-lg">
+      <div className="relative overflow-hidden mb-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-orange-400 text-white shadow-lg">
         <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
         <div className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative">
@@ -531,7 +531,7 @@ function CreatePageInner() {
 
       {/* ── Mode cards ── */}
       {step === "input" && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {[
             { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",    desc: "Topic in → broadcast-quality script", grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
             { mode: "paste" as InputMode,   icon: PenLine,   label: "Paste / Upload",  desc: "Your script, docs & photos",          grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
@@ -564,10 +564,10 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="grid lg:grid-cols-2 gap-4 items-start">
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
 
           {/* Left column: market + topic + generate */}
-          <div className="flex flex-col gap-4 min-w-0">
+          <div className="flex flex-col gap-3 min-w-0">
 
           {/* ── STEP 1: Your Market ── */}
           <Card padding="sm" className="border-t-4 border-t-blue-500">
@@ -613,20 +613,20 @@ function CreatePageInner() {
             {/* City + State inputs */}
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="text-xs font-bold text-slate-600 block mb-1">City *</label>
+                <label className="text-sm font-bold text-slate-600 block mb-1">City *</label>
                 <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
                   <input
                     type="text"
                     value={locCity}
                     onChange={(e) => setLocCity(e.target.value)}
                     placeholder="Austin"
-                    className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none min-w-0"
+                    className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
                   />
                   <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
                 </div>
               </div>
               <div className="w-20">
-                <label className="text-xs font-bold text-slate-600 block mb-1">State *</label>
+                <label className="text-sm font-bold text-slate-600 block mb-1">State *</label>
                 <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
                   <input
                     type="text"
@@ -634,7 +634,7 @@ function CreatePageInner() {
                     onChange={(e) => setLocState(e.target.value)}
                     placeholder="TX"
                     maxLength={2}
-                    className="flex-1 text-sm px-2.5 py-2 bg-transparent focus:outline-none uppercase min-w-0"
+                    className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
                   />
                   <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
                 </div>
@@ -646,52 +646,14 @@ function CreatePageInner() {
               <button
                 type="button"
                 onClick={() => addMarket(locCity, locState)}
-                className="mt-2 text-[11px] text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
               >
                 + Save {locCity}, {locState} As A Quick-Switch Market
               </button>
             )}
-          </Card>
 
-          {/* ── STEP 2: Topic ── */}
-          <Card padding="sm" className="border-t-4 border-t-emerald-500">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-brand-text">Your Topic</p>
-                <p className="text-sm text-slate-500">Hit The Mic, Type It, Or Tap A Trending Topic Or Template</p>
-              </div>
-              <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-            </div>
-
-            {/* Topic input with inline mic — the primary action, right up top */}
-            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-blue-500">
-              <input
-                id="topic-input"
-                type="text"
-                value={locCustomTopic}
-                onChange={(e) => setLocCustomTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
-                placeholder="Speak it, tap a suggestion, or type here…"
-                className="flex-1 text-sm px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-              />
-              <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-            </div>
-
-            {/* Topic Radar */}
-            <div className="mt-3">
-              <TopicRadar
-                city={locCity || undefined}
-                state={locState || undefined}
-                onSelect={(topic) => {
-                  setLocCustomTopic(topic);
-                  document.getElementById("topic-input")?.focus();
-                }}
-              />
-            </div>
-
-            {/* Advanced options — inside this card */}
-            <div className="border-t border-slate-200 mt-4 pt-3">
+            {/* Advanced options — part of Step 1 setup */}
+            <div className="border-t border-slate-200 mt-3 pt-3">
               <button
                 onClick={() => setShowAdvanced(v => !v)}
                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -720,21 +682,59 @@ function CreatePageInner() {
                     },
                   ].map(({ label, value, set, options }) => (
                     <div key={label}>
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
                       <div className="relative">
                         <select
                           value={value}
                           onChange={(e) => set(e.target.value)}
-                          className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
-                        <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          </Card>
+
+          {/* ── STEP 2: Topic ── */}
+          <Card padding="sm" className="border-t-4 border-t-emerald-500">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-brand-text">Your Topic</p>
+                <p className="text-sm text-slate-500">Type It, Hit The Mic, Tap A Trending Topic — Or A Template On The Right →</p>
+              </div>
+              <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+            </div>
+
+            {/* Topic input with inline mic — the primary action, right up top */}
+            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-500">
+              <input
+                id="topic-input"
+                type="text"
+                value={locCustomTopic}
+                onChange={(e) => setLocCustomTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
+                placeholder="Speak it, tap a suggestion, or type here…"
+                className="flex-1 text-base px-3.5 py-3 bg-transparent focus:outline-none min-w-0"
+              />
+              <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
+            </div>
+
+            {/* Topic Radar */}
+            <div className="mt-3">
+              <TopicRadar
+                city={locCity || undefined}
+                state={locState || undefined}
+                onSelect={(topic) => {
+                  setLocCustomTopic(topic);
+                  document.getElementById("topic-input")?.focus();
+                }}
+              />
             </div>
           </Card>
 
@@ -764,14 +764,14 @@ function CreatePageInner() {
 
           </div>{/* end left column */}
 
-          {/* ── Templates — part of Step 2 (topic pickers, like Trending Radar) ── */}
+          {/* ── Templates — the other half of Step 2 (topic pickers, like Trending Radar) ── */}
           <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
+              <span className="px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-wide shrink-0">Step 2</span>
               <div>
-                <p className="text-base font-bold text-brand-text">Topic Templates — Tap To Fill Step 2</p>
+                <p className="text-base font-bold text-brand-text">Topic Templates</p>
                 <p className="text-sm text-slate-500">
-                  {locCity.trim() ? `Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
+                  {locCity.trim() ? `Tap Any Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
                 </p>
               </div>
             </div>
@@ -794,20 +794,160 @@ function CreatePageInner() {
           PASTE SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
-        <div className="flex flex-col gap-4">
-          <Card>
-            <div className="flex items-center gap-2.5 mb-4">
-              <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">1</span>
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
+          {/* Left column: the script itself */}
+          <div className="flex flex-col gap-3 min-w-0">
+          <Card padding="sm" className="border-t-4 border-t-violet-500">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
-                <p className="text-sm font-bold text-brand-text">Your Script &amp; Media</p>
-                <p className="text-xs text-slate-500">Upload Photos &amp; Docs, Paste Your Script, Or Let AI Spark It</p>
+                <p className="text-base font-bold text-brand-text">Your Script</p>
+                <p className="text-sm text-slate-500">Paste It, Type It, Or Let AI Spark It</p>
               </div>
             </div>
 
+            {/* Let AI Spark The Script */}
+            <div className="mb-5 pb-5 border-b border-slate-100">
+              <p className="text-sm font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={pasteAiTopic}
+                  onChange={(e) => setPasteAiTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !pasteAiGenerating && handleAiWriteForPaste()}
+                  placeholder="What's your Spark? Enter a topic…"
+                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+                <Button
+                  size="sm"
+                  loading={pasteAiGenerating}
+                  disabled={!pasteAiTopic.trim()}
+                  onClick={handleAiWriteForPaste}
+                  className="bg-violet-600 hover:bg-violet-700 text-white whitespace-nowrap gap-1"
+                >
+                  <Sparkles size={13} /> Spark It
+                </Button>
+              </div>
+              {pasteScript && !pasteAiGenerating && (
+                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                  <CheckCircle size={11} /> Script Sparked — Review And Edit Below Before Generating.
+                </p>
+              )}
+            </div>
+
+            {/* Title */}
+            <div className="mb-4">
+              <label className="text-sm font-bold text-slate-600 block mb-1">Video Title (optional)</label>
+              <input
+                type="text"
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+                placeholder="e.g. Austin Market Update — June 2026"
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+            </div>
+
+            {/* Optional thumbnail hook */}
+            <div className="mb-4">
+              <label className="text-sm font-bold text-slate-600 block mb-1">
+                First Frame Title / Thumbnail Hook <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={pasteHook}
+                onChange={(e) => setPasteHook(e.target.value)}
+                placeholder="e.g. Why Austin Buyers Are Moving Fast Right Now"
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Shown as bold text on the video&apos;s first frame — thumbnail-style visual. Your spoken script is unchanged.
+              </p>
+            </div>
+
+            {/* Script textarea */}
+            <div className="mb-4">
+              <label className="text-sm font-bold text-slate-600 block mb-1">
+                Your Script *
+                {pasteScript && (
+                  <span className={`ml-2 font-normal ${pasteScript.trim().split(/\s+/).length > 500 ? "text-red-500" : "text-slate-400"}`}>
+                    {pasteScript.trim().split(/\s+/).length} / 500 words
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={pasteScript}
+                onChange={(e) => setPasteScript(e.target.value)}
+                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 500 words for best results."
+                rows={10}
+                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none leading-relaxed"
+              />
+              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 500 && (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> Over 500 Words — The Script Will Be Trimmed At Generation Time.
+                </p>
+              )}
+            </div>
+
+            {/* Optional city/state */}
+            <div className="border-t border-slate-100 pt-3">
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-2">Market (Optional — Used For Metadata)</p>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={pasteCity}
+                    onChange={(e) => setPasteCity(e.target.value)}
+                    placeholder="City"
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+                <div className="w-20">
+                  <input
+                    type="text"
+                    value={pasteState}
+                    onChange={(e) => setPasteState(e.target.value)}
+                    placeholder="ST"
+                    maxLength={2}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Button
+            onClick={handlePasteScript}
+            loading={pasteGenerating}
+            disabled={!pasteScript.trim()}
+            size="lg"
+            className="w-full gap-2 bg-violet-600 hover:bg-violet-700"
+          >
+            {pasteGenerating
+              ? <>Saving Script…</>
+              : <><ArrowRight size={16} /> Review &amp; Generate Video</>}
+          </Button>
+          {!pasteScript.trim() && (
+            <p className="text-sm text-slate-400 text-center -mt-1">
+              Paste Your Script Above To Continue
+            </p>
+          )}
+          </div>{/* end left column */}
+
+          {/* Right column: media & docs */}
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-purple-400">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <ImageIcon size={17} />
+              </span>
+              <div>
+                <p className="text-base font-bold text-brand-text">Media &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
+                <p className="text-sm text-slate-500">Photos Become B-Roll · Docs &amp; URLs Enrich The Script</p>
+              </div>
+            </div>
             {/* Photo Upload */}
             <div className="mb-4 pb-4 border-b border-slate-100">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-slate-600">Photos <span className="font-normal text-slate-400">(optional · up to 12 · used as b-roll)</span></p>
+                <p className="text-sm font-bold text-slate-600">Photos <span className="font-normal text-slate-400">(optional · up to 12 · used as b-roll)</span></p>
                 {pastePhotos.length > 0 && <span className="text-xs text-slate-400">{pastePhotos.length}/12</span>}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -837,7 +977,7 @@ function CreatePageInner() {
             {/* PDF / URL Attachment */}
             <div className="mb-4 pb-4 border-b border-slate-100">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+                <p className="text-sm font-bold text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
                 <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
                   <button onClick={() => setPastePdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "upload" ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
                   <button onClick={() => setPastePdfMode("url")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "url" ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
@@ -879,64 +1019,6 @@ function CreatePageInner() {
               <p className="text-[11px] text-slate-400 mt-1">{pastePdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
-            {/* Let AI Spark The Script */}
-            <div className="mb-5 pb-5 border-b border-slate-100">
-              <p className="text-xs font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={pasteAiTopic}
-                  onChange={(e) => setPasteAiTopic(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !pasteAiGenerating && handleAiWriteForPaste()}
-                  placeholder="What's your Spark? Enter a topic…"
-                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-                <Button
-                  size="sm"
-                  loading={pasteAiGenerating}
-                  disabled={!pasteAiTopic.trim()}
-                  onClick={handleAiWriteForPaste}
-                  className="bg-violet-600 hover:bg-violet-700 text-white whitespace-nowrap gap-1"
-                >
-                  <Sparkles size={13} /> Spark It
-                </Button>
-              </div>
-              {pasteScript && !pasteAiGenerating && (
-                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <CheckCircle size={11} /> Script Sparked — Review And Edit Below Before Generating.
-                </p>
-              )}
-            </div>
-
-            {/* Title */}
-            <div className="mb-4">
-              <label className="text-xs font-bold text-slate-600 block mb-1">Video Title (optional)</label>
-              <input
-                type="text"
-                value={pasteTitle}
-                onChange={(e) => setPasteTitle(e.target.value)}
-                placeholder="e.g. Austin Market Update — June 2026"
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-
-            {/* Optional thumbnail hook */}
-            <div className="mb-4">
-              <label className="text-xs font-bold text-slate-600 block mb-1">
-                First Frame Title / Thumbnail Hook <span className="font-normal text-slate-400">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={pasteHook}
-                onChange={(e) => setPasteHook(e.target.value)}
-                placeholder="e.g. Why Austin Buyers Are Moving Fast Right Now"
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Shown as bold text on the video&apos;s first frame — thumbnail-style visual. Your spoken script is unchanged.
-              </p>
-            </div>
-
             {/* Generate script from uploads */}
             {(pastePdfText || pastePhotos.length > 0) && (
               <div className="mb-4">
@@ -954,73 +1036,7 @@ function CreatePageInner() {
               </div>
             )}
 
-            {/* Script textarea */}
-            <div className="mb-4">
-              <label className="text-xs font-bold text-slate-600 block mb-1">
-                Your Script *
-                {pasteScript && (
-                  <span className={`ml-2 font-normal ${pasteScript.trim().split(/\s+/).length > 500 ? "text-red-500" : "text-slate-400"}`}>
-                    {pasteScript.trim().split(/\s+/).length} / 500 words
-                  </span>
-                )}
-              </label>
-              <textarea
-                value={pasteScript}
-                onChange={(e) => setPasteScript(e.target.value)}
-                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 500 words for best results."
-                rows={10}
-                className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none leading-relaxed"
-              />
-              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 500 && (
-                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Over 500 Words — The Script Will Be Trimmed At Generation Time.
-                </p>
-              )}
-            </div>
-
-            {/* Optional city/state */}
-            <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Market (Optional — Used For Metadata)</p>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={pasteCity}
-                    onChange={(e) => setPasteCity(e.target.value)}
-                    placeholder="City"
-                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  />
-                </div>
-                <div className="w-20">
-                  <input
-                    type="text"
-                    value={pasteState}
-                    onChange={(e) => setPasteState(e.target.value)}
-                    placeholder="ST"
-                    maxLength={2}
-                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 uppercase"
-                  />
-                </div>
-              </div>
-            </div>
           </Card>
-
-          <Button
-            onClick={handlePasteScript}
-            loading={pasteGenerating}
-            disabled={!pasteScript.trim()}
-            size="lg"
-            className="w-full gap-2 bg-violet-600 hover:bg-violet-700"
-          >
-            {pasteGenerating
-              ? <>Saving Script…</>
-              : <><ArrowRight size={16} /> Review &amp; Generate Video</>}
-          </Button>
-          {!pasteScript.trim() && (
-            <p className="text-xs text-slate-400 text-center -mt-2">
-              Paste Your Script Above To Continue
-            </p>
-          )}
         </div>
       )}
 
@@ -1028,33 +1044,48 @@ function CreatePageInner() {
           LISTING TAB
       ══════════════════════════════════════════ */}
       {inputMode === "listing" && (
-        <Card>
-          <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <Building2 size={16} className="text-emerald-600" />
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
+          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-sm">
+                <Building2 size={17} className="text-white" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-brand-text">Listing Video</p>
+                <p className="text-sm text-slate-500">Upload Photos · Import From Zillow · Enter Manually</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-brand-text">Listing Video</p>
-              <p className="text-xs text-slate-400">Upload Photos · Import From Zillow · Enter Manually</p>
-            </div>
-          </div>
-          <ListingVideoForm />
-        </Card>
+            <ListingVideoForm />
+          </Card>
+
+          {/* What you get — keeps the right column balanced */}
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-teal-400">
+            <p className="text-base font-bold text-brand-text mb-3">🏡 What Your Listing Video Includes</p>
+            <ul className="text-sm text-slate-600 space-y-2.5">
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-emerald-500 mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-emerald-500 mt-0.5 shrink-0" /> AI script highlighting price, beds/baths, and standout features</li>
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-emerald-500 mt-0.5 shrink-0" /> Your AI avatar and cloned voice presenting the property</li>
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-emerald-500 mt-0.5 shrink-0" /> Your logo, contact card, and Fair-Housing-safe wording built in</li>
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-emerald-500 mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
+            </ul>
+            <p className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-100">💡 Tip: Zillow import fills everything in seconds — just paste the listing URL.</p>
+          </Card>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════
           CAMERA TAB
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
-        <>
-          <Card>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center">
-                <Video size={16} className="text-violet-600" />
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
+          <Card padding="sm" className="min-w-0 border-t-4 border-t-orange-400">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-rose-500 rounded-xl flex items-center justify-center shadow-sm">
+                <Video size={17} className="text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-brand-text">Speak + Teleprompter</p>
-                <p className="text-xs text-slate-400">Speak Your Script — The Teleprompter Scrolls As You Record</p>
+                <p className="text-base font-bold text-brand-text">Speak + Teleprompter</p>
+                <p className="text-sm text-slate-500">Speak Your Script — The Teleprompter Scrolls As You Record</p>
               </div>
             </div>
 
@@ -1083,17 +1114,19 @@ function CreatePageInner() {
           </Card>
 
           {/* Photos & PDF — shown as reference in teleprompter + used as b-roll */}
-          <Card>
-            <div className="flex items-center gap-2 mb-1">
-              <ImageIcon size={15} className="text-orange-500" />
-              <p className="text-sm font-semibold text-brand-text">Add Photos &amp; Docs <span className="text-xs font-normal text-slate-400">(optional)</span></p>
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-amber-400">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                <ImageIcon size={17} className="text-white" />
+              </span>
+              <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
             </div>
-            <p className="text-[11px] text-slate-400 mb-3">Photos appear as reference thumbnails in the teleprompter so you can describe what you see. They&apos;ll also be used as b-roll in your video.</p>
+            <p className="text-sm text-slate-500 mb-3">Photos appear as reference thumbnails in the teleprompter so you can describe what you see. They&apos;ll also be used as b-roll in your video.</p>
 
             {/* Photo grid */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-slate-600">Photos <span className="font-normal text-slate-400">(up to 12)</span></p>
+                <p className="text-sm font-medium text-slate-600">Photos <span className="font-normal text-slate-400">(up to 12)</span></p>
                 {cameraPhotos.length > 0 && <span className="text-xs text-slate-400">{cameraPhotos.length}/12</span>}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1119,7 +1152,7 @@ function CreatePageInner() {
 
             {/* PDF / URL */}
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+              <p className="text-sm font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
               <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
                 <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
                 <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
@@ -1176,7 +1209,7 @@ function CreatePageInner() {
               </div>
             )}
           </Card>
-        </>
+        </div>
       )}
 
       {/* ── Shared processing states (uploading / transcribing / done) ── */}
