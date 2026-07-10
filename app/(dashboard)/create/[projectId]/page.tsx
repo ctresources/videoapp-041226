@@ -119,6 +119,7 @@ export default function ProjectEditorPage() {
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
+  const [burnCaptions, setBurnCaptions] = useState(true);
   const [isProPlan, setIsProPlan] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
@@ -558,6 +559,7 @@ export default function ProjectEditorPage() {
           // "youtube_long" is a client-side choice: 16:9 render + longForm flag
           videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
           longForm: selectedVideoType === "youtube_long",
+          captions: burnCaptions,
           backgroundMode: "stock-video",
           script: fullScript,
           hook,
@@ -930,6 +932,17 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
             )}
+            <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={burnCaptions}
+                onChange={(e) => setBurnCaptions(e.target.checked)}
+                className="accent-primary-500 w-4 h-4 shrink-0"
+              />
+              <span className="text-xs text-slate-600">
+                Burn synchronized captions into the video <span className="text-slate-400">(most viewers watch muted)</span>
+              </span>
+            </label>
           </Card>
 
           {/* Video style selector — before avatar look so user knows context */}
@@ -1358,6 +1371,17 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
             )}
+            <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={burnCaptions}
+                onChange={(e) => setBurnCaptions(e.target.checked)}
+                className="accent-primary-500 w-4 h-4 shrink-0"
+              />
+              <span className="text-xs text-slate-600">
+                Burn synchronized captions into the video <span className="text-slate-400">(most viewers watch muted)</span>
+              </span>
+            </label>
 
             {/* Video style selector */}
             <div className="mb-5">{renderModeSelector()}</div>

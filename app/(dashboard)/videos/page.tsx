@@ -613,6 +613,7 @@ function VideosContent() {
           videoUrl={previewVideo.video_url}
           title={(previewVideo.projects as { title: string } | null)?.title || "Untitled Video"}
           videoType={previewVideo.video_type}
+          videoId={previewVideo.id}
           onClose={() => setPreviewVideo(null)}
           onPublish={() => {
             setPreviewVideo(null);

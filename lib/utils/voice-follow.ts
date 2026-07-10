@@ -43,11 +43,18 @@ export class VoiceFollower {
   private active = false;
   private onIndex: (i: number) => void;
   private onUnavailable?: () => void;
+  private onTranscript?: (text: string, isFinal: boolean) => void;
 
-  constructor(script: string, onIndex: (i: number) => void, onUnavailable?: () => void) {
+  constructor(
+    script: string,
+    onIndex: (i: number) => void,
+    onUnavailable?: () => void,
+    onTranscript?: (text: string, isFinal: boolean) => void,
+  ) {
     this.tokens = tokenizeScript(script).map(norm);
     this.onIndex = onIndex;
     this.onUnavailable = onUnavailable;
+    this.onTranscript = onTranscript;
   }
 
   start() {
@@ -104,6 +111,13 @@ export class VoiceFollower {
   }
 
   private handleResult(e: any) {
+    // Feed the newest phrase to the transcript listener (live captions)
+    if (this.onTranscript && e.results.length > 0) {
+      const latest = e.results[e.results.length - 1];
+      const text: string = latest[0]?.transcript || "";
+      if (text.trim()) this.onTranscript(text.trim(), !!latest.isFinal);
+    }
+
     let heard: string[] = [];
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t: string = e.results[i][0]?.transcript || "";
@@ -144,6 +158,77 @@ export class VoiceFollower {
 
     // Require at least 2 aligned words before moving — filters random noise.
     return bestScore >= 2 ? best : this.idx;
+  }
+}
+
+/**
+ * Bare live transcriber — same recognition engine as VoiceFollower but with
+ * no script matching. Used for burned-in live captions when the teleprompter
+ * is in constant-speed (Auto) mode, so only one recognizer ever runs.
+ */
+export class LiveTranscriber {
+  private rec: any = null;
+  private active = false;
+  private onText: (text: string, isFinal: boolean) => void;
+  private onUnavailable?: () => void;
+
+  constructor(onText: (text: string, isFinal: boolean) => void, onUnavailable?: () => void) {
+    this.onText = onText;
+    this.onUnavailable = onUnavailable;
+  }
+
+  start() {
+    const w = window as any;
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) {
+      this.onUnavailable?.();
+      return;
+    }
+    this.active = true;
+    const rec = new Ctor();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = navigator.language || "en-US";
+    rec.onresult = (e: any) => {
+      if (e.results.length === 0) return;
+      const latest = e.results[e.results.length - 1];
+      const text: string = latest[0]?.transcript || "";
+      if (text.trim()) this.onText(text.trim(), !!latest.isFinal);
+    };
+    rec.onerror = (e: any) => {
+      if (e?.error === "not-allowed" || e?.error === "service-not-allowed" || e?.error === "audio-capture") {
+        this.active = false;
+        this.onUnavailable?.();
+      }
+    };
+    rec.onend = () => {
+      if (this.active) {
+        try { rec.start(); } catch { /* already starting */ }
+      }
+    };
+    this.rec = rec;
+    try {
+      rec.start();
+    } catch {
+      this.active = false;
+      this.onUnavailable?.();
+    }
+  }
+
+  pause() {
+    this.active = false;
+    try { this.rec?.stop(); } catch { /* noop */ }
+  }
+
+  resume() {
+    if (this.active) return;
+    this.start();
+  }
+
+  stop() {
+    this.active = false;
+    try { this.rec?.stop(); } catch { /* noop */ }
+    this.rec = null;
   }
 }
 
