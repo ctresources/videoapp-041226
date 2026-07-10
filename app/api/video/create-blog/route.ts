@@ -233,6 +233,7 @@ OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
 CANVAS: 1080 pixels wide × 1920 pixels tall. Vertical portrait orientation — taller than wide.
 - Produce this video in VERTICAL 9:16 format, like an Instagram Reel / TikTok.
 - Fill the entire vertical frame edge-to-edge — no black bars.
+- PRESENTER FILL RULE: if the presenter's source footage is wider than 9:16, ZOOM AND CROP it (crop the sides) so the presenter fills the full vertical frame — NEVER letterbox with black bars above/below or beside the presenter. If cropping alone cannot fill the frame, place the presenter over a blurred, enlarged copy of the same footage so every pixel of the canvas is covered.
 
 `
     : `=====================================
@@ -243,6 +244,7 @@ CANVAS: 1920 pixels wide × 1080 pixels tall. Horizontal landscape orientation �
 - Fill the entire 1920×1080 canvas edge-to-edge — ZERO black bars on any side, left, right, top, or bottom.
 - NEVER render this as a vertical or portrait video. The output MUST be horizontal widescreen.
 - All b-roll, backgrounds, and photo crops must fill the full 1920×1080 widescreen frame.
+- PRESENTER FILL RULE (CRITICAL): the presenter's source footage is portrait/square, NOT widescreen. Do NOT place it in the center with black side bars — that is a failed render. Instead, on EVERY scene where the presenter appears (including the title card and the final contact card), do ONE of the following so the full 1920×1080 canvas is covered: (a) ZOOM AND CROP the presenter footage to fill the frame width (cropping top/bottom is fine — head and shoulders visible is enough), or (b) place the presenter over a full-frame background that covers the entire canvas — a blurred, enlarged copy of the presenter footage, a b-roll clip, or a branded color backdrop. Black or empty side panels are NEVER acceptable.
 
 `;
 
@@ -322,6 +324,7 @@ ${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is atta
 • Phone numbers must be displayed exactly as provided — no leading "1", no country code
 • Bold CTA headline on screen: "${ctaText}"
 • Presenter visible full-screen or alongside the contact card elements
+• FILL THE WHOLE FRAME: the contact card scene must cover the entire canvas edge-to-edge. If the presenter footage does not span the full frame, put a full-frame background behind it (blurred enlarged presenter footage, b-roll, or a branded color backdrop) — NEVER black side bars
 
 =====================================
 PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
