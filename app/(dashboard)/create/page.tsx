@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
-  ChevronDown, ChevronUp, Sparkles, LayoutGrid, PenLine,
+  ChevronDown, ChevronUp, Sparkles, PenLine,
   Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
@@ -499,9 +499,9 @@ function CreatePageInner() {
   );
 
   return (
-    // The AI-script input step uses a full-width two-column layout (form +
-    // always-visible templates); every other tab/step keeps a centered column.
-    <div className={inputMode === "script" && step === "input" ? "w-full" : "max-w-2xl mx-auto"}>
+    // Every tab fills the full content width — the AI-script step lays out as
+    // two equal columns, the other tabs flow full-width single column.
+    <div className="w-full">
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -564,7 +564,7 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="grid lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] gap-4 items-start">
+        <div className="grid lg:grid-cols-2 gap-4 items-start">
 
           {/* Left column: market + topic + generate */}
           <div className="flex flex-col gap-4 min-w-0">
@@ -764,16 +764,14 @@ function CreatePageInner() {
 
           </div>{/* end left column */}
 
-          {/* ── Templates — always visible ── */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-indigo-500">
+          {/* ── Templates — part of Step 2 (topic pickers, like Trending Radar) ── */}
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <LayoutGrid size={17} />
-              </span>
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
               <div>
-                <p className="text-base font-bold text-brand-text">Templates — Tap To Fill Your Topic</p>
+                <p className="text-base font-bold text-brand-text">Topic Templates — Tap To Fill Step 2</p>
                 <p className="text-sm text-slate-500">
-                  {locCity.trim() ? `Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into The Topic` : "Set Your Market In Step 1 To Localize These"}
+                  {locCity.trim() ? `Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
                 </p>
               </div>
             </div>
