@@ -500,9 +500,8 @@ function CreatePageInner() {
 
   return (
     // The AI-script input step uses a full-width two-column layout (form +
-    // always-visible templates); every other tab/step keeps the narrow column.
-    <div className={inputMode === "script" && step === "input" ? "w-full" : "max-w-xl mx-auto"}>
-      <div className="max-w-xl mx-auto">
+    // always-visible templates); every other tab/step keeps a centered column.
+    <div className={inputMode === "script" && step === "input" ? "w-full" : "max-w-2xl mx-auto"}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -520,49 +519,46 @@ function CreatePageInner() {
         </button>
       )}
 
-      {/* Header */}
-      <div className="mb-5">
-        <h2 className="text-xl font-bold text-brand-text">Create New Video</h2>
-        <p className="text-slate-400 text-sm mt-0.5">4 ways to create — choose the one that Speaks to you or Sparks you.</p>
+      {/* Hero header */}
+      <div className="relative overflow-hidden mb-5 p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-orange-400 text-white shadow-lg">
+        <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
+        <div className="relative">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Create New Video</h2>
+          <p className="text-white/85 text-sm sm:text-base mt-1">4 Ways To Create — Pick The One That Speaks To You Or Sparks You.</p>
+        </div>
       </div>
 
-
-
-      {/* ── Tab bar ── */}
+      {/* ── Mode cards ── */}
       {step === "input" && (
-        <>
-          <div className="grid grid-cols-4 gap-2 mb-3">
-            {[
-              { mode: "script" as InputMode,  icon: Sparkles,   label: "AI Writes It",               active: "bg-blue-600 text-white shadow-md shadow-blue-200",     inactive: "bg-white text-blue-600 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
-              { mode: "paste" as InputMode,   icon: PenLine,    label: "Paste / Upload Docs & Images",     active: "bg-violet-600 text-white shadow-md shadow-violet-200",  inactive: "bg-white text-violet-600 border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50" },
-              { mode: "listing" as InputMode, icon: Building2,  label: "My Listing",                 active: "bg-emerald-600 text-white shadow-md shadow-emerald-200", inactive: "bg-white text-emerald-600 border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50" },
-              { mode: "camera" as InputMode,  icon: Video,      label: "Use Camera", active: "bg-orange-500 text-white shadow-md shadow-orange-200",   inactive: "bg-white text-orange-500 border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50" },
-            ].map(({ mode, icon: Icon, label, active, inactive }) => (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",    desc: "Topic in → broadcast-quality script", grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
+            { mode: "paste" as InputMode,   icon: PenLine,   label: "Paste / Upload",  desc: "Your script, docs & photos",          grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
+            { mode: "listing" as InputMode, icon: Building2, label: "My Listing",      desc: "Zillow link → listing video",          grad: "from-emerald-500 to-teal-600",  chip: "bg-emerald-100 text-emerald-600" },
+            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",      desc: "Teleprompter · Free, unlimited",       grad: "from-orange-400 to-rose-500",   chip: "bg-orange-100 text-orange-600" },
+          ].map(({ mode, icon: Icon, label, desc, grad, chip }) => {
+            const active = inputMode === mode;
+            return (
               <button
                 key={mode}
                 onClick={() => setInputMode(mode)}
-                className={`flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl text-xs font-bold transition-all ${
-                  inputMode === mode ? active : inactive
+                className={`group relative text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
+                  active
+                    ? `bg-gradient-to-br ${grad} text-white border-transparent shadow-lg scale-[1.02]`
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
                 }`}
               >
-                <Icon size={15} />
-                <span className="leading-tight text-center">{label}</span>
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 transition-colors ${active ? "bg-white/20 text-white" : chip}`}>
+                  <Icon size={17} />
+                </span>
+                <p className={`text-sm sm:text-base font-bold leading-tight ${active ? "text-white" : "text-brand-text"}`}>{label}</p>
+                <p className={`text-xs mt-0.5 leading-snug ${active ? "text-white/80" : "text-slate-400"}`}>{desc}</p>
               </button>
-            ))}
-          </div>
-
-          {/* Dynamic tab description */}
-          <p className="text-xs text-slate-500 text-center mb-4">
-            {{
-              script:  "AI Sparks A Broadcast-Quality Script From Your Topic — You Review, Then Share.",
-              paste:   "Paste Your Script, Upload Photos & Docs — Your Content Builds The Video.",
-              listing: "Upload Photos Or Import From Zillow — Let Your Listing Spark Your Next Video.",
-              camera:  "Speak And Spark Directly In Camera — The Teleprompter Scrolls As You Record. Free, Unlimited.",
-            }[inputMode]}
-          </p>
-        </>
+            );
+          })}
+        </div>
       )}
-      </div>{/* end centered header column */}
 
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
@@ -574,9 +570,9 @@ function CreatePageInner() {
           <div className="flex flex-col gap-4 min-w-0">
 
           {/* ── STEP 1: Your Market ── */}
-          <Card padding="sm">
+          <Card padding="sm" className="border-t-4 border-t-blue-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-base font-bold shrink-0">1</span>
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
                 <p className="text-base font-bold text-brand-text">Your Market</p>
                 <p className="text-sm text-slate-500">Speak Or Type Your City And State</p>
@@ -658,9 +654,9 @@ function CreatePageInner() {
           </Card>
 
           {/* ── STEP 2: Topic ── */}
-          <Card padding="sm">
+          <Card padding="sm" className="border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center text-base font-bold shrink-0">2</span>
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-bold text-brand-text">Your Topic</p>
                 <p className="text-sm text-slate-500">Hit The Mic, Type It, Or Tap A Trending Topic Or Template</p>
@@ -743,9 +739,9 @@ function CreatePageInner() {
           </Card>
 
           {/* ── STEP 3: Generate — inline under Step 2 ── */}
-          <Card padding="sm">
+          <Card padding="sm" className="border-t-4 border-t-purple-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center text-base font-bold shrink-0">3</span>
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
               <p className="text-base font-bold text-brand-text">Generate The Script</p>
             </div>
             <Button
@@ -769,9 +765,9 @@ function CreatePageInner() {
           </div>{/* end left column */}
 
           {/* ── Templates — always visible ── */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4">
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-indigo-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                 <LayoutGrid size={17} />
               </span>
               <div>
