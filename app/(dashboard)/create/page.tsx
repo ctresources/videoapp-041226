@@ -571,7 +571,7 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <Card padding="sm" className="max-w-3xl mx-auto border-t-4 border-t-blue-500">
+        <Card padding="sm" className="border-t-4 border-t-blue-500">
 
           {/* ── 1 · Your Market ── */}
           <div>
