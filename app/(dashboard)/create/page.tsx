@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
-  ChevronDown, ChevronUp, Sparkles, PenLine,
+  ChevronDown, Sparkles, PenLine,
   Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
@@ -76,7 +76,6 @@ function CreatePageInner() {
   const [locCustomTopic, setLocCustomTopic] = useState("");
 
   // Advanced options
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [locAudience, setLocAudience] = useState("");
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
@@ -572,10 +571,7 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
-
-          {/* Left column: market + topic + generate */}
-          <div className="flex flex-col gap-3 min-w-0">
+        <div className="flex flex-col gap-3">
 
           {/* ── STEP 1: Your Market ── */}
           <Card padding="sm" className="border-t-4 border-t-blue-500">
@@ -660,51 +656,39 @@ function CreatePageInner() {
               </button>
             )}
 
-            {/* Advanced options — part of Step 1 setup */}
+            {/* Advanced options — part of Step 1 setup, always visible */}
             <div className="border-t border-slate-200 mt-3 pt-3">
-              <button
-                onClick={() => setShowAdvanced(v => !v)}
-                className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  showAdvanced
-                    ? "bg-teal-700 text-white shadow-md shadow-teal-200"
-                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-                }`}
-              >
-                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                {showAdvanced ? "Hide Advanced Options" : "Advanced Options (Audience, Style, CTA)"}
-              </button>
-              {showAdvanced && (
-                <div className="grid grid-cols-3 gap-3 mt-3">
-                  {[
-                    {
-                      label: "Audience", value: locAudience, set: setLocAudience,
-                      options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
-                    },
-                    {
-                      label: "Style", value: locTone, set: setLocTone,
-                      options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
-                    },
-                    {
-                      label: "CTA", value: locCta, set: setLocCta,
-                      options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
-                    },
-                  ].map(({ label, value, set, options }) => (
-                    <div key={label}>
-                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
-                      <div className="relative">
-                        <select
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                          className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
+              <p className="text-sm font-bold text-slate-600 mb-2">Advanced Options (Audience, Style, CTA)</p>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    label: "Audience", value: locAudience, set: setLocAudience,
+                    options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
+                  },
+                  {
+                    label: "Style", value: locTone, set: setLocTone,
+                    options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+                  },
+                  {
+                    label: "CTA", value: locCta, set: setLocCta,
+                    options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+                  },
+                ].map(({ label, value, set, options }) => (
+                  <div key={label}>
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
+                    <div className="relative">
+                      <select
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                        className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
           </Card>
 
@@ -714,7 +698,7 @@ function CreatePageInner() {
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-bold text-brand-text">Your Topic</p>
-                <p className="text-sm text-slate-500">Type It, Hit The Mic, Tap A Trending Topic — Or A Template On The Right →</p>
+                <p className="text-sm text-slate-500">Type It, Hit The Mic, Tap A Trending Topic — Or A Template</p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
@@ -733,16 +717,35 @@ function CreatePageInner() {
               <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
 
-            {/* Topic Radar */}
-            <div className="mt-3">
-              <TopicRadar
-                city={locCity || undefined}
-                state={locState || undefined}
-                onSelect={(topic) => {
-                  setLocCustomTopic(topic);
-                  document.getElementById("topic-input")?.focus();
-                }}
-              />
+            {/* Trending Radar + Topic Templates — side by side inside Step 2 */}
+            <div className="grid lg:grid-cols-2 gap-4 items-start mt-3">
+              <div className="min-w-0">
+                <TopicRadar
+                  city={locCity || undefined}
+                  state={locState || undefined}
+                  onSelect={(topic) => {
+                    setLocCustomTopic(topic);
+                    document.getElementById("topic-input")?.focus();
+                  }}
+                />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-brand-text">Topic Templates</p>
+                <p className="text-sm text-slate-500 mb-2">
+                  {locCity.trim() ? `Tap Any Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
+                </p>
+                <div className="lg:max-h-[30rem] overflow-y-auto pr-1">
+                  <ContentTemplates
+                    city={locCity}
+                    state={locState}
+                    onSelect={(template) => {
+                      setLocCustomTopic(template.topic);
+                      setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </Card>
 
@@ -768,31 +771,6 @@ function CreatePageInner() {
                 Enter A Topic In Step 2 To Unlock This Button
               </p>
             )}
-          </Card>
-
-          </div>{/* end left column */}
-
-          {/* ── Templates — the other half of Step 2 (topic pickers, like Trending Radar) ── */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-emerald-500">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-wide shrink-0">Step 2</span>
-              <div>
-                <p className="text-base font-bold text-brand-text">Topic Templates</p>
-                <p className="text-sm text-slate-500">
-                  {locCity.trim() ? `Tap Any Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
-                </p>
-              </div>
-            </div>
-            <div className="lg:max-h-[calc(100vh-11rem)] overflow-y-auto pr-1">
-              <ContentTemplates
-                city={locCity}
-                state={locState}
-                onSelect={(template) => {
-                  setLocCustomTopic(template.topic);
-                  setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
-                }}
-              />
-            </div>
           </Card>
 
         </div>
