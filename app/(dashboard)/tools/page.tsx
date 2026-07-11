@@ -19,14 +19,14 @@ interface Project {
 }
 
 // Ordered to match the video workflow: title & script BEFORE rendering,
-// description & tags AFTER — channel name is a one-time setup tool.
+// description, tags & thumbnail AFTER — channel name is a one-time setup tool.
 const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[] = [
   { id: "title",       label: "Title Generator",      icon: Heading },
   { id: "script",      label: "Script Generator",     icon: ScrollText },
   { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
-  { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
+  { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
 ];
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
@@ -663,17 +663,24 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   };
 
   const generate = async () => {
-    if (!headline.trim()) { toast.error("Enter a headline for the thumbnail"); return; }
+    if (!headline.trim() && !projectId) {
+      toast.error("Select a project (AI writes the text) or type a 3–4 word headline");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/tools/thumbnail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ headline, projectId: projectId || undefined }),
+        body: JSON.stringify({
+          headline: headline.trim() || undefined,
+          projectId: projectId || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setThumbUrl(data.url);
+      if (data.headline) setHeadline(data.headline);
       toast.success(projectId ? "Thumbnail generated and saved to the project!" : "Thumbnail generated!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate thumbnail");
@@ -687,17 +694,20 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Thumbnail Headline</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          Thumbnail Text <span className="font-normal text-slate-400">(optional — leave blank and AI writes it)</span>
+        </label>
         <input
           type="text"
           value={headline}
           onChange={(e) => setHeadline(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !loading && generate()}
-          placeholder="e.g. Moving To Blue Bell? Watch This First"
+          placeholder="Leave blank — AI writes a 3–4 word curiosity hook"
           className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400"
         />
         <p className="text-xs text-slate-400 mt-1">
-          Short and punchy wins — 5–8 bold words. Your headshot, logo, and market badge are added automatically from your profile.
+          3–4 words max, ALL CAPS, curiosity-driven — AI avoids repeating words from your title.
+          A bright AI scene with a vivid blue sky is generated behind it, and your headshot, logo, and market badge are added automatically.
         </p>
       </div>
 
@@ -707,7 +717,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-        {loading ? "Rendering…" : "Generate Thumbnail"}
+        {loading ? "Creating your thumbnail (~30 sec)…" : "Generate Thumbnail"}
       </button>
 
       {thumbUrl && (
@@ -727,7 +737,11 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             >
               <Sparkles size={12} /> Regenerate
             </button>
-            <p className="text-xs text-slate-400">Upload it in YouTube Studio when you publish.</p>
+            <p className="text-xs text-slate-400">
+              {projectId
+                ? "Saved to this project — it appears in the Publish window when your video is ready."
+                : "Download it, then upload in YouTube Studio when you publish."}
+            </p>
           </div>
         </div>
       )}
@@ -825,7 +839,7 @@ export default function ToolsPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-primary-500 to-orange-400 text-white">
         <div className="flex items-center justify-between gap-3">
@@ -848,8 +862,8 @@ export default function ToolsPage() {
       {/* How-to-use workflow panel */}
       {showHelp && <HowToUsePanel onClose={() => setShowHelp(false)} />}
 
-      {/* Tab bar */}
-      <div className="flex gap-1 overflow-x-auto pb-1 mb-6 border-b border-slate-200">
+      {/* Tab bar — wraps so every tool is visible without horizontal scrolling */}
+      <div className="flex flex-wrap gap-1 pb-1 mb-6 border-b border-slate-200">
         {TABS.map(({ id, label, icon: Icon, soon }) => (
           <button
             key={id}

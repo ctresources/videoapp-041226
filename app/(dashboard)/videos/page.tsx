@@ -272,7 +272,7 @@ function VideosContent() {
     const supabase = createClient();
     const { data } = await supabase
       .from("generated_videos")
-      .select("*, projects(title, seo_data, ai_script)")
+      .select("*, projects(title, seo_data, ai_script, thumbnail_url)")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -672,6 +672,7 @@ function VideosContent() {
       {publishingVideo && (() => {
         const proj = publishingVideo.projects as {
           title: string;
+          thumbnail_url?: string | null;
           seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string } | null;
         } | null;
         return (
@@ -679,7 +680,7 @@ function VideosContent() {
             videoId={publishingVideo.id}
             videoTitle={proj?.seo_data?.youtube_title || proj?.title || "Untitled Video"}
             defaultDescription={proj?.seo_data?.youtube_description || ""}
-            thumbnailUrl={proj?.seo_data?.thumbnail_url || undefined}
+            thumbnailUrl={proj?.thumbnail_url || proj?.seo_data?.thumbnail_url || undefined}
             onClose={() => setPublishingVideo(null)}
             onPublished={loadVideos}
           />
