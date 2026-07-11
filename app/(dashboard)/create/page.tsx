@@ -571,13 +571,10 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <Card padding="sm" className="max-w-3xl mx-auto border-t-4 border-t-blue-500">
 
-          {/* Left column: Step 1 setup + Step 3 generate — sticky so Generate stays in view */}
-          <div className="flex flex-col gap-3 min-w-0 lg:sticky lg:top-4">
-
-          {/* ── STEP 1: Your Market ── */}
-          <Card padding="sm" className="border-t-4 border-t-blue-500">
+          {/* ── 1 · Your Market ── */}
+          <div>
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
@@ -693,38 +690,10 @@ function CreatePageInner() {
                 ))}
               </div>
             </div>
-          </Card>
+          </div>
 
-          {/* ── STEP 3: Generate — lives under Step 1 so it's always in view ── */}
-          <Card padding="sm" className="border-t-4 border-t-purple-500">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-brand-text">Generate The Script</p>
-                {locCustomTopic.trim() ? (
-                  <p className="text-sm text-emerald-600 font-medium truncate">✓ {locCustomTopic}</p>
-                ) : (
-                  <p className="text-sm text-slate-400">Pick Or Type A Topic In Step 2 →</p>
-                )}
-              </div>
-            </div>
-            <Button
-              onClick={handleGenerateScript}
-              loading={locGenerating}
-              disabled={!locCustomTopic.trim()}
-              size="lg"
-              className="w-full gap-2"
-            >
-              {locGenerating
-                ? <>Researching {locCity || "your market"}…</>
-                : <><Sparkles size={16} /> Generate My Script</>}
-            </Button>
-          </Card>
-
-          </div>{/* end left column */}
-
-          {/* ── STEP 2: Topic — input, Trending Now, and templates in one browser ── */}
-          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
+          {/* ── 2 · Your Topic — input + one browser (trending leads the templates) ── */}
+          <div className="border-t border-slate-200 mt-5 pt-4">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
               <div className="flex-1 min-w-0">
@@ -751,7 +720,7 @@ function CreatePageInner() {
             </div>
 
             {/* One unified browser: Trending Now leads, then the template categories */}
-            <div className="mt-4 lg:max-h-[calc(100vh-16rem)] overflow-y-auto pr-1 flex flex-col gap-5">
+            <div className="mt-4 flex flex-col gap-5">
               <TopicRadar
                 city={locCity || undefined}
                 state={locState || undefined}
@@ -769,9 +738,34 @@ function CreatePageInner() {
                 }}
               />
             </div>
-          </Card>
+          </div>
 
-        </div>
+          {/* ── 3 · Generate ── */}
+          <div className="border-t border-slate-200 mt-5 pt-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-brand-text">Generate The Script</p>
+                {locCustomTopic.trim() ? (
+                  <p className="text-sm text-emerald-600 font-medium truncate">✓ {locCustomTopic}</p>
+                ) : (
+                  <p className="text-sm text-slate-400">Pick Or Type A Topic Above</p>
+                )}
+              </div>
+            </div>
+            <Button
+              onClick={handleGenerateScript}
+              loading={locGenerating}
+              disabled={!locCustomTopic.trim()}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Researching {locCity || "your market"}…</>
+                : <><Sparkles size={16} /> Generate My Script</>}
+            </Button>
+          </div>
+        </Card>
       )}
 
       {/* ══════════════════════════════════════════

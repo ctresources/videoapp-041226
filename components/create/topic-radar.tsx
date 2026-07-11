@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame, Loader2, RefreshCw } from "lucide-react";
+import { Flame, Loader2, RefreshCw, MapPin, TrendingUp } from "lucide-react";
 
 interface Topic {
   title: string;
@@ -14,11 +14,11 @@ interface Topic {
 // Show exactly one of each: Local → Market → Topic
 const PREFERRED_TYPES: Array<Topic["videoType"]> = ["why_live_here", "market_update", "custom"];
 
-// Plain category chips — "Step N" labels here read like the page's own steps and confuse the flow
+// Rendered as template-style cards so trending reads as the first category of the browser
 const STEP_CONFIG = [
-  { label: "Local",  bg: "bg-emerald-500", text: "text-white" },
-  { label: "Market", bg: "bg-blue-500",    text: "text-white" },
-  { label: "Topic",  bg: "bg-orange-500",  text: "text-white" },
+  { label: "Local Spotlight", icon: MapPin,     color: "bg-emerald-50", iconColor: "text-emerald-600" },
+  { label: "Market Pulse",    icon: TrendingUp, color: "bg-blue-50",    iconColor: "text-blue-500" },
+  { label: "Hot Topic",       icon: Flame,      color: "bg-orange-50",  iconColor: "text-orange-500" },
 ];
 
 interface Props {
@@ -96,32 +96,34 @@ export function TopicRadar({ city, state, onSelect }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {PREFERRED_TYPES.map((type, i) => {
           const t = safeTopics.find((x) => x.videoType === type);
           const cfg = STEP_CONFIG[i];
+          const Icon = cfg.icon;
           if (!t) return null;
           return (
             <button
               key={type}
               type="button"
               onClick={() => onSelect?.(t.customTopic || t.title)}
-              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-primary-400 hover:bg-primary-50/50 transition-all group"
+              className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-400 hover:bg-primary-50/50 transition-all text-left group"
             >
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
-                {cfg.label}
-              </span>
-              <span className="text-xs font-medium text-slate-700 group-hover:text-blue-900 leading-snug flex-1">
-                {t.title}
-              </span>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cfg.color} group-hover:scale-105 transition-transform`}>
+                <Icon size={15} className={cfg.iconColor} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-brand-text leading-tight">
+                  🔥 {cfg.label}
+                </p>
+                <p className="text-xs text-slate-500 leading-snug mt-0.5">
+                  {t.title}
+                </p>
+              </div>
             </button>
           );
         })}
       </div>
-
-      {safeTopics.length > 0 && (
-        <p className="text-[10px] text-slate-400 mt-2 text-center">Tap any row to Spark your topic</p>
-      )}
     </div>
   );
 }
