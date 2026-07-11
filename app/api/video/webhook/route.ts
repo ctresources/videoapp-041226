@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
+import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 
-export const maxDuration = 120;
+// Video storage + auto-thumbnail generation can each take ~1 min.
+export const maxDuration = 300;
 
 // HeyGen pings GET to verify the endpoint is reachable before registering it
 export async function GET() {
@@ -148,6 +150,25 @@ export async function POST(req: NextRequest) {
       video_type: video.video_type,
       project_id: video.project_id,
     }).catch(console.error);
+  }
+
+  // ── Auto-generate a YouTube thumbnail once the video is ready ─────────────
+  // Only when the project doesn't already have one (the user may have made
+  // their own in AI Tools); failures never affect the render result.
+  if (success && video.project_id && video.user_id) {
+    try {
+      const { data: proj } = await admin
+        .from("projects")
+        .select("thumbnail_url")
+        .eq("id", video.project_id)
+        .single();
+      if (!(proj as { thumbnail_url: string | null } | null)?.thumbnail_url) {
+        console.log(`[webhook] auto-generating thumbnail for project ${video.project_id}`);
+        await renderAndSaveThumbnail({ userId: video.user_id, projectId: video.project_id });
+      }
+    } catch (err) {
+      console.error("[webhook] auto-thumbnail failed:", err instanceof Error ? err.message : err);
+    }
   }
 
   console.log(`[webhook] Processed ${eventType}: row ${video.id} → ${renderStatus}`);

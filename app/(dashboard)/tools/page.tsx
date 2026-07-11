@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
-  Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X,
+  Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -656,10 +656,23 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   const [headline, setHeadline] = useState("");
   const [thumbUrl, setThumbUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [looks, setLooks] = useState<{ id: string; name: string; preview_image_url: string }[]>([]);
+  const [photoUrl, setPhotoUrl] = useState(""); // "" = profile headshot
+
+  useEffect(() => {
+    fetch("/api/avatar/looks")
+      .then((r) => (r.ok ? r.json() : { looks: [] }))
+      .then((d) => setLooks(
+        ((d.looks || []) as { id: string; name: string; preview_image_url: string | null }[])
+          .filter((l): l is { id: string; name: string; preview_image_url: string } => !!l.preview_image_url),
+      ))
+      .catch(() => {});
+  }, []);
 
   const handleProjectSelect = (p: Project | null) => {
     setProjectId(p?.id ?? "");
-    if (p?.title) setHeadline(p.title);
+    // Leave the headline blank — AI writes the 3–4 word hook from the title
+    setHeadline("");
   };
 
   const generate = async () => {
@@ -675,6 +688,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         body: JSON.stringify({
           headline: headline.trim() || undefined,
           projectId: projectId || undefined,
+          photoUrl: photoUrl || undefined,
         }),
       });
       const data = await res.json();
@@ -707,9 +721,42 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         />
         <p className="text-xs text-slate-400 mt-1">
           3–4 words max, ALL CAPS, curiosity-driven — AI avoids repeating words from your title.
-          A bright AI scene with a vivid blue sky is generated behind it, and your headshot, logo, and market badge are added automatically.
+          A bright AI scene with a vivid blue sky is generated behind it, and your photo, logo, and market badge are added automatically.
         </p>
       </div>
+
+      {/* Photo picker — profile headshot by default, or any avatar look */}
+      {looks.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Photo On Thumbnail</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setPhotoUrl("")}
+              className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-colors ${
+                photoUrl === "" ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                <User size={20} className="text-slate-400" />
+              </span>
+              <span className="text-[10px] text-slate-500">Headshot</span>
+            </button>
+            {looks.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => setPhotoUrl(l.preview_image_url)}
+                className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-colors ${
+                  photoUrl === l.preview_image_url ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={l.preview_image_url} alt={l.name} className="w-14 h-14 rounded-full object-cover" />
+                <span className="text-[10px] text-slate-500 max-w-[64px] truncate">{l.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={generate}

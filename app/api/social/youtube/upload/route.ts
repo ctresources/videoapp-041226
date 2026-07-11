@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getValidAccessToken, uploadVideoToYouTube } from "@/lib/api/youtube";
+import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300; // 5 min — video download + YouTube upload can be slow
@@ -46,6 +46,28 @@ export async function POST(req: NextRequest) {
       tags: body.tags,
     });
 
+    // Set the project's generated thumbnail on the YouTube video. Non-fatal:
+    // channels without phone verification can't take custom thumbnails — the
+    // Publish window still offers the manual download in that case.
+    let thumbnailSet = false;
+    if (videoRow.project_id) {
+      const { data: proj } = await admin
+        .from("projects")
+        .select("thumbnail_url, seo_data")
+        .eq("id", videoRow.project_id)
+        .single();
+      const pr = proj as { thumbnail_url: string | null; seo_data: { thumbnail_url?: string } | null } | null;
+      const thumb = pr?.thumbnail_url || pr?.seo_data?.thumbnail_url;
+      if (thumb && /^https?:\/\//.test(thumb)) {
+        try {
+          await setVideoThumbnail(accessToken, result.videoId, thumb);
+          thumbnailSet = true;
+        } catch (err) {
+          console.warn("[youtube-upload] thumbnail set failed (channel may need phone verification):", err instanceof Error ? err.message : err);
+        }
+      }
+    }
+
     // Log to social_posts for audit
     await admin.from("social_posts").insert({
       user_id: user.id,
@@ -66,7 +88,7 @@ export async function POST(req: NextRequest) {
         .eq("id", videoRow.project_id);
     }
 
-    return NextResponse.json({ success: true, videoId: result.videoId, youtubeUrl: result.youtubeUrl });
+    return NextResponse.json({ success: true, videoId: result.videoId, youtubeUrl: result.youtubeUrl, thumbnailSet });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "YouTube upload failed";
     console.error("[youtube-upload] error:", msg);

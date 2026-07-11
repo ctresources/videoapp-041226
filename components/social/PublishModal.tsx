@@ -253,7 +253,7 @@ export function PublishModal({
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">1280×720 · Download and upload manually to YouTube Studio after publishing</p>
+                    <p className="text-xs text-slate-400 mt-1">1280×720 · Set on YouTube automatically when you publish (channel must be phone-verified — download and upload manually if it doesn&apos;t appear)</p>
                   </div>
                 )}
                 <div>

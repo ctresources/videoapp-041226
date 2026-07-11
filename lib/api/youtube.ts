@@ -120,6 +120,36 @@ export async function getValidAccessToken(
   return tokens.access_token;
 }
 
+/**
+ * Set a custom thumbnail on an uploaded YouTube video. Requires the channel
+ * to be phone-verified for custom thumbnails — callers should treat failures
+ * as non-fatal and fall back to manual upload in YouTube Studio.
+ */
+export async function setVideoThumbnail(
+  accessToken: string,
+  youtubeVideoId: string,
+  thumbnailUrl: string,
+): Promise<void> {
+  const imgRes = await fetch(thumbnailUrl);
+  if (!imgRes.ok) throw new Error(`Failed to fetch thumbnail image (${imgRes.status})`);
+  const buf = await imgRes.arrayBuffer();
+  const contentType = imgRes.headers.get("content-type") || "image/png";
+
+  const res = await fetch(
+    `${YOUTUBE_UPLOAD_API}/thumbnails/set?videoId=${encodeURIComponent(youtubeVideoId)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": contentType,
+        "Content-Length": String(buf.byteLength),
+      },
+      body: buf,
+    },
+  );
+  if (!res.ok) throw new Error(`Thumbnail set failed (${res.status}): ${await res.text()}`);
+}
+
 export async function uploadVideoToYouTube(
   accessToken: string,
   params: {
