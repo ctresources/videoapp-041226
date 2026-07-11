@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Flame, Loader2, RefreshCw, MapPin } from "lucide-react";
+import { Flame, Loader2, RefreshCw } from "lucide-react";
 
 interface Topic {
   title: string;
@@ -14,10 +14,11 @@ interface Topic {
 // Show exactly one of each: Local → Market → Topic
 const PREFERRED_TYPES: Array<Topic["videoType"]> = ["why_live_here", "market_update", "custom"];
 
+// Plain category chips — "Step N" labels here read like the page's own steps and confuse the flow
 const STEP_CONFIG = [
-  { label: "Step 1 · Local",  bg: "bg-emerald-500", text: "text-white" },
-  { label: "Step 2 · Market", bg: "bg-blue-500",    text: "text-white" },
-  { label: "Step 3 · Topic",  bg: "bg-orange-500",  text: "text-white" },
+  { label: "Local",  bg: "bg-emerald-500", text: "text-white" },
+  { label: "Market", bg: "bg-blue-500",    text: "text-white" },
+  { label: "Topic",  bg: "bg-orange-500",  text: "text-white" },
 ];
 
 interface Props {
@@ -69,18 +70,15 @@ export function TopicRadar({ city, state, onSelect }: Props) {
   // Backstop: never call array methods on a non-array, whatever state holds.
   const safeTopics = Array.isArray(topics) ? topics : [];
 
+  // Styled as a category section so it sits flush inside the Topic Templates browser
   return (
-    <div className="mb-5 bg-slate-50 rounded-xl border border-slate-200 p-3">
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-1.5">
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-wide">
+          <span className="w-1.5 h-4 rounded-full bg-gradient-to-b from-red-400 to-orange-400 shrink-0" />
           <Flame size={13} className="text-red-500" />
-          <span className="text-xs font-bold text-slate-700">Trending Radar</span>
-          {city && (
-            <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-              <MapPin size={9} /> {city}
-            </span>
-          )}
-        </div>
+          Trending Now{city ? ` · ${city}` : ""}
+        </p>
         <button
           onClick={() => loadTopics(true)}
           disabled={loading}
@@ -108,7 +106,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
               key={type}
               type="button"
               onClick={() => onSelect?.(t.customTopic || t.title)}
-              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl bg-white border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-primary-400 hover:bg-primary-50/50 transition-all group"
             >
               <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
                 {cfg.label}

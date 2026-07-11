@@ -372,7 +372,7 @@ export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProp
     <div className="flex flex-col gap-5">
       {!hasLocation && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          Fill in City &amp; State below first — templates will auto-insert your location into the topic.
+          Fill in City &amp; State in Step 1 first — templates will auto-insert your location into the topic.
         </p>
       )}
 

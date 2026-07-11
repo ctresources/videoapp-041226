@@ -571,7 +571,10 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-3">
+        <div className="grid lg:grid-cols-2 gap-3 items-start">
+
+          {/* Left column: Step 1 setup + Step 3 generate — sticky so Generate stays in view */}
+          <div className="flex flex-col gap-3 min-w-0 lg:sticky lg:top-4">
 
           {/* ── STEP 1: Your Market ── */}
           <Card padding="sm" className="border-t-4 border-t-blue-500">
@@ -692,13 +695,43 @@ function CreatePageInner() {
             </div>
           </Card>
 
-          {/* ── STEP 2: Topic ── */}
-          <Card padding="sm" className="border-t-4 border-t-emerald-500">
+          {/* ── STEP 3: Generate — lives under Step 1 so it's always in view ── */}
+          <Card padding="sm" className="border-t-4 border-t-purple-500">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-bold text-brand-text">Generate The Script</p>
+                {locCustomTopic.trim() ? (
+                  <p className="text-sm text-emerald-600 font-medium truncate">✓ {locCustomTopic}</p>
+                ) : (
+                  <p className="text-sm text-slate-400">Pick Or Type A Topic In Step 2 →</p>
+                )}
+              </div>
+            </div>
+            <Button
+              onClick={handleGenerateScript}
+              loading={locGenerating}
+              disabled={!locCustomTopic.trim()}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Researching {locCity || "your market"}…</>
+                : <><Sparkles size={16} /> Generate My Script</>}
+            </Button>
+          </Card>
+
+          </div>{/* end left column */}
+
+          {/* ── STEP 2: Topic — input, Trending Now, and templates in one browser ── */}
+          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
               <div className="flex-1 min-w-0">
                 <p className="text-base font-bold text-brand-text">Your Topic</p>
-                <p className="text-sm text-slate-500">Type It, Hit The Mic, Tap A Trending Topic — Or A Template</p>
+                <p className="text-sm text-slate-500">
+                  {locCity.trim() ? `Type It, Speak It, Or Tap A Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "Type It, Speak It, Or Tap A Card Below"}
+                </p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
@@ -717,60 +750,25 @@ function CreatePageInner() {
               <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
 
-            {/* Trending Radar + Topic Templates — side by side inside Step 2 */}
-            <div className="grid lg:grid-cols-2 gap-4 items-start mt-3">
-              <div className="min-w-0">
-                <TopicRadar
-                  city={locCity || undefined}
-                  state={locState || undefined}
-                  onSelect={(topic) => {
-                    setLocCustomTopic(topic);
-                    document.getElementById("topic-input")?.focus();
-                  }}
-                />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-brand-text">Topic Templates</p>
-                <p className="text-sm text-slate-500 mb-2">
-                  {locCity.trim() ? `Tap Any Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""} Into Your Topic` : "Set Your Market In Step 1 To Localize These"}
-                </p>
-                <div className="lg:max-h-[30rem] overflow-y-auto pr-1">
-                  <ContentTemplates
-                    city={locCity}
-                    state={locState}
-                    onSelect={(template) => {
-                      setLocCustomTopic(template.topic);
-                      setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
-                    }}
-                  />
-                </div>
-              </div>
+            {/* One unified browser: Trending Now leads, then the template categories */}
+            <div className="mt-4 lg:max-h-[calc(100vh-16rem)] overflow-y-auto pr-1 flex flex-col gap-5">
+              <TopicRadar
+                city={locCity || undefined}
+                state={locState || undefined}
+                onSelect={(topic) => {
+                  setLocCustomTopic(topic);
+                  document.getElementById("topic-input")?.focus();
+                }}
+              />
+              <ContentTemplates
+                city={locCity}
+                state={locState}
+                onSelect={(template) => {
+                  setLocCustomTopic(template.topic);
+                  setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
+                }}
+              />
             </div>
-          </Card>
-
-          {/* ── STEP 3: Generate — inline under Step 2 ── */}
-          <Card padding="sm" className="border-t-4 border-t-purple-500">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
-              <p className="text-base font-bold text-brand-text">Generate The Script</p>
-            </div>
-            <Button
-              onClick={handleGenerateScript}
-              loading={locGenerating}
-              disabled={!locCustomTopic.trim()}
-              size="lg"
-              className="w-full gap-2"
-            >
-              {locGenerating
-                ? <>Researching {locCity || "your market"}…</>
-                : <><Sparkles size={16} /> Generate My Script</>}
-            </Button>
-            {!locCustomTopic.trim() && (
-              <p className="text-sm text-slate-400 text-center mt-2">
-                Enter A Topic In Step 2 To Unlock This Button
-              </p>
-            )}
           </Card>
 
         </div>
