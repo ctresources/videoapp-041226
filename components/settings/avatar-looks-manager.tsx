@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink, Sparkles } from "lucide-react";
+import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface AvatarLook {
@@ -23,6 +23,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [consentLoading, setConsentLoading] = useState(false);
+  const [deletingLookId, setDeletingLookId] = useState<string | null>(null);
 
   // Generate-with-AI state
   const [showGeneratePanel, setShowGeneratePanel] = useState(false);
@@ -108,10 +109,9 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   }
 
   async function handleAddLook() {
-    if (!pendingFile || !lookName.trim()) {
-      toast.error("Give this look a name first");
-      return;
-    }
+    if (!pendingFile) return;
+    // Name is optional — fall back to a dated auto-name
+    const name = lookName.trim() || `Look ${new Date().toLocaleDateString()}`;
 
     setAdding(true);
     try {
@@ -127,18 +127,38 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       const res = await fetch("/api/avatar/add-look", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_url: publicUrl, name: lookName.trim() }),
+        body: JSON.stringify({ image_url: publicUrl, name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create look");
 
       setLooks((prev) => [...prev, data.look]);
-      toast.success(`"${lookName.trim()}" is training — check back in a few minutes.`);
+      toast.success(`"${name}" is training — check back in a few minutes.`);
       cancelAdd();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add look");
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function handleDeleteLook(look: AvatarLook) {
+    if (!confirm(`Delete the look "${look.name}"? This cannot be undone.`)) return;
+    setDeletingLookId(look.id);
+    try {
+      const res = await fetch("/api/avatar/looks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lookId: look.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete look");
+      setLooks((prev) => prev.filter((l) => l.id !== look.id));
+      toast.success("Look deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete look");
+    } finally {
+      setDeletingLookId(null);
     }
   }
 
@@ -245,7 +265,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
           {looks.map((look) => {
             const isProcessing = look.status === "processing" || look.status === "pending";
             return (
-              <div key={look.id} className="flex flex-col items-center gap-1" style={{ width: 72 }}>
+              <div key={look.id} className="flex flex-col items-center gap-1 group/look" style={{ width: 72 }}>
                 <div className="relative w-[72px] h-[88px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                   {look.preview_image_url ? (
                     <img
@@ -263,6 +283,18 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
                       <Loader2 size={16} className="text-white animate-spin" />
                       <p className="text-white text-[8px] font-medium">Generating</p>
                     </div>
+                  )}
+                  {!isProcessing && (
+                    <button
+                      onClick={() => handleDeleteLook(look)}
+                      disabled={deletingLookId === look.id}
+                      title="Delete this look"
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/look:opacity-100 transition-opacity"
+                    >
+                      {deletingLookId === look.id
+                        ? <Loader2 size={10} className="animate-spin" />
+                        : <Trash2 size={10} />}
+                    </button>
                   )}
                   {!isProcessing && (
                     <div className="absolute bottom-1 right-1">
@@ -319,7 +351,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
             <input
               autoFocus
               type="text"
-              placeholder="e.g. Blue blazer, Outdoor"
+              placeholder="Name this look (optional) — e.g. Blue blazer"
               value={lookName}
               onChange={(e) => setLookName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddLook()}
@@ -328,7 +360,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
             <div className="flex gap-2">
               <button
                 onClick={handleAddLook}
-                disabled={adding || !lookName.trim()}
+                disabled={adding}
                 className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium bg-primary-500 text-white rounded-lg py-2 hover:bg-primary-600 disabled:opacity-50 transition-colors"
               >
                 {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}

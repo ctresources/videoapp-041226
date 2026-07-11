@@ -163,6 +163,10 @@ export async function POST(req: NextRequest) {
       title: projectTitle,
       project_type: "location_script",
       status: "draft",
+      // The typed market, not the profile's home market — the CTA and other
+      // per-video copy must say the city this video is about.
+      location_city: city,
+      location_state: state,
       ai_script: aiScript,
       seo_data: seoData,
     })

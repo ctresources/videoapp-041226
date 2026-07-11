@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAvatarLooks, getAllPrivateLooks, type AvatarLook } from "@/lib/api/heygen";
-import { NextResponse } from "next/server";
+import { getAvatarLooks, getAllPrivateLooks, deleteAvatarLook, type AvatarLook } from "@/lib/api/heygen";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   const supabase = await createClient();
@@ -55,4 +55,42 @@ export async function GET() {
   ];
 
   return NextResponse.json({ looks });
+}
+
+/**
+ * DELETE /api/avatar/looks
+ * Body: { lookId: string } — deletes a look from HeyGen. If the look was the
+ * user's Digital Twin, the stored twin IDs are cleared too.
+ */
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { lookId } = await req.json().catch(() => ({})) as { lookId?: string };
+  if (!lookId) return NextResponse.json({ error: "lookId required" }, { status: 400 });
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("heygen_digital_twin_look_id")
+    .eq("id", user.id)
+    .single();
+
+  const ok = await deleteAvatarLook(lookId);
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Could not delete this look right now. Please try again in a moment." },
+      { status: 502 },
+    );
+  }
+
+  if (profile?.heygen_digital_twin_look_id === lookId) {
+    await admin
+      .from("profiles")
+      .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null })
+      .eq("id", user.id);
+  }
+
+  return NextResponse.json({ ok: true });
 }

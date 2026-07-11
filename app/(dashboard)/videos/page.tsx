@@ -17,6 +17,13 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 
+interface DraftProject {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+}
+
 interface GeneratedVideo {
   id: string;
   video_url: string | null;
@@ -231,6 +238,7 @@ function VideosContent() {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  const [drafts, setDrafts] = useState<DraftProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishingVideo, setPublishingVideo] = useState<GeneratedVideo | null>(null);
   const [previewVideo, setPreviewVideo] = useState<GeneratedVideo | null>(null);
@@ -270,6 +278,18 @@ function VideosContent() {
 
     const videos = (data as unknown as GeneratedVideo[]) || [];
     setVideos(videos);
+
+    // Draft projects — script exists but no video was generated yet. Shown in
+    // their own section so the user knows to come back and finish them.
+    const { data: draftData } = await supabase
+      .from("projects")
+      .select("id, title, status, created_at")
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(24);
+    const videoProjectIds = new Set(videos.map((v) => v.project_id));
+    setDrafts(((draftData as DraftProject[]) || []).filter((d) => !videoProjectIds.has(d.id)));
+
     setLoading(false);
 
     // Silently re-store any completed videos still on HeyGen CDN URLs (expired or not)
@@ -353,7 +373,36 @@ function VideosContent() {
         </div>
       )}
 
-      {videos.length === 0 ? (
+      {/* Drafts — scripts saved but video not generated yet */}
+      {drafts.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Pencil size={15} className="text-amber-500" />
+            <h3 className="font-semibold text-brand-text">Drafts — Not Generated Yet</h3>
+            <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{drafts.length}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {drafts.map((d) => (
+              <Card key={d.id} padding="sm" className="border-t-4 border-t-amber-400">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <p className="font-medium text-sm text-brand-text line-clamp-2">{d.title || "Untitled Draft"}</p>
+                  <Badge variant="warning" className="text-xs shrink-0">Draft</Badge>
+                </div>
+                <p className="text-xs text-slate-400 mb-3">
+                  Saved {new Date(d.created_at).toLocaleDateString()} · video not generated
+                </p>
+                <Link href={`/create/${d.id}`}>
+                  <Button size="sm" variant="outline" className="w-full gap-1.5">
+                    <Pencil size={12} /> Continue Editing
+                  </Button>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {videos.length === 0 && drafts.length === 0 ? (
         <Card className="flex flex-col items-center py-16 text-center">
           <Video className="w-12 h-12 text-slate-300 mb-3" />
           <p className="font-semibold text-brand-text">No videos yet</p>

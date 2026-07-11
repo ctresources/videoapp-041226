@@ -437,7 +437,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
+  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
   // Long-form (up to 15 min) is landscape-only and Pro-plan-only; costs more credits.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
@@ -477,10 +477,17 @@ export async function POST(req: NextRequest) {
   ) ?? [];
 
   const rawScript = script || (aiScript?.script as string) || project.title;
-  const safeScript = clampScript(
+  const maxScriptWords = isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : MAX_SCRIPT_WORDS;
+  // The CTA arrives separately and is appended AFTER the body clamp. It lives
+  // at the end of the spoken script, so a plain tail-clamp used to silently
+  // delete it whenever the body ran long — the "missing CTA in video" bug.
+  const ctaText = typeof cta === "string" && cta.trim() ? clampScript(normalizeScriptForTTS(cta.trim()), 200) : "";
+  const ctaWordCount = ctaText ? ctaText.trim().split(/\s+/).length : 0;
+  const bodyScript = clampScript(
     normalizeScriptForTTS(rawScript),
-    isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : MAX_SCRIPT_WORDS,
+    Math.max(50, maxScriptWords - ctaWordCount),
   );
+  const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
 
   const title =
     videoType === "youtube_16x9"

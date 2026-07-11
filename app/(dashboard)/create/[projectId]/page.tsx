@@ -11,7 +11,7 @@ import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeS
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe,
+  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -118,6 +118,7 @@ export default function ProjectEditorPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   const [isProPlan, setIsProPlan] = useState(false);
@@ -352,13 +353,45 @@ export default function ProjectEditorPage() {
     const p = data as unknown as Project;
     setProject(p);
     if (p.ai_script) {
-      setEditedScript((p.ai_script as AiScript).script || "");
-      const defaultCta = await loadDefaultCta(p);
-      setEditedCta(defaultCta || (p.ai_script as AiScript).cta || "");
-      const hooks = (p.ai_script as AiScript).hooks;
-      setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
+      const aiS = p.ai_script as AiScript & { user_edited?: boolean };
+      setEditedScript(aiS.script || "");
+      if (aiS.user_edited) {
+        // A saved draft — restore the user's own CTA and hook exactly as saved
+        setEditedCta(aiS.cta || "");
+        setSelectedHook(aiS.hook || (aiS.hooks?.length ? aiS.hooks[0] : "") || "");
+      } else {
+        const defaultCta = await loadDefaultCta(p);
+        setEditedCta(defaultCta || aiS.cta || "");
+        setSelectedHook(aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "");
+      }
     }
     setLoading(false);
+  }
+
+  async function handleSaveDraft() {
+    if (!project) return;
+    setSavingDraft(true);
+    try {
+      const res = await fetch("/api/project/save-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          script: editedScript,
+          cta: editedCta,
+          hook: selectedHook,
+        }),
+      });
+      if (!res.ok) {
+        const err = await safeJson(res);
+        throw new Error((err?.error as string) || "Failed to save draft");
+      }
+      toast.success("Draft saved — find it under Drafts in My Videos.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save draft");
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   // Resolves the user's default CTA template with this video's market city
@@ -549,7 +582,9 @@ export default function ProjectEditorPage() {
       const bodyScript = editedScript || project.ai_script?.script || "";
       const hook = selectedHook || project.ai_script?.hook || "";
       const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
-      const fullScript = [hook, bodyScript, cta].filter(Boolean).join("\n\n");
+      // CTA is sent separately so the server can clamp the body without ever
+      // cutting the CTA off the end of the spoken script.
+      const fullScript = [hook, bodyScript].filter(Boolean).join("\n\n");
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -562,6 +597,7 @@ export default function ProjectEditorPage() {
           captions: burnCaptions,
           backgroundMode: "stock-video",
           script: fullScript,
+          cta,
           hook,
           // Only pass lookId in Avatar + Voice mode — Voice Only gets no avatar
           ...(renderMode === "direct" && selectedLookId && { lookId: selectedLookId }),
@@ -1131,6 +1167,15 @@ export default function ProjectEditorPage() {
           >
             <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
           </Button>
+          <Button
+            onClick={handleSaveDraft}
+            loading={savingDraft}
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5 -mt-1"
+          >
+            <Save size={14} /> Save Draft &amp; Finish Later
+          </Button>
           <p className="text-xs text-slate-400 text-center -mt-2">
             Video ready in less than 10 minutes · you&apos;ll see it in My Videos
           </p>
@@ -1551,6 +1596,15 @@ export default function ProjectEditorPage() {
                 Or record yourself on camera reading the script
               </button>
             </div>
+            <Button
+              onClick={handleSaveDraft}
+              loading={savingDraft}
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 mt-2"
+            >
+              <Save size={14} /> Save Draft &amp; Finish Later
+            </Button>
             <p className="text-xs text-slate-400 text-center mt-2">
               AI video generation takes 5 to 8 min. You&apos;ll see it in My Videos when ready.
             </p>

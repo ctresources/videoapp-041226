@@ -748,6 +748,23 @@ export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
 }
 
 /**
+ * Delete a photo avatar look. Returns true when HeyGen confirms deletion.
+ */
+export async function deleteAvatarLook(lookId: string): Promise<boolean> {
+  const res = await fetch(`${HEYGEN_API}/v2/photo_avatar/${lookId}`, {
+    method: "DELETE",
+    headers: { "x-api-key": getApiKey() },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(`[heygen] deleteAvatarLook(${lookId}) failed: ${res.status} ${text}`);
+    return false;
+  }
+  console.log(`[heygen] deleteAvatarLook(${lookId}): deleted`);
+  return true;
+}
+
+/**
  * Fetch all private looks across all groups (no group_id filter).
  * Used to recover a Digital Twin look when only the look_id is known.
  * Returns an empty array if HeyGen doesn't support this query.

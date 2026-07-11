@@ -453,6 +453,15 @@ function DigitalTwinCreator({
     toast.success("Digital Twin removed");
   }
 
+  async function handleReplace() {
+    if (!confirm("Upload a new video and retrain your Digital Twin? This replaces your current twin.")) return;
+    await fetch("/api/avatar/digital-twin", { method: "DELETE" });
+    setGroupId(null);
+    setUploadedUrl(null);
+    setDtStatus("none");
+    toast.success("Upload a new video below to retrain your Digital Twin.");
+  }
+
   if (dtStatus === "active") {
     return (
       <div className="flex flex-col gap-3">
@@ -467,6 +476,12 @@ function DigitalTwinCreator({
               <ShieldCheck size={13} className="text-green-600 shrink-0" />
               Consent approved · HeyGen usage authorized
             </div>
+            <button
+              onClick={handleReplace}
+              className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-green-800 hover:text-green-900 bg-white border border-green-300 hover:border-green-400 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              <Upload size={12} /> Upload New Video &amp; Retrain
+            </button>
           </div>
           <button
             onClick={handleDelete}

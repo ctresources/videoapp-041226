@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
       title,
       project_type: "location_script",
       status: "draft",
+      location_city: city || null,
+      location_state: state || null,
       ai_script: aiScript,
       seo_data: {
         meta_title: title,
