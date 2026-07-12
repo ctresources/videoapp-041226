@@ -29,6 +29,37 @@ function textWidth(text: string, fontSize: number): number {
   return getFont().getAdvanceWidth(text, fontSize);
 }
 
+/**
+ * Cut the person out of their photo with remove.bg so only they appear on
+ * the thumbnail — no white studio rectangle. Returns null when
+ * REMOVEBG_API_KEY isn't configured or the call fails; the caller then uses
+ * the original photo unchanged. Free remove.bg accounts include 50
+ * preview-quality images/month, which is plenty at thumbnail size.
+ */
+async function removePhotoBackground(photoBuffer: Buffer): Promise<Buffer | null> {
+  const key = process.env.REMOVEBG_API_KEY;
+  if (!key) return null;
+  try {
+    const form = new FormData();
+    form.append("image_file", new Blob([new Uint8Array(photoBuffer)]), "photo.png");
+    form.append("size", "auto");
+    form.append("format", "png");
+    const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+      method: "POST",
+      headers: { "X-Api-Key": key },
+      body: form,
+    });
+    if (!res.ok) {
+      console.warn(`[thumbnail-render] remove.bg failed (${res.status}):`, (await res.text()).slice(0, 200));
+      return null;
+    }
+    return Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    console.warn("[thumbnail-render] remove.bg error:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 /** Wrap the 3–4 word headline into up to 2 short lines. */
 function wrapHeadline(text: string): string[] {
   const words = text.trim().split(/\s+/).slice(0, 4);
@@ -288,14 +319,26 @@ export async function renderAndSaveThumbnail(
     { input: Buffer.from(overlaySvg), left: 0, top: 0 },
   ];
 
-  // Photo — the chosen look or the profile headshot, as-is (no circle mask
-  // or ring), anchored to the bottom-right so the person stands on the edge.
+  // Photo — the chosen look or the profile headshot, anchored bottom-right so
+  // the person stands on the edge. Background auto-removed when a
+  // REMOVEBG_API_KEY is configured; otherwise the photo is used as-is.
   const photoSrc = opts.photoUrl || p?.avatar_url;
   if (photoSrc) {
     try {
       const res = await fetch(photoSrc);
       if (res.ok) {
-        const photo = await sharp(Buffer.from(await res.arrayBuffer()))
+        let photoInput: Buffer = Buffer.from(await res.arrayBuffer());
+        const cutout = await removePhotoBackground(photoInput);
+        if (cutout) {
+          // Trim the transparent padding around the cutout so the subject
+          // sizes and anchors consistently.
+          try {
+            photoInput = await sharp(cutout).trim().png().toBuffer();
+          } catch {
+            photoInput = cutout;
+          }
+        }
+        const photo = await sharp(photoInput)
           .resize({ width: 480, height: 640, fit: "inside" })
           .png()
           .toBuffer();
