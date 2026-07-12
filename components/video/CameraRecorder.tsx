@@ -464,10 +464,10 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             <div className="flex items-center gap-3">
               <button
                 onClick={addChannelCta}
-                className="flex items-center gap-1.5 text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-sm transition-colors"
                 title="Append your subscribe & contact CTA to the script"
               >
-                <Megaphone size={12} />
+                <Megaphone size={15} />
                 Add Channel CTA
               </button>
               <button

@@ -72,6 +72,7 @@ function CreatePageInner() {
   // Location
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
+  const [profileHomeState, setProfileHomeState] = useState("");
   const [savedMarkets, setSavedMarkets] = useState<{ city: string; state: string }[]>([]);
 
   // Topic
@@ -143,6 +144,7 @@ function CreatePageInner() {
         .then(({ data }) => {
           if (data?.location_city && !urlCity) setLocCity(data.location_city);
           if (data?.location_state && !urlState) setLocState(data.location_state);
+          if (data?.location_state) setProfileHomeState(data.location_state);
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
           if (Array.isArray(data?.saved_markets)) {
@@ -158,6 +160,18 @@ function CreatePageInner() {
         });
     });
   }, []); // eslint-disable-line
+
+  // State always fills in alongside the city: a saved-market match wins,
+  // otherwise the profile's home state backfills an empty state field so the
+  // user never has to type it separately.
+  useEffect(() => {
+    const c = locCity.trim().toLowerCase();
+    if (!c) return;
+    const match = savedMarkets.find((m) => (m.city ?? "").toLowerCase() === c);
+    if (match?.state) { setLocState(match.state); return; }
+    if (!locState.trim() && profileHomeState) setLocState(profileHomeState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locCity, savedMarkets, profileHomeState]);
 
   async function processAudio(blob: Blob, durationSeconds: number, title = "New Recording") {
     setStep("uploading");
@@ -552,7 +566,9 @@ function CreatePageInner() {
             return (
               <button
                 key={mode}
-                onClick={() => setInputMode(mode)}
+                // The merged tab drops straight into the Paste/Upload flow —
+                // the pill toggle inside switches to My Listings.
+                onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
                 className={`group relative text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
                   active
                     ? `bg-gradient-to-br ${grad} text-white border-transparent shadow-lg scale-[1.02]`
@@ -769,42 +785,6 @@ function CreatePageInner() {
             </Button>
           </div>
         </Card>
-      )}
-
-      {/* ══════════════════════════════════════════
-          MY CONTENT & LISTINGS — chooser
-      ══════════════════════════════════════════ */}
-      {inputMode === "content" && step === "input" && (
-        <div className="grid sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setInputMode("paste")}
-            className="group text-left p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-violet-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-          >
-            <span className="w-12 h-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <PenLine size={22} />
-            </span>
-            <p className="text-lg font-bold text-brand-text">Paste or Upload a Script</p>
-            <p className="text-sm text-slate-500 mt-1 leading-snug">
-              Paste your own script, upload a PDF or doc, pull from a web page, and add your photos — we turn it into a video.
-            </p>
-            <p className="text-sm font-semibold text-violet-600 mt-3 group-hover:underline">Start with my content →</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setInputMode("listing")}
-            className="group text-left p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-emerald-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-          >
-            <span className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-              <Building2 size={22} />
-            </span>
-            <p className="text-lg font-bold text-brand-text">Create From One Of My Listings</p>
-            <p className="text-sm text-slate-500 mt-1 leading-snug">
-              Import from Zillow or enter it manually — photos, script, price and features become a listing video automatically.
-            </p>
-            <p className="text-sm font-semibold text-emerald-600 mt-3 group-hover:underline">Pick a listing →</p>
-          </button>
-        </div>
       )}
 
       {/* ══════════════════════════════════════════

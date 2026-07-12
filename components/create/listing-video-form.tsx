@@ -705,8 +705,11 @@ export function ListingVideoForm() {
         size="lg"
         className="w-full gap-2"
       >
-        Generate Listing Video Script <ArrowRight size={16} />
+        🎬 Generate My Listing Video <ArrowRight size={16} />
       </Button>
+      <p className="text-xs text-slate-400 text-center -mt-2">
+        We write the script first — review it on the next screen, then hit Generate to render the video.
+      </p>
     </div>
   );
 }
