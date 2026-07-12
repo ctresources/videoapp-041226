@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { generateThumbnailBackground } from "@/lib/api/openai-image";
 import { readFileSync } from "fs";
+import { createHash } from "crypto";
 import path from "path";
 import opentype from "opentype.js";
 
@@ -325,19 +326,36 @@ export async function renderAndSaveThumbnail(
   const photoSrc = opts.photoUrl || p?.avatar_url;
   if (photoSrc) {
     try {
-      const res = await fetch(photoSrc);
-      if (res.ok) {
-        let photoInput: Buffer = Buffer.from(await res.arrayBuffer());
-        const cutout = await removePhotoBackground(photoInput);
-        if (cutout) {
-          // Trim the transparent padding around the cutout so the subject
-          // sizes and anchors consistently.
-          try {
-            photoInput = await sharp(cutout).trim().png().toBuffer();
-          } catch {
-            photoInput = cutout;
+      // Cutout cache: each unique photo is background-removed once, ever —
+      // repeat renders reuse the stored cutout, so the remove.bg free tier
+      // (50 images/month) is effectively unlimited.
+      const cutoutKey = `thumbnails/cutouts/${createHash("sha1").update(photoSrc).digest("hex")}.png`;
+      let photoInput: Buffer | null = null;
+
+      if (process.env.REMOVEBG_API_KEY) {
+        const { data: cached } = await admin.storage.from("assets").download(cutoutKey);
+        if (cached) photoInput = Buffer.from(await cached.arrayBuffer());
+      }
+
+      if (!photoInput) {
+        const res = await fetch(photoSrc);
+        if (res.ok) {
+          photoInput = Buffer.from(await res.arrayBuffer());
+          const cutout = await removePhotoBackground(photoInput);
+          if (cutout) {
+            // Trim the transparent padding around the cutout so the subject
+            // sizes and anchors consistently.
+            try {
+              photoInput = await sharp(cutout).trim().png().toBuffer();
+            } catch {
+              photoInput = cutout;
+            }
+            await admin.storage.from("assets").upload(cutoutKey, photoInput, { contentType: "image/png", upsert: true });
           }
         }
+      }
+
+      if (photoInput) {
         const photo = await sharp(photoInput)
           .resize({ width: 480, height: 640, fit: "inside" })
           .png()

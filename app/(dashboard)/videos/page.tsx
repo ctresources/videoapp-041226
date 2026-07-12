@@ -707,13 +707,22 @@ function VideosContent() {
         const proj = publishingVideo.projects as {
           title: string;
           thumbnail_url?: string | null;
+          ai_script?: { hook?: string; script?: string; description?: string; hashtags?: string[] } | null;
           seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string } | null;
         } | null;
+        // The SEO step can time out during script generation, leaving
+        // youtube_description empty — fall back to the script's own
+        // description, then hook + script, so publish never starts blank.
+        const fallbackDescription =
+          proj?.seo_data?.youtube_description ||
+          proj?.ai_script?.description ||
+          [proj?.ai_script?.hook, proj?.ai_script?.script].filter(Boolean).join("\n\n").slice(0, 4900) ||
+          "";
         return (
           <PublishModal
             videoId={publishingVideo.id}
             videoTitle={proj?.seo_data?.youtube_title || proj?.title || "Untitled Video"}
-            defaultDescription={proj?.seo_data?.youtube_description || ""}
+            defaultDescription={fallbackDescription}
             thumbnailUrl={proj?.thumbnail_url || proj?.seo_data?.thumbnail_url || undefined}
             onClose={() => setPublishingVideo(null)}
             onPublished={loadVideos}

@@ -192,6 +192,33 @@ export default function ProjectEditorPage() {
     }
   }, []);
 
+  // Voice-follow lifecycle: listen whenever the teleprompter is open with Flow
+  // on. Previously the follower only started if Flow was already on when
+  // recording began — toggling Flow mid-session (or before recording) did
+  // nothing and the prompter never scrolled.
+  useEffect(() => {
+    if (!showTeleprompter || !tpFlowMode || !tpFlowSupported) return;
+    setTpAutoScroll(false);
+    const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
+    const flowText = [tpHook, editedScript, editedCta].filter(Boolean).join(" ");
+    const follower = new VoiceFollower(
+      flowText,
+      (i) => followWordInContainer(scrollContainerRef.current, i),
+      () => {
+        tpFollowerRef.current = null;
+        toast("Voice-follow unavailable — use the Auto-scroll toggle instead.", { icon: "🎚️" });
+        setTpFlowMode(false);
+      },
+    );
+    tpFollowerRef.current = follower;
+    follower.start();
+    return () => {
+      follower.stop();
+      if (tpFollowerRef.current === follower) tpFollowerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTeleprompter, tpFlowMode, tpFlowSupported]);
+
   useEffect(() => {
     loadProject();
     loadProfile();
@@ -809,32 +836,13 @@ export default function ProjectEditorPage() {
     if (tpTimerRef.current) clearInterval(tpTimerRef.current);
     tpTimerRef.current = setInterval(() => setTpSeconds((s) => s + 1), 1000);
     setTpRecording(true);
-
-    // Flow mode: the prompter listens and follows the reader's voice
-    if (tpFlowMode && tpFlowSupported) {
-      setTpAutoScroll(false);
-      const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
-      const flowText = [tpHook, editedScript, editedCta].filter(Boolean).join(" ");
-      tpFollowerRef.current?.stop();
-      const follower = new VoiceFollower(
-        flowText,
-        (i) => followWordInContainer(scrollContainerRef.current, i),
-        () => {
-          tpFollowerRef.current = null;
-          toast("Voice-follow unavailable — use the Auto-scroll toggle instead.", { icon: "🎚️" });
-          setTpFlowMode(false);
-        },
-      );
-      tpFollowerRef.current = follower;
-      follower.start();
-    }
+    // Voice-follow is managed by the tpFlowMode effect — it's already
+    // listening if Flow is on, and keeps following across multiple takes.
   }
 
   function stopTpRecording() {
     mediaRecorderRef.current?.stop();
     if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
-    tpFollowerRef.current?.stop();
-    tpFollowerRef.current = null;
     setTpRecording(false);
   }
 
@@ -1780,9 +1788,10 @@ export default function ProjectEditorPage() {
             </div>
           </div>
 
-          {/* Scrolling script */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 md:px-16 py-10">
-            <div className="max-w-2xl mx-auto space-y-10 pb-48">
+          {/* Scrolling script — narrow centered column keeps the reader's eyes
+              near the camera lens instead of sweeping across the screen */}
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-10">
+            <div className="max-w-md mx-auto space-y-10 pb-48">
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Opening Hook</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
@@ -1791,7 +1800,7 @@ export default function ProjectEditorPage() {
               </div>
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Script</p>
-                <p className="text-white text-3xl md:text-4xl leading-relaxed whitespace-pre-wrap">
+                <p className="text-white text-3xl md:text-4xl leading-relaxed whitespace-pre-wrap text-center">
                   <FlowWords text={editedScript} offset={tpHookLen} />
                 </p>
               </div>
