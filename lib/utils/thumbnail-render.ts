@@ -68,6 +68,67 @@ async function removePhotoBackground(photoBuffer: Buffer): Promise<Buffer | null
   }
 }
 
+const STATE_NAMES: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
+  hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
+  kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
+  massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO",
+  montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
+  "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND", ohio: "OH",
+  oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI", "south carolina": "SC",
+  "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT",
+  virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI", wyoming: "WY",
+};
+const STATE_ABBRS = new Set(Object.values(STATE_NAMES));
+// Leading words that aren't part of a city name ("Moving To Blue Bell PA")
+const CITY_STOP_WORDS = new Set(["in", "to", "of", "near", "the", "why", "move", "moving", "living", "live", "buy", "buying", "sell", "selling", "visit", "about", "from"]);
+
+/** Trailing run of word-ish tokens before a state, minus leading stop words. */
+function trailingCityWords(before: string): string {
+  const words = before.trim().replace(/[,\s]+$/, "").split(/\s+/);
+  const out: string[] = [];
+  for (let i = words.length - 1; i >= 0 && out.length < 3; i--) {
+    if (/^[A-Za-z.'-]+$/.test(words[i])) out.unshift(words[i]);
+    else break;
+  }
+  while (out.length > 1 && CITY_STOP_WORDS.has(out[0].toLowerCase())) out.shift();
+  return out.join(" ");
+}
+
+/**
+ * Pull a "City, ST" / "City Pennsylvania" market mention out of free text
+ * (video title or typed headline) — used when no project supplies one.
+ */
+function extractMarketFromText(text: string): { city: string; state: string } | null {
+  const cleaned = text.replace(/[^\w\s,.'-]/g, " ").replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  const lower = cleaned.toLowerCase();
+
+  // Full state name anywhere ("... Blue Bell Pennsylvania ...")
+  for (const [name, abbr] of Object.entries(STATE_NAMES)) {
+    const idx = lower.indexOf(` ${name}`);
+    if (idx > 0) {
+      const city = trailingCityWords(cleaned.slice(0, idx + 1));
+      if (city) return { city, state: abbr };
+    }
+  }
+
+  // Two-letter abbreviation as its own UPPERCASE word ("Blue Bell, PA" /
+  // "BLUE BELL PA"). Uppercase-only avoids "in"/"or"/"me" false matches;
+  // the LAST valid candidate wins since markets usually close the phrase.
+  const abbrRe = /(?:^|[\s,])([A-Z]{2})(?=[\s,.]|$)/g;
+  let best: { city: string; state: string } | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = abbrRe.exec(cleaned))) {
+    const abbr = m[1];
+    if (!STATE_ABBRS.has(abbr)) continue;
+    const city = trailingCityWords(cleaned.slice(0, m.index));
+    if (city) best = { city, state: abbr };
+  }
+  return best;
+}
+
 /** Wrap the 3–4 word headline into up to 2 short lines. */
 function wrapHeadline(text: string): string[] {
   const words = text.trim().split(/\s+/).slice(0, 4);
@@ -194,8 +255,11 @@ export async function renderAndSaveThumbnail(
   if (!headlineText) throw new Error("Could not write a headline — type one and try again");
   headlineText = headlineText.split(/\s+/).slice(0, 4).join(" ").toUpperCase();
 
-  const city = projCity || p?.location_city || undefined;
-  const state = projState || p?.location_state || undefined;
+  // Market priority: the project's stored market → a "City, ST" mention in
+  // the title/headline text itself → the profile's home market.
+  const textMarket = extractMarketFromText([sourceTitle, opts.headline].filter(Boolean).join(" "));
+  const city = projCity || textMarket?.city || p?.location_city || undefined;
+  const state = projState || textMarket?.state || p?.location_state || undefined;
 
   // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
   const sharp = (await import("sharp")).default;
