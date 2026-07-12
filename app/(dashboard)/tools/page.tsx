@@ -779,28 +779,42 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
           </div>
+          {/* Inline text editor — edit here, then Update Text Only */}
+          <div className="mt-3">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Edit Thumbnail Text</label>
+            <input
+              type="text"
+              value={headline}
+              onChange={(e) => setHeadline(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
+              placeholder="Type new text (3–4 words), then Update"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button
               onClick={() => generate(true)}
               disabled={loading}
               className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg px-3 py-1.5 disabled:opacity-50 transition-colors"
-              title="Edit the text above, then click to redraw it on this same background"
+              title="Redraws the text above on this same background"
             >
-              <Check size={12} /> Update Text Only
+              {loading ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              {loading ? "Updating…" : "Update Text Only"}
             </button>
             <button
               onClick={() => generate(false)}
               disabled={loading}
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              <Sparkles size={12} /> New Background
+              {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              New Background
             </button>
             <a href={thumbUrl} download target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
               <Save size={12} /> Download PNG (1280×720)
             </a>
             <p className="text-xs text-slate-400 w-full">
-              Edit the text field above anytime, then hit &ldquo;Update Text Only&rdquo; — it redraws in seconds on the same background.{" "}
+              Change the text above, then hit &ldquo;Update Text Only&rdquo; — it redraws in seconds on the same background.{" "}
               {projectId ? "Saved to this project — it appears in the Publish window when your video is ready." : "Download it, then upload in YouTube Studio when you publish."}
             </p>
           </div>

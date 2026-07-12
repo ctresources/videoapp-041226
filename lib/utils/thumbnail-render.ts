@@ -46,7 +46,10 @@ function textWidth(text: string, fontSize: number): number {
  */
 async function removePhotoBackground(photoBuffer: Buffer): Promise<Buffer | null> {
   const key = process.env.REMOVEBG_API_KEY;
-  if (!key) return null;
+  if (!key) {
+    console.log("[thumbnail-render] REMOVEBG_API_KEY not set — photo used as-is");
+    return null;
+  }
   try {
     const form = new FormData();
     form.append("image_file", new Blob([new Uint8Array(photoBuffer)]), "photo.png");
@@ -291,14 +294,23 @@ export async function renderAndSaveThumbnail(
     if (aiBg) {
       baseBuffer = await sharp(aiBg).resize(W, H, { fit: "cover" }).png().toBuffer();
     } else {
-      // Two bright vibrant colors: vivid sky blue → sunny golden yellow
+      // Bright two-color palettes — picked at random so "New Background"
+      // visibly changes even without an AI image key.
+      const palettes: [string, string, string][] = [
+        ["#0ea5e9", "#2563eb", "#f59e0b"], // sky blue → gold
+        ["#22c55e", "#047857", "#fde047"], // green → yellow
+        ["#8b5cf6", "#6d28d9", "#f472b6"], // violet → pink
+        ["#f97316", "#b91c1c", "#facc15"], // orange → red
+        ["#06b6d4", "#0e7490", "#a3e635"], // teal → lime
+      ];
+      const [c1, c2, c3] = palettes[Math.floor(Math.random() * palettes.length)];
       const gradSvg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0ea5e9"/>
-      <stop offset="60%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#f59e0b"/>
+      <stop offset="0%" stop-color="${c1}"/>
+      <stop offset="60%" stop-color="${c2}"/>
+      <stop offset="100%" stop-color="${c3}"/>
     </linearGradient>
   </defs>
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
