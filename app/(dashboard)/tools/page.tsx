@@ -658,6 +658,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   const [loading, setLoading] = useState(false);
   const [looks, setLooks] = useState<{ id: string; name: string; preview_image_url: string }[]>([]);
   const [photoUrl, setPhotoUrl] = useState(""); // "" = profile headshot
+  const [photoSide, setPhotoSide] = useState<"left" | "right">("right");
 
   useEffect(() => {
     fetch("/api/avatar/looks")
@@ -693,6 +694,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
           headline: headline.trim() || undefined,
           projectId: projectId || undefined,
           photoUrl: photoUrl || undefined,
+          photoSide,
           backgroundUrl: reuseBackground && bgUrl ? bgUrl : undefined,
         }),
       });
@@ -729,6 +731,25 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
           3–4 words max, ALL CAPS, curiosity-driven — AI avoids repeating words from your title.
           A bright AI scene with a vivid blue sky is generated behind it, and your photo and market badge are added automatically.
         </p>
+      </div>
+
+      {/* Photo position — text takes the opposite side */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Photo Position</label>
+        <div className="inline-flex rounded-xl border border-slate-200 overflow-hidden text-sm font-semibold">
+          {(["left", "right"] as const).map((side) => (
+            <button
+              key={side}
+              onClick={() => setPhotoSide(side)}
+              className={`px-4 py-2 transition-colors ${
+                photoSide === side ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {side === "left" ? "◀ Photo Left" : "Photo Right ▶"}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">Your text and market badge move to the opposite side automatically.</p>
       </div>
 
       {/* Photo picker — profile headshot by default, or any avatar look */}

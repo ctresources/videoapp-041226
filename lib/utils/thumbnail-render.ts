@@ -180,6 +180,8 @@ export interface RenderThumbnailOptions {
   topic?: string;
   /** Photo to place on the thumbnail; defaults to the profile headshot. */
   photoUrl?: string;
+  /** Which side the photo sits on; text takes the opposite side. Default right. */
+  photoSide?: "left" | "right";
   /**
    * Reuse a previously generated background instead of creating a new one —
    * lets the user edit just the text and re-render in seconds.
@@ -322,7 +324,9 @@ export async function renderAndSaveThumbnail(
 
   // ── Headline: vector outlines — thick, bold, ALL CAPS, white + vivid yellow ──
   // 2x type: up to 3 stacked lines, sized as large as the space allows while
-  // leaving room for the market badge at the bottom.
+  // leaving room for the market badge at the bottom. Text always takes the
+  // side opposite the photo.
+  const photoSide = opts.photoSide === "left" ? "left" : "right";
   const { lines, fontSize } = bestHeadlineLayout(headlineText, 700, 460);
 
   const strokeW = Math.max(12, Math.round(fontSize * 0.11));
@@ -334,7 +338,9 @@ export async function renderAndSaveThumbnail(
   // guaranteed to render in librsvg without relying on paint-order support.
   const headlinePaths = lines
     .map((l, i) => {
-      const d = textPathData(l.toUpperCase(), 60, textStartY + i * lineHeight, fontSize);
+      const upper = l.toUpperCase();
+      const x = photoSide === "left" ? W - 60 - textWidth(upper, fontSize) : 60;
+      const d = textPathData(upper, x, textStartY + i * lineHeight, fontSize);
       const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
       return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
 <path d="${d}" fill="${fill}"/>`;
@@ -347,22 +353,23 @@ export async function renderAndSaveThumbnail(
   const bottomMargin = 34;
   if (market) {
     // 2x badge: shrink only if an unusually long market name would collide
-    // with the photo on the right.
+    // with the photo. Sits under the headline, opposite the photo.
     let badgeFontSize = 52;
     while (badgeFontSize > 26 && textWidth(market, badgeFontSize) > 620) badgeFontSize -= 4;
     const badgeTextW = textWidth(market, badgeFontSize);
     const badgeH = Math.round(badgeFontSize * 1.7);
     const badgeY = H - badgeH - bottomMargin;
-    const badgeTextD = textPathData(market, 88, badgeY + Math.round(badgeH * 0.72), badgeFontSize);
+    const badgeX = photoSide === "left" ? W - 60 - (badgeTextW + 58) : 60;
+    const badgeTextD = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), badgeFontSize);
     badgeSvg = `
-  <rect x="60" y="${badgeY}" rx="14" width="${badgeTextW + 58}" height="${badgeH}" fill="#ffe600"/>
+  <rect x="${badgeX}" y="${badgeY}" rx="14" width="${badgeTextW + 58}" height="${badgeH}" fill="#ffe600"/>
   <path d="${badgeTextD}" fill="#10132b"/>`;
   }
 
   const overlaySvg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="scrim" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="scrim" x1="${photoSide === "left" ? "100%" : "0%"}" y1="0%" x2="${photoSide === "left" ? "0%" : "100%"}" y2="0%">
       <stop offset="0%" stop-color="#000000" stop-opacity="0.45"/>
       <stop offset="55%" stop-color="#000000" stop-opacity="0.05"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
@@ -420,7 +427,7 @@ export async function renderAndSaveThumbnail(
         const meta = await sharp(photo).metadata();
         const pw = meta.width || 480;
         const ph = meta.height || 640;
-        composites.push({ input: photo, left: W - pw - 40, top: H - ph });
+        composites.push({ input: photo, left: photoSide === "left" ? 40 : W - pw - 40, top: H - ph });
       }
     } catch { /* thumbnail still renders without the photo */ }
   }
