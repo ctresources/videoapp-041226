@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { generateThumbnailBackground } from "@/lib/api/openai-image";
+import { removeImageBackground } from "@/lib/utils/remove-background";
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
@@ -35,40 +36,6 @@ function textPathData(text: string, x: number, y: number, fontSize: number): str
 
 function textWidth(text: string, fontSize: number): number {
   return getFont().getAdvanceWidth(text, fontSize);
-}
-
-/**
- * Cut the person out of their photo with remove.bg so only they appear on
- * the thumbnail — no white studio rectangle. Returns null when
- * REMOVEBG_API_KEY isn't configured or the call fails; the caller then uses
- * the original photo unchanged. Free remove.bg accounts include 50
- * preview-quality images/month, which is plenty at thumbnail size.
- */
-async function removePhotoBackground(photoBuffer: Buffer): Promise<Buffer | null> {
-  const key = process.env.REMOVEBG_API_KEY;
-  if (!key) {
-    console.log("[thumbnail-render] REMOVEBG_API_KEY not set — photo used as-is");
-    return null;
-  }
-  try {
-    const form = new FormData();
-    form.append("image_file", new Blob([new Uint8Array(photoBuffer)]), "photo.png");
-    form.append("size", "auto");
-    form.append("format", "png");
-    const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-      method: "POST",
-      headers: { "X-Api-Key": key },
-      body: form,
-    });
-    if (!res.ok) {
-      console.warn(`[thumbnail-render] remove.bg failed (${res.status}):`, (await res.text()).slice(0, 200));
-      return null;
-    }
-    return Buffer.from(await res.arrayBuffer());
-  } catch (err) {
-    console.warn("[thumbnail-render] remove.bg error:", err instanceof Error ? err.message : err);
-    return null;
-  }
 }
 
 const STATE_NAMES: Record<string, string> = {
@@ -407,7 +374,7 @@ export async function renderAndSaveThumbnail(
         const res = await fetch(photoSrc);
         if (res.ok) {
           photoInput = Buffer.from(await res.arrayBuffer());
-          const cutout = await removePhotoBackground(photoInput);
+          const cutout = await removeImageBackground(photoInput);
           if (cutout) {
             // Trim the transparent padding around the cutout so the subject
             // sizes and anchors consistently.

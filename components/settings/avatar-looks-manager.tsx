@@ -22,6 +22,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [showNameInput, setShowNameInput] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removeBg, setRemoveBg] = useState(false);
   const [consentLoading, setConsentLoading] = useState(false);
   const [deletingLookId, setDeletingLookId] = useState<string | null>(null);
 
@@ -86,6 +87,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     setPreviewUrl(null);
     setShowNameInput(false);
     setLookName("");
+    setRemoveBg(false);
   }
 
   async function handleRequestConsent() {
@@ -124,10 +126,31 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       if (upErr) throw new Error(upErr.message);
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
+      // Optionally swap the photo for a background-removed version (clean
+      // white) before the look is created. Failure falls back to the original.
+      let imageUrl = publicUrl;
+      if (removeBg) {
+        try {
+          const bgRes = await fetch("/api/avatar/remove-background", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl: publicUrl }),
+          });
+          const bgData = await bgRes.json();
+          if (bgRes.ok && bgData.url) {
+            imageUrl = bgData.url;
+          } else {
+            toast(bgData.error || "Background removal unavailable — using the original photo.", { icon: "ℹ️" });
+          }
+        } catch {
+          toast("Background removal unavailable — using the original photo.", { icon: "ℹ️" });
+        }
+      }
+
       const res = await fetch("/api/avatar/add-look", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_url: publicUrl, name }),
+        body: JSON.stringify({ image_url: imageUrl, name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create look");
@@ -357,6 +380,15 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
               onKeyDown={(e) => e.key === "Enter" && handleAddLook()}
               className="text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
             />
+            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={removeBg}
+                onChange={(e) => setRemoveBg(e.target.checked)}
+                className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              />
+              🪄 Remove photo background <span className="text-slate-400">(replaced with clean white)</span>
+            </label>
             <div className="flex gap-2">
               <button
                 onClick={handleAddLook}
