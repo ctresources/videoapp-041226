@@ -464,7 +464,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             <div className="flex items-center gap-3">
               <button
                 onClick={addChannelCta}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-sm transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-sm transition-colors"
                 title="Append your subscribe & contact CTA to the script"
               >
                 <Megaphone size={15} />
@@ -644,9 +644,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         )}
 
         {/* Tips for best video */}
-        <div className="p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
+        <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-            <Lightbulb size={13} className="text-amber-500" /> Tips For Best Video
+            <Lightbulb size={13} className="text-emerald-500" /> Tips For Best Video
           </p>
           <ul className="text-xs text-slate-500 space-y-1.5 list-disc pl-4">
             <li>Film in <strong>1080p (Full HD) or higher at 60 fps</strong> — set this in your phone&apos;s camera settings before recording</li>

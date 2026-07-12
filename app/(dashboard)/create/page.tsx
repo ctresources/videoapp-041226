@@ -558,7 +558,7 @@ function CreatePageInner() {
           {[
             { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",           desc: "Topic in → broadcast-quality script",       grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
             { mode: "content" as InputMode, icon: PenLine,   label: "My Content & Listings",  desc: "Your script, docs, photos & listings",      grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
-            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",             desc: "Teleprompter · Free, unlimited",            grad: "from-orange-400 to-rose-500",   chip: "bg-orange-100 text-orange-600" },
+            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",             desc: "Teleprompter · Free, unlimited",            grad: "from-emerald-500 to-green-600", chip: "bg-emerald-100 text-emerald-600" },
           ].map(({ mode, icon: Icon, label, desc, grad, chip }) => {
             // The merged tab stays lit while the user is in either sub-flow
             const active = inputMode === mode ||
@@ -1093,9 +1093,9 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
         <div className="grid lg:grid-cols-2 gap-3 items-start">
-          <Card padding="sm" className="min-w-0 border-t-4 border-t-orange-400">
+          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-rose-500 rounded-xl flex items-center justify-center shadow-sm">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Video size={17} className="text-white" />
               </div>
               <div>
@@ -1129,9 +1129,9 @@ function CreatePageInner() {
           </Card>
 
           {/* Photos & PDF — shown as reference in teleprompter + used as b-roll */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-amber-400">
+          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-green-500">
             <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+              <span className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
                 <ImageIcon size={17} className="text-white" />
               </span>
               <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
@@ -1154,8 +1154,8 @@ function CreatePageInner() {
                   </div>
                 ))}
                 {cameraPhotos.length < 12 && (
-                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
-                    {cameraPhotoUploading ? <Loader2 size={18} className="text-orange-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
+                    {cameraPhotoUploading ? <Loader2 size={18} className="text-emerald-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                     <input type="file" accept="image/*" multiple className="sr-only" disabled={cameraPhotoUploading} onChange={(e) => { if (e.target.files?.length) handleCameraPhotosUpload(e.target.files); }} />
                   </label>
                 )}
@@ -1169,8 +1169,8 @@ function CreatePageInner() {
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
               <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
-                <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
-                <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-orange-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+                <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
               </div>
             </div>
             {cameraPdfMode === "upload" ? (
@@ -1181,8 +1181,8 @@ function CreatePageInner() {
                   <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
                 </div>
               ) : (
-                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-orange-300 bg-orange-50" : "border-slate-200 hover:border-orange-300"}`}>
-                  {cameraPdfUploading ? <Loader2 size={16} className="text-orange-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
+                  {cameraPdfUploading ? <Loader2 size={16} className="text-emerald-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
                   <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
                   <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
                 </label>
@@ -1201,9 +1201,9 @@ function CreatePageInner() {
                   onChange={(e) => setCameraPdfUrlInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !cameraPdfUrlExtracting && cameraPdfUrlInput.trim()) handleCameraUrlExtract(); }}
                   placeholder="https://example.com/article"
-                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-                <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-orange-500 hover:bg-orange-600 text-white whitespace-nowrap">Fetch</Button>
+                <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-emerald-500 hover:bg-emerald-600 text-white whitespace-nowrap">Fetch</Button>
               </div>
             )}
             <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
@@ -1214,7 +1214,7 @@ function CreatePageInner() {
                   size="sm"
                   loading={cameraScriptGenerating}
                   onClick={handleGenerateScriptFromCameraUploads}
-                  className="w-full gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                  className="w-full gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white"
                 >
                   {cameraScriptGenerating
                     ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
