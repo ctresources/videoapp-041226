@@ -27,7 +27,9 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-type InputMode = "script" | "camera" | "listing" | "paste";
+// "content" is the merged My Content & Listings tab — it shows a chooser that
+// routes into the "paste" or "listing" flows, which remain distinct modes.
+type InputMode = "script" | "camera" | "listing" | "paste" | "content";
 
 const STATE_MAP: Record<string, string> = {
   "alabama":"AL","alaska":"AK","arizona":"AZ","arkansas":"AR","california":"CA",
@@ -532,20 +534,21 @@ function CreatePageInner() {
         <div className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
         <div className="relative">
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Create New Video</h2>
-          <p className="text-white/85 text-sm sm:text-base mt-1">4 Ways To Create — Pick The One That Speaks To You Or Sparks You.</p>
+          <p className="text-white/85 text-sm sm:text-base mt-1">3 Ways To Create — Pick The One That Speaks To You Or Sparks You.</p>
         </div>
       </div>
 
       {/* ── Mode cards ── */}
       {step === "input" && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           {[
-            { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",    desc: "Topic in → broadcast-quality script", grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
-            { mode: "paste" as InputMode,   icon: PenLine,   label: "Paste / Upload",  desc: "Your script, docs & photos",          grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
-            { mode: "listing" as InputMode, icon: Building2, label: "My Listing",      desc: "Zillow link → listing video",          grad: "from-emerald-500 to-teal-600",  chip: "bg-emerald-100 text-emerald-600" },
-            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",      desc: "Teleprompter · Free, unlimited",       grad: "from-orange-400 to-rose-500",   chip: "bg-orange-100 text-orange-600" },
+            { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",           desc: "Topic in → broadcast-quality script",       grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
+            { mode: "content" as InputMode, icon: PenLine,   label: "My Content & Listings",  desc: "Your script, docs, photos & listings",      grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
+            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",             desc: "Teleprompter · Free, unlimited",            grad: "from-orange-400 to-rose-500",   chip: "bg-orange-100 text-orange-600" },
           ].map(({ mode, icon: Icon, label, desc, grad, chip }) => {
-            const active = inputMode === mode;
+            // The merged tab stays lit while the user is in either sub-flow
+            const active = inputMode === mode ||
+              (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
             return (
               <button
                 key={mode}
@@ -769,10 +772,55 @@ function CreatePageInner() {
       )}
 
       {/* ══════════════════════════════════════════
+          MY CONTENT & LISTINGS — chooser
+      ══════════════════════════════════════════ */}
+      {inputMode === "content" && step === "input" && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setInputMode("paste")}
+            className="group text-left p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-violet-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+          >
+            <span className="w-12 h-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <PenLine size={22} />
+            </span>
+            <p className="text-lg font-bold text-brand-text">Paste or Upload a Script</p>
+            <p className="text-sm text-slate-500 mt-1 leading-snug">
+              Paste your own script, upload a PDF or doc, pull from a web page, and add your photos — we turn it into a video.
+            </p>
+            <p className="text-sm font-semibold text-violet-600 mt-3 group-hover:underline">Start with my content →</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputMode("listing")}
+            className="group text-left p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-emerald-400 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+          >
+            <span className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Building2 size={22} />
+            </span>
+            <p className="text-lg font-bold text-brand-text">Create From One Of My Listings</p>
+            <p className="text-sm text-slate-500 mt-1 leading-snug">
+              Import from Zillow or enter it manually — photos, script, price and features become a listing video automatically.
+            </p>
+            <p className="text-sm font-semibold text-emerald-600 mt-3 group-hover:underline">Pick a listing →</p>
+          </button>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
           PASTE SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
         <div className="grid lg:grid-cols-2 gap-3 items-start">
+          {/* Sub-toggle — switch between the two My Content flows */}
+          <div className="lg:col-span-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-violet-600 text-white border-violet-600">
+              📄 Paste / Upload Script
+            </button>
+            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-slate-600 border-slate-200 hover:border-emerald-300 transition-colors">
+              🏠 My Listings
+            </button>
+          </div>
           {/* Left column: the script itself */}
           <div className="flex flex-col gap-3 min-w-0">
           <Card padding="sm" className="border-t-4 border-t-violet-500">
@@ -1023,6 +1071,15 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "listing" && (
         <div className="grid lg:grid-cols-2 gap-3 items-start">
+          {/* Sub-toggle — switch between the two My Content flows */}
+          <div className="lg:col-span-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-slate-600 border-slate-200 hover:border-violet-300 transition-colors">
+              📄 Paste / Upload Script
+            </button>
+            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-emerald-600 text-white border-emerald-600">
+              🏠 My Listings
+            </button>
+          </div>
           <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-sm">
