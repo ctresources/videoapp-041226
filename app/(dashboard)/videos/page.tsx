@@ -239,7 +239,29 @@ function VideosContent() {
   const highlightId = searchParams.get("highlight");
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
   const [drafts, setDrafts] = useState<DraftProject[]>([]);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function handleDeleteDraft(draft: DraftProject) {
+    if (!confirm(`Delete the draft "${draft.title || "Untitled Draft"}"? This cannot be undone.`)) return;
+    setDeletingDraftId(draft.id);
+    try {
+      const res = await fetch("/api/project/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: draft.id }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(d.error || "Could not delete draft");
+      } else {
+        toast.success("Draft deleted");
+        setDrafts((prev) => prev.filter((x) => x.id !== draft.id));
+      }
+    } finally {
+      setDeletingDraftId(null);
+    }
+  }
   const [publishingVideo, setPublishingVideo] = useState<GeneratedVideo | null>(null);
   const [previewVideo, setPreviewVideo] = useState<GeneratedVideo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -391,11 +413,23 @@ function VideosContent() {
                 <p className="text-xs text-slate-400 mb-3">
                   Saved {new Date(d.created_at).toLocaleDateString()} · video not generated
                 </p>
-                <Link href={`/create/${d.id}`}>
-                  <Button size="sm" variant="outline" className="w-full gap-1.5">
-                    <Pencil size={12} /> Continue Editing
+                <div className="flex gap-2">
+                  <Link href={`/create/${d.id}`} className="flex-1">
+                    <Button size="sm" variant="outline" className="w-full gap-1.5">
+                      <Pencil size={12} /> Continue Editing
+                    </Button>
+                  </Link>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDeleteDraft(d)}
+                    disabled={deletingDraftId === d.id}
+                    className="text-slate-300 hover:text-red-500 shrink-0"
+                    title="Delete draft"
+                  >
+                    {deletingDraftId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </Button>
-                </Link>
+                </div>
               </Card>
             ))}
           </div>

@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { headline, topic, projectId, photoUrl } = (await req.json()) as {
-    headline?: string; topic?: string; projectId?: string; photoUrl?: string;
+  const { headline, topic, projectId, photoUrl, backgroundUrl } = (await req.json()) as {
+    headline?: string; topic?: string; projectId?: string; photoUrl?: string; backgroundUrl?: string;
   };
 
   try {
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       headline: headline || undefined,
       topic: topic || undefined,
       photoUrl: photoUrl || undefined,
+      backgroundUrl: backgroundUrl || undefined,
     });
     return NextResponse.json(result);
   } catch (err) {

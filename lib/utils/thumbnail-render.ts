@@ -1,17 +1,32 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { generateThumbnailBackground } from "@/lib/api/openai-image";
+import { readFileSync } from "fs";
+import path from "path";
+import opentype from "opentype.js";
 
 const W = 1280;
 const H = 720;
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+// Vercel's Linux runtime has no system fonts, so SVG <text> renders as empty
+// boxes. Instead we bundle Archivo Black (OFL license) and convert every
+// string to vector <path> outlines with opentype.js — renders identically on
+// any server, no fontconfig needed.
+let _font: opentype.Font | null = null;
+function getFont(): opentype.Font {
+  if (!_font) {
+    const buf = readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
+    _font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  }
+  return _font;
+}
+
+function textPathData(text: string, x: number, y: number, fontSize: number): string {
+  return getFont().getPath(text, x, y, fontSize).toPathData(2);
+}
+
+function textWidth(text: string, fontSize: number): number {
+  return getFont().getAdvanceWidth(text, fontSize);
 }
 
 /** Wrap the 3–4 word headline into up to 2 short lines. */
@@ -73,6 +88,11 @@ export interface RenderThumbnailOptions {
   topic?: string;
   /** Photo to place on the thumbnail; defaults to the profile headshot. */
   photoUrl?: string;
+  /**
+   * Reuse a previously generated background instead of creating a new one —
+   * lets the user edit just the text and re-render in seconds.
+   */
+  backgroundUrl?: string;
 }
 
 /**
@@ -81,14 +101,14 @@ export interface RenderThumbnailOptions {
  *   thick and bold, white + vivid yellow with a heavy dark outline.
  * - Background: AI-generated bright vibrant still-frame-style scene with an
  *   exaggerated blue sky (bright two-color gradient fallback).
- * - The chosen photo (or profile headshot) in a ringed circle on the right,
- *   brokerage logo top-right, market badge bottom-left.
+ * - The chosen photo (or profile headshot) in a ringed circle on the right;
+ *   brokerage logo bottom-left with the market badge stacked above it.
  * When projectId is given, the URL is saved to the project (column +
  * seo_data) so the Publish window picks it up. Throws on failure.
  */
 export async function renderAndSaveThumbnail(
   opts: RenderThumbnailOptions,
-): Promise<{ url: string; headline: string }> {
+): Promise<{ url: string; headline: string; backgroundUrl: string }> {
   const admin = createAdminClient();
 
   const { data: profile } = await admin
@@ -138,19 +158,35 @@ export async function renderAndSaveThumbnail(
   // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
   const sharp = (await import("sharp")).default;
 
-  // ── Background: AI still-frame scene, else bright two-color gradient ──
-  const aiBg = await generateThumbnailBackground({
-    topic: sourceTitle || headlineText,
-    city,
-    state,
-  });
+  // ── Background: reuse the caller's, else AI scene, else bright gradient ──
+  let baseBuffer: Buffer | null = null;
+  let backgroundUrl = "";
 
-  let baseBuffer: Buffer;
-  if (aiBg) {
-    baseBuffer = await sharp(aiBg).resize(W, H, { fit: "cover" }).png().toBuffer();
-  } else {
-    // Two bright vibrant colors: vivid sky blue → sunny golden yellow
-    const gradSvg = `
+  if (opts.backgroundUrl) {
+    try {
+      const res = await fetch(opts.backgroundUrl);
+      if (res.ok) {
+        baseBuffer = await sharp(Buffer.from(await res.arrayBuffer()))
+          .resize(W, H, { fit: "cover" })
+          .png()
+          .toBuffer();
+        backgroundUrl = opts.backgroundUrl;
+      }
+    } catch { /* fall through to a fresh background */ }
+  }
+
+  if (!baseBuffer) {
+    const aiBg = await generateThumbnailBackground({
+      topic: sourceTitle || headlineText,
+      city,
+      state,
+    });
+
+    if (aiBg) {
+      baseBuffer = await sharp(aiBg).resize(W, H, { fit: "cover" }).png().toBuffer();
+    } else {
+      // Two bright vibrant colors: vivid sky blue → sunny golden yellow
+      const gradSvg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -163,23 +199,76 @@ export async function renderAndSaveThumbnail(
   <circle cx="${W - 120}" cy="${H - 80}" r="340" fill="#ffffff" opacity="0.08"/>
   <circle cx="120" cy="60" r="220" fill="#ffffff" opacity="0.06"/>
 </svg>`;
-    baseBuffer = await sharp(Buffer.from(gradSvg)).png().toBuffer();
+      baseBuffer = await sharp(Buffer.from(gradSvg)).png().toBuffer();
+    }
+
+    // Store the bare background so "edit text only" re-renders can reuse it
+    // without paying for a new AI image.
+    const bgPath = `thumbnails/${opts.userId}/bg_${Date.now()}.png`;
+    const { error: bgErr } = await admin.storage
+      .from("assets")
+      .upload(bgPath, baseBuffer, { contentType: "image/png", upsert: false });
+    if (!bgErr) {
+      backgroundUrl = admin.storage.from("assets").getPublicUrl(bgPath).data.publicUrl;
+    }
   }
 
-  // ── Headline overlay: thick, bold, ALL CAPS, white + vivid yellow, heavy outline ──
+  // ── Fetch the logo FIRST so the badge can stack neatly above it ──
+  let logoBuffer: Buffer | null = null;
+  let logoW = 0;
+  let logoH = 0;
+  if (p?.logo_url) {
+    try {
+      const res = await fetch(p.logo_url);
+      if (res.ok) {
+        logoBuffer = await sharp(Buffer.from(await res.arrayBuffer()))
+          .resize({ width: 200, height: 100, fit: "inside" })
+          .png()
+          .toBuffer();
+        const meta = await sharp(logoBuffer).metadata();
+        logoW = meta.width || 200;
+        logoH = meta.height || 100;
+      }
+    } catch { /* thumbnail still renders without the logo */ }
+  }
+
+  // ── Headline: vector outlines — thick, bold, ALL CAPS, white + vivid yellow ──
   const lines = wrapHeadline(headlineText);
-  const fontSize = lines.length === 1 ? 150 : 128;
-  const lineHeight = Math.round(fontSize * 1.08);
+  const maxTextWidth = 700; // stay clear of the photo circle on the right
+  let fontSize = lines.length === 1 ? 150 : 128;
+  const widest = () => Math.max(...lines.map((l) => textWidth(l.toUpperCase(), fontSize)));
+  while (fontSize > 48 && widest() > maxTextWidth) fontSize -= 6;
+
+  const lineHeight = Math.round(fontSize * 1.12);
   const textBlockH = lines.length * lineHeight;
   const textStartY = Math.round(H / 2 - textBlockH / 2 + fontSize * 0.8);
 
-  const textSvgLines = lines
-    .map((l, i) =>
-      `<text x="60" y="${textStartY + i * lineHeight}" class="headline" fill="${i % 2 === 0 ? "#ffffff" : "#ffe600"}">${escapeXml(l.toUpperCase())}</text>`,
-    )
-    .join("");
+  // Two passes per line: heavy dark outline underneath, colored fill on top —
+  // guaranteed to render in librsvg without relying on paint-order support.
+  const headlinePaths = lines
+    .map((l, i) => {
+      const d = textPathData(l.toUpperCase(), 60, textStartY + i * lineHeight, fontSize);
+      const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
+      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="16" stroke-linejoin="round"/>
+<path d="${d}" fill="${fill}"/>`;
+    })
+    .join("\n");
 
-  const market = [city, state].filter(Boolean).join(", ");
+  // ── Market badge — bottom-left, stacked above the logo ──
+  const market = [city, state].filter(Boolean).join(", ").toUpperCase();
+  let badgeSvg = "";
+  const bottomMargin = 34;
+  const logoTop = logoBuffer ? H - logoH - bottomMargin : 0;
+  if (market) {
+    const badgeFontSize = 26;
+    const badgeTextW = textWidth(market, badgeFontSize);
+    const badgeH = 48;
+    const badgeY = logoBuffer ? logoTop - badgeH - 14 : H - badgeH - bottomMargin;
+    const badgeTextD = textPathData(market, 84, badgeY + 34, badgeFontSize);
+    badgeSvg = `
+  <rect x="60" y="${badgeY}" rx="10" width="${Math.min(560, badgeTextW + 48)}" height="${badgeH}" fill="#ffe600"/>
+  <path d="${badgeTextD}" fill="#10132b"/>`;
+  }
 
   const overlaySvg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
@@ -190,69 +279,49 @@ export async function renderAndSaveThumbnail(
       <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <style>
-    .headline { font-family: Arial, Helvetica, sans-serif; font-weight: 900; font-size: ${fontSize}px; letter-spacing: 1px; stroke: #10132b; stroke-width: 14px; paint-order: stroke fill; }
-    .badge { font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 28px; fill: #10132b; }
-  </style>
   <rect width="${W}" height="${H}" fill="url(#scrim)"/>
-  ${textSvgLines}
-  ${market ? `
-  <rect x="60" y="${H - 96}" rx="10" width="${Math.min(500, market.length * 16 + 56)}" height="48" fill="#ffe600"/>
-  <text x="84" y="${H - 62}" class="badge">📍 ${escapeXml(market.toUpperCase())}</text>` : ""}
+  ${headlinePaths}
+  ${badgeSvg}
 </svg>`;
 
   const composites: { input: Buffer; left: number; top: number }[] = [
     { input: Buffer.from(overlaySvg), left: 0, top: 0 },
   ];
 
-  // Photo — the chosen look or the profile headshot, circle-masked, right side
+  // Photo — the chosen look or the profile headshot, as-is (no circle mask
+  // or ring), anchored to the bottom-right so the person stands on the edge.
   const photoSrc = opts.photoUrl || p?.avatar_url;
   if (photoSrc) {
     try {
       const res = await fetch(photoSrc);
       if (res.ok) {
-        const size = 420;
-        const circleMask = Buffer.from(
-          `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="#fff"/></svg>`,
-        );
-        const headshot = await sharp(Buffer.from(await res.arrayBuffer()))
-          .resize(size, size, { fit: "cover", position: "attention" })
-          .composite([{ input: circleMask, blend: "dest-in" }])
+        const photo = await sharp(Buffer.from(await res.arrayBuffer()))
+          .resize({ width: 480, height: 640, fit: "inside" })
           .png()
           .toBuffer();
-        const ring = Buffer.from(
-          `<svg width="${size + 16}" height="${size + 16}"><circle cx="${(size + 16) / 2}" cy="${(size + 16) / 2}" r="${(size + 16) / 2 - 2}" fill="none" stroke="#ffe600" stroke-width="10"/></svg>`,
-        );
-        composites.push({ input: ring, left: W - size - 78, top: H - size - 78 });
-        composites.push({ input: headshot, left: W - size - 70, top: H - size - 70 });
+        const meta = await sharp(photo).metadata();
+        const pw = meta.width || 480;
+        const ph = meta.height || 640;
+        composites.push({ input: photo, left: W - pw - 40, top: H - ph });
       }
     } catch { /* thumbnail still renders without the photo */ }
   }
 
-  // Logo — top-right, scaled to fit
-  if (p?.logo_url) {
-    try {
-      const res = await fetch(p.logo_url);
-      if (res.ok) {
-        const logo = await sharp(Buffer.from(await res.arrayBuffer()))
-          .resize({ width: 170, height: 90, fit: "inside" })
-          .png()
-          .toBuffer();
-        composites.push({ input: logo, left: W - 200, top: 30 });
-      }
-    } catch { /* thumbnail still renders without the logo */ }
+  // Logo — bottom-left corner
+  if (logoBuffer) {
+    composites.push({ input: logoBuffer, left: 60, top: logoTop });
   }
 
   // HD export: full-quality PNG at 1280×720
   const png = await sharp(baseBuffer).composite(composites).png({ compressionLevel: 6 }).toBuffer();
 
-  const path = `thumbnails/${opts.userId}/thumb_${Date.now()}.png`;
+  const storagePath = `thumbnails/${opts.userId}/thumb_${Date.now()}.png`;
   const { error: uploadErr } = await admin.storage
     .from("assets")
-    .upload(path, png, { contentType: "image/png", upsert: false });
+    .upload(storagePath, png, { contentType: "image/png", upsert: false });
   if (uploadErr) throw new Error(uploadErr.message);
 
-  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(path);
+  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
 
   if (opts.projectId) {
     // Save on the project column AND inside seo_data — the Publish window
@@ -267,5 +336,5 @@ export async function renderAndSaveThumbnail(
       .eq("user_id", opts.userId);
   }
 
-  return { url: publicUrl, headline: headlineText };
+  return { url: publicUrl, headline: headlineText, backgroundUrl };
 }

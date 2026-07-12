@@ -675,7 +675,11 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     setHeadline("");
   };
 
-  const generate = async () => {
+  const [bgUrl, setBgUrl] = useState("");
+
+  // reuseBackground=true re-renders just the text/photo over the same scene —
+  // takes seconds instead of regenerating a whole new AI background.
+  const generate = async (reuseBackground = false) => {
     if (!headline.trim() && !projectId) {
       toast.error("Select a project (AI writes the text) or type a 3–4 word headline");
       return;
@@ -689,12 +693,14 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
           headline: headline.trim() || undefined,
           projectId: projectId || undefined,
           photoUrl: photoUrl || undefined,
+          backgroundUrl: reuseBackground && bgUrl ? bgUrl : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setThumbUrl(data.url);
       if (data.headline) setHeadline(data.headline);
+      if (data.backgroundUrl) setBgUrl(data.backgroundUrl);
       toast.success(projectId ? "Thumbnail generated and saved to the project!" : "Thumbnail generated!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate thumbnail");
@@ -759,12 +765,12 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       )}
 
       <button
-        onClick={generate}
+        onClick={() => generate(false)}
         disabled={loading}
         className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-        {loading ? "Creating your thumbnail (~30 sec)…" : "Generate Thumbnail"}
+        {loading ? "Creating your thumbnail…" : "Generate Thumbnail"}
       </button>
 
       {thumbUrl && (
@@ -773,21 +779,29 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
           </div>
-          <div className="flex items-center gap-3 mt-3">
+          <div className="flex flex-wrap items-center gap-3 mt-3">
+            <button
+              onClick={() => generate(true)}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg px-3 py-1.5 disabled:opacity-50 transition-colors"
+              title="Edit the text above, then click to redraw it on this same background"
+            >
+              <Check size={12} /> Update Text Only
+            </button>
+            <button
+              onClick={() => generate(false)}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              <Sparkles size={12} /> New Background
+            </button>
             <a href={thumbUrl} download target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
               <Save size={12} /> Download PNG (1280×720)
             </a>
-            <button
-              onClick={generate}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
-            >
-              <Sparkles size={12} /> Regenerate
-            </button>
-            <p className="text-xs text-slate-400">
-              {projectId
-                ? "Saved to this project — it appears in the Publish window when your video is ready."
-                : "Download it, then upload in YouTube Studio when you publish."}
+            <p className="text-xs text-slate-400 w-full">
+              Edit the text field above anytime, then hit &ldquo;Update Text Only&rdquo; — it redraws in seconds on the same background.{" "}
+              {projectId ? "Saved to this project — it appears in the Publish window when your video is ready." : "Download it, then upload in YouTube Studio when you publish."}
             </p>
           </div>
         </div>
