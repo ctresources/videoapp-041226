@@ -7,7 +7,14 @@
 export async function removeImageBackground(photoBuffer: Buffer): Promise<Buffer | null> {
   const key = process.env.REMOVEBG_API_KEY;
   if (!key) {
-    console.log("[remove-background] REMOVEBG_API_KEY not set — photo used as-is");
+    // Diagnostic: surface near-miss names (stray whitespace or invisible
+    // characters from copy-paste look identical in the Vercel dashboard).
+    const similar = Object.keys(process.env).filter(
+      (k) => k.toUpperCase().includes("REMOVE") || k.toUpperCase().includes("BG"),
+    );
+    console.log(
+      `[remove-background] REMOVEBG_API_KEY not set — photo used as-is. Similar env names present: ${JSON.stringify(similar)}`,
+    );
     return null;
   }
   try {
