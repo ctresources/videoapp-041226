@@ -140,8 +140,8 @@ export interface RenderThumbnailOptions {
  *   thick and bold, white + vivid yellow with a heavy dark outline.
  * - Background: AI-generated bright vibrant still-frame-style scene with an
  *   exaggerated blue sky (bright two-color gradient fallback).
- * - The chosen photo (or profile headshot) in a ringed circle on the right;
- *   brokerage logo bottom-left with the market badge stacked above it.
+ * - The chosen photo (or profile headshot) bottom-right, market badge
+ *   bottom-left. No logo — thumbnails stay clean.
  * When projectId is given, the URL is saved to the project (column +
  * seo_data) so the Publish window picks it up. Throws on failure.
  */
@@ -152,12 +152,12 @@ export async function renderAndSaveThumbnail(
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, avatar_url, logo_url, location_city, location_state")
+    .select("full_name, avatar_url, location_city, location_state")
     .eq("id", opts.userId)
     .single();
 
   const p = profile as {
-    full_name: string | null; avatar_url: string | null; logo_url: string | null;
+    full_name: string | null; avatar_url: string | null;
     location_city: string | null; location_state: string | null;
   } | null;
 
@@ -169,17 +169,20 @@ export async function renderAndSaveThumbnail(
   if (opts.projectId) {
     const { data: proj } = await admin
       .from("projects")
-      .select("title, seo_data, location_city, location_state, user_id")
+      .select("title, seo_data, ai_script, location_city, location_state, user_id")
       .eq("id", opts.projectId)
       .single();
-    const pr = proj as { title: string; seo_data: Record<string, unknown> | null; location_city: string | null; location_state: string | null; user_id: string } | null;
+    const pr = proj as { title: string; seo_data: Record<string, unknown> | null; ai_script: Record<string, unknown> | null; location_city: string | null; location_state: string | null; user_id: string } | null;
     if (!pr || pr.user_id !== opts.userId) {
       throw new Error("Project not found");
     }
     projectTitle = pr.title || "";
     projectSeoData = pr.seo_data;
-    projCity = pr.location_city;
-    projState = pr.location_state;
+    // Older projects stored the typed market only inside ai_script.location
+    // ("City, ST") — use it before falling back to the profile's home market.
+    const scriptLoc = ((pr.ai_script?.location as string | undefined) || "").split(",");
+    projCity = pr.location_city || scriptLoc[0]?.trim() || null;
+    projState = pr.location_state || scriptLoc[1]?.trim() || null;
   }
 
   const sourceTitle = (opts.topic || projectTitle || "").trim();
@@ -252,25 +255,6 @@ export async function renderAndSaveThumbnail(
     }
   }
 
-  // ── Fetch the logo FIRST so the badge can stack neatly above it ──
-  let logoBuffer: Buffer | null = null;
-  let logoW = 0;
-  let logoH = 0;
-  if (p?.logo_url) {
-    try {
-      const res = await fetch(p.logo_url);
-      if (res.ok) {
-        logoBuffer = await sharp(Buffer.from(await res.arrayBuffer()))
-          .resize({ width: 200, height: 100, fit: "inside" })
-          .png()
-          .toBuffer();
-        const meta = await sharp(logoBuffer).metadata();
-        logoW = meta.width || 200;
-        logoH = meta.height || 100;
-      }
-    } catch { /* thumbnail still renders without the logo */ }
-  }
-
   // ── Headline: vector outlines — thick, bold, ALL CAPS, white + vivid yellow ──
   const lines = wrapHeadline(headlineText);
   const maxTextWidth = 700; // stay clear of the photo circle on the right
@@ -293,16 +277,15 @@ export async function renderAndSaveThumbnail(
     })
     .join("\n");
 
-  // ── Market badge — bottom-left, stacked above the logo ──
+  // ── Market badge — bottom-left corner (no logo on thumbnails) ──
   const market = [city, state].filter(Boolean).join(", ").toUpperCase();
   let badgeSvg = "";
   const bottomMargin = 34;
-  const logoTop = logoBuffer ? H - logoH - bottomMargin : 0;
   if (market) {
     const badgeFontSize = 26;
     const badgeTextW = textWidth(market, badgeFontSize);
     const badgeH = 48;
-    const badgeY = logoBuffer ? logoTop - badgeH - 14 : H - badgeH - bottomMargin;
+    const badgeY = H - badgeH - bottomMargin;
     const badgeTextD = textPathData(market, 84, badgeY + 34, badgeFontSize);
     badgeSvg = `
   <rect x="60" y="${badgeY}" rx="10" width="${Math.min(560, badgeTextW + 48)}" height="${badgeH}" fill="#ffe600"/>
@@ -373,11 +356,6 @@ export async function renderAndSaveThumbnail(
         composites.push({ input: photo, left: W - pw - 40, top: H - ph });
       }
     } catch { /* thumbnail still renders without the photo */ }
-  }
-
-  // Logo — bottom-left corner
-  if (logoBuffer) {
-    composites.push({ input: logoBuffer, left: 60, top: logoTop });
   }
 
   // HD export: full-quality PNG at 1280×720

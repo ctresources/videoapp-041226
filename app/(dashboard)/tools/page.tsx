@@ -727,7 +727,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         />
         <p className="text-xs text-slate-400 mt-1">
           3–4 words max, ALL CAPS, curiosity-driven — AI avoids repeating words from your title.
-          A bright AI scene with a vivid blue sky is generated behind it, and your photo, logo, and market badge are added automatically.
+          A bright AI scene with a vivid blue sky is generated behind it, and your photo and market badge are added automatically.
         </p>
       </div>
 
