@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["fluent-ffmpeg", "@ffmpeg-installer/ffmpeg", "unpdf", "sharp"],
+    serverComponentsExternalPackages: ["fluent-ffmpeg", "@ffmpeg-installer/ffmpeg", "unpdf", "sharp", "opentype.js"],
     // Thumbnail text is drawn from this bundled font (serverless has no system
     // fonts) — make sure the file ships with every route that renders one.
     outputFileTracingIncludes: {

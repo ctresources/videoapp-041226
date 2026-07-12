@@ -4,7 +4,14 @@ import { generateThumbnailBackground } from "@/lib/api/openai-image";
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
-import opentype from "opentype.js";
+import * as opentypeNs from "opentype.js";
+
+// opentype.js is an old UMD package — depending on how the server bundle
+// resolves it, its functions land on the namespace itself or on .default.
+// The plain default import came back undefined in the deployed bundle
+// (crashing with "Cannot read properties of undefined (reading 'parse')"),
+// so resolve whichever shape is actually present.
+const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).default ?? opentypeNs);
 
 const W = 1280;
 const H = 720;
@@ -13,8 +20,8 @@ const H = 720;
 // boxes. Instead we bundle Archivo Black (OFL license) and convert every
 // string to vector <path> outlines with opentype.js — renders identically on
 // any server, no fontconfig needed.
-let _font: opentype.Font | null = null;
-function getFont(): opentype.Font {
+let _font: opentypeNs.Font | null = null;
+function getFont(): opentypeNs.Font {
   if (!_font) {
     const buf = readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
     _font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
