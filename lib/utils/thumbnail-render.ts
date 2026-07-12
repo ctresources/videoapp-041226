@@ -18,13 +18,13 @@ const W = 1280;
 const H = 720;
 
 // Vercel's Linux runtime has no system fonts, so SVG <text> renders as empty
-// boxes. Instead we bundle Archivo Black (OFL license) and convert every
-// string to vector <path> outlines with opentype.js — renders identically on
-// any server, no fontconfig needed.
+// boxes. Instead we bundle Anton (OFL license — the classic tall condensed
+// YouTube-thumbnail font) and convert every string to vector <path> outlines
+// with opentype.js — renders identically on any server, no fontconfig needed.
 let _font: opentypeNs.Font | null = null;
 function getFont(): opentypeNs.Font {
   if (!_font) {
-    const buf = readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
+    const buf = readFileSync(path.join(process.cwd(), "fonts", "Anton-Regular.ttf"));
     _font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
   }
   return _font;
@@ -99,12 +99,34 @@ function extractMarketFromText(text: string): { city: string; state: string } | 
   return best;
 }
 
-/** Wrap the 3–4 word headline into up to 2 short lines. */
-function wrapHeadline(text: string): string[] {
+/** Largest font size at which the lines fit the width and height budget. */
+function fitFontSize(lines: string[], maxWidth: number, maxBlockH: number, startSize: number): number {
+  let f = startSize;
+  const widest = () => Math.max(...lines.map((l) => textWidth(l, f)));
+  while (f > 60 && (widest() > maxWidth || lines.length * f * 1.05 > maxBlockH)) f -= 6;
+  return f;
+}
+
+/**
+ * Try every contiguous 1–3 line wrap of the (max 4 word) headline and keep
+ * whichever renders at the biggest font — short words stack for huge type.
+ */
+function bestHeadlineLayout(text: string, maxWidth: number, maxBlockH: number): { lines: string[]; fontSize: number } {
   const words = text.trim().split(/\s+/).slice(0, 4);
-  if (words.length <= 2) return [words.join(" ")];
-  const mid = Math.ceil(words.length / 2);
-  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  const n = words.length;
+  const candidates: string[][] = [[words.join(" ")]];
+  for (let i = 1; i < n; i++) candidates.push([words.slice(0, i).join(" "), words.slice(i).join(" ")]);
+  for (let i = 1; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      candidates.push([words.slice(0, i).join(" "), words.slice(i, j).join(" "), words.slice(j).join(" ")]);
+    }
+  }
+  let best: { lines: string[]; fontSize: number } = { lines: candidates[0], fontSize: 0 };
+  for (const cand of candidates) {
+    const size = fitFontSize(cand.map((l) => l.toUpperCase()), maxWidth, maxBlockH, 300);
+    if (size > best.fontSize) best = { lines: cand, fontSize: size };
+  }
+  return best;
 }
 
 /**
@@ -299,13 +321,12 @@ export async function renderAndSaveThumbnail(
   }
 
   // ── Headline: vector outlines — thick, bold, ALL CAPS, white + vivid yellow ──
-  const lines = wrapHeadline(headlineText);
-  const maxTextWidth = 700; // stay clear of the photo circle on the right
-  let fontSize = lines.length === 1 ? 150 : 128;
-  const widest = () => Math.max(...lines.map((l) => textWidth(l.toUpperCase(), fontSize)));
-  while (fontSize > 48 && widest() > maxTextWidth) fontSize -= 6;
+  // 2x type: up to 3 stacked lines, sized as large as the space allows while
+  // leaving room for the market badge at the bottom.
+  const { lines, fontSize } = bestHeadlineLayout(headlineText, 700, 460);
 
-  const lineHeight = Math.round(fontSize * 1.12);
+  const strokeW = Math.max(12, Math.round(fontSize * 0.11));
+  const lineHeight = Math.round(fontSize * 1.05);
   const textBlockH = lines.length * lineHeight;
   const textStartY = Math.round(H / 2 - textBlockH / 2 + fontSize * 0.8);
 
@@ -315,7 +336,7 @@ export async function renderAndSaveThumbnail(
     .map((l, i) => {
       const d = textPathData(l.toUpperCase(), 60, textStartY + i * lineHeight, fontSize);
       const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
-      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="16" stroke-linejoin="round"/>
+      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
 <path d="${d}" fill="${fill}"/>`;
     })
     .join("\n");
@@ -325,13 +346,16 @@ export async function renderAndSaveThumbnail(
   let badgeSvg = "";
   const bottomMargin = 34;
   if (market) {
-    const badgeFontSize = 26;
+    // 2x badge: shrink only if an unusually long market name would collide
+    // with the photo on the right.
+    let badgeFontSize = 52;
+    while (badgeFontSize > 26 && textWidth(market, badgeFontSize) > 620) badgeFontSize -= 4;
     const badgeTextW = textWidth(market, badgeFontSize);
-    const badgeH = 48;
+    const badgeH = Math.round(badgeFontSize * 1.7);
     const badgeY = H - badgeH - bottomMargin;
-    const badgeTextD = textPathData(market, 84, badgeY + 34, badgeFontSize);
+    const badgeTextD = textPathData(market, 88, badgeY + Math.round(badgeH * 0.72), badgeFontSize);
     badgeSvg = `
-  <rect x="60" y="${badgeY}" rx="10" width="${Math.min(560, badgeTextW + 48)}" height="${badgeH}" fill="#ffe600"/>
+  <rect x="60" y="${badgeY}" rx="14" width="${badgeTextW + 58}" height="${badgeH}" fill="#ffe600"/>
   <path d="${badgeTextD}" fill="#10132b"/>`;
   }
 
