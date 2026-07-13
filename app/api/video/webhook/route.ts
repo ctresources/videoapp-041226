@@ -1,9 +1,27 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
+
+/**
+ * Verifies HeyGen's HMAC-SHA256 signature over the raw request body (sent in
+ * the `Signature` header, keyed with HEYGEN_WEBHOOK_SECRET). Returns whether
+ * the request is authentic — callers decide whether to enforce.
+ * See https://docs.heygen.com/docs/write-your-endpoint-to-process-webhook-events
+ */
+function verifyHeygenSignature(rawBody: string, req: NextRequest): boolean {
+  const secret = process.env.HEYGEN_WEBHOOK_SECRET;
+  if (!secret) return false;
+  const provided = req.headers.get("signature") || req.headers.get("Signature") || "";
+  if (!provided) return false;
+  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 // Video storage + auto-thumbnail generation can each take ~1 min.
 export const maxDuration = 300;
@@ -23,7 +41,35 @@ export async function GET() {
  *              callback_id is the generated_videos row ID passed at submission time
  */
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // Read the raw body first — signature verification must run over the exact
+  // bytes HeyGen signed, before any JSON re-serialization.
+  const rawBody = await req.text();
+
+  // ── Signature verification ────────────────────────────────────────────────
+  // Rollout is staged so a misconfigured secret can't silently break video
+  // delivery: with the secret set we always CHECK and log, but only REJECT
+  // forgeries once HEYGEN_WEBHOOK_ENFORCE="true". Flip that flag after the
+  // logs confirm a real webhook passes.
+  if (process.env.HEYGEN_WEBHOOK_SECRET) {
+    const ok = verifyHeygenSignature(rawBody, req);
+    if (!ok) {
+      if (process.env.HEYGEN_WEBHOOK_ENFORCE === "true") {
+        console.warn("[webhook] Rejected: HeyGen signature invalid or missing");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+      console.warn("[webhook] Signature check FAILED (monitor mode — processing anyway). Set HEYGEN_WEBHOOK_ENFORCE=true once real webhooks pass.");
+    } else {
+      console.log("[webhook] Signature verified ✓");
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const admin = createAdminClient();
 
   const eventType: string = body.event_type || body.status || "";
