@@ -53,11 +53,21 @@ export async function POST(req: NextRequest) {
   if (process.env.HEYGEN_WEBHOOK_SECRET) {
     const ok = verifyHeygenSignature(rawBody, req);
     if (!ok) {
+      // Diagnostic: is the Signature header even present, and what shape is it?
+      // Distinguishes "HeyGen doesn't sign per-video callbacks" (header absent)
+      // from "wrong secret" (header present, both 64-char hex, values differ).
+      const provided = req.headers.get("signature") || req.headers.get("Signature") || "";
+      const expected = createHmac("sha256", process.env.HEYGEN_WEBHOOK_SECRET).update(rawBody, "utf8").digest("hex");
+      const headerNames = Array.from(req.headers.keys()).join(", ");
+      console.warn(
+        `[webhook] SIG DIAG — provided(len=${provided.length}, head='${provided.slice(0, 12)}') ` +
+        `expected(len=${expected.length}, head='${expected.slice(0, 12)}') allHeaders=[${headerNames}]`,
+      );
       if (process.env.HEYGEN_WEBHOOK_ENFORCE === "true") {
         console.warn("[webhook] Rejected: HeyGen signature invalid or missing");
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
       }
-      console.warn("[webhook] Signature check FAILED (monitor mode — processing anyway). Set HEYGEN_WEBHOOK_ENFORCE=true once real webhooks pass.");
+      console.warn("[webhook] Signature check FAILED (monitor mode — processing anyway).");
     } else {
       console.log("[webhook] Signature verified ✓");
     }
