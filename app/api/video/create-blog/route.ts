@@ -329,8 +329,9 @@ ${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is atta
 =====================================
 PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
 =====================================
-- Maximum ${params.isLongForm ? "40 scenes total — vary visuals every 20–30 seconds to hold attention across the full runtime" : "10 scenes total — keep the video tight, on-script, and on-time"}
-- Video length = exactly the time it takes to speak the narration script at a natural pace. No padding, no filler.
+- Maximum ${params.isLongForm ? "40 scenes total — vary visuals every 20–30 seconds to hold attention across the full runtime" : "10 scenes — but the video must run as long as it takes to speak EVERY word of the narration script below, start to finish"}
+- CRITICAL DURATION RULE: the spoken voiceover must include 100% of the narration script, word for word, from the first word to the last. Do NOT summarize, paraphrase, shorten, trim, speed-read, or cut the script to fit a shorter runtime. The video ends only after the FINAL word of the script has been spoken at a natural, unhurried pace (~145 words per minute). A video that ends before the script is fully spoken is WRONG.
+- Do NOT add padding, filler, or silent gaps — but never sacrifice any script words to keep it short.
 - Do NOT add intro music, countdown, or a separate silent title scene before the narration
 - The narration begins IMMEDIATELY on the first frame — the SCENE 1 title card above is the opening of scene 1, NOT a silent intro held before speaking
 - The FINAL SCENE contact card above must be the last scene rendered, after the narration ends
@@ -346,7 +347,7 @@ AGENT + MARKET DETAILS
 =====================================
 NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
 =====================================
-Speak ONLY the script below, start to finish, exactly once. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
+Speak EVERY WORD of the script below, start to finish, exactly once — do not stop early, do not summarize, do not skip sentences. The voiceover is complete ONLY when the last word below has been spoken. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
 
 ${params.script}
 ${params.pdfContent ? `
@@ -488,6 +489,11 @@ export async function POST(req: NextRequest) {
     Math.max(50, maxScriptWords - ctaWordCount),
   );
   const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
+
+  // Log the delivered script length so a short render can be diagnosed as
+  // "script was short" vs "HeyGen under-delivered the full script".
+  const scriptWordCount = safeScript.trim().split(/\s+/).filter(Boolean).length;
+  console.log(`[create-blog] script sent: ${scriptWordCount} words (~${Math.round(scriptWordCount / 145 * 60)}s at 145wpm), videoType=${videoType}`);
 
   const title =
     videoType === "youtube_16x9"
