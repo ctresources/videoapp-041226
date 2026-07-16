@@ -135,29 +135,29 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Long-form AI videos (8–15 min) — pay-as-you-go, 6 credits", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month (up to 2 min each)", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "Long-form AI videos (8–10 min, mid-roll ad ready) — add credits anytime", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
   },
   {
     name: "Agent",
-    price: "$89",
+    price: "$189",
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["8 AI videos/month", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Long-form AI videos (8–15 min) — pay-as-you-go, 6 credits", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 long-form AI videos/month (8–10 min, mid-roll ad ready)", "Plus 4 short AI videos/month (up to 2 min each)", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
   },
   {
     name: "Pro",
-    price: "$119",
+    price: "$299",
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["12 AI videos/month", "Long-form AI videos (8–15 min, mid-roll ad ready) included — 6 credits each", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Up to 2 min per AI video/reel", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["8 long-form AI videos/month (8–10 min, mid-roll ad ready)", "Plus 4 short AI videos/month (up to 2 min each)", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "YouTube (16:9) & Reel (9:16) formats", "MLS listing auto-video", "Priority rendering", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -551,7 +551,7 @@ export default function LandingPage() {
                 </div>
                 <div className="border border-blue-900 px-4 py-2 bg-blue-50">
                   <span className="font-black text-blue-900">$39</span>
-                  <span className="text-slate-600 text-xs"> · Long-Form pack — 6 credits, one 8–15 min video</span>
+                  <span className="text-slate-600 text-xs"> · Long-Form pack — 6 credits, one 8–10 min video</span>
                 </div>
               </div>
             </div>

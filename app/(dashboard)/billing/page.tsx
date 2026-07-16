@@ -10,21 +10,23 @@ import {
   AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video,
 } from "lucide-react";
 
+// `videos` is a monthly CREDIT budget — a short video costs 1 credit, a
+// long-form (8–10 min) video costs 6. See lib/stripe.ts for the breakdown.
 const PLANS = [
   {
     key: "starter",
     name: "Starter",
     price: 59,
     videos: 4,
+    blurb: "4 short videos",
     highlighted: false,
     features: [
-      "4 AI videos/month",
+      "4 short AI videos/month (up to 2 min each)",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
-      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
-      "Long-form AI videos (8–15 min, mid-roll ad ready) — pay-as-you-go, 6 credits",
+      "Long-form AI videos (8–10 min, mid-roll ad ready) — add credits anytime",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -32,17 +34,17 @@ const PLANS = [
   {
     key: "agent",
     name: "Agent",
-    price: 89,
-    videos: 8,
+    price: 189,
+    videos: 28,
+    blurb: "4 long-form + 4 short videos",
     highlighted: true,
     features: [
-      "8 AI videos/month",
+      "4 long-form AI videos/month (8–10 min, mid-roll ad ready)",
+      "Plus 4 short AI videos/month (up to 2 min each)",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
-      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
-      "Long-form AI videos (8–15 min, mid-roll ad ready) — pay-as-you-go, 6 credits",
       "MLS listing auto-video",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
@@ -51,15 +53,15 @@ const PLANS = [
   {
     key: "pro",
     name: "Pro",
-    price: 119,
-    videos: 12,
+    price: 299,
+    videos: 52,
+    blurb: "8 long-form + 4 short videos",
     highlighted: false,
     features: [
-      "12 AI videos/month",
-      "Long-form AI videos (8–15 min, mid-roll ad ready) included — 6 credits each",
+      "8 long-form AI videos/month (8–10 min, mid-roll ad ready)",
+      "Plus 4 short AI videos/month (up to 2 min each)",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
-      "Up to 2 min per AI video/reel",
       "Voice recording + AI script",
       "YouTube (16:9) & Reel (9:16) formats",
       "MLS listing auto-video",
@@ -196,7 +198,7 @@ export default async function BillingPage({
               {currentTier === "beta" ? (
                 <p className="text-sm text-slate-500">Beta access · {profile?.credits_remaining ?? 0} AI video{(profile?.credits_remaining ?? 0) !== 1 ? "s" : ""} remaining · Unlimited camera recordings</p>
               ) : currentPlan ? (
-                <p className="text-sm text-slate-500">${currentPlan.price}/month · {currentPlan.videos} AI videos/month · Unlimited camera recordings</p>
+                <p className="text-sm text-slate-500">${currentPlan.price}/month · {currentPlan.blurb} · Unlimited camera recordings</p>
               ) : null}
               {periodEnd && currentTier !== "beta" && (
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -226,7 +228,7 @@ export default async function BillingPage({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Zap size={11} className="text-primary-500" /> AI Videos This Month
+                  <Zap size={11} className="text-primary-500" /> AI Credits This Month
                 </p>
                 <p className="text-xs font-bold text-brand-text">
                   {profile?.credits_remaining ?? 0} Of {currentPlan?.videos ?? 1} Left
@@ -406,7 +408,7 @@ export default async function BillingPage({
               <span className="text-3xl font-black text-brand-text">$39</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">6 credits ($6.50 each) — one long-form AI video (8–15 min, mid-roll ad ready), on any plan.</p>
+            <p className="text-xs text-slate-500">6 credits ($6.50 each) — one long-form AI video (8–10 min, mid-roll ad ready), on any plan.</p>
             <a href="/api/stripe/credits?pack=6">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy Long-Form Pack <ArrowRight size={12} />

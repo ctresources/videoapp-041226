@@ -106,7 +106,7 @@ type VideoChoice = VideoType | "youtube_long";
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
   { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min · 1 credit", credits: 1 },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min · 1 credit", credits: 1 },
-  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–15 min · unlocks mid-roll ads · 6 credits", proOnly: true, credits: 6 },
+  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–10 min · unlocks mid-roll ads · 6 credits", proOnly: true, credits: 6 },
 ];
 
 export default function ProjectEditorPage() {
@@ -121,7 +121,7 @@ export default function ProjectEditorPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
-  const [isProPlan, setIsProPlan] = useState(false);
+  const [longFormIncluded, setLongFormIncluded] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
   const [renderMode, setRenderMode] = useState<"agent" | "direct" | null>(null);
@@ -348,7 +348,11 @@ export default function ProjectEditorPage() {
     if (data) {
       setContactInfo(data as typeof contactInfo);
       const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
-      setIsProPlan(p.subscription_tier === "pro" || p.role === "admin");
+      // Agent (4/mo) and Pro (8/mo) both include long-form in their credits;
+      // Starter buys it with add-on credit packs.
+      setLongFormIncluded(
+        p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
+      );
       setCreditsLeft(typeof p.credits_remaining === "number" ? p.credits_remaining : null);
     }
   }
@@ -952,7 +956,7 @@ export default function ProjectEditorPage() {
                     {label}
                     {proOnly && (
                       <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                        {isProPlan ? "Included In Pro" : "Pro · Pay As You Go"}
+                        {longFormIncluded ? "Included In Your Plan" : "Add Credits"}
                       </span>
                     )}
                   </p>
@@ -960,7 +964,7 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
-            {selectedVideoType === "youtube_long" && !isProPlan && (
+            {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
                   Long-form uses <strong>6 credits</strong>
@@ -1400,7 +1404,7 @@ export default function ProjectEditorPage() {
                     {label}
                     {proOnly && (
                       <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                        {isProPlan ? "Included In Pro" : "Pro · Pay As You Go"}
+                        {longFormIncluded ? "Included In Your Plan" : "Add Credits"}
                       </span>
                     )}
                   </p>
@@ -1408,7 +1412,7 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
-            {selectedVideoType === "youtube_long" && !isProPlan && (
+            {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
                   Long-form uses <strong>6 credits</strong>

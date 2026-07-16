@@ -19,11 +19,14 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 300;
 
 const MAX_SCRIPT_WORDS = 500;
-// ~15 min at a natural ~145 wpm speaking pace — matches the long-form cap.
-const MAX_LONG_FORM_SCRIPT_WORDS = 2200;
+// ~10 min at a natural ~145 wpm speaking pace — matches the long-form cap.
+// Capped at 10 (not 15) minutes: HeyGen's Video Agent bills $0.0333/sec, so a
+// 15-min render costs ~$30 vs ~$20 at 10 min, and 8+ min still qualifies for
+// YouTube mid-roll ads — the whole point of long-form for our users.
+const MAX_LONG_FORM_SCRIPT_WORDS = 1450;
 
-// Long-form AI videos (up to 15 min) cost more credits because HeyGen bills
-// per rendered minute — a 15-min render costs ~7× a standard 2-min video.
+// Long-form AI videos (8–10 min) cost more credits because HeyGen bills per
+// rendered minute — a 10-min render costs ~5× a standard 2-min video.
 const LONG_FORM_CREDIT_COST = 6;
 
 function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
@@ -439,7 +442,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
-  // Long-form (up to 15 min) is landscape-only and Pro-plan-only; costs more credits.
+  // Long-form (8–10 min) is landscape-only and Pro-plan-only; costs more credits.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
   // Direct Video API (single talking-head) instead of the default Video Agent,

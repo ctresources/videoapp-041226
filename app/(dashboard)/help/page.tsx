@@ -154,7 +154,7 @@ export default function HelpPage() {
             </Step>
             <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: YouTube/Blog (16:9, ~2 min · 1 credit), Reel (9:16, ~1 min · 1 credit),
-              or <strong>Long-Form YouTube</strong> (8–15 min, unlocks mid-roll ads · 6 credits — included with Pro
+              or <strong>Long-Form YouTube</strong> (8–10 min, unlocks mid-roll ads · 6 credits — included with Pro
               or via the $39 Long-Form pack). Pick a <strong>style</strong> (Voice Only or Avatar + Voice), choose
               your avatar look, optionally attach photos or documents as b-roll, and hit <strong>Generate</strong>.
               Rendering takes a few minutes — watch it in My Videos. If a render ever fails, your credits are
