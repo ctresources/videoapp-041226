@@ -143,14 +143,19 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function addChannelCta() {
-    const cta = resolveCta(ctaProfile?.default_cta, {
+  /** Resolves the user's default CTA against this video's market + profile. */
+  function buildChannelCta(): string {
+    return resolveCta(ctaProfile?.default_cta, {
       city: city || ctaProfile?.location_city,
       state: state || ctaProfile?.location_state,
       name: ctaProfile?.full_name,
       company: ctaProfile?.company_name,
       years: ctaProfile?.market_years,
     });
+  }
+
+  function addChannelCta() {
+    const cta = buildChannelCta();
     setScript((s) => (s.trim() ? `${s.trimEnd()}\n\n${cta}` : cta));
     toast.success("Channel CTA added to the end of your script!");
   }
@@ -416,10 +421,14 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
-      setScript(data.script);
+      // Append the user's default CTA so the teleprompter always closes with
+      // it — they'd otherwise have to remember the Add Channel CTA button.
+      const cta = buildChannelCta();
+      const generated = (data.script as string) || "";
+      setScript(cta.trim() ? `${generated.trimEnd()}\n\n${cta}` : generated);
       setShowSpark(false);
       setSparkTopic("");
-      toast.success("Script ready!");
+      toast.success("Script ready — your channel CTA is at the end!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -697,7 +706,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             ref={teleRef}
             className="shrink-0 h-40 sm:h-44 bg-black/85 backdrop-blur-sm px-5 py-4 overflow-hidden select-none border-b border-white/10"
           >
-            <p className="text-white text-xl sm:text-2xl leading-9 font-semibold whitespace-pre-wrap text-center">
+            {/* Narrow centered column keeps the reader's eyes near the lens
+                instead of sweeping across the full screen width */}
+            <p className="max-w-md mx-auto text-white text-xl sm:text-2xl leading-9 font-semibold whitespace-pre-wrap text-center">
               {/* Words carry data-w indices so Flow mode can scroll to and highlight the reader's position */}
               {(() => {
                 let w = 0;

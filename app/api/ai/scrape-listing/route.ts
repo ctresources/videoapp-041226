@@ -31,14 +31,35 @@ async function fetchWithJina(url: string): Promise<string> {
     signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error(`Jina fetch failed: ${res.status}`);
-  return res.text();
+  const text = await res.text();
+
+  // Zillow and friends aggressively block scrapers. A blocked/CAPTCHA page
+  // still returns 200, and feeding that to the parser produces a fully
+  // invented listing — so treat it as a hard failure and let the caller tell
+  // the user to enter details manually.
+  const blocked = /captcha|are you a human|verify you are|access denied|unusual traffic|press & hold|enable javascript/i.test(
+    text.slice(0, 4000),
+  );
+  if (blocked || text.trim().length < 500) {
+    console.warn(`[scrape-listing] Blocked or empty page (${text.trim().length} chars, blocked=${blocked})`);
+    throw new Error("BLOCKED");
+  }
+  return text;
 }
 
 async function parseListingWithPerplexity(markdown: string): Promise<ListingData> {
-  // Truncate to avoid token limits
-  const truncated = markdown.slice(0, 8000);
+  // Listing pages are large and the beds/baths/sqft facts often sit well past
+  // the first few thousand characters — truncating at 8k hid them and the
+  // model filled the gaps with invented values.
+  const truncated = markdown.slice(0, 30000);
 
-  const prompt = `Extract real estate listing details from this page content and return ONLY a valid JSON object.
+  const prompt = `You are extracting facts from ONE specific real estate listing page. Return ONLY a valid JSON object.
+
+CRITICAL ACCURACY RULES — these override everything else:
+- Use ONLY the PAGE CONTENT below. Do NOT use web search, prior knowledge, or any other listing.
+- Every value must appear VERBATIM in the page content. Do NOT infer, estimate, guess, or "fill in" typical values.
+- If a value does not clearly appear in the content, return null (or "" for string fields). null is ALWAYS better than a wrong number.
+- Beds, baths, and square footage must be copied exactly as written on this page. Never approximate them.
 
 PAGE CONTENT:
 ${truncated}
@@ -73,9 +94,20 @@ Return ONLY the JSON object. No markdown, no explanation.`;
     },
     body: JSON.stringify({
       model: "sonar",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a strict data-extraction tool. You only copy values that literally appear in the user-provided page content. You never search the web, never use outside knowledge, and never guess. Missing data is returned as null. Output raw JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
+      // Deterministic extraction — no creative gap-filling.
+      temperature: 0,
       max_tokens: 800,
+      // Keep the model from pulling facts off the live web instead of the page.
+      search_domain_filter: [],
+      return_related_questions: false,
     }),
   });
 
@@ -87,7 +119,32 @@ Return ONLY the JSON object. No markdown, no explanation.`;
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in Perplexity response");
 
-  return JSON.parse(jsonMatch[0]) as ListingData;
+  const parsed = JSON.parse(jsonMatch[0]) as ListingData;
+
+  // ── Anti-hallucination cross-check ──────────────────────────────────────
+  // Every numeric fact must actually appear in the source page. If the model
+  // produced a number that isn't in the content, it invented it — null it out
+  // so the user is prompted to fill it in rather than shipping a wrong figure
+  // into a published video.
+  const haystack = markdown.replace(/,/g, "");
+  const appearsInPage = (n: number | null): boolean => {
+    if (n === null || n === undefined) return false;
+    // Match the number as a standalone token (handles 2400 / 2,400 / 2400.0)
+    return new RegExp(`\\b${String(n).replace(/\./g, "\\.")}\\b`).test(haystack);
+  };
+  for (const field of ["beds", "baths", "sqft", "yearBuilt"] as const) {
+    const value = parsed[field];
+    if (value !== null && value !== undefined && !appearsInPage(value)) {
+      console.warn(`[scrape-listing] Dropped hallucinated ${field}=${value} — not present in page content`);
+      parsed[field] = null;
+    }
+  }
+
+  console.log(
+    `[scrape-listing] parsed: beds=${parsed.beds} baths=${parsed.baths} sqft=${parsed.sqft} year=${parsed.yearBuilt} price=${parsed.price} (source ${markdown.length} chars)`,
+  );
+
+  return parsed;
 }
 
 export async function POST(req: NextRequest) {
@@ -123,8 +180,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ listing });
   } catch (err) {
     console.error("Scrape listing error:", err);
+    const blocked = err instanceof Error && err.message === "BLOCKED";
     return NextResponse.json(
-      { error: "Could not parse listing. Try entering details manually." },
+      {
+        error: blocked
+          ? "This site blocked the import (Zillow does this often). Please enter the listing details manually — it only takes a minute."
+          : "Could not parse listing. Try entering details manually.",
+      },
       { status: 422 }
     );
   }
