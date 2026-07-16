@@ -272,7 +272,15 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         (t) => MediaRecorder.isTypeSupported(t),
       ) || "";
 
-    const recorder = new MediaRecorder(sourceStream, mimeType ? { mimeType } : {});
+    // Cap the bitrate — the browser default (often 5–8 Mbps at 1080p) produced
+    // 500 MB+ files for long recordings, which storage rejected outright and
+    // the upload silently failed. ~2.5 Mbps stays visually clean for talking
+    // head footage while keeping a 15-min take near ~280 MB.
+    const recorder = new MediaRecorder(sourceStream, {
+      ...(mimeType ? { mimeType } : {}),
+      videoBitsPerSecond: 2_500_000,
+      audioBitsPerSecond: 128_000,
+    });
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };

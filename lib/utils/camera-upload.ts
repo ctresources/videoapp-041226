@@ -26,7 +26,20 @@ export async function uploadCameraRecording(
     .uploadToSignedUrl(urlData.path, urlData.token, blob, {
       contentType: blob.type || (ext === "mp4" ? "video/mp4" : "video/webm"),
     });
-  if (uploadError) throw new Error(uploadError.message || "Upload failed");
+  if (uploadError) {
+    // The upload happens browser→storage directly, so a failure here never
+    // reaches our server logs — the recording just silently never appeared in
+    // My Videos. Surface the real reason, especially the size limit.
+    const raw = uploadError.message || "";
+    const sizeMb = Math.round(blob.size / 1024 / 1024);
+    console.error(`[camera-upload] Upload failed (${sizeMb} MB):`, raw);
+    if (/maximum allowed size|too large|payload/i.test(raw)) {
+      throw new Error(
+        `Your recording is ${sizeMb} MB, which exceeds the storage upload limit. Record a shorter take, or raise the file size limit in Supabase → Storage → Settings.`,
+      );
+    }
+    throw new Error(raw || "Upload failed");
+  }
 
   const res = await fetch("/api/video/save-camera-recording", {
     method: "POST",
