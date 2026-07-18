@@ -3,15 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoAgent,
-  generateVideo,
-  uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   getAvatarLooks,
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
-import { generateSpeech } from "@/lib/api/elevenlabs";
 
 export const maxDuration = 60;
 
@@ -329,60 +326,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── ElevenLabs TTS path: user has a cloned voice ──────────────────────────
-    if (p.voice_clone_id) {
-      console.log(`[rerender] EL voice path — voice ${p.voice_clone_id}`);
-      const elAudioBuffer = await generateSpeech(safeScript, p.voice_clone_id);
-      const audioAssetId = await uploadAudioAsset(elAudioBuffer);
-
-      const { data: newVideo, error: insertErr } = await admin
-        .from("generated_videos")
-        .insert({
-          project_id: video.project_id,
-          user_id: user.id,
-          video_type: edits.format,
-          render_provider: "heygen_v2",
-          render_status: "rendering",
-          metadata: { dimension, orientation, city, state, title: edits.title },
-        })
-        .select()
-        .single();
-
-      if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
-      placeholderVideoId = newVideo.id;
-
-      const videoId = await generateVideo({
-        scenes: [{ scriptText: safeScript, audioAssetId }],
-        talkingPhotoId: avatarId,
-        photoPosition: "bottom-right",
-        dimension,
-        title: edits.title,
-        callbackUrl,
-        callbackId: newVideo.id,
-      });
-
-      await admin
-        .from("generated_videos")
-        // credit_cost enables an automatic refund if the render later fails
-        .update({ render_job_id: videoId, metadata: { ...(newVideo.metadata ?? {}), credit_cost: 1 } })
-        .eq("id", newVideo.id);
-
-      await admin.from("profiles").update({ credits_remaining: p.credits_remaining - 1 }).eq("id", user.id);
-      await admin.from("api_usage_log").insert({
-        user_id: user.id,
-        api_provider: "heygen",
-        endpoint: "video-v2-el-tts-rerender",
-        credits_used: 1,
-        response_status: 202,
-      });
-
-      console.log(`[rerender] v2 video ${videoId} submitted with EL audio (avatar: ${avatarId})`);
-      return NextResponse.json({
-        video: { ...newVideo, render_job_id: videoId, render_status: "rendering" },
-      });
-    }
-
-    // ── Video Agent path: no EL voice → use HeyGen voice ID ──────────────────
+    // ── Video Agent path (v3): render with the user's cloned HeyGen voice ──────
     let voiceId = edits.voiceId || p.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);

@@ -781,32 +781,21 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
     form.append("name", "My Voice");
 
     try {
-      // Primary: ElevenLabs voice clone — saves voice_clone_id to profile
-      const elRes = await fetch("/api/profile/voice-clone", { method: "POST", body: form });
-      const elText = await elRes.text();
-      let elData: { voice_id?: string; error?: string } = {};
-      try { elData = JSON.parse(elText); } catch {
-        throw new Error(elRes.ok ? "Unexpected server response." : `Server error ${elRes.status}`);
+      // Clone the user's voice with HeyGen (POST /v3/voices/clone). This is the
+      // single source of truth — the returned voice_id drives every AI video.
+      const res = await fetch("/api/profile/heygen-voice", { method: "POST", body: form });
+      const text = await res.text();
+      let data: { voice_id?: string; error?: string } = {};
+      try { data = JSON.parse(text); } catch {
+        throw new Error(res.ok ? "Unexpected server response." : `Server error ${res.status}`);
       }
-      if (!elRes.ok) throw new Error(elData.error || "Voice clone failed");
-      if (!elData.voice_id) throw new Error("No voice ID returned from server.");
+      if (!res.ok) throw new Error(data.error || "Voice clone failed");
+      if (!data.voice_id) throw new Error("No voice ID returned from server.");
 
-      // Secondary: HeyGen voice clone — best-effort, used as fallback
-      const heygenForm = new FormData();
-      heygenForm.append("audio", audioBlob, filename);
-      heygenForm.append("name", "My Voice");
-      let heygenId: string | null = null;
-      try {
-        const heyRes = await fetch("/api/profile/heygen-voice", { method: "POST", body: heygenForm });
-        if (heyRes.ok) {
-          const heyData = await heyRes.json() as { voice_id?: string };
-          heygenId = heyData.voice_id ?? null;
-        }
-      } catch { /* HeyGen voice is optional */ }
-
-      setVoiceId(elData.voice_id);
-      setHeygenVoiceId(heygenId);
-      onUpdate(elData.voice_id, heygenId);
+      setHeygenVoiceId(data.voice_id);
+      setVoiceId(null);
+      // Second arg is the HeyGen voice id; first (legacy ElevenLabs) is now always null.
+      onUpdate(null, data.voice_id);
       setRecState("idle");
       setRecBlob(null);
       setRecUrl(null);
@@ -831,7 +820,9 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
     setVoiceId(null);
     setHeygenVoiceId(null);
     onUpdate(null, null);
-    // Remove from both providers best-effort
+    // Clear the HeyGen voice (primary). Also best-effort clean up any legacy
+    // ElevenLabs clone left over from before the migration.
+    fetch("/api/profile/heygen-voice", { method: "DELETE" }).catch(() => {});
     if (elVoiceId) {
       fetch("/api/profile/voice-clone", {
         method: "DELETE",
@@ -839,12 +830,11 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
         body: JSON.stringify({ voice_id: elVoiceId }),
       }).catch(() => {});
     }
-    fetch("/api/profile/heygen-voice", { method: "DELETE" }).catch(() => {});
     toast.success("Voice clone removed");
   }
 
   // ── Active voice clone ────────────────────────────────────────────────────
-  if (voiceId) {
+  if (heygenVoiceId) {
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">

@@ -1,22 +1,21 @@
 /**
- * HeyGen API integration — v3 primary, v2 legacy fallback.
+ * HeyGen API integration — v3 throughout.
  *
  * Primary pipeline (v3 Video Agent):
- *   1. Upload user photo → talking_photo_id via POST /v2/photo_avatar/avatar_group/create
- *   2. Upload assets via POST /v3/assets
- *   3. Submit Video Agent job via POST /v3/video-agents → session_id
- *   4. Two-step poll: GET /v3/video-agents/{session_id} → video_id → GET /v3/videos/{video_id}
+ *   1. Create photo avatar → group_id via POST /v3/avatars (type "photo")
+ *   2. Clone the user's voice via POST /v3/voices/clone
+ *   3. Upload assets via POST /v3/assets
+ *   4. Submit Video Agent job via POST /v3/video-agents → session_id
+ *   5. Two-step poll: GET /v3/video-agents/{session_id} → video_id → GET /v3/videos/{video_id}
  *
- * v2 legacy functions (generateVideo, generateVideoWithAudio) remain for rerenders
- * until a v3 equivalent of the multi-scene Studio API is available (flagged for
- * deprecation by October 31, 2026).
+ * The only remaining v2 call is deleteAvatarLook (DELETE /v2/photo_avatar/{id}) —
+ * HeyGen exposes no v3 delete-avatar endpoint yet. v2 is supported until Oct 31, 2026.
  *
  * Users never interact with HeyGen directly — everything goes through our app.
  * All generated content is Fair Housing compliant.
  */
 
 const HEYGEN_API = "https://api.heygen.com";
-const HEYGEN_UPLOAD_API = "https://upload.heygen.com";
 
 function getApiKey(): string {
   const key = process.env.HEYGEN_API_KEY;
@@ -46,43 +45,6 @@ export const DIMENSIONS: Record<VideoType, { width: number; height: number }> = 
   short_1x1:    { width: 1080, height: 1080 },
 };
 
-export interface TextElement {
-  type: "text";
-  text: string;
-  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center" | "top-center" | "bottom-center";
-  style?: {
-    fontFamily?: string;
-    fontSize?: number;
-    fontColor?: string;
-    backgroundColor?: string;
-    bold?: boolean;
-  };
-}
-
-export interface SceneInput {
-  scriptText: string;
-  /** Per-scene pre-uploaded audio asset — required for cloned voices. */
-  audioAssetId?: string;
-  /** HeyGen-hosted video asset ID — preferred over url. */
-  backgroundVideoAssetId?: string;
-  backgroundVideoUrl?: string;
-  backgroundImageUrl?: string;
-  backgroundColor?: string;
-  /** Text overlays rendered on top of the scene (hook caption, contact info, etc.) */
-  elements?: TextElement[];
-}
-
-export interface GenerateVideoParams {
-  scenes: SceneInput[];
-  talkingPhotoId: string;
-  voiceId?: string;
-  dimension: { width: number; height: number };
-  title?: string;
-  callbackUrl?: string;
-  callbackId?: string;
-  /** Position the talking photo: "bottom-left" (default) or "bottom-right" */
-  photoPosition?: "bottom-left" | "bottom-right";
-}
 
 export interface VideoStatus {
   status: "pending" | "waiting" | "processing" | "completed" | "failed";
@@ -96,94 +58,47 @@ export interface VideoStatus {
 // ─── 1. Upload Talking Photo (one-time, from settings) ───────────────────────
 
 /**
- * Upload a user's headshot photo to HeyGen to create a talking photo avatar.
- * Uses the v2 two-step flow:
- *   Step 1: Upload image as asset → get image_key
- *   Step 2: Create photo avatar group → get group_id (used as talking_photo_id)
+ * Create a photo avatar for the user's headshot via POST /v3/avatars (type "photo").
+ * Passes the Supabase public image URL directly — no intermediate asset upload.
+ * Omitting avatar_group_id creates a new group; we return its group_id, which is
+ * stored in the user's profile as heygen_photo_id and later resolved to a look
+ * via getAvatarLooks().
  *
- * Returns the group_id which is stored in the user's profile as heygen_photo_id.
+ * The new look trains asynchronously (status "processing"); the group_id is
+ * usable immediately for look resolution.
  */
-export async function uploadTalkingPhoto(
-  imageBuffer: Buffer,
-  contentType = "image/jpeg",
-): Promise<string> {
+export async function uploadTalkingPhoto(imageUrl: string): Promise<string> {
   const apiKey = getApiKey();
 
-  // HeyGen's Video Agent renders the avatar in the photo's registered aspect
-  // ratio. Portrait headshots produce portrait-pillarboxed output even when
-  // orientation:"landscape" is sent. Square-cropping neutralises the bias so
-  // the Video Agent is more likely to respect the requested orientation rather
-  // than inheriting a strong portrait or landscape bias from the source image.
-  // sharp's package.json "exports" map has no "types" condition, so bundler
-  // module resolution can't see its bundled .d.ts via this dynamic import.
-  // Whether this actually errors varies by environment/cache state, so use
-  // ts-ignore (always suppresses) rather than ts-expect-error (errors itself
-  // if there's nothing to suppress).
-  // @ts-ignore -- types unresolvable, runtime import is fine
-  const sharp = (await import("sharp")).default;
-  const squareBuffer = await sharp(imageBuffer)
-    .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
-    .jpeg({ quality: 92 })
-    .toBuffer();
-  imageBuffer = squareBuffer;
-  contentType = "image/jpeg";
+  console.log(`[heygen] Creating photo avatar from ${imageUrl.slice(0, 80)}...`);
 
-  console.log(`[heygen] Step 1: Uploading image asset (${(imageBuffer.length / 1024).toFixed(0)} KB)...`);
-
-  // ── Step 1: Upload image to HeyGen's asset host ──────────────────────────────
-  // The asset upload service lives on upload.heygen.com (NOT api.heygen.com) and
-  // takes a raw binary body with the image Content-Type. It returns an image_key
-  // that the v2 photo-avatar group create call references.
-  const uploadRes = await fetch(`${HEYGEN_UPLOAD_API}/v1/asset`, {
+  const res = await fetch(`${HEYGEN_API}/v3/avatars`, {
     method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "Content-Type": contentType,
-    },
-    body: new Uint8Array(imageBuffer),
-  });
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text().catch(() => "unknown");
-    throw new Error(`HeyGen photo upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
-  }
-
-  const uploadData = await uploadRes.json();
-  console.log("[heygen] Photo upload response:", JSON.stringify(uploadData).slice(0, 300));
-
-  const imageKey = uploadData.data?.image_key;
-  if (!imageKey) {
-    throw new Error(`HeyGen returned no image_key. Response: ${JSON.stringify(uploadData).slice(0, 200)}`);
-  }
-
-  console.log(`[heygen] Image asset uploaded, image_key: ${imageKey}`);
-
-  // ── Step 2: Create photo avatar group ──────────────────────────────────────
-  console.log("[heygen] Step 2: Creating photo avatar group...");
-
-  const groupRes = await fetch(`${HEYGEN_API}/v2/photo_avatar/avatar_group/create`, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "Content-Type": "application/json",
-    },
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
+      type: "photo",
       name: `Avatar ${Date.now()}`,
-      image_key: imageKey,
+      file: { type: "url", url: imageUrl },
     }),
   });
 
-  if (!groupRes.ok) {
-    const err = await groupRes.text().catch(() => "unknown");
-    throw new Error(`HeyGen avatar group creation failed (${groupRes.status}): ${err.slice(0, 300)}`);
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen photo avatar creation failed (${res.status}): ${err.slice(0, 300)}`);
   }
 
-  const groupData = await groupRes.json();
-  console.log("[heygen] Avatar group response:", JSON.stringify(groupData).slice(0, 300));
+  const data = await res.json();
+  console.log("[heygen] Photo avatar response:", JSON.stringify(data).slice(0, 300));
 
-  const groupId = groupData.data?.group_id || groupData.data?.id;
+  const item = data.data?.avatar_item;
+  // group_id may be named differently across API versions; try all known locations
+  const groupId =
+    item?.avatar_group_id ||
+    item?.group_id ||
+    data.data?.avatar_group_id ||
+    data.data?.group_id;
   if (!groupId) {
-    throw new Error(`HeyGen returned no group_id. Response: ${JSON.stringify(groupData).slice(0, 200)}`);
+    throw new Error(`HeyGen returned no group_id for photo avatar. Response: ${JSON.stringify(data).slice(0, 200)}`);
   }
 
   console.log(`[heygen] Talking photo avatar created: ${groupId}`);
@@ -257,231 +172,7 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
   return id;
 }
 
-// ─── 2b. Upload Audio Asset (voice track for scenes) ────────────────────────
-
-/**
- * Upload an MP3 audio file to HeyGen as an asset (v3 endpoint).
- * Used by legacy v2 multi-scene generation for per-scene voice tracks.
- */
-export async function uploadAudioAsset(audioBuffer: Buffer): Promise<string> {
-  console.log(`[heygen] Uploading audio asset (${(audioBuffer.length / 1024).toFixed(0)} KB)...`);
-
-  const form = new FormData();
-  form.append("file", new Blob([new Uint8Array(audioBuffer)], { type: "audio/mpeg" }), "audio.mp3");
-
-  const res = await fetch(`${HEYGEN_API}/v3/assets`, {
-    method: "POST",
-    headers: { "x-api-key": getApiKey() },
-    body: form,
-  });
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => "unknown");
-    throw new Error(`HeyGen audio upload failed (${res.status}): ${err.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const id = data.data?.asset_id || data.data?.id;
-  if (!id) throw new Error("HeyGen returned no asset id");
-
-  console.log(`[heygen] Audio asset uploaded: ${id}`);
-  return id;
-}
-
-// ─── 3. Generate Multi-Scene Video (primary method) ──────────────────────────
-
-/**
- * Generate a multi-scene video using HeyGen's Studio API.
- *
- * Each scene gets:
- *   - Talking photo avatar (circular PiP overlay)
- *   - Voice: either a pre-uploaded audio asset (preferred) or ElevenLabs voice_id
- *   - Background video (Pixabay b-roll) or solid color
- *
- * NOTE: HeyGen cannot access privately-cloned ElevenLabs voices. Always pass
- * `audioAssetId` (pre-generated and uploaded) rather than `voiceId`.
- *
- * Returns the HeyGen video_id for polling.
- */
-export async function generateVideo(params: GenerateVideoParams): Promise<string> {
-  const hasPerSceneAudio = params.scenes.every((s) => s.audioAssetId);
-  if (!hasPerSceneAudio && !params.voiceId) {
-    throw new Error("generateVideo requires either per-scene audioAssetId or a voiceId");
-  }
-
-  const videoInputs = params.scenes.map((scene) => {
-    // Background: hosted video asset > external video url > image > color
-    let background: Record<string, unknown>;
-    if (scene.backgroundVideoAssetId) {
-      background = {
-        type: "video",
-        video_asset_id: scene.backgroundVideoAssetId,
-        play_style: "loop",
-        fit: "cover",
-      };
-    } else if (scene.backgroundVideoUrl) {
-      background = {
-        type: "video",
-        url: scene.backgroundVideoUrl,
-        play_style: "loop",
-        fit: "cover",
-      };
-    } else if (scene.backgroundImageUrl) {
-      background = {
-        type: "image",
-        url: scene.backgroundImageUrl,
-      };
-    } else {
-      background = {
-        type: "color",
-        value: scene.backgroundColor || "#0F172A",
-      };
-    }
-
-    // Use pre-uploaded audio asset when available (cloned voices must go this route)
-    const voice: Record<string, unknown> = scene.audioAssetId
-      ? { type: "audio", audio_asset_id: scene.audioAssetId }
-      : {
-          type: "text",
-          voice_id: params.voiceId,
-          input_text: scene.scriptText,
-          speed: 1.0,
-        };
-
-    // Position: bottom-left by default (leaves right side open for text overlays)
-    const photoX = params.photoPosition === "bottom-right" ? 0.35 : -0.35;
-
-    return {
-      character: {
-        type: "talking_photo",
-        talking_photo_id: params.talkingPhotoId,
-        talking_photo_style: "circle",
-        scale: 0.28,
-        offset: { x: photoX, y: 0.32 },
-        matting: true,
-      },
-      voice,
-      background,
-      ...(scene.elements?.length && { elements: scene.elements }),
-    };
-  });
-
-  // caption only works with text-based voice; audio mode does not support it
-  const body = {
-    title: params.title || "Generated Video",
-    caption: !hasPerSceneAudio,
-    dimension: params.dimension,
-    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
-    ...(params.callbackId && { callback_id: params.callbackId }),
-    video_inputs: videoInputs,
-  };
-
-  console.log(`[heygen] Submitting ${videoInputs.length}-scene video to Studio API...`);
-  console.log(`[heygen] Payload (first scene):`, JSON.stringify(videoInputs[0]).slice(0, 500));
-
-  const bodyStr = JSON.stringify(body);
-  const res = await fetch(`${HEYGEN_API}/v2/video/generate`, {
-    method: "POST",
-    headers: {
-      "x-api-key": getApiKey(),
-      "Content-Type": "application/json",
-    },
-    body: bodyStr,
-  });
-
-  const rawText = await res.text();
-  console.log(`[heygen] Studio API response (${res.status}):`, rawText.slice(0, 600));
-
-  if (!res.ok) {
-    throw new Error(`HeyGen Studio API failed (${res.status}): ${rawText.slice(0, 500)}`);
-  }
-
-  const data = JSON.parse(rawText);
-  const videoId = data.data?.video_id;
-  if (!videoId) throw new Error(`HeyGen returned no video_id. Full response: ${rawText.slice(0, 300)}`);
-
-  console.log(`[heygen] Video submitted: ${videoId}`);
-  return videoId;
-}
-
-// ─── 4. Fallback: Single-Scene with Pre-Made Audio ───────────────────────────
-
-/**
- * Fallback when ElevenLabs voice_id doesn't work directly in HeyGen.
- * Uses pre-generated ElevenLabs audio uploaded as a HeyGen asset.
- */
-export async function generateVideoWithAudio(params: {
-  audioAssetId: string;
-  talkingPhotoId: string;
-  backgroundVideoAssetId?: string;
-  backgroundVideoUrl?: string;
-  dimension: { width: number; height: number };
-  title?: string;
-  callbackUrl?: string;
-}): Promise<string> {
-  let background: Record<string, unknown>;
-  if (params.backgroundVideoAssetId) {
-    background = {
-      type: "video",
-      video_asset_id: params.backgroundVideoAssetId,
-      play_style: "loop",
-      fit: "cover",
-    };
-  } else if (params.backgroundVideoUrl) {
-    background = { type: "video", url: params.backgroundVideoUrl, play_style: "loop", fit: "cover" };
-  } else {
-    background = { type: "color", value: "#0F172A" };
-  }
-
-  const body = {
-    title: params.title || "Generated Video",
-    caption: false,  // caption only works with text-based voice
-    dimension: params.dimension,
-    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
-    video_inputs: [
-      {
-        character: {
-          type: "talking_photo",
-          talking_photo_id: params.talkingPhotoId,
-          talking_photo_style: "circle",
-          scale: 0.3,
-          offset: { x: 0.35, y: 0.35 },
-          matting: true,
-        },
-        voice: {
-          type: "audio",
-          audio_asset_id: params.audioAssetId,
-        },
-        background,
-      },
-    ],
-  };
-
-  console.log("[heygen] Submitting single-scene video (audio fallback)...");
-
-  const res = await fetch(`${HEYGEN_API}/v2/video/generate`, {
-    method: "POST",
-    headers: {
-      "x-api-key": getApiKey(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => "unknown");
-    throw new Error(`HeyGen audio-mode video failed (${res.status}): ${err.slice(0, 500)}`);
-  }
-
-  const data = await res.json();
-  const videoId = data.data?.video_id;
-  if (!videoId) throw new Error("HeyGen returned no video_id");
-
-  console.log(`[heygen] Audio-mode video submitted: ${videoId}`);
-  return videoId;
-}
-
-// ─── 5. Poll for Completion ──────────────────────────────────────────────────
+// ─── 3. Poll for Completion ──────────────────────────────────────────────────
 
 /**
  * Get video status via GET /v3/videos/{id}.
@@ -523,14 +214,17 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
 // ─── V3 Voice Clone ───────────────────────────────────────────────────────────
 
 /**
- * Create a HeyGen voice clone from an uploaded audio asset.
+ * Create a HeyGen voice clone from the user's recorded audio.
  *
- * Flow:
+ * Flow (HeyGen v3):
  *   1. Upload audio buffer to POST /v3/assets → asset_id
- *   2. POST /v3/voices with the asset_id → voice_id
+ *   2. POST /v3/voices/clone with { audio: { type: "asset_id", asset_id } } → voice_clone_id
+ *   3. Poll GET /v3/voices/{voice_clone_id} until status === "complete"
  *
- * The returned voice_id is stored in the user's profile as heygen_voice_id
- * and passed as voice_id to the Video Agent so their cloned voice is used.
+ * Returns the user's own cloned voice_id, stored in the profile as heygen_voice_id
+ * and passed as voice_id to the Video Agent so their real voice is used.
+ *
+ * Requires a paid HeyGen plan; accounts are capped at 10 voice clones.
  */
 export async function cloneVoice(
   audioBuffer: Buffer,
@@ -581,25 +275,69 @@ export async function cloneVoice(
   }
   console.log(`[heygen] Voice asset uploaded: ${assetId}`);
 
-  // HeyGen's POST /v3/voices no longer accepts audio files for cloning (API changed).
-  // Fall back to fetching the first private voice already in the HeyGen account,
-  // which was created via HeyGen Studio IVC. The uploaded asset is kept for future use.
-  console.log(`[heygen] Looking up existing private voice in HeyGen account...`);
-  const privateVoiceId = await getPrivateVoiceId();
-  if (privateVoiceId) {
-    console.log(`[heygen] Using existing private voice: ${privateVoiceId}`);
-    return privateVoiceId;
+  // Step 2 — create the voice clone from the uploaded asset
+  const cloneRes = await fetch(`${HEYGEN_API}/v3/voices/clone`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      audio: { type: "asset_id", asset_id: assetId },
+      voice_name: name.slice(0, 100),
+      language: "en",
+    }),
+  });
+
+  if (!cloneRes.ok) {
+    const err = await cloneRes.text().catch(() => "unknown");
+    // Surface HeyGen's own message (e.g. clone limit reached, plan upgrade required)
+    throw new Error(`HeyGen voice clone failed (${cloneRes.status}): ${err.slice(0, 300)}`);
   }
 
-  // No private voice found — fall back to a default English voice
-  console.log(`[heygen] No private voice found, falling back to default English voice...`);
-  const defaultVoiceId = await getDefaultEnglishVoiceId();
-  if (defaultVoiceId) {
-    console.log(`[heygen] Using default English voice: ${defaultVoiceId}`);
-    return defaultVoiceId;
+  const cloneData = await cloneRes.json();
+  const voiceCloneId: string | undefined =
+    cloneData.data?.voice_clone_id || cloneData.data?.voice_id || cloneData.data?.id;
+  if (!voiceCloneId) {
+    throw new Error(`HeyGen returned no voice_clone_id. Response: ${JSON.stringify(cloneData).slice(0, 200)}`);
+  }
+  console.log(`[heygen] Voice clone created: ${voiceCloneId} — polling until complete...`);
+
+  // Step 3 — poll until the clone finishes training (usually well under a minute)
+  const status = await waitForVoiceClone(voiceCloneId);
+  if (status === "failed") {
+    throw new Error("HeyGen voice clone failed during processing. Please re-record and try again.");
+  }
+  console.log(`[heygen] Voice clone ready: ${voiceCloneId} (status: ${status})`);
+  return voiceCloneId;
+}
+
+/**
+ * Poll GET /v3/voices/{voice_id} until the clone status is "complete" or "failed".
+ * Returns the terminal status. Times out to "complete" optimistically so a slow
+ * poll doesn't block the user — the voice_id is valid regardless.
+ */
+async function waitForVoiceClone(
+  voiceId: string,
+  timeoutMs = 90_000,
+  intervalMs = 3_000,
+): Promise<"complete" | "failed" | "processing"> {
+  const apiKey = getApiKey();
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const res = await fetch(`${HEYGEN_API}/v3/voices/${voiceId}`, {
+      headers: { "x-api-key": apiKey },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      // Status only present for cloned voices; a public voice has none.
+      const status: string | undefined = json.data?.status;
+      if (status === "complete") return "complete";
+      if (status === "failed") return "failed";
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
   }
 
-  throw new Error("No voice available. Please create a voice clone in HeyGen Studio (app.heygen.com → Voices) and try again.");
+  console.warn(`[heygen] Voice clone ${voiceId} still processing after ${Math.round(timeoutMs / 1000)}s — proceeding.`);
+  return "processing";
 }
 
 // ─── V3 Avatar Video Generation (POST /v3/videos) ────────────────────────────
@@ -840,22 +578,23 @@ export async function getPrivateVoiceId(): Promise<string | null> {
 }
 
 /**
- * Fetch a default English voice ID from HeyGen's voice library.
+ * Fetch a default English voice ID from HeyGen's public voice library (v3).
  * Used as last-resort fallback when no private voice clone exists.
  * No module-level caching — avoids stale null across serverless instances.
  */
 export async function getDefaultEnglishVoiceId(): Promise<string | null> {
   try {
-    const res = await fetch(`${HEYGEN_API}/v2/voices`, {
+    const params = new URLSearchParams({ type: "public", language: "English", limit: "1" });
+    const res = await fetch(`${HEYGEN_API}/v3/voices?${params}`, {
       headers: { "x-api-key": getApiKey() },
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const voices: Array<{ voice_id: string; language?: string; locale?: string }> =
+    const voices: Array<{ voice_id: string; language?: string }> =
       data.data?.voices || data.data || [];
-    const voice = voices.find((v) =>
-      (v.language || v.locale || "").toLowerCase().startsWith("en")
-    );
+    // Prefer an explicit English match; fall back to the first returned voice.
+    const voice =
+      voices.find((v) => (v.language || "").toLowerCase().startsWith("en")) || voices[0];
     const voiceId = voice?.voice_id || null;
     if (voiceId) console.log(`[heygen] Default voice: ${voiceId}`);
     return voiceId;

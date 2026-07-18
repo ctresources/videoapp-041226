@@ -146,18 +146,18 @@ async function GettingStarted() {
   if (!user) return null;
 
   const [profileResult, videoResult, socialResult] = await Promise.all([
-    supabase.from("profiles").select("voice_clone_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user.id).single(),
+    supabase.from("profiles").select("heygen_voice_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user.id).single(),
     supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_active", true),
   ]);
 
-  const profile = profileResult.data as { voice_clone_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
+  const profile = profileResult.data as { heygen_voice_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
   const videoCount = videoResult.count ?? 0;
   const socialCount = socialResult.count ?? 0;
 
   const steps = [
     { label: "Create Your Account", done: true },
-    { label: "Set Up Your Voice Clone", done: !!profile?.voice_clone_id, href: "/settings" },
+    { label: "Set Up Your Voice Clone", done: !!profile?.heygen_voice_id, href: "/settings" },
     { label: "Upload Your Avatar Photo", done: !!profile?.avatar_url, href: "/settings" },
     { label: "Generate Your First Video", done: videoCount > 0, href: "/create" },
     { label: "Connect A Social Account", done: socialCount > 0, href: "/social" },

@@ -1,19 +1,20 @@
 /**
  * POST /api/profile/heygen-voice
  *
- * Accepts a voice recording (same audio as ElevenLabs clone), uploads it to
- * HeyGen as an asset, creates a HeyGen voice clone, and saves the voice_id
- * to the user's profile as heygen_voice_id.
+ * Accepts the user's voice recording, uploads it to HeyGen as an asset,
+ * creates a HeyGen voice clone (POST /v3/voices/clone), and saves the
+ * resulting voice_id to the user's profile as heygen_voice_id.
  *
- * Called in parallel with /api/profile/voice-clone (ElevenLabs) so both
- * systems get the voice in a single settings action.
+ * This is the sole voice-clone path — the user's cloned HeyGen voice drives
+ * every AI video. (ElevenLabs is no longer used for voice cloning.)
  */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 60;
+// Cloning uploads the sample then polls /v3/voices/{id} until the clone finishes.
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
