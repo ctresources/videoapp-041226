@@ -2,18 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
-  generateVideo,
   generateVideoV3,
-  uploadAudioAsset,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
   uploadTalkingPhoto,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
-  type SceneInput,
 } from "@/lib/api/heygen";
-import { generateSpeech } from "@/lib/api/elevenlabs";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -30,21 +26,6 @@ function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string 
   const words = text.trim().split(/\s+/);
   if (words.length <= maxWords) return text;
   return words.slice(0, maxWords).join(" ") + ".";
-}
-
-function splitScriptIntoChunks(text: string, n: number): string[] {
-  if (n <= 1) return [text];
-  const sentences = text.match(/[^.!?]+[.!?]+(?:\s|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
-  const count = Math.min(n, sentences.length);
-  if (count <= 1) return [text];
-  const chunks: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const start = Math.round((i * sentences.length) / count);
-    const end = Math.round(((i + 1) * sentences.length) / count);
-    const chunk = sentences.slice(start, end).join(" ").trim();
-    if (chunk) chunks.push(chunk);
-  }
-  return chunks.length > 0 ? chunks : [text];
 }
 
 /**
@@ -514,14 +495,9 @@ export async function POST(req: NextRequest) {
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
   if (profile && !profile.heygen_photo_id && profile.avatar_url) {
     try {
-      const imgRes = await fetch(profile.avatar_url);
-      if (imgRes.ok) {
-        const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
-        const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-        const photoId = await uploadTalkingPhoto(imageBuffer, contentType);
-        await admin.from("profiles").update({ heygen_photo_id: photoId }).eq("id", user.id);
-        profile.heygen_photo_id = photoId;
-      }
+      const photoId = await uploadTalkingPhoto(profile.avatar_url);
+      await admin.from("profiles").update({ heygen_photo_id: photoId }).eq("id", user.id);
+      profile.heygen_photo_id = photoId;
     } catch (err) {
       console.warn("[create-blog] HeyGen auto-register failed:", err);
     }
@@ -703,89 +679,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ── ElevenLabs TTS + listing photos: multi-scene v2 API ──────────────────────
-    // Split the script into N chunks (one per photo, capped at 5), generate EL
-    // audio for each chunk, then submit a multi-scene v2 video where each scene
-    // uses that photo as its background.
-    // Only use the EL multi-scene path for voice-only videos (no avatar selected).
-    // When a look is selected, the Video Agent handles photos + presenter + b-roll correctly.
-    if (!avatarId && profile.voice_clone_id && listingPhotos.length > 0) {
-      console.log(`[create-blog] EL multi-scene path — ${listingPhotos.length} photos, voice ${profile.voice_clone_id}`);
-      try {
-        const numScenes = Math.min(listingPhotos.length, 5);
-        const scriptChunks = splitScriptIntoChunks(safeScript, numScenes);
-        const photoSlice = listingPhotos.slice(0, scriptChunks.length);
-
-        const audioBuffers = await Promise.all(
-          scriptChunks.map((chunk) => generateSpeech(chunk, profile.voice_clone_id!)),
-        );
-        const audioAssetIds = await Promise.all(
-          audioBuffers.map((buf) => uploadAudioAsset(buf)),
-        );
-
-        const scenes: SceneInput[] = scriptChunks.map((scriptText, i) => ({
-          scriptText,
-          audioAssetId: audioAssetIds[i],
-          backgroundImageUrl: photoSlice[i],
-        }));
-
-        const { data: videoRow, error: videoRowErr } = await admin
-          .from("generated_videos")
-          .insert({
-            project_id: projectId,
-            user_id: user.id,
-            video_type: videoType,
-            render_provider: "heygen_v2",
-            render_status: "rendering",
-            metadata: { dimension, orientation, city, state, title },
-          })
-          .select()
-          .single();
-
-        if (videoRowErr || !videoRow) {
-          throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
-        }
-
-        const heygenVideoId = await generateVideo({
-          scenes,
-          talkingPhotoId: avatarId ?? "",
-          photoPosition: "bottom-right",
-          dimension,
-          title,
-          callbackUrl,
-          callbackId: videoRow.id,
-        });
-
-        await admin
-          .from("generated_videos")
-          // credit_cost enables an automatic refund if the render later fails
-          .update({ render_job_id: heygenVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost } })
-          .eq("id", videoRow.id);
-
-        await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
-        await admin.from("api_usage_log").insert({
-          user_id: user.id,
-          api_provider: "heygen",
-          endpoint: "video-v2-el-tts-photos",
-          credits_used: creditCost,
-          response_status: 202,
-        });
-
-        console.log(`[create-blog] v2 multi-scene video ${heygenVideoId} submitted (${scenes.length} scenes, EL voice)`);
-        return NextResponse.json({
-          video: {
-            ...videoRow,
-            render_job_id: heygenVideoId,
-            render_status: "rendering",
-          },
-        });
-      } catch (elErr) {
-        console.error("[create-blog] EL multi-scene failed, falling back to Video Agent:", elErr instanceof Error ? elErr.message : elErr);
-        // Fall through to Video Agent path below
-      }
-    }
-
-    // ── Video Agent path: no EL voice (or EL failed) → use HeyGen voice ID ───
+    // ── Video Agent path (v3): the presenter + listing photos + b-roll are
+    // composed by HeyGen's Video Agent using the user's cloned HeyGen voice. ───
     let voiceId = profile.heygen_voice_id;
     if (!voiceId) {
       const privateVoiceId = await getPrivateVoiceId().catch(() => null);

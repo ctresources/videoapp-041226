@@ -1,8 +1,8 @@
 /**
  * POST /api/profile/heygen-avatar
  *
- * Downloads the user's headshot from Supabase, uploads it to HeyGen's
- * Talking Photo API, and saves the talking_photo_id to the user's profile.
+ * Creates a HeyGen photo avatar (POST /v3/avatars) from the user's headshot
+ * URL and saves the resulting group_id to the user's profile.
  *
  * The user never interacts with HeyGen — this happens behind the scenes
  * when they upload their photo in Settings.
@@ -28,15 +28,8 @@ export async function POST(req: NextRequest) {
   if (!image_url) return NextResponse.json({ error: "image_url required" }, { status: 400 });
 
   try {
-    // Download the image from Supabase
-    const imgRes = await fetch(image_url);
-    if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`);
-
-    const imageBuffer = Buffer.from(await imgRes.arrayBuffer());
-    const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-
-    // Upload to HeyGen → get talking_photo_id
-    const photoId = await uploadTalkingPhoto(imageBuffer, contentType);
+    // Create the photo avatar from the Supabase public URL → talking_photo_id
+    const photoId = await uploadTalkingPhoto(image_url);
 
     // Save to profile
     const admin = createAdminClient();
