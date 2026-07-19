@@ -486,13 +486,14 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role, subscription_tier")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role, subscription_tier")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
     heygen_voice_id: string | null;
     heygen_photo_id: string | null;
+    heygen_digital_twin_look_id: string | null;
     avatar_url: string | null;
     logo_url: string | null;
     full_name: string | null;
@@ -660,6 +661,11 @@ export async function POST(req: NextRequest) {
         throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
       }
 
+      // Digital Twin looks render on Avatar V — highest-fidelity motion/lip-sync,
+      // same per-second price as the default engine and slightly faster in testing.
+      // Photo-avatar looks stay on HeyGen's default engine (avatar_iv).
+      const isDigitalTwin = avatarId === profile.heygen_digital_twin_look_id;
+
       const directVideoId = await generateVideoV3({
         avatarId,
         voiceId: directVoiceId,
@@ -668,6 +674,7 @@ export async function POST(req: NextRequest) {
         title,
         callbackUrl,
         callbackId: videoRow.id,
+        ...(isDigitalTwin && { engine: "avatar_v" as const }),
       });
 
       await admin
