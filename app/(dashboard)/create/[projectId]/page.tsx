@@ -134,6 +134,10 @@ export default function ProjectEditorPage() {
   const [editedScript, setEditedScript] = useState("");
   const [editedCta, setEditedCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
+  // Editable AI-generated title/description — persisted to the project on
+  // generate/save-draft so the video render and Publish use the user's wording.
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedDescription, setEditedDescription] = useState("");
   const [contactInfo, setContactInfo] = useState<{
     full_name: string | null;
     company_name: string | null;
@@ -396,13 +400,58 @@ export default function ProjectEditorPage() {
         setSelectedHook(aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "");
       }
     }
+    initContentEdits(p);
     setLoading(false);
+  }
+
+  /** Seed the editable title/description from the freshest AI copy. */
+  function initContentEdits(p: Project) {
+    const seo = p.seo_data as SeoData | null;
+    const ai = p.ai_script as AiScript | null;
+    setEditedTitle(seo?.youtube_title || ai?.title || p.title || "");
+    setEditedDescription(seo?.youtube_description || ai?.description || "");
+  }
+
+  /**
+   * Persist edited title/description into the project's seo_data + ai_script.
+   * The video render (create-blog) and Publish read these from the DB, so this
+   * must complete before generation kicks off.
+   */
+  async function saveContentEdits(p: Project) {
+    const title = editedTitle.trim();
+    const desc = editedDescription.trim();
+    const seo = (p.seo_data ?? {}) as SeoData;
+    const ai = (p.ai_script ?? {}) as AiScript;
+    // Nothing typed and nothing to overwrite — skip the write entirely.
+    if ((!title || title === seo.youtube_title) && (!desc || desc === seo.youtube_description)) return;
+
+    const newSeo = {
+      ...seo,
+      ...(title && { youtube_title: title }),
+      ...(desc && { youtube_description: desc }),
+    };
+    const newAi = {
+      ...ai,
+      ...(title && { title }),
+      ...(desc && { description: desc }),
+    };
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("projects")
+      .update({ seo_data: newSeo, ai_script: newAi })
+      .eq("id", p.id);
+    if (error) {
+      console.warn("[create] Failed to save title/description edits:", error.message);
+      return;
+    }
+    setProject((prev) => (prev ? { ...prev, seo_data: newSeo, ai_script: newAi } : prev));
   }
 
   async function handleSaveDraft() {
     if (!project) return;
     setSavingDraft(true);
     try {
+      await saveContentEdits(project);
       const res = await fetch("/api/project/save-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -482,6 +531,7 @@ export default function ProjectEditorPage() {
         const hooks = (p.ai_script as AiScript).hooks;
         setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
       }
+      initContentEdits(p);
       // Update URL to the new project ID
       router.replace(`/create/${p.id}`);
       toast.success("Script generated!");
@@ -513,6 +563,8 @@ export default function ProjectEditorPage() {
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
       setSelectedHook(aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "");
+      setEditedTitle(seoData?.youtube_title || aiScript.title || "");
+      setEditedDescription(seoData?.youtube_description || aiScript.description || "");
       toast.success("Script regenerated!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
@@ -607,6 +659,8 @@ export default function ProjectEditorPage() {
     const endpoint = "/api/video/create-blog";
 
     try {
+      // Persist edited title/description first — the render reads them from the DB.
+      await saveContentEdits(project);
       // Build the full video script: hook → body → CTA. Contact info is
       // deliberately NOT included — it is display-only (the end-frame contact
       // card renders it); anything in this script gets spoken by the avatar.
@@ -1289,6 +1343,17 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
+            {/* Selected hook is editable — this exact text opens the video */}
+            <div className="mt-3 px-1">
+              <p className="text-xs font-medium text-slate-500 mb-1">Your hook — edit freely</p>
+              <textarea
+                value={selectedHook}
+                onChange={(e) => setSelectedHook(e.target.value)}
+                rows={2}
+                placeholder="Pick an option above or write your own opening line"
+                className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-3 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+              />
+            </div>
           </Card>
 
           {/* Script (editable) */}
@@ -1638,9 +1703,39 @@ export default function ProjectEditorPage() {
               </button>
               {expandedSections.seo && (
                 <div className="flex flex-col gap-3 px-2">
+                  {/* Title + description are editable — saved when you generate or save a draft */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-slate-500">Video Title <span className="font-normal text-slate-400">(editable)</span></p>
+                      <button onClick={() => copyToClipboard(editedTitle, "Title")} title="Copy title">
+                        <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      placeholder="Video title"
+                      className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-slate-500">Video Description <span className="font-normal text-slate-400">(editable)</span></p>
+                      <button onClick={() => copyToClipboard(editedDescription, "Description")} title="Copy description">
+                        <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                      </button>
+                    </div>
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      rows={4}
+                      placeholder="Video description"
+                      className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">Your edits are saved when you generate the video or save a draft.</p>
+                  </div>
                   {[
-                    { label: "YouTube Title", value: seo.youtube_title },
-                    { label: "YouTube Description", value: seo.youtube_description },
                     { label: "Instagram Caption", value: seo.instagram_caption },
                     ...(seo.linkedin_post ? [{ label: "LinkedIn Post", value: seo.linkedin_post }] : []),
                     ...(seo.email_blurb ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
