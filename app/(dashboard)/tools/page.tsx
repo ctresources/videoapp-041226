@@ -3,9 +3,9 @@
 import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
-  Sparkles, ChevronDown, Save, Loader2, RefreshCw, HelpCircle, Video, X,
+  Sparkles, ChevronDown, Save, Loader2, RefreshCw, HelpCircle, Video, X, Upload,
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -680,6 +680,37 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     if (p?.title) setHeadline(p.title);
   };
 
+  // Custom background photo (e.g. a listing exterior) — overrides the AI scene.
+  const [customBg, setCustomBg] = useState("");
+  const [bgUploading, setBgUploading] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  async function handleBgFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
+
+    setBgUploading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Please sign in again.");
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/thumb-bg-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setCustomBg(publicUrl);
+      toast.success("Background photo uploaded!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setBgUploading(false);
+    }
+  }
+
   const generate = async () => {
     if (!headline.trim()) { toast.error("Enter a headline for the thumbnail"); return; }
     setLoading(true);
@@ -687,7 +718,11 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       const res = await fetch("/api/tools/thumbnail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ headline, projectId: projectId || undefined }),
+        body: JSON.stringify({
+          headline,
+          projectId: projectId || undefined,
+          backgroundUrl: customBg || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -717,6 +752,57 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         <p className="text-xs text-slate-400 mt-1">
           Short and punchy wins — 5–8 bold words. Your headshot, logo, and market badge are added automatically from your profile.
         </p>
+      </div>
+
+      {/* Background — AI scene by default, or the user's own photo (e.g. listing exterior) */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">Background</label>
+        <div className="flex flex-wrap items-start gap-2">
+          <button
+            onClick={() => setCustomBg("")}
+            className={`flex flex-col items-center justify-center gap-1 w-28 h-[4.5rem] rounded-xl border-2 transition-colors ${
+              customBg === "" ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <Sparkles size={16} className="text-slate-500" />
+            <span className="text-[10px] text-slate-500 font-medium">AI Scene</span>
+          </button>
+
+          {customBg ? (
+            <div className={`relative rounded-xl border-2 overflow-hidden ${customBg ? "border-primary-500" : "border-slate-200"}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={customBg} alt="Custom background" className="w-32 h-[4.5rem] object-cover" />
+              <button
+                onClick={() => setCustomBg("")}
+                className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
+                title="Remove custom background"
+              >
+                <X size={11} className="text-white" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => bgFileRef.current?.click()}
+              disabled={bgUploading}
+              className="flex flex-col items-center justify-center gap-1 w-28 h-[4.5rem] rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all disabled:opacity-50"
+            >
+              {bgUploading ? (
+                <Loader2 size={16} className="text-primary-500 animate-spin" />
+              ) : (
+                <Upload size={16} className="text-slate-400" />
+              )}
+              <span className="text-[10px] text-slate-500 font-medium">
+                {bgUploading ? "Uploading…" : "Upload Photo"}
+              </span>
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">
+          {customBg
+            ? "Your photo is the backdrop — headline, cutout, and market badge are layered on top."
+            : "Upload a listing photo to use as the backdrop instead of the AI-generated scene."}
+        </p>
+        <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
       </div>
 
       <button
