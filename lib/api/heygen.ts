@@ -351,6 +351,13 @@ export interface GenerateVideoV3Params {
   callbackUrl?: string;
   callbackId?: string;
   backgroundColor?: string;
+  /**
+   * Avatar rendering engine. Omit to use HeyGen's default (avatar_iv).
+   * avatar_v = highest-fidelity motion/lip-sync — Digital Twin looks only,
+   * same $0.0667/sec price as avatar_iv on twins (measured ~3.5 min for a
+   * ~22s render vs ~4.2 min on avatar_iv).
+   */
+  engine?: "avatar_iii" | "avatar_iv" | "avatar_v";
 }
 
 /** Map pixel dimensions to the aspect_ratio string the v3 Videos API expects. */
@@ -378,11 +385,12 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
     title: params.title || "Generated Video",
     aspect_ratio: dimensionToAspectRatio(params.dimension),
     resolution: "1080p",
+    ...(params.engine && { engine: { type: params.engine } }),
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
   };
 
-  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId})...`);
+  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId}, engine: ${params.engine ?? "default"})...`);
 
   const res = await fetch(`${HEYGEN_API}/v3/videos`, {
     method: "POST",
