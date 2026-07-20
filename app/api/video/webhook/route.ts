@@ -194,7 +194,10 @@ export async function POST(req: NextRequest) {
   // so the video URL never expires. Fire-and-forget; fallback to HeyGen URL.
   let finalVideoUrl = videoUrl;
   if (success && videoUrl) {
-    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id);
+    // If the user picked background music, it's mixed in during storage —
+    // the Video Agent itself can't (it rejects audio attachments).
+    const musicUrl = (video.metadata?.music_url as string | undefined) || null;
+    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, musicUrl);
     if (permanentUrl) finalVideoUrl = permanentUrl;
   }
 

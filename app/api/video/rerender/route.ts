@@ -10,6 +10,7 @@ import {
   type VideoType,
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
+import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 
 export const maxDuration = 60;
 
@@ -207,6 +208,11 @@ export interface RerenderEdits {
   logoEnabled?: boolean;
   captionsEnabled?: boolean;
   voiceId?: string | null;
+  /**
+   * Avatar selection: a HeyGen look/stock id, the user's avatar group id
+   * (resolved to a look server-side), the literal "none" for voiceover-only,
+   * or null/undefined to default to the user's avatar.
+   */
   avatarId?: string | null;
   captionColor?: string;
   captionHighlightColor?: string;
@@ -290,7 +296,12 @@ export async function POST(req: NextRequest) {
     const ctaPreference = (proj?.ai_script?.cta_preference as string) || undefined;
     const phones = Array.from(new Set([p.phone, p.company_phone].filter(Boolean))) as string[];
 
-    const prompt = buildPrompt({
+    // Background music can't be attached — the Video Agent rejects audio
+    // files. Tell the agent to render clean voiceover-only audio; the chosen
+    // track is stored in metadata and mixed in by the webhook at store time.
+    const musicInstruction = edits.musicUrl ? MUSIC_PROMPT_INSTRUCTION : "";
+
+    const prompt = (musicInstruction + buildPrompt({
       script: safeScript,
       city,
       state,
@@ -304,28 +315,37 @@ export async function POST(req: NextRequest) {
       website: p.website || undefined,
       isShortForm,
       hookText,
-    }).slice(0, 10000); // HeyGen Video Agent caps the prompt at 10,000 chars
+    })).slice(0, 10000); // HeyGen Video Agent caps the prompt at 10,000 chars
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
       ? `${appUrl}/api/video/webhook`
       : undefined;
 
-    // p.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render directly
-    // as the on-screen avatar — it needs a concrete look id. If the caller didn't
-    // pass an explicit avatarId, resolve the group's first completed look here so
-    // the avatar appears on screen instead of being dropped.
-    let avatarId = edits.avatarId || p.heygen_photo_id;
-    if (!edits.avatarId && p.heygen_photo_id) {
-      try {
-        const looks = await getAvatarLooks(p.heygen_photo_id);
-        const ready = looks.find((l) => l.status === "completed") || looks[0];
-        if (ready?.id) {
-          avatarId = ready.id;
-          console.log(`[rerender] Resolved group ${p.heygen_photo_id} → look ${avatarId}`);
+    // Avatar selection: "none" = explicit voiceover-only; null/undefined =
+    // default to the user's own avatar; anything else is used as-is (stock
+    // avatar or explicit look id).
+    //
+    // p.heygen_photo_id is an avatar GROUP id, which HeyGen cannot render
+    // directly as the on-screen avatar — whenever the group id is what we're
+    // about to send (defaulted OR explicitly clicked in the editor), resolve
+    // it to the group's first completed look. Previously the explicit-click
+    // path skipped this resolution, so choosing "your avatar" sent the raw
+    // group id and the Video Agent rendered a generic stock presenter.
+    let avatarId: string | undefined;
+    if (edits.avatarId !== "none") {
+      avatarId = edits.avatarId || p.heygen_photo_id || undefined;
+      if (avatarId && avatarId === p.heygen_photo_id) {
+        try {
+          const looks = await getAvatarLooks(p.heygen_photo_id);
+          const ready = looks.find((l) => l.status === "completed") || looks[0];
+          if (ready?.id) {
+            avatarId = ready.id;
+            console.log(`[rerender] Resolved group ${p.heygen_photo_id} → look ${avatarId}`);
+          }
+        } catch (e) {
+          console.warn("[rerender] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
         }
-      } catch (e) {
-        console.warn("[rerender] Look resolution failed, using group id:", e instanceof Error ? e.message : e);
       }
     }
 
@@ -350,7 +370,11 @@ export async function POST(req: NextRequest) {
         video_type: edits.format,
         render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, city, state, title: edits.title },
+        metadata: {
+          dimension, orientation, city, state, title: edits.title,
+          // Mixed under the voiceover by the webhook at store time.
+          ...(edits.musicUrl && { music_url: edits.musicUrl }),
+        },
       })
       .select()
       .single();
