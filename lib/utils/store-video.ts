@@ -51,14 +51,6 @@ export async function downloadAndStoreVideo(
   }
 }
 
-/** Returns true if a HeyGen signed URL has passed its Expires timestamp. */
-export function isExpiredHeygenUrl(url: string): boolean {
-  const match = url.match(/[?&]Expires=(\d+)/);
-  if (!match) return false;
-  return parseInt(match[1], 10) < Math.floor(Date.now() / 1000);
-}
-
-/** Returns true if the URL is a temporary HeyGen CDN URL (expired or not). */
-export function isHeygenUrl(url: string): boolean {
-  return url.includes("heygen.ai") || url.includes("heygen.com/aws");
-}
+// isHeygenUrl / isExpiredHeygenUrl live in lib/utils/video-url.ts — they are
+// imported by client components, and this module must stay server-only (the
+// music mixer uses ffmpeg/child_process, which cannot be bundled for the browser).

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { createClient } from "@/lib/supabase/client";
-import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/store-video";
+import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film,

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { downloadAndStoreVideo, isExpiredHeygenUrl } from "@/lib/utils/store-video";
+import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { isExpiredHeygenUrl } from "@/lib/utils/video-url";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 120;
