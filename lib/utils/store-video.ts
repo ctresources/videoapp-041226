@@ -1,20 +1,33 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
+import { compositePhotos } from "@/lib/utils/composite-photos";
 
 const BUCKET = "videos";
+
+interface StoreOptions {
+  musicUrl?: string | null;
+  /** Photos to composite as b-roll behind the avatar (Direct Video renders). */
+  photoUrls?: string[] | null;
+  /** Target frame size, needed for photo compositing. */
+  dimension?: { width: number; height: number } | null;
+}
 
 /**
  * Download a video from a temporary URL (e.g. HeyGen signed URL) and upload
  * it to Supabase Storage so it never expires. Updates the generated_videos row.
- * When musicUrl is given, the track is mixed under the voiceover first (the
- * Video Agent can't do this itself — it rejects audio attachments).
- * Returns the permanent public URL, or null if any step fails (caller keeps the
- * original URL as fallback).
+ *
+ * Optional post-processing (each falls back to the un-processed video on
+ * failure so a render is never lost):
+ *   - photoUrls: composite the photos as background b-roll with the avatar as a
+ *     corner PiP (Direct Video renders the avatar full-frame with no b-roll).
+ *   - musicUrl: mix a music track under the voiceover.
+ *
+ * Returns the permanent public URL, or null if any step fails.
  */
 export async function downloadAndStoreVideo(
   sourceUrl: string,
   videoId: string,
-  musicUrl?: string | null,
+  opts: StoreOptions = {},
 ): Promise<string | null> {
   try {
     const res = await fetch(sourceUrl);
@@ -22,8 +35,13 @@ export async function downloadAndStoreVideo(
 
     let buffer: Buffer = Buffer.from(await res.arrayBuffer());
 
-    if (musicUrl) {
-      const mixed = await mixBackgroundMusic(buffer, musicUrl);
+    // Photos first (rebuilds the video frame), then music (mixes the audio).
+    if (opts.photoUrls?.length && opts.dimension) {
+      const withPhotos = await compositePhotos(buffer, opts.photoUrls, opts.dimension.width, opts.dimension.height);
+      if (withPhotos) buffer = withPhotos;
+    }
+    if (opts.musicUrl) {
+      const mixed = await mixBackgroundMusic(buffer, opts.musicUrl);
       if (mixed) buffer = mixed; // on mix failure, store the original render
     }
 

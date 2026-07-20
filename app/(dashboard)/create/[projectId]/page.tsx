@@ -1257,7 +1257,7 @@ export default function ProjectEditorPage() {
                 </label>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Saved with your project. Verbatim talking-head videos feature your avatar reading the script — photo b-roll is added in AI-composed videos.</p>
+            <p className="text-[11px] text-slate-400 mt-2">Shown as full-screen background b-roll while your avatar reads your script (up to 8 photos, cycled evenly).</p>
           </Card>
 
           {/* PDF / URL Attachment */}
