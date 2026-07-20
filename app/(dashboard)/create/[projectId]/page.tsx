@@ -9,6 +9,7 @@ import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
 import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
+import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -582,12 +583,7 @@ export default function ProjectEditorPage() {
       const results = await Promise.all(
         toUpload.map(async (file) => {
           const preview = URL.createObjectURL(file);
-          const formData = new FormData();
-          formData.append("file", file);
-          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
-          const body = await safeJson(res);
-          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
-          const { url, name } = body as { url: string; name: string };
+          const { url, name } = await uploadVideoPhoto(file);
           return { url, name, preview };
         })
       );
