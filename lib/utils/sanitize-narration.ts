@@ -25,6 +25,8 @@ export function sanitizeNarration(text: string): string {
   // Math/typographic symbols TTS mangles: ≈ → "about", numeric ranges → "to".
   out = out.replace(/≈\s*/g, "about ");
   out = out.replace(/(\d)\s*[–—]\s*(?=\$?\d)/g, "$1 to ");
+  // Table/list pipes ("Event | Date | Venue") — spoken as commas.
+  out = out.replace(/\s*\|\s*/g, ", ");
 
   const cleaned: string[] = [];
   for (const rawLine of out.split("\n")) {

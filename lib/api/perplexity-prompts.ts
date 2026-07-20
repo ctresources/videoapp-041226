@@ -10,6 +10,16 @@ import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
+// Shared rule appended to every script prompt: the script sections are spoken
+// aloud by an avatar, so they must contain nothing a voice can't say. (The
+// render pipeline also sanitizes, but clean generation means what the user
+// sees in the editor is what gets spoken.)
+const NARRATION_STYLE_RULE = `
+NARRATION STYLE (applies to HOOK, all content sections, KEY TAKEAWAY, and CALL TO ACTION):
+- These sections are read aloud word-for-word by a video narrator. Write them as natural spoken language.
+- Plain text ONLY: no markdown (**, #, backticks), no emoji, no citation markers like [2] — list sources only under SOURCES USED.
+- Every line must be a complete conversational sentence a person would actually say out loud.`;
+
 export type LocationVideoType =
   | "market_update"
   | "why_live_here"
@@ -86,12 +96,7 @@ REQUIRED OUTPUT FORMAT — return exactly this structure:
 HOOK: [One punchy sentence that would stop someone scrolling — include a REAL specific stat you found]
 
 MARKET STATS:
-- Median home price: [REAL value from your search + % change if found]
-- Average days on market: [REAL value]
-- Active listings / inventory: [REAL value + months of supply if found]
-- List-to-sale price ratio: [value if found]
-- New listings this month: [value if found]
-- Mortgage rate context: [current 30-yr fixed rate from your search]
+[4-6 lines, one stat per line. Each line must be a complete spoken sentence, e.g. "The median home price is now around $450,000, up 5% from last year." Cover: median price, days on market, inventory, list-to-sale ratio, and current mortgage rates — skip any you can't find.]
 
 MARKET NARRATIVE: [2-3 sentences using the REAL data you found, explaining what it means for buyers and sellers in ${location} right now. Be specific — use actual numbers.]
 
@@ -112,6 +117,7 @@ CRITICAL RULES:
 - If you truly cannot find a specific stat after searching, skip that line entirely (do NOT write "data not available")
 - Never make up numbers — but always find SOMETHING real to report
 - Keep language conversational, like you're talking to a neighbor
+${NARRATION_STYLE_RULE}
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
@@ -150,20 +156,14 @@ REQUIRED OUTPUT FORMAT — return exactly this structure:
 HOOK: [One compelling sentence about what makes this place special or surprising — something most people wouldn't know]
 
 TOP 5 REASONS TO LIVE HERE:
-1. [Reason with specific supporting detail — school ratings, commute times, income data, etc.]
-2. [Reason with specific supporting detail]
-3. [Reason with specific supporting detail]
-4. [Reason with specific supporting detail]
-5. [Reason with specific supporting detail]
+1. [Each reason written as 1-2 complete conversational sentences with a specific supporting detail — school ratings, commute times, income data, etc.]
+2. [Reason as spoken sentences]
+3. [Reason as spoken sentences]
+4. [Reason as spoken sentences]
+5. [Reason as spoken sentences]
 
 QUICK STATS:
-- Median household income: [value]
-- Population: [value]
-- School rating: [value out of 10 or letter grade if available]
-- Commute to nearest major city: [approximate time and city name]
-- Walkability / livability score: [value if available]
-- Crime rating: [relative to national average if available]
-- Cost of living vs national average: [above/below/at average + %]
+[3-5 lines, each a complete spoken sentence, e.g. "The median household income here is about $95,000, well above the national average." Cover income, population, school ratings, commute, and cost of living — skip any you can't find.]
 
 WHO THIS PLACE IS PERFECT FOR: [1-2 sentences describing the ideal resident — families, young professionals, retirees, etc.]
 
@@ -181,6 +181,7 @@ Rules:
 - Be specific — use actual numbers, ratings, and rankings that you find
 - Keep tone warm, inviting, and honest — not promotional fluff
 - If you can't find a specific metric, skip that line entirely — do not write "data not available"
+${NARRATION_STYLE_RULE}
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
@@ -226,11 +227,11 @@ REQUIRED OUTPUT FORMAT — return exactly this structure:
 HOOK: [One energetic sentence that captures the excitement of things happening in this community this month]
 
 TOP EVENTS THIS MONTH:
-1. EVENT NAME | Date | Location/Venue | Brief description (1 sentence)
-2. EVENT NAME | Date | Location/Venue | Brief description (1 sentence)
-3. EVENT NAME | Date | Location/Venue | Brief description (1 sentence)
-4. EVENT NAME | Date | Location/Venue | Brief description (1 sentence)
-5. EVENT NAME | Date | Location/Venue | Brief description (1 sentence)
+1. [Each event as 1-2 complete spoken sentences naming the event, date, and venue, e.g. "On Saturday the 14th, the Riverside Farmers Market returns to Main Street Plaza with over forty local vendors." Do NOT use pipes, tables, or fragments.]
+2. [Event as spoken sentences]
+3. [Event as spoken sentences]
+4. [Event as spoken sentences]
+5. [Event as spoken sentences]
 
 [Include up to 8 events if available. Prioritize family-friendly and community events over large commercial concerts. Mix Eventbrite/Ticketmaster/Meetup sources so content feels varied.]
 
@@ -251,7 +252,8 @@ Rules:
 - Search specifically for "${city}, ${state}" — do not return events from other cities in the state
 - Only include events with confirmed specific dates in the target month
 - If fewer than 3 confirmed events are found, honestly state that rather than padding with uncertain entries
-- Include event URLs from the source platform where available
+- List event URLs only under SOURCES USED — never inside the event descriptions (URLs cannot be spoken)
+${NARRATION_STYLE_RULE}
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
@@ -294,7 +296,7 @@ REQUIRED OUTPUT FORMAT — return exactly this structure:
 HOOK: [One compelling opening sentence that would stop someone scrolling — make it specific and surprising]
 
 MAIN CONTENT:
-[3-5 key points or sections about the topic. Use bullet points, numbered lists, or short paragraphs as appropriate. Include specific data, stats, or facts where available. Be concise — each point should be 1-2 sentences max.]
+[Write this as flowing spoken narration — the exact words a video presenter will say aloud, in short conversational paragraphs that transition naturally from one point to the next. Cover 3-5 key points about the topic with specific data, stats, or facts where available. Aim for 250-320 words total (about two minutes of speech). NO bullet points, NO numbered lists, NO headers — narration prose only.]
 
 KEY TAKEAWAY: [One sentence summarizing the most important insight]
 
@@ -314,6 +316,7 @@ Rules:
 - Search the web for real, current data — skip any metric you can't find rather than writing "data not available"
 - Keep language conversational and direct — write for home buyers, sellers, and residents
 - Aim for content that's genuinely useful, not just promotional
+${NARRATION_STYLE_RULE}
 
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
@@ -326,7 +329,8 @@ ${FAIR_HOUSING_GUARDRAIL}`,
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.3,
-    max_tokens: 1000,
+    // Headroom for ~320 words of narration plus titles, blog intro, and sources.
+    max_tokens: 1400,
   };
 }
 
