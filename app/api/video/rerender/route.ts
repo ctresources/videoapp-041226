@@ -9,6 +9,7 @@ import {
   DIMENSIONS,
   type VideoType,
 } from "@/lib/api/heygen";
+import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 
 export const maxDuration = 60;
 
@@ -271,7 +272,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const safeScript = clampScript(edits.script);
+  // Strip markdown/bullets/emoji first — non-speakable formatting makes the
+  // Video Agent paraphrase instead of delivering the script verbatim.
+  const safeScript = clampScript(sanitizeNarration(edits.script));
   const isShortForm = edits.format === "reel_9x16" || edits.format === "short_1x1";
   const orientation = isShortForm ? "portrait" : "landscape";
   const city = p.location_city || "";

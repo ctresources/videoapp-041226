@@ -6,6 +6,7 @@
 // ============================================================
 
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -442,18 +443,25 @@ export function parseLocationScript(
 
   const hook = extractSection(raw, "HOOK", allHeadings.filter((h) => h !== "HOOK"));
 
-  // Script body: main content varies by type
-  let script = "";
+  // Script body: main content varies by type.
+  // The narration script must be plain speakable prose — markdown, bullets,
+  // emoji, and section labels make the Video Agent paraphrase instead of
+  // delivering it word-for-word. The decorated version (labels + emoji) is
+  // kept separately for the blog post only.
+  let narrationSections: string[] = [];
+  let blogBody = "";
   if (videoType === "market_update") {
     const stats = extractSection(raw, "MARKET STATS", allHeadings);
     const narrative = extractSection(raw, "MARKET NARRATIVE", allHeadings);
-    script = [stats && `📊 Market Stats:\n${stats}`, narrative && `📝 What This Means:\n${narrative}`]
+    narrationSections = [stats, narrative];
+    blogBody = [stats && `📊 Market Stats:\n${stats}`, narrative && `📝 What This Means:\n${narrative}`]
       .filter(Boolean).join("\n\n");
   } else if (videoType === "why_live_here") {
     const reasons = extractSection(raw, "TOP 5 REASONS TO LIVE HERE", allHeadings);
     const stats = extractSection(raw, "QUICK STATS", allHeadings);
     const perfect = extractSection(raw, "WHO THIS PLACE IS PERFECT FOR", allHeadings);
-    script = [
+    narrationSections = [reasons, stats, perfect];
+    blogBody = [
       reasons && `🏡 Top 5 Reasons:\n${reasons}`,
       stats && `📊 Quick Stats:\n${stats}`,
       perfect && `👥 Perfect For:\n${perfect}`,
@@ -462,7 +470,8 @@ export function parseLocationScript(
     const events = extractSection(raw, "TOP EVENTS THIS MONTH", allHeadings);
     const vibe = extractSection(raw, "COMMUNITY VIBE", allHeadings);
     const recurring = extractSection(raw, "RECURRING HIGHLIGHTS", allHeadings);
-    script = [
+    narrationSections = [events, vibe, recurring];
+    blogBody = [
       events && `🎉 Events:\n${events}`,
       vibe && `✨ Community Vibe:\n${vibe}`,
       recurring && `🔄 Recurring Events:\n${recurring}`,
@@ -471,11 +480,13 @@ export function parseLocationScript(
     // custom — generic content + key takeaway
     const content = extractSection(raw, "MAIN CONTENT", allHeadings);
     const takeaway = extractSection(raw, "KEY TAKEAWAY", allHeadings);
-    script = [
+    narrationSections = [content, takeaway];
+    blogBody = [
       content && `📋 Key Points:\n${content}`,
       takeaway && `💡 Key Takeaway:\n${takeaway}`,
     ].filter(Boolean).join("\n\n");
   }
+  const script = sanitizeNarration(narrationSections.filter(Boolean).join("\n\n"));
 
   const cta = extractSection(raw, "CALL TO ACTION", allHeadings) ||
     (agentName
@@ -531,13 +542,13 @@ export function parseLocationScript(
     title: primaryTitle,
     hook,
     hooks: titleLines,          // Title options as "hooks" for the editor
-    script: script || raw,      // Fallback to full raw if parsing fails
+    script: script || sanitizeNarration(raw), // Fallback to sanitized raw if parsing fails
     cta,
     description: blogIntro || hook,
     hashtags,
     keywords,
     blog_intro: blogIntro,
-    blog_body: script,
+    blog_body: blogBody || script,
     blog_conclusion: cta,
     sources,
     raw,
