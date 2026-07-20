@@ -547,6 +547,42 @@ export async function getAvatarConsentUrl(
   return url;
 }
 
+export interface BackgroundMusicTrack {
+  id: string;
+  name: string;
+  description: string | null;
+  audio_url: string;
+  duration: number | null;
+}
+
+/**
+ * Search HeyGen's licensed background-music catalog (GET /v3/audio/sounds).
+ * Returned audio_url values are pre-signed and valid for ~7 days — resolve at
+ * selection time, never hardcode them.
+ */
+export async function searchBackgroundMusic(
+  query: string,
+  limit = 3,
+): Promise<BackgroundMusicTrack[]> {
+  const params = new URLSearchParams({
+    query,
+    limit: String(limit),
+    type: "music",
+  });
+  const res = await fetch(`${HEYGEN_API}/v3/audio/sounds?${params}`, {
+    headers: { "x-api-key": getApiKey() },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen music search failed (${res.status}): ${err.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  const tracks: BackgroundMusicTrack[] = (json.data?.sounds || json.data || [])
+    .filter((t: BackgroundMusicTrack) => !!t?.audio_url);
+  console.log(`[heygen] Music search "${query}": ${tracks.length} track(s)`);
+  return tracks;
+}
+
 /**
  * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
  * Used as fallback when profile.heygen_voice_id is not set.

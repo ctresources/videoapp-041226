@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
+import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -121,6 +122,12 @@ export default function ProjectEditorPage() {
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   const [isProPlan, setIsProPlan] = useState(false);
+  // Background music for the AI render — same presets as the video editor.
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [selectedMusicId, setSelectedMusicId] = useState("none");
+  const [uploadingMusic, setUploadingMusic] = useState(false);
+  const [musicResolving, setMusicResolving] = useState(false);
+  const musicInputRef = useRef<HTMLInputElement>(null);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
   const [renderMode, setRenderMode] = useState<"agent" | "direct" | null>(null);
@@ -326,6 +333,65 @@ export default function ProjectEditorPage() {
       const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
       setIsProPlan(p.subscription_tier === "pro" || p.role === "admin");
       setCreditsLeft(typeof p.credits_remaining === "number" ? p.credits_remaining : null);
+    }
+  }
+
+  async function selectMusic(preset: MusicPreset) {
+    if (preset.id === "custom") {
+      musicInputRef.current?.click();
+      return;
+    }
+    if (!preset.query) {
+      setSelectedMusicId("none");
+      setMusicUrl(null);
+      return;
+    }
+    // Resolve the preset's catalog query to a fresh licensed track URL.
+    setSelectedMusicId(preset.id);
+    setMusicResolving(true);
+    try {
+      const res = await fetch(`/api/music/search?q=${encodeURIComponent(preset.query)}`);
+      const data = await safeJson(res);
+      if (!res.ok || !data?.url) throw new Error((data?.error as string) || "No track found");
+      setMusicUrl(data.url as string);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't load that track");
+      setSelectedMusicId("none");
+      setMusicUrl(null);
+    } finally {
+      setMusicResolving(false);
+    }
+  }
+
+  async function handleMusicUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("audio/") && !file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
+      toast.error("Please upload an audio file");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Music file must be under 20MB");
+      return;
+    }
+    setUploadingMusic(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Please sign in again.");
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/music-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("assets").upload(path, file, { upsert: true });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(path);
+      setMusicUrl(publicUrl);
+      setSelectedMusicId("custom");
+      toast.success("Music uploaded!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Music upload failed");
+    } finally {
+      setUploadingMusic(false);
     }
   }
 
@@ -612,6 +678,7 @@ export default function ProjectEditorPage() {
           videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
           longForm: selectedVideoType === "youtube_long",
           captions: burnCaptions,
+          ...(musicUrl && { musicUrl }),
           backgroundMode: "stock-video",
           script: fullScript,
           hook,
@@ -1448,6 +1515,34 @@ export default function ProjectEditorPage() {
                 Burn synchronized captions into the video <span className="text-slate-400">(most viewers watch muted)</span>
               </span>
             </label>
+
+            {/* Background music */}
+            <div className="mt-4 mb-5">
+              <p className="text-xs font-medium text-slate-500 mb-2">Background Music</p>
+              <div className="flex flex-wrap gap-1.5">
+                {MUSIC_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => selectMusic(preset)}
+                    disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
+                      selectedMusicId === preset.id
+                        ? "border-primary-500 bg-primary-50 text-primary-700"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    <span>{preset.emoji}</span>
+                    {uploadingMusic && preset.id === "custom" ? "Uploading…"
+                      : musicResolving && selectedMusicId === preset.id ? "Loading…"
+                      : preset.label}
+                  </button>
+                ))}
+              </div>
+              {selectedMusicId === "custom" && musicUrl && (
+                <p className="text-xs text-green-600 mt-1.5">✓ Custom track uploaded — it will play under the voiceover</p>
+              )}
+              <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
+            </div>
 
             {/* Video style selector */}
             <div className="mb-5">{renderModeSelector()}</div>

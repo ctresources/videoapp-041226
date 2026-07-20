@@ -11,6 +11,7 @@ import {
   type VideoAgentFile,
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
+import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -599,6 +600,13 @@ export async function POST(req: NextRequest) {
       prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: trimmedPdf });
     }
 
+    // Background music instruction — prepended (not appended) so the PDF/clamp
+    // trimming above can never cut it off. The track itself is attached as a
+    // file where the files list is built.
+    if (typeof musicUrl === "string" && musicUrl.trim()) {
+      prompt = MUSIC_PROMPT_INSTRUCTION + prompt;
+    }
+
     // Final hard safety clamp in case the base prompt alone is still too long.
     if (prompt.length > HEYGEN_PROMPT_LIMIT) {
       prompt = prompt.slice(0, HEYGEN_PROMPT_LIMIT);
@@ -717,6 +725,9 @@ export async function POST(req: NextRequest) {
     for (const url of combinedPhotos) {
       files.push({ type: "url", url });
     }
+    // Background music is NOT attached here — the Video Agent rejects audio
+    // files. The chosen track URL is stored in the row's metadata and mixed
+    // under the voiceover by the webhook when the finished render is stored.
     // PDF content is already injected into the prompt via pdfText — don't pass
     // the PDF URL to HeyGen as a file since it rejects application/pdf content type.
 
@@ -728,7 +739,11 @@ export async function POST(req: NextRequest) {
         video_type: videoType,
         render_provider: "heygen_agent",
         render_status: "rendering",
-        metadata: { dimension, orientation, city, state, title },
+        metadata: {
+          dimension, orientation, city, state, title,
+          // Mixed under the voiceover by the webhook at store time.
+          ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
+        },
       })
       .select()
       .single();

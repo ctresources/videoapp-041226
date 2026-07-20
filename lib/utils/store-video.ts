@@ -1,22 +1,32 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 
 const BUCKET = "videos";
 
 /**
  * Download a video from a temporary URL (e.g. HeyGen signed URL) and upload
  * it to Supabase Storage so it never expires. Updates the generated_videos row.
+ * When musicUrl is given, the track is mixed under the voiceover first (the
+ * Video Agent can't do this itself — it rejects audio attachments).
  * Returns the permanent public URL, or null if any step fails (caller keeps the
  * original URL as fallback).
  */
 export async function downloadAndStoreVideo(
   sourceUrl: string,
   videoId: string,
+  musicUrl?: string | null,
 ): Promise<string | null> {
   try {
     const res = await fetch(sourceUrl);
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 
-    const buffer = Buffer.from(await res.arrayBuffer());
+    let buffer: Buffer = Buffer.from(await res.arrayBuffer());
+
+    if (musicUrl) {
+      const mixed = await mixBackgroundMusic(buffer, musicUrl);
+      if (mixed) buffer = mixed; // on mix failure, store the original render
+    }
+
     const admin = createAdminClient();
     const path = `${videoId}.mp4`;
 

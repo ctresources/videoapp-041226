@@ -14,17 +14,7 @@ import {
 import Link from "next/link";
 import type { RerenderEdits } from "@/app/api/video/rerender/route";
 
-// ── Music presets ─────────────────────────────────────────────────────────────
-const MUSIC_PRESETS = [
-  { id: "none",       label: "No Music",          emoji: "🔇", url: null },
-  { id: "calm",       label: "Calm Piano",         emoji: "🎹", url: "https://assets.mixkit.co/music/download/mixkit-soft-piano-ballad-1590.mp3" },
-  { id: "corporate",  label: "Upbeat Corporate",   emoji: "💼", url: "https://assets.mixkit.co/music/download/mixkit-corporate-motivational-254.mp3" },
-  { id: "inspiring",  label: "Inspiring",          emoji: "🌅", url: "https://assets.mixkit.co/music/download/mixkit-serene-view-443.mp3" },
-  { id: "jazz",       label: "Smooth Jazz",        emoji: "🎷", url: "https://assets.mixkit.co/music/download/mixkit-smooth-jazz-ambient-loop-286.mp3" },
-  { id: "motivate",   label: "Motivational",       emoji: "🔥", url: "https://assets.mixkit.co/music/download/mixkit-driving-ambition-32.mp3" },
-  { id: "luxury",     label: "Luxury / Elegant",   emoji: "✨", url: "https://assets.mixkit.co/music/download/mixkit-cinematic-mystery-548.mp3" },
-  { id: "custom",     label: "Upload my music",    emoji: "⬆️", url: "custom" },
-];
+import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 const FORMAT_OPTIONS = [
   { value: "blog_long",    label: "Blog 16:9",      desc: "Landscape · YouTube · 1920×1080" },
@@ -169,9 +159,15 @@ export default function VideoEditorPage() {
         .single();
       if (prof) {
         setProfile(prof as Profile);
-        // Default to user's HeyGen cloned voice if they have one
-        if (prof.heygen_voice_id) {
-          setEdits((e) => ({ ...e, voiceId: prof.heygen_voice_id }));
+        // Default to the user's own cloned voice AND avatar. Update the
+        // initial-edits snapshot too, so defaults don't register as "changes"
+        // that force a full re-render on a title-only edit.
+        const defaults: Partial<RerenderEdits> = {};
+        if (prof.heygen_voice_id) defaults.voiceId = prof.heygen_voice_id;
+        if (prof.heygen_photo_id) defaults.avatarId = prof.heygen_photo_id;
+        if (Object.keys(defaults).length > 0) {
+          setEdits((e) => ({ ...e, ...defaults }));
+          setInitialEdits((e) => (e ? { ...e, ...defaults } : e));
         }
       }
     }
@@ -217,13 +213,29 @@ export default function VideoEditorPage() {
     setUploadingMusic(false);
   }
 
-  function selectMusic(preset: typeof MUSIC_PRESETS[0]) {
+  async function selectMusic(preset: typeof MUSIC_PRESETS[0]) {
     if (preset.id === "custom") {
       musicInputRef.current?.click();
       return;
     }
+    if (!preset.query) {
+      setSelectedMusicId("none");
+      setEdits((e) => ({ ...e, musicUrl: null }));
+      return;
+    }
+    // Resolve the preset's catalog query to a fresh licensed track URL —
+    // catalog URLs are pre-signed and expire, so they can't be hardcoded.
     setSelectedMusicId(preset.id);
-    setEdits((e) => ({ ...e, musicUrl: preset.url }));
+    try {
+      const res = await fetch(`/api/music/search?q=${encodeURIComponent(preset.query)}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.url) throw new Error(data?.error || "No track found");
+      setEdits((e) => ({ ...e, musicUrl: data.url as string }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't load that track");
+      setSelectedMusicId("none");
+      setEdits((e) => ({ ...e, musicUrl: null }));
+    }
   }
 
   // Fields that, when changed, require a full HeyGen re-render.
@@ -599,11 +611,11 @@ export default function VideoEditorPage() {
           {/* Avatar */}
           <Section icon={UserCircle2} title="AI Avatar" color="bg-orange-500">
             <div className="flex flex-col gap-2">
-              {/* No avatar option */}
+              {/* No avatar option — "none" sentinel: null means "default to my avatar" server-side */}
               <button
-                onClick={() => setEdits((x) => ({ ...x, avatarId: null }))}
+                onClick={() => setEdits((x) => ({ ...x, avatarId: "none" }))}
                 className={`flex items-center gap-3 p-2.5 rounded-xl border-2 text-left transition-all ${
-                  edits.avatarId === null
+                  edits.avatarId === "none"
                     ? "border-orange-400 bg-orange-50"
                     : "border-slate-200 hover:border-slate-300"
                 }`}
@@ -613,7 +625,7 @@ export default function VideoEditorPage() {
                   <p className="text-xs font-semibold text-brand-text">No Avatar</p>
                   <p className="text-[11px] text-slate-400">Voiceover only</p>
                 </div>
-                {edits.avatarId === null && <CheckCircle size={13} className="text-orange-400 ml-auto shrink-0" />}
+                {edits.avatarId === "none" && <CheckCircle size={13} className="text-orange-400 ml-auto shrink-0" />}
               </button>
 
               {/* User's custom avatar */}
