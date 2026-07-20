@@ -195,6 +195,12 @@ export default function ProjectEditorPage() {
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
 
+  // Pasted scripts always render via Direct Video (avatar speaks the script
+  // verbatim), so preset the render mode and skip the Voice-Only/Avatar choice.
+  useEffect(() => {
+    if (source === "paste") setRenderMode("direct");
+  }, [source]);
+
   // Default to voice-follow when the browser supports it
   useEffect(() => {
     if (isVoiceFollowSupported()) {
@@ -678,8 +684,13 @@ export default function ProjectEditorPage() {
           backgroundMode: "stock-video",
           script: fullScript,
           hook,
-          // Only pass lookId in Avatar + Voice mode — Voice Only gets no avatar
-          ...(renderMode === "direct" && selectedLookId && { lookId: selectedLookId }),
+          // Pasted scripts render via Direct Video so the avatar speaks the
+          // FULL script verbatim — the Video Agent summarizes long scripts
+          // (an 2900-char story came out as an 8-second teaser).
+          ...(source === "paste" && { engine: "direct" }),
+          // Pass the selected look for Direct Video (paste) or Avatar+Voice mode.
+          // For paste with no explicit pick, the server resolves the default avatar.
+          ...((renderMode === "direct" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
@@ -1060,9 +1071,17 @@ export default function ProjectEditorPage() {
             </label>
           </Card>
 
-          {/* Video style selector — before avatar look so user knows context */}
+          {/* Paste scripts render verbatim via Direct Video — no render-mode choice */}
           <Card>
-            {renderModeSelector()}
+            <div className="flex items-start gap-2.5">
+              <Video size={16} className="text-primary-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-brand-text">Your avatar reads your script</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  We render your pasted script word-for-word as a talking-head video, so nothing gets shortened or rewritten.
+                </p>
+              </div>
+            </div>
           </Card>
 
           {/* Avatar look */}
@@ -1191,7 +1210,7 @@ export default function ProjectEditorPage() {
                 </label>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Uploaded photos will be used as primary b-roll in your video.</p>
+            <p className="text-[11px] text-slate-400 mt-2">Saved with your project. Verbatim talking-head videos feature your avatar reading the script — photo b-roll is added in AI-composed videos.</p>
           </Card>
 
           {/* PDF / URL Attachment */}
