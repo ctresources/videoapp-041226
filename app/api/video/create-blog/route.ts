@@ -10,6 +10,7 @@ import {
   type VideoType,
   type VideoAgentFile,
 } from "@/lib/api/heygen";
+import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -38,9 +39,14 @@ function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string 
  * Also removes phone numbers from the narration entirely — contact info is
  * display-only (end-frame contact card / video description) and the avatar
  * must never speak it.
+ *
+ * Runs sanitizeNarration first: markdown, bullets, emoji, and citation
+ * markers make the Video Agent rewrite the script in its own words instead
+ * of speaking it verbatim.
  */
 function normalizeScriptForTTS(text: string): string {
   if (!text) return text;
+  text = sanitizeNarration(text);
 
   const STREET_SUFFIX: Record<string, string> = {
     Ln: "Lane",
