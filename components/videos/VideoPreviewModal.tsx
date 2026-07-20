@@ -27,6 +27,30 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [srtLoading, setSrtLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // Cross-origin URLs ignore <a download> — fetch as a blob and save instead.
+  async function handleDownloadVideo() {
+    setDownloading(true);
+    try {
+      const res = await fetch(videoUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "video"}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Video downloaded!");
+    } catch {
+      window.open(videoUrl, "_blank");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -145,11 +169,15 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
           <Button className="flex-1 gap-2" onClick={onPublish}>
             <Send size={14} /> Publish to Social
           </Button>
-          <a href={videoUrl} download target="_blank" rel="noreferrer" className="flex-1">
-            <Button variant="outline" className="w-full gap-2">
-              <Download size={14} /> Download
-            </Button>
-          </a>
+          <Button
+            variant="outline"
+            className="flex-1 gap-2"
+            onClick={handleDownloadVideo}
+            disabled={downloading}
+          >
+            {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {downloading ? "Downloading…" : "Download"}
+          </Button>
           {videoId && (
             <Button
               variant="outline"

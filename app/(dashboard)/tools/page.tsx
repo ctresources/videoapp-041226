@@ -684,6 +684,33 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   const [customBg, setCustomBg] = useState("");
   const [bgUploading, setBgUploading] = useState(false);
   const bgFileRef = useRef<HTMLInputElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  // The thumbnail lives on the storage origin, where <a download> is ignored
+  // (browsers only honor it same-origin) — fetch as a blob and save instead.
+  async function downloadThumbnail() {
+    if (!thumbUrl) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(thumbUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(headline || "thumbnail").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "thumbnail"}-1280x720.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Thumbnail downloaded!");
+    } catch {
+      // Last resort: open in a new tab so the user can right-click → save
+      window.open(thumbUrl, "_blank");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function handleBgFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -821,10 +848,13 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
           </div>
           <div className="flex items-center gap-3 mt-3">
-            <a href={thumbUrl} download target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors">
-              <Save size={12} /> Download PNG (1280×720)
-            </a>
+            <button
+              onClick={downloadThumbnail}
+              disabled={downloading}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              {downloading ? "Downloading…" : "Download PNG (1280×720)"}
+            </button>
             <button
               onClick={generate}
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
