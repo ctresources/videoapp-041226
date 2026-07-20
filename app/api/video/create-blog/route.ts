@@ -657,6 +657,13 @@ export async function POST(req: NextRequest) {
       directVoiceId = directVoiceId || await getDefaultEnglishVoiceId().catch(() => null);
       if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
+      // Photos to composite as b-roll behind the avatar (up to 8) — uploaded
+      // photos take priority, then any listing photos.
+      const directPhotos = [
+        ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),
+        ...listingPhotos,
+      ].slice(0, 8);
+
       const { data: videoRow, error: videoRowErr } = await admin
         .from("generated_videos")
         .insert({
@@ -668,6 +675,9 @@ export async function POST(req: NextRequest) {
           metadata: {
             dimension, orientation, city, state, title,
             ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
+            // Direct Video is a bare talking head — the webhook composites these
+            // uploaded photos as background b-roll behind the avatar PiP.
+            ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
           },
         })
         .select()
