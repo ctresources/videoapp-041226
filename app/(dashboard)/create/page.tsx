@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
 import { ContentTemplates } from "@/components/create/content-templates";
+import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
@@ -218,12 +219,8 @@ function CreatePageInner() {
     try {
       const results = await Promise.all(
         toUpload.map(async (file) => {
-          const formData = new FormData();
-          formData.append("file", file);
-          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
-          const body = await safeJson(res);
-          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
-          return { url: body.url as string, name: body.name as string, preview: body.url as string };
+          const { url, name } = await uploadVideoPhoto(file);
+          return { url, name, preview: url };
         })
       );
       setCameraPhotos((prev) => [...prev, ...results].slice(0, 12));
@@ -336,12 +333,8 @@ function CreatePageInner() {
     try {
       const results = await Promise.all(
         toUpload.map(async (file) => {
-          const formData = new FormData();
-          formData.append("file", file);
-          const res = await fetch("/api/ai/upload-photo", { method: "POST", body: formData });
-          const body = await safeJson(res);
-          if (!res.ok) throw new Error((body?.error as string) || "Upload failed");
-          return { url: body.url as string, name: body.name as string, preview: body.url as string };
+          const { url, name } = await uploadVideoPhoto(file);
+          return { url, name, preview: url };
         })
       );
       setPastePhotos((prev) => [...prev, ...results].slice(0, 12));
