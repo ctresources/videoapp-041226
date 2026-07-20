@@ -5,6 +5,7 @@ import {
   generateVideoV3,
   getPrivateVoiceId,
   getDefaultEnglishVoiceId,
+  getAvatarLooks,
   uploadTalkingPhoto,
   DIMENSIONS,
   type VideoType,
@@ -643,8 +644,22 @@ export async function POST(req: NextRequest) {
     // composition (that's the Video Agent's job); used to compare raw avatar
     // output. Polled single-step via getVideoV3Status (render_provider tag).
     if (useDirectVideo) {
-      if (!avatarId) throw new Error("Select an avatar look before generating a Direct Video.");
-      console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${avatarId}`);
+      // Resolve the avatar: explicit look → the user's digital twin → the
+      // first completed look in their photo-avatar group. Direct Video always
+      // needs an avatar, but paste-script users may not have picked one, so we
+      // fall back to their default rather than erroring.
+      let directAvatarId = avatarId || profile.heygen_digital_twin_look_id || undefined;
+      if (!directAvatarId && profile.heygen_photo_id) {
+        try {
+          const looks = await getAvatarLooks(profile.heygen_photo_id);
+          const ready = looks.find((l) => l.status === "completed") || looks[0];
+          if (ready?.id) directAvatarId = ready.id;
+        } catch (e) {
+          console.warn("[create-blog] Direct avatar resolution failed:", e instanceof Error ? e.message : e);
+        }
+      }
+      if (!directAvatarId) throw new Error("Set up your avatar in Settings → Brand Profile to generate a talking-head video.");
+      console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${directAvatarId}`);
 
       // Direct Video needs a HeyGen voice_id (not the ElevenLabs voice_clone_id).
       let directVoiceId = profile.heygen_voice_id;
@@ -666,7 +681,10 @@ export async function POST(req: NextRequest) {
           video_type: videoType,
           render_provider: "heygen_v3_direct",
           render_status: "rendering",
-          metadata: { dimension, orientation, city, state, title },
+          metadata: {
+            dimension, orientation, city, state, title,
+            ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
+          },
         })
         .select()
         .single();
@@ -678,10 +696,10 @@ export async function POST(req: NextRequest) {
       // Digital Twin looks render on Avatar V — highest-fidelity motion/lip-sync,
       // same per-second price as the default engine and slightly faster in testing.
       // Photo-avatar looks stay on HeyGen's default engine (avatar_iv).
-      const isDigitalTwin = avatarId === profile.heygen_digital_twin_look_id;
+      const isDigitalTwin = directAvatarId === profile.heygen_digital_twin_look_id;
 
       const directVideoId = await generateVideoV3({
-        avatarId,
+        avatarId: directAvatarId,
         voiceId: directVoiceId,
         scriptText: safeScript,
         dimension,
