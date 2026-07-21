@@ -792,7 +792,54 @@ export interface DigitalTwinResult {
 }
 
 /**
- * Create a Digital Twin avatar from a video URL via POST /v3/avatars.
+ * Upload a video to HeyGen via the direct-upload flow (POST
+ * /v3/assets/direct-uploads → PUT to S3 → complete). Handles files up to
+ * ~200 MB, unlike the plain URL input which HeyGen caps at 32 MB. Returns the
+ * asset_id to reference when creating the avatar.
+ */
+async function uploadVideoToHeygenDirect(buffer: Buffer, contentType: string): Promise<string> {
+  const apiKey = getApiKey();
+  const ct = contentType.split(";")[0].trim() || "video/mp4";
+  const ext = ct.includes("webm") ? "webm" : ct.includes("quicktime") || ct.includes("mov") ? "mov" : "mp4";
+
+  // Step 1 — initiate: get a presigned S3 slot + asset_id.
+  const initRes = await fetch(`${HEYGEN_API}/v3/assets/direct-uploads`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: `twin.${ext}`, content_type: ct, size_bytes: buffer.length }),
+  });
+  if (!initRes.ok) {
+    throw new Error(`HeyGen upload init failed (${initRes.status}): ${(await initRes.text().catch(() => "")).slice(0, 200)}`);
+  }
+  const init = (await initRes.json()).data;
+  const assetId: string = init.asset_id;
+  if (init.max_bytes && buffer.length > init.max_bytes) {
+    throw new Error(`Video is ${(buffer.length / 1024 / 1024).toFixed(0)} MB — HeyGen's limit is ${Math.floor(init.max_bytes / 1024 / 1024)} MB. Please record a shorter clip.`);
+  }
+
+  // Step 2 — PUT the raw bytes to S3 with the required headers verbatim.
+  const putRes = await fetch(init.upload_url, {
+    method: "PUT",
+    headers: (init.upload_headers as Record<string, string>) || {},
+    body: new Uint8Array(buffer),
+  });
+  if (!putRes.ok) throw new Error(`HeyGen file upload failed (${putRes.status})`);
+
+  // Step 3 — complete: makes the asset usable.
+  const completeRes = await fetch(`${HEYGEN_API}/v3/assets/${assetId}/complete`, {
+    method: "POST",
+    headers: { "x-api-key": apiKey },
+  });
+  if (!completeRes.ok) throw new Error(`HeyGen upload completion failed (${completeRes.status})`);
+
+  console.log(`[heygen] Direct-uploaded video asset ${assetId} (${(buffer.length / 1024 / 1024).toFixed(0)} MB)`);
+  return assetId;
+}
+
+/**
+ * Create a Digital Twin avatar from a video via POST /v3/avatars.
+ * The video is uploaded to HeyGen via the direct-upload flow first (the plain
+ * URL input is capped at 32 MB; recordings are usually larger).
  * Returns the look ID and group ID for consent + polling.
  * Training takes 15–30 minutes; poll via getAvatarLooks(groupId).
  */
@@ -801,17 +848,34 @@ export async function createDigitalTwin(
   name: string,
 ): Promise<DigitalTwinResult> {
   const apiKey = getApiKey();
+
+  // Download the recording, then upload it to HeyGen directly (handles large files).
+  const vres = await fetch(videoUrl);
+  if (!vres.ok) throw new Error(`Couldn't read the recording (${vres.status}). Please re-upload and try again.`);
+  const contentType = vres.headers.get("content-type") ||
+    (videoUrl.includes(".webm") ? "video/webm" : videoUrl.includes(".mov") ? "video/quicktime" : "video/mp4");
+  const buffer = Buffer.from(await vres.arrayBuffer());
+  const assetId = await uploadVideoToHeygenDirect(buffer, contentType);
+
   const res = await fetch(`${HEYGEN_API}/v3/avatars`, {
     method: "POST",
     headers: { "x-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
       type: "digital_twin",
       name,
-      file: { type: "url", url: videoUrl },
+      file: { type: "asset_id", asset_id: assetId },
     }),
   });
   if (!res.ok) {
     const err = await res.text().catch(() => "unknown");
+    // HeyGen limits verified avatar groups (often 1 on lower plans). There's no
+    // API to delete an old twin, so tell the user to remove it in the dashboard.
+    if (/resource_limit_reached|verified avatar group/i.test(err)) {
+      throw new Error(
+        "You already have a Digital Twin and your HeyGen plan allows only one. " +
+        "Delete the existing twin at app.heygen.com → Avatars, then create your new one here.",
+      );
+    }
     throw new Error(`HeyGen Digital Twin creation failed (${res.status}): ${err.slice(0, 300)}`);
   }
   const data = await res.json();
