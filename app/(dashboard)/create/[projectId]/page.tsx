@@ -581,7 +581,7 @@ export default function ProjectEditorPage() {
   }
 
   async function handlePhotosUpload(files: FileList) {
-    const remaining = 12 - uploadedPhotos.length;
+    const remaining = 8 - uploadedPhotos.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     setPhotoUploading(true);
@@ -1185,11 +1185,41 @@ export default function ProjectEditorPage() {
             <p className="text-[11px] text-slate-400 mt-1">Spoken at the end of your video. Leave blank to skip.</p>
           </Card>
 
+          {/* Background music */}
+          <Card>
+            <p className="text-sm font-semibold text-brand-text mb-2">Background Music <span className="text-xs font-normal text-slate-400">(optional)</span></p>
+            <div className="flex flex-wrap gap-1.5">
+              {MUSIC_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => selectMusic(preset)}
+                  disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
+                    selectedMusicId === preset.id
+                      ? "border-primary-500 bg-primary-50 text-primary-700"
+                      : "border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span>{preset.emoji}</span>
+                  {uploadingMusic && preset.id === "custom" ? "Uploading…"
+                    : musicResolving && selectedMusicId === preset.id ? "Loading…"
+                    : preset.label}
+                </button>
+              ))}
+            </div>
+            {musicUrl && selectedMusicId !== "none" && (
+              <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                <CheckCircle size={11} /> Music selected · plays low under your voiceover
+              </p>
+            )}
+            <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
+          </Card>
+
           {/* Photo Upload */}
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-brand-text">Add Photos <span className="text-xs font-normal text-slate-400">(optional · up to 12)</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
+              <p className="text-sm font-semibold text-brand-text">Add Photos <span className="text-xs font-normal text-slate-400">(optional · up to 8)</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
             </div>
             <div className="flex flex-wrap gap-2">
               {uploadedPhotos.map((photo, i) => (
@@ -1203,7 +1233,7 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               ))}
-              {uploadedPhotos.length < 12 && (
+              {uploadedPhotos.length < 8 && (
                 <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
                   {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                   <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
@@ -1641,8 +1671,8 @@ export default function ProjectEditorPage() {
 
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 12)</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
+              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 8)</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
             </div>
             <div className="flex flex-wrap gap-2 mb-5">
               {uploadedPhotos.map((photo, i) => (
@@ -1656,7 +1686,7 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               ))}
-              {uploadedPhotos.length < 12 && (
+              {uploadedPhotos.length < 8 && (
                 <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
                   {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                   <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
