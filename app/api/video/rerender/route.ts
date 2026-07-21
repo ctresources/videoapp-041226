@@ -8,6 +8,7 @@ import {
   getAvatarLooks,
   DIMENSIONS,
   type VideoType,
+  type VideoAgentFile,
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
@@ -217,6 +218,8 @@ export interface RerenderEdits {
   captionColor?: string;
   captionHighlightColor?: string;
   musicUrl?: string | null;
+  /** Listing/b-roll photos for the Video Agent to weave in (up to 8). */
+  photoUrls?: string[];
 }
 
 export async function POST(req: NextRequest) {
@@ -382,11 +385,17 @@ export async function POST(req: NextRequest) {
     if (insertErr || !newVideo) throw new Error(insertErr?.message || "Insert failed");
     placeholderVideoId = newVideo.id;
 
+    // Attach uploaded photos as b-roll for the Video Agent to weave in (≤8).
+    const photoFiles: VideoAgentFile[] = Array.isArray(edits.photoUrls)
+      ? edits.photoUrls.filter((u): u is string => typeof u === "string").slice(0, 8).map((url) => ({ type: "url", url }))
+      : [];
+
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId,
       voiceId,
       orientation,
+      files: photoFiles.length > 0 ? photoFiles : undefined,
       callbackUrl,
       callbackId: newVideo.id,
     });

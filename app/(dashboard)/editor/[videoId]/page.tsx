@@ -10,8 +10,10 @@ import {
   ArrowLeft, Wand2, Music2, Type, Palette, Monitor,
   ToggleLeft, ToggleRight, Loader2, CheckCircle, Upload,
   Play, Pause, Volume2, VolumeX, RefreshCw, Mic2, UserCircle2,
+  Image as ImageIcon, X, Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import type { RerenderEdits } from "@/app/api/video/rerender/route";
 
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
@@ -111,11 +113,39 @@ export default function VideoEditorPage() {
     captionColor: "#FFFFFF",
     captionHighlightColor: "#3B82F6",
     musicUrl: null,
+    photoUrls: [],
   });
   // Snapshot of edits as they were when the video loaded — used to detect
   // whether the user made render-affecting changes vs. a title-only edit.
   const [initialEdits, setInitialEdits] = useState<RerenderEdits | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    e.target.value = "";
+    if (!files?.length) return;
+    const current = edits.photoUrls ?? [];
+    const room = 8 - current.length;
+    if (room <= 0) { toast.error("Up to 8 photos."); return; }
+    setUploadingPhotos(true);
+    try {
+      const uploaded = await Promise.all(
+        Array.from(files).slice(0, room).map((f) => uploadVideoPhoto(f)),
+      );
+      setEdits((x) => ({ ...x, photoUrls: [...(x.photoUrls ?? []), ...uploaded.map((u) => u.url)] }));
+      toast.success(`${uploaded.length} photo${uploaded.length > 1 ? "s" : ""} added!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+    } finally {
+      setUploadingPhotos(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setEdits((x) => ({ ...x, photoUrls: (x.photoUrls ?? []).filter((u) => u !== url) }));
+  }
 
   useEffect(() => {
     loadVideo();
@@ -247,7 +277,11 @@ export default function VideoEditorPage() {
 
   function hasRenderChanges(): boolean {
     if (!initialEdits) return true;
-    return RENDER_FIELDS.some((k) => edits[k] !== initialEdits[k]);
+    if (RENDER_FIELDS.some((k) => edits[k] !== initialEdits[k])) return true;
+    // photoUrls is an array — compare by content, not reference.
+    const a = edits.photoUrls ?? [];
+    const b = initialEdits.photoUrls ?? [];
+    return a.length !== b.length || a.some((u, i) => u !== b[i]);
   }
 
   function hasTitleChange(): boolean {
@@ -491,6 +525,44 @@ export default function VideoEditorPage() {
               accept="audio/*,.mp3,.wav,.m4a"
               className="hidden"
               onChange={handleMusicUpload}
+            />
+          </Section>
+
+          {/* Photos */}
+          <Section icon={ImageIcon} title="Photos" color="bg-amber-500">
+            <div className="flex flex-wrap gap-2">
+              {(edits.photoUrls ?? []).map((url) => (
+                <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="Listing photo" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removePhoto(url)}
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+              ))}
+              {(edits.photoUrls ?? []).length < 8 && (
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhotos}
+                  className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0 ${uploadingPhotos ? "border-amber-300 bg-amber-50" : "border-slate-200 hover:border-amber-300"}`}
+                >
+                  {uploadingPhotos ? <Loader2 size={18} className="text-amber-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Optional · up to 8. Used as b-roll in your video. {(edits.photoUrls ?? []).length > 0 && `${(edits.photoUrls ?? []).length}/8`}
+            </p>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePhotoUpload}
             />
           </Section>
 
