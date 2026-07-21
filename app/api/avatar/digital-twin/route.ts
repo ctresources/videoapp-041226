@@ -3,6 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createDigitalTwin, getAvatarLooks } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 
+// Relays the recording (up to ~200 MB) from Supabase to HeyGen's S3 slot.
+export const maxDuration = 300;
+
 /**
  * POST /api/avatar/digital-twin
  * Body: { videoUrl: string, name?: string }
