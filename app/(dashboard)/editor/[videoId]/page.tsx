@@ -123,19 +123,19 @@ export default function VideoEditorPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    console.log("[editor] photo input changed", e.target.files?.length);
-    const files = e.target.files;
+    // Copy to a static array BEFORE resetting the input — e.target.files is a
+    // live FileList, so clearing the value would empty this list too.
+    const picked = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
     setPhotoError(null);
-    if (!files?.length) return;
+    if (picked.length === 0) return;
     const current = edits.photoUrls ?? [];
     const room = 8 - current.length;
     if (room <= 0) { setPhotoError("You can add up to 8 photos."); return; }
     setUploadingPhotos(true);
-    console.log(`[editor] uploading ${Math.min(files.length, room)} photo(s)…`);
     try {
       const uploaded = await Promise.all(
-        Array.from(files).slice(0, room).map((f) => uploadVideoPhoto(f)),
+        picked.slice(0, room).map((f) => uploadVideoPhoto(f)),
       );
       setEdits((x) => ({ ...x, photoUrls: [...(x.photoUrls ?? []), ...uploaded.map((u) => u.url)] }));
       toast.success(`${uploaded.length} photo${uploaded.length > 1 ? "s" : ""} added!`);
