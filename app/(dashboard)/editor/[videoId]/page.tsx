@@ -120,24 +120,31 @@ export default function VideoEditorPage() {
   const [initialEdits, setInitialEdits] = useState<RerenderEdits | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     e.target.value = "";
+    setPhotoError(null);
     if (!files?.length) return;
     const current = edits.photoUrls ?? [];
     const room = 8 - current.length;
-    if (room <= 0) { toast.error("Up to 8 photos."); return; }
+    if (room <= 0) { setPhotoError("You can add up to 8 photos."); return; }
     setUploadingPhotos(true);
+    console.log(`[editor] uploading ${Math.min(files.length, room)} photo(s)…`);
     try {
       const uploaded = await Promise.all(
         Array.from(files).slice(0, room).map((f) => uploadVideoPhoto(f)),
       );
       setEdits((x) => ({ ...x, photoUrls: [...(x.photoUrls ?? []), ...uploaded.map((u) => u.url)] }));
       toast.success(`${uploaded.length} photo${uploaded.length > 1 ? "s" : ""} added!`);
+      console.log("[editor] photo upload OK", uploaded.map((u) => u.url));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Photo upload failed");
+      const msg = err instanceof Error ? err.message : "Photo upload failed";
+      console.error("[editor] photo upload failed:", msg, err);
+      setPhotoError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhotos(false);
     }
@@ -553,13 +560,21 @@ export default function VideoEditorPage() {
                 </button>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              Optional · up to 8. Used as b-roll in your video. {(edits.photoUrls ?? []).length > 0 && `${(edits.photoUrls ?? []).length}/8`}
-            </p>
+            {photoError ? (
+              <p className="text-[11px] text-red-500 mt-2">{photoError}</p>
+            ) : uploadingPhotos ? (
+              <p className="text-[11px] text-amber-600 mt-2">Uploading photo…</p>
+            ) : (edits.photoUrls ?? []).length > 0 ? (
+              <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1">
+                <CheckCircle size={11} /> {(edits.photoUrls ?? []).length} photo{(edits.photoUrls ?? []).length > 1 ? "s" : ""} added ({(edits.photoUrls ?? []).length}/8) · used as b-roll
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-2">Optional · up to 8. Used as b-roll in your video.</p>
+            )}
             <input
               ref={photoInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.jpg,.jpeg,.png,.webp"
               multiple
               className="hidden"
               onChange={handlePhotoUpload}
