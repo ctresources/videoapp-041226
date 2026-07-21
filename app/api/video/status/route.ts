@@ -3,7 +3,65 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus, getVideoAgentSession, getVideoV3Status } from "@/lib/api/heygen";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
+import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { NextRequest, NextResponse } from "next/server";
+
+// Compositing photos + mixing music into a finished render (ffmpeg) can take a
+// while, so the poll that finalizes a Direct video needs headroom.
+export const maxDuration = 300;
+
+/**
+ * Finalize a completed Direct Video: composite the uploaded photos as b-roll,
+ * mix background music, and re-store to Supabase — the same work the webhook
+ * does. Uses a DB compare-and-swap so only the first caller (poll or webhook)
+ * that flips the row out of its rendering state does the heavy work; concurrent
+ * polls see the transient "storing" state and just keep waiting.
+ *
+ * Returns the final public URL, or null if another caller already claimed it.
+ */
+async function finalizeDirectVideo(
+  admin: ReturnType<typeof createAdminClient>,
+  video: { id: string; project_id: string | null; user_id: string; video_type: string; render_status: string; metadata: Record<string, unknown> | null },
+  heygenUrl: string,
+): Promise<string | null> {
+  // Claim the row (rendering/pending -> storing). Only one caller wins.
+  const { data: claimed } = await admin
+    .from("generated_videos")
+    .update({ render_status: "storing" })
+    .eq("id", video.id)
+    .eq("render_status", video.render_status)
+    .select("id")
+    .single();
+  if (!claimed) return null; // someone else is finalizing
+
+  const meta = video.metadata ?? {};
+  const musicUrl = (meta.music_url as string | undefined) || null;
+  const photoUrls = Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null;
+  const dimension = (meta.dimension as { width: number; height: number } | undefined) || null;
+
+  // downloadAndStoreVideo never throws (photo/music steps fall back internally),
+  // so on any failure we still land on the raw HeyGen URL rather than a stuck row.
+  const stored = await downloadAndStoreVideo(heygenUrl, video.id, { musicUrl, photoUrls, dimension });
+  const finalUrl = stored || heygenUrl;
+
+  await admin
+    .from("generated_videos")
+    .update({ render_status: "completed", video_url: finalUrl })
+    .eq("id", video.id);
+  if (video.project_id) {
+    await admin.from("projects").update({ status: "ready" }).eq("id", video.project_id);
+  }
+  if (video.user_id) {
+    publishWebhookEvent(video.user_id, "video.published", {
+      video_id: video.id,
+      video_url: finalUrl,
+      video_type: video.video_type,
+      project_id: video.project_id,
+    }).catch(console.error);
+  }
+  console.log(`[status] Direct ${video.id} finalized → ${finalUrl.includes("supabase") ? "stored+composited" : "raw HeyGen (store failed)"}`);
+  return finalUrl;
+}
 
 /**
  * GET /api/video/status?renderId=xxx
@@ -185,31 +243,27 @@ export async function GET(req: NextRequest) {
           console.log(`[status] V3 direct video ${renderId}: ${videoStatus.status}`);
 
           if (videoStatus.status === "completed" && videoStatus.videoUrl) {
-            status = "completed";
-            videoUrl = videoStatus.videoUrl;
-
-            await admin
-              .from("generated_videos")
-              .update({ render_status: "completed", video_url: videoUrl })
-              .eq("id", video.id);
-
-            if (video.project_id) {
-              await admin
-                .from("projects")
-                .update({ status: "ready" })
-                .eq("id", video.project_id);
+            // Composite photos + mix music + re-store (idempotent CAS lock).
+            const finalUrl = await finalizeDirectVideo(
+              admin,
+              {
+                id: video.id as string,
+                project_id: video.project_id as string | null,
+                user_id: video.user_id as string,
+                video_type: video.video_type as string,
+                render_status: video.render_status as string,
+                metadata: video.metadata as Record<string, unknown> | null,
+              },
+              videoStatus.videoUrl,
+            );
+            if (finalUrl) {
+              status = "completed";
+              videoUrl = finalUrl;
+              console.log(`[status] HeyGen Direct ${renderId} completed`);
+            } else {
+              // Another poll is finalizing — report in-progress, keep polling.
+              status = "rendering";
             }
-
-            if (video.user_id && videoUrl) {
-              publishWebhookEvent(video.user_id, "video.published", {
-                video_id: video.id,
-                video_url: videoUrl,
-                video_type: video.video_type,
-                project_id: video.project_id,
-              }).catch(console.error);
-            }
-
-            console.log(`[status] HeyGen Direct ${renderId} completed`);
           } else if (videoStatus.status === "failed") {
             status = "failed";
             errorMsg = videoStatus.error || "HeyGen v3 direct render failed";
