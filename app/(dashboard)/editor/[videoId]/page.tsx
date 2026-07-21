@@ -121,9 +121,9 @@ export default function VideoEditorPage() {
   const [selectedMusicId, setSelectedMusicId] = useState("none");
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    console.log("[editor] photo input changed", e.target.files?.length);
     const files = e.target.files;
     e.target.value = "";
     setPhotoError(null);
@@ -551,13 +551,19 @@ export default function VideoEditorPage() {
                 </div>
               ))}
               {(edits.photoUrls ?? []).length < 8 && (
-                <button
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhotos}
-                  className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0 ${uploadingPhotos ? "border-amber-300 bg-amber-50" : "border-slate-200 hover:border-amber-300"}`}
+                <label
+                  className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0 cursor-pointer ${uploadingPhotos ? "border-amber-300 bg-amber-50" : "border-slate-200 hover:border-amber-300"}`}
                 >
                   {uploadingPhotos ? <Loader2 size={18} className="text-amber-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
-                </button>
+                  <input
+                    type="file"
+                    accept="image/*,.jpg,.jpeg,.png,.webp"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingPhotos}
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
               )}
             </div>
             {photoError ? (
@@ -569,16 +575,8 @@ export default function VideoEditorPage() {
                 <CheckCircle size={11} /> {(edits.photoUrls ?? []).length} photo{(edits.photoUrls ?? []).length > 1 ? "s" : ""} added ({(edits.photoUrls ?? []).length}/8) · used as b-roll
               </p>
             ) : (
-              <p className="text-[11px] text-slate-400 mt-2">Optional · up to 8. Used as b-roll in your video.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Optional · up to 8 photos · tap + to add b-roll.</p>
             )}
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*,.jpg,.jpeg,.png,.webp"
-              multiple
-              className="hidden"
-              onChange={handlePhotoUpload}
-            />
           </Section>
 
           {/* Captions */}
