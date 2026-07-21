@@ -47,6 +47,7 @@ interface RenderProgress {
 const statusConfig: Record<string, { label: string; variant: "default" | "warning" | "success" | "error"; icon: React.ElementType }> = {
   pending:   { label: "In queue",     variant: "default",  icon: Clock },
   rendering: { label: "Rendering…",   variant: "warning",  icon: RefreshCw },
+  storing:   { label: "Finalizing…",  variant: "warning",  icon: RefreshCw },
   completed: { label: "Ready",        variant: "success",  icon: CheckCircle },
   failed:    { label: "Failed",       variant: "error",    icon: XCircle },
 };
@@ -344,7 +345,7 @@ function VideosContent() {
   }
 
   const renderingVideos = videos.filter(
-    (v) => v.render_status === "rendering" || v.render_status === "pending"
+    (v) => v.render_status === "rendering" || v.render_status === "pending" || v.render_status === "storing"
   );
   const hasRendering = renderingVideos.length > 0;
 
@@ -451,7 +452,7 @@ function VideosContent() {
             const status = statusConfig[video.render_status] || statusConfig.pending;
             const StatusIcon = status.icon;
             const isHighlighted = video.id === highlightId;
-            const isRendering = video.render_status === "rendering" || video.render_status === "pending";
+            const isRendering = video.render_status === "rendering" || video.render_status === "pending" || video.render_status === "storing";
             const hookText = (video.projects as { title: string; ai_script?: { hook?: string } | null } | null)?.ai_script?.hook;
 
             // Split hook at narrative break (em-dash or colon) for two-line thumbnail effect
