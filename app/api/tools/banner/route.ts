@@ -22,9 +22,12 @@ export async function POST(req: NextRequest) {
     subscribeKicker?: string;
     subscribeMain?: string;
     subscribeSub?: string;
+    extraLine1?: string;
+    extraLine2?: string;
     qr2Caption?: string;
     qr2Link?: string;
     photoUrls?: string[];
+    palette?: string;
   };
 
   try {
@@ -36,9 +39,12 @@ export async function POST(req: NextRequest) {
       subscribeKicker: body.subscribeKicker,
       subscribeMain: body.subscribeMain,
       subscribeSub: body.subscribeSub,
+      extraLine1: body.extraLine1,
+      extraLine2: body.extraLine2,
       qr2Caption: body.qr2Caption,
       qr2Link: body.qr2Link,
       photoUrls: Array.isArray(body.photoUrls) ? body.photoUrls : undefined,
+      palette: body.palette,
     });
     return NextResponse.json(result);
   } catch (err) {

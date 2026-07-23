@@ -64,6 +64,25 @@ function wrapLines(text: string, fontSize: number, maxWidth: number): string[] {
 }
 
 /**
+ * Render a single line as one filled path PER WORD, laid left→right from
+ * `startX`. Splitting per word is deliberate: librsvg (sharp's SVG renderer)
+ * silently truncates a path whose `d` attribute grows past ~5k chars, which a
+ * long single-path line (e.g. a full contact line) would exceed — one path per
+ * word keeps every `d` well under that limit. Positioning uses advance widths,
+ * matching opentype's own (kerning-free) layout, so there's no visual drift.
+ */
+function lineToPaths(line: string, startX: number, y: number, fontSize: number, fill: string): string {
+  const space = textWidth(" ", fontSize);
+  let cx = startX;
+  const out: string[] = [];
+  for (const word of line.split(" ")) {
+    if (word) out.push(`<path d="${textPathData(word, cx, y, fontSize)}" fill="${fill}"/>`);
+    cx += textWidth(word, fontSize) + space;
+  }
+  return out.join("");
+}
+
+/**
  * Render a block of (already-wrapped) lines as filled vector paths.
  * `y` is the baseline of the first line. align left/center relative to `x`.
  */
@@ -78,8 +97,8 @@ function textBlock(
   const lh = fontSize * lineHeight;
   return lines
     .map((l, i) => {
-      const lx = align === "center" ? x - textWidth(l, fontSize) / 2 : x;
-      return `<path d="${textPathData(l, lx, y + i * lh, fontSize)}" fill="${fill}"/>`;
+      const startX = align === "center" ? x - textWidth(l, fontSize) / 2 : x;
+      return lineToPaths(l, startX, y + i * lh, fontSize, fill);
     })
     .join("\n");
 }
@@ -104,12 +123,26 @@ function curvedArrow(
 <path d="M ${x2} ${y2} L ${bx1.toFixed(1)} ${by1.toFixed(1)} L ${bx2.toFixed(1)} ${by2.toFixed(1)} Z" fill="${color}"/>`;
 }
 
-// ── Colors (template-matched) ────────────────────────────────────────────────
-const NAVY = "#1e3a8a";       // headline / captions
-const ROYAL = "#1d4ed8";      // SUBSCRIBE main word
-const QR_DARK = "#1a4ba8";    // blue-tinted QR modules, like the template
-const GRAD_LEFT = "#c9f2d4";  // mint
-const GRAD_RIGHT = "#9fb8ef"; // periwinkle
+// ── Color palettes ───────────────────────────────────────────────────────────
+// Each is a light left→right gradient with dark, readable text (the template's
+// aesthetic), so the design holds up whichever the user picks.
+interface Palette {
+  gradLeft: string;
+  gradRight: string;
+  navy: string;   // headline / captions / sub lines
+  royal: string;  // SUBSCRIBE main word (accent)
+  qrDark: string; // QR module color
+}
+
+export const BANNER_PALETTES: Record<string, Palette> = {
+  ocean:    { gradLeft: "#c9f2d4", gradRight: "#9fb8ef", navy: "#1e3a8a", royal: "#1d4ed8", qrDark: "#1a4ba8" },
+  sunset:   { gradLeft: "#ffe0c2", gradRight: "#f9c0d9", navy: "#7c2d12", royal: "#be185d", qrDark: "#9d174d" },
+  forest:   { gradLeft: "#d1f5d3", gradRight: "#9fe3d0", navy: "#14532d", royal: "#047857", qrDark: "#0f766e" },
+  lavender: { gradLeft: "#e9d5ff", gradRight: "#bfdbfe", navy: "#5b21b6", royal: "#6d28d9", qrDark: "#6d28d9" },
+  coral:    { gradLeft: "#fef3c7", gradRight: "#fecaca", navy: "#881337", royal: "#be123c", qrDark: "#be123c" },
+  slate:    { gradLeft: "#e2e8f0", gradRight: "#c7d2e0", navy: "#1e293b", royal: "#2563eb", qrDark: "#334155" },
+};
+const DEFAULT_PALETTE = "ocean";
 
 export interface RenderBannerOptions {
   userId: string;
@@ -119,10 +152,15 @@ export interface RenderBannerOptions {
   subscribeKicker?: string;
   subscribeMain?: string;
   subscribeSub?: string;
+  /** Two optional lines rendered below the "below SUBSCRIBE" line. */
+  extraLine1?: string;
+  extraLine2?: string;
   qr2Caption?: string;
   qr2Link?: string;
   /** 0–2 photo URLs; laid out into the left photo slot(s). */
   photoUrls?: string[];
+  /** Color palette key (see BANNER_PALETTES); defaults to "ocean". */
+  palette?: string;
 }
 
 const DEFAULTS = {
@@ -134,15 +172,15 @@ const DEFAULTS = {
   qr2Caption: "CALL, TEXT OR MEET US ON ZOOM!!",
 };
 
-/** Generate a blue-tinted QR PNG buffer sized to `size` px. */
-async function makeQr(link: string, size: number): Promise<Buffer | null> {
+/** Generate a QR PNG buffer sized to `size` px, tinted `dark`. */
+async function makeQr(link: string, size: number, dark: string): Promise<Buffer | null> {
   try {
     return await QRCode.toBuffer(link.trim(), {
       type: "png",
       width: size,
       margin: 1,
       errorCorrectionLevel: "M",
-      color: { dark: QR_DARK, light: "#ffffff" },
+      color: { dark, light: "#ffffff" },
     });
   } catch (err) {
     console.error("[banner-render] QR generation failed:", err);
@@ -188,21 +226,24 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const subscribeKicker = (opts.subscribeKicker ?? DEFAULTS.subscribeKicker).trim();
   const subscribeMain = (opts.subscribeMain ?? DEFAULTS.subscribeMain).trim();
   const subscribeSub = (opts.subscribeSub ?? DEFAULTS.subscribeSub).trim();
+  const extraLine1 = (opts.extraLine1 ?? "").trim();
+  const extraLine2 = (opts.extraLine2 ?? "").trim();
   const qr2Caption = (opts.qr2Caption ?? DEFAULTS.qr2Caption).trim();
   const qr1Link = opts.qr1Link?.trim() || "";
   const qr2Link = opts.qr2Link?.trim() || "";
   const photoUrls = (opts.photoUrls || []).filter((u) => typeof u === "string" && u.trim()).slice(0, 2);
+  const pal = BANNER_PALETTES[opts.palette ?? DEFAULT_PALETTE] ?? BANNER_PALETTES[DEFAULT_PALETTE];
 
   // @ts-ignore -- sharp types unresolvable in some tsconfig setups; runtime import is fine
   const sharp = (await import("sharp")).default;
 
-  // ── Base: mint→periwinkle horizontal gradient ──
+  // ── Base: left→right gradient (palette-driven) ──
   const bgSvg = `
 <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="${GRAD_LEFT}"/>
-      <stop offset="100%" stop-color="${GRAD_RIGHT}"/>
+      <stop offset="0%" stop-color="${pal.gradLeft}"/>
+      <stop offset="100%" stop-color="${pal.gradRight}"/>
     </linearGradient>
   </defs>
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
@@ -223,14 +264,14 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   // QR #1 — top area, right of the headline.
   const QR1 = 300, QR1X = 1650, QR1Y = 110;
   if (qr1Link) {
-    const q = await makeQr(qr1Link, QR1);
+    const q = await makeQr(qr1Link, QR1, pal.qrDark);
     if (q) composites.push({ input: q, left: QR1X, top: QR1Y });
   }
 
   // QR #2 — middle-right, beside the SUBSCRIBE block.
   const QR2 = 290, QR2X = 1900, QR2Y = 640;
   if (qr2Link) {
-    const q = await makeQr(qr2Link, QR2);
+    const q = await makeQr(qr2Link, QR2, pal.qrDark);
     if (q) composites.push({ input: q, left: QR2X, top: QR2Y });
   }
 
@@ -239,7 +280,7 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
 
   // Headline "WATCHING ON TV?" — big navy, top-left, sized to clear QR1.
   const headlineSize = fitFont(headline.toUpperCase(), QR1X - 200 - 40, 150, 60);
-  parts.push(textBlock([headline.toUpperCase()], 200, 290, headlineSize, NAVY));
+  parts.push(textBlock([headline.toUpperCase()], 200, 290, headlineSize, pal.navy));
 
   // QR1 caption + arrow (only when QR1 is present).
   if (qr1Link && qr1Caption) {
@@ -247,24 +288,34 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
     const capLines = wrapLines(qr1Caption.toUpperCase(), capSize, W - 40 - (QR1X + QR1 + 40));
     const blockH = (capLines.length - 1) * capSize * 1.14;
     const capBaseline = QR1Y + QR1 / 2 - blockH / 2 + capSize * 0.35;
-    parts.push(textBlock(capLines, QR1X + QR1 + 40, capBaseline, capSize, NAVY));
+    parts.push(textBlock(capLines, QR1X + QR1 + 40, capBaseline, capSize, pal.navy));
     // Arrow from the caption curving up-left into QR1's right edge.
     parts.push(curvedArrow(QR1X + QR1 + 60, QR1Y + QR1 / 2 + 55, QR1X + QR1 + 25, QR1Y + QR1 / 2 + 40, QR1X + QR1 - 12, QR1Y + QR1 / 2));
   }
 
-  // Subscribe block — kicker / big main / sub, stacked at x=1080.
+  // Subscribe block — kicker / big main / sub, then up to two extra lines,
+  // stacked at x=1080.
   const SX = 1080;
   if (subscribeKicker) {
-    parts.push(textBlock(wrapLines(subscribeKicker.toUpperCase(), 46, 720), SX, 640, 46, NAVY));
+    parts.push(textBlock(wrapLines(subscribeKicker.toUpperCase(), 46, 720), SX, 640, 46, pal.navy));
   }
   if (subscribeMain) {
     const mainSize = fitFont(subscribeMain.toUpperCase(), 700, 150, 60);
-    parts.push(textBlock([subscribeMain.toUpperCase()], SX, 770, mainSize, ROYAL));
+    parts.push(textBlock([subscribeMain.toUpperCase()], SX, 770, mainSize, pal.royal));
   }
+  // Baseline walks down as each optional line below the main word is added.
+  let subY = 850;
   if (subscribeSub) {
     // Single line (like the template), shrunk to clear QR2 if the user types more.
     const subSize = fitFont(subscribeSub.toUpperCase(), QR2X - SX - 40, 60, 34);
-    parts.push(textBlock([subscribeSub.toUpperCase()], SX, 850, subSize, NAVY));
+    parts.push(textBlock([subscribeSub.toUpperCase()], SX, subY, subSize, pal.navy));
+    subY += 66;
+  }
+  for (const extra of [extraLine1, extraLine2]) {
+    if (!extra) continue;
+    const exSize = fitFont(extra.toUpperCase(), QR2X - SX - 40, 48, 28);
+    parts.push(textBlock([extra.toUpperCase()], SX, subY, exSize, pal.navy));
+    subY += 62;
   }
 
   // QR2 caption + arrow (above/left of QR2, arrow pointing down into it).
@@ -274,7 +325,7 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
     const blockH = (capLines.length - 1) * capSize * 1.14;
     // Sit the block so its last line ends ~40px above the QR.
     const capBaseline = QR2Y - 40 - blockH;
-    parts.push(textBlock(capLines, QR2X - 40, capBaseline, capSize, NAVY));
+    parts.push(textBlock(capLines, QR2X - 40, capBaseline, capSize, pal.navy));
     // Arrow starts just below the caption and curves down into QR2's top edge.
     parts.push(curvedArrow(QR2X - 20, QR2Y - 28, QR2X + 10, QR2Y - 12, QR2X + 55, QR2Y + 12));
   }
