@@ -124,6 +124,18 @@ export default async function BillingPage({
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
 
+  // Show remaining allowance as VIDEOS, not raw credits. A long-form (8–10 min)
+  // video costs 6 credits; a short video costs 1. We lead with how many
+  // long-form videos are left, with the all-short alternative in parentheses.
+  // When there aren't enough for a long-form (< 6), we just show short.
+  const LONG_FORM_CREDIT_COST = 6;
+  const creditsLeft = profile?.credits_remaining ?? 0;
+  const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
+  const videosLeftLabel =
+    longFormLeft >= 1
+      ? `${longFormLeft} long-form video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
+      : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
@@ -234,10 +246,10 @@ export default async function BillingPage({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Zap size={11} className="text-primary-500" /> AI Credits This Month
+                  <Zap size={11} className="text-primary-500" /> AI Videos Left This Month
                 </p>
                 <p className="text-xs font-bold text-brand-text">
-                  {profile?.credits_remaining ?? 0} Of {currentPlan?.videos ?? 1} Left
+                  {videosLeftLabel}
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
@@ -249,7 +261,9 @@ export default async function BillingPage({
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
-                {currentTier === "beta" ? "Included With Beta Access" : "Resets Each Billing Period"}
+                {currentTier === "beta"
+                  ? "Included with beta access · a long-form video uses 6× a short one"
+                  : "Resets each billing period · a long-form video uses 6× a short one"}
               </p>
             </div>
             {/* Camera recordings */}

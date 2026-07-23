@@ -48,8 +48,15 @@ async function DashboardStats() {
   } | null;
 
   const creditsLeft = profile?.credits_remaining ?? 0;
-  const PLAN_VIDEOS: Record<string, number> = { free: 1, beta: 1, starter: 4, agent: 8, pro: 12 };
-  const videosTotal = PLAN_VIDEOS[(profile?.subscription_tier ?? "free")] ?? 0;
+  // Show remaining allowance as VIDEOS, not raw credits. A long-form (8–10 min)
+  // video costs 6 credits; a short video costs 1. Lead with long-form, with the
+  // all-short alternative in parentheses; below 6 credits, just show short.
+  const LONG_FORM_CREDIT_COST = 6;
+  const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
+  const videosLeftLabel =
+    longFormLeft >= 1
+      ? `${longFormLeft} long-form video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
+      : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
   const periodEnd = profile?.current_period_end
     ? new Date(profile.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : null;
@@ -74,7 +81,7 @@ async function DashboardStats() {
         <div className="flex items-center gap-2 flex-wrap">
           <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
           <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
-            {creditsLeft === 0 ? "No AI Videos Remaining This Month" : `${creditsLeft} Of ${videosTotal} AI Videos Left`}
+            {creditsLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
           </span>
           <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
             ∞ Camera Recordings
@@ -94,8 +101,9 @@ async function DashboardStats() {
             <Zap className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-text">{creditsLeft}</p>
-            <p className="text-xs text-slate-500 leading-tight">AI Videos Left</p>
+            <p className="text-2xl font-bold text-brand-text">{longFormLeft >= 1 ? longFormLeft : creditsLeft}</p>
+            <p className="text-xs text-slate-500 leading-tight">{longFormLeft >= 1 ? "Long-Form Videos Left" : "Short Videos Left"}</p>
+            {longFormLeft >= 1 && <p className="text-[10px] text-slate-400 leading-tight">or {creditsLeft} short</p>}
           </div>
         </Card>
 
