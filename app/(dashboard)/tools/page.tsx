@@ -880,12 +880,26 @@ const BANNER_DEFAULTS = {
   subscribeKicker: "NEW VIDEOS EVERY WEEK!",
   subscribeMain: "SUBSCRIBE",
   subscribeSub: "TO LEARN ALL ABOUT",
+  extraLine1: "",
+  extraLine2: "",
   qr2Caption: "CALL, TEXT OR MEET US ON ZOOM!!",
   qr2Link: "",
 };
 
+// Swatch preview colors — must stay in sync with BANNER_PALETTES in
+// lib/utils/banner-render.ts (server does the actual coloring).
+const BANNER_PALETTE_SWATCHES: { key: string; name: string; left: string; right: string; text: string }[] = [
+  { key: "ocean",    name: "Ocean",    left: "#c9f2d4", right: "#9fb8ef", text: "#1e3a8a" },
+  { key: "sunset",   name: "Sunset",   left: "#ffe0c2", right: "#f9c0d9", text: "#7c2d12" },
+  { key: "forest",   name: "Forest",   left: "#d1f5d3", right: "#9fe3d0", text: "#14532d" },
+  { key: "lavender", name: "Lavender", left: "#e9d5ff", right: "#bfdbfe", text: "#5b21b6" },
+  { key: "coral",    name: "Coral",    left: "#fef3c7", right: "#fecaca", text: "#881337" },
+  { key: "slate",    name: "Slate",    left: "#e2e8f0", right: "#c7d2e0", text: "#1e293b" },
+];
+
 function BannerGenerator() {
   const [fields, setFields] = useState({ ...BANNER_DEFAULTS });
+  const [palette, setPalette] = useState("ocean");
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -928,7 +942,7 @@ function BannerGenerator() {
       const res = await fetch("/api/tools/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fields, photoUrls: photos }),
+        body: JSON.stringify({ ...fields, palette, photoUrls: photos }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -974,6 +988,31 @@ function BannerGenerator() {
         edit any of it, add up to two QR codes and two photos, then download.
       </p>
 
+      {/* Color palette */}
+      <div className="mb-4">
+        <label className={labelCls}>Color Palette</label>
+        <div className="flex flex-wrap gap-2">
+          {BANNER_PALETTE_SWATCHES.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPalette(p.key)}
+              title={p.name}
+              className={`flex flex-col items-center gap-1 p-1 rounded-xl border-2 transition-colors ${
+                palette === p.key ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span
+                className="w-16 h-9 rounded-lg flex items-center justify-center"
+                style={{ background: `linear-gradient(to right, ${p.left}, ${p.right})` }}
+              >
+                <span className="text-[11px] font-extrabold" style={{ color: p.text }}>Aa</span>
+              </span>
+              <span className="text-[10px] text-slate-500">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Headline */}
       <div className="mb-4">
         <label className={labelCls}>Headline</label>
@@ -1007,6 +1046,20 @@ function BannerGenerator() {
         <div>
           <label className={labelCls}>Below SUBSCRIBE</label>
           <input type="text" value={fields.subscribeSub} onChange={(e) => setField("subscribeSub", e.target.value)} className={inputCls} />
+        </div>
+      </div>
+
+      {/* Two more optional lines below the SUBSCRIBE block */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className={labelCls}>Extra line 1 <span className="font-normal text-slate-400">(optional)</span></label>
+          <input type="text" value={fields.extraLine1} onChange={(e) => setField("extraLine1", e.target.value)}
+            placeholder="e.g. YOUR MARKET · YOUR NAME" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Extra line 2 <span className="font-normal text-slate-400">(optional)</span></label>
+          <input type="text" value={fields.extraLine2} onChange={(e) => setField("extraLine2", e.target.value)}
+            placeholder="e.g. CALL (704) 555-1234" className={inputCls} />
         </div>
       </div>
 
