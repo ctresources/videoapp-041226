@@ -4,12 +4,13 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
+  Megaphone,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner";
 
 interface Project {
   id: string;
@@ -26,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
+  { id: "banner",      label: "Channel Banner",       icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
 ];
 
@@ -1019,6 +1021,233 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   );
 }
 
+// ─── CHANNEL BANNER GENERATOR ─────────────────────────────────────────────────
+
+const BANNER_DEFAULTS = {
+  headline: "WATCHING ON TV?",
+  qr1Caption: "SCAN TO CHAT WITH US!",
+  qr1Link: "",
+  subscribeKicker: "NEW VIDEOS EVERY WEEK!",
+  subscribeMain: "SUBSCRIBE",
+  subscribeSub: "TO LEARN ALL ABOUT",
+  qr2Caption: "CALL, TEXT OR MEET US ON ZOOM!!",
+  qr2Link: "",
+};
+
+function BannerGenerator() {
+  const [fields, setFields] = useState({ ...BANNER_DEFAULTS });
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [bannerUrl, setBannerUrl] = useState("");
+  const photoFileRef = useRef<HTMLInputElement>(null);
+
+  const setField = (k: keyof typeof BANNER_DEFAULTS, v: string) =>
+    setFields((f) => ({ ...f, [k]: v }));
+
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
+
+    setPhotoUploading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Please sign in again.");
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/banner-photo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setPhotos((p) => [...p, publicUrl].slice(0, 2));
+      toast.success("Photo added!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tools/banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...fields, photoUrls: photos }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBannerUrl(data.url);
+      toast.success("Banner generated!");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate banner");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  async function downloadBanner() {
+    if (!bannerUrl) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(bannerUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "channel-banner-2560x1440.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Banner downloaded!");
+    } catch {
+      window.open(bannerUrl, "_blank");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const labelCls = "block text-xs font-semibold text-slate-600 mb-1";
+  const inputCls = "w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400";
+
+  return (
+    <div>
+      <p className="text-sm text-slate-500 mb-5">
+        Generate a 2560×1440 YouTube channel banner. Every field is pre-filled to match the template —
+        edit any of it, add up to two QR codes and two photos, then download.
+      </p>
+
+      {/* Headline */}
+      <div className="mb-4">
+        <label className={labelCls}>Headline</label>
+        <input type="text" value={fields.headline} onChange={(e) => setField("headline", e.target.value)}
+          placeholder="WATCHING ON TV?" className={inputCls} />
+      </div>
+
+      {/* QR 1 */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className={labelCls}>QR #1 caption</label>
+          <input type="text" value={fields.qr1Caption} onChange={(e) => setField("qr1Caption", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>QR #1 link <span className="font-normal text-slate-400">(optional)</span></label>
+          <input type="text" value={fields.qr1Link} onChange={(e) => setField("qr1Link", e.target.value)}
+            placeholder="https://… or tel:+1…" className={inputCls} />
+        </div>
+      </div>
+
+      {/* Subscribe block */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div>
+          <label className={labelCls}>Above SUBSCRIBE</label>
+          <input type="text" value={fields.subscribeKicker} onChange={(e) => setField("subscribeKicker", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Main word</label>
+          <input type="text" value={fields.subscribeMain} onChange={(e) => setField("subscribeMain", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Below SUBSCRIBE</label>
+          <input type="text" value={fields.subscribeSub} onChange={(e) => setField("subscribeSub", e.target.value)} className={inputCls} />
+        </div>
+      </div>
+
+      {/* QR 2 */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className={labelCls}>QR #2 caption</label>
+          <input type="text" value={fields.qr2Caption} onChange={(e) => setField("qr2Caption", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>QR #2 link <span className="font-normal text-slate-400">(optional)</span></label>
+          <input type="text" value={fields.qr2Link} onChange={(e) => setField("qr2Link", e.target.value)}
+            placeholder="https://… or mailto:…" className={inputCls} />
+        </div>
+      </div>
+
+      {/* Photos */}
+      <div className="mb-5">
+        <label className={labelCls}>Photos <span className="font-normal text-slate-400">(optional — up to 2)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {photos.map((url, i) => (
+            <div key={i} className="relative rounded-xl border-2 border-primary-500 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Banner photo ${i + 1}`} className="w-28 h-24 object-cover" />
+              <button
+                onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))}
+                className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
+                title="Remove photo"
+              >
+                <X size={11} className="text-white" />
+              </button>
+            </div>
+          ))}
+          {photos.length < 2 && (
+            <button
+              onClick={() => photoFileRef.current?.click()}
+              disabled={photoUploading}
+              className="flex flex-col items-center justify-center gap-1 w-28 h-24 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all disabled:opacity-50"
+            >
+              {photoUploading ? <Loader2 size={16} className="text-primary-500 animate-spin" /> : <Upload size={16} className="text-slate-400" />}
+              <span className="text-[10px] text-slate-500 font-medium">{photoUploading ? "Uploading…" : "Add Photo"}</span>
+            </button>
+          )}
+        </div>
+        <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
+      </div>
+
+      <button
+        onClick={generate}
+        disabled={loading}
+        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+      >
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {loading ? "Creating your banner…" : "Generate Banner"}
+      </button>
+
+      {bannerUrl && (
+        <div className="mt-6">
+          {/* Preview with the mobile/TV safe-zone outline (center 1546×423). */}
+          <div className="relative rounded-xl overflow-hidden border border-slate-200 max-w-3xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bannerUrl} alt="Generated banner" className="w-full h-auto block" />
+            <div
+              className="absolute border-2 border-dashed border-white/70 pointer-events-none"
+              style={{ left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%" }}
+              title="Safe zone — visible on all devices"
+            />
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            The dashed box is YouTube&apos;s safe zone — the only part guaranteed to show on phones and TVs.
+            Everything else appears on desktop.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 mt-3">
+            <button
+              onClick={downloadBanner}
+              disabled={downloading}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+              {downloading ? "Downloading…" : "Download PNG (2560×1440)"}
+            </button>
+            <p className="text-xs text-slate-400">
+              Download it, then upload in YouTube Studio → Customization → Branding → Banner image.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────────
 
 // ─── HOW TO USE PANEL ──────────────────────────────────────────────────────────
@@ -1166,6 +1395,7 @@ export default function ToolsPage() {
         {activeTab === "script"      && <ScriptGenerator />}
         {activeTab === "channel"     && <ChannelNameGenerator />}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
+        {activeTab === "banner"      && <BannerGenerator />}
       </div>
     </div>
   );
