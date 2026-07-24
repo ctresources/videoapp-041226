@@ -185,6 +185,27 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+
+    // Keep an affiliate's Stripe Connect onboarding status in sync (requires
+    // "Listen to events on connected accounts" enabled for this endpoint).
+    case "account.updated": {
+      const account = event.data.object as Stripe.Account;
+      const { data: affRow } = await admin
+        .from("affiliates")
+        .select("id")
+        .eq("stripe_connect_account_id", account.id)
+        .maybeSingle();
+      const aff = affRow as { id: string } | null;
+      if (aff) {
+        const status = account.details_submitted && account.payouts_enabled
+          ? "complete"
+          : account.requirements?.disabled_reason
+            ? "restricted"
+            : "pending";
+        await admin.from("affiliates").update({ connect_onboarding_status: status }).eq("id", aff.id);
+      }
+      break;
+    }
   }
 
   return NextResponse.json({ received: true });
