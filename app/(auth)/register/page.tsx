@@ -36,11 +36,14 @@ function RegisterForm() {
 
     setLoading(true);
 
+    // Affiliate attribution: forward the sr_ref cookie set by a ?ref= visit.
+    const refCode = document.cookie.match(/(?:^|;\s*)sr_ref=([^;]+)/)?.[1];
+
     // Create user server-side (auto-confirmed, no email verification needed)
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.email, password: form.password, fullName: form.fullName }),
+      body: JSON.stringify({ email: form.email, password: form.password, fullName: form.fullName, refCode }),
     });
     const body = await res.json();
 

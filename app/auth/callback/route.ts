@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyNewUser } from "@/lib/email";
+import { attributeReferral } from "@/lib/affiliate-attribution";
 
 const MAX_USERS = 100;
 
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest) {
     if (isNew) {
       const name = (user.user_metadata?.full_name as string | null) ?? null;
       notifyNewUser({ name, email: user.email ?? null, provider: "google" });
+      // Affiliate attribution from the sr_ref cookie set at ?ref= visit time.
+      await attributeReferral(admin, user.id, user.email, req.cookies.get("sr_ref")?.value);
     }
 
     const { data: profile } = await admin

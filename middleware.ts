@@ -1,8 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/beta", "/auth/callback", "/forgot-password", "/reset-password", "/privacy", "/terms", "/affiliates/apply"];
 const AUTH_ROUTES = ["/login", "/register", "/", "/beta"];
+
+// 60-day last-click attribution window for affiliate referrals.
+const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -12,6 +16,49 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
+
+  // ── Affiliate referral capture ────────────────────────────────────────────
+  // A `?ref=CODE` on any page (typically the marketing home page) is validated
+  // against approved affiliates; if real, we log a click and set a 60-day
+  // last-click cookie. Validation avoids cookie-ing junk/typo codes. All of
+  // this is gated behind the presence of `ref`, so normal requests pay nothing.
+  const ref = request.nextUrl.searchParams.get("ref");
+  let refCodeToSet: string | null = null;
+  if (ref && /^[A-Za-z0-9]{4,24}$/.test(ref)) {
+    try {
+      const admin = createAdminClient();
+      const { data: aff } = await admin
+        .from("affiliates")
+        .select("id")
+        .eq("ref_code", ref.toUpperCase())
+        .eq("status", "approved")
+        .maybeSingle();
+      if (aff) {
+        refCodeToSet = ref.toUpperCase();
+        await admin.from("affiliate_clicks").insert({
+          affiliate_id: (aff as { id: string }).id,
+          landing_path: pathname,
+          referrer: request.headers.get("referer") || null,
+          user_agent: request.headers.get("user-agent") || null,
+        });
+      }
+    } catch {
+      // Attribution is best-effort — never let it break a page load.
+    }
+  }
+
+  // Applies the sr_ref cookie to whichever response we ultimately return.
+  const applyRef = (res: NextResponse): NextResponse => {
+    if (refCodeToSet) {
+      res.cookies.set("sr_ref", refCodeToSet, {
+        maxAge: REF_COOKIE_MAX_AGE,
+        sameSite: "lax",
+        path: "/",
+        httpOnly: false, // the register page reads it via document.cookie
+      });
+    }
+    return res;
+  };
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -49,26 +96,26 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (!profile?.onboarding_done) {
-      return NextResponse.redirect(new URL("/create", request.url));
+      return applyRef(NextResponse.redirect(new URL("/create", request.url)));
     }
 
     if (profile.role === "admin") {
-      return NextResponse.redirect(new URL("/create", request.url));
+      return applyRef(NextResponse.redirect(new URL("/create", request.url)));
     }
 
     const tier = profile.subscription_tier ?? "free";
     const paidPlans = ["starter", "agent", "pro"];
     const hasCredits = (profile.credits_remaining ?? 0) > 0;
     const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
-    return NextResponse.redirect(new URL(hasPaidAccess ? "/create" : "/billing", request.url));
+    return applyRef(NextResponse.redirect(new URL(hasPaidAccess ? "/create" : "/billing", request.url)));
   }
 
   // Unauthenticated users on protected routes → login
   if (!user && !PUBLIC_ROUTES.some((r) => pathname === r)) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return applyRef(NextResponse.redirect(new URL("/login", request.url)));
   }
 
-  return supabaseResponse;
+  return applyRef(supabaseResponse);
 }
 
 export const config = {
