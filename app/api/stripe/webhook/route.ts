@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createCommissionIfEligible } from "@/lib/affiliate-commission";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -132,24 +133,55 @@ export async function POST(req: NextRequest) {
       break;
     }
 
-    // Refresh credits at the start of each billing period
+    // Affiliate commissions (first charge + renewals) and credit refresh (renewals)
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.billing_reason !== "subscription_cycle") break;
       const customerId = invoice.customer as string;
       const { data: profiles } = await admin
         .from("profiles")
         .select("id, subscription_tier")
         .eq("stripe_customer_id", customerId)
         .limit(1);
-      if (!profiles?.[0]) break;
+      const profile = profiles?.[0];
 
-      const plan = Object.values(PLANS).find((p) => p.tier === profiles[0].subscription_tier);
+      // Commission on the first real charge AND every renewal within the window.
+      if (profile && (invoice.billing_reason === "subscription_create" || invoice.billing_reason === "subscription_cycle")) {
+        await createCommissionIfEligible(admin, invoice, profile.id);
+      }
+
+      // Credit refresh only at the start of each billing period (unchanged).
+      if (invoice.billing_reason !== "subscription_cycle" || !profile) break;
+      const plan = Object.values(PLANS).find((p) => p.tier === profile.subscription_tier);
       if (plan) {
-        await updateProfile(admin, profiles[0].id, {
+        await updateProfile(admin, profile.id, {
           credits_remaining: plan.videos,
           subscription_status: "active",
         });
+      }
+      break;
+    }
+
+    // Refund/dispute → void any not-yet-paid commission for that invoice.
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      const invoiceField = (charge as unknown as { invoice?: string | { id: string } | null }).invoice;
+      const invoiceId = !invoiceField ? null : typeof invoiceField === "string" ? invoiceField : invoiceField.id;
+      if (!invoiceId) break;
+      const { data: commRow } = await admin
+        .from("affiliate_commissions")
+        .select("id, status")
+        .eq("stripe_invoice_id", invoiceId)
+        .maybeSingle();
+      const commission = commRow as { id: string; status: string } | null;
+      if (!commission) break;
+      if (commission.status === "pending" || commission.status === "available") {
+        await admin
+          .from("affiliate_commissions")
+          .update({ status: "void", void_reason: "refunded" })
+          .eq("id", commission.id);
+        console.log(`[webhook] Voided commission ${commission.id} — invoice ${invoiceId} refunded`);
+      } else if (commission.status === "paid") {
+        console.warn(`[webhook] Commission ${commission.id} already paid but invoice ${invoiceId} was refunded — manual reconciliation needed`);
       }
       break;
     }
