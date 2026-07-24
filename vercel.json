@@ -33,8 +33,14 @@
     },
     "app/api/social/post/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/affiliate-payouts/route.ts": {
+      "maxDuration": 60
     }
   },
+  "crons": [
+    { "path": "/api/cron/affiliate-payouts", "schedule": "0 15 1 * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
