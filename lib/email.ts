@@ -37,3 +37,71 @@ export async function notifyNewUser({
     }),
   }).catch(() => {});
 }
+
+/** Notifies the owner that a new affiliate application came in for review. */
+export async function notifyNewAffiliateApplication({
+  name,
+  email,
+  website,
+}: {
+  name: string;
+  email: string;
+  website?: string | null;
+}) {
+  if (!RESEND_API_KEY) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: `New affiliate application — ${name}`,
+      html: `
+        <p>A new affiliate application is waiting for review in the Admin → Affiliates tab.</p>
+        <table>
+          <tr><td><strong>Name</strong></td><td>${name}</td></tr>
+          <tr><td><strong>Email</strong></td><td>${email}</td></tr>
+          <tr><td><strong>Website / Social</strong></td><td>${website || "(none)"}</td></tr>
+        </table>
+      `,
+    }),
+  }).catch(() => {});
+}
+
+/** Emails an approved affiliate their referral link and next steps. */
+export async function notifyAffiliateApproved({
+  name,
+  email,
+  refCode,
+  appUrl,
+}: {
+  name: string;
+  email: string;
+  refCode: string;
+  appUrl: string;
+}) {
+  if (!RESEND_API_KEY) return;
+  const refLink = `${appUrl}/?ref=${refCode}`;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "You're approved — welcome to the SparkReels affiliate program",
+      html: `
+        <p>Hi ${name},</p>
+        <p>You're approved as a SparkReels affiliate! Here's your unique referral link — share it anywhere, and you'll earn commission on every new customer who subscribes through it:</p>
+        <p><a href="${refLink}"><strong>${refLink}</strong></a></p>
+        <p>To get paid, sign in and open the <strong>Affiliate Program</strong> page, then connect your bank with Stripe. Payouts are sent monthly.</p>
+        <p>Thanks for helping more agents discover SparkReels.</p>
+      `,
+    }),
+  }).catch(() => {});
+}

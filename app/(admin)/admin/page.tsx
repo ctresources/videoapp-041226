@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -23,6 +23,21 @@ interface InviteCode {
   expires_at: string | null;
   created_at: string;
   profiles?: { email: string; full_name: string | null } | null;
+}
+
+interface AffiliateRow {
+  id: string;
+  full_name: string;
+  email: string;
+  website_or_social: string | null;
+  promotion_plan: string | null;
+  ref_code: string | null;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
+  connect_onboarding_status: string;
+  commission_rate: number;
+  commission_duration_months: number;
+  created_at: string;
 }
 
 interface UserRow {
@@ -54,7 +69,10 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Invite codes state
-  const [adminTab, setAdminTab] = useState<"users" | "invites">("users");
+  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates">("users");
+  const [affiliates, setAffiliates] = useState<AffiliateRow[]>([]);
+  const [affiliatesLoading, setAffiliatesLoading] = useState(false);
+  const [affiliateBusy, setAffiliateBusy] = useState<Record<string, boolean>>({});
   const [invites, setInvites] = useState<InviteCode[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [genCount, setGenCount] = useState("5");
@@ -165,6 +183,34 @@ export default function AdminPage() {
     toast.success(`Copied ${code}`);
   }
 
+  const loadAffiliates = useCallback(async () => {
+    setAffiliatesLoading(true);
+    const res = await fetch("/api/admin/affiliates");
+    if (res.ok) { const { affiliates } = await res.json(); setAffiliates(affiliates); }
+    setAffiliatesLoading(false);
+  }, []);
+
+  useEffect(() => { if (adminTab === "affiliates") loadAffiliates(); }, [adminTab, loadAffiliates]);
+
+  async function updateAffiliate(id: string, status: "approved" | "rejected") {
+    if (status === "rejected" && !confirm("Reject this affiliate application?")) return;
+    setAffiliateBusy((p) => ({ ...p, [id]: true }));
+    const res = await fetch("/api/admin/affiliates", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ affiliateId: id, status }),
+    });
+    if (res.ok) {
+      const { affiliate } = await res.json();
+      setAffiliates((prev) => prev.map((a) => (a.id === id ? affiliate : a)));
+      toast.success(status === "approved" ? "Affiliate approved — link emailed" : "Application rejected");
+    } else {
+      const { error } = await res.json();
+      toast.error(error || "Failed");
+    }
+    setAffiliateBusy((p) => ({ ...p, [id]: false }));
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center gap-3 mb-6">
@@ -200,7 +246,7 @@ export default function AdminPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-5">
-        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"]] as const).map(([tab, Icon, label]) => (
+        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"]] as const).map(([tab, Icon, label]) => (
           <button key={tab} onClick={() => setAdminTab(tab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
@@ -317,6 +363,64 @@ export default function AdminPage() {
             )}
           </Card>
         </div>
+      )}
+
+      {/* ── AFFILIATES TAB ── */}
+      {adminTab === "affiliates" && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-brand-text">
+              Affiliate Applications <span className="text-slate-400 font-normal">({affiliates.length})</span>
+            </p>
+            <button onClick={loadAffiliates} className="p-2 text-slate-400 hover:text-slate-600 transition-colors" title="Refresh">
+              <RefreshCw size={14} className={affiliatesLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+          {affiliatesLoading ? (
+            <p className="text-sm text-slate-400 py-6 text-center">Loading…</p>
+          ) : affiliates.length === 0 ? (
+            <p className="text-sm text-slate-400 py-6 text-center">No applications yet.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {affiliates.map((a) => (
+                <div key={a.id} className="border border-slate-200 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm text-brand-text">{a.full_name}</p>
+                        <Badge variant={a.status === "approved" ? "success" : a.status === "rejected" ? "default" : "warning"}>
+                          {a.status}
+                        </Badge>
+                        {a.ref_code && (
+                          <button onClick={() => copyCode(a.ref_code!)} className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2 py-0.5 rounded hover:bg-slate-200 transition-colors" title="Copy ref code">
+                            {a.ref_code} <Copy size={11} className="text-slate-400" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">{a.email}</p>
+                      {a.website_or_social && <p className="text-xs text-slate-400 mt-0.5">{a.website_or_social}</p>}
+                      {a.promotion_plan && <p className="text-xs text-slate-500 mt-1.5 italic">&ldquo;{a.promotion_plan}&rdquo;</p>}
+                      <p className="text-[11px] text-slate-400 mt-1.5">
+                        {a.commission_rate * 100}% for {a.commission_duration_months} mo
+                        {a.status === "approved" && ` · Stripe: ${a.connect_onboarding_status.replace("_", " ")}`}
+                      </p>
+                    </div>
+                    {a.status === "pending" && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => updateAffiliate(a.id, "rejected")} disabled={affiliateBusy[a.id]} className="gap-1 border-red-200 text-red-600 hover:bg-red-50">
+                          <UserX size={13} /> Reject
+                        </Button>
+                        <Button size="sm" onClick={() => updateAffiliate(a.id, "approved")} disabled={affiliateBusy[a.id]} className="gap-1">
+                          <UserCheck size={13} /> Approve
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       )}
 
       {adminTab === "users" && (<>
