@@ -15,6 +15,7 @@ import {
   CalendarDays,
   BarChart2,
   CreditCard,
+  DollarSign,
   Wand2,
   HelpCircle,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/analytics", icon: BarChart2,       label: "Analytics" },
   { href: "/social",    icon: Share2,          label: "Social Media" },
   { href: "/billing",   icon: CreditCard,      label: "Billing" },
+  { href: "/affiliate", icon: DollarSign,      label: "Affiliate Program" },
   { href: "/settings",  icon: Settings,        label: "Settings" },
   { href: "/help",      icon: HelpCircle,      label: "How It Works" },
 ];
