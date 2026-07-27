@@ -233,6 +233,11 @@ AVATAR + B-ROLL INTERCUT (MANDATORY)
 - When on camera the presenter is FULL SCREEN, filling the entire ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop. Always the animated, lip-synced avatar; never a static image.
 - Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.
 
+LOCATION ACCURACY — ${locationOr}, ${monthName}
+- Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
+- Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
+- Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
+
 FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 - Never express or imply preference, limitation or discrimination based on race, color, religion, sex, gender identity, sexual orientation, disability, familial status (presence or absence of children) or national origin.
 - Never use steering language such as "perfect for a young family", "great for singles", "ideal for retirees", "safe neighborhood", "family-friendly" or "exclusive community".
@@ -282,11 +287,6 @@ PRONUNCIATION
 - The script is already normalized — read every word as written.
 - Say street suffixes and directions in full, never as letters: Lane, Street, Road, Avenue, Boulevard, Drive, Court, Circle, Place, Parkway, Highway, Terrace, Trail, Point, Square, Apartment, Suite, Building, North, South, East, West, Northeast, Northwest, Southeast, Southwest.
 - NEVER speak phone numbers, email addresses or URLs — they are display-only. If any appear in the script, omit them from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
-
-LOCATION ACCURACY — ${locationOr}, ${monthName}
-- Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
-- Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
-- Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
 
 B-ROLL CONTENT
 - Aerial/establishing shots of ${locationOr}-style neighborhoods; residential streets and curb-appeal exteriors; interiors (kitchens, living spaces, open floor plans); lifestyle scenes (cafes, parks, people) appropriate to ${locationOr}.${audienceVisual ? `
@@ -462,7 +462,9 @@ export async function POST(req: NextRequest) {
     //          Trimmed from the end if we run out of budget.
     // A previous version concatenated everything and blind-sliced at the cap,
     // which silently cut the narration script and every rule after it.
-    const HEYGEN_PROMPT_LIMIT = 8500;
+    // 9,800 sits just under HeyGen's ~10k ceiling: at 8,500 a normal 500-word
+    // script left room for only ~17% of the refinement rules.
+    const HEYGEN_PROMPT_LIMIT = 9800;
     const promptParams = {
       script: safeScript,
       city,
