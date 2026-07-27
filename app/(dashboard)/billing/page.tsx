@@ -10,8 +10,8 @@ import {
   AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video,
 } from "lucide-react";
 
-// `videos` is a monthly CREDIT budget — a short video costs 1 credit, a
-// long-form (8–10 min) video costs 6. See lib/stripe.ts for the breakdown.
+// `videos` is a monthly render budget — a short video draws 1, a long (8 min)
+// video draws 3. See lib/stripe.ts. Users only ever see video counts + minutes.
 const PLANS = [
   {
     key: "starter",
@@ -21,14 +21,15 @@ const PLANS = [
     blurb: "4 short videos",
     highlighted: false,
     features: [
-      "4 short AI videos/month (up to 2 min each)",
+      "4 AI videos/month — up to 3 minutes each",
+      "Automatic b-roll, captions & titles on every video",
+      "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Voice recording + AI script",
       "AI content toolkit — title, script, description, tag & channel-name generators",
       "Thumbnail & YouTube channel banner generator",
       "YouTube (16:9) & Reel (9:16) formats",
-      "Long-form AI videos (8–10 min, mid-roll ad ready) — add credits anytime",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -37,19 +38,19 @@ const PLANS = [
     key: "agent",
     name: "Agent",
     price: 189,
-    videos: 28,
-    blurb: "4 long-form + 4 short videos",
+    videos: 10,
+    blurb: "4 short + 2 long videos",
     highlighted: true,
     features: [
-      "4 long-form AI videos/month (8–10 min, mid-roll ad ready)",
-      "Plus 4 short AI videos/month (up to 2 min each)",
+      "4 short AI videos/month — up to 4 minutes each, with automatic b-roll",
+      "2 long AI videos/month — up to 8 minutes each, using your photos for visuals",
+      "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Voice recording + AI script",
       "AI content toolkit — title, script, description, tag & channel-name generators",
       "Thumbnail & YouTube channel banner generator",
       "YouTube (16:9) & Reel (9:16) formats",
-      "MLS listing auto-video",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -58,20 +59,20 @@ const PLANS = [
     key: "pro",
     name: "Pro",
     price: 299,
-    videos: 52,
-    blurb: "8 long-form + 4 short videos",
+    videos: 19,
+    blurb: "4 short + 5 long videos",
     highlighted: false,
     features: [
-      "8 long-form AI videos/month (8–10 min, mid-roll ad ready)",
-      "Plus 4 short AI videos/month (up to 2 min each)",
+      "4 short AI videos/month — up to 4 minutes each, with automatic b-roll",
+      "5 long AI videos/month — up to 8 minutes each, using your photos for visuals",
+      "MLS listing videos — paste a listing link, get a finished property tour",
+      "Priority rendering",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Voice recording + AI script",
       "AI content toolkit — title, script, description, tag & channel-name generators",
       "Thumbnail & YouTube channel banner generator",
       "YouTube (16:9) & Reel (9:16) formats",
-      "MLS listing auto-video",
-      "Priority rendering",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
     ],
@@ -124,16 +125,16 @@ export default async function BillingPage({
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
 
-  // Show remaining allowance as VIDEOS, not raw credits. A long-form (8–10 min)
-  // video costs 6 credits; a short video costs 1. We lead with how many
-  // long-form videos are left, with the all-short alternative in parentheses.
-  // When there aren't enough for a long-form (< 6), we just show short.
-  const LONG_FORM_CREDIT_COST = 6;
+  // Show the remaining allowance as VIDEOS — users never see "credits". A long
+  // (up to 8 min) video draws 3 from the budget, a short one draws 1. Lead with
+  // how many long videos are left, with the all-short alternative in parens;
+  // below 3 remaining there's only enough for shorts.
+  const LONG_FORM_CREDIT_COST = 3;
   const creditsLeft = profile?.credits_remaining ?? 0;
   const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
   const videosLeftLabel =
     longFormLeft >= 1
-      ? `${longFormLeft} long-form video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
+      ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
       : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
 
   return (
@@ -262,8 +263,8 @@ export default async function BillingPage({
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
                 {currentTier === "beta"
-                  ? "Included with beta access · a long-form video uses 6× a short one"
-                  : "Resets each billing period · a long-form video uses 6× a short one"}
+                  ? "Included with beta access · a long video uses 3× a short one"
+                  : "Resets each billing period · a long video uses 3× a short one"}
               </p>
             </div>
             {/* Camera recordings */}
@@ -422,16 +423,16 @@ export default async function BillingPage({
               <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
                 <Video size={15} className="text-purple-500" />
               </div>
-              <p className="font-bold text-brand-text">Long-Form Pack</p>
+              <p className="font-bold text-brand-text">Long Video</p>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-black text-brand-text">$39</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">6 credits ($6.50 each) — one long-form AI video (8–10 min, mid-roll ad ready), on any plan.</p>
-            <a href="/api/stripe/credits?pack=6">
+            <p className="text-xs text-slate-500">One long AI video, up to 8 minutes, using your photos for visuals. Works on any plan.</p>
+            <a href="/api/stripe/credits?pack=3">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
-                Buy Long-Form Pack <ArrowRight size={12} />
+                Buy A Long Video <ArrowRight size={12} />
               </Button>
             </a>
           </div>

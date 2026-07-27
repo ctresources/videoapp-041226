@@ -48,14 +48,14 @@ async function DashboardStats() {
   } | null;
 
   const creditsLeft = profile?.credits_remaining ?? 0;
-  // Show remaining allowance as VIDEOS, not raw credits. A long-form (8–10 min)
-  // video costs 6 credits; a short video costs 1. Lead with long-form, with the
-  // all-short alternative in parentheses; below 6 credits, just show short.
-  const LONG_FORM_CREDIT_COST = 6;
+  // Show the remaining allowance as VIDEOS — users never see "credits". A long
+  // (up to 8 min) video draws 3 from the budget, a short one draws 1. Lead with
+  // long videos, with the all-short alternative in parens.
+  const LONG_FORM_CREDIT_COST = 3;
   const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
   const videosLeftLabel =
     longFormLeft >= 1
-      ? `${longFormLeft} long-form video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
+      ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
       : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
   const periodEnd = profile?.current_period_end
     ? new Date(profile.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })
@@ -102,7 +102,7 @@ async function DashboardStats() {
           </div>
           <div>
             <p className="text-2xl font-bold text-brand-text">{longFormLeft >= 1 ? longFormLeft : creditsLeft}</p>
-            <p className="text-xs text-slate-500 leading-tight">{longFormLeft >= 1 ? "Long-Form Videos Left" : "Short Videos Left"}</p>
+            <p className="text-xs text-slate-500 leading-tight">{longFormLeft >= 1 ? "Long Videos Left" : "Short Videos Left"}</p>
             {longFormLeft >= 1 && <p className="text-[10px] text-slate-400 leading-tight">or {creditsLeft} short</p>}
           </div>
         </Card>

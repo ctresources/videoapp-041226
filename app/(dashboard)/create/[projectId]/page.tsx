@@ -106,9 +106,9 @@ type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 type VideoChoice = VideoType | "youtube_long";
 
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min · 1 credit", credits: 1 },
-  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min · 1 credit", credits: 1 },
-  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–10 min · unlocks mid-roll ads · add photos below for visuals · 6 credits", proOnly: true, credits: 6 },
+  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9 · up to 4 min · automatic b-roll", credits: 1 },
+  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16 · up to 4 min · automatic b-roll", credits: 1 },
+  { value: "youtube_long", label: "Long Video", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals · counts as 3 videos", proOnly: true, credits: 3 },
 ];
 
 export default function ProjectEditorPage() {
@@ -366,8 +366,8 @@ export default function ProjectEditorPage() {
     if (data) {
       setContactInfo(data as typeof contactInfo);
       const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
-      // Agent (4/mo) and Pro (8/mo) both include long-form in their credits;
-      // Starter buys it with add-on credit packs.
+      // Agent (2/mo) and Pro (5/mo) include long videos in their allowance;
+      // Starter buys them one at a time as an add-on.
       setLongFormIncluded(
         p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
       );
@@ -1095,15 +1095,15 @@ export default function ProjectEditorPage() {
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
-                  Long-form uses <strong>6 credits</strong>
-                  {creditsLeft !== null ? ` — you have ${creditsLeft}` : ""}. Included every month with Pro, or buy credits as you go.
+                  A long video counts as <strong>3 videos</strong> from your monthly allowance
+                  {creditsLeft !== null ? ` — you have ${creditsLeft} left` : ""}. Included with Agent and Pro, or buy one as you go.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link href="/billing" className="flex-1">
-                    <Button size="sm" variant="primary" className="w-full">Upgrade To Pro</Button>
+                    <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
-                  <a href="/api/stripe/credits?pack=6" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">6-Credit Pack · $39</Button>
+                  <a href="/api/stripe/credits?pack=3" className="flex-1">
+                    <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
                   </a>
                 </div>
               </div>
@@ -1290,7 +1290,7 @@ export default function ProjectEditorPage() {
             <p className="text-[11px] text-slate-400 mt-2">Shown as full-screen background b-roll while your avatar reads your script (up to 8 photos, cycled evenly).</p>
             {selectedVideoType === "youtube_long" && uploadedPhotos.length === 0 && (
               <p className="text-[11px] text-amber-600 mt-1.5">
-                Long-form videos read your full script start to finish, so your photos are the visuals. Without any, it&apos;s your avatar on screen for the whole 8–10 minutes.
+                Long videos read your full script start to finish, so your photos are the visuals. Without any, it&apos;s your avatar on screen for the whole 8 minutes.
               </p>
             )}
           </Card>
@@ -1597,15 +1597,15 @@ export default function ProjectEditorPage() {
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
-                  Long-form uses <strong>6 credits</strong>
-                  {creditsLeft !== null ? ` — you have ${creditsLeft}` : ""}. Included every month with Pro, or buy credits as you go.
+                  A long video counts as <strong>3 videos</strong> from your monthly allowance
+                  {creditsLeft !== null ? ` — you have ${creditsLeft} left` : ""}. Included with Agent and Pro, or buy one as you go.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link href="/billing" className="flex-1">
-                    <Button size="sm" variant="primary" className="w-full">Upgrade To Pro</Button>
+                    <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
-                  <a href="/api/stripe/credits?pack=6" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">6-Credit Pack · $39</Button>
+                  <a href="/api/stripe/credits?pack=3" className="flex-1">
+                    <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
                   </a>
                 </div>
               </div>

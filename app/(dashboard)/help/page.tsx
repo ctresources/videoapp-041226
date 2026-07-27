@@ -153,12 +153,12 @@ export default function HelpPage() {
               city). Your <strong>title, description &amp; hashtags</strong> are already generated below the script.
             </Step>
             <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
-              Pick a <strong>format</strong>: YouTube/Blog (16:9, ~2 min · 1 credit), Reel (9:16, ~1 min · 1 credit),
-              or <strong>Long-Form YouTube</strong> (8–10 min, unlocks mid-roll ads · 6 credits — included with Pro
-              or via the $39 Long-Form pack). Pick a <strong>style</strong> (Voice Only or Avatar + Voice), choose
-              your avatar look, optionally attach photos or documents as b-roll, and hit <strong>Generate</strong>.
-              Rendering takes a few minutes — watch it in My Videos. If a render ever fails, your credits are
-              refunded automatically.
+              Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 4 minutes with
+              automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
+              visuals; counts as 3 videos, included with Agent and Pro or $39 on its own). Pick a{" "}
+              <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
+              photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering takes a few minutes —
+              watch it in My Videos. If a render ever fails, your allowance is refunded automatically.
             </Step>
             <Step n={10} title="Use Camera — The Free Option" icon={Camera}>
               Write or Spark your script, tap <strong>Add Channel CTA</strong> to append your closing pitch, then

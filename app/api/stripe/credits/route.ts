@@ -5,11 +5,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+// Add-on packs. A short video draws 1 from the balance, a long (up to 8 min)
+// video draws 3 — so the "3" pack is exactly one long video. Prices are built
+// inline via price_data, so changing these needs no Stripe dashboard work.
 const CREDIT_PACKS = {
-  "1": { credits: 1, amount: 1000, label: "1 AI Video Credit" },
-  "2": { credits: 2, amount: 1500, label: "2 AI Video Credits" },
-  // Covers exactly one long-form AI video (8–10 min) at $6.50/credit
-  "6": { credits: 6, amount: 3900, label: "Long-Form AI Video Pack (6 Credits)" },
+  "1": { credits: 1, amount: 1000, label: "1 Short Video" },
+  "2": { credits: 2, amount: 1500, label: "2 Short Videos" },
+  // One long video (up to 8 min). Renders cost us up to ~$21, so $39 holds
+  // roughly the same margin as the monthly plans.
+  "3": { credits: 3, amount: 3900, label: "1 Long Video (up to 8 minutes)" },
 } as const;
 
 export async function GET(req: NextRequest) {

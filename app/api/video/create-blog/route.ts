@@ -17,16 +17,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
 
-const MAX_SCRIPT_WORDS = 500;
-// ~10 min at a natural ~145 wpm speaking pace — matches the long-form cap.
-// Capped at 10 (not 15) minutes: HeyGen's Video Agent bills $0.0333/sec, so a
-// 15-min render costs ~$30 vs ~$20 at 10 min, and 8+ min still qualifies for
-// YouTube mid-roll ads — the whole point of long-form for our users.
-const MAX_LONG_FORM_SCRIPT_WORDS = 1450;
+// Word budgets at a natural ~145 wpm delivery.
+//
+// SHORT videos render on the Video Agent, which carries the script inside its
+// prompt — so length is capped by both plan AND the prompt budget. Past ~4 min
+// the script squeezes out the quality instructions, and at ~4.8 min there is no
+// room left for any of them, so 4 min is the practical ceiling.
+const MAX_SHORT_WORDS_3MIN = 435;  // Starter
+const MAX_SHORT_WORDS_4MIN = 580;  // Agent / Pro
+// Back-compat default for any caller that doesn't resolve a plan.
+const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS_3MIN;
 
-// Long-form AI videos (8–10 min) cost more credits because HeyGen bills per
-// rendered minute — a 10-min render costs ~5× a standard 2-min video.
-const LONG_FORM_CREDIT_COST = 6;
+// LONG videos render on Direct Video (script is a separate field, no prompt
+// limit), so this is a pure product/cost choice: 8 min at $1/min (Avatar III
+// digital twin) or $2.60/min (Avatar III photo avatar).
+const MAX_LONG_FORM_SCRIPT_WORDS = 1160; // ~8 min
+
+// A long video costs roughly 3x a short one to render, so it draws 3x from the
+// monthly allowance. See the plan allotments in lib/stripe.ts.
+const LONG_FORM_CREDIT_COST = 3;
 
 function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
   const words = text.trim().split(/\s+/);
@@ -198,8 +207,8 @@ Fill the square edge-to-edge — no black bars. Zoom and crop the presenter to f
 CANVAS: 1080 wide × 1920 tall, portrait — like a Reel/TikTok. NOT landscape.
 Fill the vertical frame edge-to-edge — no black bars. Zoom and crop the presenter (crop the sides) to fill it; if that can't fill the frame, place the presenter over a blurred enlarged copy of the same footage.`
     : `OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
-CANVAS: 1920 wide × 1080 tall, landscape — wider than tall. NEVER render vertical/portrait.
-Fill all 1920×1080 edge-to-edge — zero black bars on any side. The presenter's source footage is portrait/square, so on EVERY scene either (a) zoom and crop it to fill the width (cropping top/bottom is fine — head and shoulders is enough), or (b) put a full-frame background behind it (blurred enlarged presenter footage, b-roll, or a branded color backdrop). Black side panels are a failed render.`;
+CANVAS: 1920 wide × 1080 tall, landscape. NEVER render vertical/portrait.
+Fill the frame edge-to-edge — no black bars. The presenter's footage is portrait, so on every scene either zoom and crop it to fill the width (cropping top/bottom is fine), or put a full-frame background behind it (blurred enlarged footage, b-roll, or a branded backdrop). Black side panels are a failed render.`;
 
   const listingCount = params.listingPhotoCount ?? 0;
   const extraCount = params.extraPhotoCount ?? 0;
@@ -239,12 +248,12 @@ LOCATION ACCURACY — ${locationOr}, ${monthName}
 - Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
 
 FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
-- Never express or imply preference, limitation or discrimination based on race, color, religion, sex, gender identity, sexual orientation, disability, familial status (presence or absence of children) or national origin.
-- Never use steering language such as "perfect for a young family", "great for singles", "ideal for retirees", "safe neighborhood", "family-friendly" or "exclusive community".
-- Never cite crime rates, an area's racial/ethnic/religious makeup, religious institutions, or school quality as selling points.
-- Any people shown in b-roll must be diverse and inclusive; never signal a property is meant for one demographic.
-- Keep every claim truthful and not misleading (NAR Article 12) — never exaggerate features, pricing or market conditions, and never fabricate statistics.
-- Render the user's script as written, but add no non-compliant visuals, captions, overlays or embellishments of your own.
+- Never imply preference or limitation based on race, color, religion, sex, gender identity, sexual orientation, disability, familial status or national origin.
+- No steering language ("perfect for a young family", "great for singles", "ideal for retirees", "safe neighborhood", "family-friendly", "exclusive community").
+- Never cite crime rates, an area's demographic/religious makeup, religious institutions, or school quality as selling points.
+- People shown in b-roll must be diverse and inclusive.
+- Keep claims truthful (NAR Article 12) — never exaggerate or fabricate statistics.
+- Render the script as written, but add no non-compliant visuals or overlays of your own.
 
 SCENE 1 — TITLE CARD (this frame is also the thumbnail)
 - Full-screen talking presenter filling the entire ${canvasLabel} canvas — the avatar IS the thumbnail; no separate background photo.
@@ -284,22 +293,20 @@ VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
 - Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.${photoBlock}
 
 PRONUNCIATION
-- The script is already normalized — read every word as written.
-- Say street suffixes and directions in full, never as letters: Lane, Street, Road, Avenue, Boulevard, Drive, Court, Circle, Place, Parkway, Highway, Terrace, Trail, Point, Square, Apartment, Suite, Building, North, South, East, West, Northeast, Northwest, Southeast, Southwest.
-- NEVER speak phone numbers, email addresses or URLs — they are display-only. If any appear in the script, omit them from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
+- The script is already normalized (abbreviations expanded) — read every word exactly as written, never spelling out letters.
+- NEVER speak phone numbers, emails or URLs — they are display-only. Omit any from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
 
-B-ROLL CONTENT
-- Aerial/establishing shots of ${locationOr}-style neighborhoods; residential streets and curb-appeal exteriors; interiors (kitchens, living spaces, open floor plans); lifestyle scenes (cafes, parks, people) appropriate to ${locationOr}.${audienceVisual ? `
+B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets and curb appeal, interiors (kitchens, living spaces, open plans), lifestyle scenes (cafes, parks, people).${audienceVisual ? `
 - Audience (${params.audience}): ${audienceVisual}` : ""}${params.keywords.length > 0 ? `
-- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
+- Emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
 STYLE
-- B-roll: slight warm filter — inviting and emotional (avoid cool/blue tones).${toneVisual ? `
+- B-roll: slight warm filter — inviting, not cool/blue.${toneVisual ? `
 - Tone (${params.tone}): ${toneVisual}` : ""}
 - ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
 - Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey the TEXT SAFE ZONE.${params.burnCaptions ? `
-- BURNED CAPTIONS (required): synchronized captions of the narration for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band. On Scene 1 they sit ABOVE the hook bar; on the final scene above the contact card. They must never cover the presenter's face.` : ""}
-- Text: white or soft gold, gold/navy accents, bold, minimal, readable — no clutter.
+- BURNED CAPTIONS (required): synchronized captions for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band — above the hook bar on Scene 1, above the contact card on the final scene. Never over the face.` : ""}
+- Text: white or soft gold, gold/navy accents, bold and readable — no clutter.
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
 
@@ -312,14 +319,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
-  // Long-form (8–10 min) is landscape-only and Pro-plan-only; costs more credits.
+  // Long videos (up to 8 min) are landscape-only and draw 3x from the allowance.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // engine "direct" routes to HeyGen's v3 Direct Video API (single talking-head)
   // instead of the default Video Agent.
   //
   // Long-form ALWAYS uses Direct Video. The Video Agent carries the narration
   // inside its prompt, which caps out around 800 words (~5.5 min) — short of the
-  // advertised 8–10 min and of YouTube's 8-minute mid-roll threshold, and the
+  // advertised 8-minute length, and the
   // overflow would be trimmed away. Direct Video takes the script as its own
   // field, so the full script is spoken; visuals come from the user's uploaded
   // photos, composited behind the avatar after rendering.
@@ -357,22 +364,6 @@ export async function POST(req: NextRequest) {
   ) ?? [];
 
   const rawScript = script || (aiScript?.script as string) || project.title;
-  const maxScriptWords = isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : MAX_SCRIPT_WORDS;
-  // The CTA arrives separately and is appended AFTER the body clamp. It lives
-  // at the end of the spoken script, so a plain tail-clamp used to silently
-  // delete it whenever the body ran long — the "missing CTA in video" bug.
-  const ctaText = typeof cta === "string" && cta.trim() ? clampScript(normalizeScriptForTTS(cta.trim()), 200) : "";
-  const ctaWordCount = ctaText ? ctaText.trim().split(/\s+/).length : 0;
-  const bodyScript = clampScript(
-    normalizeScriptForTTS(rawScript),
-    Math.max(50, maxScriptWords - ctaWordCount),
-  );
-  const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
-
-  // Log the delivered script length so a short render can be diagnosed as
-  // "script was short" vs "HeyGen under-delivered the full script".
-  const scriptWordCount = safeScript.trim().split(/\s+/).filter(Boolean).length;
-  console.log(`[create-blog] script sent: ${scriptWordCount} words (~${Math.round(scriptWordCount / 145 * 60)}s at 145wpm), videoType=${videoType}`);
 
   const title =
     videoType === "youtube_16x9"
@@ -423,6 +414,33 @@ export async function POST(req: NextRequest) {
   }
 
   const isAdmin = profile.role === "admin";
+
+  // ── Script length by plan ─────────────────────────────────────────────────
+  // Short videos: Starter up to 3 min, Agent/Pro up to 4 min. Long videos: 8 min
+  // on any plan. Word counts assume a natural ~145 wpm delivery. Short videos
+  // also have a hard technical ceiling — they render on the Video Agent, whose
+  // prompt carries the script, so past ~4 min the quality instructions get
+  // squeezed out (see the head/tail budget below).
+  const tier = profile.subscription_tier ?? "free";
+  const shortFormMaxWords =
+    tier === "agent" || tier === "pro" ? MAX_SHORT_WORDS_4MIN : MAX_SHORT_WORDS_3MIN;
+  const maxScriptWords = isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : shortFormMaxWords;
+
+  // The CTA arrives separately and is appended AFTER the body clamp. It lives
+  // at the end of the spoken script, so a plain tail-clamp used to silently
+  // delete it whenever the body ran long — the "missing CTA in video" bug.
+  const ctaText = typeof cta === "string" && cta.trim() ? clampScript(normalizeScriptForTTS(cta.trim()), 200) : "";
+  const ctaWordCount = ctaText ? ctaText.trim().split(/\s+/).length : 0;
+  const bodyScript = clampScript(
+    normalizeScriptForTTS(rawScript),
+    Math.max(50, maxScriptWords - ctaWordCount),
+  );
+  const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
+
+  // Log the delivered script length so a short render can be diagnosed as
+  // "script was short" vs "HeyGen under-delivered the full script".
+  const scriptWordCount = safeScript.trim().split(/\s+/).filter(Boolean).length;
+  console.log(`[create-blog] script sent: ${scriptWordCount} words (~${Math.round(scriptWordCount / 145 * 60)}s at 145wpm), tier=${tier}, cap=${maxScriptWords}, videoType=${videoType}`);
 
   // Long-form is included in Pro's monthly credits; every other plan can use it
   // pay-as-you-go — any user with enough credits (e.g. the 6-credit Long-Form
@@ -605,10 +623,23 @@ export async function POST(req: NextRequest) {
         throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
       }
 
-      // Digital Twin looks render on Avatar V — highest-fidelity motion/lip-sync,
-      // same per-second price as the default engine and slightly faster in testing.
-      // Photo-avatar looks stay on HeyGen's default engine (avatar_iv).
       const isDigitalTwin = directAvatarId === profile.heygen_digital_twin_look_id;
+
+      // Engine choice is a cost/quality trade (HeyGen bills per second):
+      //   avatar_iii  digital twin $1.00/min · photo avatar $2.60/min
+      //   avatar_iv   photo avatar $3.00/min · digital twin $4.00/min
+      //   avatar_v    digital twin $4.00/min — highest-fidelity motion/lip-sync
+      //
+      // LONG videos run 8 minutes, so the per-minute rate dominates: Avatar III
+      // keeps a 10-min twin render at ~$8 instead of ~$32, and the avatar shares
+      // the screen with the user's photos rather than carrying it alone.
+      // SHORT Direct Video renders are 1-4 min, where the delta is a few dollars
+      // and the face fills the frame — so those keep the best engine available.
+      const directEngine = isLongForm
+        ? ("avatar_iii" as const)
+        : isDigitalTwin
+          ? ("avatar_v" as const)
+          : undefined; // photo avatars use HeyGen's default (avatar_iv)
 
       const directVideoId = await generateVideoV3({
         avatarId: directAvatarId,
@@ -618,7 +649,7 @@ export async function POST(req: NextRequest) {
         title,
         callbackUrl,
         callbackId: videoRow.id,
-        ...(isDigitalTwin && { engine: "avatar_v" as const }),
+        ...(directEngine && { engine: directEngine }),
       });
 
       await admin
