@@ -314,10 +314,16 @@ export async function POST(req: NextRequest) {
   const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
   // Long-form (8–10 min) is landscape-only and Pro-plan-only; costs more credits.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
-  // Opt-in experimental render path: engine "direct" routes to HeyGen's v3
-  // Direct Video API (single talking-head) instead of the default Video Agent,
-  // so its output can be compared. Any other value keeps existing behavior.
-  const useDirectVideo = engine === "direct";
+  // engine "direct" routes to HeyGen's v3 Direct Video API (single talking-head)
+  // instead of the default Video Agent.
+  //
+  // Long-form ALWAYS uses Direct Video. The Video Agent carries the narration
+  // inside its prompt, which caps out around 800 words (~5.5 min) — short of the
+  // advertised 8–10 min and of YouTube's 8-minute mid-roll threshold, and the
+  // overflow would be trimmed away. Direct Video takes the script as its own
+  // field, so the full script is spoken; visuals come from the user's uploaded
+  // photos, composited behind the avatar after rendering.
+  const useDirectVideo = engine === "direct" || isLongForm;
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
     ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 3)
     : [];

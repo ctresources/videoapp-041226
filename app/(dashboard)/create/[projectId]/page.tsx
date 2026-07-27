@@ -108,7 +108,7 @@ type VideoChoice = VideoType | "youtube_long";
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
   { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9, ~2 min · 1 credit", credits: 1 },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16, ~1 min · 1 credit", credits: 1 },
-  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–10 min · unlocks mid-roll ads · 6 credits", proOnly: true, credits: 6 },
+  { value: "youtube_long", label: "Long-Form YouTube", desc: "Landscape 16:9, 8–10 min · unlocks mid-roll ads · add photos below for visuals · 6 credits", proOnly: true, credits: 6 },
 ];
 
 export default function ProjectEditorPage() {
@@ -1288,6 +1288,11 @@ export default function ProjectEditorPage() {
               )}
             </div>
             <p className="text-[11px] text-slate-400 mt-2">Shown as full-screen background b-roll while your avatar reads your script (up to 8 photos, cycled evenly).</p>
+            {selectedVideoType === "youtube_long" && uploadedPhotos.length === 0 && (
+              <p className="text-[11px] text-amber-600 mt-1.5">
+                Long-form videos read your full script start to finish, so your photos are the visuals. Without any, it&apos;s your avatar on screen for the whole 8–10 minutes.
+              </p>
+            )}
           </Card>
 
           {/* PDF / URL Attachment */}
