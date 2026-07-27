@@ -139,36 +139,6 @@ const TONE_VISUALS: Record<string, string> = {
   "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
 };
 
-/**
- * Build explicit b-roll accuracy guidance so the Video Agent never shows
- * scenery that contradicts the listing's real-world location or the current
- * season. Users are worldwide, so we do NOT assume a US state or a
- * Northern-Hemisphere season here — we pass the actual location string plus
- * the current month and let the agent reason about the correct local climate,
- * hemisphere, terrain, and architecture.
- */
-function buildLocationSeasonGuidance(state: string, city: string): string {
-  const place = [city, state].filter(Boolean).join(", ") || "the listing's local area";
-  const region = [city, state].filter(Boolean).join(", ") || "the listing's location";
-
-  // Pass the current month through and let the agent infer the correct local
-  // season. We intentionally avoid hardcoding a hemisphere — June is summer in
-  // the Northern Hemisphere but winter in the Southern Hemisphere.
-  const monthName = new Date().toLocaleString("en-US", { month: "long" });
-
-  return `=====================================
-LOCATION ACCURACY (CRITICAL — READ CAREFULLY)
-=====================================
-- This listing is located in: ${region}. All visuals must be geographically accurate for THIS location — not a generic or US-default look.
-- The current month is ${monthName}. Use foliage, weather, daylight, and seasonal cues that are correct for ${region} during ${monthName}, accounting for that location's real hemisphere and climate (e.g. ${monthName} is summer in the Northern Hemisphere but winter in the Southern Hemisphere).
-- Match the architecture, building materials, street layout, landscaping, plant life, and terrain that genuinely exist in ${region}.
-- Do NOT show landscape features that do not belong in ${region}: e.g. no palm trees or tropical beaches in cold or inland climates, no snow-capped mountains in flat coastal areas, no deserts in temperate regions, and no snow outside of that location's actual cold season.
-- When uncertain whether a visual fits ${region}, use neutral interior shots or generic residential street scenes that cannot contradict the location — do NOT invent dramatic or exotic scenery.
-- ${place} is the market being marketed; keep every outdoor scene believable for someone who actually lives there.
-
-`;
-}
-
 function buildVideoAgentPrompt(params: {
   script: string;
   city: string;
@@ -184,6 +154,8 @@ function buildVideoAgentPrompt(params: {
   logoUrl?: string;
   keywords: string[];
   isShortForm: boolean;
+  /** 1:1 square (1080×1080). Square is "short form" for pacing but is NOT vertical. */
+  isSquare?: boolean;
   isLongForm?: boolean;
   burnCaptions?: boolean;
   hookText?: string;
@@ -191,238 +163,147 @@ function buildVideoAgentPrompt(params: {
   listingPhotoCount?: number;
   extraPhotoCount?: number;
   pdfContent?: string;
-}): string {
+}): { head: string; tail: string } {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationOr = location || "the local area";
 
   const ctaText =
-    params.ctaPreference === "text" ? "Call or Text Today to Get Started" :
     params.ctaPreference === "website" ? `Visit ${params.website || "Our Website"} to Learn More` :
     params.ctaPreference === "consultation" ? "Schedule Your Private Consultation Today" :
     "Call or Text Today to Get Started";
 
-  // Display-only contact line for the final-frame overlay. BOTH phone numbers
-  // appear on-screen, but only the mobile (phone1) should be SPOKEN — see
-  // PRONUNCIATION RULES below.
-  const phone1Display = params.phone1 ? `Mobile: ${params.phone1}` : "";
-  const phone2Display = params.phone2 ? `Office: ${params.phone2}` : "";
-  const contactParts = [
+  // Display-only contact line for the final frame. BOTH phones appear on-screen;
+  // neither is ever spoken (see PRONUNCIATION in the tail).
+  const contactLine = [
     params.agentName,
     params.brokerage,
-    phone1Display,
-    phone2Display,
+    params.phone1 ? `Mobile: ${params.phone1}` : "",
+    params.phone2 ? `Office: ${params.phone2}` : "",
     params.website,
-  ].filter(Boolean);
-  const contactLine = contactParts.join("  ·  ");
+  ].filter(Boolean).join("  ·  ");
 
   const audienceVisual = params.audience ? AUDIENCE_VISUALS[params.audience] || "" : "";
   const toneVisual = params.tone ? TONE_VISUALS[params.tone] || "" : "";
 
-  const orientationBlock = params.isShortForm
-    ? `=====================================
-OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
-=====================================
-CANVAS: 1080 pixels wide × 1920 pixels tall. Vertical portrait orientation — taller than wide.
-- Produce this video in VERTICAL 9:16 format, like an Instagram Reel / TikTok.
-- Fill the entire vertical frame edge-to-edge — no black bars.
-- PRESENTER FILL RULE: if the presenter's source footage is wider than 9:16, ZOOM AND CROP it (crop the sides) so the presenter fills the full vertical frame — NEVER letterbox with black bars above/below or beside the presenter. If cropping alone cannot fill the frame, place the presenter over a blurred, enlarged copy of the same footage so every pixel of the canvas is covered.
+  // Canvas label reused by every shared block, so a vertical or square render is
+  // never told to "fill the 16:9 canvas".
+  const canvasLabel = params.isSquare ? "1:1 square" : params.isShortForm ? "9:16 vertical" : "16:9 widescreen";
 
-`
-    : `=====================================
-OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
-=====================================
-CANVAS: 1920 pixels wide × 1080 pixels tall. Horizontal landscape orientation — wider than tall.
-- This is a LANDSCAPE video. The frame is wider than it is tall. Do NOT produce portrait/vertical output.
-- Fill the entire 1920×1080 canvas edge-to-edge — ZERO black bars on any side, left, right, top, or bottom.
-- NEVER render this as a vertical or portrait video. The output MUST be horizontal widescreen.
-- All b-roll, backgrounds, and photo crops must fill the full 1920×1080 widescreen frame.
-- PRESENTER FILL RULE (CRITICAL): the presenter's source footage is portrait/square, NOT widescreen. Do NOT place it in the center with black side bars — that is a failed render. Instead, on EVERY scene where the presenter appears (including the title card and the final contact card), do ONE of the following so the full 1920×1080 canvas is covered: (a) ZOOM AND CROP the presenter footage to fill the frame width (cropping top/bottom is fine — head and shoulders visible is enough), or (b) place the presenter over a full-frame background that covers the entire canvas — a blurred, enlarged copy of the presenter footage, a b-roll clip, or a branded color backdrop. Black or empty side panels are NEVER acceptable.
-
-`;
+  const orientationBlock = params.isSquare
+    ? `OUTPUT FORMAT — 1:1 SQUARE (NON-NEGOTIABLE)
+CANVAS: 1080 × 1080, perfectly square. NOT vertical, NOT widescreen.
+Fill the square edge-to-edge — no black bars. Zoom and crop the presenter to fill it (cropping edges is fine); if cropping alone can't fill the frame, place the presenter over a blurred enlarged copy of the same footage.`
+    : params.isShortForm
+    ? `OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
+CANVAS: 1080 wide × 1920 tall, portrait — like a Reel/TikTok. NOT landscape.
+Fill the vertical frame edge-to-edge — no black bars. Zoom and crop the presenter (crop the sides) to fill it; if that can't fill the frame, place the presenter over a blurred enlarged copy of the same footage.`
+    : `OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
+CANVAS: 1920 wide × 1080 tall, landscape — wider than tall. NEVER render vertical/portrait.
+Fill all 1920×1080 edge-to-edge — zero black bars on any side. The presenter's source footage is portrait/square, so on EVERY scene either (a) zoom and crop it to fill the width (cropping top/bottom is fine — head and shoulders is enough), or (b) put a full-frame background behind it (blurred enlarged presenter footage, b-roll, or a branded color backdrop). Black side panels are a failed render.`;
 
   const listingCount = params.listingPhotoCount ?? 0;
   const extraCount = params.extraPhotoCount ?? 0;
   const totalPhotos = listingCount + extraCount;
-  const hasPhotos = totalPhotos > 0;
 
-  const photoLines = [
-    listingCount > 0
-      ? `- ${listingCount} listing photo(s) of the property at ${params.listingAddress || "the listing address"}`
-      : "",
-    extraCount > 0
-      ? `- ${extraCount} additional photo(s) uploaded by the user`
-      : "",
-  ].filter(Boolean).join("\n");
-
-  const listingPhotoBlock = hasPhotos
+  const photoBlock = totalPhotos > 0
     ? `
-
-=====================================
-ATTACHED PHOTOS (PRIMARY B-ROLL — USE THESE)
-=====================================
-${totalPhotos} photo(s) are attached as files:
-${photoLines}
-- Use ALL attached photos as the PRIMARY b-roll throughout the video
-- Cycle through every photo so each gets screen time (~5–10 seconds)
-- CROP/SCALE every photo to FILL the entire frame edge-to-edge (cover/crop scaling) — NEVER letterbox or pillarbox. No black bars on the sides or top/bottom, even for portrait/vertical photos. Zoom and crop to fill rather than fitting the whole photo with empty space around it.
-- Apply gentle Ken Burns motion (slow pan + zoom) on each photo to keep the frame alive
-- Match photos to whatever the script is describing at each moment
-- DO NOT replace these photos with stock or generated imagery
-- Stock cinematic b-roll of ${params.city || "the area"} may ONLY be used between photos for transitions or neighborhood context`
+ATTACHED PHOTOS — PRIMARY B-ROLL
+${totalPhotos} photo(s) are attached${listingCount > 0 ? ` (${listingCount} of the property at ${params.listingAddress || "the listing address"}${extraCount > 0 ? `, ${extraCount} user-uploaded` : ""})` : ""}.
+- Use ALL of them as the primary b-roll; cycle so each gets ~5–10s of screen time.
+- Crop/scale every photo to FILL the frame edge-to-edge (cover scaling) — never letterbox or pillarbox, even for portrait photos.
+- Gentle Ken Burns motion (slow pan + zoom) on each.
+- Match each photo to the sentence describing it. Do NOT replace them with stock or generated imagery; stock b-roll only between photos for transitions.`
     : "";
 
-  return `You are producing a high-end, professional real estate marketing video.
+  const monthName = new Date().toLocaleString("en-US", { month: "long" });
 
-${orientationBlock}=====================================
-AVATAR + B-ROLL — INTERCUTTING FORMAT (NON-NEGOTIABLE)
-=====================================
-This video uses the talking-head + b-roll intercut format — like a TV news segment or documentary.
-- PRESENTER ON CAMERA: When the presenter appears, show the avatar FULL SCREEN, filling the entire 16:9 canvas edge-to-edge — NO PiP, no corner bubble, no circular crop. The avatar face MUST move and lip-sync to the narration (animated talking photo — never a static image).
-- B-ROLL CUTAWAYS ARE MANDATORY: Every time the script mentions a property feature, neighborhood detail, market statistic, or lifestyle benefit, CUT AWAY from the presenter to relevant b-roll footage. Do NOT keep the presenter on screen for the full video — intercut with b-roll throughout.
-- After each b-roll clip, CUT BACK to the full-screen presenter to continue narration.
-- Target roughly 40–60% presenter / 40–60% b-roll split across the video — the presenter should NOT dominate every scene.
-- NEVER use a static image for the presenter — the avatar must always be the animated, talking version when on screen.
+  // ── HEAD: must-have instructions + the full narration script. Never trimmed. ──
+  const head = `You are producing a professional real estate marketing video.
 
-=====================================
-FAIR HOUSING + NAR COMPLIANCE (MANDATORY — ZERO TOLERANCE, OVERRIDES ALL OTHER INSTRUCTIONS)
-=====================================
-This video MUST comply with the U.S. Fair Housing Act and the National Association of REALTORS® (NAR) Code of Ethics. These rules override every other creative instruction in this prompt.
-- NEVER express or imply any preference, limitation, or discrimination based on a protected class: race, color, religion, sex, gender identity, sexual orientation, disability/handicap, familial status (presence or absence of children), or national origin.
-- Do NOT target or exclude any group, verbally or visually. Avoid phrases such as "perfect for a young family," "great for singles," "ideal for retirees," "safe neighborhood," "exclusive community," "family-friendly," or any wording that steers viewers toward or away from an area.
-- Do NOT reference crime rates, racial/ethnic/religious makeup of an area, religious institutions, or school quality as selling points — these are steering and Fair Housing violations.
-- B-roll showing people must depict a DIVERSE and INCLUSIVE range of individuals. Never visually signal that a property or neighborhood is meant for one particular demographic.
-- Keep all claims TRUTHFUL and not misleading (NAR Article 12). Do not exaggerate property features, pricing, or market conditions, and do not fabricate statistics.
-- If any wording in the narration script below appears to conflict with these rules, still render the script as written by the user, but do NOT add any non-compliant visuals, captions, overlays, or embellishments of your own.
+${orientationBlock}
 
-=====================================
-SCENE 1 — TITLE CARD (OPENING FRAME / THUMBNAIL)
-=====================================
-The very first scene of the video MUST be a designed title card. This is mandatory — do not skip it or replace it with plain b-roll.
+TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
+- EVERY text or graphic element — captions, headlines, hooks, lower-thirds, stats, numbers, charts, infographics, logos, badges, arrows — must sit ENTIRELY inside the BOTTOM 20% of the canvas (on a 1080-tall frame that is the bottom ~216px; on a 1920-tall frame ~384px).
+- The TOP 80% is a NO-OVERLAY ZONE. The presenter's head and face are there. Never center an overlay, never place text beside the head, never over the chest or shoulders. This applies even when the presenter is only partly visible.
+- Standard treatment: a full-width semi-transparent dark bar pinned to the bottom edge, white or soft-gold text inside.
+- A graphic too large for the bottom band must be SHRUNK to fit, or shown on a b-roll-only scene where the presenter is off camera. Never enlarge it into the face zone.
+- When in doubt, move it DOWN. Bottom edge is always correct; middle of frame is always wrong.
 
-Title card layout:
-• PRESENTER: Full-screen talking presenter filling the entire 16:9 canvas — the avatar IS the thumbnail image, no separate background photo
-• MANDATORY TEXT OVERLAY — render a full-width dark semi-transparent bar across the very bottom 20% of the frame (lower-third). Inside that bar display this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. This overlay MUST appear and stay visible for the entire duration of Scene 1. Do NOT omit it. Do NOT change the wording. Style it as a bold social-media stop-scrolling hook — oversized font, high contrast, impossible to miss.
-• NO OTHER TEXT on this title card
-• The narrator STARTS SPEAKING the script immediately as this title card appears — do NOT hold the title card in silence before the narration begins
+AVATAR + B-ROLL INTERCUT (MANDATORY)
+- When on camera the presenter is FULL SCREEN, filling the entire ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop. Always the animated, lip-synced avatar; never a static image.
+- Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.
 
-This first-scene title card also serves as the video's thumbnail image — make it bold and scroll-stopping.
+FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
+- Never express or imply preference, limitation or discrimination based on race, color, religion, sex, gender identity, sexual orientation, disability, familial status (presence or absence of children) or national origin.
+- Never use steering language such as "perfect for a young family", "great for singles", "ideal for retirees", "safe neighborhood", "family-friendly" or "exclusive community".
+- Never cite crime rates, an area's racial/ethnic/religious makeup, religious institutions, or school quality as selling points.
+- Any people shown in b-roll must be diverse and inclusive; never signal a property is meant for one demographic.
+- Keep every claim truthful and not misleading (NAR Article 12) — never exaggerate features, pricing or market conditions, and never fabricate statistics.
+- Render the user's script as written, but add no non-compliant visuals, captions, overlays or embellishments of your own.
 
-=====================================
-FINAL SCENE — CTA CONTACT CARD
-=====================================
-The last scene must be a dedicated contact card. Layout:
-${params.logoUrl ? `• LOGO: Display the agent/brokerage logo image (it is attached as a file) prominently — top-left corner or top-center of the frame` : ""}
-• CONTACT TEXT (on screen only — do NOT narrate): ${contactLine}
-• Phone numbers must be displayed exactly as provided — no leading "1", no country code
-• Bold CTA headline on screen: "${ctaText}"
-• Presenter visible full-screen or alongside the contact card elements
-• FILL THE WHOLE FRAME: the contact card scene must cover the entire canvas edge-to-edge. If the presenter footage does not span the full frame, put a full-frame background behind it (blurred enlarged presenter footage, b-roll, or a branded color backdrop) — NEVER black side bars
+SCENE 1 — TITLE CARD (this frame is also the thumbnail)
+- Full-screen talking presenter filling the entire ${canvasLabel} canvas — the avatar IS the thumbnail; no separate background photo.
+- MANDATORY OVERLAY: a full-width dark semi-transparent bar across the bottom 20% containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
+- No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
 
-=====================================
-PRODUCTION CONSTRAINTS (REQUIRED FOR FAST RENDER)
-=====================================
-- Maximum ${params.isLongForm ? "40 scenes total — vary visuals every 20–30 seconds to hold attention across the full runtime" : "10 scenes — but the video must run as long as it takes to speak EVERY word of the narration script below, start to finish"}
-- CRITICAL DURATION RULE: the spoken voiceover must include 100% of the narration script, word for word, from the first word to the last. Do NOT summarize, paraphrase, shorten, trim, speed-read, or cut the script to fit a shorter runtime. The video ends only after the FINAL word of the script has been spoken at a natural, unhurried pace (~145 words per minute). A video that ends before the script is fully spoken is WRONG.
-- Do NOT add padding, filler, or silent gaps — but never sacrifice any script words to keep it short.
-- Do NOT add intro music, countdown, or a separate silent title scene before the narration
-- The narration begins IMMEDIATELY on the first frame — the SCENE 1 title card above is the opening of scene 1, NOT a silent intro held before speaking
-- The FINAL SCENE contact card above must be the last scene rendered, after the narration ends
+FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
+- Display the attached agent/brokerage logo prominently (top-left or top-center).` : ""}
+- On-screen only, never narrated: ${contactLine}
+- Show phone numbers exactly as provided — no leading "1", no country code.
+- Bold CTA headline: "${ctaText}"
+- Presenter full-screen or beside the card; fill the whole canvas (blurred enlarged footage or b-roll behind if needed) — never black bars.
 
-=====================================
-AGENT + MARKET DETAILS
-=====================================
-- Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? `\n- Brokerage: ${params.brokerage}` : ""}
-- Market: ${locationOr}
-- Audience: ${params.audience || "Mixed"}
-- Brand Style: ${params.tone || "Modern"}${params.phone1 ? `\n- Mobile (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone1}` : ""}${params.phone2 ? `\n- Office (DISPLAY ONLY — appears on-screen, NEVER spoken): ${params.phone2}` : ""}${params.website ? `\n- Website (DISPLAY ONLY — appears on-screen, NEVER spoken as a URL): ${params.website}` : ""}
+DURATION (CRITICAL)
+- Maximum ${params.isLongForm ? "40 scenes; vary the visuals every 20–30 seconds to hold attention" : "10 scenes"}.
+- The voiceover must contain 100% of the narration script below, word for word, first word to last, at a natural unhurried ~145 wpm. Never summarize, paraphrase, shorten, trim or speed-read it. The video ends only after the FINAL word is spoken — ending before the script is finished is WRONG.
+- No intro music, countdown or silent title scene. No filler or silent gaps.
 
-=====================================
-NARRATION SCRIPT (DELIVER WORD-FOR-WORD — SPEAK THIS EXACTLY ONCE)
-=====================================
-Speak EVERY WORD of the script below, start to finish, exactly once — do not stop early, do not summarize, do not skip sentences. The voiceover is complete ONLY when the last word below has been spoken. Do NOT repeat the opening line. Do NOT speak any headline, title card, on-screen overlay, or thumbnail text — those are visual only. The first words of the voiceover are the first words of this script:
+DETAILS
+- Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? ` · ${params.brokerage}` : ""} · Market: ${locationOr}
+- Audience: ${params.audience || "Mixed"} · Style: ${params.tone || "Modern"}
+- DISPLAY ONLY, never spoken:${params.phone1 ? ` Mobile ${params.phone1}` : ""}${params.phone2 ? ` · Office ${params.phone2}` : ""}${params.website ? ` · Web ${params.website}` : ""}
+
+NARRATION SCRIPT — SPEAK THIS EXACTLY, ONCE, IN FULL
+Do not repeat the opening line. Never speak any headline, title-card, overlay or thumbnail text — those are visual only. The voiceover starts with the first words below:
 
 ${params.script}
-${params.pdfContent ? `
-=====================================
-PDF REFERENCE DOCUMENT
-=====================================
-The user attached a PDF with supplemental context. Use its content to inform the
-video's b-roll choices, on-screen statistics, and key talking points:
+`;
 
+  // ── TAIL: refinement. Trimmed first if the prompt ever exceeds the cap. ──
+  const tail = `${params.pdfContent ? `
+PDF REFERENCE (supplemental context for b-roll, on-screen stats and talking points)
 ${params.pdfContent}
 ` : ""}
-=====================================
-SCENE-BY-SCENE VISUAL SYNC (CRITICAL — READ CAREFULLY)
-=====================================
-Every b-roll clip MUST visually match exactly what is being spoken at that moment in the script. This is the single most important visual rule — generic or unrelated footage is not acceptable.
-- When the script mentions a specific room (kitchen, bedroom, backyard, living room), show footage of THAT room
-- When the script mentions the neighborhood, street, or area, show THAT neighborhood or street type
-- When the script mentions a market statistic or price, immediately show a data overlay for that EXACT number
-- When the script mentions a lifestyle benefit (walkability, schools, parks, commute), show that benefit visually at that moment
-- When the script mentions the property address, show the exterior or curb of a matching home style
-- If listing photos are attached, match each photo to the sentence in the script that describes what is shown in that photo
-- Cut to a new b-roll clip every time the script topic changes — do NOT hold one clip while multiple unrelated topics are discussed
-- NEVER show footage of Topic B while the narrator is speaking about Topic A
+VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
+- Room mentioned → show that room. Neighborhood/street → that street type. Statistic or price → a data overlay of that exact number (in the bottom band). Lifestyle benefit → show it. Address → a matching home exterior.
+- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.${photoBlock}
 
-=====================================
-PRONUNCIATION RULES (CRITICAL FOR VOICEOVER)
-=====================================
-- The script above has already been normalized for speech. Read every word as written.
-- ALWAYS pronounce street-suffix words in full — never spell letters: "Lane" (not "L-N"), "Street" (not "S-T"), "Road", "Avenue", "Boulevard", "Drive", "Court", "Circle", "Place", "Parkway", "Highway", "Terrace", "Trail", "Point", "Square", "Apartment", "Suite", "Building".
-- Pronounce directional words in full: "North", "South", "East", "West", "Northeast", "Northwest", "Southeast", "Southwest" — never as single letters.
-- CONTACT INFO IS NEVER SPOKEN. Phone numbers, email addresses, and website URLs must NEVER be read aloud under any circumstances — they are DISPLAY ONLY and belong exclusively in the on-screen contact overlay (final-scene contact card). If any phone number, email, or URL somehow appears in the narration script, OMIT it from the voiceover and show it on screen instead.
-- Do NOT add any contact information to the narration that is not in the script. The spoken close directs viewers to the description and the on-screen card — that is intentional.
+PRONUNCIATION
+- The script is already normalized — read every word as written.
+- Say street suffixes and directions in full, never as letters: Lane, Street, Road, Avenue, Boulevard, Drive, Court, Circle, Place, Parkway, Highway, Terrace, Trail, Point, Square, Apartment, Suite, Building, North, South, East, West, Northeast, Northwest, Southeast, Southwest.
+- NEVER speak phone numbers, email addresses or URLs — they are display-only. If any appear in the script, omit them from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
 
-${buildLocationSeasonGuidance(params.state, params.city)}=====================================
-B-ROLL — LOCATION-LOCKED TO ${locationOr.toUpperCase()}
-=====================================${listingPhotoBlock}
+LOCATION ACCURACY — ${locationOr}, ${monthName}
+- Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
+- Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
+- Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
 
-GEOGRAPHIC RULES FOR ALL B-ROLL (NO EXCEPTIONS):
-Every single b-roll clip must be believable for ${locationOr}. Use ONLY footage that could realistically exist there:
-- Architecture: match the home styles, street layouts, and building materials typical of ${locationOr}
-- Vegetation: ONLY trees, plants, and landscaping that actually grow in ${locationOr} during the current month
-- ABSOLUTELY PROHIBITED unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glacier scenery, redwood forests, farm fields
-- If unsure whether a visual element belongs in ${locationOr}, use a safe interior or neighborhood shot instead — do NOT guess
-- Generic residential neighborhoods, local-style streets, and home interiors are always safe choices
+B-ROLL CONTENT
+- Aerial/establishing shots of ${locationOr}-style neighborhoods; residential streets and curb-appeal exteriors; interiors (kitchens, living spaces, open floor plans); lifestyle scenes (cafes, parks, people) appropriate to ${locationOr}.${audienceVisual ? `
+- Audience (${params.audience}): ${audienceVisual}` : ""}${params.keywords.length > 0 ? `
+- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
-${hasPhotos ? "SECONDARY / FILLER B-ROLL (only between listing photos):" : "B-ROLL CONTENT:"}
-- Aerial / establishing shots of ${locationOr}-style neighborhoods matching the local architecture
-- Residential streets and curb-appeal exteriors that genuinely belong in ${locationOr}${audienceVisual ? `\n- Audience-specific visuals (${params.audience}): ${audienceVisual}` : ""}
-- Interior shots: kitchens, living spaces, open floor plans
-- Lifestyle: cafes, parks, people — scenes appropriate for ${locationOr}${params.keywords.length > 0 ? `\n- Visual emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
-
-=====================================
-COLOR + STYLE
-=====================================
-- B-roll: slight warm filter — inviting, emotional (avoid cool/blue tones)${toneVisual ? `\n- Tone (${params.tone}): ${toneVisual}` : ""}
-- ${params.isShortForm ? "Vertical 9:16 — fast punchy cuts, bold text overlays, social media optimized" : "Horizontal 16:9 — smooth cinematic transitions, premium editorial feel"}
-
-=====================================
-DATA VISUALIZATION
-=====================================
-When stats or numbers are spoken:
-- Bar charts → home prices
-- Line graphs → market trends
-- Infographic overlays → inventory/demand levels
-- Position ALL charts and data graphics in the LOWER THIRD band (bottom 20% of frame) only — never overlapping the presenter's face in the center or upper portion of the frame
-
-=====================================
-TEXT OVERLAYS
-=====================================
-${params.burnCaptions ? `- SPOKEN-WORD CAPTIONS (REQUIRED): Burn synchronized captions of the narration throughout the ENTIRE video — every spoken sentence appears as on-screen text in sync with the voiceover. Style: 4–6 words at a time, bold white text on a semi-transparent dark backing, social-media caption style. Position captions INSIDE the lower-third band. On Scene 1, captions must sit ABOVE the title-card hook bar (never overlapping it); on the final scene, captions sit above the contact card. Captions must never cover the presenter's face or any other overlay.
-` : ""}- Highlight key stats and insights as they are mentioned in the script
-- Background: semi-transparent dark gray
-- Text: white or soft gold
-- Accent lines/icons: gold or navy
-- Bold, minimal, readable — no clutter
-- CRITICAL POSITIONING — TEXT MUST NEVER COVER THE PRESENTER'S FACE:
-  • The avatar is FULL SCREEN. The presenter's face occupies the upper-center portion of the frame.
-  • Place ALL text overlays, captions, stats, and data visualizations in the LOWER THIRD of the frame — the bottom 20% strip (approximately the bottom 216 pixels of a 1080p frame). This is the broadcast-standard lower-third zone.
-  • NEVER place any text, caption, stat, chart, or graphic in the upper 80% of the frame while the presenter is visible — overlays in that zone will land directly on the presenter's face.
-  • Lower-third style: a semi-transparent dark bar spanning the full width near the bottom of the frame, with white or gold text inside.
-  • When in doubt, keep all text at the very BOTTOM of the frame.
+STYLE
+- B-roll: slight warm filter — inviting and emotional (avoid cool/blue tones).${toneVisual ? `
+- Tone (${params.tone}): ${toneVisual}` : ""}
+- ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
+- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey the TEXT SAFE ZONE.${params.burnCaptions ? `
+- BURNED CAPTIONS (required): synchronized captions of the narration for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band. On Scene 1 they sit ABOVE the hook bar; on the final scene above the contact card. They must never cover the presenter's face.` : ""}
+- Text: white or soft gold, gold/navy accents, bold, minimal, readable — no clutter.
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
+
+  return { head, tail };
 }
 
 export async function POST(req: NextRequest) {
@@ -573,14 +454,14 @@ export async function POST(req: NextRequest) {
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 
-    // HeyGen's Video Agent caps the prompt at 10,000 characters. The
-    // structural sections in buildVideoAgentPrompt() are ordered so every
-    // must-have instruction (orientation, avatar, fair housing, title card,
-    // CTA/logo, scene cap, agent details, narration script) appears BEFORE
-    // the elaboration/refinement sections (scene sync detail, pronunciation,
-    // b-roll geography, color, data viz, text overlay positioning). If the
-    // hard clamp below ever fires, it only ever truncates that trailing
-    // elaboration content — never the title card or CTA contact card.
+    // HeyGen's Video Agent caps the prompt at ~10,000 characters; we stay under
+    // 8,500 for margin. buildVideoAgentPrompt() returns two parts:
+    //   head — format rules, safe zone, compliance, title/CTA cards, and the FULL
+    //          narration script. Never trimmed.
+    //   tail — refinement (visual sync, pronunciation, location, b-roll, style).
+    //          Trimmed from the end if we run out of budget.
+    // A previous version concatenated everything and blind-sliced at the cap,
+    // which silently cut the narration script and every rule after it.
     const HEYGEN_PROMPT_LIMIT = 8500;
     const promptParams = {
       script: safeScript,
@@ -597,6 +478,7 @@ export async function POST(req: NextRequest) {
       logoUrl: profile.logo_url || undefined,
       keywords: aiKeywords,
       isShortForm,
+      isSquare: videoType === "short_1x1",
       isLongForm,
       burnCaptions: captions !== false,
       hookText,
@@ -606,28 +488,40 @@ export async function POST(req: NextRequest) {
     };
 
     const fullPdf = pdfText ? String(pdfText) : undefined;
-    let prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: fullPdf?.slice(0, 3000) });
+    const pdfForPrompt = fullPdf?.slice(0, 2000);
 
-    if (prompt.length > HEYGEN_PROMPT_LIMIT && fullPdf) {
-      // Measure the prompt with no PDF, then allocate the remaining budget
-      // (minus a small margin for the section wrapper) to the PDF text.
-      const baseLength = buildVideoAgentPrompt({ ...promptParams, pdfContent: undefined }).length;
-      const room = HEYGEN_PROMPT_LIMIT - baseLength - 200;
-      const trimmedPdf = room > 200 ? fullPdf.slice(0, room) : undefined;
-      prompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: trimmedPdf });
+    // Music instruction is prepended so trimming can never cut it off. The track
+    // itself is attached as a file where the files list is built.
+    const musicPrefix = typeof musicUrl === "string" && musicUrl.trim() ? MUSIC_PROMPT_INSTRUCTION : "";
+
+    let { head, tail } = buildVideoAgentPrompt({ ...promptParams, pdfContent: pdfForPrompt });
+
+    // If the script is so long that the head alone blows the budget (long-form),
+    // shorten the SCRIPT at a sentence boundary and rebuild. The agent carries the
+    // script inside the prompt, so there is no way around the cap — but ending on
+    // a complete sentence beats slicing the prompt mid-word (which used to drop
+    // the script and every rule after it).
+    if (musicPrefix.length + head.length > HEYGEN_PROMPT_LIMIT) {
+      const overflow = musicPrefix.length + head.length - HEYGEN_PROMPT_LIMIT;
+      const keep = Math.max(200, safeScript.length - overflow);
+      const cut = safeScript.slice(0, keep);
+      const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+      const trimmedScript = (lastStop > 200 ? cut.slice(0, lastStop + 1) : cut).trim();
+      console.warn(
+        `[create-blog] script too long for the Video Agent prompt ` +
+        `(${scriptWordCount} words). Trimmed to ~${trimmedScript.split(/\s+/).length} words at a ` +
+        `sentence boundary. Use engine="direct" to deliver long scripts in full.`,
+      );
+      ({ head, tail } = buildVideoAgentPrompt({ ...promptParams, script: trimmedScript, pdfContent: pdfForPrompt }));
     }
 
-    // Background music instruction — prepended (not appended) so the PDF/clamp
-    // trimming above can never cut it off. The track itself is attached as a
-    // file where the files list is built.
-    if (typeof musicUrl === "string" && musicUrl.trim()) {
-      prompt = MUSIC_PROMPT_INSTRUCTION + prompt;
-    }
+    const room = HEYGEN_PROMPT_LIMIT - musicPrefix.length - head.length;
+    const prompt = musicPrefix + head + (room > 0 ? tail.slice(0, room) : "");
 
-    // Final hard safety clamp in case the base prompt alone is still too long.
-    if (prompt.length > HEYGEN_PROMPT_LIMIT) {
-      prompt = prompt.slice(0, HEYGEN_PROMPT_LIMIT);
-    }
+    console.log(
+      `[create-blog] prompt ${prompt.length}/${HEYGEN_PROMPT_LIMIT} chars ` +
+      `(head ${head.length}, tail ${Math.max(0, Math.min(room, tail.length))}/${tail.length} kept)`,
+    );
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     const callbackUrl = appUrl && !appUrl.includes("localhost")
