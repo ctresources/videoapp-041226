@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 // Add-on packs. A short video draws 1 from the balance, a long (up to 8 min)
 // video draws 3 — so the "3" pack is exactly one long video. Prices are built
 // inline via price_data, so changing these needs no Stripe dashboard work.
+// Priced to hold ~45% margin against render cost (a 4-min short costs us ~$8,
+// an 8-min long ~$21), matching the monthly plans.
 const CREDIT_PACKS = {
-  "1": { credits: 1, amount: 1000, label: "1 Short Video" },
-  "2": { credits: 2, amount: 1500, label: "2 Short Videos" },
-  // One long video (up to 8 min). Renders cost us up to ~$21, so $39 holds
-  // roughly the same margin as the monthly plans.
+  "1": { credits: 1, amount: 1500, label: "1 Short Video" },
+  "2": { credits: 2, amount: 2800, label: "2 Short Videos" },
   "3": { credits: 3, amount: 3900, label: "1 Long Video (up to 8 minutes)" },
 } as const;
 

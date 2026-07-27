@@ -537,17 +537,17 @@ export default function LandingPage() {
           <div className="mt-8 bg-white border border-slate-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-sm font-bold text-slate-900 mb-1">Need more videos some months? Add credits anytime.</p>
-                <p className="text-xs text-slate-500">One-time purchases on any plan — no plan change needed. Credits never interrupt your subscription.</p>
+                <p className="text-sm font-bold text-slate-900 mb-1">Need more videos some months? Add them anytime.</p>
+                <p className="text-xs text-slate-500">One-time purchases on any plan — no plan change needed, and your subscription is never interrupted.</p>
               </div>
               <div className="flex flex-wrap gap-3 shrink-0 text-sm">
                 <div className="border border-slate-200 px-4 py-2">
-                  <span className="font-black text-slate-900">$10</span>
-                  <span className="text-slate-500 text-xs"> · 1 AI video credit</span>
+                  <span className="font-black text-slate-900">$15</span>
+                  <span className="text-slate-500 text-xs"> · One short video, up to 4 minutes</span>
                 </div>
                 <div className="border border-slate-200 px-4 py-2">
-                  <span className="font-black text-slate-900">$15</span>
-                  <span className="text-slate-500 text-xs"> · 2 credits ($7.50 each)</span>
+                  <span className="font-black text-slate-900">$28</span>
+                  <span className="text-slate-500 text-xs"> · Two short videos ($14 each)</span>
                 </div>
                 <div className="border border-blue-900 px-4 py-2 bg-blue-50">
                   <span className="font-black text-blue-900">$39</span>

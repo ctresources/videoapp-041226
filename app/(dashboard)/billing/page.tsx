@@ -149,11 +149,13 @@ export default async function BillingPage({
         <div className="mb-6 flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-2xl text-green-800">
           <CheckCircle size={18} className="shrink-0 text-green-600" />
           <div>
-            <p className="font-semibold text-sm">Credits added! 🎉</p>
+            <p className="font-semibold text-sm">Added to your account! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
-              {searchParams.added
-                ? `${searchParams.added} video credit${Number(searchParams.added) !== 1 ? "s" : ""} have been added to your account.`
-                : "Your video credits have been added to your account."}
+              {searchParams.added === "3"
+                ? "Your long video is ready to create — head to Create Video."
+                : searchParams.added
+                  ? `${searchParams.added} short video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create Video.`
+                  : "Your purchase was added to your account."}
             </p>
           </div>
         </div>
@@ -382,13 +384,13 @@ export default async function BillingPage({
               <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
                 <Video size={15} className="text-slate-500" />
               </div>
-              <p className="font-bold text-brand-text">1 AI Video</p>
+              <p className="font-bold text-brand-text">1 Short Video</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$10</span>
+              <span className="text-3xl font-black text-brand-text">$15</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">Single video credit added to your account instantly.</p>
+            <p className="text-xs text-slate-500">One short video, up to 4 minutes. Added to your account instantly.</p>
             <a href="/api/stripe/credits?pack=1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy 1 Video <ArrowRight size={12} />
@@ -404,20 +406,20 @@ export default async function BillingPage({
               <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center">
                 <Zap size={15} className="text-primary-500" />
               </div>
-              <p className="font-bold text-brand-text">2 AI Videos</p>
+              <p className="font-bold text-brand-text">2 Short Videos</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$15</span>
+              <span className="text-3xl font-black text-brand-text">$28</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">Two credits for $7.50 each — save $5 vs buying one at a time.</p>
+            <p className="text-xs text-slate-500">Two short videos at $14 each — save $2 vs buying one at a time.</p>
             <a href="/api/stripe/credits?pack=2">
               <Button variant="primary" size="sm" className="w-full gap-1.5">
                 Buy 2 Videos <ArrowRight size={12} />
               </Button>
             </a>
           </div>
-          {/* Long-form 6-credit pack */}
+          {/* Long video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
