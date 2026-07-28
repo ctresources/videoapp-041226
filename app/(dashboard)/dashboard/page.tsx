@@ -34,7 +34,7 @@ async function DashboardStats() {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, subscription_tier, current_period_end").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end").eq("id", user.id).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -44,13 +44,16 @@ async function DashboardStats() {
     full_name: string | null;
     credits_remaining: number;
     long_credits_remaining: number;
+    purchased_short_videos: number;
+    purchased_long_videos: number;
     subscription_tier: string;
     current_period_end: string | null;
   } | null;
 
-  // Short and long videos are separate allowances — users never see "credits".
-  const creditsLeft = profile?.credits_remaining ?? 0;
-  const longFormLeft = profile?.long_credits_remaining ?? 0;
+  // Short and long are separate allowances — users never see "credits". Each
+  // combines the monthly plan balance with purchased add-ons (never expire).
+  const creditsLeft = (profile?.credits_remaining ?? 0) + (profile?.purchased_short_videos ?? 0);
+  const longFormLeft = (profile?.long_credits_remaining ?? 0) + (profile?.purchased_long_videos ?? 0);
   const videosLeftLabel = [
     `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""}`,
     longFormLeft > 0 ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""}` : "",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
+import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -48,20 +49,20 @@ export async function POST(req: NextRequest) {
       const userId = (session.metadata?.supabase_user_id as string | undefined);
       if (!userId) break;
 
-      // One-time video pack purchase. `credits_kind` says which allowance it
-      // tops up — short and long are tracked separately.
+      // One-time video pack purchase. These land in the PURCHASED balance,
+      // which the monthly reset never touches — someone who buys a video days
+      // before their renewal must not lose it.
       if (session.mode === "payment") {
         const creditsToAdd = parseInt(session.metadata?.credits_to_add ?? "0", 10);
-        const isLongPack = session.metadata?.credits_kind === "long";
+        const kind: VideoKind = session.metadata?.credits_kind === "long" ? "long" : "short";
         if (creditsToAdd > 0) {
-          const column = isLongPack ? "long_credits_remaining" : "credits_remaining";
+          const column = purchasedColumn(kind);
           const { data: profileRow } = await admin
             .from("profiles")
-            .select("credits_remaining, long_credits_remaining")
+            .select(ALLOWANCE_SELECT)
             .eq("id", userId)
             .single();
-          const current =
-            (profileRow as Record<string, number> | null)?.[column] ?? 0;
+          const current = (profileRow as Record<string, number> | null)?.[column] ?? 0;
           await updateProfile(admin, userId, { [column]: current + creditsToAdd });
         }
         break;
@@ -122,12 +123,16 @@ export async function POST(req: NextRequest) {
       const userId = sub.metadata?.supabase_user_id;
       if (!userId) break;
 
+      // Plan allowances end with the subscription. Purchased add-ons are NOT
+      // cleared — they were paid for separately and never expire, so they stay
+      // usable if the customer comes back.
       await updateProfile(admin, userId, {
         subscription_tier: "free",
         subscription_status: "canceled",
         stripe_subscription_id: null,
         cancel_at_period_end: false,
         credits_remaining: 0,
+        long_credits_remaining: 0,
       });
       break;
     }
@@ -162,8 +167,10 @@ export async function POST(req: NextRequest) {
         await createCommissionIfEligible(admin, invoice, profile.id);
       }
 
-      // Allowance refresh at the start of each billing period. Both buckets
-      // reset — unused videos do not roll over.
+      // Allowance refresh at the start of each billing period. The PLAN
+      // balances are set (not added to), so unused plan videos never roll over.
+      // purchased_* columns are deliberately untouched — those were paid for
+      // separately and never expire.
       if (invoice.billing_reason !== "subscription_cycle" || !profile) break;
       const plan = Object.values(PLANS).find((p) => p.tier === profile.subscription_tier);
       if (plan) {

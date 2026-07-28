@@ -49,7 +49,7 @@ export default function LoginPage() {
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_done, subscription_tier, credits_remaining, long_credits_remaining, role")
+        .select("onboarding_done, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role")
         .eq("id", user.id)
         .single();
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
         if (profile.role !== "admin") {
           const tier = profile.subscription_tier ?? "free";
           const paidPlans = ["starter", "agent", "pro"];
-          const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0;
+          const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0 || (profile.purchased_short_videos ?? 0) > 0 || (profile.purchased_long_videos ?? 0) > 0;
           const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
           if (!hasPaidAccess) destination = "/billing";
         }

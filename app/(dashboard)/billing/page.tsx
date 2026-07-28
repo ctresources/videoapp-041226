@@ -103,7 +103,7 @@ export default async function BillingPage({
   const admin = createAdminClient();
   const { data: profileData } = await admin
     .from("profiles")
-    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
+    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
     .eq("id", user.id)
     .single();
 
@@ -112,6 +112,8 @@ export default async function BillingPage({
     subscription_status: string | null;
     credits_remaining: number;
     long_credits_remaining: number;
+    purchased_short_videos: number;
+    purchased_long_videos: number;
     current_period_end: string | null;
     cancel_at_period_end: boolean;
     stripe_customer_id: string | null;
@@ -129,9 +131,14 @@ export default async function BillingPage({
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
 
-  // Two independent allowances — users never see the word "credit".
-  const shortLeft = profile?.credits_remaining ?? 0;
-  const longLeft = profile?.long_credits_remaining ?? 0;
+  // Two independent allowances — users never see the word "credit". Each is a
+  // monthly plan balance plus any purchased add-ons, which never expire.
+  const shortPlan = profile?.credits_remaining ?? 0;
+  const longPlan = profile?.long_credits_remaining ?? 0;
+  const shortBought = profile?.purchased_short_videos ?? 0;
+  const longBought = profile?.purchased_long_videos ?? 0;
+  const shortLeft = shortPlan + shortBought;
+  const longLeft = longPlan + longBought;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -248,13 +255,14 @@ export default async function BillingPage({
                   <Zap size={11} className="text-primary-500" /> Short Videos Left
                 </p>
                 <p className="text-xs font-bold text-brand-text">
-                  {shortLeft} of {currentPlan?.videos ?? 0}
+                  {shortPlan} of {currentPlan?.videos ?? 0}
+                  {shortBought > 0 && <span className="font-normal text-slate-400"> + {shortBought} purchased</span>}
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
                 <div
                   className="h-2 bg-primary-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (shortLeft / (currentPlan?.videos || 1)) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (shortPlan / (currentPlan?.videos || 1)) * 100)}%` }}
                 />
               </div>
 
@@ -265,13 +273,14 @@ export default async function BillingPage({
                       <Video size={11} className="text-purple-500" /> Long Videos Left
                     </p>
                     <p className="text-xs font-bold text-brand-text">
-                      {longLeft} of {currentPlan?.longVideos ?? 0}
+                      {longPlan} of {currentPlan?.longVideos ?? 0}
+                      {longBought > 0 && <span className="font-normal text-slate-400"> + {longBought} purchased</span>}
                     </p>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full">
                     <div
                       className="h-2 bg-purple-500 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, (longLeft / (currentPlan?.longVideos || 1)) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (longPlan / (currentPlan?.longVideos || 1)) * 100)}%` }}
                     />
                   </div>
                 </>
@@ -279,8 +288,8 @@ export default async function BillingPage({
 
               <p className="text-xs text-slate-400 mt-1.5">
                 {currentTier === "beta"
-                  ? "Included with beta access · short and long are tracked separately"
-                  : "Resets each billing period · short and long are tracked separately"}
+                  ? "Included with beta access · short and long are tracked separately · purchased videos never expire"
+                  : "Resets each billing period · short and long are tracked separately · purchased videos never expire"}
               </p>
             </div>
             {/* Camera recordings */}

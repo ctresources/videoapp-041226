@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
+import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -371,7 +372,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, role, subscription_tier")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -391,6 +392,8 @@ export async function POST(req: NextRequest) {
     voice_clone_id: string | null;
     credits_remaining: number;
     long_credits_remaining: number;
+    purchased_short_videos: number;
+    purchased_long_videos: number;
     role: string | null;
     subscription_tier: string | null;
   } | null;
@@ -442,18 +445,19 @@ export async function POST(req: NextRequest) {
   const scriptWordCount = safeScript.trim().split(/\s+/).filter(Boolean).length;
   console.log(`[create-blog] script sent: ${scriptWordCount} words (~${Math.round(scriptWordCount / 145 * 60)}s at 145wpm), tier=${tier}, cap=${maxScriptWords}, videoType=${videoType}`);
 
-  // Short and long allowances are separate buckets — spending long videos never
-  // eats short ones, and vice versa. Each video draws exactly 1 from its own.
-  const allowanceColumn = isLongForm ? "long_credits_remaining" : "credits_remaining";
-  const allowanceLeft = isLongForm ? profile.long_credits_remaining : profile.credits_remaining;
+  // Short and long are separate allowances, and within each the monthly plan
+  // balance is spent before purchased add-ons (the plan balance expires at the
+  // end of the cycle; purchased videos never do).
+  const videoKind: VideoKind = isLongForm ? "long" : "short";
+  const charge = chargeFor(profile, videoKind);
   const creditCost = 1;
 
-  if (!isAdmin && allowanceLeft < creditCost) {
+  if (!isAdmin && !charge) {
     return NextResponse.json(
       {
         error: isLongForm
-          ? "You've used all your long videos this month. Buy another for $39 in Billing, upgrade your plan, or record one free with the camera teleprompter."
-          : "You've used all your short videos this month. Buy more in Billing or upgrade your plan.",
+          ? "You've used all your long videos. Buy another for $39 in Billing, upgrade your plan, or record one free with the camera teleprompter."
+          : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
       },
       { status: 402 },
     );
@@ -656,10 +660,10 @@ export async function POST(req: NextRequest) {
       await admin
         .from("generated_videos")
         // credit_cost enables an automatic refund if the render later fails
-        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: isLongForm ? "long" : "short" } })
+        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
         .eq("id", videoRow.id);
 
-      await admin.from("profiles").update({ [allowanceColumn]: allowanceLeft - creditCost }).eq("id", user.id);
+      if (charge) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
@@ -743,10 +747,10 @@ export async function POST(req: NextRequest) {
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: isLongForm ? "long" : "short" } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
       .eq("id", videoRow?.id);
 
-    await admin.from("profiles").update({ [allowanceColumn]: allowanceLeft - creditCost }).eq("id", user.id);
+    if (charge) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
