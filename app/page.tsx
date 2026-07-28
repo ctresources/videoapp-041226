@@ -5,6 +5,7 @@ import {
   CheckCircle, ArrowRight,
   Clock,
   X, Camera, Users, UserPlus, ChevronRight,
+  Tv2, Palette, Film, MousePointerClick, Search, Upload,
 } from "lucide-react";
 
 const segments = [
@@ -96,6 +97,41 @@ const features = [
   },
 ];
 
+// Video-type strip. `len` is the real finished length for that kind of video —
+// the mix of 60 sec / 3 min / 8 min is how a visitor learns short and long form
+// both exist before they reach pricing.
+const marqueeRow1 = [
+  { label: "Market Update",        len: "3 min",  img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
+  { label: "Listing Video",        len: "90 sec", img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
+  { label: "Neighborhood Tour",    len: "8 min",  img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
+  { label: "Just Sold",            len: "60 sec", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
+  { label: "Buyer Tips",           len: "3 min",  img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
+  { label: "Interest Rate Update", len: "60 sec", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
+  { label: "Open House Recap",     len: "90 sec", img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
+  { label: "Local Market Deep Dive", len: "8 min", img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
+];
+
+const marqueeRow2 = [
+  { label: "Seller Tips",          len: "3 min",  img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
+  { label: "Price Reduction",      len: "60 sec", img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
+  { label: "New Construction Tour", len: "8 min", img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
+  { label: "Investment Property",  len: "4 min",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
+  { label: "Luxury Listing",       len: "90 sec", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
+  { label: "School District Tour", len: "8 min",  img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
+  { label: "Coming Soon",          len: "60 sec", img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
+  { label: "Condo Showcase",       len: "3 min",  img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
+];
+
+// Everything an agent needs to launch a channel, in the order they hit it.
+const channelSteps = [
+  { icon: Tv2, step: "Name it", tool: "Channel Name Generator", description: "Don't have a channel yet? Get name ideas built around your market and niche — not \"John Smith Realty 2\"." },
+  { icon: Palette, step: "Brand it", tool: "Channel Banner Generator", description: "A finished 2560×1440 banner with your headline, photo, QR codes and subscribe call-out. Correct dimensions, no designer." },
+  { icon: Film, step: "Fill it", tool: "AI Video Generator", description: "Short reels for social and full 8-minute market updates for search — both from one voice recording." },
+  { icon: MousePointerClick, step: "Get the click", tool: "Thumbnail Generator", description: "Bold, readable thumbnails that hold up at phone size — the difference between 40 views and 4,000." },
+  { icon: Search, step: "Get found", tool: "Title, Description & Tag Generators", description: "SEO-optimized metadata written for the neighborhood keywords buyers actually search." },
+  { icon: Upload, step: "Publish it", tool: "One-Click YouTube Publishing", description: "Connect your channel once. Every video after that publishes in one click — title, description and tags already filled in." },
+];
+
 const comparison = [
   { feature: "Unlimited camera recordings (no monthly cap)", us: true, a: false, b: false, c: false },
   { feature: "Built-in teleprompter + camera recorder", us: true, a: false, b: false, c: false },
@@ -185,6 +221,7 @@ export default function LandingPage() {
             <a href="#who"          className="hover:text-slate-900 transition-colors">Who It&apos;s For</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
             <a href="#features"     className="hover:text-slate-900 transition-colors">Features</a>
+            <a href="#channel"      className="hover:text-slate-900 transition-colors">Start a Channel</a>
             <a href="#pricing"      className="hover:text-slate-900 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
@@ -210,7 +247,7 @@ export default function LandingPage() {
                 <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
-                Most real estate agents are invisible online. SparkReels.ai fixes that — turning your voice recording into a publish-ready short-form video.
+                Most real estate agents are invisible online. SparkReels.ai fixes that — turning one voice recording into a publish-ready video. A 60-second reel for social, or a full 8-minute market update built to rank on YouTube.
               </p>
               <p className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-5">
                 Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
@@ -255,39 +292,25 @@ export default function LandingPage() {
 
       {/* ── Scrolling Video Strip ── */}
       <section className="py-12 bg-slate-900 border-y border-slate-800">
-        <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">
+        <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
           Video types agents are creating right now
+        </p>
+        <p className="text-center text-sm text-slate-500 mb-8">
+          Quick reels for social. Full-length market updates for search. Same one-button process.
         </p>
         <div className="max-w-6xl mx-auto overflow-hidden">
 
         {/* Row 1 — scrolls left */}
         <div className="marquee-track mb-4 relative">
           <div className="flex gap-4 animate-marquee whitespace-nowrap">
-            {[
-              { label: "Market Update",       img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
-              { label: "Listing Video",        img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
-              { label: "Neighborhood Tour",    img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
-              { label: "Just Sold",            img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
-              { label: "Buyer Tips",           img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
-              { label: "Interest Rate Update", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
-              { label: "Open House Recap",     img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
-              { label: "Local Market Stats",   img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
-              // duplicated for seamless loop
-              { label: "Market Update",       img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
-              { label: "Listing Video",        img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
-              { label: "Neighborhood Tour",    img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
-              { label: "Just Sold",            img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
-              { label: "Buyer Tips",           img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
-              { label: "Interest Rate Update", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
-              { label: "Open House Recap",     img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
-              { label: "Local Market Stats",   img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
-            ].map(({ label, img }, i) => (
+            {/* duplicated for a seamless loop */}
+            {[...marqueeRow1, ...marqueeRow1].map(({ label, len, img }, i) => (
               <div key={i} className="inline-flex flex-col rounded-xl overflow-hidden border border-slate-700 shrink-0 w-52">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img} alt={label} className="w-full h-32 object-cover" />
                 <div className="bg-slate-800 px-3 py-2.5">
                   <p className="text-xs font-semibold text-white truncate">{label}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · 60 sec</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · {len}</p>
                 </div>
               </div>
             ))}
@@ -297,31 +320,13 @@ export default function LandingPage() {
         {/* Row 2 — scrolls right */}
         <div className="marquee-track relative">
           <div className="flex gap-4 animate-marquee-reverse whitespace-nowrap">
-            {[
-              { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
-              { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
-              { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
-              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
-              { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
-              { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
-              { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
-              { label: "Condo Showcase",       img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
-              // duplicated
-              { label: "Seller Tips",          img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
-              { label: "Price Reduction",      img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
-              { label: "New Construction",     img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
-              { label: "Investment Property",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
-              { label: "Luxury Listing",       img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
-              { label: "School District Tour", img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
-              { label: "Coming Soon",          img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
-              { label: "Condo Showcase",       img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
-            ].map(({ label, img }, i) => (
+            {[...marqueeRow2, ...marqueeRow2].map(({ label, len, img }, i) => (
               <div key={i} className="inline-flex flex-col rounded-xl overflow-hidden border border-slate-700 shrink-0 w-52">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img} alt={label} className="w-full h-32 object-cover" />
                 <div className="bg-slate-800 px-3 py-2.5">
                   <p className="text-xs font-semibold text-white truncate">{label}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · 60 sec</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">AI-generated · {len}</p>
                 </div>
               </div>
             ))}
@@ -388,7 +393,7 @@ export default function LandingPage() {
                 num: "1",
                 color: "bg-blue-900",
                 title: "Speak your topic",
-                description: "Hit the mic — or pick a trending local topic before you start. 60–90 seconds is all you need.",
+                description: "Hit the mic — or pick a trending local topic before you start. Choose your length: a 60-second reel, or a full-length market update up to 8 minutes.",
                 photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },
@@ -451,6 +456,57 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Start a YouTube Channel ── */}
+      <section id="channel" className="py-20 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-12">
+            <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-3">Channel In A Box</p>
+            <h2 className="text-3xl font-black text-white mb-3 max-w-3xl">
+              Don&apos;t have a YouTube channel yet? Start one today.
+            </h2>
+            <p className="text-slate-400 max-w-2xl">
+              You don&apos;t need a designer, a videographer, or an editor. Every piece of a real
+              channel — the name, the banner, the videos, the thumbnails, the SEO — is generated
+              inside SparkReels.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-800 border border-slate-800">
+            {channelSteps.map(({ icon: Icon, step, tool, description }, i) => (
+              <div key={step} className="bg-slate-900 p-6 hover:bg-slate-800/60 transition-colors">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-9 h-9 bg-blue-900/40 border border-blue-800 flex items-center justify-center shrink-0">
+                    <Icon size={17} className="text-blue-300" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Step {i + 1}</p>
+                    <p className="text-sm font-black text-white leading-tight">{step}</p>
+                  </div>
+                </div>
+                <p className="text-xs font-semibold text-blue-300 mb-1.5">{tool}</p>
+                <p className="text-slate-400 text-xs leading-relaxed">{description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 p-4 bg-slate-800/60 border border-slate-700 border-l-4 border-l-blue-500">
+            <p className="text-sm text-slate-300">
+              Already have a channel? Skip to step 3 — the video, thumbnail and SEO tools work just
+              as well on a channel you&apos;ve been running for years.
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 items-start">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-sm font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
+              Start My Channel Free <ArrowRight size={15} />
+            </a>
+            <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-700 text-slate-300 text-sm font-semibold px-6 py-3 hover:border-slate-500 hover:text-white transition-colors">
+              See Plans <ChevronRight size={15} />
+            </a>
           </div>
         </div>
       </section>
