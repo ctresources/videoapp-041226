@@ -155,7 +155,7 @@ export default function HelpPage() {
             <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 4 minutes with
               automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
-              visuals; counts as 3 videos, included with Agent and Pro or $39 on its own). Pick a{" "}
+              visuals; long videos have their own monthly allowance — 2 with Agent, 5 with Pro — or $39 on its own). Pick a{" "}
               <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
               photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering takes a few minutes —
               watch it in My Videos. If a render ever fails, your allowance is refunded automatically.

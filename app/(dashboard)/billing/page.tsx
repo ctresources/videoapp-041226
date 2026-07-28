@@ -10,14 +10,15 @@ import {
   AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video,
 } from "lucide-react";
 
-// `videos` is a monthly render budget — a short video draws 1, a long (8 min)
-// video draws 3. See lib/stripe.ts. Users only ever see video counts + minutes.
+// Short and long videos are SEPARATE monthly allowances — using long videos
+// never eats into short ones. See lib/stripe.ts.
 const PLANS = [
   {
     key: "starter",
     name: "Starter",
     price: 59,
     videos: 4,
+    longVideos: 0,
     blurb: "4 short videos",
     highlighted: false,
     features: [
@@ -38,7 +39,8 @@ const PLANS = [
     key: "agent",
     name: "Agent",
     price: 189,
-    videos: 10,
+    videos: 4,
+    longVideos: 2,
     blurb: "4 short + 2 long videos",
     highlighted: true,
     features: [
@@ -59,7 +61,8 @@ const PLANS = [
     key: "pro",
     name: "Pro",
     price: 299,
-    videos: 19,
+    videos: 4,
+    longVideos: 5,
     blurb: "4 short + 5 long videos",
     highlighted: false,
     features: [
@@ -91,7 +94,7 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: { success?: string; canceled?: string; error?: string; added?: string };
+  searchParams: { success?: string; canceled?: string; error?: string; added?: string; kind?: string };
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +103,7 @@ export default async function BillingPage({
   const admin = createAdminClient();
   const { data: profileData } = await admin
     .from("profiles")
-    .select("subscription_tier, subscription_status, credits_remaining, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
+    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
     .eq("id", user.id)
     .single();
 
@@ -108,6 +111,7 @@ export default async function BillingPage({
     subscription_tier: string;
     subscription_status: string | null;
     credits_remaining: number;
+    long_credits_remaining: number;
     current_period_end: string | null;
     cancel_at_period_end: boolean;
     stripe_customer_id: string | null;
@@ -125,17 +129,9 @@ export default async function BillingPage({
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
 
-  // Show the remaining allowance as VIDEOS — users never see "credits". A long
-  // (up to 8 min) video draws 3 from the budget, a short one draws 1. Lead with
-  // how many long videos are left, with the all-short alternative in parens;
-  // below 3 remaining there's only enough for shorts.
-  const LONG_FORM_CREDIT_COST = 3;
-  const creditsLeft = profile?.credits_remaining ?? 0;
-  const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
-  const videosLeftLabel =
-    longFormLeft >= 1
-      ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
-      : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
+  // Two independent allowances — users never see the word "credit".
+  const shortLeft = profile?.credits_remaining ?? 0;
+  const longLeft = profile?.long_credits_remaining ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -151,7 +147,7 @@ export default async function BillingPage({
           <div>
             <p className="font-semibold text-sm">Added to your account! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
-              {searchParams.added === "3"
+              {searchParams.kind === "long"
                 ? "Your long video is ready to create — head to Create Video."
                 : searchParams.added
                   ? `${searchParams.added} short video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create Video.`
@@ -245,28 +241,46 @@ export default async function BillingPage({
         {/* Usage summary */}
         {(currentPlan || currentTier === "beta") && (
           <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* AI videos */}
+            {/* AI videos — short and long are separate allowances */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Zap size={11} className="text-primary-500" /> AI Videos Left This Month
+                  <Zap size={11} className="text-primary-500" /> Short Videos Left
                 </p>
                 <p className="text-xs font-bold text-brand-text">
-                  {videosLeftLabel}
+                  {shortLeft} of {currentPlan?.videos ?? 0}
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
                 <div
                   className="h-2 bg-primary-500 rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(100, ((profile?.credits_remaining ?? 0) / (currentPlan?.videos ?? 1)) * 100)}%`,
-                  }}
+                  style={{ width: `${Math.min(100, (shortLeft / (currentPlan?.videos || 1)) * 100)}%` }}
                 />
               </div>
+
+              {(currentPlan?.longVideos ?? 0) > 0 || longLeft > 0 ? (
+                <>
+                  <div className="flex items-center justify-between mt-3 mb-2">
+                    <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                      <Video size={11} className="text-purple-500" /> Long Videos Left
+                    </p>
+                    <p className="text-xs font-bold text-brand-text">
+                      {longLeft} of {currentPlan?.longVideos ?? 0}
+                    </p>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 rounded-full">
+                    <div
+                      className="h-2 bg-purple-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (longLeft / (currentPlan?.longVideos || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </>
+              ) : null}
+
               <p className="text-xs text-slate-400 mt-1.5">
                 {currentTier === "beta"
-                  ? "Included with beta access · a long video uses 3× a short one"
-                  : "Resets each billing period · a long video uses 3× a short one"}
+                  ? "Included with beta access · short and long are tracked separately"
+                  : "Resets each billing period · short and long are tracked separately"}
               </p>
             </div>
             {/* Camera recordings */}
@@ -391,7 +405,7 @@ export default async function BillingPage({
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">One short video, up to 4 minutes. Added to your account instantly.</p>
-            <a href="/api/stripe/credits?pack=1">
+            <a href="/api/stripe/credits?pack=short1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy 1 Video <ArrowRight size={12} />
               </Button>
@@ -413,7 +427,7 @@ export default async function BillingPage({
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">Two short videos at $14 each — save $2 vs buying one at a time.</p>
-            <a href="/api/stripe/credits?pack=2">
+            <a href="/api/stripe/credits?pack=short2">
               <Button variant="primary" size="sm" className="w-full gap-1.5">
                 Buy 2 Videos <ArrowRight size={12} />
               </Button>
@@ -432,7 +446,7 @@ export default async function BillingPage({
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">One long AI video, up to 8 minutes, using your photos for visuals. Works on any plan.</p>
-            <a href="/api/stripe/credits?pack=3">
+            <a href="/api/stripe/credits?pack=long1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy A Long Video <ArrowRight size={12} />
               </Button>

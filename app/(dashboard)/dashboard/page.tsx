@@ -34,7 +34,7 @@ async function DashboardStats() {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, subscription_tier, current_period_end").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, subscription_tier, current_period_end").eq("id", user.id).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -43,20 +43,18 @@ async function DashboardStats() {
   const profile = profileResult.data as {
     full_name: string | null;
     credits_remaining: number;
+    long_credits_remaining: number;
     subscription_tier: string;
     current_period_end: string | null;
   } | null;
 
+  // Short and long videos are separate allowances — users never see "credits".
   const creditsLeft = profile?.credits_remaining ?? 0;
-  // Show the remaining allowance as VIDEOS — users never see "credits". A long
-  // (up to 8 min) video draws 3 from the budget, a short one draws 1. Lead with
-  // long videos, with the all-short alternative in parens.
-  const LONG_FORM_CREDIT_COST = 3;
-  const longFormLeft = Math.floor(creditsLeft / LONG_FORM_CREDIT_COST);
-  const videosLeftLabel =
-    longFormLeft >= 1
-      ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""} left (or ${creditsLeft} short)`
-      : `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""} left`;
+  const longFormLeft = profile?.long_credits_remaining ?? 0;
+  const videosLeftLabel = [
+    `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""}`,
+    longFormLeft > 0 ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""}` : "",
+  ].filter(Boolean).join(" · ") + " left";
   const periodEnd = profile?.current_period_end
     ? new Date(profile.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : null;
@@ -101,9 +99,9 @@ async function DashboardStats() {
             <Zap className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-text">{longFormLeft >= 1 ? longFormLeft : creditsLeft}</p>
-            <p className="text-xs text-slate-500 leading-tight">{longFormLeft >= 1 ? "Long Videos Left" : "Short Videos Left"}</p>
-            {longFormLeft >= 1 && <p className="text-[10px] text-slate-400 leading-tight">or {creditsLeft} short</p>}
+            <p className="text-2xl font-bold text-brand-text">{creditsLeft}</p>
+            <p className="text-xs text-slate-500 leading-tight">Short Videos Left</p>
+            {longFormLeft > 0 && <p className="text-[10px] text-slate-400 leading-tight">+ {longFormLeft} long</p>}
           </div>
         </Card>
 

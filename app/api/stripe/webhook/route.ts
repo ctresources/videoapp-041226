@@ -6,10 +6,14 @@ import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
 
-// Map Stripe price ID → our tier name + monthly video credits
-function tierFromPriceId(priceId: string): { tier: string; credits: number } | null {
+// Map Stripe price ID → tier + the two monthly video allowances
+function tierFromPriceId(
+  priceId: string,
+): { tier: string; shortVideos: number; longVideos: number } | null {
   for (const plan of Object.values(PLANS)) {
-    if (plan.priceId === priceId) return { tier: plan.tier, credits: plan.videos };
+    if (plan.priceId === priceId) {
+      return { tier: plan.tier, shortVideos: plan.shortVideos, longVideos: plan.longVideos };
+    }
   }
   return null;
 }
@@ -44,17 +48,21 @@ export async function POST(req: NextRequest) {
       const userId = (session.metadata?.supabase_user_id as string | undefined);
       if (!userId) break;
 
-      // One-time credit pack purchase
+      // One-time video pack purchase. `credits_kind` says which allowance it
+      // tops up — short and long are tracked separately.
       if (session.mode === "payment") {
         const creditsToAdd = parseInt(session.metadata?.credits_to_add ?? "0", 10);
+        const isLongPack = session.metadata?.credits_kind === "long";
         if (creditsToAdd > 0) {
+          const column = isLongPack ? "long_credits_remaining" : "credits_remaining";
           const { data: profileRow } = await admin
             .from("profiles")
-            .select("credits_remaining")
+            .select("credits_remaining, long_credits_remaining")
             .eq("id", userId)
             .single();
-          const current = (profileRow as { credits_remaining: number } | null)?.credits_remaining ?? 0;
-          await updateProfile(admin, userId, { credits_remaining: current + creditsToAdd });
+          const current =
+            (profileRow as Record<string, number> | null)?.[column] ?? 0;
+          await updateProfile(admin, userId, { [column]: current + creditsToAdd });
         }
         break;
       }
@@ -72,8 +80,10 @@ export async function POST(req: NextRequest) {
         stripe_subscription_id: sub.id,
         subscription_tier: planInfo?.tier || "pro",
         subscription_status: sub.status,
-        // Trial users get 1 video credit; full credits granted when trial converts
-        credits_remaining: sub.status === "trialing" ? 1 : (planInfo?.credits ?? 40),
+        // Trials get 1 short video to try it out; the full allowance lands when
+        // the trial converts (customer.subscription.updated below).
+        credits_remaining: sub.status === "trialing" ? 1 : (planInfo?.shortVideos ?? 4),
+        long_credits_remaining: sub.status === "trialing" ? 0 : (planInfo?.longVideos ?? 0),
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         cancel_at_period_end: sub.cancel_at_period_end,
       });
@@ -99,7 +109,10 @@ export async function POST(req: NextRequest) {
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         cancel_at_period_end: sub.cancel_at_period_end,
         // Restore full credits when trial converts to paid
-        ...(trialJustConverted && { credits_remaining: planInfo?.credits ?? 40 }),
+        ...(trialJustConverted && {
+          credits_remaining: planInfo?.shortVideos ?? 4,
+          long_credits_remaining: planInfo?.longVideos ?? 0,
+        }),
       });
       break;
     }
@@ -149,12 +162,14 @@ export async function POST(req: NextRequest) {
         await createCommissionIfEligible(admin, invoice, profile.id);
       }
 
-      // Credit refresh only at the start of each billing period (unchanged).
+      // Allowance refresh at the start of each billing period. Both buckets
+      // reset — unused videos do not roll over.
       if (invoice.billing_reason !== "subscription_cycle" || !profile) break;
       const plan = Object.values(PLANS).find((p) => p.tier === profile.subscription_tier);
       if (plan) {
         await updateProfile(admin, profile.id, {
-          credits_remaining: plan.videos,
+          credits_remaining: plan.shortVideos,
+          long_credits_remaining: plan.longVideos,
           subscription_status: "active",
         });
       }

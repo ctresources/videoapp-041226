@@ -6,15 +6,13 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 /**
- * Monthly render allowance. Internally this is a budget: a short video draws 1,
- * a long video draws LONG_FORM_CREDIT_COST (3) because it costs roughly 3x as
- * much to render. `videos` is that BUDGET, not a video count:
- *   Starter   4 = 4 short (up to 3 min each)
- *   Agent    10 = 4 short (up to 4 min) + 2 long (up to 8 min, 2x3=6)
- *   Pro      19 = 4 short (up to 4 min) + 5 long (up to 8 min, 5x3=15)
+ * Monthly video allowance, tracked as TWO INDEPENDENT buckets so spending long
+ * videos never eats into short ones:
+ *   shortVideos -> profiles.credits_remaining       (1 per short video)
+ *   longVideos  -> profiles.long_credits_remaining  (1 per long video)
  *
- * Users never see the word "credit" — the UI presents this as video counts and
- * minutes (see the billing and dashboard pages).
+ * `videos` is kept as the short-video count for older callers that still read
+ * it. Users never see the word "credit" — the UI shows video counts and minutes.
  */
 export const PLANS = {
   starter: {
@@ -22,6 +20,8 @@ export const PLANS = {
     priceId: process.env.STRIPE_PRICE_STARTER!,
     price: 59,
     videos: 4,
+    shortVideos: 4,
+    longVideos: 0,
     blurb: "4 short videos",
     tier: "starter" as const,
   },
@@ -29,7 +29,9 @@ export const PLANS = {
     name: "Agent",
     priceId: process.env.STRIPE_PRICE_AGENT!,
     price: 189,
-    videos: 10,
+    videos: 4,
+    shortVideos: 4,
+    longVideos: 2,
     blurb: "4 short + 2 long videos",
     tier: "agent" as const,
   },
@@ -37,7 +39,9 @@ export const PLANS = {
     name: "Pro",
     priceId: process.env.STRIPE_PRICE_PRO!,
     price: 299,
-    videos: 19,
+    videos: 4,
+    shortVideos: 4,
+    longVideos: 5,
     blurb: "4 short + 5 long videos",
     tier: "pro" as const,
   },

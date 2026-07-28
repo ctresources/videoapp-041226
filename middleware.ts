@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarding_done, subscription_tier, credits_remaining, role")
+      .select("onboarding_done, subscription_tier, credits_remaining, long_credits_remaining, role")
       .eq("id", user.id)
       .single();
 
@@ -105,7 +105,7 @@ export async function middleware(request: NextRequest) {
 
     const tier = profile.subscription_tier ?? "free";
     const paidPlans = ["starter", "agent", "pro"];
-    const hasCredits = (profile.credits_remaining ?? 0) > 0;
+    const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0;
     const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
     return applyRef(NextResponse.redirect(new URL(hasPaidAccess ? "/create" : "/billing", request.url)));
   }

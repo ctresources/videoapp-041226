@@ -42,16 +42,21 @@ export async function refundVideoCredits(
 
     if (!claimed?.length) return; // lost the race — other caller refunds
 
+    // Short and long allowances are separate buckets, so the refund has to go
+    // back to the one that was charged. Rows written before credit_kind existed
+    // fall back to short, which is what they were charged from.
+    const column = meta.credit_kind === "long" ? "long_credits_remaining" : "credits_remaining";
+
     const { data: profile } = await admin
       .from("profiles")
-      .select("credits_remaining")
+      .select("credits_remaining, long_credits_remaining")
       .eq("id", row.user_id)
       .single();
 
-    const current = (profile as { credits_remaining: number } | null)?.credits_remaining ?? 0;
+    const current = (profile as Record<string, number> | null)?.[column] ?? 0;
     await admin
       .from("profiles")
-      .update({ credits_remaining: current + cost })
+      .update({ [column]: current + cost })
       .eq("id", row.user_id);
 
     await admin.from("api_usage_log").insert({
@@ -62,7 +67,7 @@ export async function refundVideoCredits(
       response_status: 200,
     });
 
-    console.log(`[refund] Returned ${cost} credit(s) to ${row.user_id} for failed video ${videoId}`);
+    console.log(`[refund] Returned ${cost} ${meta.credit_kind === "long" ? "long" : "short"} video(s) to ${row.user_id} for failed video ${videoId}`);
   } catch (err) {
     console.error(`[refund] Failed to refund credits for video ${videoId}:`, err);
   }

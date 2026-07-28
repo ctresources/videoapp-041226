@@ -5,15 +5,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-// Add-on packs. A short video draws 1 from the balance, a long (up to 8 min)
-// video draws 3 — so the "3" pack is exactly one long video. Prices are built
-// inline via price_data, so changing these needs no Stripe dashboard work.
-// Priced to hold ~45% margin against render cost (a 4-min short costs us ~$8,
-// an 8-min long ~$21), matching the monthly plans.
+// Add-on packs. Short and long videos have SEPARATE allowances, so `kind` says
+// which one a pack tops up. Prices are built inline via price_data, so changing
+// these needs no Stripe dashboard work. Priced to hold ~45% margin against
+// render cost (a 4-min short costs us ~$8, an 8-min long ~$21).
 const CREDIT_PACKS = {
-  "1": { credits: 1, amount: 1500, label: "1 Short Video" },
-  "2": { credits: 2, amount: 2800, label: "2 Short Videos" },
-  "3": { credits: 3, amount: 3900, label: "1 Long Video (up to 8 minutes)" },
+  short1: { credits: 1, amount: 1500, kind: "short", label: "1 Short Video" },
+  short2: { credits: 2, amount: 2800, kind: "short", label: "2 Short Videos" },
+  long1:  { credits: 1, amount: 3900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
+  // Legacy query-param aliases so any old link or bookmark still resolves.
+  "1": { credits: 1, amount: 1500, kind: "short", label: "1 Short Video" },
+  "2": { credits: 2, amount: 2800, kind: "short", label: "2 Short Videos" },
+  "3": { credits: 1, amount: 3900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
 } as const;
 
 export async function GET(req: NextRequest) {
@@ -64,8 +67,10 @@ export async function GET(req: NextRequest) {
     metadata: {
       supabase_user_id: user.id,
       credits_to_add: String(packInfo.credits),
+      // Tells the webhook which allowance to top up.
+      credits_kind: packInfo.kind,
     },
-    success_url: `${appUrl}/billing?success=credits&added=${packInfo.credits}`,
+    success_url: `${appUrl}/billing?success=credits&added=${packInfo.credits}&kind=${packInfo.kind}`,
     cancel_url: `${appUrl}/billing?canceled=1`,
   });
 

@@ -33,9 +33,8 @@ const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS_3MIN;
 // digital twin) or $2.60/min (Avatar III photo avatar).
 const MAX_LONG_FORM_SCRIPT_WORDS = 1160; // ~8 min
 
-// A long video costs roughly 3x a short one to render, so it draws 3x from the
-// monthly allowance. See the plan allotments in lib/stripe.ts.
-const LONG_FORM_CREDIT_COST = 3;
+// Short and long videos draw from SEPARATE monthly allowances (1 each), so
+// there is no shared cost multiplier. See the plan allotments in lib/stripe.ts.
 
 function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
   const words = text.trim().split(/\s+/);
@@ -372,7 +371,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, role, subscription_tier")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, role, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -391,6 +390,7 @@ export async function POST(req: NextRequest) {
     website: string | null;
     voice_clone_id: string | null;
     credits_remaining: number;
+    long_credits_remaining: number;
     role: string | null;
     subscription_tier: string | null;
   } | null;
@@ -442,17 +442,18 @@ export async function POST(req: NextRequest) {
   const scriptWordCount = safeScript.trim().split(/\s+/).filter(Boolean).length;
   console.log(`[create-blog] script sent: ${scriptWordCount} words (~${Math.round(scriptWordCount / 145 * 60)}s at 145wpm), tier=${tier}, cap=${maxScriptWords}, videoType=${videoType}`);
 
-  // Long-form is included in Pro's monthly credits; every other plan can use it
-  // pay-as-you-go — any user with enough credits (e.g. the 6-credit Long-Form
-  // pack) may render one. The only gate is the credit balance below.
-  const creditCost = isLongForm ? LONG_FORM_CREDIT_COST : 1;
+  // Short and long allowances are separate buckets — spending long videos never
+  // eats short ones, and vice versa. Each video draws exactly 1 from its own.
+  const allowanceColumn = isLongForm ? "long_credits_remaining" : "credits_remaining";
+  const allowanceLeft = isLongForm ? profile.long_credits_remaining : profile.credits_remaining;
+  const creditCost = 1;
 
-  if (!isAdmin && profile.credits_remaining < creditCost) {
+  if (!isAdmin && allowanceLeft < creditCost) {
     return NextResponse.json(
       {
         error: isLongForm
-          ? `Long-form AI videos use ${LONG_FORM_CREDIT_COST} credits and you have ${profile.credits_remaining}. Upgrade to Pro (12 credits/month) or buy the 6-credit Long-Form pack in Billing — or record long-form free with the teleprompter.`
-          : "No videos remaining this month. Please upgrade your plan.",
+          ? "You've used all your long videos this month. Buy another for $39 in Billing, upgrade your plan, or record one free with the camera teleprompter."
+          : "You've used all your short videos this month. Buy more in Billing or upgrade your plan.",
       },
       { status: 402 },
     );
@@ -655,10 +656,10 @@ export async function POST(req: NextRequest) {
       await admin
         .from("generated_videos")
         // credit_cost enables an automatic refund if the render later fails
-        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost } })
+        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: isLongForm ? "long" : "short" } })
         .eq("id", videoRow.id);
 
-      await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
+      await admin.from("profiles").update({ [allowanceColumn]: allowanceLeft - creditCost }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
@@ -742,10 +743,10 @@ export async function POST(req: NextRequest) {
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: isLongForm ? "long" : "short" } })
       .eq("id", videoRow?.id);
 
-    await admin.from("profiles").update({ credits_remaining: profile.credits_remaining - creditCost }).eq("id", user.id);
+    await admin.from("profiles").update({ [allowanceColumn]: allowanceLeft - creditCost }).eq("id", user.id);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",

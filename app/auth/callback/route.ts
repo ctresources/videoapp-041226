@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("onboarding_done, subscription_tier, credits_remaining, role")
+      .select("onboarding_done, subscription_tier, credits_remaining, long_credits_remaining, role")
       .eq("id", user.id)
       .single();
 
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     if (profile?.onboarding_done) {
       const tier = profile.subscription_tier ?? "free";
       const paidPlans = ["starter", "agent", "pro"];
-      const hasCredits = (profile.credits_remaining ?? 0) > 0;
+      const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0;
       const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
       return NextResponse.redirect(`${origin}${hasPaidAccess ? "/create" : "/billing"}`);
     }

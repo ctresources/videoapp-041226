@@ -716,8 +716,8 @@ function CreatePageInner() {
               <p className="text-sm font-bold text-slate-600 mb-2">Video Length</p>
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll · counts as 1 video" },
-                  { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos · counts as 3 videos" },
+                  { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll" },
+                  { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos for visuals" },
                 ] as const).map(({ v, title, sub, note }) => (
                   <button
                     key={v}

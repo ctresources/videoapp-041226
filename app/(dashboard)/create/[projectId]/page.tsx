@@ -108,7 +108,7 @@ type VideoChoice = VideoType | "youtube_long";
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
   { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9 · up to 4 min · automatic b-roll", credits: 1 },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16 · up to 4 min · automatic b-roll", credits: 1 },
-  { value: "youtube_long", label: "Long Video", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals · counts as 3 videos", proOnly: true, credits: 3 },
+  { value: "youtube_long", label: "Long Video", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
 const LONG_CAP_WORDS = 1160; // ~8 min at 145 wpm
@@ -1142,21 +1142,21 @@ export default function ProjectEditorPage() {
                 <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
                   <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
                   <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
-                  <li>Counts as 3 videos from your monthly allowance.</li>
+                  <li>Uses one of your long-video allowance — separate from your short videos.</li>
                 </ul>
               </div>
             )}
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
-                  A long video counts as <strong>3 videos</strong> from your monthly allowance
-                  {creditsLeft !== null ? ` — you have ${creditsLeft} left` : ""}. Included with Agent and Pro, or buy one as you go.
+                  Long videos have their own monthly allowance, separate from your short videos.
+                  Included with Agent (2/month) and Pro (5/month), or buy one as you go.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link href="/billing" className="flex-1">
                     <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
-                  <a href="/api/stripe/credits?pack=3" className="flex-1">
+                  <a href="/api/stripe/credits?pack=long1" className="flex-1">
                     <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
                   </a>
                 </div>
@@ -1666,21 +1666,21 @@ export default function ProjectEditorPage() {
                 <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
                   <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
                   <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
-                  <li>Counts as 3 videos from your monthly allowance.</li>
+                  <li>Uses one of your long-video allowance — separate from your short videos.</li>
                 </ul>
               </div>
             )}
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
-                  A long video counts as <strong>3 videos</strong> from your monthly allowance
-                  {creditsLeft !== null ? ` — you have ${creditsLeft} left` : ""}. Included with Agent and Pro, or buy one as you go.
+                  Long videos have their own monthly allowance, separate from your short videos.
+                  Included with Agent (2/month) and Pro (5/month), or buy one as you go.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link href="/billing" className="flex-1">
                     <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
-                  <a href="/api/stripe/credits?pack=3" className="flex-1">
+                  <a href="/api/stripe/credits?pack=long1" className="flex-1">
                     <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
                   </a>
                 </div>
