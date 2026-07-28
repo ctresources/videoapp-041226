@@ -92,6 +92,11 @@ const features = [
     photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
+    title: "7 AI Tools, Included",
+    description: "Channel name, banner, thumbnails, titles, descriptions, tags and scripts — all generated in-app, free on every plan. Everything you need to launch and run a channel without hiring a designer.",
+    photo: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80",
+  },
+  {
     title: "49% Faster Revenue Growth",
     description: "Agents who post consistent video content grow revenue 49% faster. SparkReels.ai gives you the output of a full content team without the cost or headache.",
     photo: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
