@@ -539,6 +539,7 @@ export default function LandingPage() {
               <div>
                 <p className="text-sm font-bold text-slate-900 mb-1">Need more videos some months? Add them anytime.</p>
                 <p className="text-xs text-slate-500">One-time purchases on any plan — no plan change needed, and your subscription is never interrupted.</p>
+                <p className="text-xs text-slate-500 mt-1">Purchased videos never expire, so add-on purchases are non-refundable.</p>
               </div>
               <div className="flex flex-wrap gap-3 shrink-0 text-sm">
                 <div className="border border-slate-200 px-4 py-2">

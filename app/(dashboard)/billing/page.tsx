@@ -399,7 +399,14 @@ export default async function BillingPage({
       {/* Buy More Videos */}
       <div className="mb-8">
         <h3 className="text-base font-bold text-brand-text mb-1">Buy More Videos</h3>
-        <p className="text-sm text-slate-500 mb-4">Need more AI videos this month? Add credits anytime — no plan change needed.</p>
+        <p className="text-sm text-slate-500 mb-1">
+          Need more than your plan includes? Add videos anytime — no plan change needed.
+        </p>
+        <p className="text-xs text-slate-500 mb-4">
+          <strong className="text-slate-600">Purchased videos never expire</strong> — they stay in
+          your account until you use them, even if you cancel, and they aren&apos;t affected by your
+          monthly reset. Because of that, add-on purchases are non-refundable.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* 1-video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">

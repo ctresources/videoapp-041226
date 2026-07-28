@@ -73,8 +73,28 @@ export default function TermsPage() {
               <li>Paid plans are billed monthly or annually via Stripe.</li>
               <li>Subscriptions auto-renew unless cancelled before the renewal date.</li>
               <li>You can cancel your subscription at any time from your account settings.</li>
-              <li>Refunds are handled on a case-by-case basis — contact support@sparkreels.ai.</li>
-              <li>We reserve the right to change pricing with 30 days' notice.</li>
+              <li>
+                Your plan includes a set number of short and long AI videos each month.
+                These are tracked separately, reset at the start of each billing period,
+                and <strong>do not roll over</strong> — unused videos from one month are
+                not added to the next.
+              </li>
+              <li>
+                Additional videos can be purchased separately at any time.{" "}
+                <strong>Purchased videos never expire</strong> — they remain in your account
+                indefinitely, including if you cancel your subscription. Because of this,{" "}
+                <strong>add-on video purchases are non-refundable</strong>.
+              </li>
+              <li>
+                Subscription refunds are handled on a case-by-case basis — contact
+                support@sparkreels.ai. Nothing in this section limits any refund rights you
+                have under applicable consumer protection law.
+              </li>
+              <li>
+                If a video fails to render, the video is automatically returned to the same
+                balance it was taken from and you are not charged for it.
+              </li>
+              <li>We reserve the right to change pricing with 30 days&apos; notice.</li>
             </ul>
           </section>
 
