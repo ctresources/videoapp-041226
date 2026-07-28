@@ -40,12 +40,14 @@ export function DemoVideo() {
         <video
           ref={videoRef}
           src="/demo.mp4"
-          autoPlay
           muted
           loop
           playsInline
           controls={errored}
-          preload="auto"
+          // Click-to-play: this sits high on the landing page and the file is
+          // ~7 MB, so we fetch metadata (enough for a first frame) and let the
+          // overlay button pull the rest only when someone actually wants it.
+          preload="metadata"
           className="absolute inset-0 w-full h-full object-contain"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}

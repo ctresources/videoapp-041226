@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { DemoVideo } from "@/components/landing/demo-video";
 import {
   CheckCircle, ArrowRight,
   Clock,
   X, Camera, Users, UserPlus, ChevronRight,
-  Tv2, Palette, Film, MousePointerClick, Search, Upload,
+  Tv2, Palette, Film, MousePointerClick, Search, Upload, Zap,
 } from "lucide-react";
 
 const segments = [
@@ -122,6 +123,31 @@ const marqueeRow2 = [
   { label: "Condo Showcase",       len: "3 min",  img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
 ];
 
+// ── SAMPLE OUTPUT VIDEOS — DROP YOUR FILES HERE ──────────────────────────────
+// To publish a sample: put the .mp4 in /public (e.g. /public/samples/reel.mp4)
+// and set `src` to its path, like src: "/samples/reel.mp4". Optionally add a
+// `poster` image the same way so the card shows a still before it plays.
+//
+// While `src` is empty the card is HIDDEN from real visitors — the section only
+// appears once at least one sample is filled in. Running `npm run dev` shows a
+// labeled placeholder in its place so you can see where each one lands.
+const SAMPLE_VIDEOS = [
+  {
+    label: "Short reel",
+    meta: "60 sec · 9:16 · AI avatar + automatic b-roll",
+    aspect: "aspect-[9/16]",
+    src: "",
+    poster: "",
+  },
+  {
+    label: "Full market update",
+    meta: "8 min · 16:9 · built from your listing photos",
+    aspect: "aspect-video",
+    src: "",
+    poster: "",
+  },
+];
+
 // Everything an agent needs to launch a channel, in the order they hit it.
 const channelSteps = [
   { icon: Tv2, step: "Name it", tool: "Channel Name Generator", description: "Don't have a channel yet? Get name ideas built around your market and niche — not \"John Smith Realty 2\"." },
@@ -137,6 +163,8 @@ const comparison = [
   { feature: "Built-in teleprompter + camera recorder", us: true, a: false, b: false, c: false },
   { feature: "No filming or on-camera requirement",  us: true,  a: false, b: false, c: false },
   { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
+  { feature: "Long-form video (up to 8 minutes)",     us: true,  a: false, b: true,  c: false },
+  { feature: "Channel branding kit (name, banner, thumbnails)", us: true, a: false, b: false, c: false },
   { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
   { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
   { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
@@ -144,6 +172,11 @@ const comparison = [
   { feature: "AI-generated social captions (LinkedIn, Instagram, email)", us: true, a: false, b: false, c: false },
   { feature: "Fair Housing Guardrails Built-in",      us: true,  a: false, b: false, c: false },
   { feature: "Purpose-built for Real Estate",         us: true,  a: false, b: true,  c: true  },
+  // Rows we don't win. A table where one product sweeps every line reads as
+  // marketing; these are real gaps and they make the wins above believable.
+  { feature: "Publishes to Instagram, TikTok & Facebook", us: false, a: true, b: true, c: false },
+  { feature: "Scheduled posting calendar",            us: false, a: true,  b: true,  c: true  },
+  { feature: "Team seats & multi-agent brand controls", us: false, a: false, b: true,  c: false },
 ];
 
 const steps = [
@@ -228,8 +261,8 @@ export default function LandingPage() {
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-2">
               Log In
             </Link>
-            <Link href="/register" className="text-sm font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
-              Get Started
+            <Link href="/beta" className="text-sm font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
+              Start Free
             </Link>
           </div>
         </div>
@@ -244,7 +277,7 @@ export default function LandingPage() {
             <div>
               <p className="font-black text-blue-900 mb-3 tracking-wide">
                 <span className="text-4xl">Speak, Spark, Share —</span><br />
-                <span className="text-xl whitespace-nowrap">no filming, no editing, no glam required.</span>
+                <span className="text-xl sm:whitespace-nowrap">no filming, no editing, no glam required.</span>
               </p>
               <p className="text-base text-slate-500 mb-4 leading-relaxed">
                 Most real estate agents are invisible online. SparkReels.ai fixes that — turning one voice recording into a publish-ready video. A 60-second reel for social, or a full 8-minute market update built to rank on YouTube.
@@ -332,6 +365,71 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+        </div>
+      </section>
+
+      {/* ── See It For Yourself ── */}
+      <section id="demo" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-2">
+            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">See It For Yourself</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3 max-w-2xl">
+              Watch it work. Then judge what it makes.
+            </h2>
+            <p className="text-slate-500 max-w-2xl">
+              Wondering whether an AI avatar will look and sound like you — or look like a robot in
+              front of your clients? Fair question. Watch before you decide.
+            </p>
+          </div>
+
+          <DemoVideo />
+
+          {(SAMPLE_VIDEOS.some((v) => v.src) || process.env.NODE_ENV === "development") && (
+            <div className="mt-14">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 text-center">
+                Videos made with SparkReels
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-start">
+                {SAMPLE_VIDEOS.map(({ label, meta, aspect, src, poster }) => {
+                  if (!src && process.env.NODE_ENV !== "development") return null;
+                  return (
+                    <div key={label} className={`w-full ${aspect === "aspect-video" ? "sm:max-w-md" : "sm:max-w-[240px]"}`}>
+                      <div className={`${aspect} bg-slate-900 rounded-xl overflow-hidden border border-slate-200 relative`}>
+                        {src ? (
+                          <video
+                            src={src}
+                            poster={poster || undefined}
+                            controls
+                            preload="metadata"
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          // Dev-only placeholder — see SAMPLE_VIDEOS at the top of this file.
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-600 rounded-xl p-4 text-center">
+                            <Film size={28} className="text-slate-500" />
+                            <p className="text-xs font-bold text-slate-300">Sample video slot</p>
+                            <p className="text-[10px] text-slate-500 leading-relaxed">
+                              Add the file to /public, then set <code>src</code> in SAMPLE_VIDEOS
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm font-bold text-slate-900 mt-3">{label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{meta}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-10 text-center">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+              Make My First Video Free <ArrowRight size={15} />
+            </a>
+            <p className="text-xs text-slate-400 mt-3">No credit card · Takes about 5 minutes</p>
+          </div>
         </div>
       </section>
 
@@ -516,11 +614,16 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="mb-10">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How We Stack Up</p>
-            <h2 className="text-3xl font-black text-slate-900 mb-3">The only platform that removes every barrier.</h2>
-            <p className="text-slate-500">No camera. No tech skills. No manual editing. No excuses.</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Where we win — and where we don&apos;t.</h2>
+            <p className="text-slate-500">
+              No camera. No tech skills. No manual editing. We&apos;re also honest about the three
+              things other tools still do better — those are on our roadmap, not hidden from you.
+            </p>
           </div>
-          <div className="border border-slate-200 overflow-hidden">
-            <table className="w-full text-sm">
+          {/* overflow-x-auto, not hidden: the table is ~520px and would clip its
+              last columns off the side of a phone with no way to reach them. */}
+          <div className="border border-slate-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="text-left p-4 font-semibold text-slate-500 text-xs w-[40%]">Feature</th>
@@ -555,8 +658,46 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="mb-12">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Pricing</p>
-<p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3">Two kinds of video. Pick the plan with the mix you need.</h2>
+            <p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
           </div>
+
+          {/* Short vs long — the difference the plans are priced on */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+            <div className="bg-white border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-primary-50 border border-primary-100 flex items-center justify-center shrink-0">
+                  <Zap size={15} className="text-primary-600" />
+                </div>
+                <p className="font-black text-slate-900">Short videos</p>
+                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 ml-auto">Up to 4 min</span>
+              </div>
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">
+                Reels, quick market updates, just-sold posts. Speak for a minute and the AI fills the
+                screen with automatic b-roll — you don&apos;t supply anything.
+              </p>
+              <p className="text-xs text-slate-400">Best for staying visible week to week. On every plan.</p>
+            </div>
+            <div className="bg-white border border-purple-200 p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                  <Film size={15} className="text-purple-600" />
+                </div>
+                <p className="font-black text-slate-900">Long videos</p>
+                <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 ml-auto">Up to 8 min</span>
+              </div>
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">
+                Full neighborhood tours, property walkthroughs, deep market breakdowns — the
+                long-format videos that actually rank on YouTube search. Uses your own listing photos.
+              </p>
+              <p className="text-xs text-slate-400">Best for building a channel that gets found. On Agent and Pro.</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-500 mb-6">
+            Each plan gives you a set number of each, counted separately — using your long videos
+            never eats into your short ones.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
             {pricingTiers.map(({ name, price, period, description, features: f, cta, highlighted, badge, href }) => (
               <div
@@ -621,7 +762,7 @@ export default function LandingPage() {
       <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
           <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
-          <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight whitespace-nowrap">
+          <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight">
             Hit the Mic. Speak, Spark, Share.
           </h2>
           <p className="text-blue-200 text-lg mb-3 max-w-xl leading-relaxed">
@@ -670,15 +811,17 @@ export default function LandingPage() {
                 height={48}
                 unoptimized
               />
-              <p className="text-sm mt-2 text-slate-400 whitespace-nowrap">
+              <p className="text-sm mt-2 text-slate-400 max-w-xs">
                 Stop being invisible and become the go-to expert in your market!
               </p>
             </div>
             <div className="grid grid-cols-2 gap-x-16 gap-y-2 text-sm">
-              <Link href="/register" className="hover:text-white transition-colors">Get Started</Link>
+              <Link href="/beta"     className="hover:text-white transition-colors">Start Free</Link>
               <Link href="/login"    className="hover:text-white transition-colors">Log In</Link>
               <a href="#features"    className="hover:text-white transition-colors">Features</a>
+              <a href="#channel"     className="hover:text-white transition-colors">Start a Channel</a>
               <a href="#pricing"     className="hover:text-white transition-colors">Pricing</a>
+              <Link href="/affiliates/apply" className="hover:text-white transition-colors">Affiliates</Link>
               <Link href="/privacy"  className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms"    className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
