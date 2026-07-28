@@ -83,6 +83,9 @@ function CreatePageInner() {
   const [locAudience, setLocAudience] = useState("");
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
+  // Chosen BEFORE generating: the script has to be written to length, or a
+  // "long" video ends up with a 2-minute script.
+  const [locLength, setLocLength] = useState<"standard" | "long">("standard");
 
   const [locGenerating, setLocGenerating] = useState(false);
 
@@ -312,6 +315,7 @@ function CreatePageInner() {
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
+          videoLength: locLength,
         }),
       });
       const data = await safeJson(res);
@@ -701,6 +705,36 @@ function CreatePageInner() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Video length — chosen up front so the AI writes to the right length */}
+            <div className="border-t border-slate-200 mt-3 pt-3">
+              <p className="text-sm font-bold text-slate-600 mb-2">Video Length</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll · counts as 1 video" },
+                  { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos · counts as 3 videos" },
+                ] as const).map(({ v, title, sub, note }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setLocLength(v)}
+                    className={`text-left p-3 rounded-xl border-2 transition-colors ${
+                      locLength === v
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-brand-text">{title} <span className="font-normal text-slate-500">· {sub}</span></p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{note}</p>
+                  </button>
+                ))}
+              </div>
+              {locLength === "long" && (
+                <p className="text-[11px] text-amber-600 mt-2">
+                  We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as the visuals — you&apos;ll add them on the next screen.
+                </p>
+              )}
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import {
   LocationParams,
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
+import { targetWords, type VideoLength } from "@/lib/utils/video-length";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
     audience,
     tone,
     ctaPreference,
+    videoLength,
   } = body as {
     videoType: LocationVideoType;
     city: string;
@@ -38,6 +40,8 @@ export async function POST(req: NextRequest) {
     audience?: string;
     tone?: string;
     ctaPreference?: string;
+    /** "long" asks for an ~8-minute script; anything else is a standard video. */
+    videoLength?: VideoLength;
   };
 
   // Basic validation
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, company_name, phone, company_phone, website")
+    .select("full_name, company_name, phone, company_phone, website, subscription_tier")
     .eq("id", user.id)
     .single();
 
@@ -75,7 +79,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
-  const params: LocationParams = { city, state, zip, month, year, customTopic, audience, tone, ctaPreference };
+  // Script length follows the video the user asked for: a long video needs a
+  // ~1,100-word script, a standard one ~400-520 depending on plan. Without this
+  // the AI always wrote ~300 words and a "long" video came out ~2 minutes.
+  const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
+  const words = targetWords(videoLength === "long" ? "long" : "standard", tier);
+
+  const params: LocationParams = {
+    city, state, zip, month, year, customTopic, audience, tone, ctaPreference,
+    targetWords: words,
+  };
   const agentName = (profile as { full_name?: string | null }).full_name || undefined;
 
   let raw: string;
@@ -110,6 +123,9 @@ export async function POST(req: NextRequest) {
     audience: audience || null,
     tone: tone || null,
     cta_preference: ctaPreference || null,
+    // Lets the editor preselect the matching format instead of defaulting to a
+    // standard video and silently trimming a long script.
+    video_length: videoLength === "long" ? "long" : "standard",
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata in parallel — non-blocking

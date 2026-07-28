@@ -36,6 +36,34 @@ export interface LocationParams {
   audience?: string;      // e.g. "Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"
   tone?: string;          // e.g. "Friendly", "Modern", "Luxury", "High-Energy", "Educational"
   ctaPreference?: string; // e.g. "call", "text", "website", "consultation"
+  /**
+   * How many words of narration to aim for. Drives both the prompt's stated
+   * target and the token budget. Defaults to ~2 minutes when omitted so
+   * existing callers behave exactly as before.
+   */
+  targetWords?: number;
+}
+
+/** Narration length instruction + a matching max_tokens budget. */
+function lengthSpec(targetWords?: number): { instruction: string; maxTokens: number } {
+  const words = targetWords && targetWords > 0 ? targetWords : 300;
+  const minutes = Math.round((words / 145) * 10) / 10;
+  const low = Math.round(words * 0.92);
+  const high = Math.round(words * 1.08);
+
+  // ~1.4 tokens per word, plus headroom for the hook, titles, blog intro and
+  // sources that share the same response.
+  const maxTokens = Math.min(6000, Math.round(words * 1.4) + 900);
+
+  const depth =
+    words >= 900
+      ? `This is a LONG-FORM video, so go deep: cover 6-9 distinct points, each developed with its own specific data, example, or short story rather than a single sentence. Move through them in a logical order with natural spoken transitions ("here's what that means for you...", "now compare that to..."). Do NOT pad with repetition or filler — earn the length with real substance.`
+      : `Cover 3-5 key points about the topic with specific data, stats, or facts where available.`;
+
+  return {
+    instruction: `${depth} Aim for ${low}-${high} words total (about ${minutes} minutes of speech). Getting close to this length matters — a script that is far short will produce a video shorter than the user paid for.`,
+    maxTokens,
+  };
 }
 
 // ─── Shared API call wrapper ──────────────────────────────────────────────────
@@ -279,6 +307,7 @@ Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${
 function buildCustomRequest(params: LocationParams): Record<string, unknown> {
   const { city, state, zip, customTopic } = params;
   const location = `${city}, ${state}${zip ? ` (zip ${zip})` : ""}`;
+  const len = lengthSpec(params.targetWords);
 
   if (!customTopic) throw new Error("customTopic is required for custom video type");
 
@@ -296,7 +325,7 @@ REQUIRED OUTPUT FORMAT — return exactly this structure:
 HOOK: [One compelling opening sentence that would stop someone scrolling — make it specific and surprising]
 
 MAIN CONTENT:
-[Write this as flowing spoken narration — the exact words a video presenter will say aloud, in short conversational paragraphs that transition naturally from one point to the next. Cover 3-5 key points about the topic with specific data, stats, or facts where available. Aim for 250-320 words total (about two minutes of speech). NO bullet points, NO numbered lists, NO headers — narration prose only.]
+[Write this as flowing spoken narration — the exact words a video presenter will say aloud, in short conversational paragraphs that transition naturally from one point to the next. ${len.instruction} NO bullet points, NO numbered lists, NO headers — narration prose only.]
 
 KEY TAKEAWAY: [One sentence summarizing the most important insight]
 
@@ -329,8 +358,8 @@ ${FAIR_HOUSING_GUARDRAIL}`,
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.3,
-    // Headroom for ~320 words of narration plus titles, blog intro, and sources.
-    max_tokens: 1400,
+    // Scales with the requested narration length (plus titles, blog intro, sources).
+    max_tokens: len.maxTokens,
   };
 }
 
@@ -385,6 +414,15 @@ export async function generateLocationScript(
       : "";
 
     systemMsg.content += `\n\n${nameClause}${audienceGuidance}${toneGuidance}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
+
+    // Length control for the structured types (market_update, why_live_here,
+    // community_events). The custom type states its own target inline, so it's
+    // already handled; applying it twice would give conflicting numbers.
+    if (videoType !== "custom" && params.targetWords) {
+      const len = lengthSpec(params.targetWords);
+      systemMsg.content += `\n\nSCRIPT LENGTH: ${len.instruction} Expand every section proportionally to reach it — never repeat yourself or add filler to hit the count.`;
+      requestBody.max_tokens = len.maxTokens;
+    }
   }
   return callPerplexity(requestBody);
 }

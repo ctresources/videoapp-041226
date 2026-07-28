@@ -111,6 +111,47 @@ const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: b
   { value: "youtube_long", label: "Long Video", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals · counts as 3 videos", proOnly: true, credits: 3 },
 ];
 
+const LONG_CAP_WORDS = 1160; // ~8 min at 145 wpm
+const mins = (words: number) => Math.round((words / 145) * 10) / 10;
+
+/**
+ * Scripts are clamped at render time, which used to happen silently — a pasted
+ * 1,200-word script became a 580-word video with no explanation. This says so
+ * up front and offers the one-click fix.
+ */
+function ScriptLengthWarning({
+  words,
+  isLong,
+  standardCap,
+  onSwitchToLong,
+}: {
+  words: number;
+  isLong: boolean;
+  standardCap: number;
+  onSwitchToLong?: () => void;
+}) {
+  const cap = isLong ? LONG_CAP_WORDS : standardCap;
+  if (words <= cap) return null;
+  return (
+    <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+      <p className="text-[11px] text-amber-800 leading-relaxed">
+        Your script is <strong>{words} words</strong> (about {mins(words)} min), but a{" "}
+        {isLong ? "long video" : "standard video"} holds <strong>{cap} words</strong> (
+        {mins(cap)} min). The rest will be trimmed.
+      </p>
+      {!isLong && onSwitchToLong && (
+        <button
+          type="button"
+          onClick={onSwitchToLong}
+          className="mt-1.5 text-[11px] font-semibold text-amber-900 underline hover:text-amber-950"
+        >
+          Switch to Long Video (up to 8 min) →
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectEditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const searchParams = useSearchParams();
@@ -402,8 +443,11 @@ export default function ProjectEditorPage() {
     const p = data as unknown as Project;
     setProject(p);
     if (p.ai_script) {
-      const aiS = p.ai_script as AiScript & { user_edited?: boolean };
+      const aiS = p.ai_script as AiScript & { user_edited?: boolean; video_length?: string };
       setEditedScript(aiS.script || "");
+      // Honour the length chosen before the script was written, so an ~8-minute
+      // script doesn't land on a standard format and get trimmed.
+      if (aiS.video_length === "long") setSelectedVideoType("youtube_long");
       if (aiS.user_edited) {
         // A saved draft — restore the user's own CTA and hook exactly as saved
         setEditedCta(aiS.cta || "");
@@ -1092,6 +1136,16 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
+            {selectedVideoType === "youtube_long" && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs font-semibold text-amber-900 mb-1">How long videos work</p>
+                <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
+                  <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
+                  <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
+                  <li>Counts as 3 videos from your monthly allowance.</li>
+                </ul>
+              </div>
+            )}
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
@@ -1220,6 +1274,12 @@ export default function ProjectEditorPage() {
               className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
             />
             <p className="text-[11px] text-slate-400 mt-1">Edit before generating — your changes will be used.</p>
+            <ScriptLengthWarning
+              words={editedScript.trim().split(/\s+/).filter(Boolean).length}
+              isLong={selectedVideoType === "youtube_long"}
+              standardCap={longFormIncluded ? 580 : 435}
+              onSwitchToLong={() => setSelectedVideoType("youtube_long")}
+            />
           </Card>
 
           {/* Editable CTA */}
@@ -1499,6 +1559,12 @@ export default function ProjectEditorPage() {
                     <Copy size={12} /> Copy
                   </button>
                 </div>
+                <ScriptLengthWarning
+                  words={editedScript.trim().split(/\s+/).filter(Boolean).length}
+                  isLong={selectedVideoType === "youtube_long"}
+                  standardCap={longFormIncluded ? 580 : 435}
+                  onSwitchToLong={() => setSelectedVideoType("youtube_long")}
+                />
               </>
             )}
           </Card>
@@ -1594,6 +1660,16 @@ export default function ProjectEditorPage() {
                 </button>
               ))}
             </div>
+            {selectedVideoType === "youtube_long" && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs font-semibold text-amber-900 mb-1">How long videos work</p>
+                <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
+                  <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
+                  <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
+                  <li>Counts as 3 videos from your monthly allowance.</li>
+                </ul>
+              </div>
+            )}
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
