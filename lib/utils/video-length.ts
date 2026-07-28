@@ -41,3 +41,21 @@ export function maxWords(length: VideoLength, tier: string | null | undefined): 
 export function minutesFor(words: number): number {
   return Math.round((words / WPM) * 10) / 10;
 }
+
+/**
+ * Camera / teleprompter scripts. These are NOT rendered by HeyGen — the agent
+ * records themselves — so there's no per-minute cost and the only limit is the
+ * 15-minute recording cap. Lengths are a creative choice, not a budget one.
+ */
+export const CAMERA_LENGTHS = [
+  { key: "quick",    label: "Quick",     minutes: 1,  words: 145 },
+  { key: "standard", label: "Standard",  minutes: 3,  words: 400 },
+  { key: "deep",     label: "In-Depth",  minutes: 5,  words: 725 },
+  { key: "full",     label: "Full",      minutes: 10, words: 1450 },
+] as const;
+
+export type CameraLength = (typeof CAMERA_LENGTHS)[number]["key"];
+
+export function cameraTargetWords(length: CameraLength | undefined): number {
+  return CAMERA_LENGTHS.find((l) => l.key === length)?.words ?? 400;
+}

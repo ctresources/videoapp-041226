@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 import {
   Camera,
   Square,
@@ -68,6 +69,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   }, [initialScript]);
   const [showSpark, setShowSpark] = useState(false);
   const [sparkTopic, setSparkTopic] = useState("");
+  // Camera recordings are free and run up to 15 min, so script length is purely
+  // the agent's choice — the AI used to always write ~2-3 minutes.
+  const [sparkLength, setSparkLength] = useState<CameraLength>("standard");
   const [sparking, setSparking] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
   // "flow" = teleprompter follows the reader's voice; "auto" = constant speed
@@ -425,7 +429,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: sparkTopic.trim() }),
+        body: JSON.stringify({ topic: sparkTopic.trim(), length: sparkLength }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -500,6 +504,29 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           {showSpark && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <TopicRadar city={city} state={state} onSelect={(t) => setSparkTopic(t)} />
+
+              {/* Script length — recordings are free, so pick whatever fits */}
+              <div className="mt-2">
+                <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {CAMERA_LENGTHS.map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setSparkLength(l.key)}
+                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                        sparkLength === l.key
+                          ? "border-primary-500 bg-white"
+                          : "border-primary-200 bg-white/60 hover:border-primary-300"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                      <span className="block text-[10px] text-slate-500">{l.minutes} min</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-2 mt-2">
                 <input
                   type="text"

@@ -90,8 +90,21 @@ export async function perplexityChat(messages: { role: string; content: string }
 export async function generateVideoScript(
   transcript: string,
   agentName: string,
-  projectType: "blog_video" | "short_form" | "carousel"
+  projectType: "blog_video" | "short_form" | "carousel",
+  /**
+   * Narration words to aim for. Omitted keeps the original ~2-4 minute script.
+   * A long video needs ~1,100 words — without this the AI always wrote ~350 and
+   * a "long" video came out a couple of minutes.
+   */
+  targetWords?: number,
 ): Promise<ScriptOutput> {
+  const scriptSpec = targetWords && targetWords > 0
+    ? `complete ${Math.round(targetWords * 0.92)}-${Math.round(targetWords * 1.08)} word video script (about ${Math.round((targetWords / 145) * 10) / 10} minutes spoken) in ${agentName}'s voice. ${
+        targetWords >= 900
+          ? "This is a LONG-FORM video — cover 6-9 distinct points, each developed with its own data, example, or short story, moving between them with natural spoken transitions. Do not pad or repeat to reach the length."
+          : "Include specific market stats you found (prices, DOM, inventory)."
+      } Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → CTA. Write as natural spoken words.`
+    : `complete 2-4 minute video script in ${agentName}'s voice. Include specific market stats you found (prices, DOM, inventory). Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → CTA. Write as natural spoken words.`;
   const systemPrompt = `You are an expert real estate video content strategist AND a real-time market data researcher. You create compelling, data-driven video scripts for real estate agents.
 
 YOUR PROCESS:
@@ -123,7 +136,7 @@ STEP 2: Generate the complete content package below, incorporating the real data
   "title": "compelling title under 60 chars that includes the location and a specific data point if available",
   "hook": "powerful 1-2 sentence hook that opens with a surprising stat or bold insight from the market data",
   "hooks": ["hook option 1 — data-driven", "hook option 2 — question format", "hook option 3 — bold statement"],
-  "script": "complete 2-4 minute video script in ${agentName}'s voice. Include specific market stats you found (prices, DOM, inventory). Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → CTA. Write as natural spoken words.",
+  "script": "${scriptSpec}",
   "cta": "call-to-action that uses '${agentName}' by name — specific and action-oriented",
   "description": "YouTube description 150-200 words including the real market stats and keywords",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5", "hashtag6", "hashtag7", "hashtag8", "hashtag9", "hashtag10"],

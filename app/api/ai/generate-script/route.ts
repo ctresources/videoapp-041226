@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateVideoScript, generateSeoData, generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { searchRealEstateContext } from "@/lib/api/yousearch";
+import { targetWords } from "@/lib/utils/video-length";
 import { NextRequest, NextResponse } from "next/server";
 
 // sonar-pro web search can take 30-50s; SEO calls add another 15-20s
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { recordingId, projectType = "blog_video" } = await req.json();
+  const { recordingId, projectType = "blog_video", videoLength } = await req.json();
   if (!recordingId) return NextResponse.json({ error: "recordingId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   // Get recording + profile
   const [recordingResult, profileResult] = await Promise.all([
     admin.from("voice_recordings").select("transcript, title").eq("id", recordingId).eq("user_id", user.id).single(),
-    admin.from("profiles").select("full_name, company_name, phone, company_phone, website, location_city, location_state").eq("id", user.id).single(),
+    admin.from("profiles").select("full_name, company_name, phone, company_phone, website, location_city, location_state, subscription_tier").eq("id", user.id).single(),
   ]);
 
   const recording = recordingResult.data as { transcript: string | null; title: string | null } | null;
@@ -56,9 +57,14 @@ export async function POST(req: NextRequest) {
   const enrichedTranscript = recording.transcript + marketContext;
   const agentName = profile.full_name || "the agent";
 
+  // Script length follows the video the user is making — a long video needs a
+  // ~1,100-word script, a standard one ~400-520 depending on plan.
+  const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
+  const words = targetWords(videoLength === "long" ? "long" : "standard", tier);
+
   try {
     // Script generation is required — uses sonar-pro with web search (~30-50s)
-    const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType);
+    const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType, words);
 
     const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
 

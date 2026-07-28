@@ -20,6 +20,7 @@ import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
 import { ContentTemplates } from "@/components/create/content-templates";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
+import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
@@ -86,6 +87,9 @@ function CreatePageInner() {
   // Chosen BEFORE generating: the script has to be written to length, or a
   // "long" video ends up with a 2-minute script.
   const [locLength, setLocLength] = useState<"standard" | "long">("standard");
+  // Length for AI-written teleprompter scripts (camera + paste flows). Camera
+  // recordings are free and run up to 15 min, so this is the agent's choice.
+  const [cameraScriptLength, setCameraScriptLength] = useState<CameraLength>("standard");
 
   const [locGenerating, setLocGenerating] = useState(false);
 
@@ -423,7 +427,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length }),
+        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length, length: cameraScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -442,7 +446,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfText: cameraPdfText || undefined, photoCount: cameraPhotos.length }),
+        body: JSON.stringify({ pdfText: cameraPdfText || undefined, photoCount: cameraPhotos.length, length: cameraScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -497,7 +501,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: pasteAiTopic }),
+        body: JSON.stringify({ topic: pasteAiTopic, length: cameraScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed");
@@ -842,6 +846,26 @@ function CreatePageInner() {
             {/* Let AI Spark The Script */}
             <div className="mb-5 pb-5 border-b border-slate-100">
               <p className="text-sm font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
+              <div className="mb-2">
+                <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {CAMERA_LENGTHS.map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setCameraScriptLength(l.key)}
+                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                        cameraScriptLength === l.key
+                          ? "border-violet-500 bg-violet-50"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                      <span className="block text-[10px] text-slate-500">{l.minutes} min</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
