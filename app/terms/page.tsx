@@ -74,16 +74,17 @@ export default function TermsPage() {
               <li>Subscriptions auto-renew unless cancelled before the renewal date.</li>
               <li>You can cancel your subscription at any time from your account settings.</li>
               <li>
-                Your plan includes a set number of short and long AI videos each month.
-                These are tracked separately, reset at the start of each billing period,
-                and <strong>do not roll over</strong> — unused videos from one month are
-                not added to the next.
+                <strong>Plan videos.</strong> Your plan includes a set number of short and
+                long AI videos each month. These are tracked separately, reset at the start
+                of each billing period, and <strong>do not roll over</strong> — unused plan
+                videos from one month are not added to the next.
               </li>
               <li>
-                Additional videos can be purchased separately at any time.{" "}
-                <strong>Purchased videos never expire</strong> — they remain in your account
-                indefinitely, including if you cancel your subscription. Because of this,{" "}
-                <strong>add-on video purchases are non-refundable</strong>.
+                <strong>Add-on videos.</strong> Additional videos can be purchased separately
+                at any time. <strong>Add-on videos you purchase never expire</strong> — unlike
+                plan videos, they are not cleared by the monthly reset and remain in your
+                account indefinitely, including if you cancel your subscription. Because of
+                this, <strong>add-on video purchases are non-refundable</strong>.
               </li>
               <li>
                 Subscription refunds are handled on a case-by-case basis — contact
@@ -92,7 +93,9 @@ export default function TermsPage() {
               </li>
               <li>
                 If a video fails to render, the video is automatically returned to the same
-                balance it was taken from and you are not charged for it.
+                balance it was taken from — your plan allowance if it came from your plan, or
+                your add-on balance if it came from a purchase — so the failed attempt does
+                not count against you. This is a returned video, not a cash refund.
               </li>
               <li>We reserve the right to change pricing with 30 days&apos; notice.</li>
             </ul>

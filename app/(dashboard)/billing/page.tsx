@@ -256,7 +256,7 @@ export default async function BillingPage({
                 </p>
                 <p className="text-xs font-bold text-brand-text">
                   {shortPlan} of {currentPlan?.videos ?? 0}
-                  {shortBought > 0 && <span className="font-normal text-slate-400"> + {shortBought} purchased</span>}
+                  {shortBought > 0 && <span className="font-normal text-slate-400"> + {shortBought} add-on</span>}
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
@@ -274,7 +274,7 @@ export default async function BillingPage({
                     </p>
                     <p className="text-xs font-bold text-brand-text">
                       {longPlan} of {currentPlan?.longVideos ?? 0}
-                      {longBought > 0 && <span className="font-normal text-slate-400"> + {longBought} purchased</span>}
+                      {longBought > 0 && <span className="font-normal text-slate-400"> + {longBought} add-on</span>}
                     </p>
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full">
@@ -288,8 +288,8 @@ export default async function BillingPage({
 
               <p className="text-xs text-slate-400 mt-1.5">
                 {currentTier === "beta"
-                  ? "Included with beta access · short and long are tracked separately · purchased videos never expire"
-                  : "Resets each billing period · short and long are tracked separately · purchased videos never expire"}
+                  ? "Included with beta access · short and long are tracked separately · add-on videos you purchase never expire"
+                  : "Plan videos reset each billing period · short and long are tracked separately · add-on videos you purchase never expire"}
               </p>
             </div>
             {/* Camera recordings */}
@@ -403,9 +403,10 @@ export default async function BillingPage({
           Need more than your plan includes? Add videos anytime — no plan change needed.
         </p>
         <p className="text-xs text-slate-500 mb-4">
-          <strong className="text-slate-600">Purchased videos never expire</strong> — they stay in
-          your account until you use them, even if you cancel, and they aren&apos;t affected by your
-          monthly reset. Because of that, add-on purchases are non-refundable.
+          <strong className="text-slate-600">Add-on videos you purchase never expire</strong> —
+          unlike your monthly plan videos, they stay in your account until you use them, aren&apos;t
+          affected by your monthly reset, and remain yours even if you cancel. Because of that,
+          add-on purchases are non-refundable.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* 1-video pack */}
