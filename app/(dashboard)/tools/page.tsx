@@ -657,6 +657,8 @@ function ChannelNameGenerator() {
 interface AnswerBlock {
   question: string;
   whyAsked: string;
+  videoTopic: string;
+  videoHook: string;
   heading: string;
   answerBlock: string;
   placement: string;
@@ -697,12 +699,12 @@ function AnswerBlocksGenerator() {
   return (
     <div>
       <div className="bg-primary-50/50 border border-primary-100 rounded-xl p-4 mb-5">
-        <p className="text-sm font-semibold text-slate-800 mb-1">Get cited when buyers ask AI about your market</p>
+        <p className="text-sm font-semibold text-slate-800 mb-1">Three questions your buyers are asking AI — turned into videos</p>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Buyers now ask ChatGPT and Google&apos;s AI &ldquo;which neighborhood should I buy in?&rdquo;
-          before they ever call an agent. Those answers get pulled from websites. This writes the
-          questions your clients are asking, plus the exact text to paste on your site so
-          <span className="font-semibold"> you&apos;re the one being quoted</span>.
+          Buyers ask ChatGPT &ldquo;which neighborhood should I buy in?&rdquo; months before they call
+          an agent. We research what they&apos;re actually asking in your market, then give you two
+          ways to answer: a <span className="font-semibold">video topic you can record right now</span>,
+          and a text block to paste on your site so AI quotes you.
         </p>
       </div>
 
@@ -747,8 +749,7 @@ function AnswerBlocksGenerator() {
       {blocks.length > 0 && (
         <div className="mt-6 space-y-4">
           <p className="text-sm text-slate-500">
-            Paste each block onto your website — your FAQ page, a blog post, or a neighborhood page.
-            Keep the heading: it&apos;s what tells AI the block answers that question.
+            Each question below gives you two ways to answer it — record the video, paste the text, or do both.
           </p>
 
           {blocks.map((b, i) => (
@@ -763,9 +764,22 @@ function AnswerBlocksGenerator() {
                 </div>
               </div>
 
+              {/* Make the video — the half that lands back in the normal workflow */}
+              <div className="p-4 border-b border-slate-100 bg-primary-50/30">
+                <p className="text-[10px] font-bold text-primary-700 uppercase tracking-wide mb-2">Record this video</p>
+                <p className="text-sm font-semibold text-slate-800 mb-1">{b.videoTopic}</p>
+                <p className="text-xs text-slate-500 italic mb-3">Open with: &ldquo;{b.videoHook}&rdquo;</p>
+                <Link
+                  href={`/create?topic=${encodeURIComponent(b.videoTopic)}${city ? `&city=${encodeURIComponent(city)}` : ""}${state ? `&state=${encodeURIComponent(state)}` : ""}`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-500 text-white rounded-lg text-xs font-semibold hover:bg-primary-600 transition-colors"
+                >
+                  <Video size={13} /> Make this video
+                </Link>
+              </div>
+
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Paste this on your site</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Or paste this on your site</p>
                   <CopyButton text={fullText(b)} />
                 </div>
                 <div className="bg-white border border-slate-200 rounded-lg p-4">

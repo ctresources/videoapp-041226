@@ -5,15 +5,22 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 
 /**
- * AI Answer Blocks — content written to be QUOTED by AI assistants.
+ * AI Answer Blocks — one research pass, two outputs.
  *
- * When someone asks ChatGPT or Google's AI Overview "what's the best
- * neighborhood in Charlotte for first-time buyers", the model answers from
- * pages it can extract a clean, self-contained answer from. That extraction
- * favours a specific shape: the question as a heading, the answer stated
- * outright in the first two sentences, concrete local specifics, and a named
- * source. This route produces exactly that shape so an agent can paste it
- * onto their own site and become the cited source.
+ * The research finds what buyers in an agent's market actually ask AI
+ * assistants. Each question then becomes:
+ *
+ *   1. A VIDEO TOPIC — a question real buyers are asking is, by definition, a
+ *      good thing to make a video about. This is the half that lands back in
+ *      the agent's normal workflow: the topic deep-links into /create.
+ *   2. A TEXT BLOCK for their website — shaped the way assistants extract
+ *      answers (question as heading, answer stated outright in the first
+ *      sentence, concrete local specifics, a named source), so the agent
+ *      becomes the cited source.
+ *
+ * Video is the half most agents will act on; many can't easily edit their own
+ * site (brokerage-hosted templates, IDX pages). Both are produced because the
+ * expensive part — finding the questions — is shared.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -60,10 +67,19 @@ Requirements for each answer block:
 - Plain declarative sentences. No marketing adjectives, no "nestled", no "vibrant", no exclamation marks.
 - Must comply with the Fair Housing Act: never characterize an area by the race, religion, national origin, family status, disability, sex, or ethnicity of its residents. Describe housing stock, price, amenities, commute, and school ratings — never who lives there. Do not use coded language such as "safe", "good area", "family-friendly", or "desirable neighborhood".
 
+For each question ALSO write a video topic. The agent records a short video answering
+that question, so:
+- "videoTopic" is a spoken-language topic line they can record from — under 90
+  characters, phrased as what the video is about, not a page title.
+- "videoHook" is the first sentence they say on camera. It must land in under 4
+  seconds and make someone stop scrolling. No "hey guys", no "in today's video".
+
 Return ONLY this JSON:
 {"blocks": [{
   "question": "the exact question as someone would type it to an AI",
   "whyAsked": "one sentence: why this question signals a ready buyer or seller",
+  "videoTopic": "the topic line to record a video from",
+  "videoHook": "the first spoken sentence of that video",
   "heading": "the H2 to put on the page — usually the question itself",
   "answerBlock": "the 90-140 word block to paste, plain text",
   "placement": "one sentence: which page this belongs on and why"

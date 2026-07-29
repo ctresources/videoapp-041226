@@ -40,7 +40,7 @@ const painPoints = [
   {
     icon: Bot,
     pain: "“Buyers ask ChatGPT now — and it's never heard of me.”",
-    fix: "AI Answer Blocks writes the questions your clients ask AI, plus the exact text to put on your site so you're the one it quotes.",
+    fix: "AI Answer Blocks finds the questions your buyers ask AI, then turns each one into a video you can record in a click — plus text for your site so you're the one AI quotes.",
   },
 ];
 
@@ -245,7 +245,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -256,7 +256,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -267,7 +267,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "5 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "5 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -456,9 +456,11 @@ export default function LandingPage() {
               </p>
               <p className="text-slate-500 mb-6 leading-relaxed">
                 Right now it isn&apos;t quoting you. <span className="font-semibold text-slate-700">AI
-                Answer Blocks</span> fixes that: it researches what buyers in your market actually ask,
-                then writes the exact text to paste on your site — structured the way AI assistants
-                extract and cite answers.
+                Answer Blocks</span> researches what buyers in your market are actually asking, then
+                turns each question into two things: a{" "}
+                <span className="font-semibold text-slate-700">video topic you can record in one
+                click</span>, and a text block to paste on your site — written the way AI assistants
+                extract and cite answers. Three questions your buyers are already asking, answered.
               </p>
               <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
                 Get My Answer Blocks <ArrowRight size={15} />
@@ -478,8 +480,17 @@ export default function LandingPage() {
                   around $450,000?&rdquo;
                 </p>
               </div>
+              <div className="bg-white border border-slate-200 p-4 mb-3">
+                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wide mb-1.5">① The video you record</p>
+                <p className="text-sm font-semibold text-slate-800 leading-snug mb-1">
+                  Charlotte neighborhoods for first-time buyers around $450k
+                </p>
+                <p className="text-xs text-slate-500 italic">
+                  Open with: &ldquo;If you have about $450k, these are the Charlotte areas to check first.&rdquo;
+                </p>
+              </div>
               <div className="bg-white border border-slate-200 p-4">
-                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wide mb-1.5">The block you paste on your site</p>
+                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wide mb-1.5">② The block you paste on your site</p>
                 <p className="text-xs text-slate-600 leading-relaxed">
                   Start by comparing housing stock, commute, and HOA costs — not just list price. At
                   this budget, look at townhomes near the light-rail corridor and older single-family
