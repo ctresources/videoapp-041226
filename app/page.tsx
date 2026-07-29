@@ -50,28 +50,28 @@ const segments = [
     segment: "Solo Agents",
     driver: "Time Scarcity",
     desire: "Stay top-of-mind without losing 15 hours a week to content production.",
-    photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1656399910089-b7ead999bf23?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Camera,
     segment: "Camera-Shy Agents",
     driver: "Performance Anxiety",
     desire: "Build a powerful personal brand without ever appearing on screen.",
-    photo: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1625123628039-6053583b86cc?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: Users,
     segment: "Team Leaders",
     driver: "Scalability",
     desire: "Ensure team-wide content consistency and brand compliance — at scale.",
-    photo: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=600&q=80",
   },
   {
     icon: UserPlus,
     segment: "New Agents",
     driver: "Brand Building",
     desire: "Establish local authority quickly and compete with seasoned agents from day one.",
-    photo: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1758518732130-4b51da74b0b6?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -84,27 +84,27 @@ const features = [
   {
     title: "One Video → Full Content Pack",
     description: "Every video you create automatically generates a LinkedIn post, Instagram caption, YouTube description, and email newsletter blurb — all copy-ready. One recording session fuels your entire week of content.",
-    photo: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "Built-In Teleprompter",
     description: "Want to appear on camera? Write or speak your script, then hit record — the teleprompter scrolls automatically while you film. No external app, no sticky notes, no memorizing lines.",
-    photo: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1781606989379-5c62ed674c41?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "One-Button Video Creation",
     description: "Speak for 90 seconds about any market topic, listing, or local update. AI writes the script, builds visuals, adds captions, and renders broadcast-quality video — no filming or editing required.",
-    photo: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1576299090369-9067e4adca28?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "No Camera Required",
     description: "Your AI avatar appears on screen in your place, speaking in your cloned voice. Build a compelling personal brand without ever recording your face.",
-    photo: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1484863137850-59afcfe05386?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "Hyperlocal Market Intelligence",
     description: "Generate hyper-local market update videos that rank on YouTube — positioning you as the digital expert in your town.",
-    photo: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1758304480344-f8d0de5f4f25?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "\"Digital Go-To Agent\" Status",
@@ -114,12 +114,12 @@ const features = [
   {
     title: "YouTube SEO Rankings",
     description: "Every video includes an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search for your target neighborhood keywords.",
-    photo: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "YouTube Publishing",
     description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. More platforms coming soon.",
-    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1502209877429-d7c6df9eb3f9?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "Listing Video Generator",
@@ -129,7 +129,7 @@ const features = [
   {
     title: "8 AI Tools, Included",
     description: "Channel name, banner, thumbnails, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, free on every plan. Everything you need to launch a channel and get found, without hiring a designer.",
-    photo: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80",
+    photo: "https://images.unsplash.com/photo-1497048679117-1a29644559e3?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "49% Faster Revenue Growth",
@@ -142,25 +142,25 @@ const features = [
 // the mix of 60 sec / 3 min / 8 min is how a visitor learns short and long form
 // both exist before they reach pricing.
 const marqueeRow1 = [
-  { label: "Market Update",        len: "3 min",  img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" },
-  { label: "Listing Video",        len: "90 sec", img: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=400&q=80" },
-  { label: "Neighborhood Tour",    len: "8 min",  img: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&q=80" },
-  { label: "Just Sold",            len: "60 sec", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
-  { label: "Buyer Tips",           len: "3 min",  img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
-  { label: "Interest Rate Update", len: "60 sec", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80" },
-  { label: "Open House Recap",     len: "90 sec", img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80" },
-  { label: "Local Market Deep Dive", len: "8 min", img: "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?auto=format&fit=crop&w=400&q=80" },
+  { label: "Market Update",        len: "3 min",  img: "https://images.unsplash.com/photo-1542744095-291d1f67b221?auto=format&fit=crop&w=400&q=80" },
+  { label: "Listing Video",        len: "90 sec", img: "https://images.unsplash.com/photo-1762811054947-605b20298615?auto=format&fit=crop&w=400&q=80" },
+  { label: "Neighborhood Tour",    len: "8 min",  img: "https://images.unsplash.com/photo-1555192881-efc55b7550f5?auto=format&fit=crop&w=400&q=80" },
+  { label: "Just Sold",            len: "60 sec", img: "https://images.unsplash.com/photo-1741156386380-0236c72eb6f9?auto=format&fit=crop&w=400&q=80" },
+  { label: "Buyer Tips",           len: "3 min",  img: "https://images.unsplash.com/photo-1733244766159-f58f4184fd38?auto=format&fit=crop&w=400&q=80" },
+  { label: "Interest Rate Update", len: "60 sec", img: "https://images.unsplash.com/photo-1648201637025-1c77b9be3013?auto=format&fit=crop&w=400&q=80" },
+  { label: "Open House Recap",     len: "90 sec", img: "https://images.unsplash.com/photo-1781797221329-c3d083ab6d99?auto=format&fit=crop&w=400&q=80" },
+  { label: "Local Market Deep Dive", len: "8 min", img: "https://images.unsplash.com/photo-1780584447740-687fb6ff14eb?auto=format&fit=crop&w=400&q=80" },
 ];
 
 const marqueeRow2 = [
-  { label: "Seller Tips",          len: "3 min",  img: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=400&q=80" },
-  { label: "Price Reduction",      len: "60 sec", img: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=400&q=80" },
-  { label: "New Construction Tour", len: "8 min", img: "https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=400&q=80" },
-  { label: "Investment Property",  len: "4 min",  img: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=80" },
-  { label: "Luxury Listing",       len: "90 sec", img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80" },
-  { label: "School District Tour", len: "8 min",  img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=400&q=80" },
-  { label: "Coming Soon",          len: "60 sec", img: "https://images.unsplash.com/photo-1535223289827-42f1e9919769?auto=format&fit=crop&w=400&q=80" },
-  { label: "Condo Showcase",       len: "3 min",  img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=400&q=80" },
+  { label: "Seller Tips",          len: "3 min",  img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80" },
+  { label: "Price Reduction",      len: "60 sec", img: "https://images.unsplash.com/photo-1709880945165-d2208c6ad2ec?auto=format&fit=crop&w=400&q=80" },
+  { label: "New Construction Tour", len: "8 min", img: "https://images.unsplash.com/photo-1587582423116-ec07293f0395?auto=format&fit=crop&w=400&q=80" },
+  { label: "Investment Property",  len: "4 min",  img: "https://images.unsplash.com/photo-1543071293-d91175a68672?auto=format&fit=crop&w=400&q=80" },
+  { label: "Luxury Listing",       len: "90 sec", img: "https://images.unsplash.com/photo-1682184805271-11671b7ecf4c?auto=format&fit=crop&w=400&q=80" },
+  { label: "School District Tour", len: "8 min",  img: "https://images.unsplash.com/photo-1767589565213-1daee51888b2?auto=format&fit=crop&w=400&q=80" },
+  { label: "Coming Soon",          len: "60 sec", img: "https://images.unsplash.com/photo-1777106322601-578dc9213ace?auto=format&fit=crop&w=400&q=80" },
+  { label: "Condo Showcase",       len: "3 min",  img: "https://images.unsplash.com/photo-1515263487990-61b07816b324?auto=format&fit=crop&w=400&q=80" },
 ];
 
 // ── SAMPLE OUTPUT VIDEOS — DROP YOUR FILES HERE ──────────────────────────────
@@ -657,7 +657,7 @@ export default function LandingPage() {
                 color: "bg-blue-900",
                 title: "Speak your topic",
                 description: "Hit the mic — or pick a trending local topic before you start. Choose your length: a 60-second reel, or a full-length market update up to 8 minutes.",
-                photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+                photo: "https://images.unsplash.com/photo-1598978996253-dcfb7f324f89?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },
               {
@@ -665,7 +665,7 @@ export default function LandingPage() {
                 color: "bg-blue-700",
                 title: "AI builds your video",
                 description: "Script written. AI avatar rendered. Captions added. B-roll included. A broadcast-quality video — fully produced, zero editing.",
-                photo: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?auto=format&fit=crop&w=600&q=80",
+                photo: "https://images.unsplash.com/photo-1614963326505-843868e1d83a?auto=format&fit=crop&w=600&q=80",
                 alt: "AI generating video",
               },
               {
@@ -673,7 +673,7 @@ export default function LandingPage() {
                 color: "bg-blue-500",
                 title: "Publish and share",
                 description: "One click to YouTube with SEO-optimized title, description, and tags. Your LinkedIn post and Instagram caption are already written.",
-                photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+                photo: "https://images.unsplash.com/photo-1726066012749-f81bf4422d4e?auto=format&fit=crop&w=600&q=80",
                 alt: "Published video on social",
               },
             ].map(({ num, color, title, description, photo, alt }) => (
