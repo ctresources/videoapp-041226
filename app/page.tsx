@@ -280,7 +280,7 @@ export default function LandingPage() {
 
       {/* ── Navbar ── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex flex-col leading-none">
             <Image
               src="/logo_navbar_transparent.png"
@@ -291,7 +291,7 @@ export default function LandingPage() {
               priority
             />
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-xl font-medium text-slate-600">
+          <div className="hidden md:flex items-center gap-7 text-base font-medium text-slate-600">
             <a href="#who"          className="hover:text-slate-900 transition-colors">Who It&apos;s For</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
             <a href="#features"     className="hover:text-slate-900 transition-colors">Features</a>
@@ -299,64 +299,81 @@ export default function LandingPage() {
             <a href="#pricing"      className="hover:text-slate-900 transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-xl font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-2">
+            <Link href="/login" className="text-base font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-2">
               Log In
             </Link>
-            <Link href="/beta" className="text-xl font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
+            <Link href="/beta" className="text-base font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
               Start Free
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="pt-14 pb-12 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+      {/* ── Hero ──
+          pt must clear the fixed 64px navbar with room to breathe, or the first
+          line renders underneath it. */}
+      <section className="pt-28 pb-16 px-4 sm:px-6 bg-white border-b border-slate-200">
+        <div className="max-w-[1600px] mx-auto">
 
-          {/* Two-column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div>
-              <p className="font-black text-blue-900 mb-3 tracking-wide">
-                <span className="text-5xl">Speak, Spark, Share —</span><br />
-                <span className="text-3xl sm:whitespace-nowrap">no filming, no editing, no glam required.</span>
+              {/* Eyebrow — sets the tone, stays out of the headline's way */}
+              <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide mb-4">
+                Speak, Spark, Share — <span className="text-slate-400 font-bold">no filming, no editing, no glam required.</span>
               </p>
-              <p className="text-2xl text-slate-500 mb-4 leading-relaxed">
-                Most real estate agents are invisible online. SparkReels.ai fixes that — turning one voice recording into a publish-ready video. A 60-second reel for social, or a full 8-minute market update built to rank on YouTube.
-              </p>
-              <p className="text-lg font-bold text-amber-500 uppercase tracking-widest mb-5">
-                Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
-              </p>
-              <h1 className="text-4xl sm:text-6xl font-black leading-tight mb-6 text-slate-900">
-                <span className="block">Hit the Mic....Be Visible </span>
-                <span className="block text-blue-900">and become the go-to-local expert of your town.</span>
+
+              <h1 className="text-4xl sm:text-6xl font-black leading-[1.08] mb-5 text-slate-900">
+                Hit the Mic. Be Visible.
+                <span className="block text-blue-900 mt-1">Become the go-to local expert in your town.</span>
               </h1>
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-                <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-xl font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                  Sign up for free <ArrowRight size={15} />
+
+              <p className="text-xl text-slate-500 mb-5 leading-relaxed max-w-xl">
+                Most real estate agents are invisible online. SparkReels.ai fixes that — turning one
+                voice recording into a publish-ready video. A 60-second reel for social, or a full
+                8-minute market update built to rank on YouTube.
+              </p>
+
+              {/* Proof, sized as support rather than a second headline */}
+              <div className="flex items-start gap-3 border-l-4 border-amber-400 pl-4 mb-7">
+                <p className="text-lg text-slate-600 leading-snug">
+                  Agents who post video grow revenue <span className="font-black text-slate-900">49% faster</span> —
+                  yet only <span className="font-black text-slate-900">8%</span> do it consistently. Why?
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+                <a href="/beta" className="inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-xl font-semibold px-7 py-4 hover:bg-blue-800 transition-colors">
+                  Sign up for free <ArrowRight size={18} />
                 </a>
-                <a href="#how-it-works" className="inline-flex items-center gap-2 border border-slate-300 text-slate-700 text-xl font-semibold px-6 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-                  See How It Works <ChevronRight size={15} />
+                <a href="#how-it-works" className="inline-flex items-center justify-center gap-2 border border-slate-300 text-slate-700 text-xl font-semibold px-7 py-4 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                  See How It Works <ChevronRight size={18} />
                 </a>
               </div>
-              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-lg font-bold px-3 py-1.5 rounded-full mt-4 hover:bg-emerald-100 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+
+              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-base font-bold px-4 py-2 rounded-full mt-5 hover:bg-emerald-100 transition-colors">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 First 100 agents get 1 free AI video — no credit card
               </a>
-              <p className="mt-3 text-4xl font-semibold text-slate-400 tracking-wide">Visibility → Credibility → Trust → Business</p>
-              <p className="mt-4 text-xl text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
+
+              <p className="mt-6 text-xl font-semibold text-slate-400 tracking-wide">
+                Visibility <span className="text-slate-300">→</span> Credibility <span className="text-slate-300">→</span> Trust <span className="text-slate-300">→</span> Business
+              </p>
+              <p className="mt-2 text-base text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
             </div>
-            {/* Hero image */}
-            <div className="relative hidden lg:block animate-float pt-4">
+
+            {/* Hero image — centred against the text column so neither side
+                leaves a block of dead space. */}
+            <div className="relative hidden lg:block animate-float">
               <Image
                 src="/hit-record.png"
                 alt="Hit the Mic. Speak, Spark, Share."
                 width={900}
                 height={1125}
-                className="w-full h-[520px] object-cover rounded-2xl shadow-2xl"
+                className="w-full h-[660px] object-cover rounded-2xl shadow-2xl"
                 priority
               />
-              <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-lg px-5 py-4">
-                <p className="text-lg text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Agents using video grow</p>
+              <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-lg px-6 py-4">
+                <p className="text-base text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Agents using video grow</p>
                 <p className="text-4xl font-black text-blue-900">49% faster</p>
               </div>
             </div>
@@ -372,7 +389,7 @@ export default function LandingPage() {
         <p className="text-center text-xl text-slate-500 mb-8">
           Quick reels for social. Full-length market updates for search. Same one-button process.
         </p>
-        <div className="max-w-7xl mx-auto overflow-hidden">
+        <div className="max-w-[1600px] mx-auto overflow-hidden">
 
         {/* Row 1 — scrolls left */}
         <div className="marquee-track mb-4 relative">
@@ -411,7 +428,7 @@ export default function LandingPage() {
 
       {/* ── Pain Points ── */}
       <section id="pain" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Sound Familiar?</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3 max-w-4xl">
@@ -442,7 +459,7 @@ export default function LandingPage() {
 
       {/* ── Found on AI ── */}
       <section id="ai-search" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
               <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Get Found On AI</p>
@@ -535,7 +552,7 @@ export default function LandingPage() {
 
       {/* ── See It For Yourself ── */}
       <section id="demo" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-2">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">See It For Yourself</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3 max-w-4xl">
@@ -600,7 +617,7 @@ export default function LandingPage() {
 
       {/* ── Who It's For ── */}
       <section id="who" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Who It&apos;s For</p>
             <h2 className="text-4xl font-black text-slate-900 leading-tight mb-3 max-w-4xl">
@@ -640,7 +657,7 @@ export default function LandingPage() {
 
       {/* ── How It Works ── */}
       <section id="how-it-works" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="text-center mb-10">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated.</h2>
@@ -702,7 +719,7 @@ export default function LandingPage() {
 
       {/* ── Features ── */}
       <section id="features" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Everything Included</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3">Built to make you Visible and the digital local expert in your market.</h2>
@@ -725,7 +742,7 @@ export default function LandingPage() {
 
       {/* ── Start a YouTube Channel ── */}
       <section id="channel" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <p className="text-lg font-bold text-blue-300 uppercase tracking-widest mb-3">Channel In A Box</p>
             <h2 className="text-4xl font-black text-white mb-3 max-w-5xl">
@@ -776,7 +793,7 @@ export default function LandingPage() {
 
       {/* ── Comparison ── */}
       <section id="compare" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-10">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">How We Stack Up</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3">Where we win — and where we don&apos;t.</h2>
@@ -820,7 +837,7 @@ export default function LandingPage() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Pricing</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3">Two kinds of video. Pick the plan with the mix you need.</h2>
@@ -925,7 +942,7 @@ export default function LandingPage() {
 
       {/* ── Final CTA ── */}
       <section className="py-14 sm:py-16 px-4 sm:px-6 bg-blue-900 text-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <p className="text-lg font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
           <h2 className="text-4xl sm:text-6xl font-black mb-5 leading-tight">
             Hit the Mic. Speak, Spark, Share.
@@ -953,7 +970,7 @@ export default function LandingPage() {
 
       {/* ── Fair Housing ── */}
       <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
-        <div className="max-w-7xl mx-auto flex items-start gap-4">
+        <div className="max-w-[1600px] mx-auto flex items-start gap-4">
           <CheckCircle size={18} className="text-blue-900 shrink-0 mt-0.5" />
           <div>
             <p className="text-xl font-bold text-blue-900 mb-0.5">Fair Housing Compliance Built In</p>
@@ -966,7 +983,7 @@ export default function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="bg-slate-900 text-slate-400 py-12 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8 pb-8 border-b border-slate-800">
             <div>
               <Image
