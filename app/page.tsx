@@ -25,7 +25,7 @@ const painPoints = [
   {
     icon: PenLine,
     pain: "“I sit down to record and have no idea what to say.”",
-    fix: "AI hands you five trending local topics before you start, then writes the script. The blank page is gone.",
+    fix: "Two answers: AI hands you five trending local topics before you start, and AI Answer Blocks shows you the exact questions buyers in your market are typing into ChatGPT. Pick one, hit record — the script writes itself.",
   },
   {
     icon: TrendingDown,
@@ -327,7 +327,7 @@ export default function LandingPage() {
                 Real Estate Agents who post video grow revenue 49% faster.<br />Yet ONLY 8% do it consistently. Why?
               </p>
               <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-6 text-slate-900">
-                <span className="block">Hit the Mic....Be Visible</span>
+                <span className="block">Hit the Mic....Be Visible </span>
                 <span className="block text-blue-900">and become the go-to-local expert of your town.</span>
               </h1>
               <div className="flex flex-col sm:flex-row gap-4 items-start">
@@ -454,16 +454,19 @@ export default function LandingPage() {
                 good time to sell in Mesa?&rdquo; Buyers ask an AI assistant these questions months
                 before they ever call an agent — and the AI answers by quoting websites it trusts.
               </p>
-              <p className="text-slate-500 mb-6 leading-relaxed">
+              <p className="text-slate-500 mb-4 leading-relaxed">
                 Right now it isn&apos;t quoting you. <span className="font-semibold text-slate-700">AI
-                Answer Blocks</span> researches what buyers in your market are actually asking, then
-                turns each question into two things: a{" "}
-                <span className="font-semibold text-slate-700">video topic you can record in one
-                click</span>, and a text block to paste on your site — written the way AI assistants
-                extract and cite answers. Three questions your buyers are already asking, answered.
+                Answer Blocks</span> researches what buyers in your market are actually asking — then
+                hands you <span className="font-semibold text-slate-700">three videos to record</span>,
+                opening line included, one click to the recording screen.
+              </p>
+              <p className="text-slate-500 mb-6 leading-relaxed">
+                No more guessing what to post. These aren&apos;t invented topics — they&apos;re the
+                questions your buyers are typing into ChatGPT this month. Each one also comes with a
+                text block for your website, written the way AI assistants extract and cite answers.
               </p>
               <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
-                Get My Answer Blocks <ArrowRight size={15} />
+                Show Me What My Buyers Are Asking <ArrowRight size={15} />
               </a>
             </div>
 
@@ -500,6 +503,31 @@ export default function LandingPage() {
               <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
                 Illustrative example. Your blocks are researched for your own market and named to you.
               </p>
+            </div>
+          </div>
+
+          {/* The connective tissue: both discovery channels are fed by the same video. */}
+          <div className="mt-8 border border-blue-900/20 border-l-4 border-l-blue-900 bg-blue-50/50 p-5">
+            <p className="text-sm font-black text-slate-900 mb-2">
+              One video. Two places to get found.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-2.5">
+                <Search size={15} className="text-blue-900 shrink-0 mt-0.5" />
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  <span className="font-semibold text-slate-800">YouTube search.</span> Every video
+                  ships with an SEO title, description and tags built to rank for your neighborhood —
+                  so it keeps bringing people in months after you post it.
+                </p>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Bot size={15} className="text-blue-900 shrink-0 mt-0.5" />
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  <span className="font-semibold text-slate-800">AI assistants.</span> ChatGPT and
+                  Google&apos;s AI read YouTube titles, descriptions and transcripts when they answer.
+                  The same video that ranks is also what they quote.
+                </p>
+              </div>
             </div>
           </div>
         </div>
