@@ -3,8 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyNewUser } from "@/lib/email";
 import { attributeReferral } from "@/lib/affiliate-attribution";
-
-const MAX_USERS = 100;
+import { hasCapacityForNewUser } from "@/lib/capacity";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -24,19 +23,23 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Check if we've hit the user cap
-  const { count } = await admin.from("profiles").select("*", { count: "exact", head: true });
+  // Capacity gate — only for people joining right now. Someone who already
+  // has an account must never be turned away because the beta filled up after
+  // they joined, so this is keyed on "was this account just created".
+  const { data: { user } } = await supabase.auth.getUser();
+  const isNew = !!user?.created_at && (Date.now() - new Date(user.created_at).getTime()) < 60_000;
 
-  if ((count ?? 0) > MAX_USERS) {
+  if (user && isNew && !(await hasCapacityForNewUser(admin, user.id))) {
+    // Their auth user + profile row were already created by the code exchange,
+    // so remove both — otherwise a rejected signup still counts against the cap.
     await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/register?error=full`);
+    await admin.from("profiles").delete().eq("id", user.id);
+    await admin.auth.admin.deleteUser(user.id).catch(() => {});
+    return NextResponse.redirect(`${origin}/beta?full=1`);
   }
 
   // Route returning users based on onboarding and subscription status
-  const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    // Notify on new Google OAuth signups (created within the last 60 seconds)
-    const isNew = user.created_at && (Date.now() - new Date(user.created_at).getTime()) < 60_000;
     if (isNew) {
       const name = (user.user_metadata?.full_name as string | null) ?? null;
       notifyNewUser({ name, email: user.email ?? null, provider: "google" });

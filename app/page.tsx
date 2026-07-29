@@ -343,7 +343,12 @@ export default function LandingPage() {
                       ~557px, which strands "faster —" on its own line; below
                       this threshold the natural wrap already gives two lines. */}
                   <br className="hidden [@media(min-width:1700px)]:inline" />
-                  yet only <span className="font-black text-slate-900">8%</span> do it consistently. Why?
+                  yet only <span className="font-black text-slate-900">8%</span> do it consistently.{" "}
+                  {/* The question is answered by the pain-points section — make it
+                      go there rather than leaving it purely rhetorical. */}
+                  <a href="#pain" className="font-black text-blue-900 underline decoration-2 underline-offset-2 hover:text-blue-700">
+                    Why?
+                  </a>
                 </p>
               </div>
 

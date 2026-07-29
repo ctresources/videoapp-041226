@@ -17,9 +17,20 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // The beta cap. This page previously ignored ?error=full entirely, so a
+  // rejected signup landed on a blank form with no explanation — and then
+  // succeeded anyway, because email registration wasn't capped.
+  const [betaFull, setBetaFull] = useState(false);
+
   useEffect(() => {
     const code = searchParams.get("code");
     if (code) setForm((p) => ({ ...p, inviteCode: code.toUpperCase() }));
+    if (searchParams.get("error") === "full") setBetaFull(true);
+
+    fetch("/api/auth/capacity")
+      .then((r) => r.json())
+      .then((c) => { if (c && c.open === false) setBetaFull(true); })
+      .catch(() => {});
   }, [searchParams]);
 
   function set(field: string, value: string) {
@@ -48,6 +59,14 @@ function RegisterForm() {
     const body = await res.json();
 
     if (!res.ok) {
+      // Beta filled up between page load and submit — show the waitlist
+      // rather than a bare toast the person can't act on.
+      if (body.code === "beta_full") {
+        setBetaFull(true);
+        setLoading(false);
+        router.push("/beta?full=1");
+        return;
+      }
       toast.error(body.error || "Registration failed");
       setLoading(false);
       return;
@@ -102,7 +121,19 @@ function RegisterForm() {
       <h1 className="text-2xl font-bold text-brand-text mb-1">Create your account</h1>
       <p className="text-sm text-slate-500 mb-6">Start creating viral real estate videos today</p>
 
-      {hasBetaCode && (
+      {betaFull && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+          <Gift size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            <strong>The free beta is full.</strong> All 100 spots are taken, so new accounts
+            don&apos;t include the free AI video.{" "}
+            <Link href="/beta" className="font-semibold underline">Join the waitlist</Link> or{" "}
+            <Link href="/#pricing" className="font-semibold underline">start on a paid plan</Link>.
+          </p>
+        </div>
+      )}
+
+      {hasBetaCode && !betaFull && (
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-4">
           <Gift size={16} className="text-emerald-600 shrink-0" />
           <p className="text-sm text-emerald-700 font-medium">
