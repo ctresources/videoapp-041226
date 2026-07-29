@@ -14,6 +14,7 @@ import {
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
+import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -453,8 +454,14 @@ export async function POST(req: NextRequest) {
   const creditCost = 1;
 
   if (!isAdmin && !charge) {
+    // `code` and `kind` let the client open the plan picker instead of
+    // string-matching the message. Someone who just watched their free video
+    // render is the most likely person to buy — a dead-end toast wastes that.
     return NextResponse.json(
       {
+        code: "out_of_videos",
+        kind: videoKind,
+        tier,
         error: isLongForm
           ? "You've used all your long videos. Buy another for $39 in Billing, upgrade your plan, or record one free with the camera teleprompter."
           : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
@@ -573,7 +580,21 @@ export async function POST(req: NextRequest) {
       // first completed look in their photo-avatar group. Direct Video always
       // needs an avatar, but paste-script users may not have picked one, so we
       // fall back to their default rather than erroring.
-      let directAvatarId = avatarId || profile.heygen_digital_twin_look_id || undefined;
+      // Digital twins are Agent/Pro only. Someone who trained one and then
+      // downgraded still has the look id on their profile, so gate it here too
+      // — the id is deliberately NOT cleared, so upgrading restores the twin
+      // without retraining.
+      const twinAllowed = canUseDigitalTwin(tier, profile.role);
+      const twinLookId = profile.heygen_digital_twin_look_id;
+      if (!twinAllowed && twinLookId) {
+        console.log(`[create-blog] Digital twin ignored — tier=${tier} is not Agent/Pro; using photo avatar.`);
+      }
+
+      // A client can pass any lookId, so drop an explicitly-requested twin too
+      // — checking only the profile fallback would leave the gate bypassable.
+      const requestedAvatar = !twinAllowed && avatarId && avatarId === twinLookId ? undefined : avatarId;
+
+      let directAvatarId = requestedAvatar || (twinAllowed ? twinLookId : null) || undefined;
       if (!directAvatarId && profile.heygen_photo_id) {
         try {
           const looks = await getAvatarLooks(profile.heygen_photo_id);

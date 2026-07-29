@@ -10,6 +10,7 @@ import { resolveCta } from "@/lib/utils/default-cta";
 import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
 import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
+import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -161,6 +162,10 @@ export default function ProjectEditorPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [videoGenerating, setVideoGenerating] = useState(false);
+  // Set when a render is refused for lack of videos — opens the plan picker.
+  const [outOfVideos, setOutOfVideos] = useState<{ kind: "short" | "long"; tier: string } | null>(null);
+  // Remaining allowance, so the Generate button can say so up front.
+  const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
@@ -249,6 +254,15 @@ export default function ProjectEditorPage() {
       setTpFlowSupported(true);
       setTpFlowMode(true);
     }
+  }, []);
+
+  // Remaining videos, so the Generate button can warn before the user invests
+  // effort in a script that can't be rendered.
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => a && setAllowance(a))
+      .catch(() => {});
   }, []);
 
   // Voice-follow lifecycle: listen whenever the teleprompter is open with Flow
@@ -812,6 +826,16 @@ export default function ProjectEditorPage() {
 
       if (!res.ok) {
         const err = await safeJson(res);
+        // Out of videos: offer the plan picker rather than a toast the user
+        // can't act on. The script is already saved by saveContentEdits above,
+        // so they can buy and come straight back to it.
+        if (res.status === 402 && err?.code === "out_of_videos") {
+          setOutOfVideos({
+            kind: err.kind === "long" ? "long" : "short",
+            tier: (err.tier as string) ?? "free",
+          });
+          return;
+        }
         throw new Error((err?.error as string) || `Video generation failed (${res.status})`);
       }
 
@@ -1876,6 +1900,26 @@ export default function ProjectEditorPage() {
               <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
+            {/* Say it up front when the render can't succeed, rather than
+                letting someone finish the whole flow and hit a 402. */}
+            {allowance && !allowance.isAdmin && (() => {
+              const needsLong = selectedVideoType === "youtube_long";
+              const left = needsLong ? allowance.long : allowance.short;
+              if (left > 0) return null;
+              return (
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
+                  <Sparkles size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-900">
+                    You have no {needsLong ? "long" : "short"} videos left.{" "}
+                    <Link href="/billing" className="font-semibold underline">
+                      {allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more"}
+                    </Link>{" "}
+                    to generate this — or record it yourself on camera below, which is always free.
+                  </p>
+                </div>
+              );
+            })()}
+
             <div className="flex items-center gap-3 flex-wrap">
               <Button
                 onClick={handleGenerateVideo}
@@ -2197,6 +2241,14 @@ export default function ProjectEditorPage() {
         </div>
         );
       })()}
+
+      {outOfVideos && (
+        <OutOfVideosModal
+          kind={outOfVideos.kind}
+          tier={outOfVideos.tier}
+          onClose={() => setOutOfVideos(null)}
+        />
+      )}
     </div>
   );
 }

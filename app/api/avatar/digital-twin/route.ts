@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDigitalTwin, getAvatarLooks } from "@/lib/api/heygen";
+import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
 
 // Relays the recording (up to ~200 MB) from Supabase to HeyGen's S3 slot.
@@ -16,6 +17,23 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Plan gate. Checked BEFORE the HeyGen call — training a twin costs money
+  // upstream, so a free-tier request must never reach the API.
+  const admin0 = createAdminClient();
+  const { data: gateRow } = await admin0
+    .from("profiles")
+    .select("subscription_tier, role")
+    .eq("id", user.id)
+    .single();
+  const gate = gateRow as { subscription_tier: string | null; role: string | null } | null;
+
+  if (!canUseDigitalTwin(gate?.subscription_tier, gate?.role)) {
+    return NextResponse.json(
+      { error: DIGITAL_TWIN_UPGRADE_MESSAGE, code: "upgrade_required" },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const videoUrl = body.videoUrl as string | undefined;

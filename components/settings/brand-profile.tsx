@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
@@ -336,6 +337,19 @@ function DigitalTwinCreator({
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Digital twins are Agent/Pro only. Read the plan so the UI can say so
+  // rather than letting someone record a video and then hit a 403.
+  const [canTrain, setCanTrain] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => {
+        if (!a) return;
+        setCanTrain(a.isAdmin || a.tier === "agent" || a.tier === "pro");
+      })
+      .catch(() => setCanTrain(true)); // don't block on a failed check — the API still gates
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -460,6 +474,33 @@ function DigitalTwinCreator({
     setUploadedUrl(null);
     setDtStatus("none");
     toast.success("Upload a new video below to retrain your Digital Twin.");
+  }
+
+  // Plan gate. Shown before anything else so nobody records and uploads a
+  // training video only to be refused by the API afterwards.
+  if (canTrain === false) {
+    const hasTwin = dtStatus === "active" || dtStatus === "pending_consent" || dtStatus === "processing";
+    return (
+      <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <ShieldCheck size={18} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm font-bold text-amber-900">
+            {hasTwin ? "Digital Twin paused on your plan" : "Digital Twin is an Agent & Pro feature"}
+          </p>
+          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+            {hasTwin
+              ? "Your trained twin is kept — videos will use your photo avatar until you move back to Agent or Pro, then it works again with no retraining."
+              : "Train a photorealistic twin of yourself from a short video. Your photo avatar works on every plan and needs just one photo."}
+          </p>
+          <Link
+            href="/billing"
+            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            {hasTwin ? "Restore with Agent or Pro" : "Upgrade to unlock"}
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (dtStatus === "active") {
