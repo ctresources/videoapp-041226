@@ -335,7 +335,7 @@ export default function LandingPage() {
 
               {/* Proof, sized as support rather than a second headline */}
               <div className="flex items-start gap-3 border-l-4 border-amber-400 pl-4 mb-7">
-                <p className="text-lg text-slate-600 leading-snug">
+                <p className="text-xl sm:text-2xl text-slate-600 leading-snug text-pretty">
                   Agents who post video grow revenue <span className="font-black text-slate-900">49% faster</span> —
                   yet only <span className="font-black text-slate-900">8%</span> do it consistently. Why?
                 </p>
