@@ -943,8 +943,8 @@ export default function LandingPage() {
       {/* ── Final CTA ── */}
       <section className="py-14 sm:py-16 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-[1600px] mx-auto">
-          <p className="text-lg font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
-          <h2 className="text-4xl sm:text-6xl font-black mb-5 leading-tight">
+          <p className="text-lg font-bold text-white uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
+          <h2 className="text-4xl sm:text-6xl font-black mb-5 leading-tight text-white">
             Hit the Mic. Speak, Spark, Share.
           </h2>
           <p className="text-blue-200 text-2xl mb-3 max-w-3xl leading-relaxed">
@@ -968,18 +968,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Fair Housing ── */}
-      <section className="py-8 px-4 sm:px-6 bg-blue-50 border-y border-blue-100">
-        <div className="max-w-[1600px] mx-auto flex items-start gap-4">
-          <CheckCircle size={18} className="text-blue-900 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xl font-bold text-blue-900 mb-0.5">Fair Housing Compliance Built In</p>
-            <p className="text-xl text-blue-800 leading-relaxed">
-              Every script, blog post, and video description is automatically reviewed by our Fair Housing guardrail — based on the Fair Housing Act (42 U.S.C. § 3604) and HUD advertising guidelines (24 CFR Part 109).
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Fair Housing compliance is stated in the footer — no separate band. */}
 
       {/* ── Footer ── */}
       <footer className="bg-slate-900 text-slate-400 py-12 px-4 sm:px-6">
