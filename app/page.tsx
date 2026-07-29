@@ -337,6 +337,12 @@ export default function LandingPage() {
               <div className="flex items-start gap-3 border-l-4 border-amber-400 pl-4 mb-7">
                 <p className="text-xl sm:text-2xl text-slate-600 leading-snug text-pretty">
                   Agents who post video grow revenue <span className="font-black text-slate-900">49% faster</span> —
+                  {/* Forced break only once the container hits its 1600px max,
+                      where the column (~768px) can hold the whole first clause.
+                      Tailwind's xl (1280px) fires while the column is still
+                      ~557px, which strands "faster —" on its own line; below
+                      this threshold the natural wrap already gives two lines. */}
+                  <br className="hidden [@media(min-width:1700px)]:inline" />
                   yet only <span className="font-black text-slate-900">8%</span> do it consistently. Why?
                 </p>
               </div>
