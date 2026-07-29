@@ -7,7 +7,42 @@ import {
   Clock,
   X, Camera, Users, UserPlus, ChevronRight,
   Tv2, Palette, Film, MousePointerClick, Search, Upload, Zap,
+  Bot, EyeOff, TrendingDown, PenLine, MessageSquare,
 } from "lucide-react";
+
+// The objections agents actually voice — in their words, then what changes.
+const painPoints = [
+  {
+    icon: Clock,
+    pain: "“I know I should be posting video. I've known for two years.”",
+    fix: "One recording session replaces a full Saturday of filming and editing. Speak for 60 seconds, get a finished video.",
+  },
+  {
+    icon: Camera,
+    pain: "“I hate how I look and sound on camera.”",
+    fix: "You never have to appear. Your AI avatar delivers the video in your cloned voice — or use the teleprompter on the days you do want to film.",
+  },
+  {
+    icon: PenLine,
+    pain: "“I sit down to record and have no idea what to say.”",
+    fix: "AI hands you five trending local topics before you start, then writes the script. The blank page is gone.",
+  },
+  {
+    icon: TrendingDown,
+    pain: "“I posted for a month, got nothing, and quit.”",
+    fix: "Random posts don't compound — searchable ones do. Every video ships with SEO metadata built to rank for your neighborhood, so it keeps working months later.",
+  },
+  {
+    icon: EyeOff,
+    pain: "“The agent down the street is everywhere and I'm invisible.”",
+    fix: "They're not better on camera. They're just consistent. This makes consistency take minutes a week instead of a weekend.",
+  },
+  {
+    icon: Bot,
+    pain: "“Buyers ask ChatGPT now — and it's never heard of me.”",
+    fix: "AI Answer Blocks writes the questions your clients ask AI, plus the exact text to put on your site so you're the one it quotes.",
+  },
+];
 
 const segments = [
   {
@@ -92,8 +127,8 @@ const features = [
     photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "7 AI Tools, Included",
-    description: "Channel name, banner, thumbnails, titles, descriptions, tags and scripts — all generated in-app, free on every plan. Everything you need to launch and run a channel without hiring a designer.",
+    title: "8 AI Tools, Included",
+    description: "Channel name, banner, thumbnails, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, free on every plan. Everything you need to launch a channel and get found, without hiring a designer.",
     photo: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -159,7 +194,7 @@ const channelSteps = [
   { icon: Palette, step: "Brand it", tool: "Channel Banner Generator", description: "A finished 2560×1440 banner with your headline, photo, QR codes and subscribe call-out. Correct dimensions, no designer." },
   { icon: Film, step: "Fill it", tool: "AI Video Generator", description: "Short reels for social and full 8-minute market updates for search — both from one voice recording." },
   { icon: MousePointerClick, step: "Get the click", tool: "Thumbnail Generator", description: "Bold, readable thumbnails that hold up at phone size — the difference between 40 views and 4,000." },
-  { icon: Search, step: "Get found", tool: "Title, Description & Tag Generators", description: "SEO-optimized metadata written for the neighborhood keywords buyers actually search." },
+  { icon: Search, step: "Get found", tool: "SEO Metadata + AI Answer Blocks", description: "SEO titles, descriptions and tags for the neighborhood keywords buyers search — plus answer blocks so AI assistants cite you too." },
   { icon: Upload, step: "Publish it", tool: "One-Click YouTube Publishing", description: "Connect your channel once. Every video after that publishes in one click — title, description and tags already filled in." },
 ];
 
@@ -170,6 +205,7 @@ const comparison = [
   { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
   { feature: "Long-form video (up to 8 minutes)",     us: true,  a: false, b: true,  c: false },
   { feature: "Channel branding kit (name, banner, thumbnails)", us: true, a: false, b: false, c: false },
+  { feature: "AI answer-engine content (get cited by ChatGPT)", us: true, a: false, b: false, c: false },
   { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
   { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
   { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
@@ -209,7 +245,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -220,7 +256,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -231,7 +267,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "5 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "5 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — get cited when buyers ask ChatGPT about your market", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -274,7 +310,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="pt-16 pb-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <section className="pt-14 pb-12 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto">
 
           {/* Two-column grid */}
@@ -373,8 +409,93 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pain Points ── */}
+      <section id="pain" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-8">
+            <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Sound Familiar?</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-3 max-w-2xl">
+              You already know video works. That was never the problem.
+            </h2>
+            <p className="text-slate-500 max-w-2xl">
+              Two-thirds of agents say video grows their business. Only 8% post consistently. The gap
+              isn&apos;t motivation — it&apos;s these six things.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-200 border border-slate-200">
+            {painPoints.map(({ icon: Icon, pain, fix }) => (
+              <div key={pain} className="bg-white p-5 hover:bg-slate-50/70 transition-colors">
+                <div className="flex items-start gap-2.5 mb-3">
+                  <Icon size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                  <p className="text-sm font-bold text-slate-900 leading-snug">{pain}</p>
+                </div>
+                <div className="flex items-start gap-2 pl-[26px]">
+                  <CheckCircle size={13} className="text-blue-900 shrink-0 mt-[3px]" />
+                  <p className="text-xs text-slate-500 leading-relaxed">{fix}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Found on AI ── */}
+      <section id="ai-search" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+            <div>
+              <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Get Found On AI</p>
+              <h2 className="text-3xl font-black text-slate-900 mb-3">
+                Your next client is asking ChatGPT, not Google.
+              </h2>
+              <p className="text-slate-500 mb-4 leading-relaxed">
+                &ldquo;Which Charlotte neighborhood should I buy in with $450k?&rdquo; &ldquo;Is now a
+                good time to sell in Mesa?&rdquo; Buyers ask an AI assistant these questions months
+                before they ever call an agent — and the AI answers by quoting websites it trusts.
+              </p>
+              <p className="text-slate-500 mb-6 leading-relaxed">
+                Right now it isn&apos;t quoting you. <span className="font-semibold text-slate-700">AI
+                Answer Blocks</span> fixes that: it researches what buyers in your market actually ask,
+                then writes the exact text to paste on your site — structured the way AI assistants
+                extract and cite answers.
+              </p>
+              <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+                Get My Answer Blocks <ArrowRight size={15} />
+              </a>
+            </div>
+
+            {/* Illustrative example of the output */}
+            <div className="border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare size={14} className="text-slate-400" />
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">What it produces</p>
+              </div>
+              <div className="bg-white border border-slate-200 p-4 mb-3">
+                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wide mb-1.5">The question they ask AI</p>
+                <p className="text-sm font-semibold text-slate-800 leading-snug">
+                  &ldquo;What neighborhoods should I look at in Charlotte as a first-time buyer with
+                  around $450,000?&rdquo;
+                </p>
+              </div>
+              <div className="bg-white border border-slate-200 p-4">
+                <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wide mb-1.5">The block you paste on your site</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Start by comparing housing stock, commute, and HOA costs — not just list price. At
+                  this budget, look at townhomes near the light-rail corridor and older single-family
+                  stock further out…
+                </p>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                Illustrative example. Your blocks are researched for your own market and named to you.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── See It For Yourself ── */}
-      <section id="demo" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <section id="demo" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
           <div className="mb-2">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">See It For Yourself</p>
@@ -439,9 +560,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Who It's For ── */}
-      <section id="who" className="py-20 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
+      <section id="who" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
+          <div className="mb-8">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Who It&apos;s For</p>
             <h2 className="text-3xl font-black text-slate-900 leading-tight mb-3 max-w-2xl">
               Two-thirds of agents know video grows their business. Most just don&apos;t have a system to do it.
@@ -479,9 +600,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <section id="how-it-works" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
+          <div className="text-center mb-10">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
             <h2 className="text-3xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated.</h2>
             <p className="text-slate-500">What used to take a full Saturday now takes one conversation.</p>
@@ -541,9 +662,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="py-20 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
+      <section id="features" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
+          <div className="mb-8">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Everything Included</p>
             <h2 className="text-3xl font-black text-slate-900 mb-3">Built to make you Visible and the digital local expert in your market.</h2>
             <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
@@ -564,9 +685,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Start a YouTube Channel ── */}
-      <section id="channel" className="py-20 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">
+      <section id="channel" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
+          <div className="mb-8">
             <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-3">Channel In A Box</p>
             <h2 className="text-3xl font-black text-white mb-3 max-w-3xl">
               Don&apos;t have a YouTube channel yet? Start one today.
@@ -615,7 +736,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Comparison ── */}
-      <section id="compare" className="py-20 px-4 sm:px-6 bg-white border-b border-slate-200">
+      <section id="compare" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
           <div className="mb-10">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">How We Stack Up</p>
@@ -659,9 +780,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
+      <section id="pricing" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-12">
+          <div className="mb-8">
             <p className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3">Pricing</p>
             <h2 className="text-3xl font-black text-slate-900 mb-3">Two kinds of video. Pick the plan with the mix you need.</h2>
             <p className="text-slate-500">No contracts. Cancel anytime. Billed monthly.</p>
@@ -764,7 +885,7 @@ export default function LandingPage() {
 
 
       {/* ── Final CTA ── */}
-      <section className="py-24 px-4 sm:px-6 bg-blue-900 text-white">
+      <section className="py-14 sm:py-16 px-4 sm:px-6 bg-blue-900 text-white">
         <div className="max-w-5xl mx-auto">
           <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
           <h2 className="text-4xl sm:text-5xl font-black mb-5 leading-tight">

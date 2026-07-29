@@ -4,13 +4,13 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone,
+  Megaphone, Bot,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner" | "answers";
 
 interface Project {
   id: string;
@@ -29,6 +29,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
   { id: "banner",      label: "Channel Banner",       icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
+  { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
 ];
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
@@ -645,6 +646,148 @@ function ChannelNameGenerator() {
               <CopyButton text={n.name} />
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AI ANSWER BLOCKS ─────────────────────────────────────────────────────────
+
+interface AnswerBlock {
+  question: string;
+  whyAsked: string;
+  heading: string;
+  answerBlock: string;
+  placement: string;
+}
+
+function AnswerBlocksGenerator() {
+  const [agentName, setAgentName] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [niche, setNiche] = useState("");
+  const [brokerage, setBrokerage] = useState("");
+  const [blocks, setBlocks] = useState<AnswerBlock[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const generate = async () => {
+    if (!agentName.trim()) { toast.error("Enter your name"); return; }
+    if (!city.trim()) { toast.error("Enter your city — these blocks only work if they're local"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tools/answer-blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentName, city, state, niche, brokerage }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBlocks(data.blocks);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate answer blocks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // What the agent actually pastes: heading + answer, ready for their page.
+  const fullText = (b: AnswerBlock) => `${b.heading}\n\n${b.answerBlock}`;
+
+  return (
+    <div>
+      <div className="bg-primary-50/50 border border-primary-100 rounded-xl p-4 mb-5">
+        <p className="text-sm font-semibold text-slate-800 mb-1">Get cited when buyers ask AI about your market</p>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Buyers now ask ChatGPT and Google&apos;s AI &ldquo;which neighborhood should I buy in?&rdquo;
+          before they ever call an agent. Those answers get pulled from websites. This writes the
+          questions your clients are asking, plus the exact text to paste on your site so
+          <span className="font-semibold"> you&apos;re the one being quoted</span>.
+        </p>
+      </div>
+
+      <div className="space-y-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Your name</label>
+            <input type="text" value={agentName} onChange={(e) => setAgentName(e.target.value)} placeholder="e.g. Sarah Johnson"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Brokerage <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={brokerage} onChange={(e) => setBrokerage(e.target.value)} placeholder="Keller Williams"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">City</label>
+            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Charlotte"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">State <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={state} onChange={(e) => setState(e.target.value)} placeholder="NC"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Niche <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="first-time buyers, luxury…"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
+          </div>
+        </div>
+      </div>
+
+      <button onClick={generate} disabled={loading}
+        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {loading ? "Researching your market…" : "Generate Answer Blocks"}
+      </button>
+
+      {blocks.length > 0 && (
+        <div className="mt-6 space-y-4">
+          <p className="text-sm text-slate-500">
+            Paste each block onto your website — your FAQ page, a blog post, or a neighborhood page.
+            Keep the heading: it&apos;s what tells AI the block answers that question.
+          </p>
+
+          {blocks.map((b, i) => (
+            <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-xs font-bold text-white bg-primary-500 rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{b.question}</p>
+                    <p className="text-xs text-slate-500 mt-1">{b.whyAsked}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Paste this on your site</p>
+                  <CopyButton text={fullText(b)} />
+                </div>
+                <div className="bg-white border border-slate-200 rounded-lg p-4">
+                  <p className="text-sm font-bold text-slate-900 mb-2">{b.heading}</p>
+                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{b.answerBlock}</p>
+                </div>
+                <p className="text-xs text-slate-500 mt-2.5 flex items-start gap-1.5">
+                  <HelpCircle size={13} className="shrink-0 mt-0.5 text-slate-400" />
+                  {b.placement}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold">Check the facts before you publish.</span> These blocks
+              cite real neighborhoods and market patterns, but you know your market better than any
+              model does — correct anything that&apos;s off. Accurate, specific blocks get cited;
+              wrong ones cost you credibility.
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -1449,6 +1592,7 @@ export default function ToolsPage() {
         {activeTab === "channel"     && <ChannelNameGenerator />}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
         {activeTab === "banner"      && <BannerGenerator />}
+        {activeTab === "answers"     && <AnswerBlocksGenerator />}
       </div>
     </div>
   );
