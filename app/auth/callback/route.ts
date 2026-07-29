@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { notifyNewUser } from "@/lib/email";
 import { attributeReferral } from "@/lib/affiliate-attribution";
 import { hasCapacityForNewUser, maybeNotifyCapacity } from "@/lib/capacity";
+import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -29,6 +30,27 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const isNew = !!user?.created_at && (Date.now() - new Date(user.created_at).getTime()) < 60_000;
 
+  // Spam screening for Google signups. This path previously ran none at all,
+  // and since /beta offered Google only, in practice almost every account
+  // skipped the guard — which is how the dotted-Gmail addresses got in.
+  // Rejected accounts are deleted, same as an over-capacity signup.
+  if (user && isNew) {
+    const displayName = (user.user_metadata?.full_name as string | null) ?? "";
+    const reason = await screenSignup(admin, {
+      name: displayName,
+      email: user.email ?? "",
+      excludeUserId: user.id, // their own row already exists
+    });
+    if (reason) {
+      console.warn(`[auth/callback] Rejected Google signup ${user.email}: ${reason}`);
+      await supabase.auth.signOut();
+      await admin.from("profiles").delete().eq("id", user.id);
+      await admin.auth.admin.deleteUser(user.id).catch(() => {});
+      // /beta already surfaces query-string messages; /login ignores them.
+      return NextResponse.redirect(`${origin}/beta?rejected=${encodeURIComponent(reason)}`);
+    }
+  }
+
   if (user && isNew && !(await hasCapacityForNewUser(admin, user.id))) {
     // Their auth user + profile row were already created by the code exchange,
     // so remove both — otherwise a rejected signup still counts against the cap.
@@ -45,6 +67,10 @@ export async function GET(req: NextRequest) {
       notifyNewUser({ name, email: user.email ?? null, provider: "google" });
       // Affiliate attribution from the sr_ref cookie set at ?ref= visit time.
       await attributeReferral(admin, user.id, user.email, req.cookies.get("sr_ref")?.value);
+      await admin
+        .from("profiles")
+        .update({ email_canonical: canonicalEmail(user.email ?? "") })
+        .eq("id", user.id);
       await maybeNotifyCapacity(admin);
     }
 

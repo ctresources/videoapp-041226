@@ -12,6 +12,16 @@ export const DISPOSABLE_DOMAINS = new Set([
   "spamgourmet.com", "trashmail.at", "trashmail.me", "trashmail.io",
   "tempmail.com", "temp-mail.org", "throwaway.email", "discard.email",
   "mailnesia.com", "spamhereplease.com", "discardmail.com",
+  // Added after reviewing real signups — the free video is worth farming.
+  "10minutemail.com", "10minutemail.net", "20minutemail.com",
+  "tempmailo.com", "tempr.email", "temp-mail.io", "emailondeck.com",
+  "mohmal.com", "moakt.com", "mytemp.email", "burnermail.io",
+  "anonaddy.com", "simplelogin.io", "33mail.com", "spambog.com",
+  "mailcatch.com", "inboxkitten.com", "tempinbox.com", "fakemail.net",
+  "trash-mail.com", "wegwerfmail.de", "einrot.com", "cuvox.de",
+  "dayrep.com", "armyspy.com", "teleworm.us", "rhyta.com", "jourrapide.com",
+  "gustr.com", "superrito.com", "fleckens.hu", "linshiyouxiang.net",
+  "vomoto.com", "yopmail.fr", "yopmail.net", "nowmymail.com",
 ]);
 
 /**
@@ -51,13 +61,104 @@ export function isGmailDotsTrick(email: string): boolean {
 }
 
 /**
+ * Providers that ignore dots and/or "+tag" suffixes, so many written forms
+ * all deliver to one real inbox.
+ */
+const DOT_INSENSITIVE = new Set(["gmail.com", "googlemail.com"]);
+const PLUS_TAG_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com",
+  "yahoo.com", "proton.me", "protonmail.com", "icloud.com", "fastmail.com",
+]);
+
+/**
+ * Reduces an address to the single inbox it actually reaches.
+ *
+ * "J.o.h.n+promo@Gmail.com" and "john@gmail.com" are the same mailbox, which
+ * is how one person collects an unlimited number of free videos. Storing this
+ * alongside the raw address lets signup refuse a second account for an inbox
+ * that already has one.
+ */
+export function canonicalEmail(email: string): string {
+  const raw = (email ?? "").trim().toLowerCase();
+  const at = raw.lastIndexOf("@");
+  if (at < 1) return raw;
+
+  let local = raw.slice(0, at);
+  const domain = raw.slice(at + 1);
+
+  if (PLUS_TAG_DOMAINS.has(domain)) local = local.split("+")[0];
+  if (DOT_INSENSITIVE.has(domain)) local = local.replace(/\./g, "");
+  // googlemail and gmail are the same service.
+  const canonDomain = domain === "googlemail.com" ? "gmail.com" : domain;
+
+  return `${local}@${canonDomain}`;
+}
+
+/**
+ * True when the local part looks machine-generated rather than chosen:
+ * long, and either almost all digits or a low-vowel consonant soup.
+ * Deliberately conservative — real addresses like "jsmith2024" must pass.
+ */
+export function looksLikeThrowawayLocal(email: string): boolean {
+  const local = (email.toLowerCase().split("@")[0] ?? "").replace(/[.+_-]/g, "");
+  if (local.length < 12) return false;
+
+  const digits = (local.match(/\d/g) || []).length;
+  if (digits / local.length > 0.6) return true;
+
+  const letters = (local.match(/[a-z]/g) || []).length;
+  if (letters < 8) return false;
+  const vowels = (local.match(/[aeiou]/g) || []).length;
+  return vowels / letters < 0.2;
+}
+
+/**
  * Runs all spam heuristics against a name + email. Returns a user-facing
  * error message when something looks fake, or null when it passes.
  */
 export function spamCheck(name: string, email: string): string | null {
   if (looksLikeRandomString(name)) return "Please enter your real full name.";
-  const domain = email.toLowerCase().split("@")[1] ?? "";
+
+  const lower = (email ?? "").toLowerCase();
+  const domain = lower.split("@")[1] ?? "";
+
   if (DISPOSABLE_DOMAINS.has(domain)) return "Please use a permanent email address.";
+  // Subdomains of temp-mail services, e.g. "inbox.tempmail.com". Array.from
+  // rather than iterating the Set directly — the tsconfig target predates
+  // downlevel Set iteration.
+  const isDisposableSubdomain = Array.from(DISPOSABLE_DOMAINS).some((d) => domain.endsWith(`.${d}`));
+  if (isDisposableSubdomain) return "Please use a permanent email address.";
   if (isGmailDotsTrick(email)) return "Please use your primary Gmail address (without extra dots).";
+  if (looksLikeThrowawayLocal(email)) return "Please use your regular email address.";
+
+  return null;
+}
+
+/**
+ * Full signup screening: the static heuristics above, plus a check that this
+ * inbox doesn't already have an account under a different spelling.
+ *
+ * Used by BOTH signup paths. Google OAuth previously ran no screening at all,
+ * which is how the dotted-Gmail accounts got in — /beta offered Google only,
+ * so in practice almost every signup skipped the guard entirely.
+ *
+ * `excludeUserId` is for the OAuth path, where the account already exists by
+ * the time we can check; without it a user would collide with themselves.
+ */
+export async function screenSignup(
+  admin: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
+  { name, email, excludeUserId }: { name: string; email: string; excludeUserId?: string },
+): Promise<string | null> {
+  const basic = spamCheck(name, email);
+  if (basic) return basic;
+
+  const canonical = canonicalEmail(email);
+  let query = admin.from("profiles").select("id").eq("email_canonical", canonical).limit(1);
+  if (excludeUserId) query = query.neq("id", excludeUserId);
+
+  const { data } = await query;
+  if (data?.length) {
+    return "An account already exists for this email address. Please sign in instead.";
+  }
   return null;
 }

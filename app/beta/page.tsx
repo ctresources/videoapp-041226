@@ -110,10 +110,15 @@ export default function BetaPage() {
     // between loading this page and finishing Google sign-in. Read from
     // location rather than useSearchParams, which would need this whole page
     // wrapped in a Suspense boundary.
-    if (new URLSearchParams(window.location.search).get("full") === "1") {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("full") === "1") {
       setBouncedFull(true);
       toast.error("The last beta spot went while you were signing in.");
     }
+    // Google signup refused by the spam screen — say why, since otherwise the
+    // person is bounced back here with no explanation at all.
+    const rejected = qs.get("rejected");
+    if (rejected) toast.error(rejected, { duration: 8000 });
   }, []);
 
   async function handleGoogle() {

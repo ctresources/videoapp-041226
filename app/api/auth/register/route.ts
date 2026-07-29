@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyNewUser } from "@/lib/email";
-import { spamCheck } from "@/lib/spam-guards";
+import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
 import { attributeReferral } from "@/lib/affiliate-attribution";
 import { getCapacity, maybeNotifyCapacity } from "@/lib/capacity";
 
@@ -12,11 +12,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // ── Spam / bot heuristic checks ──────────────────────────────────────────────
-  const spam = spamCheck(fullName, email);
-  if (spam) return NextResponse.json({ error: spam }, { status: 400 });
-
   const admin = createAdminClient();
+
+  // ── Spam / bot screening ────────────────────────────────────────────────────
+  // Includes the canonical-inbox check, so "j.o.h.n+x@gmail.com" can't collect
+  // a second free video when "john@gmail.com" already has an account.
+  const spam = await screenSignup(admin, { name: fullName, email });
+  if (spam) return NextResponse.json({ error: spam }, { status: 400 });
 
   // Beta capacity. This check used to be missing here entirely, so the cap
   // could be sidestepped by using the email form instead of Google. Checked
@@ -39,6 +41,13 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  // Record the canonical inbox so a later signup under a different spelling
+  // of the same address is recognised as a duplicate.
+  await admin
+    .from("profiles")
+    .update({ email_canonical: canonicalEmail(email) })
+    .eq("id", data.user.id);
 
   notifyNewUser({ name: fullName, email, provider: "email" });
   await maybeNotifyCapacity(admin);
