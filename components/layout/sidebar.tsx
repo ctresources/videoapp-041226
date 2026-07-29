@@ -20,6 +20,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -35,9 +36,29 @@ const navItems = [
   { href: "/help",      icon: HelpCircle,      label: "How It Works" },
 ];
 
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free plan",
+  beta: "Beta access",
+  starter: "Starter plan",
+  agent: "Agent plan",
+  pro: "Pro plan",
+};
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  // Role and plan for the sidebar: the Admin link was rendered for everyone
+  // (the /admin route bounced them straight back), and the plan label was
+  // hardcoded to "Free plan" even for Pro subscribers.
+  const [account, setAccount] = useState<{ isAdmin: boolean; tier: string } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, tier: a.tier ?? "free" }))
+      .catch(() => {});
+  }, [user]);
 
   return (
     <aside className="hidden md:flex flex-col w-60 bg-white border-r border-slate-100 min-h-screen shrink-0">
@@ -76,19 +97,22 @@ export function Sidebar() {
           );
         })}
 
-        {/* Admin link — shown only if admin */}
-        <Link
-          href="/admin"
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-2",
-            pathname.startsWith("/admin")
-              ? "bg-secondary-500 text-white shadow-sm"
-              : "text-slate-400 hover:bg-slate-100 hover:text-brand-text"
-          )}
-        >
-          <ShieldCheck size={18} className="shrink-0" />
-          Admin
-        </Link>
+        {/* Admin link — actually only for admins now. Hidden until the role is
+            known, so it never flashes in for a regular user on load. */}
+        {account?.isAdmin && (
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-2",
+              pathname.startsWith("/admin")
+                ? "bg-secondary-500 text-white shadow-sm"
+                : "text-slate-400 hover:bg-slate-100 hover:text-brand-text"
+            )}
+          >
+            <ShieldCheck size={18} className="shrink-0" />
+            Admin
+          </Link>
+        )}
       </nav>
 
       {/* User + Logout */}
@@ -99,7 +123,9 @@ export function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-brand-text truncate">{user?.email}</p>
-            <p className="text-xs text-slate-400">Free plan</p>
+            <p className="text-xs text-slate-400">
+              {account ? (PLAN_LABELS[account.tier] ?? `${account.tier} plan`) : " "}
+            </p>
           </div>
         </div>
         <form action="/api/auth/logout" method="POST">
