@@ -124,7 +124,7 @@ export function Sidebar() {
           <div className="min-w-0">
             <p className="text-xs font-medium text-brand-text truncate">{user?.email}</p>
             <p className="text-xs text-slate-400">
-              {account ? (PLAN_LABELS[account.tier] ?? `${account.tier} plan`) : " "}
+              {!account ? " " : account.isAdmin ? "Admin-Unlimited" : (PLAN_LABELS[account.tier] ?? account.tier + " plan")}
             </p>
           </div>
         </div>

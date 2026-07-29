@@ -7,7 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   CheckCircle, CreditCard, Zap, Building2, User,
-  AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video,
+  AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video, Infinity,
 } from "lucide-react";
 
 // Short and long videos are SEPARATE monthly allowances — using long videos
@@ -103,7 +103,7 @@ export default async function BillingPage({
   const admin = createAdminClient();
   const { data: profileData } = await admin
     .from("profiles")
-    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id")
+    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id, role")
     .eq("id", user.id)
     .single();
 
@@ -118,6 +118,7 @@ export default async function BillingPage({
     cancel_at_period_end: boolean;
     stripe_customer_id: string | null;
     stripe_subscription_id: string | null;
+    role: string | null;
   } | null;
 
   const currentTier = profile?.subscription_tier || "free";
@@ -137,6 +138,9 @@ export default async function BillingPage({
   const longPlan = profile?.long_credits_remaining ?? 0;
   const shortBought = profile?.purchased_short_videos ?? 0;
   const longBought = profile?.purchased_long_videos ?? 0;
+  // Admins are uncapped, so the counters below describe a limit that
+  // doesn't apply to them — say so rather than showing a plan quota.
+  const isAdmin = profile?.role === "admin";
   const shortLeft = shortPlan + shortBought;
   const longLeft = longPlan + longBought;
 
@@ -244,6 +248,23 @@ export default async function BillingPage({
             )}
           </div>
         </div>
+
+        {/* Admins ignore the quota entirely, so lead with that instead of
+            leaving them to read counters that don't apply. */}
+        {isAdmin && (
+          <div className="mt-5 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2.5 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
+              <Infinity size={16} className="text-indigo-600 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-indigo-800">Admin-Unlimited</p>
+                <p className="text-xs text-indigo-700 mt-0.5">
+                  Your account isn&apos;t charged for AI videos and has no monthly cap. The plan
+                  figures below apply to customers, not to you.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Usage summary */}
         {(currentPlan || currentTier === "beta") && (

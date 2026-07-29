@@ -23,9 +23,13 @@ export async function GET() {
   const profile = (data ?? {}) as Record<string, number | string | null>;
   const isAdmin = profile.role === "admin";
 
+  // Admins are genuinely uncapped (create-blog neither refuses nor charges
+  // them), so report that as a flag rather than inventing a big number — a
+  // fake 999 is just a different way of showing something untrue.
   return NextResponse.json({
-    short: isAdmin ? 999 : availableFor(profile as never, "short"),
-    long: isAdmin ? 999 : availableFor(profile as never, "long"),
+    unlimited: isAdmin,
+    short: availableFor(profile as never, "short"),
+    long: availableFor(profile as never, "long"),
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
   });

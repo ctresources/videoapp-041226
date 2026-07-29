@@ -426,8 +426,12 @@ export async function POST(req: NextRequest) {
   // prompt carries the script, so past ~4 min the quality instructions get
   // squeezed out (see the head/tail budget below).
   const tier = profile.subscription_tier ?? "free";
+  // Admins get the highest cap regardless of tier — otherwise an admin whose
+  // tier is "free" is silently held to 3 minutes, which breaks the long-video
+  // testing that being an admin is for. (canUseDigitalTwin already does this;
+  // this cap was the one place still keyed on tier alone.)
   const shortFormMaxWords =
-    tier === "agent" || tier === "pro" ? MAX_SHORT_WORDS_4MIN : MAX_SHORT_WORDS_3MIN;
+    isAdmin || tier === "agent" || tier === "pro" ? MAX_SHORT_WORDS_4MIN : MAX_SHORT_WORDS_3MIN;
   const maxScriptWords = isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : shortFormMaxWords;
 
   // The CTA arrives separately and is appended AFTER the body clamp. It lives
@@ -684,7 +688,10 @@ export async function POST(req: NextRequest) {
         .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
         .eq("id", videoRow.id);
 
-      if (charge) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+      // Admins are never charged. Previously only the REFUSAL was skipped for
+      // them, so balances still drained to zero and had to be topped up by hand
+      // (one admin account was manually set to 9999 short videos).
+      if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
@@ -771,7 +778,10 @@ export async function POST(req: NextRequest) {
       .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
       .eq("id", videoRow?.id);
 
-    if (charge) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+    // Admins are never charged. Previously only the REFUSAL was skipped for
+      // them, so balances still drained to zero and had to be topped up by hand
+      // (one admin account was manually set to 9999 short videos).
+      if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",

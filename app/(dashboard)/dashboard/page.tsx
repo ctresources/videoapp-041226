@@ -34,7 +34,7 @@ async function DashboardStats() {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end, role").eq("id", user.id).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -48,12 +48,16 @@ async function DashboardStats() {
     purchased_long_videos: number;
     subscription_tier: string;
     current_period_end: string | null;
+    role: string | null;
   } | null;
 
   // Short and long are separate allowances — users never see "credits". Each
   // combines the monthly plan balance with purchased add-ons (never expire).
   const creditsLeft = (profile?.credits_remaining ?? 0) + (profile?.purchased_short_videos ?? 0);
   const longFormLeft = (profile?.long_credits_remaining ?? 0) + (profile?.purchased_long_videos ?? 0);
+  // Admins are uncapped — create-blog neither refuses nor charges them, so
+  // showing a countdown would be meaningless (and used to drain to zero).
+  const isAdmin = profile?.role === "admin";
   const videosLeftLabel = [
     `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""}`,
     longFormLeft > 0 ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""}` : "",
@@ -73,27 +77,41 @@ async function DashboardStats() {
         </p>
       </div>
 
-      {/* Videos remaining banner */}
-      <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm ${
-        creditsLeft === 0 ? "bg-red-50 border border-red-200"
-        : creditsLeft <= 1 ? "bg-amber-50 border border-amber-200"
-        : "bg-blue-50 border border-blue-100"
-      }`}>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
-          <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
-            {creditsLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
-          </span>
-          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-            ∞ Camera Recordings
+      {/* Videos remaining banner — admins get a flat "unlimited" state rather
+          than a countdown, since nothing is deducted from them. */}
+      {isAdmin ? (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-indigo-50 border border-indigo-200">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Infinity size={16} className="text-indigo-600" />
+            <span className="font-semibold text-sm text-indigo-700">Admin-Unlimited</span>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              ∞ Camera Recordings
+            </span>
+          </div>
+          <span className="text-xs shrink-0 text-indigo-500">No limit on AI videos</span>
+        </div>
+      ) : (
+        <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm ${
+          creditsLeft === 0 ? "bg-red-50 border border-red-200"
+          : creditsLeft <= 1 ? "bg-amber-50 border border-amber-200"
+          : "bg-blue-50 border border-blue-100"
+        }`}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
+            <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
+              {creditsLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
+            </span>
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              ∞ Camera Recordings
+            </span>
+          </div>
+          <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
+            {creditsLeft === 0
+              ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
+              : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
           </span>
         </div>
-        <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
-          {creditsLeft === 0
-            ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
-            : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
-        </span>
-      </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {/* AI Videos Left */}
@@ -102,9 +120,19 @@ async function DashboardStats() {
             <Zap className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-brand-text">{creditsLeft}</p>
-            <p className="text-xs text-slate-500 leading-tight">Short Videos Left</p>
-            {longFormLeft > 0 && <p className="text-[10px] text-slate-400 leading-tight">+ {longFormLeft} long</p>}
+            {isAdmin ? (
+              <>
+                <Infinity className="w-6 h-6 text-indigo-600" />
+                <p className="text-xs text-slate-500 leading-tight">AI Videos</p>
+                <p className="text-[10px] text-indigo-600 font-semibold leading-tight">Admin-Unlimited</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-brand-text">{creditsLeft}</p>
+                <p className="text-xs text-slate-500 leading-tight">Short Videos Left</p>
+                {longFormLeft > 0 && <p className="text-[10px] text-slate-400 leading-tight">+ {longFormLeft} long</p>}
+              </>
+            )}
           </div>
         </Card>
 
