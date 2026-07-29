@@ -8,7 +8,16 @@
  * user through, and email registration did not check at all — which made the
  * cap bypassable simply by using the email form instead of Google.
  */
-export const MAX_BETA_USERS = 100;
+export const MAX_BETA_USERS = Number(process.env.MAX_BETA_USERS ?? 100);
+
+/**
+ * Only accounts created on or after this instant count against the beta cap.
+ *
+ * This is the reset switch: set BETA_START_AT to today and the run starts over
+ * at 0 of 100 without touching any existing account. Unset means "count
+ * everyone", which is the original behaviour.
+ */
+const BETA_START_AT = process.env.BETA_START_AT || null;
 
 export interface Capacity {
   open: boolean;
@@ -19,9 +28,9 @@ export interface Capacity {
 
 /** Current signup capacity, for display and for pre-signup gating. */
 export async function getCapacity(admin: any): Promise<Capacity> {
-  const { count } = await admin
-    .from("profiles")
-    .select("*", { count: "exact", head: true });
+  let query = admin.from("profiles").select("*", { count: "exact", head: true });
+  if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
+  const { count } = await query;
 
   const total = count ?? 0;
   return {
@@ -43,10 +52,48 @@ export async function getCapacity(admin: any): Promise<Capacity> {
  * profiles have already filled the beta.
  */
 export async function hasCapacityForNewUser(admin: any, newUserId: string): Promise<boolean> {
-  const { count } = await admin
+  let query = admin
     .from("profiles")
     .select("*", { count: "exact", head: true })
     .neq("id", newUserId);
+  if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
+  const { count } = await query;
 
   return (count ?? 0) < MAX_BETA_USERS;
+}
+
+/** Spots remaining at which the owner gets a heads-up email. */
+const LOW_SPOTS_THRESHOLD = 10;
+
+/**
+ * Emails the owner once when the beta is nearly full, and once when it's gone.
+ *
+ * The "once" matters: this runs after every signup, and without the
+ * app_settings flag the owner would get an alert per signup for the last ten
+ * accounts. Never throws — a failed notification must not fail a signup.
+ */
+export async function maybeNotifyCapacity(admin: any): Promise<void> {
+  try {
+    const cap = await getCapacity(admin);
+    if (cap.remaining > LOW_SPOTS_THRESHOLD) return;
+
+    const flag = cap.remaining <= 0 ? "beta_full_notified" : "beta_low_notified";
+    const { data: existing } = await admin
+      .from("app_settings")
+      .select("key")
+      .eq("key", flag)
+      .maybeSingle();
+    if (existing) return; // already told them
+
+    await admin.from("app_settings").upsert({
+      key: flag,
+      value: { count: cap.count, max: cap.max, at: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    });
+
+    const { notifyBetaCapacity } = await import("@/lib/email");
+    await notifyBetaCapacity({ count: cap.count, max: cap.max, remaining: cap.remaining });
+  } catch (err) {
+    console.error("[capacity] notify failed:", err);
+  }
 }

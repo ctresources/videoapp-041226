@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyNewUser } from "@/lib/email";
 import { attributeReferral } from "@/lib/affiliate-attribution";
-import { hasCapacityForNewUser } from "@/lib/capacity";
+import { hasCapacityForNewUser, maybeNotifyCapacity } from "@/lib/capacity";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       notifyNewUser({ name, email: user.email ?? null, provider: "google" });
       // Affiliate attribution from the sr_ref cookie set at ?ref= visit time.
       await attributeReferral(admin, user.id, user.email, req.cookies.get("sr_ref")?.value);
+      await maybeNotifyCapacity(admin);
     }
 
     const { data: profile } = await admin

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyNewUser } from "@/lib/email";
 import { spamCheck } from "@/lib/spam-guards";
 import { attributeReferral } from "@/lib/affiliate-attribution";
-import { getCapacity } from "@/lib/capacity";
+import { getCapacity, maybeNotifyCapacity } from "@/lib/capacity";
 
 export async function POST(req: NextRequest) {
   const { email, password, fullName, refCode } = await req.json();
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   notifyNewUser({ name: fullName, email, provider: "email" });
+  await maybeNotifyCapacity(admin);
 
   // Affiliate attribution (best-effort; profile row exists via handle_new_user)
   await attributeReferral(admin, data.user.id, email, refCode);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { spamCheck } from "@/lib/spam-guards";
+import { notifyWaitlistSignup } from "@/lib/email";
 
 /** Public endpoint — anyone can join the waitlist once the beta is full. */
 export async function POST(req: NextRequest) {
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
     console.error("[waitlist] insert failed:", error.message);
     return NextResponse.json({ error: "Could not save your spot. Please try again." }, { status: 500 });
   }
+
+  notifyWaitlistSignup({ name: fullName?.trim() || null, email: clean });
 
   return NextResponse.json({ ok: true });
 }

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -69,7 +69,10 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Invite codes state
-  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates">("users");
+  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist">("users");
+  const [waitlist, setWaitlist] = useState<{ id: string; email: string; full_name: string | null; source: string | null; created_at: string }[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [capacity, setCapacity] = useState<{ open: boolean; count: number; max: number; remaining: number } | null>(null);
   const [affiliates, setAffiliates] = useState<AffiliateRow[]>([]);
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [affiliateBusy, setAffiliateBusy] = useState<Record<string, boolean>>({});
@@ -192,6 +195,19 @@ export default function AdminPage() {
 
   useEffect(() => { if (adminTab === "affiliates") loadAffiliates(); }, [adminTab, loadAffiliates]);
 
+  const loadWaitlist = useCallback(async () => {
+    setWaitlistLoading(true);
+    const res = await fetch("/api/admin/waitlist");
+    if (res.ok) {
+      const { entries, capacity } = await res.json();
+      setWaitlist(entries);
+      setCapacity(capacity);
+    }
+    setWaitlistLoading(false);
+  }, []);
+
+  useEffect(() => { if (adminTab === "waitlist") loadWaitlist(); }, [adminTab, loadWaitlist]);
+
   async function updateAffiliate(id: string, status: "approved" | "rejected") {
     if (status === "rejected" && !confirm("Reject this affiliate application?")) return;
     setAffiliateBusy((p) => ({ ...p, [id]: true }));
@@ -246,7 +262,7 @@ export default function AdminPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-5">
-        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"]] as const).map(([tab, Icon, label]) => (
+        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"]] as const).map(([tab, Icon, label]) => (
           <button key={tab} onClick={() => setAdminTab(tab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
@@ -363,6 +379,76 @@ export default function AdminPage() {
             )}
           </Card>
         </div>
+      )}
+
+      {/* ── WAITLIST TAB ── */}
+      {adminTab === "waitlist" && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-brand-text">
+              Beta Waitlist <span className="text-slate-400 font-normal">({waitlist.length})</span>
+            </p>
+            <button onClick={loadWaitlist} className="p-2 text-slate-400 hover:text-slate-600 transition-colors" title="Refresh">
+              <RefreshCw size={14} className={waitlistLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+
+          {capacity && (
+            <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 mb-4 ${capacity.open ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-slate-800">
+                  {capacity.count} of {capacity.max} beta spots used
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {capacity.open
+                    ? `${capacity.remaining} free ${capacity.remaining === 1 ? "spot" : "spots"} left. New signups still get the free video.`
+                    : "Beta is full — new signups see the waitlist form and a paid-plan option."}
+                </p>
+              </div>
+              <div className="w-32 h-2 bg-white rounded-full overflow-hidden border border-slate-200 shrink-0">
+                <div
+                  className={capacity.open ? "h-full bg-emerald-500" : "h-full bg-amber-500"}
+                  style={{ width: `${Math.min(100, (capacity.count / (capacity.max || 1)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {waitlistLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : waitlist.length === 0 ? (
+            <p className="text-sm text-slate-400 py-6 text-center">
+              Nobody on the waitlist yet — it only fills up once the beta is full.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="py-2 px-3 text-xs font-semibold text-slate-500">Name</th>
+                    <th className="py-2 px-3 text-xs font-semibold text-slate-500">Email</th>
+                    <th className="py-2 px-3 text-xs font-semibold text-slate-500">Source</th>
+                    <th className="py-2 px-3 text-xs font-semibold text-slate-500">Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waitlist.map((w) => (
+                    <tr key={w.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-2 px-3 text-slate-700">{w.full_name || "—"}</td>
+                      <td className="py-2 px-3">
+                        <a href={`mailto:${w.email}`} className="text-primary-600 hover:underline">{w.email}</a>
+                      </td>
+                      <td className="py-2 px-3 text-slate-400 text-xs">{w.source || "—"}</td>
+                      <td className="py-2 px-3 text-slate-400 text-xs">
+                        {new Date(w.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       )}
 
       {/* ── AFFILIATES TAB ── */}
