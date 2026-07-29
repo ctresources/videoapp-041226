@@ -35,6 +35,13 @@ const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS_3MIN;
 // digital twin) or $2.60/min (Avatar III photo avatar).
 const MAX_LONG_FORM_SCRIPT_WORDS = 1160; // ~8 min
 
+// Admins render test videos beyond what any plan sells, so they get HeyGen's
+// own practical ceiling (~15 min) rather than the product limit. Safe to raise
+// only for long form: it uses Direct Video, where the script is a separate
+// field with no prompt budget. The SHORT cap must stay put — that one is a
+// technical ceiling, not a plan choice (see the note above).
+const MAX_LONG_FORM_SCRIPT_WORDS_ADMIN = 2175; // ~15 min
+
 // Short and long videos draw from SEPARATE monthly allowances (1 each), so
 // there is no shared cost multiplier. See the plan allotments in lib/stripe.ts.
 
@@ -432,7 +439,8 @@ export async function POST(req: NextRequest) {
   // this cap was the one place still keyed on tier alone.)
   const shortFormMaxWords =
     isAdmin || tier === "agent" || tier === "pro" ? MAX_SHORT_WORDS_4MIN : MAX_SHORT_WORDS_3MIN;
-  const maxScriptWords = isLongForm ? MAX_LONG_FORM_SCRIPT_WORDS : shortFormMaxWords;
+  const longFormMaxWords = isAdmin ? MAX_LONG_FORM_SCRIPT_WORDS_ADMIN : MAX_LONG_FORM_SCRIPT_WORDS;
+  const maxScriptWords = isLongForm ? longFormMaxWords : shortFormMaxWords;
 
   // The CTA arrives separately and is appended AFTER the body clamp. It lives
   // at the end of the spoken script, so a plain tail-clamp used to silently
