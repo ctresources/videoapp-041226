@@ -4,7 +4,8 @@ import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { isExpiredHeygenUrl } from "@/lib/utils/video-url";
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 120;
+// Matches the webhook: re-storing may also run the ffmpeg b-roll composite.
+export const maxDuration = 300;
 
 const HEYGEN_API = "https://api.heygen.com";
 
@@ -13,6 +14,12 @@ const HEYGEN_API = "https://api.heygen.com";
  * Permanently stores a video in Supabase Storage.
  * If the current video_url is still valid, uses it directly.
  * If it has expired, re-fetches a fresh URL from HeyGen first.
+ *
+ * This doubles as the repair path for renders whose webhook did not finish its
+ * post-processing: it replays the SAME options the webhook would have used, so
+ * a video that came back without its b-roll gets it here rather than costing
+ * the user a re-render. The Videos page calls this automatically for any
+ * completed video still sitting on a HeyGen URL.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -25,16 +32,24 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, render_job_id, video_url")
+    .select("id, render_job_id, video_url, metadata")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
+  // Same post-processing the webhook was given — see the note above.
+  const meta = (video.metadata ?? {}) as Record<string, unknown>;
+  const storeOpts = {
+    musicUrl: (meta.music_url as string | undefined) || null,
+    photoUrls: Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null,
+    dimension: (meta.dimension as { width: number; height: number } | undefined) || null,
+  };
+
   // If the stored URL is still valid, download it directly without hitting HeyGen API.
   if (video.video_url && !isExpiredHeygenUrl(video.video_url)) {
-    const permanentUrl = await downloadAndStoreVideo(video.video_url, video.id);
+    const permanentUrl = await downloadAndStoreVideo(video.video_url, video.id, storeOpts);
     if (permanentUrl) return NextResponse.json({ videoUrl: permanentUrl });
     // Fall through to try HeyGen API if direct download failed.
   }
@@ -79,6 +94,6 @@ export async function POST(req: NextRequest) {
   }
 
   // Download and store permanently
-  const permanentUrl = await downloadAndStoreVideo(freshUrl, video.id);
+  const permanentUrl = await downloadAndStoreVideo(freshUrl, video.id, storeOpts);
   return NextResponse.json({ videoUrl: permanentUrl || freshUrl });
 }
