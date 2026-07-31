@@ -107,9 +107,9 @@ type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 type VideoChoice = VideoType | "youtube_long";
 
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "youtube_16x9", label: "YouTube / Blog", desc: "Landscape 16:9 · up to 4 min · automatic b-roll", credits: 1 },
+  { value: "youtube_16x9", label: "YouTube", desc: "Landscape 16:9 · up to 4 min · automatic b-roll", credits: 1 },
   { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16 · up to 4 min · automatic b-roll", credits: 1 },
-  { value: "youtube_long", label: "Long Video", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals", proOnly: true, credits: 1 },
+  { value: "youtube_long", label: "Long Video / Blog", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
 const LONG_CAP_WORDS = 1160; // ~8 min at 145 wpm
