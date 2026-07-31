@@ -48,10 +48,10 @@ export function minutesFor(words: number): number {
  * 15-minute recording cap. Lengths are a creative choice, not a budget one.
  */
 export const CAMERA_LENGTHS = [
-  { key: "quick",    label: "Quick",     minutes: 1,  words: 145 },
-  { key: "standard", label: "Standard",  minutes: 3,  words: 400 },
-  { key: "deep",     label: "In-Depth",  minutes: 5,  words: 725 },
-  { key: "full",     label: "Full",      minutes: 10, words: 1450 },
+  { key: "quick",    label: "Quick",     minutes: 2,  words: 290 },
+  { key: "standard", label: "Standard",  minutes: 3,  words: 435 },
+  { key: "deep",     label: "In-Depth",  minutes: 4,  words: 580 },
+  { key: "full",     label: "Full",      minutes: 8,  words: 1160 },
 ] as const;
 
 export type CameraLength = (typeof CAMERA_LENGTHS)[number]["key"];
