@@ -12,6 +12,14 @@
  * the video type), and the avatar's own length drives the final duration — the
  * background slideshow is looped and clipped to the avatar via overlay
  * shortest=1, so we never need to read the avatar's duration.
+ *
+ * This runs inside a 300-second serverless function, and pass 2 re-encodes the
+ * WHOLE avatar video — so encode speed, not quality, is the binding constraint.
+ * An 8-minute 1080p render is ~12,000 frames, which libx264 cannot finish in
+ * the budget on a single vCPU: it timed out, and because the timeout killed the
+ * function before the upload step, the video was never stored permanently
+ * either. Hence the 720p cap and ultrafast preset below — a resolution drop is
+ * a far better outcome than a lost render.
  */
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
@@ -24,6 +32,22 @@ ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 const MAX_PHOTOS = 8;
 const SECONDS_PER_PHOTO = 4;
+
+/**
+ * Longest edge of the composited output. The avatar arrives from HeyGen at
+ * 1080p; compositing at that size cannot finish inside the function's time
+ * budget for a long video, so the output is capped at 720p.
+ */
+const MAX_LONG_EDGE = 1280;
+
+/** Scale a render size down to MAX_LONG_EDGE, keeping both edges even for x264. */
+function outputSize(width: number, height: number): { w: number; h: number } {
+  const scale = Math.min(1, MAX_LONG_EDGE / Math.max(width, height));
+  return {
+    w: Math.round((width * scale) / 2) * 2,
+    h: Math.round((height * scale) / 2) * 2,
+  };
+}
 
 /**
  * Returns a new MP4 buffer with the photos as background b-roll and the avatar
@@ -39,6 +63,9 @@ export async function compositePhotos(
   const photos = photoUrls.filter(Boolean).slice(0, MAX_PHOTOS);
   if (photos.length === 0) return null;
 
+  const { w: outW, h: outH } = outputSize(width, height);
+
+  const startedAt = Date.now();
   const dir = join(tmpdir(), `broll-${randomUUID()}`);
   try {
     await fs.mkdir(dir, { recursive: true });
@@ -68,22 +95,23 @@ export async function compositePhotos(
       const parts: string[] = [];
       for (let i = 0; i < n; i++) {
         parts.push(
-          `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,` +
-          `crop=${width}:${height},setsar=1,format=yuv420p,fps=25[p${i}]`,
+          `[${i}:v]scale=${outW}:${outH}:force_original_aspect_ratio=increase,` +
+          `crop=${outW}:${outH},setsar=1,format=yuv420p,fps=25[p${i}]`,
         );
       }
       parts.push(`${photoPaths.map((_, i) => `[p${i}]`).join("")}concat=n=${n}:v=1:a=0[bg]`);
       cmd
         .complexFilter(parts, "bg")
-        .outputOptions(["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p"])
+        // Intermediate only — pass 2 re-encodes it, so spend nothing here.
+        .outputOptions(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-threads", "0"])
         .on("end", () => resolve())
         .on("error", (err) => reject(err))
         .save(slidePath);
     });
 
     // ── Pass 2: loop the slideshow under the avatar PiP; avatar drives length ─
-    const pipW = Math.round((width * 0.3) / 2) * 2;
-    const margin = Math.round(width * 0.03);
+    const pipW = Math.round((outW * 0.3) / 2) * 2;
+    const margin = Math.round(outW * 0.03);
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(videoPath)
@@ -93,12 +121,17 @@ export async function compositePhotos(
           `[0:v]scale=${pipW}:-2,format=yuv420p[av]`,
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1[outv]`,
         ])
+        // This encodes the full length of the avatar video — the one step that
+        // has to stay inside the function's time budget. ultrafast trades file
+        // size for speed, which is the right way round here.
         .outputOptions([
           "-map", "[outv]",
           "-map", "0:a?",
           "-c:v", "libx264",
-          "-preset", "veryfast",
+          "-preset", "ultrafast",
+          "-crf", "26",
           "-pix_fmt", "yuv420p",
+          "-threads", "0",
           "-c:a", "aac",
           "-b:a", "192k",
         ])
@@ -108,7 +141,7 @@ export async function compositePhotos(
     });
 
     const out = await fs.readFile(outPath);
-    console.log(`[composite-photos] Composited ${n} photo(s) into ${width}x${height} video (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(`[composite-photos] Composited ${n} photo(s) into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
     return out;
   } catch (err) {
     console.error("[composite-photos] Failed, keeping plain avatar video:", err instanceof Error ? err.message : err);

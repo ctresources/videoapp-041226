@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 
@@ -25,6 +26,31 @@ function verifyHeygenSignature(rawBody: string, req: NextRequest): boolean {
 
 // Video storage + auto-thumbnail generation can each take ~1 min.
 export const maxDuration = 300;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Read-only lookup of a render's current video_url, using the same match order
+ * as the main handler (callback_id → video_id → session_id). Kept separate from
+ * those queries because they mutate the row as they search.
+ */
+async function findStoredUrl(
+  admin: ReturnType<typeof createAdminClient>,
+  ids: { callbackId?: string | null; videoId?: string | null; sessionId?: string | null },
+): Promise<string | null> {
+  if (ids.callbackId && UUID_RE.test(ids.callbackId)) {
+    const { data } = await admin
+      .from("generated_videos").select("video_url").eq("id", ids.callbackId).maybeSingle();
+    if (data) return (data as { video_url: string | null }).video_url;
+  }
+  for (const jobId of [ids.videoId, ids.sessionId]) {
+    if (!jobId) continue;
+    const { data } = await admin
+      .from("generated_videos").select("video_url").eq("render_job_id", jobId).maybeSingle();
+    if (data) return (data as { video_url: string | null }).video_url;
+  }
+  return null;
+}
 
 // HeyGen pings GET to verify the endpoint is reachable before registering it
 export async function GET() {
@@ -122,6 +148,21 @@ export async function POST(req: NextRequest) {
     // Still processing or unknown event — acknowledge and skip
     console.warn("[webhook] Unhandled event type or unknown payload:", JSON.stringify(body).slice(0, 300));
     return NextResponse.json({ received: true });
+  }
+
+  // ── Ignore duplicate deliveries of an already-stored render ───────────────
+  // HeyGen retries whenever this endpoint answers non-2xx, and it used to
+  // answer 504: one long render was delivered four times, each attempt
+  // re-running the full download + ffmpeg pipeline and timing out again. The
+  // updates below also rewrite video_url with HeyGen's temporary URL, so a
+  // retry could undo the permanent URL an earlier attempt had already stored.
+  // Once the video is in our own bucket there is nothing left to do.
+  if (success) {
+    const stored = await findStoredUrl(admin, { callbackId, videoId, sessionId });
+    if (stored && !isHeygenUrl(stored)) {
+      console.log(`[webhook] Already stored, ignoring duplicate ${eventType} (callback=${callbackId})`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
   }
 
   // ── Find the generated_videos row ─────────────────────────────────────────
