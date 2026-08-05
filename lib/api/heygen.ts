@@ -224,7 +224,12 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
  * Returns the user's own cloned voice_id, stored in the profile as heygen_voice_id
  * and passed as voice_id to the Video Agent so their real voice is used.
  *
- * Requires a paid HeyGen plan; accounts are capped at 10 voice clones.
+ * Requires a paid HeyGen plan. Every user clones into the SAME HeyGen account
+ * (one shared API key), so whatever per-account clone limit that plan carries
+ * is a ceiling on total users, not per user. The limit is not documented in
+ * HeyGen's help centre and has not been confirmed for this account — if clones
+ * start failing at scale, check the error text from /v3/voices/clone, which
+ * surfaces HeyGen's own message (see the throw below).
  */
 export async function cloneVoice(
   audioBuffer: Buffer,
