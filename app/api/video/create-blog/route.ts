@@ -11,6 +11,7 @@ import {
   type VideoAgentFile,
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
+import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -572,10 +573,7 @@ export async function POST(req: NextRequest) {
       `(head ${head.length}, tail ${Math.max(0, Math.min(room, tail.length))}/${tail.length} kept)`,
     );
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-    const callbackUrl = appUrl && !appUrl.includes("localhost")
-      ? `${appUrl}/api/video/webhook`
-      : undefined;
+    const callbackUrl = buildCallbackUrl();
 
     // avatarId is only set when the client explicitly selected a look (Avatar + Voice mode).
     // Voice Only mode sends no lookId, so no avatar is placed on screen.

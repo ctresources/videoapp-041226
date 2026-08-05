@@ -9,6 +9,7 @@ import {
   type VideoType,
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
+import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 
 export const maxDuration = 60;
 
@@ -115,10 +116,7 @@ export async function POST(req: NextRequest) {
   try {
     const dimension = DIMENSIONS[edits.format] || DIMENSIONS.blog_long;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-    const callbackUrl = appUrl && !appUrl.includes("localhost")
-      ? `${appUrl}/api/video/webhook`
-      : undefined;
+    const callbackUrl = buildCallbackUrl();
 
     // Re-render uses Direct Video (POST /v3/videos): the avatar speaks the FULL
     // script verbatim (the Video Agent summarized long scripts). Uploaded photos

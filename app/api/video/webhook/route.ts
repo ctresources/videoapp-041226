@@ -7,21 +7,50 @@ import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 
+/** Constant-time string compare that tolerates differing lengths. */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
 /**
- * Verifies HeyGen's HMAC-SHA256 signature over the raw request body (sent in
- * the `Signature` header, keyed with HEYGEN_WEBHOOK_SECRET). Returns whether
- * the request is authentic — callers decide whether to enforce.
- * See https://docs.heygen.com/docs/write-your-endpoint-to-process-webhook-events
+ * Verifies the shared secret carried in the callback URL's `k` parameter.
+ *
+ * This is the ACTIVE authentication for this endpoint. HeyGen signs only
+ * deliveries to endpoints registered via POST /v3/webhooks/endpoints; we use
+ * per-request `callback_url`, which is never signed — so there is no signature
+ * to verify and the endpoint was accepting anonymous POSTs. See
+ * lib/utils/webhook-callback.ts, which builds the URL from the same env var.
+ *
+ * Returns "unconfigured" when HEYGEN_WEBHOOK_TOKEN is unset, which means the
+ * submitted URLs carry no token either — the caller logs loudly and processes,
+ * so deploying this change cannot break delivery on its own.
+ */
+function verifyCallbackToken(req: NextRequest): "ok" | "bad" | "unconfigured" {
+  const expected = process.env.HEYGEN_WEBHOOK_TOKEN;
+  if (!expected) return "unconfigured";
+  const provided = new URL(req.url).searchParams.get("k") ?? "";
+  return safeEqual(provided, expected) ? "ok" : "bad";
+}
+
+/**
+ * Verifies HeyGen's HMAC-SHA256 signature over the raw request body.
+ *
+ * Inert on the current pipeline: HeyGen sends `Heygen-Signature` only to
+ * registered webhook endpoints, and no secret is issued for the per-request
+ * callbacks we use — production logs show the header absent on every delivery.
+ * Kept, with the correct header name, so that migrating to a registered
+ * endpoint is a config change rather than a code change.
+ * See https://developers.heygen.com/docs/webhooks
  */
 function verifyHeygenSignature(rawBody: string, req: NextRequest): boolean {
   const secret = process.env.HEYGEN_WEBHOOK_SECRET;
   if (!secret) return false;
-  const provided = req.headers.get("signature") || req.headers.get("Signature") || "";
+  const provided = req.headers.get("heygen-signature") || "";
   if (!provided) return false;
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(provided, expected);
 }
 
 // Video storage + auto-thumbnail generation can each take ~1 min.
@@ -70,6 +99,22 @@ export async function POST(req: NextRequest) {
   // Read the raw body first — signature verification must run over the exact
   // bytes HeyGen signed, before any JSON re-serialization.
   const rawBody = await req.text();
+
+  // ── Callback token ────────────────────────────────────────────────────────
+  // The real gate. Rejecting here matters because a forged avatar_video.fail
+  // triggers refundVideoCredits — users know their own video UUIDs from the
+  // UI, so an unauthenticated endpoint is a self-serve credit refund.
+  const tokenCheck = verifyCallbackToken(req);
+  if (tokenCheck === "bad") {
+    console.warn("[webhook] Rejected: missing or invalid callback token");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (tokenCheck === "unconfigured") {
+    console.warn(
+      "[webhook] HEYGEN_WEBHOOK_TOKEN is not set — this endpoint is UNAUTHENTICATED. " +
+      "Set it in the environment to turn verification on at both ends.",
+    );
+  }
 
   // ── Signature verification ────────────────────────────────────────────────
   // Rollout is staged so a misconfigured secret can't silently break video
