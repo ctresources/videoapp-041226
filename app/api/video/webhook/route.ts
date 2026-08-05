@@ -35,22 +35,45 @@ function verifyCallbackToken(req: NextRequest): "ok" | "bad" | "unconfigured" {
 }
 
 /**
- * Verifies HeyGen's HMAC-SHA256 signature over the raw request body.
+ * How stale a delivery may be before it is treated as a replay. The signature
+ * covers only the body, so a captured request stays valid forever without a
+ * freshness bound.
+ */
+const MAX_WEBHOOK_AGE_SECONDS = 15 * 60;
+
+/**
+ * Verifies HeyGen's HMAC-SHA256 signature over the raw request body, plus the
+ * `Heygen-Timestamp` freshness bound.
  *
- * Inert on the current pipeline: HeyGen sends `Heygen-Signature` only to
- * registered webhook endpoints, and no secret is issued for the per-request
- * callbacks we use — production logs show the header absent on every delivery.
- * Kept, with the correct header name, so that migrating to a registered
- * endpoint is a config change rather than a code change.
+ * Only deliveries to endpoints registered via POST /v3/webhooks/endpoints are
+ * signed; the per-request `callback_url` path we used historically is not, which
+ * is why this returned false on every real delivery until now. Once the endpoint
+ * is registered and HEYGEN_WEBHOOK_SECRET holds its secret, this becomes the
+ * real gate and the URL token can be retired.
  * See https://developers.heygen.com/docs/webhooks
  */
-function verifyHeygenSignature(rawBody: string, req: NextRequest): boolean {
+function verifyHeygenSignature(rawBody: string, req: NextRequest): { ok: boolean; reason?: string } {
   const secret = process.env.HEYGEN_WEBHOOK_SECRET;
-  if (!secret) return false;
+  if (!secret) return { ok: false, reason: "no secret configured" };
+
   const provided = req.headers.get("heygen-signature") || "";
-  if (!provided) return false;
+  if (!provided) return { ok: false, reason: "Heygen-Signature header absent" };
+
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  return safeEqual(provided, expected);
+  if (!safeEqual(provided, expected)) return { ok: false, reason: "signature mismatch" };
+
+  // Signature is valid — now bound how old the delivery may be. Absent header
+  // is tolerated rather than fatal: the body is already proven authentic, and
+  // rejecting on a header HeyGen might omit would break delivery outright.
+  const ts = req.headers.get("heygen-timestamp");
+  if (ts) {
+    const age = Math.floor(Date.now() / 1000) - Number(ts);
+    if (!Number.isFinite(age)) return { ok: false, reason: `unparseable timestamp '${ts}'` };
+    if (Math.abs(age) > MAX_WEBHOOK_AGE_SECONDS) {
+      return { ok: false, reason: `stale delivery (${age}s old)` };
+    }
+  }
+  return { ok: true };
 }
 
 // Video storage + auto-thumbnail generation can each take ~1 min.
@@ -100,47 +123,55 @@ export async function POST(req: NextRequest) {
   // bytes HeyGen signed, before any JSON re-serialization.
   const rawBody = await req.text();
 
-  // ── Callback token ────────────────────────────────────────────────────────
-  // The real gate. Rejecting here matters because a forged avatar_video.fail
-  // triggers refundVideoCredits — users know their own video UUIDs from the
-  // UI, so an unauthenticated endpoint is a self-serve credit refund.
+  // ── Authentication ────────────────────────────────────────────────────────
+  // Two mechanisms, and a delivery need satisfy only ONE. That is what makes
+  // the migration to a registered endpoint safe: during cutover, renders
+  // submitted earlier still call back with a URL token while newly registered
+  // deliveries arrive signed instead, and both must keep working.
+  //
+  // Rejecting matters because a forged avatar_video.fail calls
+  // refundVideoCredits, and users know their own video UUIDs from the UI — an
+  // open endpoint is a self-serve credit refund.
+  const registeredMode = process.env.HEYGEN_WEBHOOK_REGISTERED === "true";
+  const sig = verifyHeygenSignature(rawBody, req);
+  // Always evaluated: a render submitted before cutover still calls back with a
+  // URL token, and that delivery must keep working. Registered mode only stops
+  // a MISSING token being treated as a forgery — HeyGen calls the bare endpoint
+  // there, so absence is expected and the signature is the gate.
   const tokenCheck = verifyCallbackToken(req);
-  if (tokenCheck === "bad") {
-    console.warn("[webhook] Rejected: missing or invalid callback token");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (tokenCheck === "unconfigured") {
-    console.warn(
-      "[webhook] HEYGEN_WEBHOOK_TOKEN is not set — this endpoint is UNAUTHENTICATED. " +
-      "Set it in the environment to turn verification on at both ends.",
-    );
-  }
 
-  // ── Signature verification ────────────────────────────────────────────────
-  // Rollout is staged so a misconfigured secret can't silently break video
-  // delivery: with the secret set we always CHECK and log, but only REJECT
-  // forgeries once HEYGEN_WEBHOOK_ENFORCE="true". Flip that flag after the
-  // logs confirm a real webhook passes.
-  if (process.env.HEYGEN_WEBHOOK_SECRET) {
-    const ok = verifyHeygenSignature(rawBody, req);
-    if (!ok) {
-      // Diagnostic: is the Signature header even present, and what shape is it?
-      // Distinguishes "HeyGen doesn't sign per-video callbacks" (header absent)
-      // from "wrong secret" (header present, both 64-char hex, values differ).
-      const provided = req.headers.get("signature") || req.headers.get("Signature") || "";
-      const expected = createHmac("sha256", process.env.HEYGEN_WEBHOOK_SECRET).update(rawBody, "utf8").digest("hex");
-      const headerNames = Array.from(req.headers.keys()).join(", ");
+  if (sig.ok || tokenCheck === "ok") {
+    if (sig.ok) {
+      console.log(`[webhook] Signature verified ✓ (event ${req.headers.get("heygen-event-id") ?? "n/a"})`);
+    }
+  } else {
+    // Diagnostic: distinguishes "not a signed delivery" (header absent — the
+    // endpoint is not registered) from "wrong secret" (header present, differs).
+    const headerNames = Array.from(req.headers.keys()).join(", ");
+    console.warn(`[webhook] SIG DIAG — ${sig.reason}; allHeaders=[${headerNames}]`);
+
+    // Not in registered mode: every legitimate delivery carries a token, so a
+    // wrong or absent one is a forgery. In registered mode HeyGen calls the
+    // bare endpoint, so absence is normal and the signature rules below decide.
+    if (tokenCheck === "bad" && !registeredMode) {
+      console.warn("[webhook] Rejected: missing or invalid callback token");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // Staged rollout: with a secret configured we always check and log, but
+    // only reject once HEYGEN_WEBHOOK_ENFORCE="true", so a misconfigured secret
+    // cannot silently halt video delivery. Flip it after the logs above confirm
+    // a real delivery passes.
+    if (process.env.HEYGEN_WEBHOOK_SECRET && process.env.HEYGEN_WEBHOOK_ENFORCE === "true") {
+      console.warn("[webhook] Rejected: HeyGen signature invalid or missing");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+    if (tokenCheck === "unconfigured" && !process.env.HEYGEN_WEBHOOK_SECRET) {
       console.warn(
-        `[webhook] SIG DIAG — provided(len=${provided.length}, head='${provided.slice(0, 12)}') ` +
-        `expected(len=${expected.length}, head='${expected.slice(0, 12)}') allHeaders=[${headerNames}]`,
+        "[webhook] Neither HEYGEN_WEBHOOK_TOKEN nor HEYGEN_WEBHOOK_SECRET is set — " +
+        "this endpoint is UNAUTHENTICATED. Set one to turn verification on.",
       );
-      if (process.env.HEYGEN_WEBHOOK_ENFORCE === "true") {
-        console.warn("[webhook] Rejected: HeyGen signature invalid or missing");
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
-      console.warn("[webhook] Signature check FAILED (monitor mode — processing anyway).");
     } else {
-      console.log("[webhook] Signature verified ✓");
+      console.warn("[webhook] Auth check FAILED (monitor mode — processing anyway).");
     }
   }
 
