@@ -70,6 +70,9 @@ function CreatePageInner() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  // null until the profile loads — avoids flashing the voice prompt at users
+  // who do have a clone.
+  const [hasVoiceClone, setHasVoiceClone] = useState<boolean | null>(null);
 
   // Location
   const [locCity, setLocCity] = useState("");
@@ -146,7 +149,7 @@ function CreatePageInner() {
       setUserId(user.id);
       supabase
         .from("profiles")
-        .select("location_city, location_state, saved_markets, onboarding_done")
+        .select("location_city, location_state, saved_markets, onboarding_done, heygen_voice_id")
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
@@ -165,6 +168,7 @@ function CreatePageInner() {
             setSavedMarkets(clean);
           }
           setOnboardingDone(!!(data as { onboarding_done?: boolean } | null)?.onboarding_done);
+          setHasVoiceClone(!!(data as { heygen_voice_id?: string | null } | null)?.heygen_voice_id);
         });
     });
   }, []); // eslint-disable-line
@@ -540,6 +544,28 @@ function CreatePageInner() {
             <p className="text-xs text-amber-600 mt-0.5">Add your headshot, AI avatar photo, voice, logo, and contact info in Settings — they appear in every video you create.</p>
           </div>
           <span className="text-amber-500 text-sm font-semibold shrink-0 group-hover:underline">Go to Settings →</span>
+        </button>
+      )}
+
+      {/* Voice clone prompt.
+          Cloning is opt-in and buried in Settings, and a video renders fine
+          without it — just in a stock voice — so agents had no way to discover
+          the feature or to notice they were missing it. Held back until the
+          profile banner above is gone so a new user only ever sees one nudge. */}
+      {onboardingDone !== false && hasVoiceClone === false && (
+        <button
+          type="button"
+          onClick={() => router.push("/settings#voice")}
+          className="w-full text-left flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-5 hover:bg-blue-100 transition-colors group"
+        >
+          <Mic size={17} className="text-blue-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-blue-800">Your videos are using a stock voice</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              Record about 30 seconds once, and every video you make from then on speaks in your own voice.
+            </p>
+          </div>
+          <span className="text-blue-500 text-sm font-semibold shrink-0 group-hover:underline">Clone my voice →</span>
         </button>
       )}
 

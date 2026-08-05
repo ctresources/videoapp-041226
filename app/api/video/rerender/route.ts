@@ -3,8 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateVideoV3,
-  getPrivateVoiceId,
-  getDefaultEnglishVoiceId,
+  resolveVoiceId,
   getAvatarLooks,
   DIMENSIONS,
   type VideoType,
@@ -141,16 +140,8 @@ export async function POST(req: NextRequest) {
     }
     if (!avatarId) throw new Error("Set up your avatar in Settings → Brand Profile to re-render.");
 
-    // Voice: the user's cloned HeyGen voice → private → default English.
-    let voiceId = edits.voiceId || p.heygen_voice_id;
-    if (!voiceId) {
-      const privateVoiceId = await getPrivateVoiceId().catch(() => null);
-      if (privateVoiceId) {
-        voiceId = privateVoiceId;
-        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
-      }
-    }
-    voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
+    // Voice: an explicit pick, else the user's own clone, else a public voice.
+    const voiceId = await resolveVoiceId(edits.voiceId || p.heygen_voice_id);
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
     const directPhotos = Array.isArray(edits.photoUrls)

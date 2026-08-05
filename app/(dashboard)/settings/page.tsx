@@ -229,9 +229,11 @@ export default function SettingsPage() {
         </form>
       </Card>
 
-      {/* AI Voice Clone — dedicated card for easy access */}
+      {/* AI Voice Clone — dedicated card for easy access.
+          id="voice" is the deep-link target for the Create page's prompt;
+          scroll-mt clears the sticky topbar when jumped to. */}
       {brandData && user && (
-        <Card>
+        <Card id="voice" className="scroll-mt-24">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
               <Mic size={18} className="text-blue-500" />

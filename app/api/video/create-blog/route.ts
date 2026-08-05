@@ -3,8 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
   generateVideoV3,
-  getPrivateVoiceId,
-  getDefaultEnglishVoiceId,
+  resolveVoiceId,
   getAvatarLooks,
   uploadTalkingPhoto,
   DIMENSIONS,
@@ -619,16 +618,10 @@ export async function POST(req: NextRequest) {
       if (!directAvatarId) throw new Error("Set up your avatar in Settings → Brand Profile to generate a talking-head video.");
       console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${directAvatarId}`);
 
-      // Direct Video needs a HeyGen voice_id (not the ElevenLabs voice_clone_id).
-      let directVoiceId = profile.heygen_voice_id;
-      if (!directVoiceId) {
-        const privateVoiceId = await getPrivateVoiceId().catch(() => null);
-        if (privateVoiceId) {
-          directVoiceId = privateVoiceId;
-          void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
-        }
-      }
-      directVoiceId = directVoiceId || await getDefaultEnglishVoiceId().catch(() => null);
+      // Direct Video needs a HeyGen voice_id. Only the user's OWN clone, or a
+      // neutral public voice — never another account's private clone. See the
+      // note on resolveVoiceId.
+      const directVoiceId = await resolveVoiceId(profile.heygen_voice_id);
       if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
       // Photos to composite as b-roll behind the avatar (up to 8) — uploaded
@@ -720,16 +713,7 @@ export async function POST(req: NextRequest) {
 
     // ── Video Agent path (v3): the presenter + listing photos + b-roll are
     // composed by HeyGen's Video Agent using the user's cloned HeyGen voice. ───
-    let voiceId = profile.heygen_voice_id;
-    if (!voiceId) {
-      const privateVoiceId = await getPrivateVoiceId().catch(() => null);
-      if (privateVoiceId) {
-        voiceId = privateVoiceId;
-        // Save so future videos use it directly without a fallback lookup
-        void admin.from("profiles").update({ heygen_voice_id: privateVoiceId }).eq("id", user.id);
-      }
-    }
-    voiceId = voiceId || await getDefaultEnglishVoiceId().catch(() => null);
+    const voiceId = await resolveVoiceId(profile.heygen_voice_id);
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 

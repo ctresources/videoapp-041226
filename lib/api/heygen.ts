@@ -601,24 +601,28 @@ export async function searchBackgroundMusic(
 }
 
 /**
- * Fetch the user's first private (cloned) voice ID via GET /v3/voices?type=private.
- * Used as fallback when profile.heygen_voice_id is not set.
- * No module-level caching — serverless instances can cache stale nulls across requests.
+ * Resolve the HeyGen voice for a render: the user's OWN cloned voice, or a
+ * neutral voice from HeyGen's public library. Those are the only two
+ * legitimate outcomes.
+ *
+ * There was previously a step in between — getPrivateVoiceId(), which listed
+ * the private voices on our HeyGen account and returned the first one. Every
+ * user renders through a single shared API key, so that list is *other
+ * people's* voice clones. An agent who had not recorded a clone would be
+ * narrated by a real stranger's voice, and the id was then written to their
+ * profile, permanently claiming someone else's voice as their own.
+ *
+ * Do not reintroduce that fallback. A private clone belongs solely to the
+ * person who recorded it; anyone without one gets a public voice until they
+ * record their own.
  */
-export async function getPrivateVoiceId(): Promise<string | null> {
-  try {
-    const res = await fetch(`${HEYGEN_API}/v3/voices?type=private`, {
-      headers: { "x-api-key": getApiKey() },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const voices: Array<{ voice_id: string }> = data.data?.voices || data.data || [];
-    const voiceId = voices[0]?.voice_id || null;
-    if (voiceId) console.log(`[heygen] Private voice fallback: ${voiceId}`);
-    return voiceId;
-  } catch {
-    return null;
-  }
+export async function resolveVoiceId(
+  userVoiceId: string | null | undefined,
+): Promise<string | null> {
+  if (userVoiceId) return userVoiceId;
+  const fallback = await getDefaultEnglishVoiceId().catch(() => null);
+  if (fallback) console.log(`[heygen] No user voice clone — using public voice ${fallback}`);
+  return fallback;
 }
 
 /**
