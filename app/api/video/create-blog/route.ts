@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
+import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -721,7 +722,17 @@ export async function POST(req: NextRequest) {
     }
     // Attach listing photos + user-uploaded photos, capped at 5 total.
     // Fewer files = faster Video Agent processing time.
-    const combinedPhotos = [...listingPhotos, ...safeExtraPhotos].slice(0, 5);
+    //
+    // Cropped to the frame first: the Video Agent decides its own framing, so
+    // a square photo otherwise renders with bars in a 16:9 video. The Direct
+    // Video path doesn't need this — it composites through composite-photos.ts,
+    // which already fills the frame. Failures return the original URL.
+    const combinedPhotos = await cropPhotosToAspect(
+      [...listingPhotos, ...safeExtraPhotos].slice(0, 5),
+      dimension.width,
+      dimension.height,
+      user.id,
+    );
     for (const url of combinedPhotos) {
       files.push({ type: "url", url });
     }
