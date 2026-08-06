@@ -50,7 +50,18 @@ function outputSize(width: number, height: number): { w: number; h: number } {
 }
 
 /**
- * Returns a new MP4 buffer with the photos as background b-roll and the avatar
+ * What the background is built from.
+ *
+ * "photo" — still images, each held for SECONDS_PER_PHOTO.
+ * "clip"  — stock MP4 footage, played at its own length.
+ *
+ * Only the pass-1 inputs differ; both produce a background track that pass 2
+ * loops under the avatar, so the two share everything downstream.
+ */
+export type BackgroundKind = "photo" | "clip";
+
+/**
+ * Returns a new MP4 buffer with the media as background b-roll and the avatar
  * as a corner PiP, or null on any failure — callers must fall back to the
  * original avatar video so a compositing problem never loses a render.
  */
@@ -59,6 +70,7 @@ export async function compositePhotos(
   photoUrls: string[],
   width: number,
   height: number,
+  kind: BackgroundKind = "photo",
 ): Promise<Buffer | null> {
   const photos = photoUrls.filter(Boolean).slice(0, MAX_PHOTOS);
   if (photos.length === 0) return null;
@@ -74,23 +86,28 @@ export async function compositePhotos(
     const outPath = join(dir, "out.mp4");
     await fs.writeFile(videoPath, videoBuffer);
 
-    // Download the photos.
+    // Download the media.
     const photoPaths: string[] = [];
     for (let i = 0; i < photos.length; i++) {
       const res = await fetch(photos[i]);
       if (!res.ok) continue;
-      const p = join(dir, `photo-${i}.img`);
+      const p = join(dir, `${kind}-${i}${kind === "clip" ? ".mp4" : ".img"}`);
       await fs.writeFile(p, Buffer.from(await res.arrayBuffer()));
       photoPaths.push(p);
     }
-    if (photoPaths.length === 0) throw new Error("No photos could be downloaded");
+    if (photoPaths.length === 0) throw new Error(`No ${kind}s could be downloaded`);
     const n = photoPaths.length;
 
-    // ── Pass 1: build a fixed-length slideshow (video only) ──────────────────
+    // ── Pass 1: build the background track (video only) ──────────────────────
     await new Promise<void>((resolve, reject) => {
       const cmd = ffmpeg();
       for (const p of photoPaths) {
-        cmd.input(p).inputOptions(["-loop", "1", "-t", String(SECONDS_PER_PHOTO)]);
+        // A still needs -loop/-t to occupy time; a clip already has a duration.
+        if (kind === "photo") {
+          cmd.input(p).inputOptions(["-loop", "1", "-t", String(SECONDS_PER_PHOTO)]);
+        } else {
+          cmd.input(p);
+        }
       }
       const parts: string[] = [];
       for (let i = 0; i < n; i++) {
@@ -122,14 +139,22 @@ export async function compositePhotos(
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1[outv]`,
         ])
         // This encodes the full length of the avatar video — the one step that
-        // has to stay inside the function's time budget. ultrafast trades file
-        // size for speed, which is the right way round here.
+        // has to stay inside the function's time budget.
+        //
+        // The preset depends on what is behind the avatar, because the two
+        // compress nothing alike. A photo slideshow is nearly static, so
+        // ultrafast already lands ~7MB. Real stock footage is all motion:
+        // measured on a 3:33 render, ultrafast/crf26 produced 125MB while
+        // veryfast/crf28 produced 32.6MB for two extra seconds. Paying those
+        // seconds is obviously right — the alternative is uploading and then
+        // serving a 125MB file.
         .outputOptions([
           "-map", "[outv]",
           "-map", "0:a?",
           "-c:v", "libx264",
-          "-preset", "ultrafast",
-          "-crf", "26",
+          ...(kind === "clip"
+            ? ["-preset", "veryfast", "-crf", "28"]
+            : ["-preset", "ultrafast", "-crf", "26"]),
           "-pix_fmt", "yuv420p",
           "-threads", "0",
           "-c:a", "aac",
@@ -141,7 +166,7 @@ export async function compositePhotos(
     });
 
     const out = await fs.readFile(outPath);
-    console.log(`[composite-photos] Composited ${n} photo(s) into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(`[composite-photos] Composited ${n} ${kind}(s) into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
     return out;
   } catch (err) {
     console.error("[composite-photos] Failed, keeping plain avatar video:", err instanceof Error ? err.message : err);

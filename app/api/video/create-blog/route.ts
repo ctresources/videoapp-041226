@@ -13,6 +13,7 @@ import {
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
+import { searchStockVideos } from "@/lib/api/stock-video";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -630,6 +631,35 @@ export async function POST(req: NextRequest) {
         ...listingPhotos,
       ].slice(0, 8);
 
+      // Direct Video renders a bare talking head and HeyGen adds no b-roll of
+      // its own, so a pasted script with no photos was just a face for the
+      // whole runtime. Fall back to stock footage — but only as a fallback:
+      // the user's own photos are always the better b-roll, so this runs only
+      // when they supplied none. Kept to 4 clips because the webhook has to
+      // download and re-encode every one inside its time budget.
+      //
+      // Short videos only. Pass 2 re-encodes the entire runtime, and measured
+      // locally a 3:33 clip composite takes ~39s against the ~5x-slower lambda
+      // — roughly 200s, which fits. The same maths on a full 8-minute video is
+      // ~325s and would time out. Long videos already tell the user their own
+      // photos are the visuals, so that path stays photo-only.
+      let stockClips: string[] = [];
+      if (directPhotos.length === 0 && !isLongForm) {
+        const locality = [city, state].filter(Boolean).join(" ");
+        const queries = [
+          ...(locality ? [`${locality} homes neighborhood`] : []),
+          ...aiKeywords.slice(0, 3),
+        ].filter(Boolean);
+        try {
+          const clips = await searchStockVideos(queries, orientation === "portrait" ? "portrait" : "landscape");
+          stockClips = clips.map((c) => c.url).slice(0, 4);
+          console.log(`[create-blog] No user photos — using ${stockClips.length} stock clip(s) for b-roll`);
+        } catch (e) {
+          // Stock b-roll is a nicety; never fail a render over it.
+          console.warn("[create-blog] Stock b-roll lookup failed:", e instanceof Error ? e.message : e);
+        }
+      }
+
       const { data: videoRow, error: videoRowErr } = await admin
         .from("generated_videos")
         .insert({
@@ -641,9 +671,11 @@ export async function POST(req: NextRequest) {
           metadata: {
             dimension, orientation, city, state, title,
             ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
-            // Direct Video is a bare talking head — the webhook composites these
-            // uploaded photos as background b-roll behind the avatar PiP.
+            // Direct Video is a bare talking head — the webhook composites this
+            // media as background b-roll behind the avatar PiP. Only one of the
+            // two is ever set; photos win when present.
             ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
+            ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
           },
         })
         .select()

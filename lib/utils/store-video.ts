@@ -8,6 +8,12 @@ interface StoreOptions {
   musicUrl?: string | null;
   /** Photos to composite as b-roll behind the avatar (Direct Video renders). */
   photoUrls?: string[] | null;
+  /**
+   * Stock footage to use as b-roll when the user supplied no photos of their
+   * own. Only consulted if photoUrls is empty — the user's own photos always
+   * win over stock.
+   */
+  clipUrls?: string[] | null;
   /** Target frame size, needed for photo compositing. */
   dimension?: { width: number; height: number } | null;
 }
@@ -72,10 +78,20 @@ export async function downloadAndStoreVideo(
     let processed = buffer;
     let changed = false;
 
-    // Photos first (rebuilds the video frame), then music (mixes the audio).
-    if (opts.photoUrls?.length && opts.dimension) {
-      const withPhotos = await compositePhotos(processed, opts.photoUrls, opts.dimension.width, opts.dimension.height);
-      if (withPhotos) { processed = withPhotos; changed = true; }
+    // B-roll first (rebuilds the video frame), then music (mixes the audio).
+    // The user's own photos take precedence; stock footage only fills the gap
+    // when they supplied none.
+    const broll = opts.photoUrls?.length
+      ? { urls: opts.photoUrls, kind: "photo" as const }
+      : opts.clipUrls?.length
+        ? { urls: opts.clipUrls, kind: "clip" as const }
+        : null;
+
+    if (broll && opts.dimension) {
+      const withBroll = await compositePhotos(
+        processed, broll.urls, opts.dimension.width, opts.dimension.height, broll.kind,
+      );
+      if (withBroll) { processed = withBroll; changed = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);
     }
     if (opts.musicUrl) {

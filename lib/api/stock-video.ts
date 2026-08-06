@@ -14,6 +14,26 @@ export interface StockClip {
   tags: string;
 }
 
+interface Rendition { url: string; width: number; height: number; size: number }
+
+/**
+ * Choose the cheapest rendition that still covers `targetWidth`.
+ *
+ * Pixabay's size names are relative to each clip, not absolute: a 4K source's
+ * "medium" is 2560x1440 at ~54MB, while a 1080p source's "medium" is 1280x720
+ * at ~2.7MB. Selecting by name pulled ~117MB for four clips — all of it
+ * downscaled straight back to 720p by the compositor, inside a webhook that
+ * has already blown its 300s budget once. Selecting by width gets the same
+ * footage in ~23MB.
+ */
+function pickRendition(videos: Record<string, Rendition>, targetWidth: number): Rendition | null {
+  const all = Object.values(videos).filter((v) => v?.url && v.width > 0);
+  if (all.length === 0) return null;
+  const covering = all.filter((v) => v.width >= targetWidth).sort((a, b) => a.width - b.width);
+  // Nothing big enough — take the largest we have rather than nothing.
+  return covering[0] ?? all.sort((a, b) => b.width - a.width)[0];
+}
+
 /**
  * Search for stock video clips matching real estate keywords.
  * Returns direct MP4 URLs that HeyGen can use as scene backgrounds.
@@ -23,12 +43,12 @@ export interface StockClip {
  *
  * @param keywords    Search terms — include city/state for location-specific footage
  * @param orientation "landscape" | "portrait" — picks best resolution
- * @param perPage     How many clips per keyword (default 2)
+ * @param perPage     How many clips per keyword (minimum 3 — see below)
  */
 export async function searchStockVideos(
   keywords: string[],
   orientation: "landscape" | "portrait" = "landscape",
-  perPage = 2,
+  perPage = 3,
 ): Promise<StockClip[]> {
   const apiKey = process.env.PIXABAY_API_KEY;
   if (!apiKey) {
@@ -49,7 +69,10 @@ export async function searchStockVideos(
         key: apiKey,
         q: query,
         video_type: "film",
-        per_page: String(perPage),
+        // Pixabay rejects per_page below 3 with `"per_page" is out of valid
+        // range` — a 400 that the !res.ok guard below swallows silently. The
+        // default used to be 2, so every search returned nothing at all.
+        per_page: String(Math.max(3, perPage)),
         safesearch: "true",
         order: "popular",
       });
@@ -64,17 +87,13 @@ export async function searchStockVideos(
         hits: Array<{
           tags: string;
           duration: number;
-          videos: {
-            large:  { url: string; width: number; height: number };
-            medium: { url: string; width: number; height: number };
-            small:  { url: string; width: number; height: number };
-          };
+          videos: Record<string, Rendition>;
         }>;
       };
 
       for (const hit of data.hits) {
-        // Pick resolution: large (1920×1080) for landscape, medium for portrait
-        const vid = orientation === "landscape" ? hit.videos.large : hit.videos.medium;
+        const vid = pickRendition(hit.videos, orientation === "portrait" ? 720 : 1280);
+        if (!vid) continue;
         clips.push({
           url: vid.url,
           width: vid.width,

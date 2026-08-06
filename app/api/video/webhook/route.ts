@@ -318,8 +318,9 @@ export async function POST(req: NextRequest) {
     const meta = video.metadata ?? {};
     const musicUrl = (meta.music_url as string | undefined) || null;
     const photoUrls = Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null;
+    const clipUrls = Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null;
     const dimension = (meta.dimension as { width: number; height: number } | undefined) || null;
-    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, { musicUrl, photoUrls, dimension });
+    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, { musicUrl, photoUrls, clipUrls, dimension });
     if (permanentUrl) finalVideoUrl = permanentUrl;
   }
 

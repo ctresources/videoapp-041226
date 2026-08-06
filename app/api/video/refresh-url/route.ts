@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   const storeOpts = {
     musicUrl: (meta.music_url as string | undefined) || null,
     photoUrls: Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null,
+    clipUrls: Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null,
     dimension: (meta.dimension as { width: number; height: number } | undefined) || null,
   };
 
