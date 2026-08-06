@@ -207,7 +207,12 @@ export default function ProjectEditorPage() {
   const [longFormIncluded, setLongFormIncluded] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
-  const [renderMode, setRenderMode] = useState<"agent" | "direct" | null>(null);
+  // Defaults to Avatar + Voice: being on screen is what most people want, and
+  // it matches the look that is auto-selected on load. Voice Only leaving the
+  // avatar off is the surprising outcome, so it should be the deliberate pick.
+  // Previously this started null and forced a choice, which meant a wrong
+  // choice produced a stock-footage video with no hint why.
+  const [renderMode, setRenderMode] = useState<"agent" | "direct">("direct");
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -804,10 +809,6 @@ export default function ProjectEditorPage() {
 
   async function handleGenerateVideo() {
     if (!project) return;
-    if (!renderMode) {
-      toast.error("Please choose a video style before generating.");
-      return;
-    }
     setVideoGenerating(true);
 
     // create-blog handles all videoTypes (blog_long, reel_9x16, short_1x1, youtube_16x9)
@@ -935,7 +936,8 @@ export default function ProjectEditorPage() {
   function renderModeSelector() {
     return (
       <div className="space-y-2">
-        <p className="text-xs font-bold text-slate-600">Choose Your Video Style *</p>
+        {/* No asterisk: a style is always set now, so nothing is being demanded. */}
+        <p className="text-xs font-bold text-slate-600">Your Video Style</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -962,11 +964,6 @@ export default function ProjectEditorPage() {
             <span className="text-xs text-slate-500 leading-snug">AI generates b-roll from your script with your avatar on screen — pick a look below</span>
           </button>
         </div>
-        {!renderMode && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
-            <span>⚠</span> Select a style above to unlock Generate
-          </p>
-        )}
       </div>
     );
   }
@@ -1457,7 +1454,6 @@ export default function ProjectEditorPage() {
           <Button
             onClick={handleGenerateVideo}
             loading={videoGenerating}
-            disabled={!renderMode}
             size="lg"
             className="w-full gap-2"
           >
@@ -1984,7 +1980,6 @@ export default function ProjectEditorPage() {
               <Button
                 onClick={handleGenerateVideo}
                 loading={videoGenerating}
-                disabled={!renderMode}
                 size="lg"
                 className="flex-1 gap-2"
               >
