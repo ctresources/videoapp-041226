@@ -679,6 +679,9 @@ export async function POST(req: NextRequest) {
         title,
         callbackUrl,
         callbackId: videoRow.id,
+        // The Video Agent asks for captions in its prompt; Direct Video has no
+        // prompt, so the same flag has to be sent to HeyGen explicitly here.
+        captions: captions !== false,
         ...(directEngine && { engine: directEngine }),
       });
 

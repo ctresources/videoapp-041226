@@ -363,6 +363,16 @@ export interface GenerateVideoV3Params {
    * ~22s render vs ~4.2 min on avatar_iv).
    */
   engine?: "avatar_iii" | "avatar_iv" | "avatar_v";
+  /**
+   * Burn synchronized captions into the render.
+   *
+   * The Video Agent path gets captions by asking for them in its prompt, but
+   * Direct Video has no prompt — so the burnCaptions flag was built, surfaced
+   * as a checkbox, and then silently dropped for every pasted script. HeyGen
+   * takes a `caption` object here; a sidecar SRT comes back on subtitle_url
+   * either way, and `style` is what actually burns them in.
+   */
+  captions?: boolean;
 }
 
 /** Map pixel dimensions to the aspect_ratio string the v3 Videos API expects. */
@@ -391,11 +401,12 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
     aspect_ratio: dimensionToAspectRatio(params.dimension),
     resolution: "1080p",
     ...(params.engine && { engine: { type: params.engine } }),
+    ...(params.captions && { caption: { file_format: "srt", style: "default" } }),
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
   };
 
-  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId}, engine: ${params.engine ?? "default"})...`);
+  console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId}, engine: ${params.engine ?? "default"}, captions: ${params.captions ? "on" : "off"})...`);
 
   const res = await fetch(`${HEYGEN_API}/v3/videos`, {
     method: "POST",

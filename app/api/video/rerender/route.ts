@@ -177,6 +177,9 @@ export async function POST(req: NextRequest) {
       title: edits.title,
       callbackUrl,
       callbackId: newVideo.id,
+      // Re-render is always Direct Video, so captions need the explicit flag
+      // for the same reason as create-blog. Defaults on, matching the UI.
+      captions: edits.captionsEnabled !== false,
       ...(isDigitalTwin && { engine: "avatar_v" as const }),
     });
 
