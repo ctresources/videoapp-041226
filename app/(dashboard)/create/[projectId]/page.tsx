@@ -116,6 +116,35 @@ const LONG_CAP_WORDS = 1160; // ~8 min at 145 wpm
 const mins = (words: number) => Math.round((words / 145) * 10) / 10;
 
 /**
+ * How long a render actually takes, and why.
+ *
+ * These are measured from production, not estimated: a 3:33 Direct Video took
+ * ~9 minutes end to end, and a ~4:00 Video Agent render took ~18. The screens
+ * used to promise "5 to 8 min" for the Video Agent path specifically, which is
+ * the slowest one — so a perfectly normal render looked like a hang.
+ *
+ * The branch mirrors the server's own choice in create-blog: a pasted script
+ * and every long video render through Direct Video (a straight read), while an
+ * AI-written short goes to HeyGen's Video Agent, which additionally plans the
+ * scenes and picks the visuals. That extra work is the whole difference.
+ */
+function renderEta(opts: { pastedScript: boolean; longForm: boolean }): {
+  range: string;
+  why: string;
+} {
+  const usesVideoAgent = !opts.pastedScript && !opts.longForm;
+  if (usesVideoAgent) {
+    return {
+      range: "15–20 minutes",
+      why: "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
+    };
+  }
+  return opts.longForm
+    ? { range: "10–20 minutes", why: "Long videos read your full script start to finish." }
+    : { range: "5–10 minutes", why: "" };
+}
+
+/**
  * Scripts are clamped at render time, which used to happen silently — a pasted
  * 1,200-word script became a 580-word video with no explanation. This says so
  * up front and offers the one-click fix.
@@ -1444,7 +1473,8 @@ export default function ProjectEditorPage() {
             <Save size={14} /> Save Draft &amp; Finish Later
           </Button>
           <p className="text-xs text-slate-400 text-center -mt-2">
-            Video ready in less than 10 minutes · you&apos;ll see it in My Videos
+            Video ready in {renderEta({ pastedScript: true, longForm: selectedVideoType === "youtube_long" }).range}
+            {" "}· you&apos;ll see it in My Videos
           </p>
         </div>
       </div>
@@ -1461,7 +1491,18 @@ export default function ProjectEditorPage() {
           </div>
           <div>
             <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
-            <p className="text-slate-400 text-sm mt-1">This takes less than 10 minutes. You&apos;ll see it in My Videos when ready.</p>
+            {(() => {
+              const eta = renderEta({
+                pastedScript: true,
+                longForm: selectedVideoType === "youtube_long",
+              });
+              return (
+                <p className="text-slate-400 text-sm mt-1">
+                  This takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll see it in
+                  My Videos when ready — it keeps rendering if you close this page.
+                </p>
+              );
+            })()}
           </div>
           <div className="flex gap-1.5 mt-2">
             {[0, 1, 2].map((i) => (
@@ -1947,9 +1988,18 @@ export default function ProjectEditorPage() {
             >
               <Save size={14} /> Save Draft &amp; Finish Later
             </Button>
-            <p className="text-xs text-slate-400 text-center mt-2">
-              AI video generation takes 5 to 8 min. You&apos;ll see it in My Videos when ready.
-            </p>
+            {(() => {
+              const eta = renderEta({
+                pastedScript: false,
+                longForm: selectedVideoType === "youtube_long",
+              });
+              return (
+                <p className="text-xs text-slate-400 text-center mt-2">
+                  AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
+                  see it in My Videos when ready — you can close this page.
+                </p>
+              );
+            })()}
           </Card>
 
           {/* Social Content Pack */}

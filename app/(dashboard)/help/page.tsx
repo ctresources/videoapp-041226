@@ -157,8 +157,11 @@ export default function HelpPage() {
               automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
               visuals; long videos have their own monthly allowance — 2 with Agent, 5 with Pro — or $39 on its own). Pick a{" "}
               <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
-              photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering takes a few minutes —
-              watch it in My Videos. If a render ever fails, your allowance is refunded automatically.
+              photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering takes roughly{" "}
+              <strong>5–10 minutes</strong> when you paste your own script, and{" "}
+              <strong>15–20 minutes</strong> when AI writes it — the AI plans the scenes and picks the
+              visuals, which takes longer than a straight read. Either way you can close the page and
+              watch for it in My Videos. If a render ever fails, your allowance is refunded automatically.
             </Step>
             <Step n={10} title="Use Camera — The Free Option" icon={Camera}>
               Write or Spark your script, tap <strong>Add Channel CTA</strong> to append your closing pitch, then
