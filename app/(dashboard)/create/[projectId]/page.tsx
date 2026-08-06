@@ -1794,10 +1794,22 @@ export default function ProjectEditorPage() {
             {/* Video style selector */}
             <div className="mb-5">{renderModeSelector()}</div>
 
-            {/* Avatar look selector */}
+            {/* Avatar look selector.
+                Only Avatar + Voice puts a look on screen — lookId is dropped at
+                submit in Voice Only mode. The picker used to render identically
+                in both, so a look could be selected, show its blue ring, and be
+                silently discarded: the render came back full of stock footage
+                with nothing explaining why. Now Voice Only says so, and picking
+                a look switches the mode rather than being ignored. */}
             {(looksLoading || looks.length > 0) && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
+                {renderMode === "agent" && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mb-2">
+                    Voice Only doesn&apos;t put an avatar on screen — the AI fills it with its own
+                    b-roll. Pick a look below and we&apos;ll switch you to <strong>Avatar + Voice</strong>.
+                  </p>
+                )}
                 <p className="text-xs text-slate-400 mb-1">
                   📸 <span className="font-medium">Photo Avatar</span> — from your headshot &nbsp;·&nbsp;
                   🎬 <span className="font-medium">Digital Twin</span> — from your video
@@ -1818,7 +1830,14 @@ export default function ProjectEditorPage() {
                       return (
                         <button
                           key={look.id}
-                          onClick={() => { if (!isProcessing) setSelectedLookId(look.id); }}
+                          onClick={() => {
+                            if (isProcessing) return;
+                            setSelectedLookId(look.id);
+                            // Choosing a look means you want to be on screen.
+                            // Voice Only would drop it at submit, so switch
+                            // rather than accept a pick we intend to ignore.
+                            if (renderMode === "agent") setRenderMode("direct");
+                          }}
                           title={look.name}
                           disabled={isProcessing}
                           className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
