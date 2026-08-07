@@ -19,10 +19,10 @@ import type { RerenderEdits } from "@/app/api/video/rerender/route";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 const FORMAT_OPTIONS = [
-  { value: "blog_long",    label: "Blog 16:9",      desc: "Landscape · YouTube · 1920×1080" },
-  { value: "youtube_16x9", label: "YouTube Long",   desc: "Landscape · Extended · 1920×1080" },
-  { value: "reel_9x16",    label: "Reel / Short",   desc: "Vertical · TikTok / Reels · 1080×1920" },
-  { value: "short_1x1",    label: "Square",         desc: "1:1 · Feed posts · 1080×1080" },
+  { value: "blog_long",    label: "Short 16:9 Video", desc: "Landscape · YouTube · 1920×1080" },
+  { value: "youtube_16x9", label: "YouTube Long",     desc: "Landscape · Extended · 1920×1080" },
+  { value: "reel_9x16",    label: "Reel / Short",     desc: "Vertical · TikTok / Reels · 1080×1920" },
+  { value: "short_1x1",    label: "Square",           desc: "1:1 · Feed posts · 1080×1080" },
 ] as const;
 
 const CAPTION_COLORS = ["#FFFFFF", "#FFFF00", "#00FF88", "#FF6B6B", "#60A5FA", "#F472B6"];

@@ -13,7 +13,7 @@ import {
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
-import { searchStockVideos } from "@/lib/api/stock-video";
+import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -643,22 +643,16 @@ export async function POST(req: NextRequest) {
       // — roughly 200s, which fits. The same maths on a full 8-minute video is
       // ~325s and would time out. Long videos already tell the user their own
       // photos are the visuals, so that path stays photo-only.
-      let stockClips: string[] = [];
-      if (directPhotos.length === 0 && !isLongForm) {
-        const locality = [city, state].filter(Boolean).join(" ");
-        const queries = [
-          ...(locality ? [`${locality} homes neighborhood`] : []),
-          ...aiKeywords.slice(0, 3),
-        ].filter(Boolean);
-        try {
-          const clips = await searchStockVideos(queries, orientation === "portrait" ? "portrait" : "landscape");
-          stockClips = clips.map((c) => c.url).slice(0, 4);
-          console.log(`[create-blog] No user photos — using ${stockClips.length} stock clip(s) for b-roll`);
-        } catch (e) {
-          // Stock b-roll is a nicety; never fail a render over it.
-          console.warn("[create-blog] Stock b-roll lookup failed:", e instanceof Error ? e.message : e);
-        }
-      }
+      const stockClips = await stockBrollFor({
+        hasUserPhotos: directPhotos.length > 0,
+        // Long-form is capped by word count in the helper, so pass a figure
+        // that trips that check rather than duplicating the rule here.
+        scriptWords: isLongForm ? Number.MAX_SAFE_INTEGER : countWords(safeScript),
+        keywords: aiKeywords,
+        city,
+        state,
+        orientation: orientation === "portrait" ? "portrait" : "landscape",
+      });
 
       const { data: videoRow, error: videoRowErr } = await admin
         .from("generated_videos")

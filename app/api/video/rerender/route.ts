@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/heygen";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
+import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 
 export const maxDuration = 60;
 
@@ -146,6 +147,19 @@ export async function POST(req: NextRequest) {
       ? edits.photoUrls.filter((u): u is string => typeof u === "string").slice(0, 8)
       : [];
 
+    // Same fallback create-blog applies. Without it a re-render of a video that
+    // had stock b-roll came back with none, because the clips live in the
+    // original row's metadata rather than in the edits.
+    const projectScript = (video.projects as { ai_script?: Record<string, unknown> } | null)?.ai_script;
+    const stockClips = await stockBrollFor({
+      hasUserPhotos: directPhotos.length > 0,
+      scriptWords: countWords(safeScript),
+      keywords: (projectScript?.keywords as string[]) ?? [],
+      city,
+      state,
+      orientation,
+    });
+
     const { data: newVideo, error: insertErr } = await admin
       .from("generated_videos")
       .insert({
@@ -158,7 +172,9 @@ export async function POST(req: NextRequest) {
           dimension, orientation, city, state, title: edits.title,
           // Both applied by the webhook at store time.
           ...(edits.musicUrl && { music_url: edits.musicUrl }),
+          // Only one of the two is ever set; the user's photos win.
           ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
+          ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
         },
       })
       .select()
