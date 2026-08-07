@@ -205,7 +205,9 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
     status: d.status,
     videoUrl: d.video_url || null,
     thumbnailUrl: d.thumbnail_url || null,
-    captionUrl: d.caption_url || null,
+    // Docs call this subtitle_url; responses have used caption_url. Accept
+    // either so the sidecar SRT is never missed.
+    captionUrl: d.caption_url || d.subtitle_url || null,
     duration: d.duration || null,
     error: errorMsg,
   };
@@ -401,7 +403,12 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
     aspect_ratio: dimensionToAspectRatio(params.dimension),
     resolution: "1080p",
     ...(params.engine && { engine: { type: params.engine } }),
-    ...(params.captions && { caption: { file_format: "srt", style: "default" } }),
+    // `file_format` alone returns the sidecar SRT without burning anything in.
+    // Adding `style` would make HeyGen burn its own, but the object supports no
+    // font size — `style: "default"` is the only value, and it renders small
+    // with no way to change it. We take the SRT and burn it ourselves at a
+    // readable size in the webhook. See lib/utils/composite-photos.ts.
+    ...(params.captions && { caption: { file_format: "srt" } }),
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
   };
@@ -784,7 +791,9 @@ export async function getVideoV3Status(videoId: string): Promise<VideoStatus> {
     status: d.status,
     videoUrl: d.video_url || null,
     thumbnailUrl: d.thumbnail_url || null,
-    captionUrl: d.caption_url || null,
+    // Docs call this subtitle_url; responses have used caption_url. Accept
+    // either so the sidecar SRT is never missed.
+    captionUrl: d.caption_url || d.subtitle_url || null,
     duration: d.duration || null,
     error: errorMsg,
   };

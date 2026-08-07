@@ -40,6 +40,60 @@ const SECONDS_PER_PHOTO = 4;
  */
 const MAX_LONG_EDGE = 1280;
 
+/**
+ * Caption height as a fraction of the frame's SHORT edge.
+ *
+ * HeyGen can burn captions itself, but its caption object exposes no font size
+ * — `style: "default"` is the only value and it renders too small to read on a
+ * phone. So we take the sidecar SRT and burn it here instead, which is also
+ * what makes caption colour controllable later.
+ *
+ * Measuring against the short edge keeps captions the same visual size in
+ * landscape and portrait; using height would make them huge in a 9:16 frame.
+ */
+const CAPTION_SCALE = 0.055;
+
+/**
+ * How far captions sit above the bottom edge, as a fraction of height. Larger
+ * when an avatar PiP is present so lines clear the corner inset.
+ */
+const CAPTION_MARGIN = 0.08;
+const CAPTION_MARGIN_WITH_PIP = 0.12;
+
+/**
+ * Escape a path for use inside a filter-graph argument.
+ *
+ * ffmpeg splits filter options on `:`, so any colon in the path has to be
+ * escaped, and backslashes must become forward slashes. The result is then
+ * wrapped in single quotes by the caller.
+ *
+ * Exactly one backslash. fluent-ffmpeg passes the graph straight to execFile
+ * with no shell in between, so shell-style double escaping produces a literal
+ * `\\:` and ffmpeg fails with "Error initializing complex filters". Verified
+ * against all five escaping forms; only quoted-single-backslash works.
+ */
+function escapeForFilter(p: string): string {
+  return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
+}
+
+/** ASS style string for burned captions at a readable size. */
+function captionStyle(outW: number, outH: number, hasPip: boolean): string {
+  const fontSize = Math.round(Math.min(outW, outH) * CAPTION_SCALE);
+  const marginV = Math.round(outH * (hasPip ? CAPTION_MARGIN_WITH_PIP : CAPTION_MARGIN));
+  return [
+    `FontName=Arial`,
+    `FontSize=${fontSize}`,
+    `Bold=1`,
+    `PrimaryColour=&H00FFFFFF`,   // white text
+    `OutlineColour=&H00000000`,   // black outline, for legibility over footage
+    `BorderStyle=1`,
+    `Outline=3`,
+    `Shadow=1`,
+    `Alignment=2`,                // bottom-centre
+    `MarginV=${marginV}`,
+  ].join(",");
+}
+
 /** Scale a render size down to MAX_LONG_EDGE, keeping both edges even for x264. */
 function outputSize(width: number, height: number): { w: number; h: number } {
   const scale = Math.min(1, MAX_LONG_EDGE / Math.max(width, height));
@@ -71,6 +125,12 @@ export async function compositePhotos(
   width: number,
   height: number,
   kind: BackgroundKind = "photo",
+  /**
+   * Local .srt path to burn in during pass 2. Cheap rather than free: measured
+   * on a 3:33 render, pass 2 went 22.3s -> 31.4s. Still far better than a
+   * separate pass, which costs a whole extra encode.
+   */
+  srtPath?: string | null,
 ): Promise<Buffer | null> {
   const photos = photoUrls.filter(Boolean).slice(0, MAX_PHOTOS);
   if (photos.length === 0) return null;
@@ -136,7 +196,11 @@ export async function compositePhotos(
         .inputOptions(["-stream_loop", "-1"]) // applies to slidePath (2nd input)
         .complexFilter([
           `[0:v]scale=${pipW}:-2,format=yuv420p[av]`,
-          `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1[outv]`,
+          // Captions burn last so they sit over the avatar inset, not under it.
+          `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +
+            (srtPath
+              ? `[comp];[comp]subtitles='${escapeForFilter(srtPath)}':force_style='${captionStyle(outW, outH, true)}'[outv]`
+              : `[outv]`),
         ])
         // This encodes the full length of the avatar video — the one step that
         // has to stay inside the function's time budget.
@@ -170,6 +234,63 @@ export async function compositePhotos(
     return out;
   } catch (err) {
     console.error("[composite-photos] Failed, keeping plain avatar video:", err instanceof Error ? err.message : err);
+    return null;
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Burn captions into a video that has no b-roll.
+ *
+ * When compositing runs, captions ride along in pass 2 for free — that pass
+ * re-encodes every frame anyway. This is the other case: avatar-only renders,
+ * where captions mean adding a full re-encode that would not otherwise happen.
+ * It keeps the frame at its original size (no b-roll means nothing to downscale
+ * for) and uses veryfast, since a talking head compresses well.
+ *
+ * Returns null on any failure so the caller keeps the un-captioned video.
+ */
+export async function burnSubtitles(
+  videoBuffer: Buffer,
+  srtPath: string,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  const startedAt = Date.now();
+  const dir = join(tmpdir(), `subs-${randomUUID()}`);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const inPath = join(dir, "in.mp4");
+    const outPath = join(dir, "out.mp4");
+    await fs.writeFile(inPath, videoBuffer);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(inPath)
+        .complexFilter([
+          `[0:v]subtitles='${escapeForFilter(srtPath)}':force_style='${captionStyle(width, height, false)}'[outv]`,
+        ])
+        .outputOptions([
+          "-map", "[outv]",
+          "-map", "0:a?",
+          "-c:v", "libx264",
+          "-preset", "veryfast",
+          "-crf", "26",
+          "-pix_fmt", "yuv420p",
+          "-threads", "0",
+          "-c:a", "copy",
+        ])
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err))
+        .save(outPath);
+    });
+
+    const out = await fs.readFile(outPath);
+    console.log(`[composite-photos] Burned captions into ${width}x${height} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
+    return out;
+  } catch (err) {
+    console.error("[composite-photos] Caption burn failed, keeping plain video:", err instanceof Error ? err.message : err);
     return null;
   } finally {
     await fs.rm(dir, { recursive: true, force: true }).catch(() => {});

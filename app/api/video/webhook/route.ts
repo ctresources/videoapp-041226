@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { isHeygenUrl } from "@/lib/utils/video-url";
+import { getVideoStatus } from "@/lib/api/heygen";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 
@@ -320,7 +321,20 @@ export async function POST(req: NextRequest) {
     const photoUrls = Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null;
     const clipUrls = Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null;
     const dimension = (meta.dimension as { width: number; height: number } | undefined) || null;
-    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, { musicUrl, photoUrls, clipUrls, dimension });
+    // The sidecar SRT is not in the callback payload — only the status
+    // endpoint returns it, so fetch it here. Failure just means no captions.
+    let subtitleUrl: string | null = null;
+    if (videoId) {
+      try {
+        subtitleUrl = (await getVideoStatus(videoId)).captionUrl;
+      } catch (err) {
+        console.warn("[webhook] Could not fetch subtitle URL:", err instanceof Error ? err.message : err);
+      }
+    }
+
+    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, {
+      musicUrl, photoUrls, clipUrls, dimension, subtitleUrl,
+    });
     if (permanentUrl) finalVideoUrl = permanentUrl;
   }
 

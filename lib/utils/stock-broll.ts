@@ -15,12 +15,19 @@ import { searchStockVideos } from "@/lib/api/stock-video";
 /**
  * Longest script that still gets stock b-roll.
  *
- * Compositing re-encodes the entire runtime: measured locally, a 3:33 video
- * takes ~39s, which is ~200s against the roughly 5x slower lambda and fits the
- * 300s budget. A full 8-minute video works out around 325s and would time out.
- * 700 words is ~4.8 minutes at 145wpm, comfortably inside that.
+ * Compositing re-encodes the entire runtime, and burning captions into that
+ * same pass adds to it: measured locally on a 3:33 render, pass 1 is ~10s and
+ * pass 2 goes 22.3s -> 31.4s with captions, so ~42s total. Against the roughly
+ * 5x slower lambda that is ~210s, plus clip downloads and two uploads inside a
+ * 300s budget.
+ *
+ * 600 words is ~4.1 minutes at 145wpm, which keeps the whole job near ~220s.
+ * It was 700 before captions joined the same pass; that now projects to ~270s,
+ * which is closer to the edge than this should run. A timeout is survivable —
+ * store-first means the video is already saved and only the b-roll is lost —
+ * but it is not worth courting.
  */
-export const STOCK_BROLL_MAX_WORDS = 700;
+export const STOCK_BROLL_MAX_WORDS = 600;
 
 /** Clips to composite. Each one is downloaded and re-encoded in the webhook. */
 const MAX_CLIPS = 4;

@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
-import { compositePhotos } from "@/lib/utils/composite-photos";
+import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
+import { promises as fs } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 
 const BUCKET = "videos";
 
@@ -16,6 +20,11 @@ interface StoreOptions {
   clipUrls?: string[] | null;
   /** Target frame size, needed for photo compositing. */
   dimension?: { width: number; height: number } | null;
+  /**
+   * HeyGen's sidecar SRT. We burn captions ourselves because HeyGen's own
+   * burn-in has no font size control and renders too small to read on a phone.
+   */
+  subtitleUrl?: string | null;
 }
 
 /**
@@ -74,9 +83,29 @@ export async function downloadAndStoreVideo(
   // Beyond this point the video is already safe at `publicUrl`. Anything that
   // fails here is logged and skipped; the same path is overwritten on success
   // so the URL the rest of the app holds never changes.
+  const srtDir = join(tmpdir(), `srt-${randomUUID()}`);
   try {
     let processed = buffer;
     let changed = false;
+
+    // Fetch the sidecar SRT up front — it feeds either the composite pass or
+    // the standalone burn below.
+    let srtPath: string | null = null;
+    if (opts.subtitleUrl) {
+      try {
+        const srtRes = await fetch(opts.subtitleUrl);
+        if (!srtRes.ok) throw new Error(`HTTP ${srtRes.status}`);
+        const srt = await srtRes.text();
+        // An empty SRT would make ffmpeg fail for no gain.
+        if (srt.trim()) {
+          await fs.mkdir(srtDir, { recursive: true });
+          srtPath = join(srtDir, "captions.srt");
+          await fs.writeFile(srtPath, srt, "utf8");
+        }
+      } catch (err) {
+        console.warn(`[store-video] ${videoId}: subtitle fetch failed:`, err instanceof Error ? err.message : err);
+      }
+    }
 
     // B-roll first (rebuilds the video frame), then music (mixes the audio).
     // The user's own photos take precedence; stock footage only fills the gap
@@ -88,11 +117,18 @@ export async function downloadAndStoreVideo(
         : null;
 
     if (broll && opts.dimension) {
+      // Captions ride along in pass 2 — that pass re-encodes every frame
+      // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
-        processed, broll.urls, opts.dimension.width, opts.dimension.height, broll.kind,
+        processed, broll.urls, opts.dimension.width, opts.dimension.height, broll.kind, srtPath,
       );
       if (withBroll) { processed = withBroll; changed = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);
+    } else if (srtPath && opts.dimension) {
+      // No b-roll, so nothing else re-encodes this video — captions have to pay
+      // for a pass of their own here.
+      const withSubs = await burnSubtitles(processed, srtPath, opts.dimension.width, opts.dimension.height);
+      if (withSubs) { processed = withSubs; changed = true; }
     }
     if (opts.musicUrl) {
       const mixed = await mixBackgroundMusic(processed, opts.musicUrl);
@@ -105,6 +141,8 @@ export async function downloadAndStoreVideo(
     }
   } catch (err) {
     console.error("[store-video] Post-processing failed for", videoId, err instanceof Error ? err.message : err);
+  } finally {
+    await fs.rm(srtDir, { recursive: true, force: true }).catch(() => {});
   }
 
   return publicUrl;
