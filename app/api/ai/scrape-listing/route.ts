@@ -21,16 +21,53 @@ export interface ListingData {
   neighborhood: string;
 }
 
+/**
+ * Sanity-check a pasted link before handing it to Jina.
+ *
+ * Deliberately not an allowlist — see the call site. This only rejects things
+ * that cannot be a public listing page: non-web schemes, and hosts that only
+ * resolve inside a private network. Jina fetches the page from its own
+ * infrastructure, so this is belt-and-braces rather than the security boundary.
+ */
+function isPubliclyFetchable(u: URL): boolean {
+  if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return false;
+  if (host === "::1") return false;
+
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 0 || a === 10 || a === 127) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 169 && b === 254) return false;
+  }
+  return true;
+}
+
 async function fetchWithJina(url: string): Promise<string> {
   const jinaUrl = `https://r.jina.ai/${url}`;
+  // Anonymous r.jina.ai is now behind a Cloudflare challenge: every request,
+  // even for example.com, comes back 403 with a "Just a moment..." page. That
+  // fails the blocked-page check below, so listing import failed for EVERY
+  // site, not just the scraper-hostile ones. A free key lifts that.
+  const key = process.env.JINA_API_KEY;
   const res = await fetch(jinaUrl, {
     headers: {
       Accept: "text/plain",
       "X-Return-Format": "markdown",
+      ...(key && { Authorization: `Bearer ${key}` }),
     },
     signal: AbortSignal.timeout(20000),
   });
-  if (!res.ok) throw new Error(`Jina fetch failed: ${res.status}`);
+  if (!res.ok) {
+    if (!key && (res.status === 403 || res.status === 429)) {
+      throw new Error("NO_JINA_KEY");
+    }
+    throw new Error(`Jina fetch failed: ${res.status}`);
+  }
   const text = await res.text();
 
   // Zillow and friends aggressively block scrapers. A blocked/CAPTCHA page
@@ -157,20 +194,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
 
-  // Validate it's a real estate URL
-  const allowedDomains = ["zillow.com", "realtor.com", "redfin.com", "homes.com", "trulia.com", "compass.com"];
   let parsedUrl: URL;
   try {
-    parsedUrl = new URL(url);
+    parsedUrl = new URL(url.trim());
   } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    return NextResponse.json({ error: "That doesn't look like a valid link." }, { status: 400 });
   }
 
-  const isAllowed = allowedDomains.some((d) => parsedUrl.hostname.includes(d));
-  if (!isAllowed) {
+  // Previously this allowed only six national portals, which rejected the two
+  // kinds of link agents actually paste: their own IDX site (every agent has a
+  // different domain, so no list can cover them) and MLS short links, whose
+  // host says nothing about where they land. Jina resolves redirects and does
+  // the fetching, so the host check earns nothing — a page that cannot be read
+  // already fails as BLOCKED below, with a message that says so.
+  if (!isPubliclyFetchable(parsedUrl)) {
     return NextResponse.json(
-      { error: "Supported sites: Zillow, Realtor.com, Redfin, Homes.com, Trulia, Compass" },
-      { status: 400 }
+      { error: "Please paste a public https link to the listing." },
+      { status: 400 },
     );
   }
 
@@ -180,12 +220,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ listing });
   } catch (err) {
     console.error("Scrape listing error:", err);
-    const blocked = err instanceof Error && err.message === "BLOCKED";
+    const code = err instanceof Error ? err.message : "";
+
+    // Separated so a missing key stops looking like a hostile website. Without
+    // it, a server-side configuration problem read as "Zillow blocked us" and
+    // sent every user off to type the listing in by hand.
+    if (code === "NO_JINA_KEY") {
+      console.error("[scrape-listing] JINA_API_KEY is not set — anonymous r.jina.ai is Cloudflare-challenged, so every import fails.");
+      return NextResponse.json(
+        { error: "Listing import isn't available right now. Please enter the details manually." },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       {
-        error: blocked
-          ? "This site blocked the import (Zillow does this often). Please enter the listing details manually — it only takes a minute."
-          : "Could not parse listing. Try entering details manually.",
+        error: code === "BLOCKED"
+          ? "That page blocked the import (Zillow and some MLS sites do this). Please enter the listing details manually — it only takes a minute."
+          : "Could not read that listing. Try entering the details manually.",
       },
       { status: 422 }
     );
