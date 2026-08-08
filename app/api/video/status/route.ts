@@ -4,6 +4,7 @@ import { getVideoStatus, getVideoAgentSession, getVideoV3Status } from "@/lib/ap
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { buildStoreOptions } from "@/lib/utils/store-options";
 import { NextRequest, NextResponse } from "next/server";
 
 // Compositing photos + mixing music into a finished render (ffmpeg) can take a
@@ -23,6 +24,7 @@ async function finalizeDirectVideo(
   admin: ReturnType<typeof createAdminClient>,
   video: { id: string; project_id: string | null; user_id: string; video_type: string; render_status: string; metadata: Record<string, unknown> | null },
   heygenUrl: string,
+  heygenVideoId: string,
 ): Promise<string | null> {
   // Claim the row (rendering/pending -> storing). Only one caller wins.
   const { data: claimed } = await admin
@@ -34,14 +36,14 @@ async function finalizeDirectVideo(
     .single();
   if (!claimed) return null; // someone else is finalizing
 
-  const meta = video.metadata ?? {};
-  const musicUrl = (meta.music_url as string | undefined) || null;
-  const photoUrls = Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null;
-  const dimension = (meta.dimension as { width: number; height: number } | undefined) || null;
+  // The same options the webhook would have used — b-roll, music and captions.
+  // This poll and the webhook race each other, and only the winner does the
+  // work, so anything missing here is missing from the finished video.
+  const storeOpts = await buildStoreOptions(video.metadata, heygenVideoId);
 
   // downloadAndStoreVideo never throws (photo/music steps fall back internally),
   // so on any failure we still land on the raw HeyGen URL rather than a stuck row.
-  const stored = await downloadAndStoreVideo(heygenUrl, video.id, { musicUrl, photoUrls, dimension });
+  const stored = await downloadAndStoreVideo(heygenUrl, video.id, storeOpts);
   const finalUrl = stored || heygenUrl;
 
   await admin
@@ -255,6 +257,7 @@ export async function GET(req: NextRequest) {
                 metadata: video.metadata as Record<string, unknown> | null,
               },
               videoStatus.videoUrl,
+              renderId,
             );
             if (finalUrl) {
               status = "completed";

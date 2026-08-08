@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
-import { isExpiredHeygenUrl } from "@/lib/utils/video-url";
+import { buildStoreOptions, isPostProcessed } from "@/lib/utils/store-options";
+import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/video-url";
 import { NextRequest, NextResponse } from "next/server";
 
 // Matches the webhook: re-storing may also run the ffmpeg b-roll composite.
@@ -39,14 +40,20 @@ export async function POST(req: NextRequest) {
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
-  // Same post-processing the webhook was given — see the note above.
   const meta = (video.metadata ?? {}) as Record<string, unknown>;
-  const storeOpts = {
-    musicUrl: (meta.music_url as string | undefined) || null,
-    photoUrls: Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null,
-    clipUrls: Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null,
-    dimension: (meta.dimension as { width: number; height: number } | undefined) || null,
-  };
+
+  // Already stored in our bucket and already post-processed — there is nothing
+  // to repair, and running again would mix the music in a second time and burn
+  // a second layer of captions over the first.
+  if (video.video_url && !isHeygenUrl(video.video_url as string) && isPostProcessed(meta)) {
+    return NextResponse.json({ videoUrl: video.video_url });
+  }
+
+  // Same post-processing the webhook was given — see the note above. The SRT
+  // lookup needs HeyGen's video id; on the agent path render_job_id may still
+  // be the session id, in which case there is no sidecar SRT to find and
+  // store-video transcribes the narration instead.
+  const storeOpts = await buildStoreOptions(meta, video.render_job_id as string | null);
 
   // If the stored URL is still valid, download it directly without hitting HeyGen API.
   if (video.video_url && !isExpiredHeygenUrl(video.video_url)) {

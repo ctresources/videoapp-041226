@@ -670,6 +670,9 @@ export async function POST(req: NextRequest) {
             // two is ever set; photos win when present.
             ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
             ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
+            // HeyGen returns a sidecar SRT for this path; we burn it ourselves
+            // at a readable size. Recorded so the store step knows to.
+            captions_enabled: captions !== false,
           },
         })
         .select()
@@ -783,6 +786,10 @@ export async function POST(req: NextRequest) {
           dimension, orientation, city, state, title,
           // Mixed under the voiceover by the webhook at store time.
           ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
+          // The prompt asks the Video Agent for burned captions, but that is a
+          // request it can ignore — and does. Recorded here so the store step
+          // can burn them itself from a transcript of the finished render.
+          captions_enabled: captions !== false,
         },
       })
       .select()

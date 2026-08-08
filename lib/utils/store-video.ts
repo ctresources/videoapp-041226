@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
+import { transcribeToSrt } from "@/lib/utils/srt";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -8,7 +9,7 @@ import { randomUUID } from "crypto";
 
 const BUCKET = "videos";
 
-interface StoreOptions {
+export interface StoreOptions {
   musicUrl?: string | null;
   /** Photos to composite as b-roll behind the avatar (Direct Video renders). */
   photoUrls?: string[] | null;
@@ -25,6 +26,15 @@ interface StoreOptions {
    * burn-in has no font size control and renders too small to read on a phone.
    */
   subtitleUrl?: string | null;
+  /**
+   * Whether the user asked for captions. Defaults to on, matching the
+   * "Burn synchronized captions" checkbox. When there is no sidecar SRT — the
+   * Video Agent never produces one — the narration is transcribed and captions
+   * are burned from that instead.
+   */
+  captionsEnabled?: boolean;
+  /** An SRT already transcribed for this video, so a replay never pays twice. */
+  cachedSrt?: string | null;
 }
 
 /**
@@ -88,23 +98,18 @@ export async function downloadAndStoreVideo(
     let processed = buffer;
     let changed = false;
 
-    // Fetch the sidecar SRT up front — it feeds either the composite pass or
-    // the standalone burn below.
+    // Get the captions up front — they feed either the composite pass or the
+    // standalone burn below.
     let srtPath: string | null = null;
-    if (opts.subtitleUrl) {
-      try {
-        const srtRes = await fetch(opts.subtitleUrl);
-        if (!srtRes.ok) throw new Error(`HTTP ${srtRes.status}`);
-        const srt = await srtRes.text();
-        // An empty SRT would make ffmpeg fail for no gain.
-        if (srt.trim()) {
-          await fs.mkdir(srtDir, { recursive: true });
-          srtPath = join(srtDir, "captions.srt");
-          await fs.writeFile(srtPath, srt, "utf8");
-        }
-      } catch (err) {
-        console.warn(`[store-video] ${videoId}: subtitle fetch failed:`, err instanceof Error ? err.message : err);
-      }
+    const { srt, transcribed } = await resolveCaptions(videoId, buffer, opts);
+    if (srt) {
+      await fs.mkdir(srtDir, { recursive: true });
+      srtPath = join(srtDir, "captions.srt");
+      await fs.writeFile(srtPath, srt, "utf8");
+      // Cache a transcript so a later replay of this same video (the repair
+      // path re-runs post-processing) never pays for transcription twice. The
+      // .srt download endpoint reads the same key.
+      if (transcribed) await mergeMetadata(admin, videoId, { srt });
     }
 
     // B-roll first (rebuilds the video frame), then music (mixes the audio).
@@ -139,6 +144,10 @@ export async function downloadAndStoreVideo(
       await store(processed);
       console.log(`[store-video] Re-stored processed ${videoId} → ${publicUrl}`);
     }
+    // Marks this render as finished with post-processing, so the repair path
+    // can tell "the webhook never got to it" from "already done" and stop
+    // re-mixing music and re-burning captions into an already-processed video.
+    await mergeMetadata(admin, videoId, { post_processed: true });
   } catch (err) {
     console.error("[store-video] Post-processing failed for", videoId, err instanceof Error ? err.message : err);
   } finally {
@@ -146,6 +155,78 @@ export async function downloadAndStoreVideo(
   }
 
   return publicUrl;
+}
+
+/**
+ * The captions to burn, if any.
+ *
+ * HeyGen's sidecar SRT is used when there is one — it is free and already
+ * aligned. There is none on the Video Agent path: `caption` is a Direct Video
+ * parameter, and asking the agent for captions in its prompt is a request it
+ * is free to ignore, which is exactly what it did. So the fallback transcribes
+ * the render's own narration.
+ *
+ * `transcribed` says whether the SRT is newly ours and therefore worth caching.
+ */
+async function resolveCaptions(
+  videoId: string,
+  video: Buffer,
+  opts: StoreOptions,
+): Promise<{ srt: string | null; transcribed: boolean }> {
+  if (opts.captionsEnabled === false) return { srt: null, transcribed: false };
+
+  if (opts.subtitleUrl) {
+    try {
+      const res = await fetch(opts.subtitleUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const srt = await res.text();
+      // An empty SRT would make ffmpeg fail for no gain.
+      if (srt.trim()) return { srt, transcribed: false };
+    } catch (err) {
+      console.warn(`[store-video] ${videoId}: subtitle fetch failed:`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  if (opts.cachedSrt?.trim()) return { srt: opts.cachedSrt, transcribed: false };
+
+  if (!process.env.ELEVENLABS_API_KEY) {
+    console.warn(`[store-video] ${videoId}: no sidecar SRT and no ELEVENLABS_API_KEY — captions skipped`);
+    return { srt: null, transcribed: false };
+  }
+
+  try {
+    const srt = await transcribeToSrt(video);
+    if (!srt) {
+      console.warn(`[store-video] ${videoId}: no speech found, captions skipped`);
+      return { srt: null, transcribed: false };
+    }
+    console.log(`[store-video] ${videoId}: transcribed captions (${srt.split("\n\n").length} cues)`);
+    return { srt, transcribed: true };
+  } catch (err) {
+    console.warn(`[store-video] ${videoId}: transcription failed:`, err instanceof Error ? err.message : err);
+    return { srt: null, transcribed: false };
+  }
+}
+
+/** Merge keys into a video row's metadata without dropping what is already there. */
+async function mergeMetadata(
+  admin: ReturnType<typeof createAdminClient>,
+  videoId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { data } = await admin
+      .from("generated_videos")
+      .select("metadata")
+      .eq("id", videoId)
+      .single();
+    await admin
+      .from("generated_videos")
+      .update({ metadata: { ...((data?.metadata as Record<string, unknown> | null) ?? {}), ...patch } })
+      .eq("id", videoId);
+  } catch (err) {
+    console.warn(`[store-video] ${videoId}: metadata update failed:`, err instanceof Error ? err.message : err);
+  }
 }
 
 // isHeygenUrl / isExpiredHeygenUrl live in lib/utils/video-url.ts — they are

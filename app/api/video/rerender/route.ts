@@ -175,6 +175,8 @@ export async function POST(req: NextRequest) {
           // Only one of the two is ever set; the user's photos win.
           ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
           ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
+          // Burned at store time from HeyGen's sidecar SRT — see store-video.
+          captions_enabled: edits.captionsEnabled !== false,
         },
       })
       .select()
