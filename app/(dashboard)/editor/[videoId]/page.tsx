@@ -50,9 +50,11 @@ interface VideoData {
   video_type: string;
   render_status: string;
   project_id: string;
+  metadata: Record<string, unknown> | null;
   projects: {
     title: string;
     ai_script: { script: string; title: string; hooks: string[] } | null;
+    listing_data: Record<string, unknown> | null;
   } | null;
 }
 
@@ -163,7 +165,7 @@ export default function VideoEditorPage() {
     const [{ data, error }, { data: { user } }] = await Promise.all([
       supabase
         .from("generated_videos")
-        .select("*, projects(title, ai_script)")
+        .select("*, projects(title, ai_script, listing_data)")
         .eq("id", videoId)
         .single(),
       supabase.auth.getUser(),
@@ -177,13 +179,31 @@ export default function VideoEditorPage() {
 
     const v = data as unknown as VideoData;
     setVideo(v);
+
+    // The photos this video was already made with. Without them the grid opens
+    // empty and a re-render — which is always Direct Video — sees no photos and
+    // fills the b-roll with stock footage instead, quietly dropping the
+    // listing's own photos. Direct renders keep them on the video row; a Video
+    // Agent render doesn't (its photos went to HeyGen as files), so fall back
+    // to the listing the project was imported from.
+    const meta = v.metadata ?? {};
+    const listing = v.projects?.listing_data ?? {};
+    const existingPhotos = (
+      Array.isArray(meta.photo_urls) ? meta.photo_urls
+      : Array.isArray(listing.photoUrls) ? listing.photoUrls
+      : []
+    ).filter((u: unknown): u is string => typeof u === "string" && u.length > 0).slice(0, 8);
+
     setEdits((e) => {
       const next = {
         ...e,
         script: v.projects?.ai_script?.script || "",
         title: v.projects?.title || "",
         format: (v.video_type as RerenderEdits["format"]) || "blog_long",
+        photoUrls: existingPhotos,
       };
+      // Snapshot includes the photos, so carrying them over is not itself a
+      // "change" that turns a title-only edit into a paid re-render.
       setInitialEdits(next);
       return next;
     });
