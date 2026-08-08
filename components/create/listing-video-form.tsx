@@ -96,7 +96,10 @@ export function ListingVideoForm() {
 
   function handleManual() {
     setManualMode(true);
-    setListing(EMPTY_LISTING);
+    // Keep any photos already uploaded on the URL step. "Next: Add Listing
+    // Details" is the only way forward after uploading them, and resetting to
+    // EMPTY_LISTING here threw every one of them away on the way to the form.
+    setListing((l) => ({ ...EMPTY_LISTING, photoUrls: l.photoUrls }));
     setStep("review");
   }
 
