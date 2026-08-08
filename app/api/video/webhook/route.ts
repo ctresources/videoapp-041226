@@ -6,7 +6,7 @@ import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { buildStoreOptions } from "@/lib/utils/store-options";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
-import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
+import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
 
 /** Constant-time string compare that tolerates differing lengths. */
 function safeEqual(a: string, b: string): boolean {
@@ -87,22 +87,29 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * as the main handler (callback_id → video_id → session_id). Kept separate from
  * those queries because they mutate the row as they search.
  */
-async function findStoredUrl(
+async function findStoredRow(
   admin: ReturnType<typeof createAdminClient>,
   ids: { callbackId?: string | null; videoId?: string | null; sessionId?: string | null },
-): Promise<string | null> {
+): Promise<StoredRow | null> {
+  const COLUMNS = "video_url, project_id, user_id";
   if (ids.callbackId && UUID_RE.test(ids.callbackId)) {
     const { data } = await admin
-      .from("generated_videos").select("video_url").eq("id", ids.callbackId).maybeSingle();
-    if (data) return (data as { video_url: string | null }).video_url;
+      .from("generated_videos").select(COLUMNS).eq("id", ids.callbackId).maybeSingle();
+    if (data) return data as unknown as StoredRow;
   }
   for (const jobId of [ids.videoId, ids.sessionId]) {
     if (!jobId) continue;
     const { data } = await admin
-      .from("generated_videos").select("video_url").eq("render_job_id", jobId).maybeSingle();
-    if (data) return (data as { video_url: string | null }).video_url;
+      .from("generated_videos").select(COLUMNS).eq("render_job_id", jobId).maybeSingle();
+    if (data) return data as unknown as StoredRow;
   }
   return null;
+}
+
+interface StoredRow {
+  video_url: string | null;
+  project_id: string | null;
+  user_id: string | null;
 }
 
 // HeyGen pings GET to verify the endpoint is reachable before registering it
@@ -235,9 +242,15 @@ export async function POST(req: NextRequest) {
   // retry could undo the permanent URL an earlier attempt had already stored.
   // Once the video is in our own bucket there is nothing left to do.
   if (success) {
-    const stored = await findStoredUrl(admin, { callbackId, videoId, sessionId });
-    if (stored && !isHeygenUrl(stored)) {
+    const stored = await findStoredRow(admin, { callbackId, videoId, sessionId });
+    if (stored?.video_url && !isHeygenUrl(stored.video_url)) {
       console.log(`[webhook] Already stored, ignoring duplicate ${eventType} (callback=${callbackId})`);
+      // The video is done, but the thumbnail step below never ran for it: this
+      // branch is also how a render finalized by the status poll or the repair
+      // path gets here, and those don't generate one.
+      if (stored.project_id && stored.user_id) {
+        await ensureProjectThumbnail(stored.project_id, stored.user_id);
+      }
       return NextResponse.json({ received: true, duplicate: true });
     }
   }
@@ -334,22 +347,10 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Auto-generate a YouTube thumbnail once the video is ready ─────────────
-  // Only when the project doesn't already have one (the user may have made
-  // their own in AI Tools); failures never affect the render result.
+  // Skipped when the project already has one — the user may have made their
+  // own in AI Tools. Failures never affect the render result.
   if (success && video.project_id && video.user_id) {
-    try {
-      const { data: proj } = await admin
-        .from("projects")
-        .select("thumbnail_url")
-        .eq("id", video.project_id)
-        .single();
-      if (!(proj as { thumbnail_url: string | null } | null)?.thumbnail_url) {
-        console.log(`[webhook] auto-generating thumbnail for project ${video.project_id}`);
-        await renderAndSaveThumbnail({ userId: video.user_id, projectId: video.project_id });
-      }
-    } catch (err) {
-      console.error("[webhook] auto-thumbnail failed:", err instanceof Error ? err.message : err);
-    }
+    await ensureProjectThumbnail(video.project_id, video.user_id);
   }
 
   console.log(`[webhook] Processed ${eventType}: row ${video.id} → ${renderStatus}`);

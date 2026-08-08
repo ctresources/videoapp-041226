@@ -171,6 +171,34 @@ Return ONLY this JSON: {"headline": "YOUR TEXT HERE"}`,
   }
 }
 
+/**
+ * Give the project a YouTube thumbnail if it doesn't have one yet.
+ *
+ * Called from every path that finishes a render, because only one of them
+ * actually runs — the others find the video already stored and stand down. It
+ * used to live solely in the webhook, below the duplicate guard, so a render
+ * finalized by the status poll or the repair path got no thumbnail at all.
+ *
+ * Never throws and never overwrites: a thumbnail the user made in AI Tools is
+ * already on the project, and this returns without generating anything.
+ */
+export async function ensureProjectThumbnail(projectId: string, userId: string): Promise<void> {
+  const admin = createAdminClient();
+  try {
+    const { data } = await admin
+      .from("projects")
+      .select("thumbnail_url")
+      .eq("id", projectId)
+      .maybeSingle();
+    if ((data as { thumbnail_url: string | null } | null)?.thumbnail_url) return;
+
+    console.log(`[thumbnail] auto-generating for project ${projectId}`);
+    await renderAndSaveThumbnail({ userId, projectId });
+  } catch (err) {
+    console.error("[thumbnail] auto-generate failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 export interface RenderThumbnailOptions {
   userId: string;
   projectId?: string;

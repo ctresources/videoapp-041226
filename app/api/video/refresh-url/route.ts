@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
 import { buildStoreOptions, isPostProcessed } from "@/lib/utils/store-options";
+import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
 import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/video-url";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, render_job_id, video_url, metadata")
+    .select("id, project_id, render_job_id, video_url, metadata")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
@@ -42,11 +43,23 @@ export async function POST(req: NextRequest) {
 
   const meta = (video.metadata ?? {}) as Record<string, unknown>;
 
+  /**
+   * Finish the way the webhook would: hand back the URL, and make sure the
+   * project has a YouTube thumbnail. The webhook only generates one when it is
+   * the path that finalizes the render, and on a repaired video it isn't.
+   */
+  const finish = async (videoUrl: string) => {
+    if (video.project_id) {
+      await ensureProjectThumbnail(video.project_id as string, user.id);
+    }
+    return NextResponse.json({ videoUrl });
+  };
+
   // Already stored in our bucket and already post-processed — there is nothing
   // to repair, and running again would mix the music in a second time and burn
   // a second layer of captions over the first.
   if (video.video_url && !isHeygenUrl(video.video_url as string) && isPostProcessed(meta)) {
-    return NextResponse.json({ videoUrl: video.video_url });
+    return finish(video.video_url as string);
   }
 
   // Same post-processing the webhook was given — see the note above. The SRT
@@ -58,7 +71,7 @@ export async function POST(req: NextRequest) {
   // If the stored URL is still valid, download it directly without hitting HeyGen API.
   if (video.video_url && !isExpiredHeygenUrl(video.video_url)) {
     const permanentUrl = await downloadAndStoreVideo(video.video_url, video.id, storeOpts);
-    if (permanentUrl) return NextResponse.json({ videoUrl: permanentUrl });
+    if (permanentUrl) return finish(permanentUrl);
     // Fall through to try HeyGen API if direct download failed.
   }
 
@@ -103,5 +116,5 @@ export async function POST(req: NextRequest) {
 
   // Download and store permanently
   const permanentUrl = await downloadAndStoreVideo(freshUrl, video.id, storeOpts);
-  return NextResponse.json({ videoUrl: permanentUrl || freshUrl });
+  return finish(permanentUrl || freshUrl);
 }
