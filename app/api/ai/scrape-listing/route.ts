@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { extractImageUrls } from "@/lib/utils/listing-photos";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
 export interface ListingData {
@@ -112,7 +113,6 @@ Return a JSON object with these exact keys (use null if not found):
   "propertyType": "Single Family" | "Condo" | "Townhouse" | "Multi-Family" | "Land" | "Other",
   "description": "property description (max 300 chars)",
   "features": ["feature 1", "feature 2", ...] (max 8 items),
-  "photoUrls": [] ,
   "agentName": "listing agent name or empty string",
   "mlsId": "MLS# or empty string",
   "daysOnMarket": number or null,
@@ -217,6 +217,10 @@ export async function POST(req: NextRequest) {
   try {
     const markdown = await fetchWithJina(url);
     const listing = await parseListingWithPerplexity(markdown);
+    // Photos come from the markdown, not the model — see extractImageUrls.
+    // Resolved against the final URL so relative paths work after a redirect.
+    listing.photoUrls = extractImageUrls(markdown, url);
+    console.log(`[scrape-listing] ${listing.photoUrls.length} photo(s) found for ${parsedUrl.hostname}`);
     return NextResponse.json({ listing });
   } catch (err) {
     console.error("Scrape listing error:", err);
