@@ -78,8 +78,25 @@ async function fetchWithJina(url: string): Promise<string> {
   const blocked = /captcha|are you a human|verify you are|access denied|unusual traffic|press & hold|enable javascript/i.test(
     text.slice(0, 4000),
   );
+
+  // A very short 200 is usually Jina talking about itself — a quota or
+  // rate-limit notice — rather than the listing page. That is a different
+  // problem from a hostile site and deserves a different message, so check
+  // before falling through to BLOCKED.
+  const quota = /rate limit|rate-limit|quota|too many requests|insufficient|balance|exceeded|upgrade your plan|billing/i
+    .test(text.slice(0, 1000));
+  if (quota && text.trim().length < 2000) {
+    console.error(`[scrape-listing] Jina refused the request: ${JSON.stringify(text.trim().slice(0, 300))}`);
+    throw new Error("JINA_QUOTA");
+  }
+
   if (blocked || text.trim().length < 500) {
-    console.warn(`[scrape-listing] Blocked or empty page (${text.trim().length} chars, blocked=${blocked})`);
+    // Log the response head. Without it a 221-character reply is
+    // indistinguishable from a JS-rendered page, a quota notice, and an outage.
+    console.warn(
+      `[scrape-listing] Unusable page (${text.trim().length} chars, blocked=${blocked}) ` +
+      `head=${JSON.stringify(text.trim().slice(0, 300))}`,
+    );
     throw new Error("BLOCKED");
   }
   return text;
@@ -233,6 +250,15 @@ export async function POST(req: NextRequest) {
       console.error("[scrape-listing] JINA_API_KEY is not set — anonymous r.jina.ai is Cloudflare-challenged, so every import fails.");
       return NextResponse.json(
         { error: "Listing import isn't available right now. Please enter the details manually." },
+        { status: 503 },
+      );
+    }
+
+    // Our own limit, not the listing site's — saying "that page blocked us"
+    // would send the user off to re-check a link that is perfectly fine.
+    if (code === "JINA_QUOTA") {
+      return NextResponse.json(
+        { error: "Listing import has hit its usage limit for now. Please enter the details manually, or try again later." },
         { status: 503 },
       );
     }
