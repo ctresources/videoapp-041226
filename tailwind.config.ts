@@ -43,6 +43,15 @@ const config: Config = {
         brand: "0 2px 12px 0 rgba(15,23,42,0.08)",
         "brand-lg": "0 8px 32px 0 rgba(15,23,42,0.12)",
       },
+      animation: {
+        slideDown: "slideDown 0.3s ease-out",
+      },
+      keyframes: {
+        slideDown: {
+          "0%": { opacity: "0", transform: "translateY(-8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
     },
   },
   plugins: [],

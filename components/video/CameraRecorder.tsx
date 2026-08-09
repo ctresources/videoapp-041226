@@ -627,7 +627,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
 
         {/* Branded Look — record-time overlays baked into the file */}
         {brandedSupported && (
-          <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl">
+          <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl animate-slideDown">
             <label className="flex items-center justify-between cursor-pointer select-none">
               <span className="text-sm font-semibold text-brand-text">✨ Branded Look</span>
               <div
