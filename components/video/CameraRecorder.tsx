@@ -109,6 +109,8 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Held between openCamera() and the camera step mounting its <video>.
+  const previewStreamRef = useRef<MediaStream | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -177,6 +179,19 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, isRecording, brandedActive]);
 
+  // Attach the preview stream once the camera step has actually mounted its
+  // <video>. openCamera() runs while the script step is still on screen, so it
+  // cannot do this itself.
+  useEffect(() => {
+    if (step !== "camera") return;
+    const el = videoRef.current;
+    const stream = previewStreamRef.current;
+    if (!el || !stream) return;
+    el.srcObject = stream;
+    el.muted = true;
+    el.play().catch(() => { /* preview only — recording is unaffected */ });
+  }, [step]);
+
   async function openCamera() {
     setCamError(null);
     try {
@@ -228,11 +243,11 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
         setBrandedActive(false);
       }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = previewStream;
-        videoRef.current.muted = true;
-        await videoRef.current.play();
-      }
+      // The preview <video> lives in the camera step, which has not rendered
+      // yet — videoRef is still null here, so assigning to it silently did
+      // nothing and the camera screen came up black on every machine. Hand the
+      // stream to the effect below, which attaches it once the element exists.
+      previewStreamRef.current = previewStream;
       setStep("camera");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -248,6 +263,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   function closeCamera() {
     compositeRef.current?.destroy();
     compositeRef.current = null;
+    previewStreamRef.current = null;
     setBrandedActive(false);
     transcriberRef.current?.stop();
     transcriberRef.current = null;
