@@ -30,7 +30,7 @@ import { randomUUID } from "crypto";
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 12;
 const SECONDS_PER_PHOTO = 4;
 
 /**
@@ -189,13 +189,39 @@ export async function compositePhotos(
     // ── Pass 2: loop the slideshow under the avatar PiP; avatar drives length ─
     const pipW = Math.round((outW * 0.3) / 2) * 2;
     const margin = Math.round(outW * 0.03);
+
+    // Circular mask for the avatar inset, generated once as a still and then
+    // alphamerged each frame. Drawing the circle with geq directly on the video
+    // would evaluate an expression per pixel per plane for the entire runtime —
+    // on a 3:33 render that is billions of evaluations. As a single frame it is
+    // free, and alphamerge is a cheap per-frame composite.
+    const maskPath = join(dir, "pip-mask.png");
+    const radius = pipW / 2;
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(`color=c=black:s=${pipW}x${pipW}`)
+        .inputFormat("lavfi")
+        .complexFilter(
+          [`[0:v]format=gray,geq=lum='if(lte(hypot(X-${radius},Y-${radius}),${radius}),255,0)'[m]`],
+          "m",
+        )
+        .outputOptions(["-frames:v", "1"])
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err))
+        .save(maskPath);
+    });
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(videoPath)
         .input(slidePath)
         .inputOptions(["-stream_loop", "-1"]) // applies to slidePath (2nd input)
+        .input(maskPath)
+        .inputOptions(["-loop", "1"]) // still image — overlay's shortest=1 ends it
         .complexFilter([
-          `[0:v]scale=${pipW}:-2,format=yuv420p[av]`,
+          // Square-crop the avatar, then punch it to a circle with the mask.
+          `[0:v]scale=${pipW}:${pipW}:force_original_aspect_ratio=increase,` +
+            `crop=${pipW}:${pipW},format=rgba[sq]`,
+          `[sq][2:v]alphamerge[av]`,
           // Captions burn last so they sit over the avatar inset, not under it.
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +
             (srtPath

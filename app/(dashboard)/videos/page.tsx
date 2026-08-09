@@ -53,7 +53,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "warnin
 };
 
 const typeLabel: Record<string, string> = {
-  blog_long:    "Blog Video",
+  blog_long:    "YouTube (16:9)",
   reel_9x16:    "Reel / Short",
   youtube_16x9: "YouTube",
   short_1x1:    "Square",

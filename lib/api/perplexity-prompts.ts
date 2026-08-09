@@ -532,10 +532,13 @@ export function parseLocationScript(
   }
   const script = sanitizeNarration(narrationSections.filter(Boolean).join("\n\n"));
 
+  // City only — this is spoken, and the narration rule above says the same.
+  // A hardcoded fallback is not bound by a prompt instruction, so it has to
+  // drop the state itself or it reintroduces exactly what the rule removes.
   const cta = extractSection(raw, "CALL TO ACTION", allHeadings) ||
     (agentName
-      ? `Contact ${agentName} today to learn more about ${city}, ${state}!`
-      : `Reach out today to learn more about ${city}, ${state}!`);
+      ? `Contact ${agentName} today to learn more about ${city}!`
+      : `Reach out today to learn more about ${city}!`);
 
   const blogIntro = extractSection(raw, "BLOG POST INTRO", allHeadings);
   const sourcesRaw = extractSection(raw, "SOURCES USED", []);

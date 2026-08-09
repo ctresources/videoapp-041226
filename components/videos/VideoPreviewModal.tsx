@@ -15,7 +15,7 @@ interface VideoPreviewModalProps {
 }
 
 const typeLabel: Record<string, string> = {
-  blog_long:    "Blog Video (16:9)",
+  blog_long:    "YouTube (16:9)",
   reel_9x16:    "Reel / Short (9:16)",
   youtube_16x9: "YouTube (16:9)",
   short_1x1:    "Square (1:1)",

@@ -66,14 +66,28 @@ export async function downloadAndStoreVideo(
   const admin = createAdminClient();
   const path = `${videoId}.mp4`;
 
-  const store = async (buf: Buffer): Promise<string> => {
+  /**
+   * Upload and point the row at it.
+   *
+   * The processed write overwrites the SAME storage path as the raw one, so
+   * without a changing URL the browser keeps showing whatever it cached first
+   * — which is the raw render, before captions, b-roll or music. Captions were
+   * reported missing on a video whose logs clearly showed them burned; the file
+   * was correct and the player was serving a stale copy.
+   *
+   * `version` appends a cache-busting query so the finished video is fetched
+   * fresh. Short cacheControl alone would not fix it: the stale copy is already
+   * in the browser by the time post-processing finishes.
+   */
+  const store = async (buf: Buffer, version?: number): Promise<string> => {
     const { error } = await admin.storage
       .from(BUCKET)
-      .upload(path, buf, { contentType: "video/mp4", upsert: true });
+      .upload(path, buf, { contentType: "video/mp4", upsert: true, cacheControl: "60" });
     if (error) throw error;
     const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
-    await admin.from("generated_videos").update({ video_url: publicUrl }).eq("id", videoId);
-    return publicUrl;
+    const url = version ? `${publicUrl}?v=${version}` : publicUrl;
+    await admin.from("generated_videos").update({ video_url: url }).eq("id", videoId);
+    return url;
   };
 
   let buffer: Buffer;
@@ -141,7 +155,8 @@ export async function downloadAndStoreVideo(
     }
 
     if (changed) {
-      await store(processed);
+      // New URL, so anyone already holding the raw copy refetches the finished one.
+      publicUrl = await store(processed, Date.now());
       console.log(`[store-video] Re-stored processed ${videoId} → ${publicUrl}`);
     }
     // Marks this render as finished with post-processing, so the repair path

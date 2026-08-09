@@ -2,14 +2,19 @@
  * Default channel-growth CTA spoken at the end of videos (avatar, Digital
  * Twin, and teleprompter recordings). Placeholders resolve per video:
  * {city}/{state} use the project's subject market first, then the user's
- * home market from Settings — so a video about Blue Bell, PA says Blue Bell
- * even when the agent is based elsewhere.
+ * home market from Settings — so a video about Blue Bell says Blue Bell even
+ * when the agent is based elsewhere.
+ *
+ * The default names the city alone. This CTA is spoken aloud, and nobody says
+ * "moving to Blue Bell, Pennsylvania" about somewhere in their own area — it
+ * reads as an address label. {state} is still supported for anyone whose own
+ * saved template uses it.
  */
-export const DEFAULT_CTA_TEMPLATE = `If this is your first time on the channel and you want to know everything about living in {city}, {state} and the surrounding suburbs, subscribe so you can be the first to know about the current market in {city}.
+export const DEFAULT_CTA_TEMPLATE = `If this is your first time on the channel and you want to know everything about living in {city} and the surrounding suburbs, subscribe so you can be the first to know about the current market in {city}.
 
 My name is {name} and I've been guiding buyers and sellers across the {city} area for {years} years.
 
-{i_or_team} love helping people make their move to {city}, {state} — whether that's 9 days or 90 days away, feel free to reach out.
+{i_or_team} love helping people make their move to {city} — whether that's 9 days or 90 days away, feel free to reach out.
 
 All of our contact info is in the description, and we'd be happy to help you make a smooth move to {city}.`;
 

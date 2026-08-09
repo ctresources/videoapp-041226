@@ -43,7 +43,7 @@ export interface RerenderEdits {
   captionColor?: string;
   captionHighlightColor?: string;
   musicUrl?: string | null;
-  /** Listing/b-roll photos for the Video Agent to weave in (up to 8). */
+  /** Listing/b-roll photos composited behind the avatar (up to 12). */
   photoUrls?: string[];
 }
 
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
     const directPhotos = Array.isArray(edits.photoUrls)
-      ? edits.photoUrls.filter((u): u is string => typeof u === "string").slice(0, 8)
+      ? edits.photoUrls.filter((u): u is string => typeof u === "string").slice(0, 12)
       : [];
 
     // Same fallback create-blog applies. Without it a re-render of a video that

@@ -624,12 +624,12 @@ export async function POST(req: NextRequest) {
       const directVoiceId = await resolveVoiceId(profile.heygen_voice_id);
       if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-      // Photos to composite as b-roll behind the avatar (up to 8) — uploaded
+      // Photos to composite as b-roll behind the avatar (up to 12) — uploaded
       // photos take priority, then any listing photos.
       const directPhotos = [
         ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),
         ...listingPhotos,
-      ].slice(0, 8);
+      ].slice(0, 12);
 
       // Direct Video renders a bare talking head and HeyGen adds no b-roll of
       // its own, so a pasted script with no photos was just a face for the

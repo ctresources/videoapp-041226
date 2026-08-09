@@ -133,7 +133,7 @@ export default function VideoEditorPage() {
     if (picked.length === 0) return;
     const current = edits.photoUrls ?? [];
     const room = 8 - current.length;
-    if (room <= 0) { setPhotoError("You can add up to 8 photos."); return; }
+    if (room <= 0) { setPhotoError("You can add up to 12 photos."); return; }
     setUploadingPhotos(true);
     try {
       const uploaded = await Promise.all(
@@ -192,7 +192,7 @@ export default function VideoEditorPage() {
       Array.isArray(meta.photo_urls) ? meta.photo_urls
       : Array.isArray(listing.photoUrls) ? listing.photoUrls
       : []
-    ).filter((u: unknown): u is string => typeof u === "string" && u.length > 0).slice(0, 8);
+    ).filter((u: unknown): u is string => typeof u === "string" && u.length > 0).slice(0, 12);
 
     setEdits((e) => {
       const next = {
@@ -570,7 +570,7 @@ export default function VideoEditorPage() {
                   </button>
                 </div>
               ))}
-              {(edits.photoUrls ?? []).length < 8 && (
+              {(edits.photoUrls ?? []).length < 12 && (
                 <label
                   className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors shrink-0 cursor-pointer ${uploadingPhotos ? "border-amber-300 bg-amber-50" : "border-slate-200 hover:border-amber-300"}`}
                 >
@@ -592,10 +592,10 @@ export default function VideoEditorPage() {
               <p className="text-[11px] text-amber-600 mt-2">Uploading photo…</p>
             ) : (edits.photoUrls ?? []).length > 0 ? (
               <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1">
-                <CheckCircle size={11} /> {(edits.photoUrls ?? []).length} photo{(edits.photoUrls ?? []).length > 1 ? "s" : ""} added ({(edits.photoUrls ?? []).length}/8) · used as b-roll
+                <CheckCircle size={11} /> {(edits.photoUrls ?? []).length} photo{(edits.photoUrls ?? []).length > 1 ? "s" : ""} added ({(edits.photoUrls ?? []).length}/12) · used as b-roll
               </p>
             ) : (
-              <p className="text-[11px] text-slate-400 mt-2">Optional · up to 8 photos · tap + to add b-roll.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Optional · up to 12 photos · tap + to add b-roll.</p>
             )}
           </Section>
 
