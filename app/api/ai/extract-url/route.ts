@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
+import { extractImageUrls } from "@/lib/utils/listing-photos";
 
 export const maxDuration = 30;
 
@@ -112,7 +113,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not extract meaningful content from this URL" }, { status: 400 });
     }
 
-    return NextResponse.json({ text: text.slice(0, 5000), url: parsedUrl.toString() });
+    // Always attempted, regardless of what kind of page this is — this endpoint
+    // takes any URL (reference doc, article, listing), not just real-estate
+    // listings, so there is no reliable signal to gate on. Run against the raw
+    // HTML, before extractTextFromHtml strips every tag including <img>.
+    const photoUrls = extractImageUrls(html, parsedUrl.toString());
+
+    return NextResponse.json({ text: text.slice(0, 5000), url: parsedUrl.toString(), photoUrls });
   } catch (err) {
     if (err instanceof Error && err.name === "TimeoutError") {
       return NextResponse.json({ error: "URL took too long to load" }, { status: 408 });

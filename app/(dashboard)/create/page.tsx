@@ -395,7 +395,15 @@ function CreatePageInner() {
       setPastePdfText(body.text as string);
       setPastePdfUrl(body.url as string);
       try { setPastePdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPastePdfName("URL"); }
-      toast.success("URL content extracted!");
+      const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
+      if (found.length > 0) {
+        setPastePhotos((prev) => {
+          const room = 12 - prev.length;
+          const add = found.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
+          return [...prev, ...add];
+        });
+      }
+      toast.success(found.length > 0 ? `URL content extracted — ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -417,7 +425,15 @@ function CreatePageInner() {
       setCameraPdfText(body.text as string);
       setCameraPdfUrl(body.url as string);
       try { setCameraPdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setCameraPdfName("URL"); }
-      toast.success("URL content extracted!");
+      const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
+      if (found.length > 0) {
+        setCameraPhotos((prev) => {
+          const room = 12 - prev.length;
+          const add = found.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
+          return [...prev, ...add];
+        });
+      }
+      toast.success(found.length > 0 ? `URL content extracted — ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {

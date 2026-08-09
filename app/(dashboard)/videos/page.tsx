@@ -630,11 +630,6 @@ function VideosContent() {
                           </Button>
                         </a>
                       </div>
-                      <Link href={`/editor/${video.id}`}>
-                        <Button variant="ghost" size="sm" className="w-full gap-1.5 text-slate-400 hover:text-slate-600">
-                          <Pencil size={12} /> Edit & Re-render
-                        </Button>
-                      </Link>
                     </div>
                   )}
 

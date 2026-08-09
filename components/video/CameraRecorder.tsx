@@ -78,9 +78,11 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   const [scrollMode, setScrollMode] = useState<"auto" | "flow">("auto");
   const [flowSupported, setFlowSupported] = useState(false);
   const followerRef = useRef<VoiceFollower | null>(null);
-  // Branded Look — opt-in record-time compositing (logo, name bar, captions,
-  // music, end card). Off = the plain recording path runs untouched.
-  const [brandedLook, setBrandedLook] = useState(false);
+  // Branded Look — record-time compositing (logo, name bar, captions, music,
+  // end card). Defaults on: most recordings should carry the agent's branding
+  // without having to remember to switch it on. Off falls back to the plain
+  // recording path.
+  const [brandedLook, setBrandedLook] = useState(true);
   const [brandedSupported, setBrandedSupported] = useState(false);
   const [liveCaptions, setLiveCaptions] = useState(true);
   const [musicId, setMusicId] = useState("none");
