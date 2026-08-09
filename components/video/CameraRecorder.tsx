@@ -43,15 +43,23 @@ const SPEED_OPTIONS = [
 const MAX_RECORD_SECONDS = 15 * 60;
 const WARN_RECORD_SECONDS = 13 * 60;
 
-// Royalty-free music beds for Branded Look (same Mixkit tracks as the editor)
+// Music beds for Branded Look. These were hardcoded Mixkit URLs that had all
+// gone 403 — the editor hit the same problem and moved to HeyGen's licensed
+// catalog, which is what these queries resolve against. Served through our own
+// origin because WebAudio outputs silence for audio it can't read under CORS.
 const MUSIC_OPTIONS = [
-  { id: "none",      label: "No Music",   url: null as string | null },
-  { id: "calm",      label: "Calm Piano", url: "https://assets.mixkit.co/music/download/mixkit-soft-piano-ballad-1590.mp3" },
-  { id: "corporate", label: "Upbeat",     url: "https://assets.mixkit.co/music/download/mixkit-corporate-motivational-254.mp3" },
-  { id: "inspiring", label: "Inspiring",  url: "https://assets.mixkit.co/music/download/mixkit-serene-view-443.mp3" },
+  { id: "none",      label: "No Music",   query: null as string | null },
+  { id: "calm",      label: "Calm Piano", query: "calm gentle piano background music" },
+  { id: "corporate", label: "Upbeat",     query: "upbeat corporate motivational background music" },
+  { id: "inspiring", label: "Inspiring",  query: "inspiring uplifting cinematic background music" },
 ];
 
-// End card duration appended after Stop in Branded Look
+function musicUrlFor(id: string): string | null {
+  const query = MUSIC_OPTIONS.find((m) => m.id === id)?.query;
+  return query ? `/api/music/track?q=${encodeURIComponent(query)}` : null;
+}
+
+// How long the branded end card holds after Stop before the file is finalized
 const END_CARD_MS = 3200;
 
 function formatTime(s: number) {
@@ -216,7 +224,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
       let previewStream: MediaStream = stream;
       if (brandedLook && brandedSupported) {
         try {
-          const music = MUSIC_OPTIONS.find((m) => m.id === musicId)?.url ?? null;
+          const music = musicUrlFor(musicId);
           const composite = new BrandedComposite(
             {
               name: ctaProfile?.full_name,
@@ -234,6 +242,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
           previewStream = await composite.init(stream);
           compositeRef.current = composite;
           setBrandedActive(true);
+          if (composite.musicUnavailable) {
+            toast("That music track wouldn't load — recording without a music bed.", { icon: "🎵" });
+          }
         } catch (err) {
           console.warn("[camera] Branded Look unavailable, recording plain:", err);
           compositeRef.current = null;
@@ -355,9 +366,15 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
 
     if (scrollMode === "flow" && flowSupported) {
       followerRef.current?.stop();
+      // Photos advance with the speaker's position in the script rather than a
+      // stopwatch, so the picture matches what is being said.
+      const totalWords = script.trim().split(/\s+/).filter(Boolean).length;
       const follower = new VoiceFollower(
         script,
-        (i) => followWordInContainer(teleRef.current, i),
+        (i) => {
+          followWordInContainer(teleRef.current, i);
+          if (totalWords > 0) compositeRef.current?.setScriptProgress(i / totalWords);
+        },
         () => {
           followerRef.current = null;
           toast("Voice-follow unavailable — switching to auto-scroll.", { icon: "🎚️" });
@@ -423,7 +440,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
     // music keeps playing underneath, then recorder.onstop tears everything down.
     if (brandedActive && compositeRef.current) {
       stoppingRef.current = true;
-      compositeRef.current.beginEndCard(END_CARD_MS);
+      compositeRef.current.beginEndCard();
       setTimeout(() => {
         stoppingRef.current = false;
         recorderRef.current?.stop();

@@ -37,7 +37,9 @@ function loadImage(url: string, timeoutMs = 3000): Promise<HTMLImageElement | nu
 // B-roll pacing. The lead-in keeps the speaker full-frame long enough to land
 // their opening line before the first photo takes the background.
 const BROLL_LEAD_IN_MS = 8000;
-const BROLL_HOLD_MS = 5200;
+// Timer fallback only. When voice-follow is running, photos advance with the
+// speaker's position in the script instead — see setScriptProgress.
+const BROLL_HOLD_MS = 7600;
 const BROLL_FADE_MS = 700;
 const BROLL_ZOOM = 0.1; // Ken Burns push over each photo's hold
 
@@ -69,13 +71,20 @@ export class BrandedComposite {
   private logo: HTMLImageElement | null = null;
   private headshot: HTMLImageElement | null = null;
   private caption = { text: "", at: 0 };
-  private endCardUntil = 0;
+  private endCardLatched = false;
   private destroyed = false;
   private hasDrawnFrame = false;
   private photos: HTMLImageElement[] = [];
   private brollElapsed = 0;
   private brollLastTick = 0;
   private brollRunning = false;
+  private brollIndex = -1;
+  private prevIndex: number | null = null;
+  private brollShownAt = 0;
+  private scriptProgress: number | null = null;
+  /** Set when the chosen music never loaded, so the caller can say so rather
+   *  than letting the user record in silence expecting a soundtrack. */
+  musicUnavailable = false;
 
   constructor(
     private brand: BrandInfo,
@@ -222,7 +231,23 @@ export class BrandedComposite {
     // Audio: mic only, or mic + ducked music bed via WebAudio
     let audioTrack = cameraStream.getAudioTracks()[0] ?? null;
     if (this.musicUrl) {
-      try {
+      // Load the track before wiring any of it up. A src that 404s or is
+      // unreadable still yields a working graph that outputs pure silence, so
+      // the recording came out with no music and nothing said why.
+      const musicEl = new Audio();
+      musicEl.crossOrigin = "anonymous";
+      musicEl.loop = true;
+      musicEl.src = this.musicUrl;
+      const musicReady = await new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), 5000);
+        musicEl.addEventListener("canplay", () => { clearTimeout(timer); resolve(true); }, { once: true });
+        musicEl.addEventListener("error", () => { clearTimeout(timer); resolve(false); }, { once: true });
+        musicEl.load();
+      });
+
+      if (!musicReady) {
+        this.musicUnavailable = true;
+      } else try {
         const audioCtx = new AudioContext();
         const dest = audioCtx.createMediaStreamDestination();
 
@@ -231,10 +256,6 @@ export class BrandedComposite {
         micGain.gain.value = 1.0;
         micSrc.connect(micGain).connect(dest);
 
-        const musicEl = new Audio();
-        musicEl.crossOrigin = "anonymous";
-        musicEl.src = this.musicUrl;
-        musicEl.loop = true;
         const musicSrc = audioCtx.createMediaElementSource(musicEl);
         const musicGain = audioCtx.createGain();
         musicGain.gain.value = 0.1; // ducked well under the voice
@@ -247,6 +268,7 @@ export class BrandedComposite {
         // Music mixing failed — record voice-only rather than aborting
         this.audioCtx = null;
         this.musicEl = null;
+        this.musicUnavailable = true;
       }
     }
 
@@ -294,25 +316,55 @@ export class BrandedComposite {
     this.brollLastTick = now;
   }
 
+  /**
+   * How far the speaker has read through the script, 0..1. When this is fed
+   * (voice-follow is running) the photos track what is actually being said
+   * instead of a stopwatch — the first photo covers the opening tenth of the
+   * script, and so on. Without it the timer below is the fallback.
+   */
+  setScriptProgress(p: number) {
+    this.scriptProgress = Math.max(0, Math.min(1, p));
+  }
+
   /** Which photo is on screen right now, how far into its Ken Burns push, and
    *  how far through the crossfade in. Null means the speaker stays full-frame. */
   private currentBrollShot() {
     if (this.photos.length === 0) return null;
     const t = this.brollElapsed - BROLL_LEAD_IN_MS;
     if (t < 0) return null;
-    const slot = Math.floor(t / BROLL_HOLD_MS);
-    const within = t - slot * BROLL_HOLD_MS;
+
+    const idx = this.scriptProgress !== null
+      ? Math.min(this.photos.length - 1, Math.floor(this.scriptProgress * this.photos.length))
+      : Math.floor(t / BROLL_HOLD_MS) % this.photos.length;
+
+    const now = performance.now();
+    if (idx !== this.brollIndex) {
+      // -1 marks "no photo yet", so the first one rises out of the speaker.
+      this.prevIndex = this.brollIndex >= 0 ? this.brollIndex : null;
+      this.brollIndex = idx;
+      this.brollShownAt = now;
+    }
+
+    const since = now - this.brollShownAt;
     return {
-      img: this.photos[slot % this.photos.length],
-      prev: slot === 0 ? null : this.photos[(slot - 1) % this.photos.length],
-      progress: within / BROLL_HOLD_MS,
-      fade: Math.min(1, within / BROLL_FADE_MS),
+      img: this.photos[idx],
+      prev: this.prevIndex === null ? null : this.photos[this.prevIndex],
+      // Script-driven photos can outlast the push; it settles rather than loops.
+      progress: Math.min(1, since / BROLL_HOLD_MS),
+      fade: Math.min(1, since / BROLL_FADE_MS),
     };
   }
 
-  /** Switches the draw loop to the branded end card for the given duration. */
-  beginEndCard(ms: number) {
-    this.endCardUntil = performance.now() + ms;
+  /**
+   * Switches the draw loop to the branded end card, permanently.
+   *
+   * This used to expire after a duration, which handed the last frames of the
+   * video back to the b-roll: the recorder stops slightly after the end card
+   * ends, so the take finished on a photo instead of the contact card. The
+   * caller decides when recording stops; the card simply holds until then.
+   */
+  beginEndCard() {
+    this.endCardLatched = true;
   }
 
   destroy() {
@@ -344,7 +396,7 @@ export class BrandedComposite {
     const now = performance.now();
     this.tickBroll();
 
-    if (this.endCardUntil && now < this.endCardUntil) {
+    if (this.endCardLatched) {
       this.drawEndCard(W, H);
       return;
     }
@@ -479,7 +531,7 @@ export class BrandedComposite {
     const v = this.videoEl;
     if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
 
-    const d = H * 0.3;
+    const d = H * 0.36;
     const cx = W * 0.035 + d / 2;
     const cy = H * 0.05 + d / 2;
     const side = Math.min(v.videoWidth, v.videoHeight);
