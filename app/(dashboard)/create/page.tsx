@@ -1223,6 +1223,35 @@ function CreatePageInner() {
               </div>
             </div>
 
+            {/* Market for THIS video. Without it the CTA and end card silently
+                fell back to the profile's home city — a Willow Grove listing
+                went out saying Blue Bell. */}
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Market For This Video
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={locCity}
+                  onChange={(e) => setLocCity(e.target.value)}
+                  placeholder="City (e.g. Willow Grove)"
+                  className="flex-1 min-w-0 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <input
+                  type="text"
+                  value={locState}
+                  onChange={(e) => setLocState(toStateAbbr(e.target.value))}
+                  placeholder="ST"
+                  maxLength={2}
+                  className="w-16 shrink-0 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Used by your channel CTA and the end card — set it to the property&apos;s town, not your office.
+              </p>
+            </div>
+
             <CameraRecorder
               city={locCity || undefined}
               state={locState || undefined}

@@ -37,11 +37,17 @@ function loadImage(url: string, timeoutMs = 3000): Promise<HTMLImageElement | nu
 // B-roll pacing. The lead-in keeps the speaker full-frame long enough to land
 // their opening line before the first photo takes the background.
 const BROLL_LEAD_IN_MS = 8000;
-// Timer fallback only. When voice-follow is running, photos advance with the
-// speaker's position in the script instead — see setScriptProgress.
+// Timer fallback, used when voice-follow isn't running.
 const BROLL_HOLD_MS = 7600;
+// Ceiling on any one photo regardless of the script. Spreading photos evenly
+// across a long script left each one parked on screen for 15s or more, which
+// read as a slideshow stall — this keeps the picture moving.
+const BROLL_MAX_HOLD_MS = 6000;
 const BROLL_FADE_MS = 700;
-const BROLL_ZOOM = 0.1; // Ken Burns push over each photo's hold
+const BROLL_ZOOM = 0.2; // Ken Burns push over each photo's hold
+const BROLL_PAN = 0.5;  // share of the spare margin the drift travels
+// Drift directions cycled per photo so consecutive shots don't move alike.
+const BROLL_PANS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]];
 
 function wrapText(text: string, maxChars: number): string[] {
   const words = text.split(/\s+/);
@@ -81,6 +87,7 @@ export class BrandedComposite {
   private brollIndex = -1;
   private prevIndex: number | null = null;
   private brollShownAt = 0;
+  private brollPass = 0;
   private scriptProgress: number | null = null;
   /** Set when the chosen music never loaded, so the caller can say so rather
    *  than letting the user record in silence expecting a soundtrack. */
@@ -333,11 +340,27 @@ export class BrandedComposite {
     const t = this.brollElapsed - BROLL_LEAD_IN_MS;
     if (t < 0) return null;
 
-    const idx = this.scriptProgress !== null
-      ? Math.min(this.photos.length - 1, Math.floor(this.scriptProgress * this.photos.length))
-      : Math.floor(t / BROLL_HOLD_MS) % this.photos.length;
-
+    const len = this.photos.length;
     const now = performance.now();
+    const since = now - this.brollShownAt;
+
+    let idx: number;
+    if (this.brollIndex < 0) {
+      idx = 0;
+    } else if (this.scriptProgress !== null && this.brollPass === 0) {
+      // First pass follows the script, but never sits longer than the ceiling —
+      // a photo per script-slice is far too slow on a long read.
+      const target = Math.min(len - 1, Math.floor(this.scriptProgress * len));
+      if (target > this.brollIndex) idx = target;
+      else if (since > BROLL_MAX_HOLD_MS) {
+        idx = this.brollIndex + 1;
+        if (idx >= len) { idx = 0; this.brollPass++; } // photos exhausted — loop on the clock
+      } else idx = this.brollIndex;
+    } else {
+      const hold = this.scriptProgress !== null ? BROLL_MAX_HOLD_MS : BROLL_HOLD_MS;
+      idx = since > hold ? (this.brollIndex + 1) % len : this.brollIndex;
+    }
+
     if (idx !== this.brollIndex) {
       // -1 marks "no photo yet", so the first one rises out of the speaker.
       this.prevIndex = this.brollIndex >= 0 ? this.brollIndex : null;
@@ -345,13 +368,16 @@ export class BrandedComposite {
       this.brollShownAt = now;
     }
 
-    const since = now - this.brollShownAt;
+    const held = now - this.brollShownAt;
     return {
       img: this.photos[idx],
       prev: this.prevIndex === null ? null : this.photos[this.prevIndex],
-      // Script-driven photos can outlast the push; it settles rather than loops.
-      progress: Math.min(1, since / BROLL_HOLD_MS),
-      fade: Math.min(1, since / BROLL_FADE_MS),
+      dir: idx,
+      prevDir: this.prevIndex ?? 0,
+      // Motion is paced to the ceiling so the push completes rather than
+      // freezing partway through a long hold.
+      progress: Math.min(1, held / BROLL_MAX_HOLD_MS),
+      fade: Math.min(1, held / BROLL_FADE_MS),
     };
   }
 
@@ -496,7 +522,8 @@ export class BrandedComposite {
 
     if (shot.fade < 1) {
       if (shot.prev) {
-        this.drawPhotoCover(shot.prev, W, H, 1 + BROLL_ZOOM);
+        // Outgoing photo held at the end of its own move, so it doesn't snap.
+        this.drawPhotoCover(shot.prev, W, H, 1 + BROLL_ZOOM, shot.prevDir, 1);
       } else if (this.videoEl && this.videoEl.readyState >= 2) {
         ctx.drawImage(this.videoEl, 0, 0, W, H); // first photo rises out of the speaker
       } else {
@@ -506,12 +533,22 @@ export class BrandedComposite {
       ctx.globalAlpha = shot.fade;
     }
 
-    this.drawPhotoCover(shot.img, W, H, 1 + BROLL_ZOOM * shot.progress);
+    // Travel runs -1..1 across the hold, so the photo drifts through the frame
+    // rather than only creeping in from centre.
+    this.drawPhotoCover(
+      shot.img, W, H, 1 + BROLL_ZOOM * shot.progress, shot.dir, shot.progress * 2 - 1,
+    );
     ctx.globalAlpha = 1;
   }
 
-  /** Fills WxH with the image, centre-cropped, zoomed for Ken Burns motion. */
-  private drawPhotoCover(img: HTMLImageElement, W: number, H: number, zoom: number) {
+  /**
+   * Fills WxH with the image, cropped to aspect, zoomed and drifting for Ken
+   * Burns motion. `travel` runs -1..1 along the direction picked for this
+   * photo; the zoom is what creates the spare margin the drift moves through.
+   */
+  private drawPhotoCover(
+    img: HTMLImageElement, W: number, H: number, zoom: number, dirIndex: number, travel: number,
+  ) {
     const ctx = this.ctx;
     if (!ctx || !img.width || !img.height) return;
     const target = W / H;
@@ -521,7 +558,14 @@ export class BrandedComposite {
     else sh = sw / target;
     sw /= zoom;
     sh /= zoom;
-    ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, H);
+
+    const [dx, dy] = BROLL_PANS[dirIndex % BROLL_PANS.length];
+    const marginX = (img.width - sw) / 2;
+    const marginY = (img.height - sh) / 2;
+    const sx = marginX + dx * travel * BROLL_PAN * marginX;
+    const sy = marginY + dy * travel * BROLL_PAN * marginY;
+
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
   }
 
   /** The speaker, circle-cropped, top left — the logo owns the top right and
@@ -616,11 +660,14 @@ export class BrandedComposite {
       y += H * 0.07;
     }
 
+    // "Subscribe for more real estate in X" rather than "for more X real
+    // estate" — the latter turns unreadable once the market is a phrase rather
+    // than a single town.
     const market = [this.brand.city, this.brand.state].filter(Boolean).join(", ");
     ctx.fillStyle = "#f59e0b";
     ctx.font = `700 ${Math.round(H * 0.032)}px Arial, sans-serif`;
     ctx.fillText(
-      market ? `Subscribe for more ${market} real estate` : "Subscribe for more local real estate",
+      market ? `Subscribe for more real estate in ${market}` : "Subscribe for more local real estate",
       W / 2,
       y,
     );
