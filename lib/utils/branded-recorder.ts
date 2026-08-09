@@ -64,6 +64,7 @@ export class BrandedComposite {
   private caption = { text: "", at: 0 };
   private endCardUntil = 0;
   private destroyed = false;
+  private hasDrawnFrame = false;
 
   constructor(private brand: BrandInfo, private musicUrl: string | null) {}
 
@@ -74,20 +75,74 @@ export class BrandedComposite {
     );
   }
 
+  /**
+   * Off-screen but *attached*. A detached <video> is not guaranteed to decode
+   * frames — it can sit at readyState 0 forever, which made drawFrame fall
+   * through to its black fill and record a black video with only the overlays
+   * on top. display:none suspends decoding for the same reason, so the element
+   * is parked off-screen instead.
+   */
+  private mountVideoElement(cameraStream: MediaStream): HTMLVideoElement {
+    const el = document.createElement("video");
+    el.muted = true;
+    el.playsInline = true;
+    el.autoplay = true;
+    el.style.cssText =
+      "position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;";
+    el.srcObject = cameraStream;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  /**
+   * Resolves once the element actually has a frame to draw. Rejecting here is
+   * what lets the caller fall back to the plain recording path — a plain video
+   * is a far better outcome than a branded black one.
+   */
+  private static waitForFirstFrame(el: HTMLVideoElement, timeoutMs = 5000): Promise<void> {
+    if (el.readyState >= 2 && el.videoWidth > 0) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timer);
+        el.removeEventListener("loadeddata", onReady);
+        el.removeEventListener("error", onFail);
+      };
+      const onReady = () => { cleanup(); resolve(); };
+      const onFail = () => { cleanup(); reject(new Error("Camera produced no frames")); };
+      const timer = setTimeout(onFail, timeoutMs);
+      el.addEventListener("loadeddata", onReady);
+      el.addEventListener("error", onFail);
+    });
+  }
+
   /** Builds the composite pipeline from the raw camera stream. */
   async init(cameraStream: MediaStream): Promise<MediaStream> {
+    try {
+      return await this.build(cameraStream);
+    } catch (err) {
+      // Never leave a half-built pipeline (or its mounted element) behind —
+      // the caller drops its reference and falls back to the plain path.
+      this.destroy();
+      this.destroyed = false;
+      throw err;
+    }
+  }
+
+  private async build(cameraStream: MediaStream): Promise<MediaStream> {
     const track = cameraStream.getVideoTracks()[0];
     const settings = track?.getSettings() ?? {};
-    const W = settings.width || 1280;
-    const H = settings.height || 720;
 
-    // Hidden <video> that plays the raw camera feed for the draw loop
-    const videoEl = document.createElement("video");
-    videoEl.muted = true;
-    videoEl.playsInline = true;
-    videoEl.srcObject = cameraStream;
-    await videoEl.play();
+    const videoEl = this.mountVideoElement(cameraStream);
     this.videoEl = videoEl;
+    // Muted playback of a local stream shouldn't be blocked, but the frame
+    // wait below is the real gate either way.
+    try { await videoEl.play(); } catch { /* fall through to the frame wait */ }
+    await BrandedComposite.waitForFirstFrame(videoEl);
+
+    // The element's own dimensions are the source of truth — getSettings() can
+    // come back empty on some devices, which silently forced a 1280x720 canvas.
+    const W = videoEl.videoWidth || settings.width || 1280;
+    const H = videoEl.videoHeight || settings.height || 720;
 
     const canvas = document.createElement("canvas");
     canvas.width = W;
@@ -175,7 +230,10 @@ export class BrandedComposite {
     this.audioCtx = null;
     try {
       this.videoEl?.pause();
-      if (this.videoEl) this.videoEl.srcObject = null;
+      if (this.videoEl) {
+        this.videoEl.srcObject = null;
+        this.videoEl.remove();
+      }
     } catch { /* noop */ }
     this.videoEl = null;
     this.stream?.getVideoTracks().forEach((t) => t.stop());
@@ -196,10 +254,13 @@ export class BrandedComposite {
 
     if (this.videoEl && this.videoEl.readyState >= 2) {
       ctx.drawImage(this.videoEl, 0, 0, W, H);
-    } else {
+      this.hasDrawnFrame = true;
+    } else if (!this.hasDrawnFrame) {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
     }
+    // A momentary stall mid-recording keeps the last good frame rather than
+    // punching a black hole into the video.
 
     // Logo watermark — top right
     if (this.logo) {
