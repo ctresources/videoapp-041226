@@ -34,6 +34,13 @@ function loadImage(url: string, timeoutMs = 3000): Promise<HTMLImageElement | nu
   });
 }
 
+// B-roll pacing. The lead-in keeps the speaker full-frame long enough to land
+// their opening line before the first photo takes the background.
+const BROLL_LEAD_IN_MS = 8000;
+const BROLL_HOLD_MS = 5200;
+const BROLL_FADE_MS = 700;
+const BROLL_ZOOM = 0.1; // Ken Burns push over each photo's hold
+
 function wrapText(text: string, maxChars: number): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
@@ -65,8 +72,16 @@ export class BrandedComposite {
   private endCardUntil = 0;
   private destroyed = false;
   private hasDrawnFrame = false;
+  private photos: HTMLImageElement[] = [];
+  private brollElapsed = 0;
+  private brollLastTick = 0;
+  private brollRunning = false;
 
-  constructor(private brand: BrandInfo, private musicUrl: string | null) {}
+  constructor(
+    private brand: BrandInfo,
+    private musicUrl: string | null,
+    private photoUrls: string[] = [],
+  ) {}
 
   static isSupported(): boolean {
     return (
@@ -195,6 +210,15 @@ export class BrandedComposite {
     this.logo = logo;
     this.headshot = headshot;
 
+    // loadImage requests these with crossOrigin, so anything not CORS-clean
+    // fails here and is dropped rather than tainting the canvas at draw time —
+    // a tainted canvas cannot be recorded at all. /api/photos/rehost exists to
+    // make scraped photos survive this filter.
+    const loadedPhotos = await Promise.all(
+      this.photoUrls.slice(0, 12).map((u) => loadImage(u, 6000)),
+    );
+    this.photos = loadedPhotos.filter((p): p is HTMLImageElement => p !== null);
+
     // Audio: mic only, or mic + ducked music bed via WebAudio
     let audioTrack = cameraStream.getAudioTracks()[0] ?? null;
     if (this.musicUrl) {
@@ -251,6 +275,41 @@ export class BrandedComposite {
   }
   pauseMusic() { this.musicEl?.pause(); }
 
+  /** True once at least one photo survived loading and can be used as b-roll. */
+  get hasBroll(): boolean { return this.photos.length > 0; }
+
+  /** Starts or resumes the b-roll clock — it only runs while recording, so a
+   *  long pause doesn't silently skip past several photos. */
+  startBroll() {
+    this.brollLastTick = performance.now();
+    this.brollRunning = true;
+  }
+  pauseBroll() {
+    this.tickBroll();
+    this.brollRunning = false;
+  }
+  private tickBroll() {
+    const now = performance.now();
+    if (this.brollRunning) this.brollElapsed += now - this.brollLastTick;
+    this.brollLastTick = now;
+  }
+
+  /** Which photo is on screen right now, how far into its Ken Burns push, and
+   *  how far through the crossfade in. Null means the speaker stays full-frame. */
+  private currentBrollShot() {
+    if (this.photos.length === 0) return null;
+    const t = this.brollElapsed - BROLL_LEAD_IN_MS;
+    if (t < 0) return null;
+    const slot = Math.floor(t / BROLL_HOLD_MS);
+    const within = t - slot * BROLL_HOLD_MS;
+    return {
+      img: this.photos[slot % this.photos.length],
+      prev: slot === 0 ? null : this.photos[(slot - 1) % this.photos.length],
+      progress: within / BROLL_HOLD_MS,
+      fade: Math.min(1, within / BROLL_FADE_MS),
+    };
+  }
+
   /** Switches the draw loop to the branded end card for the given duration. */
   beginEndCard(ms: number) {
     this.endCardUntil = performance.now() + ms;
@@ -258,6 +317,8 @@ export class BrandedComposite {
 
   destroy() {
     this.destroyed = true;
+    this.brollRunning = false;
+    this.photos = [];
     cancelAnimationFrame(this.raf);
     try { this.musicEl?.pause(); } catch { /* noop */ }
     this.musicEl = null;
@@ -281,13 +342,20 @@ export class BrandedComposite {
     const ctx = this.ctx;
     if (!ctx) return;
     const now = performance.now();
+    this.tickBroll();
 
     if (this.endCardUntil && now < this.endCardUntil) {
       this.drawEndCard(W, H);
       return;
     }
 
-    if (this.videoEl && this.videoEl.readyState >= 2) {
+    const shot = this.currentBrollShot();
+    if (shot) {
+      // Photo fills the frame, speaker stays present in the corner.
+      this.drawBrollBackground(shot, W, H);
+      this.drawCameraPip(W, H);
+      this.hasDrawnFrame = true;
+    } else if (this.videoEl && this.videoEl.readyState >= 2) {
       ctx.drawImage(this.videoEl, 0, 0, W, H);
       this.hasDrawnFrame = true;
     } else if (!this.hasDrawnFrame) {
@@ -362,6 +430,82 @@ export class BrandedComposite {
         ctx.fillText(line, W / 2 - tw / 2, y);
       });
     }
+  }
+
+  /** Lays the outgoing frame down first so a photo change reads as a crossfade
+   *  rather than a cut, then the incoming photo over it. */
+  private drawBrollBackground(
+    shot: NonNullable<ReturnType<BrandedComposite["currentBrollShot"]>>,
+    W: number,
+    H: number,
+  ) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+
+    if (shot.fade < 1) {
+      if (shot.prev) {
+        this.drawPhotoCover(shot.prev, W, H, 1 + BROLL_ZOOM);
+      } else if (this.videoEl && this.videoEl.readyState >= 2) {
+        ctx.drawImage(this.videoEl, 0, 0, W, H); // first photo rises out of the speaker
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.globalAlpha = shot.fade;
+    }
+
+    this.drawPhotoCover(shot.img, W, H, 1 + BROLL_ZOOM * shot.progress);
+    ctx.globalAlpha = 1;
+  }
+
+  /** Fills WxH with the image, centre-cropped, zoomed for Ken Burns motion. */
+  private drawPhotoCover(img: HTMLImageElement, W: number, H: number, zoom: number) {
+    const ctx = this.ctx;
+    if (!ctx || !img.width || !img.height) return;
+    const target = W / H;
+    let sw = img.width;
+    let sh = img.height;
+    if (img.width / img.height > target) sw = sh * target;
+    else sh = sw / target;
+    sw /= zoom;
+    sh /= zoom;
+    ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, H);
+  }
+
+  /** The speaker, circle-cropped, top left — the logo owns the top right and
+   *  the name bar and captions own the bottom. */
+  private drawCameraPip(W: number, H: number) {
+    const ctx = this.ctx;
+    const v = this.videoEl;
+    if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
+
+    const d = H * 0.3;
+    const cx = W * 0.035 + d / 2;
+    const cy = H * 0.05 + d / 2;
+    const side = Math.min(v.videoWidth, v.videoHeight);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, d / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = H * 0.025;
+    ctx.fillStyle = "#000";
+    ctx.fill(); // lays the drop shadow down before clipping to the circle
+    ctx.shadowBlur = 0;
+    ctx.clip();
+    ctx.drawImage(
+      v,
+      (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side,
+      cx - d / 2, cy - d / 2, d, d,
+    );
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, d / 2 + 1, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(3, H * 0.005);
+    ctx.strokeStyle = "rgba(255,255,255,0.92)";
+    ctx.stroke();
   }
 
   private drawEndCard(W: number, H: number) {

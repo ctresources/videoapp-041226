@@ -60,7 +60,12 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript }: { city?: string; state?: string; initialScript?: string } = {}) {
+export function CameraRecorder({ city, state, initialScript, photos = [] }: {
+  city?: string; state?: string; initialScript?: string;
+  /** Photo URLs used as b-roll behind the speaker. Must be CORS-clean — see
+   *  /api/photos/rehost — or they are silently dropped at load. */
+  photos?: string[];
+} = {}) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
 
@@ -85,6 +90,9 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
   const [brandedLook, setBrandedLook] = useState(true);
   const [brandedSupported, setBrandedSupported] = useState(false);
   const [liveCaptions, setLiveCaptions] = useState(true);
+  // Photos fill the frame while the speaker stays on in a corner. On by
+  // default when photos exist — that's why they were uploaded.
+  const [useBroll, setUseBroll] = useState(true);
   const [musicId, setMusicId] = useState("none");
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
@@ -221,6 +229,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
               headshotUrl: ctaProfile?.avatar_url,
             },
             music,
+            useBroll ? photos : [],
           );
           previewStream = await composite.init(stream);
           compositeRef.current = composite;
@@ -330,6 +339,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     setSeconds(0);
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     compositeRef.current?.startMusic();
+    compositeRef.current?.startBroll();
     startPrompter();
   }
 
@@ -387,6 +397,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     followerRef.current?.pause();
     transcriberRef.current?.pause();
     compositeRef.current?.pauseMusic();
+    compositeRef.current?.pauseBroll();
     setIsPaused(true);
   }
 
@@ -397,6 +408,7 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
     else if (scrollMode === "auto") startScroll();
     transcriberRef.current?.resume();
     compositeRef.current?.startMusic();
+    compositeRef.current?.startBroll();
     setIsPaused(false);
   }
 
@@ -672,6 +684,23 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
             </p>
             {brandedLook && (
               <div className="mt-3 flex flex-col gap-2.5">
+                {photos.length > 0 && (
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useBroll}
+                      onChange={(e) => setUseBroll(e.target.checked)}
+                      className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
+                    />
+                    <span className="text-xs text-slate-600">
+                      <strong>Use my {photos.length} photos as b-roll</strong> — they fill the screen
+                      while you stay on camera in the corner.{" "}
+                      <span className="text-slate-400">
+                        You&apos;re full-screen for the first 8 seconds, then each photo holds about 5.
+                      </span>
+                    </span>
+                  </label>
+                )}
                 {flowSupported && (
                   <label className="flex items-start gap-2 cursor-pointer select-none">
                     <input

@@ -22,6 +22,26 @@ import { ContentTemplates } from "@/components/create/content-templates";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 
+/**
+ * Copies photos scraped off a listing page into our own storage so the camera
+ * recorder can composite them. Best effort — on any failure the originals come
+ * back, which still work everywhere except the recording canvas.
+ */
+async function rehostPhotos(urls: string[]): Promise<string[]> {
+  try {
+    const res = await fetch("/api/photos/rehost", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ urls }),
+    });
+    const body = await safeJson(res);
+    const out = Array.isArray(body.urls) ? (body.urls as string[]) : null;
+    return out && out.length === urls.length ? out : urls;
+  } catch {
+    return urls;
+  }
+}
+
 async function safeJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text();
   if (!text || text.trimStart().startsWith("<")) return {};
@@ -427,9 +447,15 @@ function CreatePageInner() {
       try { setCameraPdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setCameraPdfName("URL"); }
       const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
       if (found.length > 0) {
+        // Scraped photos live on the listing site's domain, which makes them
+        // unusable as b-roll — the recorder cannot draw a cross-origin image
+        // without tainting the canvas and breaking the recording outright.
+        // Copy them into our own storage first; failures come back unchanged
+        // and simply won't appear as b-roll.
+        const usable = await rehostPhotos(found);
         setCameraPhotos((prev) => {
           const room = 12 - prev.length;
-          const add = found.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
+          const add = usable.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
           return [...prev, ...add];
         });
       }
@@ -1197,7 +1223,12 @@ function CreatePageInner() {
               </div>
             </div>
 
-            <CameraRecorder city={locCity || undefined} state={locState || undefined} initialScript={cameraGeneratedScript || undefined} />
+            <CameraRecorder
+              city={locCity || undefined}
+              state={locState || undefined}
+              initialScript={cameraGeneratedScript || undefined}
+              photos={cameraPhotos.map((p) => p.url)}
+            />
 
             {/* Divider */}
             <div className="relative my-6">
@@ -1229,7 +1260,7 @@ function CreatePageInner() {
               </span>
               <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
             </div>
-            <p className="text-sm text-slate-500 mb-3">Photos appear as reference thumbnails in the teleprompter so you can describe what you see. They&apos;ll also be used as b-roll in your video.</p>
+            <p className="text-sm text-slate-500 mb-3">Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you.</p>
 
             {/* Photo grid */}
             <div className="mb-4">
