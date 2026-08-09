@@ -115,6 +115,40 @@ export class BrandedComposite {
     });
   }
 
+  /**
+   * readyState only says frames are decoding, not that we can actually read
+   * them. Some GPU/driver combinations hand a perfectly good MediaStream to
+   * MediaRecorder while every <video> element and canvas readback comes out
+   * pure black — Chrome with graphics acceleration on flaky drivers is the
+   * common case. That is invisible to every other check, so look at the pixels.
+   */
+  private static async assertFramesReadBack(videoEl: HTMLVideoElement): Promise<void> {
+    const probe = document.createElement("canvas");
+    probe.width = 64;
+    probe.height = 36;
+    const pctx = probe.getContext("2d", { willReadFrequently: true });
+    if (!pctx) return; // Can't inspect — don't block the feature on it.
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      pctx.drawImage(videoEl, 0, 0, probe.width, probe.height);
+      let brightest = 0;
+      try {
+        const { data } = pctx.getImageData(0, 0, probe.width, probe.height);
+        for (let i = 0; i < data.length; i += 4) {
+          const lum = data[i] + data[i + 1] + data[i + 2];
+          if (lum > brightest) brightest = lum;
+        }
+      } catch {
+        return; // Readback blocked for another reason — not ours to judge.
+      }
+      // Even a capped lens or a dark room carries sensor noise. An all-zero
+      // readback across 2,304 pixels means the frames never crossed over.
+      if (brightest > 6) return;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    throw new Error("Camera frames read back black");
+  }
+
   /** Builds the composite pipeline from the raw camera stream. */
   async init(cameraStream: MediaStream): Promise<MediaStream> {
     try {
@@ -138,6 +172,7 @@ export class BrandedComposite {
     // wait below is the real gate either way.
     try { await videoEl.play(); } catch { /* fall through to the frame wait */ }
     await BrandedComposite.waitForFirstFrame(videoEl);
+    await BrandedComposite.assertFramesReadBack(videoEl);
 
     // The element's own dimensions are the source of truth — getSettings() can
     // come back empty on some devices, which silently forced a 1280x720 canvas.

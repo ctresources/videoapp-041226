@@ -214,7 +214,15 @@ export function CameraRecorder({ city, state, initialScript }: { city?: string; 
           console.warn("[camera] Branded Look unavailable, recording plain:", err);
           compositeRef.current = null;
           setBrandedActive(false);
-          toast("Branded Look unavailable on this device — recording without overlays.", { icon: "🎬" });
+          // A black readback is a browser/GPU problem with a known fix, so say
+          // so — "unavailable on this device" reads as permanent and isn't.
+          const blackFrames = err instanceof Error && /read back black/.test(err.message);
+          toast(
+            blackFrames
+              ? "Your browser couldn't read the camera picture, so this records without overlays. Turning off graphics acceleration in your browser settings usually fixes it."
+              : "Branded Look unavailable on this device — recording without overlays.",
+            { icon: "🎬", duration: blackFrames ? 9000 : 4000 },
+          );
         }
       } else {
         setBrandedActive(false);
