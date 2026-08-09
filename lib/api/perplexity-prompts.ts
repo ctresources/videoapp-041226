@@ -18,7 +18,9 @@ const NARRATION_STYLE_RULE = `
 NARRATION STYLE (applies to HOOK, all content sections, KEY TAKEAWAY, and CALL TO ACTION):
 - These sections are read aloud word-for-word by a video narrator. Write them as natural spoken language.
 - Plain text ONLY: no markdown (**, #, backticks), no emoji, no citation markers like [2] — list sources only under SOURCES USED.
-- Every line must be a complete conversational sentence a person would actually say out loud.`;
+- Every line must be a complete conversational sentence a person would actually say out loud.
+- Name the city on its own — do NOT follow it with the state. Say "in Blue Bell", not "in Blue Bell, Pennsylvania" or "in Blue Bell, PA". Nobody says the state aloud about somewhere in their own area, and repeating it turns the narration into an address label being read out. The state may appear in the TITLE and the HOOK; everywhere else the city stands alone.
+- This applies only to what is SPOKEN. Keep using the full "city, state" when searching for data — that is how you find the right place.`;
 
 export type LocationVideoType =
   | "market_update"

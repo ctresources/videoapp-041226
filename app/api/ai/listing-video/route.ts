@@ -5,6 +5,32 @@ import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import type { ListingData } from "../scrape-listing/route";
 
+/**
+ * Pull the city and state out of a listing address.
+ *
+ * The listing's own city is the only correct one for a listing video. It used
+ * to be read as `listing.city`, a field ListingData does not have — so it was
+ * always undefined and every listing fell back to the agent's profile city.
+ * A Willow Grove property came out titled "Blue Bell, PA" because Blue Bell is
+ * where the agent works.
+ *
+ * Handles "123 Oak Road, Willow Grove, PA 19090", "…, Willow Grove, PA" and
+ * "Willow Grove, PA". Returns nothing rather than guessing when the address has
+ * no recognisable trailing state, so the caller can fall back deliberately.
+ */
+function parseCityState(address: string): { city?: string; state?: string } {
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return {};
+
+  const tail = parts[parts.length - 1];
+  const stateMatch = tail.match(/^([A-Za-z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/);
+  if (stateMatch) {
+    return { city: parts[parts.length - 2], state: stateMatch[1].toUpperCase() };
+  }
+  // No trailing state — the last segment is the best city candidate.
+  return { city: tail };
+}
+
 async function generateListingScript(listing: ListingData, agentName?: string): Promise<{
   title: string;
   script: string;
@@ -54,6 +80,7 @@ PRONUNCIATION RULES (CRITICAL — this is a voiceover, every word will be SPOKEN
 - ALWAYS spell out unit abbreviations: "Apt" → "Apartment", "Ste" → "Suite", "Bldg" → "Building"
 - Do NOT include any phone numbers in the script. Do NOT prepend "1" to any number. Phone numbers appear on-screen via overlays — never spoken in the narration.
 - If you mention an address, write it the way a human would say it out loud (e.g. "123 Oak Lane" not "123 Oak Ln")
+- Name the CITY only — never follow it with the state. Say "in Willow Grove", not "in Willow Grove, Pennsylvania" or "in Willow Grove, PA". Nobody says the state aloud about a home in their own area, and it makes the narration sound like an address label being read out. The state belongs in the title and the hook, not in the body of the script.
 
 Return ONLY a JSON object:
 {
@@ -146,9 +173,12 @@ export async function POST(req: NextRequest) {
     location_city?: string | null;
     location_state?: string | null;
   };
-  // Pull city/state from listing if present; fall back to agent's market
-  const listingCity = (listing as ListingData & { city?: string }).city || prof.location_city || undefined;
-  const listingState = (listing as ListingData & { state?: string }).state || prof.location_state || undefined;
+  // The property's own city, not the agent's market. Profile is a last resort
+  // for addresses with no parseable city — it is where the agent works, which
+  // for any listing outside their home town is simply the wrong place.
+  const parsedLocation = parseCityState(listing.address);
+  const listingCity = parsedLocation.city || prof.location_city || undefined;
+  const listingState = parsedLocation.state || prof.location_state || undefined;
   const ytMeta = await generateYoutubeMetadata({
     title: scriptData.title,
     script: scriptData.script,
@@ -187,8 +217,10 @@ export async function POST(req: NextRequest) {
       ai_script: aiScript,
       seo_data: seoData,
       listing_data: listing,
-      location_city: listing.address.split(",")[1]?.trim() ?? "",
-      location_state: listing.address.split(",")[2]?.trim().split(" ")[0] ?? "",
+      // Same parse as the metadata above, so the project row and the video's
+      // title can never disagree about where the property is.
+      location_city: parsedLocation.city ?? "",
+      location_state: parsedLocation.state ?? "",
     })
     .select()
     .single();

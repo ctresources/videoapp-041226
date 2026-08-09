@@ -48,6 +48,58 @@ function isPubliclyFetchable(u: URL): boolean {
   return true;
 }
 
+/** A real browser UA — shorteners and IDX hosts often 403 default agents. */
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+
+/**
+ * Follow redirects ourselves before handing the URL to Jina.
+ *
+ * MLS short links are bot-protected. Jina fetching myre.io/xxx came back
+ * "Just a moment... Target URL returned error 403" — the import died on the
+ * shortener without ever reaching the listing, and the user was told their
+ * page had blocked us. A plain server-side request follows the same 301 fine,
+ * so resolve the chain here and give Jina the destination instead.
+ *
+ * Every hop is re-validated: following redirects server-side is exactly the
+ * shape of an SSRF, and a shortener can point anywhere it likes. On any
+ * failure we return the last good URL and let Jina try that — never throw,
+ * since this is an optimisation, not a gate.
+ */
+async function resolveRedirects(start: URL): Promise<URL> {
+  let current = start;
+  for (let hop = 0; hop < 5; hop++) {
+    let res: Response;
+    try {
+      res = await fetch(current.href, {
+        method: "GET",
+        redirect: "manual",
+        headers: { "User-Agent": BROWSER_UA, Accept: "text/html,*/*" },
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch {
+      return current;
+    }
+    if (res.status < 300 || res.status >= 400) return current;
+    const location = res.headers.get("location");
+    if (!location) return current;
+
+    let next: URL;
+    try {
+      next = new URL(location, current);
+    } catch {
+      return current;
+    }
+    // Re-check each hop — the first URL being safe says nothing about the last.
+    if (!isPubliclyFetchable(next)) {
+      console.warn(`[scrape-listing] Redirect to a non-public host, stopping at ${current.hostname}`);
+      return current;
+    }
+    current = next;
+  }
+  return current;
+}
+
 async function fetchWithJina(url: string): Promise<string> {
   const jinaUrl = `https://r.jina.ai/${url}`;
   // Anonymous r.jina.ai is now behind a Cloudflare challenge: every request,
