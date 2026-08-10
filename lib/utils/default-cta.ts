@@ -10,21 +10,23 @@
  * reads as an address label. {state} is still supported for anyone whose own
  * saved template uses it.
  *
- * The ask is "subscribe, like or follow" because the same recording gets posted
- * to Instagram, TikTok and Facebook, where "subscribe" alone means nothing.
+ * Worded for every platform, not just YouTube: the same recording gets posted
+ * to Instagram, TikTok and Facebook, where "subscribe" alone means nothing,
+ * there is no "channel" to be new to, and contact details live in a bio rather
+ * than a description.
  *
  * Note this constant only reaches users with no saved CTA of their own —
  * Settings pre-fills its editor from here and stores a copy on save, so anyone
  * who has saved Settings is pinned to whatever the wording was that day. They
  * pick up changes here via "Reset to default" in Settings.
  */
-export const DEFAULT_CTA_TEMPLATE = `If this is your first time on the channel and you want to know everything about living in {city} and the surrounding suburbs, subscribe, like or follow so you can be the first to know about the current market in {city}.
+export const DEFAULT_CTA_TEMPLATE = `If this is your first time here and you want to know everything about living in {city} and the surrounding suburbs, subscribe, like or follow so you can be the first to know about the current market in {city}.
 
 My name is {name} and I've been guiding buyers and sellers across the {city} area for {years} years.
 
 {i_or_team} love helping people make their move to {city} — whether that's 9 days or 90 days away, feel free to reach out.
 
-All of our contact info is in the description, and we'd be happy to help you make a smooth move to {city}.`;
+All of our contact info is in the description or bio below, and we'd be happy to help you make a smooth move to {city}.`;
 
 export interface CtaVars {
   city?: string | null;

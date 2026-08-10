@@ -1891,6 +1891,15 @@ export default function ProjectEditorPage() {
               <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 8)</span></p>
               {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
             </div>
+            {/* Voice Only hands its visuals to the Video Agent, which is held to
+                5 files to keep render times down. Saying so beats letting the
+                extras disappear without explanation. */}
+            {renderMode === "agent" && uploadedPhotos.length > 5 && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
+                Voice Only uses your first <strong>5</strong> photos — the other{" "}
+                {uploadedPhotos.length - 5} won&apos;t appear. Switch to <strong>Avatar + Voice</strong> to use all 8.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 mb-5">
               {uploadedPhotos.map((photo, i) => (
                 <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">

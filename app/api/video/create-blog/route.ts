@@ -341,8 +341,11 @@ export async function POST(req: NextRequest) {
   // field, so the full script is spoken; visuals come from the user's uploaded
   // photos, composited behind the avatar after rendering.
   const useDirectVideo = engine === "direct" || isLongForm;
+  // Capped at the same 5 the Video Agent is allowed below, so a user who
+  // uploads five photos gets all five. The old cap of 3 silently dropped the
+  // rest with nothing in the UI saying so.
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
-    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 3)
+    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 5)
     : [];
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
@@ -752,15 +755,20 @@ export async function POST(req: NextRequest) {
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
     }
-    // Attach listing photos + user-uploaded photos, capped at 5 total.
+    // Attach user-uploaded photos + listing photos, capped at 5 total.
     // Fewer files = faster Video Agent processing time.
+    //
+    // Uploads come first because scraped listing photos used to fill the cap
+    // and push every one of the user's own out — the Direct Video path already
+    // orders it this way for the same reason: their photos are the better
+    // b-roll, so they should never be the ones dropped.
     //
     // Cropped to the frame first: the Video Agent decides its own framing, so
     // a square photo otherwise renders with bars in a 16:9 video. The Direct
     // Video path doesn't need this — it composites through composite-photos.ts,
     // which already fills the frame. Failures return the original URL.
     const combinedPhotos = await cropPhotosToAspect(
-      [...listingPhotos, ...safeExtraPhotos].slice(0, 5),
+      [...safeExtraPhotos, ...listingPhotos].slice(0, 5),
       dimension.width,
       dimension.height,
       user.id,

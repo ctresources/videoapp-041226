@@ -417,9 +417,14 @@ function CreatePageInner() {
       try { setPastePdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPastePdfName("URL"); }
       const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
       if (found.length > 0) {
+        // Same reason as the camera tab: these come back on the listing site's
+        // domain. Here it's the renderer that has to fetch them rather than a
+        // canvas, so hotlink protection or an expired URL costs you the photo
+        // silently. Copying them into our own storage removes the dependency.
+        const usable = await rehostPhotos(found);
         setPastePhotos((prev) => {
           const room = 12 - prev.length;
-          const add = found.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
+          const add = usable.slice(0, room).map((url) => ({ url, name: "From page", preview: url }));
           return [...prev, ...add];
         });
       }
