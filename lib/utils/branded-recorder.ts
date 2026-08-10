@@ -42,7 +42,9 @@ const BROLL_HOLD_MS = 7600;
 // Ceiling on any one photo regardless of the script. Spreading photos evenly
 // across a long script left each one parked on screen for 15s or more, which
 // read as a slideshow stall — this keeps the picture moving.
-const BROLL_MAX_HOLD_MS = 6000;
+// 14s per photo read as a stalled slideshow, 6s as rushed. The Ken Burns move
+// is paced to this same figure, so it sets the motion speed too.
+const BROLL_MAX_HOLD_MS = 8500;
 const BROLL_FADE_MS = 700;
 const BROLL_ZOOM = 0.2; // Ken Burns push over each photo's hold
 const BROLL_PAN = 0.5;  // share of the spare margin the drift travels
@@ -258,7 +260,13 @@ export class BrandedComposite {
         const audioCtx = new AudioContext();
         const dest = audioCtx.createMediaStreamDestination();
 
-        const micSrc = audioCtx.createMediaStreamSource(cameraStream);
+        // Audio tracks ONLY. Handing the full camera stream to a
+        // MediaStreamAudioSourceNode makes Chrome stall video rendering on the
+        // element playing that same stream — which silently emptied the
+        // picture-in-picture while photos and audio carried on fine. The node
+        // has no use for the video track regardless.
+        const micStream = new MediaStream(cameraStream.getAudioTracks());
+        const micSrc = audioCtx.createMediaStreamSource(micStream);
         const micGain = audioCtx.createGain();
         micGain.gain.value = 1.0;
         micSrc.connect(micGain).connect(dest);
@@ -278,6 +286,12 @@ export class BrandedComposite {
         this.musicUnavailable = true;
       }
     }
+
+    // Re-check the picture now the audio graph exists. The first check runs
+    // before any of this is wired, so anything here that disturbs video
+    // rendering — as createMediaStreamSource on a full camera stream does —
+    // would otherwise sail through and record a faceless video.
+    await BrandedComposite.assertFramesReadBack(videoEl);
 
     const canvasStream = (canvas as unknown as { captureStream: (fps: number) => MediaStream }).captureStream(30);
     const tracks = [...canvasStream.getVideoTracks()];
