@@ -30,8 +30,11 @@ import { randomUUID } from "crypto";
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
-const MAX_PHOTOS = 12;
+/** Ceiling on background sources — photos and stock clips combined. */
+const MAX_SOURCES = 16;
 const SECONDS_PER_PHOTO = 4;
+/** Stock clips are trimmed to this so one long take can't dominate the mix. */
+const SECONDS_PER_CLIP = 5;
 
 /**
  * Longest edge of the composited output. The avatar arrives from HeyGen at
@@ -114,6 +117,12 @@ function outputSize(width: number, height: number): { w: number; h: number } {
  */
 export type BackgroundKind = "photo" | "clip";
 
+/** One entry in the background track. */
+export interface BackgroundItem {
+  url: string;
+  kind: BackgroundKind;
+}
+
 /**
  * Returns a new MP4 buffer with the media as background b-roll and the avatar
  * as a corner PiP, or null on any failure — callers must fall back to the
@@ -121,10 +130,14 @@ export type BackgroundKind = "photo" | "clip";
  */
 export async function compositePhotos(
   videoBuffer: Buffer,
-  photoUrls: string[],
+  /**
+   * The background track, in order. Photos and clips can be mixed: six photos
+   * against a three-minute script looped every 24 seconds, so stock footage is
+   * appended to lengthen and vary the sequence.
+   */
+  items: BackgroundItem[],
   width: number,
   height: number,
-  kind: BackgroundKind = "photo",
   /**
    * Local .srt path to burn in during pass 2. Cheap rather than free: measured
    * on a 3:33 render, pass 2 went 22.3s -> 31.4s. Still far better than a
@@ -132,8 +145,8 @@ export async function compositePhotos(
    */
   srtPath?: string | null,
 ): Promise<Buffer | null> {
-  const photos = photoUrls.filter(Boolean).slice(0, MAX_PHOTOS);
-  if (photos.length === 0) return null;
+  const sources = items.filter((it) => it?.url).slice(0, MAX_SOURCES);
+  if (sources.length === 0) return null;
 
   const { w: outW, h: outH } = outputSize(width, height);
 
@@ -146,27 +159,34 @@ export async function compositePhotos(
     const outPath = join(dir, "out.mp4");
     await fs.writeFile(videoPath, videoBuffer);
 
-    // Download the media.
-    const photoPaths: string[] = [];
-    for (let i = 0; i < photos.length; i++) {
-      const res = await fetch(photos[i]);
-      if (!res.ok) continue;
-      const p = join(dir, `${kind}-${i}${kind === "clip" ? ".mp4" : ".img"}`);
-      await fs.writeFile(p, Buffer.from(await res.arrayBuffer()));
-      photoPaths.push(p);
+    // Download the media. A source that will not download is skipped rather
+    // than failing the render — the rest still make a background.
+    const downloaded: { path: string; kind: BackgroundKind }[] = [];
+    for (let i = 0; i < sources.length; i++) {
+      const { url, kind } = sources[i];
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const p = join(dir, `${kind}-${i}${kind === "clip" ? ".mp4" : ".img"}`);
+        await fs.writeFile(p, Buffer.from(await res.arrayBuffer()));
+        downloaded.push({ path: p, kind });
+      } catch { /* skip this one */ }
     }
-    if (photoPaths.length === 0) throw new Error(`No ${kind}s could be downloaded`);
-    const n = photoPaths.length;
+    if (downloaded.length === 0) throw new Error("No b-roll sources could be downloaded");
+    const n = downloaded.length;
 
     // ── Pass 1: build the background track (video only) ──────────────────────
     await new Promise<void>((resolve, reject) => {
       const cmd = ffmpeg();
-      for (const p of photoPaths) {
-        // A still needs -loop/-t to occupy time; a clip already has a duration.
+      for (const { path: p, kind } of downloaded) {
         if (kind === "photo") {
+          // A still needs -loop/-t to occupy time.
           cmd.input(p).inputOptions(["-loop", "1", "-t", String(SECONDS_PER_PHOTO)]);
         } else {
-          cmd.input(p);
+          // A clip has its own duration, but stock footage runs to 20s+ and one
+          // long clip would dominate the sequence — and every extra second is
+          // re-encoded twice. Capped so the mix stays balanced and predictable.
+          cmd.input(p).inputOptions(["-t", String(SECONDS_PER_CLIP)]);
         }
       }
       const parts: string[] = [];
@@ -176,7 +196,7 @@ export async function compositePhotos(
           `crop=${outW}:${outH},setsar=1,format=yuv420p,fps=25[p${i}]`,
         );
       }
-      parts.push(`${photoPaths.map((_, i) => `[p${i}]`).join("")}concat=n=${n}:v=1:a=0[bg]`);
+      parts.push(`${downloaded.map((_, i) => `[p${i}]`).join("")}concat=n=${n}:v=1:a=0[bg]`);
       cmd
         .complexFilter(parts, "bg")
         // Intermediate only — pass 2 re-encodes it, so spend nothing here.
@@ -242,7 +262,9 @@ export async function compositePhotos(
           "-map", "[outv]",
           "-map", "0:a?",
           "-c:v", "libx264",
-          ...(kind === "clip"
+          // Any moving footage in the mix pushes the output size up, so the
+          // tighter setting applies as soon as one clip is present.
+          ...(downloaded.some((d) => d.kind === "clip")
             ? ["-preset", "veryfast", "-crf", "28"]
             : ["-preset", "ultrafast", "-crf", "26"]),
           "-pix_fmt", "yuv420p",
@@ -256,7 +278,12 @@ export async function compositePhotos(
     });
 
     const out = await fs.readFile(outPath);
-    console.log(`[composite-photos] Composited ${n} ${kind}(s) into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
+    const photoCount = downloaded.filter((d) => d.kind === "photo").length;
+    console.log(
+      `[composite-photos] Composited ${photoCount} photo(s) + ${n - photoCount} clip(s) ` +
+      `into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s ` +
+      `(${(out.length / 1024 / 1024).toFixed(1)} MB)`,
+    );
     return out;
   } catch (err) {
     console.error("[composite-photos] Failed, keeping plain avatar video:", err instanceof Error ? err.message : err);

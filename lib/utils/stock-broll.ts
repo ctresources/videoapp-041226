@@ -42,16 +42,34 @@ export function countWords(script: string): number {
  * Never throws: b-roll is a nicety and must never fail a render.
  */
 export async function stockBrollFor(opts: {
-  hasUserPhotos: boolean;
+  /**
+   * How many photos the user supplied. Stock used to be skipped entirely when
+   * this was non-zero, so six photos under a three-minute script looped every
+   * 24 seconds. Now it tops the sequence up instead of standing in for it.
+   */
+  userPhotoCount: number;
   scriptWords: number;
   keywords?: string[];
   city?: string | null;
   state?: string | null;
   orientation: "landscape" | "portrait";
 }): Promise<string[]> {
-  if (opts.hasUserPhotos) return [];
   if (opts.scriptWords > STOCK_BROLL_MAX_WORDS) {
     console.log(`[stock-broll] Script is ${opts.scriptWords} words — too long to composite, skipping`);
+    return [];
+  }
+
+  // Only fetch what the photos don't already cover. Each photo holds 4s and
+  // each clip 5s, against a runtime of roughly words/145 minutes. Every clip is
+  // downloaded and re-encoded inside a 300s budget that compositing already
+  // spends 225s of, so this stays capped well below full coverage: the aim is a
+  // longer, more varied loop, not eliminating repetition outright.
+  const runtimeSeconds = (opts.scriptWords / 145) * 60;
+  const coveredByPhotos = opts.userPhotoCount * 4;
+  const shortfall = Math.max(0, runtimeSeconds - coveredByPhotos);
+  const wanted = Math.min(MAX_CLIPS, Math.ceil(shortfall / 5));
+  if (wanted === 0) {
+    console.log(`[stock-broll] ${opts.userPhotoCount} photo(s) already cover the runtime — no stock needed`);
     return [];
   }
 
@@ -65,8 +83,11 @@ export async function stockBrollFor(opts: {
 
   try {
     const clips = await searchStockVideos(queries, opts.orientation);
-    const urls = clips.map((c) => c.url).slice(0, MAX_CLIPS);
-    console.log(`[stock-broll] No user photos — using ${urls.length} stock clip(s)`);
+    const urls = clips.map((c) => c.url).slice(0, wanted);
+    console.log(
+      `[stock-broll] ${opts.userPhotoCount} photo(s) + ${urls.length} stock clip(s) ` +
+      `for ~${Math.round(runtimeSeconds)}s of runtime`,
+    );
     return urls;
   } catch (err) {
     console.warn("[stock-broll] Lookup failed:", err instanceof Error ? err.message : err);

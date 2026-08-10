@@ -647,7 +647,7 @@ export async function POST(req: NextRequest) {
       // ~325s and would time out. Long videos already tell the user their own
       // photos are the visuals, so that path stays photo-only.
       const stockClips = await stockBrollFor({
-        hasUserPhotos: directPhotos.length > 0,
+        userPhotoCount: directPhotos.length,
         // Long-form is capped by word count in the helper, so pass a figure
         // that trips that check rather than duplicating the rule here.
         scriptWords: isLongForm ? Number.MAX_SAFE_INTEGER : countWords(safeScript),
@@ -669,8 +669,9 @@ export async function POST(req: NextRequest) {
             dimension, orientation, city, state, title,
             ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
             // Direct Video is a bare talking head — the webhook composites this
-            // media as background b-roll behind the avatar PiP. Only one of the
-            // two is ever set; photos win when present.
+            // media as background b-roll behind the avatar PiP. Both can be set
+            // now: the photos lead and stock tops up the sequence behind them,
+            // because a handful of photos under a long script just looped.
             ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
             ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves

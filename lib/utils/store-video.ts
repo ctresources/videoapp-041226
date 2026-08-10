@@ -164,17 +164,20 @@ export async function downloadAndStoreVideo(
     // B-roll first (rebuilds the video frame), then music (mixes the audio).
     // The user's own photos take precedence; stock footage only fills the gap
     // when they supplied none.
-    const broll = opts.photoUrls?.length
-      ? { urls: opts.photoUrls, kind: "photo" as const }
-      : opts.clipUrls?.length
-        ? { urls: opts.clipUrls, kind: "clip" as const }
-        : null;
+    // Photos first, then stock. Stock used to be an either/or fallback, so six
+    // photos under a three-minute script looped every 24 seconds with nothing
+    // able to break it up. Appending clips lengthens and varies the sequence;
+    // the user's own photos still lead.
+    const broll = [
+      ...(opts.photoUrls ?? []).map((url) => ({ url, kind: "photo" as const })),
+      ...(opts.clipUrls ?? []).map((url) => ({ url, kind: "clip" as const })),
+    ];
 
-    if (broll && opts.dimension) {
+    if (broll.length > 0 && opts.dimension) {
       // Captions ride along in pass 2 — that pass re-encodes every frame
       // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
-        processed, broll.urls, opts.dimension.width, opts.dimension.height, broll.kind, srtPath,
+        processed, broll, opts.dimension.width, opts.dimension.height, srtPath,
       );
       if (withBroll) { processed = withBroll; changed = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);
