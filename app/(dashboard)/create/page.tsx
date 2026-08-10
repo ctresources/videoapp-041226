@@ -1209,9 +1209,14 @@ function CreatePageInner() {
 
       {/* ══════════════════════════════════════════
           CAMERA TAB
+
+          One card, one top-to-bottom order: market → photos → script →
+          prompter → branded look → record. Split across two columns this read
+          as two competing forms. Width is capped so the script and tips don't
+          stretch into unreadable lines on a wide monitor.
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <div className="max-w-3xl">
           <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-sm">
@@ -1252,6 +1257,104 @@ function CreatePageInner() {
               </p>
             </div>
 
+            {/* Photos & docs. Sits above the script because it feeds it — the AI
+                  writes from these, and they become the b-roll. */}
+            <div className="mb-4 rounded-xl border border-slate-200 p-3.5">
+              <div className="flex items-center gap-2.5 mb-1">
+                <span className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                  <ImageIcon size={17} className="text-white" />
+                </span>
+                <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
+              </div>
+              <p className="text-sm text-slate-500 mb-3">Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you.</p>
+
+              {/* Photo grid */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-slate-600">Photos <span className="font-normal text-slate-400">(up to 12)</span></p>
+                  {cameraPhotos.length > 0 && <span className="text-xs text-slate-400">{cameraPhotos.length}/12</span>}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {cameraPhotos.map((photo, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
+                      <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                      <button onClick={() => removeCameraPhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X size={14} className="text-white" />
+                      </button>
+                    </div>
+                  ))}
+                  {cameraPhotos.length < 12 && (
+                    <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
+                      {cameraPhotoUploading ? <Loader2 size={18} className="text-emerald-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
+                      <input type="file" accept="image/*" multiple className="sr-only" disabled={cameraPhotoUploading} onChange={(e) => { if (e.target.files?.length) handleCameraPhotosUpload(e.target.files); }} />
+                    </label>
+                  )}
+                  {cameraPhotos.length === 0 && !cameraPhotoUploading && (
+                    <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* PDF / URL */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
+                  <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
+                  <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+                </div>
+              </div>
+              {cameraPdfMode === "upload" ? (
+                cameraPdfUrl ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={16} className="text-green-600 shrink-0" />
+                    <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
+                    <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                  </div>
+                ) : (
+                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
+                    {cameraPdfUploading ? <Loader2 size={16} className="text-emerald-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
+                    <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
+                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
+                  </label>
+                )
+              ) : cameraPdfUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <Globe size={16} className="text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
+                  <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={cameraPdfUrlInput}
+                    onChange={(e) => setCameraPdfUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !cameraPdfUrlExtracting && cameraPdfUrlInput.trim()) handleCameraUrlExtract(); }}
+                    placeholder="https://example.com/article"
+                    className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-emerald-500 hover:bg-emerald-600 text-white whitespace-nowrap">Fetch</Button>
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
+
+              {(cameraPdfText || cameraPhotos.length > 0) && (
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    loading={cameraScriptGenerating}
+                    onClick={handleGenerateScriptFromCameraUploads}
+                    className="w-full gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  >
+                    {cameraScriptGenerating
+                      ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
+                      : <><Sparkles size={13} /> Generate Teleprompter Script from My Uploads</>}
+                  </Button>
+                  <p className="text-[11px] text-slate-400 mt-1 text-center">Script will be loaded into your teleprompter below.</p>
+                </div>
+              )}
+            </div>
+
             <CameraRecorder
               city={locCity || undefined}
               state={locState || undefined}
@@ -1281,102 +1384,6 @@ function CreatePageInner() {
             )}
           </Card>
 
-          {/* Photos & PDF — shown as reference in teleprompter + used as b-roll */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-green-500">
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                <ImageIcon size={17} className="text-white" />
-              </span>
-              <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-slate-400">(Optional)</span></p>
-            </div>
-            <p className="text-sm text-slate-500 mb-3">Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you.</p>
-
-            {/* Photo grid */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-slate-600">Photos <span className="font-normal text-slate-400">(up to 12)</span></p>
-                {cameraPhotos.length > 0 && <span className="text-xs text-slate-400">{cameraPhotos.length}/12</span>}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {cameraPhotos.map((photo, i) => (
-                  <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
-                    <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
-                    <button onClick={() => removeCameraPhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X size={14} className="text-white" />
-                    </button>
-                  </div>
-                ))}
-                {cameraPhotos.length < 12 && (
-                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
-                    {cameraPhotoUploading ? <Loader2 size={18} className="text-emerald-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
-                    <input type="file" accept="image/*" multiple className="sr-only" disabled={cameraPhotoUploading} onChange={(e) => { if (e.target.files?.length) handleCameraPhotosUpload(e.target.files); }} />
-                  </label>
-                )}
-                {cameraPhotos.length === 0 && !cameraPhotoUploading && (
-                  <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos.</p>
-                )}
-              </div>
-            </div>
-
-            {/* PDF / URL */}
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-slate-600">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
-                <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
-                <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-emerald-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
-              </div>
-            </div>
-            {cameraPdfMode === "upload" ? (
-              cameraPdfUrl ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <FileText size={16} className="text-green-600 shrink-0" />
-                  <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
-                  <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                </div>
-              ) : (
-                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-emerald-300 bg-emerald-50" : "border-slate-200 hover:border-emerald-300"}`}>
-                  {cameraPdfUploading ? <Loader2 size={16} className="text-emerald-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                  <span className="text-sm text-slate-500">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
-                </label>
-              )
-            ) : cameraPdfUrl ? (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <Globe size={16} className="text-green-600 shrink-0" />
-                <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
-                <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={cameraPdfUrlInput}
-                  onChange={(e) => setCameraPdfUrlInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !cameraPdfUrlExtracting && cameraPdfUrlInput.trim()) handleCameraUrlExtract(); }}
-                  placeholder="https://example.com/article"
-                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-emerald-500 hover:bg-emerald-600 text-white whitespace-nowrap">Fetch</Button>
-              </div>
-            )}
-            <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
-
-            {(cameraPdfText || cameraPhotos.length > 0) && (
-              <div className="mt-3">
-                <Button
-                  size="sm"
-                  loading={cameraScriptGenerating}
-                  onClick={handleGenerateScriptFromCameraUploads}
-                  className="w-full gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white"
-                >
-                  {cameraScriptGenerating
-                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
-                    : <><Sparkles size={13} /> Generate Teleprompter Script from My Uploads</>}
-                </Button>
-                <p className="text-[11px] text-slate-400 mt-1 text-center">Script will be loaded into your teleprompter above.</p>
-              </div>
-            )}
-          </Card>
         </div>
       )}
 

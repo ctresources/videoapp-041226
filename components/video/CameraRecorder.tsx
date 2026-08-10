@@ -539,14 +539,6 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
             <label className="text-sm font-semibold text-brand-text">Your Script</label>
             <div className="flex items-center gap-3">
               <button
-                onClick={addChannelCta}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-sm transition-colors"
-                title="Append your subscribe & contact CTA to the script"
-              >
-                <Megaphone size={15} />
-                Add Channel CTA
-              </button>
-              <button
                 onClick={() => setShowSpark((v) => !v)}
                 className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
               >
@@ -678,28 +670,35 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
           )}
         </div>
 
-        {/* Branded Look — record-time overlays baked into the file */}
-        {brandedSupported && (
-          <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl animate-slideDown">
+        {/* Branded Look — record-time overlays baked into the file. The panel
+            renders even where compositing is unsupported, because the channel
+            CTA lives at the bottom of it and must never disappear. */}
+        <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl animate-slideDown">
             <label className="flex items-center justify-between cursor-pointer select-none">
               <span className="text-sm font-semibold text-brand-text">✨ Branded Look</span>
-              <div
-                onClick={(e) => { e.preventDefault(); setBrandedLook((v) => !v); }}
-                className={cn(
-                  "relative w-10 h-6 rounded-full transition-colors",
-                  brandedLook ? "bg-indigo-500" : "bg-slate-300",
-                )}
-              >
-                <div className={cn(
-                  "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
-                  brandedLook ? "left-[18px]" : "left-0.5",
-                )} />
-              </div>
+              {brandedSupported ? (
+                <div
+                  onClick={(e) => { e.preventDefault(); setBrandedLook((v) => !v); }}
+                  className={cn(
+                    "relative w-10 h-6 rounded-full transition-colors",
+                    brandedLook ? "bg-indigo-500" : "bg-slate-300",
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
+                    brandedLook ? "left-[18px]" : "left-0.5",
+                  )} />
+                </div>
+              ) : (
+                <span className="text-[11px] text-slate-400">Not available in this browser</span>
+              )}
             </label>
             <p className="text-xs text-slate-500 mt-1">
-              Burns your logo, name bar, and a 3-second branded end card into the recording — no editing needed.
+              {brandedSupported
+                ? "Burns your logo, name bar, and a 3-second branded end card into the recording — no editing needed."
+                : "This browser can't burn overlays into a recording, so your video records plain."}
             </p>
-            {brandedLook && (
+            {brandedSupported && brandedLook && (
               <div className="mt-3 flex flex-col gap-2.5">
                 {photos.length > 0 && (
                   <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -713,7 +712,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
                       <strong>Use my {photos.length} photos as b-roll</strong> — they fill the screen
                       while you stay on camera in the corner.{" "}
                       <span className="text-slate-400">
-                        You&apos;re full-screen for the first 8 seconds, then each photo holds about 5.
+                        You&apos;re full-screen for the first 8 seconds, then each photo holds about 10.
                       </span>
                     </span>
                   </label>
@@ -756,8 +755,23 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
                 </p>
               </div>
             )}
+
+            {/* Sits outside the toggle on purpose — this writes to the script,
+                so turning Branded Look off must not take it away. */}
+            <div className="mt-3 pt-3 border-t border-indigo-100">
+              <button
+                onClick={addChannelCta}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-sm transition-colors"
+                title="Append your subscribe & contact CTA to the script"
+              >
+                <Megaphone size={15} />
+                Add Channel CTA
+              </button>
+              <p className="text-[11px] text-slate-400 mt-1.5 text-center">
+                Adds your subscribe &amp; contact ask to the end of the script, so the teleprompter reads it for you.
+              </p>
+            </div>
           </div>
-        )}
 
         {/* Tips for best video */}
         <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
