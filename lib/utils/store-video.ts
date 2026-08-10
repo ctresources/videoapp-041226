@@ -66,18 +66,36 @@ export async function downloadAndStoreVideo(
   const admin = createAdminClient();
   const path = `${videoId}.mp4`;
 
+  // The webhook, the status poll and refresh-url all land here, and all three
+  // can fire for the same render within seconds. Unclaimed, they each ran the
+  // full job: one video was measured compositing the same 6 photos for 225s
+  // twice, both writing this storage path and racing to stamp video_url.
+  // Whoever claims first does the work; the rest take the stored URL and go.
+  const { data: claimed } = await admin.rpc("claim_video_post_processing", { p_video_id: videoId });
+  if (claimed !== true) {
+    const { data: row } = await admin
+      .from("generated_videos")
+      .select("video_url")
+      .eq("id", videoId)
+      .single();
+    console.log(`[store-video] ${videoId}: already claimed or finished, skipping`);
+    return (row?.video_url as string | null) ?? null;
+  }
+
   /**
-   * Upload and point the row at it.
+   * Upload to storage and hand back the URL — without pointing the row at it.
+   *
+   * Publishing is deliberately deferred to a single write at the end. The raw
+   * render used to be published the moment it landed, roughly four minutes
+   * before compositing finished, so the app showed a finished-looking video
+   * that was a bare talking head with no b-roll, music or captions. Watched in
+   * that window it reads as a failed render.
    *
    * The processed write overwrites the SAME storage path as the raw one, so
-   * without a changing URL the browser keeps showing whatever it cached first
-   * — which is the raw render, before captions, b-roll or music. Captions were
-   * reported missing on a video whose logs clearly showed them burned; the file
-   * was correct and the player was serving a stale copy.
-   *
+   * without a changing URL the browser keeps showing whatever it cached first.
    * `version` appends a cache-busting query so the finished video is fetched
-   * fresh. Short cacheControl alone would not fix it: the stale copy is already
-   * in the browser by the time post-processing finishes.
+   * fresh; a short cacheControl alone would not fix it, because the stale copy
+   * is already in the browser by the time post-processing finishes.
    */
   const store = async (buf: Buffer, version?: number): Promise<string> => {
     const { error } = await admin.storage
@@ -85,9 +103,11 @@ export async function downloadAndStoreVideo(
       .upload(path, buf, { contentType: "video/mp4", upsert: true, cacheControl: "60" });
     if (error) throw error;
     const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
-    const url = version ? `${publicUrl}?v=${version}` : publicUrl;
+    return version ? `${publicUrl}?v=${version}` : publicUrl;
+  };
+
+  const publish = async (url: string) => {
     await admin.from("generated_videos").update({ video_url: url }).eq("id", videoId);
-    return url;
   };
 
   let buffer: Buffer;
@@ -104,9 +124,10 @@ export async function downloadAndStoreVideo(
   }
 
   // ── Post-processing ───────────────────────────────────────────────────────
-  // Beyond this point the video is already safe at `publicUrl`. Anything that
-  // fails here is logged and skipped; the same path is overwritten on success
-  // so the URL the rest of the app holds never changes.
+  // The bytes are already safe in storage at this point; only the row still
+  // needs pointing at them, which happens once at the very end. Anything that
+  // fails here is logged and skipped, and the raw render gets published in its
+  // place rather than the row being left with nothing.
   const srtDir = join(tmpdir(), `srt-${randomUUID()}`);
   try {
     let processed = buffer;
@@ -169,6 +190,10 @@ export async function downloadAndStoreVideo(
     await fs.rm(srtDir, { recursive: true, force: true }).catch(() => {});
   }
 
+  // The one and only publish: the finished file if post-processing got there,
+  // the raw render if it didn't. Until this line the row carries no video_url,
+  // so nothing downstream can present a half-made video as ready to watch.
+  await publish(publicUrl);
   return publicUrl;
 }
 

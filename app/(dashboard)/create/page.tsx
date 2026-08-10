@@ -1020,7 +1020,13 @@ function CreatePageInner() {
 
             {/* Optional city/state */}
             <div className="border-t border-slate-100 pt-3">
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-2">Market (Optional — Used For Metadata)</p>
+              {/* Not just metadata: this becomes the project's city/state, which
+                  the editor's CTA falls back off. Left blank it uses the profile's
+                  home city, so a Willow Grove listing went out saying Blue Bell. */}
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-1">Market For This Video</p>
+              <p className="text-xs text-slate-400 mb-2 normal-case font-normal">
+                Spoken in your channel CTA and used for titles and tags — set it to the property&apos;s town, not your office.
+              </p>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <input
