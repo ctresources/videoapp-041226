@@ -37,14 +37,12 @@ function loadImage(url: string, timeoutMs = 3000): Promise<HTMLImageElement | nu
 // B-roll pacing. The lead-in keeps the speaker full-frame long enough to land
 // their opening line before the first photo takes the background.
 const BROLL_LEAD_IN_MS = 8000;
-// Timer fallback, used when voice-follow isn't running.
-const BROLL_HOLD_MS = 7600;
-// Ceiling on any one photo regardless of the script. Spreading photos evenly
-// across a long script left each one parked on screen for 15s or more, which
-// read as a slideshow stall — this keeps the picture moving.
-// 14s per photo read as a stalled slideshow, 6s as rushed. The Ken Burns move
-// is paced to this same figure, so it sets the motion speed too.
-const BROLL_MAX_HOLD_MS = 8500;
+// How long any one photo holds — the ceiling when photos follow the script,
+// and the interval when they run on the clock in constant-speed mode. Tuned by
+// ear across real takes: spreading photos evenly over a long script parked each
+// one for ~14s and read as a stall, while 6s and 8.5s both still felt rushed.
+// The Ken Burns move is paced to the same figure, so it sets motion speed too.
+const BROLL_HOLD_MS = 10000;
 const BROLL_FADE_MS = 700;
 const BROLL_ZOOM = 0.2; // Ken Burns push over each photo's hold
 const BROLL_PAN = 0.5;  // share of the spare margin the drift travels
@@ -366,13 +364,12 @@ export class BrandedComposite {
       // a photo per script-slice is far too slow on a long read.
       const target = Math.min(len - 1, Math.floor(this.scriptProgress * len));
       if (target > this.brollIndex) idx = target;
-      else if (since > BROLL_MAX_HOLD_MS) {
+      else if (since > BROLL_HOLD_MS) {
         idx = this.brollIndex + 1;
         if (idx >= len) { idx = 0; this.brollPass++; } // photos exhausted — loop on the clock
       } else idx = this.brollIndex;
     } else {
-      const hold = this.scriptProgress !== null ? BROLL_MAX_HOLD_MS : BROLL_HOLD_MS;
-      idx = since > hold ? (this.brollIndex + 1) % len : this.brollIndex;
+      idx = since > BROLL_HOLD_MS ? (this.brollIndex + 1) % len : this.brollIndex;
     }
 
     if (idx !== this.brollIndex) {
@@ -388,9 +385,9 @@ export class BrandedComposite {
       prev: this.prevIndex === null ? null : this.photos[this.prevIndex],
       dir: idx,
       prevDir: this.prevIndex ?? 0,
-      // Motion is paced to the ceiling so the push completes rather than
-      // freezing partway through a long hold.
-      progress: Math.min(1, held / BROLL_MAX_HOLD_MS),
+      // Motion is paced to the hold so the push completes rather than
+      // freezing partway through.
+      progress: Math.min(1, held / BROLL_HOLD_MS),
       fade: Math.min(1, held / BROLL_FADE_MS),
     };
   }
