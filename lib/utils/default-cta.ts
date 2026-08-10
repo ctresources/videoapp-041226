@@ -9,8 +9,16 @@
  * "moving to Blue Bell, Pennsylvania" about somewhere in their own area — it
  * reads as an address label. {state} is still supported for anyone whose own
  * saved template uses it.
+ *
+ * The ask is "subscribe, like or follow" because the same recording gets posted
+ * to Instagram, TikTok and Facebook, where "subscribe" alone means nothing.
+ *
+ * Note this constant only reaches users with no saved CTA of their own —
+ * Settings pre-fills its editor from here and stores a copy on save, so anyone
+ * who has saved Settings is pinned to whatever the wording was that day. They
+ * pick up changes here via "Reset to default" in Settings.
  */
-export const DEFAULT_CTA_TEMPLATE = `If this is your first time on the channel and you want to know everything about living in {city} and the surrounding suburbs, subscribe so you can be the first to know about the current market in {city}.
+export const DEFAULT_CTA_TEMPLATE = `If this is your first time on the channel and you want to know everything about living in {city} and the surrounding suburbs, subscribe, like or follow so you can be the first to know about the current market in {city}.
 
 My name is {name} and I've been guiding buyers and sellers across the {city} area for {years} years.
 

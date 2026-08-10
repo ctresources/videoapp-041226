@@ -671,17 +671,23 @@ export class BrandedComposite {
       y += H * 0.07;
     }
 
-    // "Subscribe for more real estate in X" rather than "for more X real
-    // estate" — the latter turns unreadable once the market is a phrase rather
-    // than a single town.
+    // "...for more real estate in X" rather than "for more X real estate" —
+    // the latter turns unreadable once the market is a phrase rather than a
+    // single town. Wrapped because this line has no width to spare on a
+    // portrait recording, where the frame is narrow and the type scales off
+    // the tall side.
     const market = [this.brand.city, this.brand.state].filter(Boolean).join(", ");
+    const ask = market
+      ? `Subscribe, like or follow for more real estate in ${market}`
+      : "Subscribe, like or follow for more local real estate";
+
+    const askSize = Math.round(H * 0.032);
     ctx.fillStyle = "#f59e0b";
-    ctx.font = `700 ${Math.round(H * 0.032)}px Arial, sans-serif`;
-    ctx.fillText(
-      market ? `Subscribe for more real estate in ${market}` : "Subscribe for more local real estate",
-      W / 2,
-      y,
-    );
+    ctx.font = `700 ${askSize}px Arial, sans-serif`;
+    const perLine = Math.max(18, Math.floor((W * 0.86) / (askSize * 0.52)));
+    wrapText(ask, perLine).forEach((line, i) => {
+      ctx.fillText(line, W / 2, y + i * askSize * 1.3);
+    });
 
     ctx.textAlign = "left"; // reset for overlay drawing
   }
