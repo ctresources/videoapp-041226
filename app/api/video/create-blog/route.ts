@@ -237,6 +237,21 @@ ${totalPhotos} photo(s) are attached${listingCount > 0 ? ` (${listingCount} of t
   const monthName = new Date().toLocaleString("en-US", { month: "long" });
 
   // ── HEAD: must-have instructions + the full narration script. Never trimmed. ──
+  //
+  // On the verbatim rule, deliberately against HeyGen's own advice: their Video
+  // Agent guide calls it mandatory to declare the script "a concept and theme to
+  // convey — not a verbatim transcript", with "full creative freedom to expand,
+  // elaborate, add examples". Do not add that here.
+  //
+  // This is regulated advertising. An agent free to elaborate invents
+  // statistics, neighbourhood claims and school or demographic references — the
+  // exact things the FAIR HOUSING block forbids — and talks over the user's own
+  // CTA and contact details. Verbatim delivery is what makes those compliance
+  // rules worth anything.
+  //
+  // The failure that directive guards against is dead air, and DURATION already
+  // covers it: filler and silent gaps are banned, and no target runtime is ever
+  // stated, so there is nothing for the agent to pad towards.
   const head = `You are producing a professional real estate marketing video.
 
 ${orientationBlock}
@@ -306,7 +321,8 @@ PRONUNCIATION
 - The script is already normalized (abbreviations expanded) — read every word exactly as written, never spelling out letters.
 - NEVER speak phone numbers, emails or URLs — they are display-only. Omit any from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
 
-B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets and curb appeal, interiors (kitchens, living spaces, open plans), lifestyle scenes (cafes, parks, people).${audienceVisual ? `
+B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets and curb appeal, interiors (kitchens, living spaces, open plans), lifestyle scenes (cafes, parks, people).
+- MEDIUM: real places → stock footage; numbers and trends → motion graphics; abstract ideas → AI-generated.${audienceVisual ? `
 - Audience (${params.audience}): ${audienceVisual}` : ""}${params.keywords.length > 0 ? `
 - Emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
