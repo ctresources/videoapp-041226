@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getVideoStatus } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { transcribeToSrt } from "@/lib/utils/srt";
@@ -26,6 +27,13 @@ export interface StoreOptions {
    * burn-in has no font size control and renders too small to read on a phone.
    */
   subtitleUrl?: string | null;
+  /**
+   * HeyGen's id for this render, so the sidecar SRT can be asked for again.
+   * It is not ready when the video-ready webhook fires — measured at ~12s
+   * later — and that single early miss was why captions silently never
+   * appeared on Direct Video renders.
+   */
+  heygenVideoId?: string | null;
   /**
    * Whether the user asked for captions. Defaults to on, matching the
    * "Burn synchronized captions" checkbox. When there is no sidecar SRT — the
@@ -145,6 +153,12 @@ export async function downloadAndStoreVideo(
       // path re-runs post-processing) never pays for transcription twice. The
       // .srt download endpoint reads the same key.
       if (transcribed) await mergeMetadata(admin, videoId, { srt });
+    } else if (opts.captionsEnabled !== false) {
+      // The user asked for captions and is getting none. Every branch that
+      // gives up above logs its own reason; this line is what makes the
+      // outcome searchable, because the failure is otherwise invisible in the
+      // finished video until someone watches it.
+      console.warn(`[store-video] ${videoId}: captions were requested but none were produced`);
     }
 
     // B-roll first (rebuilds the video frame), then music (mixes the audio).
@@ -215,13 +229,21 @@ async function resolveCaptions(
 ): Promise<{ srt: string | null; transcribed: boolean }> {
   if (opts.captionsEnabled === false) return { srt: null, transcribed: false };
 
-  if (opts.subtitleUrl) {
+  // The URL is asked for once when the video-ready webhook fires, and HeyGen
+  // does not have it yet at that moment — it arrives about 12 seconds later.
+  // Since we are about to spend minutes compositing, waiting a few seconds for
+  // a free, perfectly aligned SRT is far cheaper than transcribing the audio
+  // ourselves, and cheaper still than the silence this used to produce.
+  const subtitleUrl = opts.subtitleUrl ?? (await waitForCaptionUrl(opts.heygenVideoId, videoId));
+
+  if (subtitleUrl) {
     try {
-      const res = await fetch(opts.subtitleUrl);
+      const res = await fetch(subtitleUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const srt = await res.text();
       // An empty SRT would make ffmpeg fail for no gain.
       if (srt.trim()) return { srt, transcribed: false };
+      console.warn(`[store-video] ${videoId}: sidecar SRT was empty, falling back`);
     } catch (err) {
       console.warn(`[store-video] ${videoId}: subtitle fetch failed:`, err instanceof Error ? err.message : err);
     }
@@ -246,6 +268,61 @@ async function resolveCaptions(
     console.warn(`[store-video] ${videoId}: transcription failed:`, err instanceof Error ? err.message : err);
     return { srt: null, transcribed: false };
   }
+}
+
+/**
+ * Waits for HeyGen to publish this render's sidecar SRT.
+ *
+ * Direct Video renders get one, but it trails the video-ready webhook by
+ * roughly 12 seconds, so the single ask made when that webhook fires reliably
+ * came back empty. Polling briefly costs a fraction of the compositing pass
+ * that follows and saves a transcription call — but it is strictly best
+ * effort: the caller falls back to transcribing when this gives up.
+ */
+async function waitForCaptionUrl(
+  heygenVideoId: string | null | undefined,
+  videoId: string,
+  // Kept deliberately short. Compositing was measured at 225s against a 300s
+  // function ceiling, so seconds spent here come straight out of the margin
+  // that keeps a render from being killed mid-encode. The SRT was observed
+  // landing ~12s after the video event, so 20s covers it with room to spare.
+  attempts = 5,
+  intervalMs = 4000,
+): Promise<string | null> {
+  if (!heygenVideoId) return null;
+  const admin = createAdminClient();
+
+  for (let i = 0; i < attempts; i++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+
+    // The caption webhook may have landed in the meantime and cached it, which
+    // is free to read and beats asking HeyGen again.
+    try {
+      const { data } = await admin
+        .from("generated_videos")
+        .select("metadata")
+        .eq("id", videoId)
+        .single();
+      const cached = (data?.metadata as Record<string, unknown> | null)?.caption_url;
+      if (typeof cached === "string" && cached) {
+        console.log(`[store-video] ${videoId}: sidecar SRT arrived by webhook after ${((i + 1) * intervalMs) / 1000}s`);
+        return cached;
+      }
+    } catch { /* fall through to asking HeyGen */ }
+
+    try {
+      const url = (await getVideoStatus(heygenVideoId)).captionUrl;
+      if (url) {
+        console.log(`[store-video] ${videoId}: sidecar SRT ready after ${((i + 1) * intervalMs) / 1000}s`);
+        return url;
+      }
+    } catch (err) {
+      console.warn(`[store-video] ${videoId}: caption poll failed:`, err instanceof Error ? err.message : err);
+      return null; // A failing status endpoint won't start working in 20 seconds.
+    }
+  }
+  console.warn(`[store-video] ${videoId}: no sidecar SRT after ${(attempts * intervalMs) / 1000}s — transcribing instead`);
+  return null;
 }
 
 /** Merge keys into a video row's metadata without dropping what is already there. */

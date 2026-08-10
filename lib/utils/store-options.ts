@@ -26,8 +26,10 @@ export async function buildStoreOptions(
   // The sidecar SRT is not in the callback payload — only the status endpoint
   // returns it. Direct Video renders have one; Video Agent renders do not, and
   // store-video transcribes the narration for those instead.
-  let subtitleUrl: string | null = null;
-  if (captionsEnabled && heygenVideoId) {
+  // A url the caption webhook already saw is authoritative and free; otherwise
+  // ask HeyGen, accepting that this early ask usually comes back empty.
+  let subtitleUrl: string | null = typeof meta.caption_url === "string" ? meta.caption_url : null;
+  if (!subtitleUrl && captionsEnabled && heygenVideoId) {
     try {
       subtitleUrl = (await getVideoStatus(heygenVideoId)).captionUrl;
     } catch (err) {
@@ -41,6 +43,10 @@ export async function buildStoreOptions(
     clipUrls: Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null,
     dimension: (meta.dimension as { width: number; height: number } | undefined) || null,
     subtitleUrl,
+    // Carried through so store-video can ask again — the sidecar SRT is not
+    // ready at the moment this runs, and one early miss used to mean no
+    // captions at all. A url cached by the caption webhook wins outright.
+    heygenVideoId: heygenVideoId ?? null,
     captionsEnabled,
     cachedSrt: typeof meta.srt === "string" ? meta.srt : null,
   };

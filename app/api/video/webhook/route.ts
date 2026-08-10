@@ -228,6 +228,31 @@ export async function POST(req: NextRequest) {
 
   console.log(`[webhook] ${eventType} | session=${sessionId} video=${videoId} callback=${callbackId} status=${renderStatus}`);
 
+  // The sidecar SRT arrives on its own event, roughly 12s behind the
+  // video-ready one, and used to be logged as an unknown payload and thrown
+  // away — which is why Direct Video renders came back with no captions.
+  // Stashing it means post-processing finds it waiting rather than asking
+  // HeyGen too early, and a later repair run gets it for free.
+  if (eventType === "avatar_video_caption.success" && callbackId) {
+    const captionUrl: string | undefined = eventData.caption_url || eventData.subtitle_url;
+    if (captionUrl) {
+      const admin = createAdminClient();
+      const { data: row } = await admin
+        .from("generated_videos")
+        .select("metadata")
+        .eq("id", callbackId)
+        .single();
+      if (row) {
+        await admin
+          .from("generated_videos")
+          .update({ metadata: { ...((row.metadata as Record<string, unknown> | null) ?? {}), caption_url: captionUrl } })
+          .eq("id", callbackId);
+        console.log(`[webhook] Cached sidecar SRT for ${callbackId}`);
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (!renderStatus) {
     // Still processing or unknown event — acknowledge and skip
     console.warn("[webhook] Unhandled event type or unknown payload:", JSON.stringify(body).slice(0, 300));
