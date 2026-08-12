@@ -6,11 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
+import { TranslateModal } from "@/components/videos/TranslateModal";
 import { createClient } from "@/lib/supabase/client";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
-  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film,
+  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -36,6 +37,8 @@ interface GeneratedVideo {
   project_id: string;
   metadata?: { render_error?: string } | null;
   projects?: { title: string; ai_script?: { hook?: string } | null } | null;
+  source_video_id?: string | null;
+  translation_language?: string | null;
 }
 
 interface RenderProgress {
@@ -265,6 +268,7 @@ function VideosContent() {
   }
   const [publishingVideo, setPublishingVideo] = useState<GeneratedVideo | null>(null);
   const [previewVideo, setPreviewVideo] = useState<GeneratedVideo | null>(null);
+  const [translatingVideo, setTranslatingVideo] = useState<GeneratedVideo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<GeneratedVideo | null>(null);
 
@@ -565,8 +569,9 @@ function VideosContent() {
                   )}
                   {/* Type badge */}
                   <div className="absolute top-2 left-2">
-                    <span className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-md">
-                      {typeLabel[video.video_type] || video.video_type}
+                    <span className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-md flex items-center gap-1">
+                      {video.translation_language && <Globe size={11} />}
+                      {video.translation_language || typeLabel[video.video_type] || video.video_type}
                     </span>
                   </div>
                 </div>
@@ -616,6 +621,16 @@ function VideosContent() {
                         >
                           <Send size={13} /> Publish
                         </Button>
+                        {!video.translation_language && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTranslatingVideo(video)}
+                            title="Translate to another language"
+                          >
+                            <Globe size={13} />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -725,6 +740,19 @@ function VideosContent() {
           />
         );
       })()}
+
+      {/* Translate Modal */}
+      {translatingVideo && (
+        <TranslateModal
+          videoId={translatingVideo.id}
+          videoTitle={(translatingVideo.projects as { title: string } | null)?.title || "Untitled Video"}
+          onClose={() => setTranslatingVideo(null)}
+          onSubmitted={() => {
+            setTranslatingVideo(null);
+            loadVideos();
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {videoToDelete && (

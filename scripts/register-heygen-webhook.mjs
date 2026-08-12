@@ -7,6 +7,7 @@
  *
  *   node scripts/register-heygen-webhook.mjs list
  *   node scripts/register-heygen-webhook.mjs add https://your-domain.com/api/video/webhook
+ *   node scripts/register-heygen-webhook.mjs update <endpoint_id>
  *   node scripts/register-heygen-webhook.mjs delete <endpoint_id>
  *
  * Reads HEYGEN_API_KEY from .env.local. After `add`, set in your production env:
@@ -14,18 +15,25 @@
  *   HEYGEN_WEBHOOK_REGISTERED=true      # stops sending per-request callback_url
  * then, once the logs show "Signature verified ✓":
  *   HEYGEN_WEBHOOK_ENFORCE=true         # start rejecting unsigned deliveries
+ *
+ * If an endpoint was already registered before video_translate.* existed
+ * below, run `update <endpoint_id>` (id from `list`) to add them — `events`
+ * fully replaces the endpoint's subscription list, so `update` always sends
+ * this whole array, not just the new entries.
  */
 import { readFileSync } from "node:fs";
 
 const API = "https://api.heygen.com";
 
-// Events the app actually handles — see the success/failed branches in
+// Events the app actually handles — see the branches in
 // app/api/video/webhook/route.ts. Subscribing to more just adds noise.
 const EVENTS = [
   "avatar_video.success",
   "avatar_video.fail",
   "video_agent.success",
   "video_agent.fail",
+  "video_translate.success",
+  "video_translate.fail",
 ];
 
 function apiKey() {
@@ -70,10 +78,17 @@ if (cmd === "list") {
   });
   console.log(JSON.stringify(out, null, 2));
   console.log("\n⚠  The secret above is shown ONCE. Store it as HEYGEN_WEBHOOK_SECRET now.");
+} else if (cmd === "update") {
+  if (!arg) { console.error("Pass the endpoint id (see `list`)"); process.exit(1); }
+  const out = await call(`/v3/webhooks/endpoints/${arg}`, {
+    method: "PATCH",
+    body: JSON.stringify({ events: EVENTS }),
+  });
+  console.log(JSON.stringify(out, null, 2));
 } else if (cmd === "delete") {
   if (!arg) { console.error("Pass the endpoint id (see `list`)"); process.exit(1); }
   await call(`/v3/webhooks/endpoints/${arg}`, { method: "DELETE" });
   console.log("deleted", arg);
 } else {
-  console.log("usage: register-heygen-webhook.mjs list | add <https-url> | delete <endpoint_id>");
+  console.log("usage: register-heygen-webhook.mjs list | add <https-url> | update <endpoint_id> | delete <endpoint_id>");
 }

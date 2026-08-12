@@ -829,6 +829,115 @@ export async function generateAvatarLook(
   return item as AvatarLook;
 }
 
+// ─── Video Translation (dubbing) ─────────────────────────────────────────────
+
+let cachedTranslationLanguages: string[] | null = null;
+
+/**
+ * Fetch HeyGen's supported target-language list (GET /v3/video-translations/languages).
+ * The exact strings HeyGen returns are what output_languages expects back —
+ * the API docs don't commit to a fixed format (code vs. display name), so
+ * these are resolved from HeyGen rather than hardcoded, and stored verbatim
+ * on the row (translation_language) for reuse.
+ *
+ * Cached in-memory for the life of the server instance — this list changes
+ * rarely, and it's asked for every time the translate modal opens.
+ */
+export async function getSupportedTranslationLanguages(): Promise<string[]> {
+  if (cachedTranslationLanguages) return cachedTranslationLanguages;
+
+  const res = await fetch(`${HEYGEN_API}/v3/video-translations/languages`, {
+    headers: { "x-api-key": getApiKey() },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen translation languages fetch failed (${res.status}): ${err.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const languages: string[] = data.data?.languages || [];
+  cachedTranslationLanguages = languages;
+  console.log(`[heygen] Loaded ${languages.length} supported translation languages`);
+  return languages;
+}
+
+export interface CreateVideoTranslationParams {
+  videoUrl: string;
+  outputLanguage: string;
+  title?: string;
+  callbackUrl?: string;
+  callbackId?: string;
+}
+
+/**
+ * Dub an existing video into another language via POST /v3/video-translations
+ * — HeyGen re-voices the narration (cloning the original speaker) and
+ * lip-syncs the avatar to match, returning a translated_video-translation_id
+ * to poll or await via webhook.
+ *
+ * One language per call by design: output_languages accepts an array (HeyGen
+ * batches multiple dubs from one source in a single request), but this app
+ * keeps a strict 1:1 row-per-render mapping everywhere else (see the webhook's
+ * callback_id matching), so each language is submitted — and tracked — as its
+ * own generated_videos row instead.
+ */
+export async function createVideoTranslation(params: CreateVideoTranslationParams): Promise<string> {
+  const body = {
+    video: { type: "url", url: params.videoUrl },
+    output_languages: [params.outputLanguage],
+    ...(params.title && { title: params.title }),
+    ...(params.callbackUrl && { callback_url: params.callbackUrl }),
+    ...(params.callbackId && { callback_id: params.callbackId }),
+  };
+
+  console.log(`[heygen] Submitting video translation → ${params.outputLanguage}...`);
+
+  const res = await fetch(`${HEYGEN_API}/v3/video-translations`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const rawText = await res.text();
+  if (!res.ok) {
+    throw new Error(`HeyGen video translation failed (${res.status}): ${rawText.slice(0, 400)}`);
+  }
+
+  const data = JSON.parse(rawText);
+  const translationId: string | undefined = data.data?.video_translation_ids?.[0];
+  if (!translationId) {
+    throw new Error(`HeyGen returned no video_translation_ids. Response: ${rawText.slice(0, 300)}`);
+  }
+
+  console.log(`[heygen] Video translation submitted: ${translationId}`);
+  return translationId;
+}
+
+/**
+ * Get translation job status via GET /v3/video-translations/{id}.
+ * Maps HeyGen's "running" to this app's "processing" so callers can treat it
+ * identically to every other render status (see VideoStatus).
+ */
+export async function getVideoTranslationStatus(translationId: string): Promise<VideoStatus> {
+  const res = await fetch(`${HEYGEN_API}/v3/video-translations/${translationId}`, {
+    headers: { "x-api-key": getApiKey() },
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "unknown");
+    throw new Error(`HeyGen translation status check failed (${res.status}): ${err.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  const d = json.data;
+
+  return {
+    status: d.status === "running" ? "processing" : d.status,
+    videoUrl: d.video_url || null,
+    thumbnailUrl: null,
+    captionUrl: d.srt_caption_url || null,
+    duration: d.duration || null,
+    error: d.failure_message || null,
+  };
+}
+
 // ─── Digital Twin Creation ────────────────────────────────────────────────────
 
 export interface DigitalTwinResult {

@@ -7,6 +7,7 @@ import { buildStoreOptions } from "@/lib/utils/store-options";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
+import { getVideoTranslationStatus } from "@/lib/api/heygen";
 
 /** Constant-time string compare that tolerates differing lengths. */
 function safeEqual(a: string, b: string): boolean {
@@ -250,6 +251,90 @@ export async function POST(req: NextRequest) {
         console.log(`[webhook] Cached sidecar SRT for ${callbackId}`);
       }
     }
+    return NextResponse.json({ received: true });
+  }
+
+  // ── Video translation (dubbing) events ────────────────────────────────────
+  // Handled separately from the avatar-render path below: HeyGen's own docs
+  // say the webhook payload for these is minimal and to fetch the resource
+  // via GET /v3/video-translations/{id} for the authoritative video_url and
+  // status, rather than trusting fields inline on the delivery.
+  if (eventType === "video_translate.success" || eventType === "video_translate.fail") {
+    const translationId: string | undefined = eventData.video_translation_id || eventData.id;
+    const tCallbackId: string | undefined = eventData.callback_id || body.callback_id;
+
+    console.log(`[webhook] ${eventType} | translation=${translationId} callback=${tCallbackId}`);
+
+    const stored = await findStoredRow(admin, { callbackId: tCallbackId, videoId: translationId });
+    if (stored?.video_url && !isHeygenUrl(stored.video_url)) {
+      console.log(`[webhook] Translation already stored, ignoring duplicate ${eventType}`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
+    let tRow: { id: string; metadata: Record<string, unknown> | null } | null = null;
+    if (tCallbackId) {
+      const { data } = await admin
+        .from("generated_videos")
+        .select("id, metadata")
+        .eq("id", tCallbackId)
+        .maybeSingle();
+      tRow = data;
+    }
+    if (!tRow && translationId) {
+      const { data } = await admin
+        .from("generated_videos")
+        .select("id, metadata")
+        .eq("render_job_id", translationId)
+        .maybeSingle();
+      tRow = data;
+    }
+
+    if (!tRow) {
+      console.warn(`[webhook] No video row matched for translation event ${eventType}`);
+      return NextResponse.json({ received: true });
+    }
+
+    if (eventType === "video_translate.fail") {
+      let reason = "Translation failed";
+      try {
+        if (translationId) {
+          const status = await getVideoTranslationStatus(translationId);
+          if (status.error) reason = status.error;
+        }
+      } catch { /* fall back to generic reason below */ }
+
+      await admin
+        .from("generated_videos")
+        .update({ render_status: "failed", metadata: { ...(tRow.metadata ?? {}), render_error: reason } })
+        .eq("id", tRow.id);
+      console.warn(`[webhook] Translation ${tRow.id} failed: ${reason}`);
+      await refundVideoCredits(admin, tRow.id);
+      return NextResponse.json({ received: true });
+    }
+
+    // success — resolve the authoritative video_url before storing permanently.
+    try {
+      const status = translationId ? await getVideoTranslationStatus(translationId) : null;
+      if (!status?.videoUrl) throw new Error("HeyGen reported success with no video_url");
+
+      // Translations arrive fully dubbed and lip-synced — no photo/music
+      // compositing or caption burn-in applies, unlike avatar renders.
+      const permanentUrl = await downloadAndStoreVideo(status.videoUrl, tRow.id, {});
+      await admin
+        .from("generated_videos")
+        .update({ render_status: "completed", video_url: permanentUrl || status.videoUrl })
+        .eq("id", tRow.id);
+      console.log(`[webhook] Translation ${tRow.id} stored`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Translation storage failed";
+      console.error(`[webhook] Translation ${tRow.id} post-processing failed:`, msg);
+      await admin
+        .from("generated_videos")
+        .update({ render_status: "failed", metadata: { ...(tRow.metadata ?? {}), render_error: msg } })
+        .eq("id", tRow.id);
+      await refundVideoCredits(admin, tRow.id);
+    }
+
     return NextResponse.json({ received: true });
   }
 
