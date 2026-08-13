@@ -141,16 +141,20 @@ export function TranslateModal({
           </div>
 
           {/* Cost is the thing a user must not miss — a dub is a fresh HeyGen
-              render, billed like a new video, not a free re-export. */}
+              render, billed like a new video, not a free re-export.
+              Worded in "videos", never "credits": that is the unit the rest of
+              the app uses ("You have no short videos left"), and naming a
+              second unit here reads as a separate currency the user has to
+              go and buy. */}
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-sm font-semibold text-amber-900">
-              This costs 1 {kindLabel} video credit
+              This uses 1 of your {kindLabel} videos
             </p>
             <p className="text-xs text-amber-800 mt-0.5">
-              A translation is a whole new render at HeyGen, charged the same as creating a video.
+              HeyGen renders the dub from scratch, so it costs the same as making a new video.
               {isAdmin
                 ? " Admin accounts aren't charged."
-                : balance !== null && ` You have ${balance} ${kindLabel} video${balance === 1 ? "" : "s"} left.`}
+                : balance !== null && ` You have ${balance} left — and if it fails, you get it back.`}
             </p>
           </div>
 
@@ -213,7 +217,7 @@ export function TranslateModal({
                   </>
                 ) : (
                   <>
-                    <Globe size={14} /> Translate · 1 credit
+                    <Globe size={14} /> Translate · uses 1 video
                   </>
                 )}
               </Button>
