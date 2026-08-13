@@ -1891,13 +1891,19 @@ export default function ProjectEditorPage() {
               <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 8)</span></p>
               {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
             </div>
-            {/* Voice Only hands its visuals to the Video Agent, which is held to
-                5 files to keep render times down. Saying so beats letting the
-                extras disappear without explanation. */}
-            {renderMode === "agent" && uploadedPhotos.length > 5 && (
+            {/* The 5-file cap belongs to the Video Agent, which renders everything
+                EXCEPT pasted scripts and long-form (see useDirectVideo in
+                app/api/video/create-blog/route.ts). It is not tied to the avatar
+                toggle: Voice Only and Avatar + Voice both run on the agent for an
+                AI-written script, and only decide whether a face is on screen.
+                This used to key off renderMode and tell the user to switch to
+                Avatar + Voice — which changed nothing, and hid this warning while
+                the extra photos were still being dropped. */}
+            {source !== "paste" && selectedVideoType !== "youtube_long" && uploadedPhotos.length > 5 && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
-                Voice Only uses your first <strong>5</strong> photos — the other{" "}
-                {uploadedPhotos.length - 5} won&apos;t appear. Switch to <strong>Avatar + Voice</strong> to use all 8.
+                Only your first <strong>5</strong> photos will be used — the other{" "}
+                {uploadedPhotos.length - 5} won&apos;t appear. This video renders on the Video Agent,
+                which takes 5. Pasted scripts and long-form videos use up to 12.
               </p>
             )}
             <div className="flex flex-wrap gap-2 mb-5">
