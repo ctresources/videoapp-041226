@@ -35,7 +35,7 @@ interface GeneratedVideo {
   duration_seconds: number | null;
   created_at: string;
   project_id: string;
-  metadata?: { render_error?: string } | null;
+  metadata?: { render_error?: string; credit_kind?: "short" | "long" } | null;
   projects?: { title: string; ai_script?: { hook?: string } | null } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
@@ -746,6 +746,9 @@ function VideosContent() {
         <TranslateModal
           videoId={translatingVideo.id}
           videoTitle={(translatingVideo.projects as { title: string } | null)?.title || "Untitled Video"}
+          // Mirrors the fallback in /api/video/translate: rows predating
+          // credit_kind were charged the short allowance.
+          videoKind={translatingVideo.metadata?.credit_kind === "long" ? "long" : "short"}
           onClose={() => setTranslatingVideo(null)}
           onSubmitted={() => {
             setTranslatingVideo(null);

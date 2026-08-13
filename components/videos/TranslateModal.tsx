@@ -1,22 +1,36 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Globe, Loader2, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { availableFor, type VideoKind } from "@/lib/utils/video-allowance";
+import { AlertTriangle, Globe, Loader2, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 interface TranslateModalProps {
   videoId: string;
   videoTitle: string;
+  /**
+   * Which allowance the dub will be charged to — HeyGen bills a translation as
+   * its own render, so it costs the same kind of credit the source video did.
+   */
+  videoKind: VideoKind;
   onClose: () => void;
   onSubmitted: () => void;
 }
 
-export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: TranslateModalProps) {
+export function TranslateModal({
+  videoId, videoTitle, videoKind, onClose, onSubmitted,
+}: TranslateModalProps) {
   const [languages, setLanguages] = useState<string[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState(true);
   const [language, setLanguage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const kindLabel = videoKind === "long" ? "long" : "short";
 
   useEffect(() => {
     fetch("/api/video/translate")
@@ -30,6 +44,37 @@ export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: Tr
       .finally(() => setLoadingLanguages(false));
   }, []);
 
+  // Read the same balance the translate route will charge, so the modal can
+  // state the cost against what the user actually has rather than after a 402.
+  //
+  // The id filter is required, not decorative: profiles carries an "Admins read
+  // all profiles" policy alongside the own-row one, and RLS policies are OR'd —
+  // so an unfiltered .single() matches every row for an admin and errors.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role")
+        .eq("id", user.id)
+        .single();
+      if (cancelled || !data) return;
+      const p = data as {
+        credits_remaining: number;
+        long_credits_remaining: number;
+        purchased_short_videos: number;
+        purchased_long_videos: number;
+        role: string | null;
+      };
+      setIsAdmin(p.role === "admin");
+      setBalance(availableFor(p, videoKind));
+    })();
+    return () => { cancelled = true; };
+  }, [videoKind]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !submitting) onClose();
@@ -38,8 +83,13 @@ export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: Tr
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose, submitting]);
 
+  // Admins are never charged (the route skips the deduction for them), so the
+  // gate must skip them too — otherwise an admin at zero sees a disabled button
+  // for a request the server would happily accept.
+  const outOfCredits = !isAdmin && balance !== null && balance < 1;
+
   async function handleSubmit() {
-    if (!language) return;
+    if (!language || outOfCredits) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/video/translate", {
@@ -90,9 +140,23 @@ export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: Tr
             </button>
           </div>
 
+          {/* Cost is the thing a user must not miss — a dub is a fresh HeyGen
+              render, billed like a new video, not a free re-export. */}
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-900">
+              This costs 1 {kindLabel} video credit
+            </p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              A translation is a whole new render at HeyGen, charged the same as creating a video.
+              {isAdmin
+                ? " Admin accounts aren't charged."
+                : balance !== null && ` You have ${balance} ${kindLabel} video${balance === 1 ? "" : "s"} left.`}
+            </p>
+          </div>
+
           <p className="text-sm text-slate-500 mb-4">
-            HeyGen re-voices the narration in the new language and lip-syncs the avatar to match.
-            This uses 1 video credit, same as creating a new video.
+            HeyGen re-voices the narration in the new language, keeping your cloned voice, and
+            re-syncs the avatar's mouth to match.
           </p>
 
           <div className="mb-5">
@@ -107,7 +171,7 @@ export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: Tr
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                disabled={submitting}
+                disabled={submitting || outOfCredits}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-slate-50"
               >
                 {languages.map((lang) => (
@@ -117,26 +181,44 @@ export function TranslateModal({ videoId, videoTitle, onClose, onSubmitted }: Tr
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={submitting} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !language}
-              className="flex-1 gap-1.5"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" /> Starting…
-                </>
-              ) : (
-                <>
-                  <Globe size={14} /> Translate
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Any captions burned into the source stay in their original
+              language — HeyGen dubs the audio, it cannot repaint pixels. */}
+          <p className="mb-5 flex gap-2 text-xs text-slate-500">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5 text-slate-400" />
+            <span>
+              On-screen captions stay in the original language — only the spoken audio is translated.
+            </span>
+          </p>
+
+          {outOfCredits ? (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+              <Link href="/billing" className="flex-1">
+                <Button className="w-full">Get more videos</Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose} disabled={submitting} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting || !language}
+                className="flex-1 gap-1.5"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Starting…
+                  </>
+                ) : (
+                  <>
+                    <Globe size={14} /> Translate · 1 credit
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
