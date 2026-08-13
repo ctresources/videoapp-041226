@@ -166,7 +166,7 @@ export default async function AnalyticsPage() {
         </div>
         <p className="text-sm text-slate-400">
           Views, likes, comments, shares, and click-through rates from YouTube, Instagram, TikTok,
-          and LinkedIn — pulled automatically from your connected platforms via Blotato.
+          and LinkedIn — pulled automatically from your connected platforms.
         </p>
       </Card>
     </div>

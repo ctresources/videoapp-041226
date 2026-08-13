@@ -38,14 +38,9 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
 function SocialSettingsContent() {
   const searchParams = useSearchParams();
 
-  const [apiKey, setApiKey] = useState("");
-  const [savedKey, setSavedKey] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [youtubeConnected, setYoutubeConnected] = useState(false);
   const [youtubeChannel, setYoutubeChannel] = useState<SocialAccount | null>(null);
-  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [disconnectingYT, setDisconnectingYT] = useState(false);
 
   useEffect(() => {
@@ -61,45 +56,12 @@ function SocialSettingsContent() {
     setLoading(true);
     const res = await fetch("/api/social/accounts");
     if (res.ok) {
-      const { accounts: data, connected, youtubeConnected: ytConnected } = await res.json();
+      const { accounts: data, youtubeConnected: ytConnected } = await res.json();
       const all: SocialAccount[] = data || [];
-      setAccounts(all.filter((a) => a.source !== "native"));
       setYoutubeConnected(!!ytConnected);
       setYoutubeChannel(all.find((a) => a.id === "native_youtube") ?? null);
-      if (connected && all.some((a) => a.source === "blotato")) setSavedKey("••••••••••••••••");
     }
     setLoading(false);
-  }
-
-  async function handleSaveKey() {
-    if (!apiKey.trim()) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/social/accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Invalid key");
-      setAccounts((data.accounts || []).map((a: SocialAccount) => ({ ...a, source: "blotato" })));
-      setSavedKey("••••••••••••••••");
-      setApiKey("");
-      toast.success(`Connected! ${data.accounts?.length || 0} social accounts found.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to connect Blotato");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDisconnectBlotato() {
-    const res = await fetch("/api/social/accounts", { method: "DELETE" });
-    if (res.ok) {
-      setSavedKey(null);
-      setAccounts([]);
-      toast.success("Blotato disconnected");
-    }
   }
 
   async function handleDisconnectYouTube() {
@@ -116,16 +78,6 @@ function SocialSettingsContent() {
       setDisconnectingYT(false);
     }
   }
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    await loadAccounts();
-    setRefreshing(false);
-    toast.success("Accounts refreshed");
-  }
-
-  const isBlotato = !!savedKey;
-  const blotatoAccounts = accounts.filter((a) => a.source !== "native");
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -211,7 +163,7 @@ function SocialSettingsContent() {
         )}
       </Card>
 
-      {/* ── Blotato (other platforms) ──────────────────────────────────────────────── */}
+      {/* ── Other platforms — not wired up yet ─────────────────────────────────────── */}
       <Card className="mb-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-secondary-50 rounded-xl flex items-center justify-center shrink-0">
@@ -220,134 +172,16 @@ function SocialSettingsContent() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold text-brand-text">Other Platforms</h3>
-              {isBlotato && (
-                <Badge variant="success" className="text-xs gap-1">
-                  <CheckCircle size={11} /> Connected
-                </Badge>
-              )}
+              <Badge variant="default" className="text-xs">Coming soon</Badge>
             </div>
-            <p className="text-sm text-slate-500 mb-4">
-              {isBlotato
-                ? "Instagram, TikTok, LinkedIn and more are connected via Blotato."
-                : "Enter your Blotato API key to connect Instagram, TikTok, LinkedIn, Facebook, and more."}
+            <p className="text-sm text-slate-500">
+              Instagram, TikTok, LinkedIn, Facebook and more are on the way. YouTube publishes
+              from here today.
             </p>
-
-            {isBlotato ? (
-              <div className="flex items-center gap-3">
-                <code className="text-sm bg-slate-100 px-3 py-1.5 rounded-lg text-slate-500 flex-1">{savedKey}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRefresh}
-                  loading={refreshing}
-                  className="gap-1.5 shrink-0"
-                >
-                  <RefreshCw size={13} /> Refresh
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDisconnectBlotato}
-                  className="text-red-500 hover:bg-red-50 gap-1.5 shrink-0"
-                >
-                  <Link2Off size={13} /> Disconnect
-                </Button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder="blotato_api_key_xxxxxxxxxxxx"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
-                  className="flex-1 font-mono text-sm"
-                />
-                <Button onClick={handleSaveKey} loading={saving} className="gap-1.5 shrink-0">
-                  Connect
-                </Button>
-              </div>
-            )}
           </div>
         </div>
-
-        {!isBlotato && (
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-            <p className="text-xs text-slate-400">Get your API key from your Blotato account settings</p>
-            <a
-              href="https://app.blotato.com/settings"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-primary-500 flex items-center gap-1 hover:underline"
-            >
-              Open Blotato <ExternalLink size={11} />
-            </a>
-          </div>
-        )}
       </Card>
 
-      {/* Connected Blotato accounts list */}
-      {isBlotato && (
-        <>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <p className="text-sm font-medium text-slate-600">
-              {blotatoAccounts.length} connected channel{blotatoAccounts.length !== 1 ? "s" : ""}
-            </p>
-            <a
-              href="https://app.blotato.com/accounts"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-primary-500 flex items-center gap-1 hover:underline"
-            >
-              Add more in Blotato <ExternalLink size={11} />
-            </a>
-          </div>
-
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-slate-100 rounded-2xl animate-pulse" />
-              ))}
-            </div>
-          ) : blotatoAccounts.length === 0 ? (
-            <Card className="text-center py-10">
-              <p className="text-sm text-slate-500 mb-2">No accounts found in Blotato yet</p>
-              <a href="https://app.blotato.com/accounts" target="_blank" rel="noreferrer">
-                <Button size="sm" variant="outline" className="gap-1.5">
-                  <ExternalLink size={13} /> Connect accounts in Blotato
-                </Button>
-              </a>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {blotatoAccounts.map((account) => {
-                const meta = PLATFORM_META[account.platform.toLowerCase()] || PLATFORM_META.youtube;
-                const Icon = meta.icon;
-                return (
-                  <Card
-                    key={account.id}
-                    padding="none"
-                    className={`flex items-center gap-4 p-4 border ${meta.border} ${meta.bg}`}
-                  >
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0 border border-slate-100">
-                      <Icon size={18} className={meta.color} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-brand-text">{meta.label}</p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {account.username ? `@${account.username}` : account.name}
-                      </p>
-                    </div>
-                    <Badge variant="success" className="text-xs gap-1 shrink-0">
-                      <CheckCircle size={11} /> Ready
-                    </Badge>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }

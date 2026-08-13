@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-interface BlotatoAccount {
+interface SocialAccount {
   id: string;
   platform: string;
   name: string;
@@ -45,7 +45,7 @@ export function PublishModal({
   videoId, videoTitle, defaultCaption = "", defaultDescription = "",
   defaultTags = [], thumbnailUrl, onClose, onPublished
 }: PublishModalProps) {
-  const [accounts, setAccounts] = useState<BlotatoAccount[]>([]);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [caption, setCaption] = useState(defaultCaption);
   const [title, setTitle] = useState(videoTitle);
@@ -66,7 +66,7 @@ export function PublishModal({
       .then(({ accounts: data }) => {
         const accs = data || [];
         setAccounts(accs);
-        setSelectedIds(accs.map((a: BlotatoAccount) => a.id));
+        setSelectedIds(accs.map((a: SocialAccount) => a.id));
         setLoadingAccounts(false);
       })
       .catch(() => setLoadingAccounts(false));
