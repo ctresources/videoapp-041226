@@ -107,6 +107,15 @@ export function PublishModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Post failed");
 
+      // A 200 does not mean every target succeeded — one platform can fail
+      // while another goes out. Surface the ones that didn't rather than
+      // letting the success toast speak for all of them.
+      const failed: Array<{ platform: string; error?: string }> = (data.results || [])
+        .filter((r: { status: string }) => r.status === "failed");
+      for (const f of failed) {
+        toast.error(`${f.platform}: ${f.error || "failed to post"}`, { duration: 8000 });
+      }
+
       setPosted(true);
       // null = YouTube wasn't part of this publish, so there is nothing to say
       // about a thumbnail. false = it was, and the thumbnail didn't take.
@@ -114,7 +123,10 @@ export function PublishModal({
       if (scheduledAt) {
         toast.success(`Scheduled for ${new Date(scheduledAt).toLocaleString()} 📅`);
       } else {
-        toast.success(`Published to ${selectedIds.length} platform${selectedIds.length > 1 ? "s" : ""}! 🚀`);
+        // Count what actually went out, not what was selected — claiming
+        // "2 platforms" when one failed is how the original bug read.
+        const okCount = selectedIds.length - failed.length;
+        toast.success(`Published to ${okCount} platform${okCount === 1 ? "" : "s"}! 🚀`);
         // Surfaced as its own message: the upload succeeded, so a failed
         // thumbnail is a follow-up task, not an error.
         if (data.thumbnailSet === false) {

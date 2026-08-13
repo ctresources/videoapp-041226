@@ -62,7 +62,10 @@ export async function POST(req: NextRequest) {
   const defaultYouTubeDesc = String(seoData?.youtube_description || aiScript?.description || defaultTitle);
   const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
 
-  const results: Array<{ platform: string; status: string; url?: string }> = [];
+  // `error` is its own field rather than riding in `url`. The failure message
+  // used to be stuffed into `url`, where the client could not tell a post link
+  // apart from an error string — so it surfaced neither.
+  const results: Array<{ platform: string; status: string; url?: string; error?: string }> = [];
 
   // Whether the project's generated thumbnail actually landed on YouTube.
   // Reported back rather than promised up front: setting a custom thumbnail
@@ -104,7 +107,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await admin.from("social_posts").insert({
+      // post_status must be one of scheduled/posting/posted/failed — the table's
+      // CHECK constraint. This said "published", which is not in that list, so
+      // EVERY insert threw. Because the insert runs after a successful upload,
+      // the video reached YouTube and was then reported as a failure, and
+      // social_posts stayed permanently empty.
+      const { error: logErr } = await admin.from("social_posts").insert({
         user_id: user.id,
         video_id: videoId,
         platform: "youtube",
@@ -112,13 +120,19 @@ export async function POST(req: NextRequest) {
         caption: target.description || defaultYouTubeDesc,
         scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
-        post_status: "published",
+        post_status: "posted",
       });
+      // The upload already happened. A bookkeeping failure must never be
+      // reported as a failed post — that is the mistake this whole branch made.
+      if (logErr) {
+        console.error(`[social/post] YouTube upload succeeded but logging failed: ${logErr.message}`);
+      }
 
       results.push({ platform: "youtube", status: "published", url: result.youtubeUrl });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "YouTube upload failed";
-      results.push({ platform: "youtube", status: "failed", url: msg });
+      console.error("[social/post] YouTube upload failed:", msg);
+      results.push({ platform: "youtube", status: "failed", error: msg });
     }
   }
 
@@ -163,7 +177,7 @@ export async function POST(req: NextRequest) {
         caption: defaultCaption,
         scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
-        post_status: scheduledAt ? "scheduled" : "published",
+        post_status: scheduledAt ? "scheduled" : "posted",
       });
 
       results.push({
@@ -172,7 +186,8 @@ export async function POST(req: NextRequest) {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Blotato post failed";
-      results.push({ platform: "blotato", status: "failed", url: msg });
+      console.error("[social/post] Blotato post failed:", msg);
+      results.push({ platform: "blotato", status: "failed", error: msg });
     }
   }
 
@@ -188,13 +203,22 @@ export async function POST(req: NextRequest) {
 
   const anySuccess = results.some((r) => r.status !== "failed");
   const youtubePublished = results.some((r) => r.platform === "youtube" && r.status === "published");
+
+  // A 200 with success:false was indistinguishable from a win to any client
+  // that only checks res.ok — which is exactly what the Publish window did, so
+  // a failed upload rendered as "Published!". When nothing got through, say so
+  // in the status code and put the first real reason in `error`.
+  const status = anySuccess ? 200 : 502;
+  const firstError = results.find((r) => r.status === "failed")?.error;
+
   return NextResponse.json({
     success: anySuccess,
+    ...(anySuccess ? {} : { error: firstError || "Nothing could be published." }),
     results,
     scheduledAt,
-    youtubeUrl: results.find((r) => r.platform === "youtube")?.url,
+    youtubeUrl: results.find((r) => r.platform === "youtube" && r.status === "published")?.url,
     // Only meaningful when YouTube was actually published to; null elsewhere so
     // the client can tell "didn't apply" apart from "wasn't attempted".
     thumbnailSet: youtubePublished ? thumbnailSet : null,
-  });
+  }, { status });
 }
