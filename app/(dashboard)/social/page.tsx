@@ -19,6 +19,8 @@ interface SocialAccount {
   platform: string;
   name: string;
   username?: string;
+  /** The real UC… channel id — native YouTube only. */
+  channelId?: string | null;
   avatarUrl?: string;
   source?: "native" | "blotato";
 }
@@ -111,7 +113,9 @@ function SocialPageContent() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-brand-text truncate">{youtubeChannel.name}</p>
-                  <p className="text-xs text-slate-400 truncate">Channel ID: {youtubeChannel.username}</p>
+                  {youtubeChannel.channelId && (
+                    <p className="text-xs text-slate-400 truncate font-mono">{youtubeChannel.channelId}</p>
+                  )}
                 </div>
                 <Button
                   variant="ghost"

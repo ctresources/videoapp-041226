@@ -40,8 +40,12 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const channel = await getChannelInfo(tokens.access_token);
 
-    // TEMPORARY diagnostic — see allChannels' doc comment in lib/api/youtube.ts.
-    console.log(`[youtube-callback] mine=true returned ${channel.allChannels.length} channel(s): ${JSON.stringify(channel.allChannels)}`);
+    // Which channel a token maps to is decided entirely on Google's chooser,
+    // and its Brand Account names often differ from the channel's YouTube
+    // display name — so "connected to the wrong channel" is a real and
+    // confusing outcome. Logging the id makes it answerable without a database
+    // trip. See getChannelInfo's doc comment.
+    console.log(`[youtube-callback] connected ${channel.id} (${channel.name})`);
 
     const admin = createAdminClient();
     await admin
@@ -53,7 +57,6 @@ export async function GET(req: NextRequest) {
         youtube_channel_id: channel.id,
         youtube_channel_name: channel.name,
         youtube_channel_thumbnail: channel.thumbnail,
-        youtube_channel_debug: channel.allChannels,
       })
       .eq("id", userId);
 

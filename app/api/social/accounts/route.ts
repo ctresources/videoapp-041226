@@ -37,6 +37,10 @@ export async function GET() {
         platform: "youtube",
         name: p.youtube_channel_name || "YouTube Channel",
         username: p.youtube_channel_name || "YouTube Channel",
+        // The real UC… id, shown in the UI. A Google account can own several
+        // channels with near-identical names, so the name alone cannot confirm
+        // which one is connected — the id is the only unambiguous answer.
+        channelId: p.youtube_channel_id,
         avatarUrl: p.youtube_channel_thumbnail || undefined,
         source: "native" as const,
       }]

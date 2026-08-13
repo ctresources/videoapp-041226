@@ -67,36 +67,39 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
   return res.json();
 }
 
+/**
+ * The channel belonging to the token's identity.
+ *
+ * `mine=true` returns exactly ONE channel — the one owned by whichever
+ * identity the token was issued for — so there is nothing here to choose
+ * between. Measured, not assumed: a diagnostic on this call recorded a
+ * single-element response on a Google account that owns four channels.
+ *
+ * Which channel that is comes down to what the user picks in Google's own
+ * OAuth chooser, and nothing here can influence it. Worth knowing because the
+ * chooser lists BRAND ACCOUNT names, which are frequently not the channel's
+ * YouTube display name — a user hunting for their channel by its real name can
+ * pick an entry called something else entirely and land on the wrong channel,
+ * with the app none the wiser. If a user reports being connected to the wrong
+ * channel, that mismatch is the first thing to check; the fix is on Google's
+ * screens, not in this file.
+ */
 export async function getChannelInfo(accessToken: string): Promise<{
   id: string;
   name: string;
   thumbnail: string | null;
-  /**
-   * Every channel `mine=true` returned, not just the one selected. TEMPORARY —
-   * added to diagnose a token consistently reporting a user's default channel
-   * even after they picked a Brand Account channel at Google's own OAuth
-   * chooser. Google's docs describe `mine=true` as returning the channel
-   * "owned by the authenticated user", with no mention of that chooser
-   * affecting the result — so this exists to see, empirically, whether the
-   * brand channel is absent from this response entirely (an OAuth/session
-   * issue) or present but not first (our own bug, picking items[0]). Remove
-   * once that's answered — see allChannels below and its callers.
-   */
-  allChannels: Array<{ id: string; title: string }>;
 }> {
   const res = await fetch(`${YOUTUBE_API}/channels?part=snippet&mine=true`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) throw new Error(`Channel info failed: ${await res.text()}`);
   const data = await res.json();
-  const items: Array<{ id: string; snippet: { title: string; thumbnails?: { default?: { url?: string } } } }> = data.items || [];
-  const channel = items[0];
+  const channel = data.items?.[0];
   if (!channel) throw new Error("No YouTube channel found for this Google account");
   return {
     id: channel.id as string,
     name: channel.snippet.title as string,
     thumbnail: (channel.snippet.thumbnails?.default?.url as string) ?? null,
-    allChannels: items.map((c) => ({ id: c.id, title: c.snippet.title })),
   };
 }
 
