@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadMediaFromUrl, createPost, type PostTarget, type BlotatoPlatform } from "@/lib/api/blotato";
-import { getValidAccessToken, uploadVideoToYouTube } from "@/lib/api/youtube";
+import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const [{ data: videoData }, { data: profileData }] = await Promise.all([
     admin.from("generated_videos")
-      .select("*, projects(title, ai_script, seo_data)")
+      .select("*, projects(title, ai_script, seo_data, thumbnail_url)")
       .eq("id", videoId)
       .eq("user_id", user.id)
       .single(),
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const video = videoData as {
     video_url: string | null;
     project_id: string | null;
-    projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
+    projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null } | null;
   } | null;
 
   const blotatoKey = (profileData as { blotato_api_key: string | null } | null)?.blotato_api_key;
@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
   const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
 
   const results: Array<{ platform: string; status: string; url?: string }> = [];
+
+  // Whether the project's generated thumbnail actually landed on YouTube.
+  // Reported back rather than promised up front: setting a custom thumbnail
+  // needs a phone-verified channel, and when it fails the Publish window has
+  // to tell the user to set it by hand instead of silently showing nothing.
+  let thumbnailSet = false;
 
   // ── Native YouTube targets ─────────────────────────────────────────────────
   const nativeYouTubeTargets = targets.filter(
@@ -80,6 +86,23 @@ export async function POST(req: NextRequest) {
         description: target.description || defaultYouTubeDesc,
         privacy: target.privacy || "public",
       });
+
+      // Apply the project's generated thumbnail. Non-fatal by design: a
+      // channel without phone verification cannot take a custom thumbnail,
+      // and that must not fail an otherwise successful upload.
+      const thumb = video.projects?.thumbnail_url
+        || (video.projects?.seo_data as { thumbnail_url?: string } | null)?.thumbnail_url;
+      if (thumb && /^https?:\/\//.test(thumb)) {
+        try {
+          await setVideoThumbnail(accessToken, result.videoId, thumb);
+          thumbnailSet = true;
+        } catch (err) {
+          console.warn(
+            "[social/post] YouTube thumbnail set failed (channel may need phone verification):",
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
 
       await admin.from("social_posts").insert({
         user_id: user.id,
@@ -164,10 +187,14 @@ export async function POST(req: NextRequest) {
   }
 
   const anySuccess = results.some((r) => r.status !== "failed");
+  const youtubePublished = results.some((r) => r.platform === "youtube" && r.status === "published");
   return NextResponse.json({
     success: anySuccess,
     results,
     scheduledAt,
     youtubeUrl: results.find((r) => r.platform === "youtube")?.url,
+    // Only meaningful when YouTube was actually published to; null elsewhere so
+    // the client can tell "didn't apply" apart from "wasn't attempted".
+    thumbnailSet: youtubePublished ? thumbnailSet : null,
   });
 }

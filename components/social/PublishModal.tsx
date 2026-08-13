@@ -57,6 +57,8 @@ export function PublishModal({
   const [loading, setLoading] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [posted, setPosted] = useState(false);
+  /** null = not attempted (no YouTube target), true/false = the real outcome. */
+  const [thumbnailSet, setThumbnailSet] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch("/api/social/accounts")
@@ -106,10 +108,21 @@ export function PublishModal({
       if (!res.ok) throw new Error(data.error || "Post failed");
 
       setPosted(true);
+      // null = YouTube wasn't part of this publish, so there is nothing to say
+      // about a thumbnail. false = it was, and the thumbnail didn't take.
+      setThumbnailSet(data.thumbnailSet ?? null);
       if (scheduledAt) {
         toast.success(`Scheduled for ${new Date(scheduledAt).toLocaleString()} 📅`);
       } else {
         toast.success(`Published to ${selectedIds.length} platform${selectedIds.length > 1 ? "s" : ""}! 🚀`);
+        // Surfaced as its own message: the upload succeeded, so a failed
+        // thumbnail is a follow-up task, not an error.
+        if (data.thumbnailSet === false) {
+          toast("Thumbnail wasn't applied — YouTube needs a phone-verified channel. Download it here and set it in YouTube Studio.", {
+            icon: "🖼️",
+            duration: 8000,
+          });
+        }
       }
       onPublished?.();
     } catch (err) {
@@ -253,7 +266,19 @@ export function PublishModal({
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">1280×720 · Set on YouTube automatically when you publish (channel must be phone-verified — download and upload manually if it doesn&apos;t appear)</p>
+                    {thumbnailSet === false ? (
+                      <p className="text-xs text-amber-700 mt-1">
+                        1280×720 · YouTube wouldn&apos;t take it — custom thumbnails need a phone-verified
+                        channel. Download it above and set it in YouTube Studio.
+                      </p>
+                    ) : thumbnailSet ? (
+                      <p className="text-xs text-emerald-700 mt-1">1280×720 · Applied to your YouTube video.</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">
+                        1280×720 · Applied to YouTube when you publish. Needs a phone-verified channel —
+                        we&apos;ll tell you here if it doesn&apos;t take.
+                      </p>
+                    )}
                   </div>
                 )}
                 <div>
