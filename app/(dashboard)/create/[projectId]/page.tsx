@@ -206,13 +206,22 @@ export default function ProjectEditorPage() {
   const musicInputRef = useRef<HTMLInputElement>(null);
   const [longFormIncluded, setLongFormIncluded] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
-  // null = user hasn't chosen yet; "agent" = Voice Only; "direct" = Avatar + Voice
+  // Whether the presenter appears on screen — nothing more. This ONLY decides
+  // if lookId is sent; the render engine is chosen server-side from the script
+  // source (see useDirectVideo in app/api/video/create-blog/route.ts).
+  //
+  // The values used to be "agent" and "direct", which read as the two engines
+  // and are not: "direct" here does NOT mean Direct Video, and an AI-written
+  // script runs on the Video Agent in either mode. That false equivalence put a
+  // photo-cap warning on screen telling users to switch modes to use more
+  // photos, which changed nothing.
+  //
   // Defaults to Avatar + Voice: being on screen is what most people want, and
   // it matches the look that is auto-selected on load. Voice Only leaving the
   // avatar off is the surprising outcome, so it should be the deliberate pick.
   // Previously this started null and forced a choice, which meant a wrong
   // choice produced a stock-footage video with no hint why.
-  const [renderMode, setRenderMode] = useState<"agent" | "direct">("direct");
+  const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -279,7 +288,7 @@ export default function ProjectEditorPage() {
   // Pasted scripts always render via Direct Video (avatar speaks the script
   // verbatim), so preset the render mode and skip the Voice-Only/Avatar choice.
   useEffect(() => {
-    if (source === "paste") setRenderMode("direct");
+    if (source === "paste") setRenderMode("avatar_voice");
   }, [source]);
 
   // Default to voice-follow when the browser supports it
@@ -847,7 +856,7 @@ export default function ProjectEditorPage() {
           ...(source === "paste" && { engine: "direct" }),
           // Pass the selected look for Direct Video (paste) or Avatar+Voice mode.
           // For paste with no explicit pick, the server resolves the default avatar.
-          ...((renderMode === "direct" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
+          ...((renderMode === "avatar_voice" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
@@ -941,9 +950,9 @@ export default function ProjectEditorPage() {
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => setRenderMode("agent")}
+            onClick={() => setRenderMode("voice_only")}
             className={`flex flex-col items-start gap-1 rounded-xl border-2 px-3 py-3 text-left transition-all ${
-              renderMode === "agent"
+              renderMode === "voice_only"
                 ? "border-blue-500 bg-blue-50"
                 : "border-slate-200 bg-white hover:border-blue-300"
             }`}
@@ -953,9 +962,9 @@ export default function ProjectEditorPage() {
           </button>
           <button
             type="button"
-            onClick={() => setRenderMode("direct")}
+            onClick={() => setRenderMode("avatar_voice")}
             className={`flex flex-col items-start gap-1 rounded-xl border-2 px-3 py-3 text-left transition-all ${
-              renderMode === "direct"
+              renderMode === "avatar_voice"
                 ? "border-primary-500 bg-primary-50"
                 : "border-slate-200 bg-white hover:border-primary-300"
             }`}
@@ -1800,7 +1809,7 @@ export default function ProjectEditorPage() {
             {(looksLoading || looks.length > 0) && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
-                {renderMode === "agent" && (
+                {renderMode === "voice_only" && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mb-2">
                     Voice Only doesn&apos;t put an avatar on screen — the AI fills it with its own
                     b-roll. Pick a look below and we&apos;ll switch you to <strong>Avatar + Voice</strong>.
@@ -1832,7 +1841,7 @@ export default function ProjectEditorPage() {
                             // Choosing a look means you want to be on screen.
                             // Voice Only would drop it at submit, so switch
                             // rather than accept a pick we intend to ignore.
-                            if (renderMode === "agent") setRenderMode("direct");
+                            if (renderMode === "voice_only") setRenderMode("avatar_voice");
                           }}
                           title={look.name}
                           disabled={isProcessing}
