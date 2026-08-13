@@ -128,7 +128,34 @@ function SocialPageContent() {
                   Disconnect
                 </Button>
               </div>
-            ) : (
+            ) : null}
+
+            {/* Surfaced at connect time, not after the first publish comes back
+                without a thumbnail. YouTube only accepts custom thumbnails on
+                phone-verified channels, it is per channel, and only the channel's
+                owner can do it — so the app can never do this for them. Shown to
+                everyone because there is no API telling us who has verified. */}
+            {youtubeConnected && youtubeChannel && (
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-start gap-2">
+                <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-500">
+                  For thumbnails to be added to your videos automatically, YouTube needs this channel
+                  phone-verified.{" "}
+                  <a
+                    href="https://www.youtube.com/verify"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary-500 hover:underline font-medium"
+                  >
+                    Verify your channel
+                  </a>{" "}
+                  — make sure you&apos;re switched to this channel first. Without it your videos still
+                  publish; you just set the thumbnail yourself.
+                </p>
+              </div>
+            )}
+
+            {!youtubeConnected && (
               <>
                 <p className="text-sm text-slate-500 mb-4">
                   Connect your YouTube channel to publish videos directly — no third-party tools required.
