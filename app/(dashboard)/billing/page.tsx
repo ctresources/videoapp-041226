@@ -339,7 +339,7 @@ export default async function BillingPage({
           <div>
             <p className="font-semibold text-sm">You&apos;re on beta access — no payment needed.</p>
             <p className="text-xs text-emerald-700 mt-0.5">
-              When your beta credits run out, choose a plan below to keep creating AI videos. Camera recordings stay unlimited on any paid plan.
+              When your beta videos run out, choose a plan below to keep creating AI videos. Camera recordings stay unlimited on any paid plan.
             </p>
           </div>
         </div>
