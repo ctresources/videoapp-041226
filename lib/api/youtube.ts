@@ -71,18 +71,32 @@ export async function getChannelInfo(accessToken: string): Promise<{
   id: string;
   name: string;
   thumbnail: string | null;
+  /**
+   * Every channel `mine=true` returned, not just the one selected. TEMPORARY —
+   * added to diagnose a token consistently reporting a user's default channel
+   * even after they picked a Brand Account channel at Google's own OAuth
+   * chooser. Google's docs describe `mine=true` as returning the channel
+   * "owned by the authenticated user", with no mention of that chooser
+   * affecting the result — so this exists to see, empirically, whether the
+   * brand channel is absent from this response entirely (an OAuth/session
+   * issue) or present but not first (our own bug, picking items[0]). Remove
+   * once that's answered — see allChannels below and its callers.
+   */
+  allChannels: Array<{ id: string; title: string }>;
 }> {
   const res = await fetch(`${YOUTUBE_API}/channels?part=snippet&mine=true`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) throw new Error(`Channel info failed: ${await res.text()}`);
   const data = await res.json();
-  const channel = data.items?.[0];
+  const items: Array<{ id: string; snippet: { title: string; thumbnails?: { default?: { url?: string } } } }> = data.items || [];
+  const channel = items[0];
   if (!channel) throw new Error("No YouTube channel found for this Google account");
   return {
     id: channel.id as string,
     name: channel.snippet.title as string,
     thumbnail: (channel.snippet.thumbnails?.default?.url as string) ?? null,
+    allChannels: items.map((c) => ({ id: c.id, title: c.snippet.title })),
   };
 }
 

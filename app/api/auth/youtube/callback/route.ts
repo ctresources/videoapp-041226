@@ -40,6 +40,9 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const channel = await getChannelInfo(tokens.access_token);
 
+    // TEMPORARY diagnostic — see allChannels' doc comment in lib/api/youtube.ts.
+    console.log(`[youtube-callback] mine=true returned ${channel.allChannels.length} channel(s): ${JSON.stringify(channel.allChannels)}`);
+
     const admin = createAdminClient();
     await admin
       .from("profiles")
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
         youtube_channel_id: channel.id,
         youtube_channel_name: channel.name,
         youtube_channel_thumbnail: channel.thumbnail,
+        youtube_channel_debug: channel.allChannels,
       })
       .eq("id", userId);
 
