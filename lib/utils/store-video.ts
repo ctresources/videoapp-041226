@@ -173,17 +173,23 @@ export async function downloadAndStoreVideo(
       ...(opts.clipUrls ?? []).map((url) => ({ url, kind: "clip" as const })),
     ];
 
+    let brollApplied = false;
     if (broll.length > 0 && opts.dimension) {
       // Captions ride along in pass 2 — that pass re-encodes every frame
       // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
         processed, broll, opts.dimension.width, opts.dimension.height, srtPath,
       );
-      if (withBroll) { processed = withBroll; changed = true; }
+      if (withBroll) { processed = withBroll; changed = true; brollApplied = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);
-    } else if (srtPath && opts.dimension) {
-      // No b-roll, so nothing else re-encodes this video — captions have to pay
-      // for a pass of their own here.
+    }
+
+    // Captions only ride along when the b-roll pass actually ran. This was an
+    // `else if` on "there is no b-roll", which meant a compositing FAILURE took
+    // the captions down with it — one error costing the user two features, and
+    // the video arriving as a bare talking head with no subtitles either. Keyed
+    // on whether b-roll was applied, not on whether it was attempted.
+    if (!brollApplied && srtPath && opts.dimension) {
       const withSubs = await burnSubtitles(processed, srtPath, opts.dimension.width, opts.dimension.height);
       if (withSubs) { processed = withSubs; changed = true; }
     }
@@ -197,10 +203,22 @@ export async function downloadAndStoreVideo(
       publicUrl = await store(processed, Date.now());
       console.log(`[store-video] Re-stored processed ${videoId} → ${publicUrl}`);
     }
-    // Marks this render as finished with post-processing, so the repair path
-    // can tell "the webhook never got to it" from "already done" and stop
-    // re-mixing music and re-burning captions into an already-processed video.
-    await mergeMetadata(admin, videoId, { post_processed: true });
+    // post_processed means "the pass ran to completion" — the repair path uses
+    // it to avoid re-mixing music into an already-finished video. It does NOT
+    // mean anything was produced, and it was previously the only thing
+    // recorded: a render where every single step failed was stamped exactly
+    // like one where they all worked, so the row reported success for a bare
+    // talking head with no music and no captions. post_processing_applied
+    // carries that distinction, and the error below makes the silent case
+    // searchable — inputs were supplied and none of them landed.
+    if (!changed && (broll.length > 0 || srtPath || opts.musicUrl)) {
+      console.error(
+        `[store-video] ${videoId}: post-processing produced NOTHING — ` +
+        `b-roll=${broll.length}, captions=${srtPath ? "yes" : "no"}, music=${opts.musicUrl ? "yes" : "no"}. ` +
+        `Video published as the raw avatar render.`,
+      );
+    }
+    await mergeMetadata(admin, videoId, { post_processed: true, post_processing_applied: changed });
   } catch (err) {
     console.error("[store-video] Post-processing failed for", videoId, err instanceof Error ? err.message : err);
   } finally {

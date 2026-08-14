@@ -16,7 +16,15 @@ export async function POST(req: NextRequest) {
   };
 
   const { script, city = "", state = "" } = body;
-  const title = (body.title?.trim()) || (city && state ? `My Script — ${city}, ${state}` : "My Script");
+
+  // Untitled projects are named for their market, not "My Script". The old
+  // fallback put the same string on every untitled video, so a library of them
+  // was unscannable — and it leaked into the Publish window as the video's
+  // name. Each part is stripped of stray punctuation first: a city typed as
+  // "Blue Bell," previously produced "Blue Bell,, PA".
+  const cleanPart = (s: string) => s.trim().replace(/[,\s]+$/, "");
+  const market = [cleanPart(city), cleanPart(state)].filter(Boolean).join(", ");
+  const title = body.title?.trim() || market || "Untitled Video";
 
   if (!script?.trim()) {
     return NextResponse.json({ error: "script is required" }, { status: 400 });

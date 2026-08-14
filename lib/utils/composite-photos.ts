@@ -161,16 +161,40 @@ export async function compositePhotos(
 
     // Download the media. A source that will not download is skipped rather
     // than failing the render — the rest still make a background.
+    //
+    // Photos are re-encoded to baseline JPEG rather than written through as
+    // they arrive. Scraped listing photos are frequently WebP (and phone
+    // uploads can be HEIC), formats whose ffmpeg support depends on how the
+    // bundled build was compiled — and they were previously all saved under a
+    // generic ".img" name, leaving ffmpeg to sniff a format it may not decode.
+    // One undecodable input fails the whole concat, which silently costs the
+    // user their b-roll AND their captions. sharp decodes all of these
+    // reliably, so normalising here removes the entire class of failure.
+    // .rotate() with no argument applies EXIF orientation, which also stops
+    // phone photos coming out sideways.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sharp = ((await import("sharp")) as any).default;
     const downloaded: { path: string; kind: BackgroundKind }[] = [];
     for (let i = 0; i < sources.length; i++) {
       const { url, kind } = sources[i];
       try {
         const res = await fetch(url);
         if (!res.ok) continue;
-        const p = join(dir, `${kind}-${i}${kind === "clip" ? ".mp4" : ".img"}`);
-        await fs.writeFile(p, Buffer.from(await res.arrayBuffer()));
-        downloaded.push({ path: p, kind });
-      } catch { /* skip this one */ }
+        const raw = Buffer.from(await res.arrayBuffer());
+        if (kind === "clip") {
+          const p = join(dir, `clip-${i}.mp4`);
+          await fs.writeFile(p, raw);
+          downloaded.push({ path: p, kind });
+        } else {
+          const p = join(dir, `photo-${i}.jpg`);
+          await fs.writeFile(p, await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer());
+          downloaded.push({ path: p, kind });
+        }
+      } catch (err) {
+        // Named so a systematically failing format is visible in the logs
+        // instead of showing up as a bare avatar video nobody can explain.
+        console.warn(`[composite-photos] skipped ${kind} ${i} (${sources[i].url.slice(-40)}): ${err instanceof Error ? err.message : err}`);
+      }
     }
     if (downloaded.length === 0) throw new Error("No b-roll sources could be downloaded");
     const n = downloaded.length;

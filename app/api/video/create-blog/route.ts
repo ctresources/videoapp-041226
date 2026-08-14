@@ -357,6 +357,15 @@ export async function POST(req: NextRequest) {
   // field, so the full script is spoken; visuals come from the user's uploaded
   // photos, composited behind the avatar after rendering.
   const useDirectVideo = engine === "direct" || isLongForm;
+  // Logged unconditionally, not just on the branch taken. A user who expects
+  // Video Agent (chose a short format) and lands on Direct Video with no
+  // explanation is currently unanswerable — the request body that decided it
+  // is gone. This makes engine/longForm/videoType, exactly as submitted,
+  // greppable by project id after the fact.
+  console.log(
+    `[create-blog] project=${projectId} videoType=${videoType} engine=${engine ?? "(none)"} ` +
+    `longForm=${longForm ?? "(none)"} isLongForm=${isLongForm} → ${useDirectVideo ? "Direct Video" : "Video Agent"}`,
+  );
   // Capped at the same 5 the Video Agent is allowed below, so a user who
   // uploads five photos gets all five. The old cap of 3 silently dropped the
   // rest with nothing in the UI saying so.
