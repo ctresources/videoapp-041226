@@ -16,7 +16,7 @@ export default function PrivacyPage() {
             ← Back to SparkReels
           </Link>
           <h1 className="text-4xl font-bold text-white mb-3">Privacy Policy</h1>
-          <p className="text-slate-400 text-sm">Effective date: June 14, 2026</p>
+          <p className="text-slate-400 text-sm">Effective date: August 15, 2026</p>
         </div>
 
         <div className="space-y-10 text-slate-300 leading-relaxed">
@@ -24,7 +24,8 @@ export default function PrivacyPage() {
             <p>
               SparkReels ("we," "us," or "our") operates the SparkReels platform at{" "}
               <strong className="text-white">sparkreels.ai</strong>. This Privacy Policy explains how we
-              collect, use, and protect information about you when you use our services.
+              collect, use, and protect information about you when you use our services, including the
+              information we access from your Google Account when you choose to connect YouTube.
             </p>
           </section>
 
@@ -42,6 +43,11 @@ export default function PrivacyPage() {
               <li>
                 <strong className="text-white">Generated content:</strong> Videos, scripts, and thumbnails
                 created through our platform.
+              </li>
+              <li>
+                <strong className="text-white">Google user data:</strong> If you connect a YouTube channel, we
+                access a limited set of data from your Google Account through the YouTube Data API. Section 3
+                describes exactly what we access and how it is handled.
               </li>
               <li>
                 <strong className="text-white">Billing information:</strong> Payment details processed
@@ -66,31 +72,180 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">3. Third-Party Services</h2>
-            <p className="mb-3">We share data with the following providers only as needed to deliver the service:</p>
+            <h2 className="text-xl font-semibold text-white mb-3">
+              3. Google Account and YouTube Data
+            </h2>
+            <p className="mb-4">
+              Connecting a YouTube channel is entirely optional. SparkReels is fully usable without it — you
+              can create and download videos and never grant us access to your Google Account. If you do
+              connect, the following applies.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">What Google user data we access</h3>
+            <p className="mb-2">
+              We request two permissions (OAuth scopes) from the YouTube Data API, and only these two:
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>
+                <strong className="text-white">View your YouTube account</strong>{" "}
+                (<code className="text-slate-400 text-sm">youtube.readonly</code>) — we use this for a single
+                read call that returns the channel your authorization was issued for: its channel ID, channel
+                title, and channel thumbnail. We display these in the app so you can confirm which channel is
+                connected before publishing. We do not read your videos, comments, ratings, captions,
+                subscribers, playlists, or analytics.
+              </li>
+              <li>
+                <strong className="text-white">Manage your YouTube videos</strong>{" "}
+                (<code className="text-slate-400 text-sm">youtube.upload</code>) — we use this to upload a
+                video you created in SparkReels to your channel, with the title, description, tags, and
+                privacy setting you choose, and to set the custom thumbnail you selected. We upload only when
+                you explicitly publish a specific video.
+              </li>
+            </ul>
+            <p className="mt-3">
+              We also store the OAuth access and refresh tokens Google issues, so that scheduled publishing
+              works without asking you to re-authorize each time.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">How we use Google user data</h3>
+            <p>
+              Google user data is used for one purpose only: to provide the YouTube publishing feature you
+              asked for. We do not use it for advertising, profiling, credit or lending decisions, resale, or
+              market research. We do not use Google user data — raw, aggregated, or anonymized — to develop,
+              improve, or train any artificial intelligence or machine learning model.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">
+              How Google user data is shared and transferred
+            </h3>
+            <p>
+              We do not sell, rent, or transfer Google user data to any third party. In particular, Google
+              user data is never sent to our AI vendors: your channel information and OAuth tokens are not
+              shared with OpenAI, HeyGen, or any other AI or machine learning service, and are not shared with
+              data brokers, advertisers, or analytics providers. The only transfers of Google user data are
+              (a) to Google itself, when we upload your video on your instruction, and (b) to Supabase, our
+              database and hosting provider, which stores it on our behalf and does not use it for its own
+              purposes. We may disclose data if required by law or to protect the safety and rights of our
+              users.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">
+              How Google user data is protected
+            </h3>
+            <p>
+              Google user data is transmitted only over encrypted connections (HTTPS/TLS). It is stored in our
+              Supabase database behind row-level security policies and role-based access controls, so that
+              your records are accessible only to your own authenticated session and to a small number of
+              administrators who require access to operate the service. OAuth tokens are never exposed to
+              other users and are never sent to the browser.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">
+              Retention and deletion of Google user data
+            </h3>
+            <p className="mb-2">
+              We retain Google user data only for as long as your YouTube channel remains connected. You can
+              remove it at any time, in any of these ways:
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>
+                <strong className="text-white">Disconnect in the app</strong> — go to Settings → Social
+                Accounts and disconnect YouTube. This immediately deletes the stored access token, refresh
+                token, and cached channel details from our database.
+              </li>
+              <li>
+                <strong className="text-white">Revoke access at Google</strong> — visit{" "}
+                <a
+                  href="https://myaccount.google.com/permissions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300"
+                >
+                  myaccount.google.com/permissions
+                </a>{" "}
+                and remove SparkReels. This revokes our tokens at Google immediately.
+              </li>
+              <li>
+                <strong className="text-white">Delete your account</strong> — email{" "}
+                <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+                  support@sparkreels.ai
+                </a>
+                . We delete all Google user data associated with your account within 30 days.
+              </li>
+            </ul>
+            <p className="mt-3">
+              Videos already published to your YouTube channel remain on your channel and under your control;
+              disconnecting SparkReels does not remove them. Manage or delete them in YouTube Studio.
+            </p>
+
+            <h3 className="text-base font-semibold text-white mt-6 mb-2">
+              Google and YouTube terms that apply
+            </h3>
+            <p>
+              SparkReels uses YouTube API Services. By connecting your channel you also agree to the{" "}
+              <a
+                href="https://www.youtube.com/t/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300"
+              >
+                YouTube Terms of Service
+              </a>
+              , and your data is handled by Google in accordance with the{" "}
+              <a
+                href="https://policies.google.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300"
+              >
+                Google Privacy Policy
+              </a>
+              . SparkReels' use and transfer of information received from Google APIs adheres to the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">4. Third-Party Services</h2>
+            <p className="mb-3">
+              We share data with the following providers only as needed to deliver the service. As stated in
+              Section 3, Google user data is never shared with our AI vendors.
+            </p>
             <ul className="list-disc pl-5 space-y-2">
               <li>
                 <strong className="text-white">Supabase</strong> — database, file storage, and authentication.
               </li>
               <li>
-                <strong className="text-white">HeyGen</strong> — AI video generation from your voice and avatar.
+                <strong className="text-white">HeyGen</strong> — AI video generation from your voice and
+                avatar. Receives your voice recordings and avatar selection. Receives no Google user data.
               </li>
               <li>
                 <strong className="text-white">OpenAI</strong> — script generation and content enhancement.
+                Receives your prompts and script text. Receives no Google user data.
               </li>
               <li>
-                <strong className="text-white">Stripe</strong> — secure payment processing.
+                <strong className="text-white">Stripe</strong> — secure payment processing. Receives your
+                billing details. Receives no Google user data.
               </li>
               <li>
                 <strong className="text-white">Social platforms</strong> (Instagram, Facebook, LinkedIn,
-                TikTok, YouTube) — only when you connect an account and authorize posting.
+                TikTok, YouTube) — only when you connect an account and authorize posting, and only the
+                content you choose to publish.
               </li>
             </ul>
             <p className="mt-3">We do not sell your personal information to any third party.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">4. Data Retention</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">5. Data Retention and Deletion</h2>
             <p>
               Your account data, voice recordings, and generated videos are retained while your account is
               active. You may delete individual videos at any time from the platform. To delete your entire
@@ -98,12 +253,13 @@ export default function PrivacyPage() {
               <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
                 support@sparkreels.ai
               </a>
-              .
+              ; we complete deletion within 30 days. Retention and deletion of Google user data is described
+              in Section 3 and can be triggered by you at any time by disconnecting YouTube.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">5. Your Rights</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">6. Your Rights</h2>
             <p>You have the right to:</p>
             <ul className="list-disc pl-5 space-y-2 mt-2">
               <li>Access the personal data we hold about you.</li>
@@ -121,16 +277,17 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">6. Security</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">7. Security</h2>
             <p>
               We use industry-standard security measures including encrypted connections (HTTPS), secure
-              authentication via Supabase, and role-based access controls. No method of transmission over the
-              internet is 100% secure, and we cannot guarantee absolute security.
+              authentication via Supabase, row-level security policies, and role-based access controls. No
+              method of transmission over the internet is 100% secure, and we cannot guarantee absolute
+              security.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">7. Children's Privacy</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">8. Children's Privacy</h2>
             <p>
               SparkReels is not directed at children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have inadvertently collected such
@@ -139,7 +296,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">8. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">9. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of material changes by
               posting the new policy on this page with an updated effective date. Continued use of SparkReels
@@ -148,7 +305,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">9. Contact Us</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">10. Contact Us</h2>
             <p>
               For any questions about this Privacy Policy or your data, contact us at:
             </p>
