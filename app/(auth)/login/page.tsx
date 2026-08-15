@@ -6,8 +6,23 @@ import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
+/**
+ * Messages for the `?error=` codes /auth/callback redirects here with.
+ *
+ * Without these the callback's failures were invisible: it redirects to
+ * /login?error=..., this page rendered a clean login form, and the user saw an
+ * unexplained bounce back to sign-in with nothing to act on. A rejected Google
+ * client secret looks exactly like "nothing happened".
+ */
+const OAUTH_ERRORS: Record<string, string> = {
+  missing_code:
+    "Google sign-in didn't finish — it was cancelled, or the link expired before it came back. Please try again.",
+  auth_failed:
+    "We couldn't complete Google sign-in. This is a problem on our end, not something you did. Please sign in with your email and password below, or email support@sparkreels.ai.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +31,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  // Read straight from the URL rather than useSearchParams(), which would put
+  // this page behind a Suspense boundary requirement at build time.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (!code) return;
+    setOauthError(OAUTH_ERRORS[code] ?? "Sign-in failed. Please try again.");
+    // Drop the param so a refresh doesn't resurrect a stale message.
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +123,14 @@ export default function LoginPage() {
     <Card>
       <h1 className="text-2xl font-bold text-brand-text mb-1">Welcome back</h1>
       <p className="text-sm text-slate-500 mb-6">Sign in to your SparkReels account</p>
+
+      {/* Sign-in failure redirected here from /auth/callback */}
+      {oauthError && (
+        <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert">
+          <p className="text-sm font-semibold text-red-800 mb-1">Couldn&apos;t sign you in</p>
+          <p className="text-xs text-red-700">{oauthError}</p>
+        </div>
+      )}
 
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
         <Input
