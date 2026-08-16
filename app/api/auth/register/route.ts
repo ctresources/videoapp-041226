@@ -49,7 +49,12 @@ export async function POST(req: NextRequest) {
     .update({ email_canonical: canonicalEmail(email) })
     .eq("id", data.user.id);
 
-  notifyNewUser({ name: fullName, email, provider: "email" });
+  // Deliberately not awaited — the owner notification must not slow signup.
+  // The .catch() is load-bearing: an unhandled rejection from this floating
+  // promise is fatal in Node >=15 and would kill the request mid-flight.
+  notifyNewUser({ name: fullName, email, provider: "email" }).catch((err) =>
+    console.error("[register] new-user notification failed:", err),
+  );
   await maybeNotifyCapacity(admin);
 
   // Affiliate attribution (best-effort; profile row exists via handle_new_user)

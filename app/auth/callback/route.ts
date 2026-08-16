@@ -64,7 +64,13 @@ export async function GET(req: NextRequest) {
   if (user) {
     if (isNew) {
       const name = (user.user_metadata?.full_name as string | null) ?? null;
-      notifyNewUser({ name, email: user.email ?? null, provider: "google" });
+      // Deliberately not awaited, but the .catch() is load-bearing: an
+      // unhandled rejection from this floating promise is fatal in Node >=15,
+      // and killing the request here would skip the email_canonical write
+      // below — leaving the signup guard blind to this inbox.
+      notifyNewUser({ name, email: user.email ?? null, provider: "google" }).catch((err) =>
+        console.error("[auth/callback] new-user notification failed:", err),
+      );
       // Affiliate attribution from the sr_ref cookie set at ?ref= visit time.
       await attributeReferral(admin, user.id, user.email, req.cookies.get("sr_ref")?.value);
       await admin
