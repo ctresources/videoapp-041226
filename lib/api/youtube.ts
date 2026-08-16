@@ -1,3 +1,10 @@
+import {
+  decryptToken,
+  encryptToken,
+  encryptionEnabled,
+  isEncrypted,
+} from "@/lib/crypto/tokens";
+
 const GOOGLE_OAUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const YOUTUBE_API = "https://www.googleapis.com/youtube/v3";
@@ -104,6 +111,11 @@ export async function getChannelInfo(accessToken: string): Promise<{
 }
 
 // Returns a valid (possibly refreshed) access token, saving new token to DB if needed.
+//
+// Tokens are stored encrypted when TOKEN_ENCRYPTION_KEY is configured. Reads go
+// through decryptToken(), which passes plaintext straight back, so rows written
+// before the key existed keep working and are migrated in place the first time
+// they are touched.
 export async function getValidAccessToken(
   userId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,19 +131,44 @@ export async function getValidAccessToken(
     throw new Error("YouTube not connected. Go to Settings → Social Accounts to connect.");
   }
 
+  const refreshToken = decryptToken(profile.youtube_refresh_token)!;
+
   const expiresAt = profile.youtube_token_expires_at
     ? new Date(profile.youtube_token_expires_at)
     : null;
   const needsRefresh = !expiresAt || expiresAt <= new Date(Date.now() + 60_000);
 
-  if (!needsRefresh && profile.youtube_access_token) return profile.youtube_access_token;
+  if (!needsRefresh && profile.youtube_access_token) {
+    const accessToken = decryptToken(profile.youtube_access_token)!;
 
-  const tokens = await refreshAccessToken(profile.youtube_refresh_token);
+    // A still-valid token means no refresh round-trip, which would otherwise be
+    // the only thing that ever rewrites these columns. Migrate here too, or a
+    // row whose token stays fresh would sit in plaintext indefinitely.
+    if (encryptionEnabled() && !isEncrypted(profile.youtube_refresh_token)) {
+      await admin
+        .from("profiles")
+        .update({
+          youtube_access_token: encryptToken(accessToken),
+          youtube_refresh_token: encryptToken(refreshToken),
+        })
+        .eq("id", userId);
+    }
+
+    return accessToken;
+  }
+
+  const tokens = await refreshAccessToken(refreshToken);
   const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
+  // ?? falls back to the raw value when no key is configured, preserving the
+  // original plaintext behaviour exactly.
   await admin
     .from("profiles")
-    .update({ youtube_access_token: tokens.access_token, youtube_token_expires_at: newExpiresAt })
+    .update({
+      youtube_access_token: encryptToken(tokens.access_token) ?? tokens.access_token,
+      youtube_refresh_token: encryptToken(refreshToken) ?? refreshToken,
+      youtube_token_expires_at: newExpiresAt,
+    })
     .eq("id", userId);
 
   return tokens.access_token;

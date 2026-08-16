@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { exchangeCode, getChannelInfo } from "@/lib/api/youtube";
+import { encryptToken } from "@/lib/crypto/tokens";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
@@ -51,8 +52,10 @@ export async function GET(req: NextRequest) {
     await admin
       .from("profiles")
       .update({
-        youtube_access_token: tokens.access_token,
-        youtube_refresh_token: tokens.refresh_token,
+        // ?? falls back to plaintext when TOKEN_ENCRYPTION_KEY is unset, so
+        // connecting works identically with or without encryption configured.
+        youtube_access_token: encryptToken(tokens.access_token) ?? tokens.access_token,
+        youtube_refresh_token: encryptToken(tokens.refresh_token) ?? tokens.refresh_token,
         youtube_token_expires_at: expiresAt,
         youtube_channel_id: channel.id,
         youtube_channel_name: channel.name,
