@@ -136,8 +136,9 @@ export default function PrivacyPage() {
               Google user data is transmitted only over encrypted connections (HTTPS/TLS). It is stored in our
               Supabase database behind row-level security policies and role-based access controls, so that
               your records are accessible only to your own authenticated session and to a small number of
-              administrators who require access to operate the service. OAuth tokens are never exposed to
-              other users and are never sent to the browser.
+              administrators who require access to operate the service. Your YouTube OAuth tokens are
+              additionally encrypted at rest using AES-256-GCM before they are stored, and are never exposed to
+              other users or sent to the browser.
             </p>
 
             <h3 className="text-base font-semibold text-white mt-6 mb-2">
