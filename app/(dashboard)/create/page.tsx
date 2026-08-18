@@ -694,11 +694,13 @@ function CreatePageInner() {
 
           {/* ── 1 · Your Market ── */}
           <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-spark-amber text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
+            <div className="flex items-start gap-2.5 mb-3">
+              <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
+                1
+              </span>
               <div>
-                <p className="text-base font-bold text-brand-text">Your Market</p>
-                <p className="text-sm text-slate-500">Speak Or Type Your City And State</p>
+                <p className="text-[12.5px] font-medium text-spark-ink">Your market</p>
+                <p className="text-[10.5px] text-spark-ink-faint">Speak or type your city and state</p>
               </div>
             </div>
 
@@ -843,19 +845,21 @@ function CreatePageInner() {
 
           {/* ── 2 · Your Topic — input + one browser (trending leads the templates) ── */}
           <div className="border-t border-slate-200 mt-5 pt-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">2</span>
+            <div className="flex items-start gap-2.5 mb-3">
+              <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
+                2
+              </span>
               <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-brand-text">Your Topic</p>
-                <p className="text-sm text-slate-500">
-                  {locCity.trim() ? `Type It, Speak It, Or Tap A Card — Auto-Fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "Type It, Speak It, Or Tap A Card Below"}
+                <p className="text-[12.5px] font-medium text-spark-ink">Your topic</p>
+                <p className="text-[10.5px] text-spark-ink-faint">
+                  {locCity.trim() ? `Type it, speak it, or tap a card — auto-fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "Type it, speak it, or tap a card below"}
                 </p>
               </div>
               <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
             </div>
 
             {/* Topic input with inline mic — the primary action, right up top */}
-            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-500">
+            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-spark-amber">
               <input
                 id="topic-input"
                 type="text"
