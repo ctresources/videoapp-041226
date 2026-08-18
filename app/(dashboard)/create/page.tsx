@@ -8,7 +8,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
-  ChevronDown, Sparkles, PenLine,
+  ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
@@ -616,47 +616,73 @@ function CreatePageInner() {
         </button>
       )}
 
-      {/* Hero header */}
-      <div className="relative overflow-hidden mb-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-orange-400 text-white shadow-lg">
-        <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 pointer-events-none" />
-        <div className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-white/5 pointer-events-none" />
-        <div className="relative">
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Create New Video</h2>
-          <p className="text-white/85 text-sm sm:text-base mt-1">3 Ways To Create — Pick The One That Speaks To You Or Sparks You.</p>
+      {/* Cockpit header. The gradient hero is gone: the design leads with the
+          three-segment progress rail instead, so where you are in the flow is
+          the first thing on the page rather than a banner. */}
+      <div className="mb-4 border-b border-spark-rule-soft pb-3">
+        <h2 className="text-[18px] font-bold tracking-[-0.02em] text-spark-ink">New video</h2>
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <span className="h-[3px] flex-1 rounded-full bg-spark-blue" />
+          <span
+            className={`h-[3px] flex-1 rounded-full ${
+              step === "input" ? "bg-spark-amber" : "bg-spark-blue"
+            }`}
+          />
+          <span className="h-[3px] flex-1 rounded-full bg-spark-rule-soft" />
         </div>
+        <p className="mt-[7px] text-[11px] text-spark-ink-faint">
+          {step === "input"
+            ? "Step 2 of 3 · tell us what this video is about"
+            : "Step 3 of 3 · review and generate"}
+        </p>
       </div>
 
-      {/* ── Mode cards ── */}
+      {/* ── Step · how you're creating ──
+          The design folds the old three-tab bar into the first step of the
+          cockpit, so picking a mode reads as part of the brief rather than
+          navigation. Colour-coded gradient tiles are gone; selection is now
+          carried by the amber border and tint alone. */}
       {step === "input" && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          {[
-            { mode: "script" as InputMode,  icon: Sparkles,  label: "AI Writes It",           desc: "Topic in → broadcast-quality script",       grad: "from-blue-500 to-indigo-600",   chip: "bg-blue-100 text-blue-600" },
-            { mode: "content" as InputMode, icon: PenLine,   label: "My Content & Listings",  desc: "Your script, docs, photos & listings",      grad: "from-violet-500 to-purple-600", chip: "bg-violet-100 text-violet-600" },
-            { mode: "camera" as InputMode,  icon: Video,     label: "Use Camera",             desc: "Teleprompter · Free, unlimited",            grad: "from-emerald-500 to-green-600", chip: "bg-emerald-100 text-emerald-600" },
-          ].map(({ mode, icon: Icon, label, desc, grad, chip }) => {
-            // The merged tab stays lit while the user is in either sub-flow
-            const active = inputMode === mode ||
-              (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
-            return (
-              <button
-                key={mode}
-                // The merged tab drops straight into the Paste/Upload flow —
-                // the pill toggle inside switches to My Listings.
-                onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
-                className={`group relative text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
-                  active
-                    ? `bg-gradient-to-br ${grad} text-white border-transparent shadow-lg scale-[1.02]`
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5"
-                }`}
-              >
-                <span className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 transition-colors ${active ? "bg-white/20 text-white" : chip}`}>
-                  <Icon size={17} />
-                </span>
-                <p className={`text-sm sm:text-base font-bold leading-tight ${active ? "text-white" : "text-brand-text"}`}>{label}</p>
-                <p className={`text-xs mt-0.5 leading-snug ${active ? "text-white/80" : "text-slate-400"}`}>{desc}</p>
-              </button>
-            );
-          })}
+        <div className="mb-4 flex items-start gap-2.5">
+          <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
+            ✓
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] font-medium text-spark-ink">How you&rsquo;re creating</p>
+            <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+              {[
+                { mode: "script" as InputMode, label: "AI Writes It", desc: "Speak a topic" },
+                { mode: "content" as InputMode, label: "My Content", desc: "Docs & listings" },
+                { mode: "camera" as InputMode, label: "Use Camera", desc: "Teleprompter" },
+              ].map(({ mode, label, desc }) => {
+                // The merged tab stays lit while the user is in either sub-flow
+                const active =
+                  inputMode === mode ||
+                  (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    // The merged tab drops straight into the Paste/Upload flow —
+                    // the pill toggle inside switches to My Listings.
+                    onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
+                    aria-pressed={active}
+                    className={`rounded-lg px-[9px] py-2 text-left transition-colors ${
+                      active
+                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                        : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-medium text-spark-ink">{label}</span>
+                    <span className="mt-px block text-[9.5px] text-spark-ink-muted">{desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[10.5px] text-spark-ink-faint">
+              Or say &ldquo;use my listing photos&rdquo; to switch
+            </p>
+          </div>
         </div>
       )}
 
