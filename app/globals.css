@@ -1,8 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* The paper surface: three soft radial washes over warm off-white. Used for
+     the page background and, at small sizes, for inset chips and toggles. */
+  --spark-paper:
+    radial-gradient(760px 520px at 18% -8%, rgba(186, 117, 23, .13), transparent 62%),
+    radial-gradient(680px 480px at 96% 12%, rgba(27, 94, 130, .12), transparent 60%),
+    radial-gradient(900px 620px at 62% 108%, rgba(186, 117, 23, .09), transparent 65%),
+    #F1EFE8;
+}
 
 @layer base {
   * {
@@ -10,24 +20,68 @@
   }
 
   body {
-    background-color: #F1F5F9;
-    color: #0F172A;
-    font-family: 'Inter', sans-serif;
+    background: var(--spark-paper);
+    background-attachment: fixed;
+    color: #2C2C2A;
+    font-family: 'DM Sans', system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Roboto', sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
     font-weight: 700;
-    color: #0F172A;
+    color: #2C2C2A;
     line-height: 1.25;
+    letter-spacing: -0.02em;
   }
 
   h1 { font-size: 36px; }
   h2 { font-size: 28px; }
   h3 { font-size: 22px; }
+}
+
+@layer components {
+  /* Inset surfaces — segmented toggles, keycaps, quoted transcript blocks.
+     Same wash as the page, so they read as cut into it rather than laid on. */
+  .spark-surface {
+    background: var(--spark-paper);
+  }
+
+  /* Frosted cards used for the live script preview. The white-on-white border
+     plus inset highlight is what sells the glass; don't drop it. */
+  .spark-glass {
+    background: linear-gradient(152deg, rgba(255, 255, 255, .82), rgba(255, 255, 255, .52));
+    backdrop-filter: blur(16px) saturate(1.25);
+    -webkit-backdrop-filter: blur(16px) saturate(1.25);
+    border: 1px solid rgba(255, 255, 255, .72);
+    box-shadow: 0 6px 22px rgba(44, 44, 42, .07), inset 0 1px 0 rgba(255, 255, 255, .9);
+  }
+
+  /* Primary action. Note the hover: it crosses to the deep blue rather than
+     darkening the amber — deliberate in the source design. */
+  .spark-cta {
+    background: #BA7517;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(186, 117, 23, .3);
+    transition: background .16s, box-shadow .16s;
+  }
+  .spark-cta:hover {
+    background: #1B5E82;
+    box-shadow: 0 2px 10px rgba(27, 94, 130, .34);
+  }
+  .spark-cta:active {
+    background: #154E6C;
+  }
+
+  /* Small monospace eyebrow labels: EST. RUNTIME, VOICE SHORTCUT, HOOK · 0:00. */
+  .spark-eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 700;
+    letter-spacing: .11em;
+    color: #9B978A;
+  }
 }
 
 @layer utilities {
@@ -64,4 +118,13 @@
 .marquee-track:hover .animate-marquee,
 .marquee-track:hover .animate-marquee-reverse {
   animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-marquee,
+  .animate-marquee-reverse,
+  .animate-mic-pulse {
+    animation: none;
+  }
 }
