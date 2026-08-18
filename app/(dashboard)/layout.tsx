@@ -11,8 +11,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   // The Create cockpit is a full-height two-column layout that manages its own
-  // scrolling, so it opts out of the shared page padding.
-  const fullBleed = pathname.startsWith("/create");
+  // scrolling, so it opts out of the shared page padding. Exact match only:
+  // startsWith() also caught /create/[projectId], and the editor is a long
+  // scrolling page with no scroll container of its own — overflow-hidden there
+  // cut off everything below the fold.
+  const fullBleed = pathname === "/create";
 
   return (
     // No background here: the paper gradient lives on <body> and would be
