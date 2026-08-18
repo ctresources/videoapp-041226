@@ -690,12 +690,12 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <Card padding="sm" className="border-t-4 border-t-blue-500">
+        <Card padding="sm" className="border-t-4 border-t-spark-amber">
 
           {/* ── 1 · Your Market ── */}
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
+              <span className="w-9 h-9 rounded-full bg-spark-amber text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
                 <p className="text-base font-bold text-brand-text">Your Market</p>
                 <p className="text-sm text-slate-500">Speak Or Type Your City And State</p>
@@ -712,8 +712,8 @@ function CreatePageInner() {
                       key={`${m.city}-${m.state}`}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                         isActive
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700"
+                          ? "bg-spark-amber text-white border-spark-amber"
+                          : "bg-white text-spark-ink-soft border-spark-rule hover:border-spark-amber hover:text-spark-amber"
                       }`}
                       onClick={() => { setLocCity(m.city); setLocState(m.state); }}
                     >
@@ -722,7 +722,7 @@ function CreatePageInner() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
                         className={`ml-0.5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ${
-                          isActive ? "hover:bg-blue-500 text-white" : "hover:bg-slate-200 text-slate-400"
+                          isActive ? "hover:bg-spark-blue text-white" : "hover:bg-spark-rule-soft text-spark-ink-faint"
                         }`}
                       >
                         ×
@@ -737,7 +737,7 @@ function CreatePageInner() {
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="text-sm font-bold text-slate-600 block mb-1">City *</label>
-                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
                   <input
                     type="text"
                     value={locCity}
@@ -750,7 +750,7 @@ function CreatePageInner() {
               </div>
               <div className="w-20">
                 <label className="text-sm font-bold text-slate-600 block mb-1">State *</label>
-                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
                   <input
                     type="text"
                     value={locState}
@@ -769,7 +769,7 @@ function CreatePageInner() {
               <button
                 type="button"
                 onClick={() => addMarket(locCity, locState)}
-                className="mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                className="mt-2 text-xs text-spark-amber hover:text-spark-blue font-medium flex items-center gap-1"
               >
                 + Save {locCity}, {locState} As A Quick-Switch Market
               </button>
@@ -799,7 +799,7 @@ function CreatePageInner() {
                       <select
                         value={value}
                         onChange={(e) => set(e.target.value)}
-                        className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-spark-amber"
                       >
                         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                       </select>
