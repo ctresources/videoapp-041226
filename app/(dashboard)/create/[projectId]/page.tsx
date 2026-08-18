@@ -1522,34 +1522,44 @@ export default function ProjectEditorPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-start gap-3">
-          <Link href="/create">
-            <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors mt-0.5">
-              <ArrowLeft size={18} className="text-slate-400" />
-            </button>
-          </Link>
-          <div>
-            <h2 className="text-xl font-bold text-brand-text leading-tight">{project.title}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant={project.status === "ready" ? "success" : project.status === "error" ? "error" : "default"}>
-                {project.status}
-              </Badge>
-              <span className="text-xs text-slate-400">{project.project_type.replace("_", " ")}</span>
-            </div>
+      {/* Header — 2a's project bar. The title leads at a quieter weight than
+          before, with the market and status reduced to a single sub-line, so
+          the script below is the loudest thing on the page. */}
+      <div className="mb-5 flex items-center gap-3.5 border-b border-spark-rule pb-3.5">
+        <Link href="/create" aria-label="Back to Create">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-spark-rule text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber">
+            <ArrowLeft size={13} strokeWidth={1.8} />
+          </span>
+        </Link>
+
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-[13px] font-medium leading-tight text-spark-ink">
+            {project.title}
+          </h2>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[11px] text-spark-ink-faint">
+              {project.project_type.replace("_", " ")}
+            </span>
+            <span className="spark-surface rounded px-1.5 py-px font-mono text-[9.5px] font-medium uppercase tracking-[0.04em] text-spark-ink-muted">
+              {project.status}
+            </span>
           </div>
         </div>
+
         {project.voice_recording_id && (
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             onClick={handleRegenerateScript}
-            loading={generating}
-            className="gap-1.5 shrink-0"
+            disabled={generating}
+            className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-3 py-1.5 text-[11.5px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
           >
-            <RefreshCw size={14} /> Regenerate
-          </Button>
+            <RefreshCw
+              size={13}
+              strokeWidth={1.8}
+              className={generating ? "animate-spin" : undefined}
+            />
+            Regenerate
+          </button>
         )}
       </div>
 
