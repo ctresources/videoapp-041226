@@ -1664,10 +1664,16 @@ export default function ProjectEditorPage() {
               onClick={() => toggle("script")}
               className="flex items-center justify-between w-full px-2 py-1 mb-2"
             >
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-primary-500" />
-                <h3 className="font-semibold text-sm text-brand-text">Video Script</h3>
-                <Badge variant="info" className="text-xs">{editedScript.split(" ").length} words</Badge>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
+                  VIDEO SCRIPT
+                </h3>
+                {/* Words and runtime together — the count alone never said what
+                    it meant for the finished video. */}
+                <span className="spark-surface rounded px-1.5 py-0.5 text-[10px] font-medium text-spark-ink-soft">
+                  {editedScript.trim().split(/\s+/).filter(Boolean).length} words ·{" "}
+                  {mins(editedScript.trim().split(/\s+/).filter(Boolean).length)} min
+                </span>
               </div>
               {expandedSections.script ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
@@ -1676,11 +1682,16 @@ export default function ProjectEditorPage() {
                 <textarea
                   value={editedScript}
                   onChange={(e) => setEditedScript(e.target.value)}
-                  className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-4 min-h-48 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                  className="min-h-48 w-full resize-y rounded-lg border border-spark-rule bg-white p-4 text-[13px] leading-[1.7] text-spark-ink-soft focus:outline-none focus:ring-2 focus:ring-spark-amber"
                 />
-                <div className="flex items-center justify-between mt-2 px-1">
-                  <p className="text-xs text-slate-400">Edit freely — your changes are saved when you generate the video</p>
-                  <button onClick={() => copyToClipboard(editedScript, "Script")} className="text-xs text-primary-500 flex items-center gap-1 hover:underline">
+                <div className="mt-2 flex items-center justify-between gap-3 px-1">
+                  <p className="text-[10.5px] text-spark-ink-faint">
+                    Edit freely — your changes are saved when you generate the video
+                  </p>
+                  <button
+                    onClick={() => copyToClipboard(editedScript, "Script")}
+                    className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
+                  >
                     <Copy size={12} /> Copy
                   </button>
                 </div>
