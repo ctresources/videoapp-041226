@@ -76,6 +76,7 @@ const config: Config = {
       animation: {
         slideDown: "slideDown 0.3s ease-out",
         "mic-pulse": "mic-pulse 2.2s ease-out infinite",
+        wave: "wave 900ms ease-in-out infinite",
       },
       keyframes: {
         slideDown: {
@@ -86,6 +87,12 @@ const config: Config = {
           "0%": { transform: "scale(1)", opacity: ".55" },
           "70%": { transform: "scale(2.1)", opacity: "0" },
           "100%": { transform: "scale(2.1)", opacity: "0" },
+        },
+        // Listening waveform. The bars carry their own resting height, so this
+        // only squashes and releases them — hence scaleY rather than a height.
+        wave: {
+          "0%, 100%": { transform: "scaleY(.35)" },
+          "50%": { transform: "scaleY(1)" },
         },
       },
     },

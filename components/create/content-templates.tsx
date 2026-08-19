@@ -5,7 +5,7 @@ import {
   ArrowDownToLine, HardHat, Shield, UserCheck,
   CalendarDays, Music2, Utensils, Trees, BookOpen,
   Newspaper, Store, GraduationCap, ShoppingBag, Heart,
-  Sun, Star, Clapperboard, ListOrdered, Scale, Map, DoorOpen,
+  Sun, Star, Clapperboard, ListOrdered, Scale, Map, DoorOpen, HelpCircle,
 } from "lucide-react";
 
 export type TemplateCategory = "general" | "format" | "location" | "community";
@@ -189,6 +189,17 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     category: "format",
     needsLocation: true,
   },
+  {
+    id: "qa_myth_buster",
+    label: "Q&A / Myth-Buster",
+    emoji: "❓",
+    icon: HelpCircle,
+    topic: "Answering the questions buyers and sellers in {city}, {state} keep asking — and correcting the most common myths about the local market, pricing, timing, and what agents actually do",
+    description: "Answer the question clients keep asking",
+    color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
+    category: "format",
+    needsLocation: true,
+  },
 
   // ── Location-specific ─────────────────────────────────────────────────────
   {
@@ -339,17 +350,24 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
   },
 ];
 
-const CATEGORIES: { key: TemplateCategory; label: string; emoji: string }[] = [
-  { key: "general",   label: "Real Estate Tips",          emoji: "🏡" },
-  { key: "format",    label: "Video Style Formats",        emoji: "🎬" },
-  { key: "location",  label: "Location Spotlight",         emoji: "📍" },
-  { key: "community", label: "Local Events & Community News", emoji: "🎉" },
+// "format" is deliberately absent — the formats have their own row above the
+// browser, and listing them twice was just noise.
+const CATEGORIES: { key: TemplateCategory; label: string }[] = [
+  { key: "general",   label: "Real estate tips" },
+  { key: "location",  label: "Location spotlight" },
+  { key: "community", label: "Local events & community news" },
 ];
+
+/** Topic templates only — the formats have their own row, so they aren't counted. */
+export const TEMPLATE_COUNT = CONTENT_TEMPLATES.filter((t) => t.category !== "format").length;
 
 interface ContentTemplatesProps {
   onSelect: (template: ContentTemplate) => void;
   city?: string;
   state?: string;
+  /** Whether the full categorised browser is open. Controlled by the page. */
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 function substitutePlaceholders(text: string, city?: string, state?: string): string {
@@ -362,60 +380,124 @@ function substitutePlaceholders(text: string, city?: string, state?: string): st
   return result;
 }
 
-export function ContentTemplates({ onSelect, city, state }: ContentTemplatesProps) {
+/** Monospace section kicker + right-hand link, shared by both sections. */
+function SectionHead({
+  label,
+  action,
+  onAction,
+}: {
+  label: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
+        {label}
+      </p>
+      {action && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="flex-none text-[11.5px] font-medium text-spark-amber hover:text-spark-blue"
+        >
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ContentTemplates({
+  onSelect,
+  city,
+  state,
+  expanded = false,
+  onToggleExpanded,
+}: ContentTemplatesProps) {
   const hasLocation = !!(city?.trim() && state?.trim());
 
+  function resolve(template: ContentTemplate): ContentTemplate {
+    return {
+      ...template,
+      topic: substitutePlaceholders(template.topic, city?.trim(), state?.trim()),
+    };
+  }
+
+  const formats = CONTENT_TEMPLATES.filter((t) => t.category === "format");
+
   return (
-    <div className="flex flex-col gap-5">
-      {!hasLocation && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          Fill in City &amp; State in Step 1 first — templates will auto-insert your location into the topic.
-        </p>
-      )}
+    <div id="topic-templates" className="flex flex-col gap-5 scroll-mt-6">
+      {/* ── Video formats ──
+          The design gives formats their own flat row, ahead of the full
+          browser: title and one line of description, no icon tile. */}
+      <div className="flex flex-col gap-2.5">
+        <SectionHead
+          label="Video formats"
+          action={expanded ? "Hide all formats" : "See all formats ›"}
+          onAction={onToggleExpanded}
+        />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {formats.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onSelect(resolve(template))}
+              className="flex flex-col gap-[3px] rounded-[9px] border border-spark-rule bg-white px-3.5 py-[11px] text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
+            >
+              <span className="text-[12px] font-medium text-spark-ink">{template.label}</span>
+              <span className="text-[10.5px] leading-[1.4] text-spark-ink-faint">
+                {template.description}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {CATEGORIES.map(({ key, label, emoji }) => {
-        const templates = CONTENT_TEMPLATES.filter((t) => t.category === key);
-        return (
-          <div key={key}>
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              <span className="w-1.5 h-4 rounded-full bg-gradient-to-b from-primary-400 to-orange-400 shrink-0" />
-              {emoji} {label}
+      {/* ── The full browser, behind "See all templates" ──
+          Kept collapsed by default: the design leads with trending and formats,
+          and all 28 templates at once is what the old page did wrong. */}
+      {expanded && (
+        <div className="flex flex-col gap-5 border-t border-spark-rule-soft pt-5">
+          {!hasLocation && (
+            <p className="rounded-[9px] border border-spark-rule bg-spark-amber-tint px-3.5 py-2.5 text-[11.5px] text-spark-ink-muted">
+              Add your city and state below and these templates will fill your location into the
+              topic for you.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-              {templates.map((template) => {
-                const Icon = template.icon;
-                const previewTopic = substitutePlaceholders(template.topic, city?.trim(), state?.trim());
-                const resolvedTemplate: ContentTemplate = { ...template, topic: previewTopic };
+          )}
 
-                return (
-                  <button
-                    key={template.id}
-                    onClick={() => onSelect(resolvedTemplate)}
-                    className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-400 hover:bg-primary-50/50 transition-all text-left group"
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${template.color} group-hover:scale-105 transition-transform`}>
-                      <Icon size={15} className={template.iconColor} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-brand-text leading-tight">
-                        {template.emoji} {template.label}
-                      </p>
-                      <p className="text-xs text-slate-400 leading-snug mt-0.5 line-clamp-2">
+          {CATEGORIES.map(({ key, label }) => {
+            const templates = CONTENT_TEMPLATES.filter((t) => t.category === key);
+            return (
+              <div key={key} className="flex flex-col gap-2.5">
+                <SectionHead label={label} />
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => onSelect(resolve(template))}
+                      className="flex flex-col gap-1 rounded-[9px] border border-spark-rule bg-white px-3.5 py-3 text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
+                    >
+                      <span className="text-[12.5px] font-medium leading-[1.35] text-spark-ink">
+                        {template.label}
+                      </span>
+                      <span className="text-[11px] leading-[1.4] text-spark-ink-faint">
                         {template.description}
-                      </p>
+                      </span>
                       {template.needsLocation && hasLocation && (
-                        <p className="text-[10px] text-primary-500 font-medium mt-0.5">
-                          📍 {city}, {state}
-                        </p>
+                        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-spark-amber">
+                          {city}, {state}
+                        </span>
                       )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

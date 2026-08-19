@@ -18,7 +18,8 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
-import { ContentTemplates } from "@/components/create/content-templates";
+import { ContentTemplates, TEMPLATE_COUNT } from "@/components/create/content-templates";
+import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 
@@ -567,11 +568,28 @@ function CreatePageInner() {
   }
 
 
+  // The full template browser is collapsed until asked for — the design leads
+  // with trending and formats, not all 29 templates at once.
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+
+  function openTemplates() {
+    setTemplatesOpen(true);
+    // Let the section render before scrolling, or we land on its old height
+    setTimeout(
+      () => document.getElementById("topic-templates")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      0,
+    );
+  }
+
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
+  // Nothing can be generated without a market, so a first run opens the panel
+  // rather than leaving the user to find "Edit".
+  const showSetup = setupOpen || !locationSet;
 
   return (
     // Every tab fills the full content width — the AI-script step lays out as
@@ -616,72 +634,82 @@ function CreatePageInner() {
         </button>
       )}
 
-      {/* Cockpit header. The gradient hero is gone: the design leads with the
-          three-segment progress rail instead, so where you are in the flow is
-          the first thing on the page rather than a banner. */}
-      <div className="mb-4 border-b border-spark-rule-soft pb-3">
-        <h2 className="text-[18px] font-bold tracking-[-0.02em] text-spark-ink">New video</h2>
-        <div className="mt-2.5 flex items-center gap-1.5">
-          <span className="h-[3px] flex-1 rounded-full bg-spark-blue" />
-          <span
-            className={`h-[3px] flex-1 rounded-full ${
-              step === "input" ? "bg-spark-amber" : "bg-spark-blue"
-            }`}
-          />
-          <span className="h-[3px] flex-1 rounded-full bg-spark-rule-soft" />
-        </div>
-        <p className="mt-[7px] text-[11px] text-spark-ink-faint">
-          {step === "input"
-            ? "Step 2 of 3 · tell us what this video is about"
-            : "Step 3 of 3 · review and generate"}
-        </p>
-      </div>
-
-      {/* ── Step · how you're creating ──
-          The design folds the old three-tab bar into the first step of the
-          cockpit, so picking a mode reads as part of the brief rather than
-          navigation. Colour-coded gradient tiles are gone; selection is now
-          carried by the amber border and tint alone. */}
+      {/* ── Step 1 · how you're creating ──
+          The design leads with a monospace step label rather than a page title
+          or a progress rail: the eyebrow carries position in the flow, and the
+          three modes sit directly under it as full cards. The old three-tab bar
+          is gone — picking a mode reads as part of the brief, not navigation. */}
       {step === "input" && (
-        <div className="mb-4 flex items-start gap-2.5">
-          <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
-            ✓
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] font-medium text-spark-ink">How you&rsquo;re creating</p>
-            <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-              {[
-                { mode: "script" as InputMode, label: "AI Writes It", desc: "Speak a topic" },
-                { mode: "content" as InputMode, label: "My Content", desc: "Docs & listings" },
-                { mode: "camera" as InputMode, label: "Use Camera", desc: "Teleprompter" },
-              ].map(({ mode, label, desc }) => {
-                // The merged tab stays lit while the user is in either sub-flow
-                const active =
-                  inputMode === mode ||
-                  (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    // The merged tab drops straight into the Paste/Upload flow —
-                    // the pill toggle inside switches to My Listings.
-                    onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
-                    aria-pressed={active}
-                    className={`rounded-lg px-[9px] py-2 text-left transition-colors ${
-                      active
-                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                        : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                    }`}
-                  >
-                    <span className="block text-[11px] font-medium text-spark-ink">{label}</span>
-                    <span className="mt-px block text-[9.5px] text-spark-ink-muted">{desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-1.5 text-[10.5px] text-spark-ink-faint">
-              Or say &ldquo;use my listing photos&rdquo; to switch
+        <div className="mb-5 flex flex-col gap-[11px]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-amber">
+              Step 1 of 3 · choose how to create
             </p>
+            <p className="flex flex-none items-center gap-[7px] text-[11px] text-spark-ink-faint">
+              <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-spark-amber">
+                <span className="block h-[6px] w-[3px] rounded-full bg-white" />
+              </span>
+              or say &ldquo;AI writes it&rdquo;
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-[11px] sm:grid-cols-3">
+            {[
+              {
+                mode: "script" as InputMode,
+                label: "AI Writes It",
+                desc: "Speak a topic, get a broadcast-quality script",
+                meta: "Fastest · 3 min",
+              },
+              {
+                mode: "content" as InputMode,
+                label: "My Content & Listings",
+                desc: "Your script, docs, photos or a listing",
+                meta: "Bring your own",
+              },
+              {
+                mode: "camera" as InputMode,
+                label: "Use Camera",
+                desc: "Teleprompter, record yourself",
+                meta: "Free · unlimited",
+              },
+            ].map(({ mode, label, desc, meta }) => {
+              // The merged tab stays lit while the user is in either sub-flow
+              const active =
+                inputMode === mode ||
+                (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  // The merged tab drops straight into the Paste/Upload flow —
+                  // the pill toggle inside switches to My Listings.
+                  onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
+                  aria-pressed={active}
+                  className={`flex flex-col gap-1 rounded-[11px] px-4 py-3.5 text-left transition-colors ${
+                    active
+                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                      : "spark-glass hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {/* Radio, not a checkbox — these three are exclusive */}
+                    <span
+                      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[9px] font-bold leading-none text-white ${
+                        active ? "bg-spark-amber" : "border-[1.5px] border-spark-rule-dim"
+                      }`}
+                    >
+                      {active ? "✓" : ""}
+                    </span>
+                    <span className="text-[13px] font-medium text-spark-ink">{label}</span>
+                  </span>
+                  <span className="block pl-[26px] text-[11.5px] leading-[1.45] text-spark-ink-muted">
+                    {desc}
+                  </span>
+                  <span className="block pl-[26px] text-[10.5px] text-spark-ink-faint">{meta}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -690,235 +718,238 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <Card padding="sm" className="border-t-4 border-t-spark-amber">
+        <div className="flex flex-col gap-5">
 
-          {/* ── 1 · Your Market ── */}
-          <div>
-            <div className="flex items-start gap-2.5 mb-3">
-              <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
-                1
-              </span>
+          {/* ── Step 2 · Your topic ──
+              The design makes speaking the topic the whole step: a 92px mic,
+              the waveform, and the sentence building underneath it. Typing is
+              still there, but behind "type it instead" — it is the fallback
+              now, not the default. */}
+          <div className="flex flex-col gap-5">
+            <VoiceTopicHero
+              value={locCustomTopic}
+              onChange={setLocCustomTopic}
+              onSubmit={() => { if (!locGenerating) handleGenerateScript(); }}
+              onBrowseTemplates={openTemplates}
+              templateCount={TEMPLATE_COUNT}
+              disabled={locGenerating}
+            />
+
+            {/* Trending leads, formats follow, and the full browser sits behind
+                "See all templates" on either heading. */}
+            <TopicRadar
+              city={locCity || undefined}
+              state={locState || undefined}
+              onSelect={(topic) => setLocCustomTopic(topic)}
+              onSeeAll={openTemplates}
+            />
+            <ContentTemplates
+              city={locCity}
+              state={locState}
+              onSelect={(template) => setLocCustomTopic(template.topic)}
+              expanded={templatesOpen}
+              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
+            />
+          </div>
+
+          {/* ── Video setup ──
+              Market, length and audience are not a step in this design: they
+              sit in the summary bar below as chips, and open here on Edit.
+              A first run has no market yet, so it starts open. */}
+          {showSetup && (
+            <Card padding="sm">
+              <p className="mb-3 font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
+                Video setup
+              </p>
               <div>
-                <p className="text-[12.5px] font-medium text-spark-ink">Your market</p>
-                <p className="text-[10.5px] text-spark-ink-faint">Speak or type your city and state</p>
-              </div>
-            </div>
 
-            {/* Saved market chips */}
-            {savedMarkets.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {savedMarkets.map((m) => {
-                  const isActive = (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
-                  return (
-                    <div
-                      key={`${m.city}-${m.state}`}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-spark-amber text-white border-spark-amber"
-                          : "bg-white text-spark-ink-soft border-spark-rule hover:border-spark-amber hover:text-spark-amber"
-                      }`}
-                      onClick={() => { setLocCity(m.city); setLocState(m.state); }}
-                    >
-                      📍 {m.city}, {m.state}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
-                        className={`ml-0.5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ${
-                          isActive ? "hover:bg-spark-blue text-white" : "hover:bg-spark-rule-soft text-spark-ink-faint"
-                        }`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                {/* Saved market chips */}
+                {savedMarkets.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {savedMarkets.map((m) => {
+                      const isActive = (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
+                      return (
+                        <div
+                          key={`${m.city}-${m.state}`}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-spark-amber text-white border-spark-amber"
+                              : "bg-white text-spark-ink-soft border-spark-rule hover:border-spark-amber hover:text-spark-amber"
+                          }`}
+                          onClick={() => { setLocCity(m.city); setLocState(m.state); }}
+                        >
+                          📍 {m.city}, {m.state}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
+                            className={`ml-0.5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ${
+                              isActive ? "hover:bg-spark-blue text-white" : "hover:bg-spark-rule-soft text-spark-ink-faint"
+                            }`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-            {/* City + State inputs */}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="text-sm font-bold text-slate-600 block mb-1">City *</label>
-                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                  <input
-                    type="text"
-                    value={locCity}
-                    onChange={(e) => setLocCity(e.target.value)}
-                    placeholder="Austin"
-                    className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                  />
-                  <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
-                </div>
-              </div>
-              <div className="w-20">
-                <label className="text-sm font-bold text-slate-600 block mb-1">State *</label>
-                <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                  <input
-                    type="text"
-                    value={locState}
-                    onChange={(e) => setLocState(e.target.value)}
-                    placeholder="TX"
-                    maxLength={2}
-                    className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
-                  />
-                  <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
-                </div>
-              </div>
-            </div>
-
-            {/* Save market hint */}
-            {locationSet && !isMarketSaved && (
-              <button
-                type="button"
-                onClick={() => addMarket(locCity, locState)}
-                className="mt-2 text-xs text-spark-amber hover:text-spark-blue font-medium flex items-center gap-1"
-              >
-                + Save {locCity}, {locState} As A Quick-Switch Market
-              </button>
-            )}
-
-            {/* Advanced options — part of Step 1 setup, always visible */}
-            <div className="border-t border-slate-200 mt-3 pt-3">
-              <p className="text-sm font-bold text-slate-600 mb-2">Advanced Options (Audience, Style, CTA)</p>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {
-                    label: "Audience", value: locAudience, set: setLocAudience,
-                    options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
-                  },
-                  {
-                    label: "Style", value: locTone, set: setLocTone,
-                    options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
-                  },
-                  {
-                    label: "CTA", value: locCta, set: setLocCta,
-                    options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
-                  },
-                ].map(({ label, value, set, options }) => (
-                  <div key={label}>
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
-                    <div className="relative">
-                      <select
-                        value={value}
-                        onChange={(e) => set(e.target.value)}
-                        className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                      >
-                        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                      <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                {/* City + State inputs */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-sm font-bold text-slate-600 block mb-1">City *</label>
+                    <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                      <input
+                        type="text"
+                        value={locCity}
+                        onChange={(e) => setLocCity(e.target.value)}
+                        placeholder="Austin"
+                        className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
+                      />
+                      <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="w-20">
+                    <label className="text-sm font-bold text-slate-600 block mb-1">State *</label>
+                    <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                      <input
+                        type="text"
+                        value={locState}
+                        onChange={(e) => setLocState(e.target.value)}
+                        placeholder="TX"
+                        maxLength={2}
+                        className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
+                      />
+                      <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
+                    </div>
+                  </div>
+                </div>
 
-            {/* Video length — chosen up front so the AI writes to the right length */}
-            <div className="border-t border-slate-200 mt-3 pt-3">
-              <p className="text-sm font-bold text-slate-600 mb-2">Video Length</p>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll" },
-                  { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos for visuals" },
-                ] as const).map(({ v, title, sub, note }) => (
+                {/* Save market hint */}
+                {locationSet && !isMarketSaved && (
                   <button
-                    key={v}
                     type="button"
-                    onClick={() => setLocLength(v)}
-                    className={`text-left p-3 rounded-xl border-2 transition-colors ${
-                      locLength === v
-                        ? "border-spark-amber bg-emerald-50"
-                        : "border-slate-200 hover:border-slate-300 bg-white"
-                    }`}
+                    onClick={() => addMarket(locCity, locState)}
+                    className="mt-2 text-xs text-spark-amber hover:text-spark-blue font-medium flex items-center gap-1"
                   >
-                    <p className="text-sm font-bold text-brand-text">{title} <span className="font-normal text-slate-500">· {sub}</span></p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{note}</p>
+                    + Save {locCity}, {locState} As A Quick-Switch Market
                   </button>
-                ))}
-              </div>
-              {locLength === "long" && (
-                <p className="text-[11px] text-amber-600 mt-2">
-                  We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as the visuals — you&apos;ll add them on the next screen.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* ── 2 · Your Topic — input + one browser (trending leads the templates) ── */}
-          <div className="border-t border-slate-200 mt-5 pt-4">
-            <div className="flex items-start gap-2.5 mb-3">
-              <span className="mt-0.5 flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-spark-amber text-[10px] font-bold leading-none text-white">
-                2
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-medium text-spark-ink">Your topic</p>
-                <p className="text-[10.5px] text-spark-ink-faint">
-                  {locCity.trim() ? `Type it, speak it, or tap a card — auto-fills ${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "Type it, speak it, or tap a card below"}
-                </p>
-              </div>
-              <FieldMic size="md" onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-            </div>
-
-            {/* Topic input with inline mic — the primary action, right up top */}
-            <div className="flex items-center border border-slate-200 rounded-xl bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-              <input
-                id="topic-input"
-                type="text"
-                value={locCustomTopic}
-                onChange={(e) => setLocCustomTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !locGenerating && handleGenerateScript()}
-                placeholder="Speak it, tap a suggestion, or type here…"
-                className="flex-1 text-base px-3.5 py-3 bg-transparent focus:outline-none min-w-0"
-              />
-              <FieldMic onTranscript={(t) => setLocCustomTopic(t)} title="Speak your topic" />
-            </div>
-
-            {/* One unified browser: Trending Now leads, then the template categories */}
-            <div className="mt-4 flex flex-col gap-5">
-              <TopicRadar
-                city={locCity || undefined}
-                state={locState || undefined}
-                onSelect={(topic) => {
-                  setLocCustomTopic(topic);
-                  document.getElementById("topic-input")?.focus();
-                }}
-              />
-              <ContentTemplates
-                city={locCity}
-                state={locState}
-                onSelect={(template) => {
-                  setLocCustomTopic(template.topic);
-                  setTimeout(() => document.getElementById("topic-input")?.focus(), 100);
-                }}
-              />
-            </div>
-          </div>
-
-          {/* ── 3 · Generate ── */}
-          <div className="border-t border-slate-200 mt-5 pt-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-spark-amber to-fuchsia-600 text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">3</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-brand-text">Generate The Script</p>
-                {locCustomTopic.trim() ? (
-                  <p className="text-sm text-emerald-600 font-medium truncate">✓ {locCustomTopic}</p>
-                ) : (
-                  <p className="text-sm text-slate-400">Pick Or Type A Topic Above</p>
                 )}
+
+                {/* Advanced options — part of Step 1 setup, always visible */}
+                <div className="border-t border-slate-200 mt-3 pt-3">
+                  <p className="text-sm font-bold text-slate-600 mb-2">Advanced Options (Audience, Style, CTA)</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      {
+                        label: "Audience", value: locAudience, set: setLocAudience,
+                        options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
+                      },
+                      {
+                        label: "Style", value: locTone, set: setLocTone,
+                        options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+                      },
+                      {
+                        label: "CTA", value: locCta, set: setLocCta,
+                        options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+                      },
+                    ].map(({ label, value, set, options }) => (
+                      <div key={label}>
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
+                        <div className="relative">
+                          <select
+                            value={value}
+                            onChange={(e) => set(e.target.value)}
+                            className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                          >
+                            {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                          </select>
+                          <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Video length — chosen up front so the AI writes to the right length */}
+                <div className="border-t border-slate-200 mt-3 pt-3">
+                  <p className="text-sm font-bold text-slate-600 mb-2">Video Length</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll" },
+                      { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos for visuals" },
+                    ] as const).map(({ v, title, sub, note }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setLocLength(v)}
+                        className={`text-left p-3 rounded-xl border-2 transition-colors ${
+                          locLength === v
+                            ? "border-spark-amber bg-emerald-50"
+                            : "border-slate-200 hover:border-slate-300 bg-white"
+                        }`}
+                      >
+                        <p className="text-sm font-bold text-brand-text">{title} <span className="font-normal text-slate-500">· {sub}</span></p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{note}</p>
+                      </button>
+                    ))}
+                  </div>
+                  {locLength === "long" && (
+                    <p className="text-[11px] text-amber-600 mt-2">
+                      We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as the visuals — you&apos;ll add them on the next screen.
+                    </p>
+                  )}
+                </div>
               </div>
+            </Card>
+          )}
+
+          {/* ── Summary bar ──
+              The brief, reduced to chips, with the generate action on the far
+              right. This is where the old numbered "Generate the script" step
+              went — the design carries it as a footer, not a third block. */}
+          <div className="spark-glass flex flex-wrap items-center justify-between gap-3 rounded-[11px] px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span
+                className={`rounded-nav bg-[#F7ECD9] px-2.5 py-[5px] text-[11.5px] font-medium text-spark-amber ${
+                  locationSet ? "" : "opacity-70"
+                }`}
+              >
+                {locationSet ? `${locCity}, ${locState.toUpperCase()}` : "Add your market"}
+              </span>
+              <span className="spark-surface rounded-nav px-2.5 py-[5px] text-[11.5px] text-spark-ink-muted">
+                {locLength === "long" ? "Long · up to 8 min" : "Standard · up to 4 min"}
+              </span>
+              <span className="spark-surface rounded-nav px-2.5 py-[5px] text-[11.5px] text-spark-ink-muted">
+                {locAudience || "Any audience"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSetupOpen((o) => !o)}
+                className="text-[11.5px] font-medium text-spark-amber underline hover:text-spark-blue"
+              >
+                {showSetup ? "Done" : "Edit"}
+              </button>
             </div>
-            <Button
-              onClick={handleGenerateScript}
-              loading={locGenerating}
-              disabled={!locCustomTopic.trim()}
-              size="lg"
-              className="w-full gap-2"
-            >
-              {locGenerating
-                ? <>Researching {locCity || "your market"}…</>
-                : <><Sparkles size={16} /> Generate My Script</>}
-            </Button>
+
+            <div className="flex items-center gap-3">
+              <span className="hidden text-[11.5px] text-spark-ink-faint sm:block">
+                Step 3: review the script
+              </span>
+              <Button
+                onClick={handleGenerateScript}
+                loading={locGenerating}
+                disabled={!locCustomTopic.trim() || !locationSet}
+                className="gap-2"
+              >
+                {locGenerating
+                  ? <>Researching {locCity || "your market"}…</>
+                  : <><Sparkles size={16} /> Generate My Script</>}
+              </Button>
+            </div>
           </div>
-        </Card>
+
+        </div>
       )}
 
       {/* ══════════════════════════════════════════
