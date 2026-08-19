@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { notifyNewUser } from "@/lib/email";
@@ -15,11 +15,52 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
   }
 
-  const supabase = await createClient();
+  // Session cookies are collected as the client writes them, then replayed onto
+  // whichever redirect this route returns.
+  //
+  // This used to go through the shared server client, which sets cookies via
+  // next/headers inside a try/catch. Those writes did not reliably reach the
+  // freshly-constructed redirect response, so the browser followed it carrying
+  // no session, middleware saw a signed-out user and sent it to /login — with
+  // nothing to display, because the code exchange had actually succeeded. The
+  // cookie landed a moment later, which is why a second attempt always worked
+  // and made this look intermittent. Same pattern middleware.ts already uses.
+  const pending: { name: string; value: string; options: CookieOptions }[] = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Keep the request in sync so later reads in this same request
+            // (getUser below) see the session that was just established.
+            req.cookies.set(name, value);
+            pending.push({ name, value, options: options ?? {} });
+          });
+        },
+      },
+    }
+  );
+
+  /** Every exit from this route goes through here, so none can drop the session. */
+  const redirectTo = (path: string) => {
+    const res = NextResponse.redirect(`${origin}${path}`);
+    pending.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
+    return res;
+  };
+
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+    // Logged because this is otherwise invisible: the user just sees the login
+    // page again, and the reason never leaves the server.
+    console.error("[auth/callback] code exchange failed:", error.message);
+    return redirectTo("/login?error=auth_failed");
   }
 
   const admin = createAdminClient();
@@ -47,7 +88,7 @@ export async function GET(req: NextRequest) {
       await admin.from("profiles").delete().eq("id", user.id);
       await admin.auth.admin.deleteUser(user.id).catch(() => {});
       // /beta already surfaces query-string messages; /login ignores them.
-      return NextResponse.redirect(`${origin}/beta?rejected=${encodeURIComponent(reason)}`);
+      return redirectTo(`/beta?rejected=${encodeURIComponent(reason)}`);
     }
   }
 
@@ -57,7 +98,7 @@ export async function GET(req: NextRequest) {
     await supabase.auth.signOut();
     await admin.from("profiles").delete().eq("id", user.id);
     await admin.auth.admin.deleteUser(user.id).catch(() => {});
-    return NextResponse.redirect(`${origin}/beta?full=1`);
+    return redirectTo("/beta?full=1");
   }
 
   // Route returning users based on onboarding and subscription status
@@ -88,7 +129,7 @@ export async function GET(req: NextRequest) {
 
     // Admins always go straight to the app — no billing or onboarding check
     if (profile?.role === "admin") {
-      return NextResponse.redirect(`${origin}/create`);
+      return redirectTo("/create");
     }
 
     if (profile?.onboarding_done) {
@@ -96,9 +137,9 @@ export async function GET(req: NextRequest) {
       const paidPlans = ["starter", "agent", "pro"];
       const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0 || (profile.purchased_short_videos ?? 0) > 0 || (profile.purchased_long_videos ?? 0) > 0;
       const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
-      return NextResponse.redirect(`${origin}${hasPaidAccess ? "/create" : "/billing"}`);
+      return redirectTo(hasPaidAccess ? "/create" : "/billing");
     }
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return redirectTo(next);
 }
