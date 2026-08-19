@@ -80,7 +80,7 @@ async function DashboardStats() {
       {/* Videos remaining banner — admins get a flat "unlimited" state rather
           than a countdown, since nothing is deducted from them. */}
       {isAdmin ? (
-        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-indigo-50 border border-spark-blue/25">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-spark-blue/10 border border-spark-blue/25">
           <div className="flex items-center gap-2 flex-wrap">
             <Infinity size={16} className="text-spark-blue" />
             <span className="font-semibold text-sm text-spark-blue">Admin-Unlimited</span>
@@ -94,7 +94,7 @@ async function DashboardStats() {
         <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm ${
           creditsLeft === 0 ? "bg-red-50 border border-red-200"
           : creditsLeft <= 1 ? "bg-amber-50 border border-amber-200"
-          : "bg-blue-50 border border-spark-blue/20"
+          : "bg-spark-blue/10 border border-spark-blue/20"
         }`}>
           <div className="flex items-center gap-2 flex-wrap">
             <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-spark-blue"} />
@@ -116,7 +116,7 @@ async function DashboardStats() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {/* AI Videos Left */}
         <Card className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-spark-amber-tint flex items-center justify-center shrink-0">
             <Zap className="w-5 h-5 text-spark-amber" />
           </div>
           <div>
@@ -163,7 +163,7 @@ async function DashboardStats() {
 
         {/* Posts Published */}
         <Card className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-spark-amber-tint flex items-center justify-center shrink-0">
             <Share2 className="w-5 h-5 text-accent-500" />
           </div>
           <div>
@@ -355,7 +355,7 @@ export default async function DashboardPage() {
             View And Manage All Your Scheduled Posts Across Every Platform.
           </p>
           <Link href="/calendar">
-            <Button className="bg-white text-spark-amber hover:bg-teal-50 gap-2" size="md">
+            <Button className="bg-white text-spark-amber hover:bg-spark-amber-tint gap-2" size="md">
               <CalendarDays size={16} /> View Calendar
             </Button>
           </Link>

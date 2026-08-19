@@ -1325,7 +1325,7 @@ export default function ProjectEditorPage() {
                           </div>
                         )}
                         {!isProcessing && look.avatar_type === "digital_twin" && (
-                          <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                          <div className="absolute top-1 left-1 bg-spark-amber rounded px-1 py-0.5">
                             <p className="text-white text-[7px] font-bold leading-none">DT</p>
                           </div>
                         )}
@@ -1962,7 +1962,7 @@ export default function ProjectEditorPage() {
                             </div>
                           )}
                           {!isProcessing && look.avatar_type === "digital_twin" && (
-                            <div className="absolute top-1 left-1 bg-purple-600 rounded px-1 py-0.5">
+                            <div className="absolute top-1 left-1 bg-spark-amber rounded px-1 py-0.5">
                               <p className="text-white text-[7px] font-bold leading-none">DT</p>
                             </div>
                           )}

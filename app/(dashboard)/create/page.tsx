@@ -603,7 +603,7 @@ function CreatePageInner() {
         <button
           type="button"
           onClick={() => router.push("/settings#voice")}
-          className="w-full text-left flex items-start gap-3 bg-blue-50 border border-spark-blue/25 rounded-xl px-4 py-3 mb-5 hover:bg-spark-blue/10 transition-colors group"
+          className="w-full text-left flex items-start gap-3 bg-spark-blue/10 border border-spark-blue/25 rounded-xl px-4 py-3 mb-5 hover:bg-spark-blue/10 transition-colors group"
         >
           <Mic size={17} className="text-spark-blue shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
@@ -959,7 +959,7 @@ function CreatePageInner() {
                       onClick={() => setCameraScriptLength(l.key)}
                       className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
                         cameraScriptLength === l.key
-                          ? "border-spark-amber bg-violet-50"
+                          ? "border-spark-amber bg-spark-amber-tint"
                           : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                     >
@@ -1129,7 +1129,7 @@ function CreatePageInner() {
                   </div>
                 ))}
                 {pastePhotos.length < 12 && (
-                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${pastePhotoUploading ? "border-spark-rule-dim bg-violet-50" : "border-slate-200 hover:border-spark-rule-dim"}`}>
+                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${pastePhotoUploading ? "border-spark-rule-dim bg-spark-amber-tint" : "border-slate-200 hover:border-spark-rule-dim"}`}>
                     {pastePhotoUploading ? <Loader2 size={18} className="text-spark-amber animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                     <input type="file" accept="image/*" multiple className="sr-only" disabled={pastePhotoUploading} onChange={(e) => { if (e.target.files?.length) handlePastePhotosUpload(e.target.files); }} />
                   </label>
@@ -1157,7 +1157,7 @@ function CreatePageInner() {
                     <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
                   </div>
                 ) : (
-                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-spark-rule-dim bg-violet-50" : "border-slate-200 hover:border-spark-rule-dim"}`}>
+                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-spark-rule-dim bg-spark-amber-tint" : "border-slate-200 hover:border-spark-rule-dim"}`}>
                     {pastePdfUploading ? <Loader2 size={16} className="text-spark-amber animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
                     <span className="text-sm text-slate-500">{pastePdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
                     <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pastePdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePastePdfUpload(f); }} />
@@ -1441,7 +1441,7 @@ function CreatePageInner() {
               return (
                 <div key={s} className="flex items-center gap-2">
                   <div className={`flex items-center gap-1.5 text-xs font-medium ${isActive ? "text-spark-blue" : isDone ? "text-spark-amber" : "text-slate-300"}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${isActive ? "bg-blue-600 text-white" : isDone ? "bg-spark-amber text-white" : "bg-slate-200 text-slate-400"}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${isActive ? "bg-spark-amber text-white" : isDone ? "bg-spark-amber text-white" : "bg-slate-200 text-slate-400"}`}>
                       {isDone ? <CheckCircle size={12} /> : i + 1}
                     </span>
                     <span className="hidden sm:inline">{labels[i]}</span>
@@ -1454,7 +1454,7 @@ function CreatePageInner() {
 
           {step === "uploading" && (
             <Card className="flex flex-col items-center py-12 gap-4 text-center">
-              <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-spark-blue/10 rounded-2xl flex items-center justify-center">
                 <Loader2 className="w-7 h-7 text-spark-blue animate-spin" />
               </div>
               <div>
@@ -1467,8 +1467,8 @@ function CreatePageInner() {
 
           {step === "transcribing" && (
             <Card className="flex flex-col items-center py-12 gap-4 text-center">
-              <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center">
-                <FileText className="w-7 h-7 text-purple-500 animate-pulse" />
+              <div className="w-14 h-14 bg-spark-amber-tint rounded-2xl flex items-center justify-center">
+                <FileText className="w-7 h-7 text-spark-amber animate-pulse" />
               </div>
               <div>
                 <p className="font-semibold text-brand-text">Transcribing Your Voice…</p>

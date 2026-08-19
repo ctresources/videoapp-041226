@@ -302,7 +302,7 @@ function TalkingAvatarUploader({
         </div>
       ) : null}
 
-      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+      <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
           <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
           <span><strong>Tips:</strong> Clear front-facing photo, neutral expression, plain background, no sunglasses or hats.</span>
@@ -538,7 +538,7 @@ function DigitalTwinCreator({
   if (dtStatus === "pending_consent") {
     return (
       <div className="flex flex-col gap-3">
-        <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-spark-blue/25 rounded-xl">
+        <div className="flex items-start gap-2.5 p-3 bg-spark-blue/10 border border-spark-blue/25 rounded-xl">
           <CheckCircle size={15} className="text-spark-blue mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-spark-ink">Approval Required</p>
@@ -709,7 +709,7 @@ function DigitalTwinCreator({
         )}
       </div>
 
-      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+      <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
           <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
           <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, speak naturally. No sunglasses or hats.</span>
@@ -1050,7 +1050,7 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
       )}
 
       {/* Tips */}
-      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+      <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed">
           <strong>Best results:</strong> Speak naturally for 1–3 minutes in a quiet room. No background
           music, no echo. Use the same microphone you use for client calls.

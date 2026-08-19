@@ -208,7 +208,7 @@ export default async function BillingPage({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-              currentTier === "pro" ? "bg-primary-50" : currentTier === "agency" ? "bg-purple-50" : "bg-slate-100"
+              currentTier === "pro" ? "bg-primary-50" : currentTier === "agency" ? "bg-spark-amber-tint" : "bg-slate-100"
             }`}>
               {(() => { const Icon = PLAN_ICONS[currentTier] || User; return <Icon size={22} className={currentTier === "pro" ? "text-primary-500" : currentTier === "agency" ? "text-spark-amber" : "text-slate-400"} />; })()}
             </div>
@@ -255,7 +255,7 @@ export default async function BillingPage({
             leaving them to read counters that don't apply. */}
         {isAdmin && (
           <div className="mt-5 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-2.5 bg-indigo-50 border border-spark-blue/25 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2.5 bg-spark-blue/10 border border-spark-blue/25 rounded-xl px-4 py-3">
               <Infinity size={16} className="text-spark-blue shrink-0" />
               <div>
                 <p className="text-sm font-bold text-spark-ink">Admin-Unlimited</p>
@@ -476,7 +476,7 @@ export default async function BillingPage({
           {/* Long video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-spark-amber-tint flex items-center justify-center">
                 <Video size={15} className="text-spark-amber" />
               </div>
               <p className="font-bold text-brand-text">Long Video</p>
