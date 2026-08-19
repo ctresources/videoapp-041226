@@ -17,11 +17,22 @@ import toast from "react-hot-toast";
  * unexplained bounce back to sign-in with nothing to act on. A rejected Google
  * client secret looks exactly like "nothing happened".
  */
-const OAUTH_ERRORS: Record<string, string> = {
-  missing_code:
-    "Google sign-in didn't finish — it was cancelled, or the link expired before it came back. Please try again.",
-  auth_failed:
-    "We couldn't complete Google sign-in. This is a problem on our end, not something you did. Please sign in with your email and password below, or email support@sparkreels.ai.",
+const OAUTH_ERRORS: Record<string, { title: string; body: string }> = {
+  missing_code: {
+    title: "Couldn't sign you in",
+    body: "Google sign-in didn't finish — it was cancelled, or the link expired before it came back. Please try again.",
+  },
+  auth_failed: {
+    title: "Couldn't sign you in",
+    body: "We couldn't complete Google sign-in. This is a problem on our end, not something you did. Please sign in with your email and password below, or email support@sparkreels.ai.",
+  },
+  // Arrives from /auth/reset-password, not from sign-in — so it needs its own
+  // wording. It previously fell through to the generic "Sign-in failed", which
+  // sent people back to a login form when what they needed was a fresh link.
+  reset_failed: {
+    title: "That reset link didn't work",
+    body: "Password reset links can only be used once, and they expire after a short time. Request a new one below and use the most recent email.",
+  },
 };
 
 export default function LoginPage() {
@@ -31,7 +42,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
-  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<{ title: string; body: string } | null>(null);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   // Read straight from the URL rather than useSearchParams(), which would put
@@ -39,7 +50,12 @@ export default function LoginPage() {
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("error");
     if (!code) return;
-    setOauthError(OAUTH_ERRORS[code] ?? "Sign-in failed. Please try again.");
+    setOauthError(
+      OAUTH_ERRORS[code] ?? {
+        title: "Couldn't sign you in",
+        body: "Sign-in failed. Please try again.",
+      }
+    );
     // Drop the param so a refresh doesn't resurrect a stale message.
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
@@ -127,8 +143,8 @@ export default function LoginPage() {
       {/* Sign-in failure redirected here from /auth/callback */}
       {oauthError && (
         <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert">
-          <p className="text-sm font-semibold text-red-800 mb-1">Couldn&apos;t sign you in</p>
-          <p className="text-xs text-red-700">{oauthError}</p>
+          <p className="text-sm font-semibold text-red-800 mb-1">{oauthError.title}</p>
+          <p className="text-xs text-red-700">{oauthError.body}</p>
         </div>
       )}
 

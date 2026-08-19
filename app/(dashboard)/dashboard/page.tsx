@@ -8,14 +8,12 @@ import Link from "next/link";
 import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity, Film } from "lucide-react";
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
-async function DraftQueueWrapper() {
+async function DraftQueueWrapper({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
   const { data: profile } = await supabase
     .from("profiles")
     .select("location_city, location_state")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
   return (
     <DraftQueue
@@ -25,16 +23,14 @@ async function DraftQueueWrapper() {
   );
 }
 
-async function DashboardStats() {
+async function DashboardStats({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
 
   const [aiVideosResult, cameraVideosResult, postsResult, profileResult] = await Promise.all([
-    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).neq("render_provider", "camera"),
-    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("render_provider", "camera"),
-    supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end, role").eq("id", user.id).single(),
+    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", userId).neq("render_provider", "camera"),
+    supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("render_provider", "camera"),
+    supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("post_status", "posted"),
+    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end, role").eq("id", userId).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -177,15 +173,13 @@ async function DashboardStats() {
   );
 }
 
-async function GettingStarted() {
+async function GettingStarted({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
 
   const [profileResult, videoResult, socialResult] = await Promise.all([
-    supabase.from("profiles").select("heygen_voice_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", user.id).single(),
-    supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_active", true),
+    supabase.from("profiles").select("heygen_voice_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", userId).single(),
+    supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_active", true),
   ]);
 
   const profile = profileResult.data as { heygen_voice_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
@@ -237,15 +231,13 @@ async function GettingStarted() {
   );
 }
 
-async function RecentProjects() {
+async function RecentProjects({ userId }: { userId: string }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
 
   const { data: projectsData } = await supabase
     .from("projects")
     .select("id, title, status, created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -326,15 +318,15 @@ export default async function DashboardPage() {
           </div>
         </div>
       }>
-        <DashboardStats />
+        <DashboardStats userId={user.id} />
       </Suspense>
 
       <Suspense fallback={null}>
-        <DraftQueueWrapper />
+        <DraftQueueWrapper userId={user.id} />
       </Suspense>
 
       <Suspense fallback={null}>
-        <GettingStarted />
+        <GettingStarted userId={user.id} />
       </Suspense>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -363,7 +355,7 @@ export default async function DashboardPage() {
       </div>
 
       <Suspense fallback={<Skeleton className="h-64" />}>
-        <RecentProjects />
+        <RecentProjects userId={user.id} />
       </Suspense>
     </div>
   );
