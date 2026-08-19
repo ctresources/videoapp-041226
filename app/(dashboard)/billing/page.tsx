@@ -210,7 +210,7 @@ export default async function BillingPage({
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
               currentTier === "pro" ? "bg-primary-50" : currentTier === "agency" ? "bg-purple-50" : "bg-slate-100"
             }`}>
-              {(() => { const Icon = PLAN_ICONS[currentTier] || User; return <Icon size={22} className={currentTier === "pro" ? "text-primary-500" : currentTier === "agency" ? "text-purple-500" : "text-slate-400"} />; })()}
+              {(() => { const Icon = PLAN_ICONS[currentTier] || User; return <Icon size={22} className={currentTier === "pro" ? "text-primary-500" : currentTier === "agency" ? "text-spark-amber" : "text-slate-400"} />; })()}
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -255,11 +255,11 @@ export default async function BillingPage({
             leaving them to read counters that don't apply. */}
         {isAdmin && (
           <div className="mt-5 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-2.5 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
-              <Infinity size={16} className="text-indigo-600 shrink-0" />
+            <div className="flex items-center gap-2.5 bg-indigo-50 border border-spark-blue/25 rounded-xl px-4 py-3">
+              <Infinity size={16} className="text-spark-blue shrink-0" />
               <div>
-                <p className="text-sm font-bold text-indigo-800">Admin-Unlimited</p>
-                <p className="text-xs text-indigo-700 mt-0.5">
+                <p className="text-sm font-bold text-spark-ink">Admin-Unlimited</p>
+                <p className="text-xs text-spark-blue mt-0.5">
                   Your account isn&apos;t charged for AI videos and has no monthly cap. The plan
                   figures below apply to customers, not to you.
                 </p>
@@ -293,7 +293,7 @@ export default async function BillingPage({
                 <>
                   <div className="flex items-center justify-between mt-3 mb-2">
                     <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                      <Video size={11} className="text-purple-500" /> Long Videos Left
+                      <Video size={11} className="text-spark-amber" /> Long Videos Left
                     </p>
                     <p className="text-xs font-bold text-brand-text">
                       {longPlan} of {currentPlan?.longVideos ?? 0}
@@ -302,7 +302,7 @@ export default async function BillingPage({
                   </div>
                   <div className="w-full h-2 bg-slate-100 rounded-full">
                     <div
-                      className="h-2 bg-purple-500 rounded-full transition-all"
+                      className="h-2 bg-spark-amber rounded-full transition-all"
                       style={{ width: `${Math.min(100, (longPlan / (currentPlan?.longVideos || 1)) * 100)}%` }}
                     />
                   </div>
@@ -477,7 +477,7 @@ export default async function BillingPage({
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center">
-                <Video size={15} className="text-purple-500" />
+                <Video size={15} className="text-spark-amber" />
               </div>
               <p className="font-bold text-brand-text">Long Video</p>
             </div>

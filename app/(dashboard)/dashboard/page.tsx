@@ -80,32 +80,32 @@ async function DashboardStats() {
       {/* Videos remaining banner — admins get a flat "unlimited" state rather
           than a countdown, since nothing is deducted from them. */}
       {isAdmin ? (
-        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-indigo-50 border border-indigo-200">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm bg-indigo-50 border border-spark-blue/25">
           <div className="flex items-center gap-2 flex-wrap">
-            <Infinity size={16} className="text-indigo-600" />
-            <span className="font-semibold text-sm text-indigo-700">Admin-Unlimited</span>
+            <Infinity size={16} className="text-spark-blue" />
+            <span className="font-semibold text-sm text-spark-blue">Admin-Unlimited</span>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
               ∞ Camera Recordings
             </span>
           </div>
-          <span className="text-xs shrink-0 text-indigo-500">No limit on AI videos</span>
+          <span className="text-xs shrink-0 text-spark-blue">No limit on AI videos</span>
         </div>
       ) : (
         <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 text-sm ${
           creditsLeft === 0 ? "bg-red-50 border border-red-200"
           : creditsLeft <= 1 ? "bg-amber-50 border border-amber-200"
-          : "bg-blue-50 border border-blue-100"
+          : "bg-blue-50 border border-spark-blue/20"
         }`}>
           <div className="flex items-center gap-2 flex-wrap">
-            <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"} />
-            <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-blue-800"}`}>
+            <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-spark-blue"} />
+            <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-spark-ink"}`}>
               {creditsLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
             </span>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
               ∞ Camera Recordings
             </span>
           </div>
-          <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-blue-500"}`}>
+          <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-spark-blue"}`}>
             {creditsLeft === 0
               ? <a href="/billing" className="underline font-medium">Upgrade Plan</a>
               : periodEnd ? `Resets ${periodEnd}` : "Resets Monthly"}
@@ -117,14 +117,14 @@ async function DashboardStats() {
         {/* AI Videos Left */}
         <Card className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
-            <Zap className="w-5 h-5 text-purple-500" />
+            <Zap className="w-5 h-5 text-spark-amber" />
           </div>
           <div>
             {isAdmin ? (
               <>
-                <Infinity className="w-6 h-6 text-indigo-600" />
+                <Infinity className="w-6 h-6 text-spark-blue" />
                 <p className="text-xs text-slate-500 leading-tight">AI Videos</p>
-                <p className="text-[10px] text-indigo-600 font-semibold leading-tight">Admin-Unlimited</p>
+                <p className="text-[10px] text-spark-blue font-semibold leading-tight">Admin-Unlimited</p>
               </>
             ) : (
               <>
@@ -349,13 +349,13 @@ export default async function DashboardPage() {
             </Button>
           </Link>
         </div>
-        <div className="bg-gradient-to-r from-teal-500 to-accent-500 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-r from-spark-amber to-accent-500 rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1">Content Calendar</h3>
-          <p className="text-teal-100 text-sm mb-4">
+          <p className="text-white/85 text-sm mb-4">
             View And Manage All Your Scheduled Posts Across Every Platform.
           </p>
           <Link href="/calendar">
-            <Button className="bg-white text-teal-600 hover:bg-teal-50 gap-2" size="md">
+            <Button className="bg-white text-spark-amber hover:bg-teal-50 gap-2" size="md">
               <CalendarDays size={16} /> View Calendar
             </Button>
           </Link>
