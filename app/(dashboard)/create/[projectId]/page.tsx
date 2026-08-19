@@ -1565,50 +1565,80 @@ export default function ProjectEditorPage() {
 
       {script ? (
         <div className="flex flex-col gap-4">
-          {/* Hook options */}
+          {/* Hook options — 2a. The radio circle replaces the old #1/#2
+              numbering: the hooks are alternatives, not a ranking, and numbering
+              them implied an order that was never there. */}
           <Card padding="sm">
-            <div className="flex items-center gap-2 px-2 py-1 mb-3">
-              <Sparkles size={16} className="text-secondary-500" />
-              <h3 className="font-semibold text-sm text-brand-text">Hook Options</h3>
-              <span className="text-xs text-slate-400 ml-auto">Tap to select · used to open your video</span>
+            <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
+              <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
+                HOOK — PICK ONE, THEN EDIT
+              </h3>
+              <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>
             </div>
-            <div className="flex flex-col gap-2">
-              {(script.hooks?.length ? script.hooks : [script.hook]).map((hook, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedHook(hook)}
-                  className={`flex items-start gap-3 w-full text-left rounded-xl px-3 py-2.5 border-2 transition-all group ${
-                    selectedHook === hook
-                      ? "border-primary-500 bg-primary-50"
-                      : "bg-slate-50 border-transparent hover:border-slate-200"
-                  }`}
-                >
-                  <span className={`text-xs font-bold mt-0.5 shrink-0 ${selectedHook === hook ? "text-primary-500" : "text-slate-400"}`}>
-                    #{i + 1}
-                  </span>
-                  <p className="text-sm text-slate-700 flex-1 leading-relaxed">{hook}</p>
-                  {selectedHook === hook ? (
-                    <CheckCircle size={15} className="text-primary-500 mt-0.5 shrink-0" />
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); copyToClipboard(hook, "Hook"); }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-slate-200 shrink-0"
+            <div className="flex flex-col gap-1.5">
+              {(script.hooks?.length ? script.hooks : [script.hook]).map((hook, i) => {
+                const active = selectedHook === hook;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedHook(hook)}
+                    aria-pressed={active}
+                    className={`group flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                      active
+                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                        : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 flex-none items-center justify-center rounded-full text-[9px] font-bold leading-none text-white ${
+                        active ? "bg-spark-amber" : "border-[1.5px] border-spark-rule-dim"
+                      }`}
                     >
-                      <Copy size={13} className="text-slate-400" />
-                    </button>
-                  )}
-                </button>
-              ))}
+                      {active ? "✓" : ""}
+                    </span>
+                    <p
+                      className={`min-w-0 flex-1 text-[12.5px] leading-snug ${
+                        active ? "font-medium text-spark-ink" : "text-spark-ink-soft"
+                      }`}
+                    >
+                      {hook}
+                    </p>
+                    {/* A span, not a button: this sits inside the option button
+                        and nested interactive elements are invalid markup. */}
+                    {!active && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Copy this hook"
+                        onClick={(e) => { e.stopPropagation(); copyToClipboard(hook, "Hook"); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyToClipboard(hook, "Hook");
+                          }
+                        }}
+                        className="shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-spark-rule-soft focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <Copy size={13} className="text-spark-ink-faint" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             {/* Selected hook is editable — this exact text opens the video */}
             <div className="mt-3 px-1">
-              <p className="text-xs font-medium text-slate-500 mb-1">Your hook — edit freely</p>
+              <p className="mb-1 text-[10.5px] font-medium text-spark-ink-muted">
+                Your hook — edit freely
+              </p>
               <textarea
                 value={selectedHook}
                 onChange={(e) => setSelectedHook(e.target.value)}
                 rows={2}
                 placeholder="Pick an option above or write your own opening line"
-                className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-3 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                className="w-full resize-none rounded-lg border border-spark-rule bg-white p-3 text-[12.5px] leading-relaxed text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
               />
             </div>
           </Card>
