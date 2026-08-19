@@ -162,20 +162,35 @@ function ScriptLengthWarning({
 }) {
   const cap = isLong ? LONG_CAP_WORDS : standardCap;
   if (words <= cap) return null;
+  // The fill is the share of the script that survives the clamp and the tick
+  // sits on the cap, so the empty run after it is literally what gets cut.
+  const kept = Math.max(0, Math.min(100, (cap / words) * 100));
   return (
-    <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-      <p className="text-[11px] text-amber-800 leading-relaxed">
-        Your script is <strong>{words} words</strong> (about {mins(words)} min), but a{" "}
-        {isLong ? "long video" : "standard video"} holds <strong>{cap} words</strong> (
-        {mins(cap)} min). The rest will be trimmed.
-      </p>
+    <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-[#e3c48f] bg-spark-amber-tint px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="relative h-[5px] rounded-full bg-spark-rule-soft">
+          <div
+            className="h-full rounded-full bg-spark-amber"
+            style={{ width: `${kept}%` }}
+          />
+          <div
+            className="absolute top-[-3px] h-[11px] w-[1.5px] rounded-full bg-spark-ink"
+            style={{ left: `${kept}%` }}
+            aria-hidden="true"
+          />
+        </div>
+        <p className="mt-1.5 text-[11px] leading-snug text-spark-ink-soft">
+          {words} of {cap} words for a {isLong ? "long" : "standard"} {mins(cap)}-minute
+          video — the tail will be trimmed.
+        </p>
+      </div>
       {!isLong && onSwitchToLong && (
         <button
           type="button"
           onClick={onSwitchToLong}
-          className="mt-1.5 text-[11px] font-semibold text-amber-900 underline hover:text-amber-950"
+          className="flex-none whitespace-nowrap rounded-nav bg-spark-ink px-3 py-1.5 text-[11px] font-medium text-white transition-opacity hover:opacity-85"
         >
-          Switch to Long Video (up to 8 min) →
+          Switch to 8 min
         </button>
       )}
     </div>
