@@ -20,9 +20,7 @@ import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
 import {
   ContentTemplates,
-  FormatPicker,
   TEMPLATE_COUNT,
-  VIDEO_FORMATS,
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
@@ -116,10 +114,6 @@ function CreatePageInner() {
   // Chosen BEFORE generating: the script has to be written to length, or a
   // "long" video ends up with a 2-minute script.
   const [locLength, setLocLength] = useState<"standard" | "long">("standard");
-  // Chosen video shape, kept apart from the topic on purpose — a format is a
-  // structure, so it is appended as an instruction rather than overwriting
-  // whatever the user actually said the video was about.
-  const [locFormat, setLocFormat] = useState<string | null>(null);
   // Length for AI-written teleprompter scripts (camera + paste flows). Camera
   // recordings are free and run up to 15 min, so this is the agent's choice.
   const [cameraScriptLength, setCameraScriptLength] = useState<CameraLength>("standard");
@@ -333,29 +327,24 @@ function CreatePageInner() {
   }
 
   async function handleGenerateScript() {
-    if (!locCity.trim() || !locState.trim()) {
-      return toast.error("Please enter your city and state first");
-    }
+    // No market gate any more — the topic carries its own location, and the
+    // saved market is only a fallback for topics that name no place.
     if (!locCustomTopic.trim()) {
       return toast.error("Please enter or pick a topic");
     }
-    addMarket(locCity, locState);
+    if (locationSet) addMarket(locCity, locState);
     setLocGenerating(true);
-    // The chosen shape rides along with the topic as a structural instruction,
-    // so picking a format never costs the user the subject they asked for.
-    const directive = locFormat
-      ? VIDEO_FORMATS.find((f) => f.id === locFormat)?.formatDirective
-      : undefined;
-    const topicForApi = [locCustomTopic.trim(), directive].filter(Boolean).join("\n\n");
     try {
       const res = await fetch("/api/ai/generate-location-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           videoType: "custom",
+          // A fallback only. If the topic names a place, that place wins —
+          // see buildCustomRequest in lib/api/perplexity-prompts.ts.
           city: locCity.trim(),
           state: locState.trim(),
-          customTopic: topicForApi,
+          customTopic: locCustomTopic.trim(),
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -742,18 +731,12 @@ function CreatePageInner() {
         <div className="flex flex-col gap-6">
 
           {/* ── Your setup ──
-              Market, audience and style are settings, not a step: they carry
-              over between videos and are usually already right. So they read
-              as a strip of chips, and only open into fields on Edit. */}
+              No market chip. The place comes from what you say the video is
+              about — pinning it here is what made "a market update for Blue
+              Bell" come back written about the saved home market instead.
+              Audience and style are genuine settings and stay. */}
           <div className="flex flex-col gap-3">
             <div className="spark-glass flex flex-wrap items-center gap-2.5 rounded-[11px] px-4 py-3">
-              <span
-                className={`rounded-nav bg-[#F7ECD9] px-3 py-1.5 text-[13px] font-medium text-spark-amber ${
-                  locationSet ? "" : "opacity-70"
-                }`}
-              >
-                {locationSet ? `${locCity}, ${locState.toUpperCase()}` : "Add your market"}
-              </span>
               <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
                 {locAudience || "Any audience"}
               </span>
@@ -772,79 +755,10 @@ function CreatePageInner() {
             {showSetup && (
               <Card padding="sm">
                 <div className="flex flex-col gap-4">
-                  {/* Quick-switch markets */}
-                  {savedMarkets.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {savedMarkets.map((m) => {
-                        const isActive =
-                          (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() &&
-                          (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
-                        return (
-                          <div
-                            key={`${m.city}-${m.state}`}
-                            onClick={() => { setLocCity(m.city); setLocState(m.state); }}
-                            className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                              isActive
-                                ? "border-spark-amber bg-spark-amber text-white"
-                                : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
-                            }`}
-                          >
-                            {m.city}, {m.state}
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
-                              className={`ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[12px] transition-colors ${
-                                isActive ? "text-white hover:bg-spark-blue" : "text-spark-ink-faint hover:bg-spark-rule-soft"
-                              }`}
-                              aria-label={`Remove ${m.city}, ${m.state}`}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">City</label>
-                      <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                        <input
-                          type="text"
-                          value={locCity}
-                          onChange={(e) => setLocCity(e.target.value)}
-                          placeholder="Austin"
-                          className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
-                        />
-                        <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
-                      </div>
-                    </div>
-                    <div className="w-24">
-                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">State</label>
-                      <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                        <input
-                          type="text"
-                          value={locState}
-                          onChange={(e) => setLocState(e.target.value)}
-                          placeholder="TX"
-                          maxLength={2}
-                          className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
-                        />
-                        <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {locationSet && !isMarketSaved && (
-                    <button
-                      type="button"
-                      onClick={() => addMarket(locCity, locState)}
-                      className="self-start text-[13px] font-medium text-spark-amber hover:text-spark-blue"
-                    >
-                      + Save {locCity}, {locState.toUpperCase()} for quick switching
-                    </button>
-                  )}
+                  {/* The market fields are gone on purpose. This flow gets its
+                      location from the topic; a home market saved on the
+                      profile is only the fallback for topics that name no
+                      place, and is edited in Settings. */}
 
                   <div className="grid grid-cols-1 gap-3 border-t border-spark-rule-soft pt-4 sm:grid-cols-3">
                     {[
@@ -938,11 +852,9 @@ function CreatePageInner() {
                     Step 3 of 3 · spark it
                   </p>
                   <h2 className="mt-2 text-[24px] font-bold tracking-[-0.02em] text-spark-ink">
-                    Pick a shape, then spark it
+                    How long should it be?
                   </h2>
                 </div>
-
-                <FormatPicker value={locFormat} onChange={setLocFormat} />
 
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {([
@@ -978,12 +890,12 @@ function CreatePageInner() {
                 <Button
                   onClick={handleGenerateScript}
                   loading={locGenerating}
-                  disabled={!locCustomTopic.trim() || !locationSet}
+                  disabled={!locCustomTopic.trim()}
                   size="lg"
                   className="w-full gap-2"
                 >
                   {locGenerating
-                    ? <>Sparking · researching {locCity || "your market"}…</>
+                    ? <>Sparking your script…</>
                     : <><Sparkles size={18} /> Spark My Script</>}
                 </Button>
 

@@ -17,6 +17,9 @@ interface Project {
   title: string;
   ai_script?: { hook?: string; script?: string; description?: string; hashtags?: string[] } | null;
   seo_data?: { hashtags?: string[]; youtube_title?: string } | null;
+  /** The place this video is actually about — not the profile's home market. */
+  location_city?: string | null;
+  location_state?: string | null;
 }
 
 // Ordered to match the video workflow: title & script BEFORE rendering,
@@ -368,12 +371,35 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
 
 // ─── TITLE GENERATOR ──────────────────────────────────────────────────────────
 
-function TitleGenerator() {
+function TitleGenerator({
+  projects = [],
+  initialProjectId,
+}: {
+  projects?: Project[];
+  initialProjectId?: string;
+}) {
   const [topic, setTopic] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [titles, setTitles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Picking a project fills the location from the video itself. Typing over it
+  // still wins — this is a starting point, not a lock.
+  function handleProjectSelect(project: Project | null) {
+    setProjectId(project?.id ?? "");
+    if (!project) return;
+    if (project.location_city) setCity(project.location_city);
+    if (project.location_state) setState(project.location_state);
+    if (!topic.trim()) setTopic(project.title);
+  }
+
+  useEffect(() => {
+    if (!initialProjectId || projectId) return;
+    const match = projects.find((p) => p.id === initialProjectId);
+    if (match) handleProjectSelect(match);
+  }, [initialProjectId, projects]); // eslint-disable-line
 
   const generate = async () => {
     if (!topic.trim()) { toast.error("Enter a topic"); return; }
@@ -396,6 +422,7 @@ function TitleGenerator() {
 
   return (
     <div>
+      <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
       <div className="space-y-4 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Topic or keyword</label>
@@ -452,11 +479,33 @@ function TitleGenerator() {
 
 // ─── SCRIPT GENERATOR ─────────────────────────────────────────────────────────
 
-function ScriptGenerator() {
+function ScriptGenerator({
+  projects = [],
+  initialProjectId,
+}: {
+  projects?: Project[];
+  initialProjectId?: string;
+}) {
   const [topic, setTopic] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [videoType, setVideoType] = useState("blog_video");
+
+  // Same as the title tool: the project's own location, not the home market.
+  function handleProjectSelect(project: Project | null) {
+    setProjectId(project?.id ?? "");
+    if (!project) return;
+    if (project.location_city) setCity(project.location_city);
+    if (project.location_state) setState(project.location_state);
+    if (!topic.trim()) setTopic(project.title);
+  }
+
+  useEffect(() => {
+    if (!initialProjectId || projectId) return;
+    const match = projects.find((p) => p.id === initialProjectId);
+    if (match) handleProjectSelect(match);
+  }, [initialProjectId, projects]); // eslint-disable-line
   const [result, setResult] = useState<{ hook: string; hooks: string[]; script: string; cta: string; title: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeHook, setActiveHook] = useState(0);
@@ -483,6 +532,7 @@ function ScriptGenerator() {
 
   return (
     <div>
+      <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
       <div className="space-y-4 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Video topic</label>
@@ -1539,7 +1589,7 @@ export default function ToolsPage() {
     const supabase = createClient();
     supabase
       .from("projects")
-      .select("id, title, ai_script, seo_data")
+      .select("id, title, ai_script, seo_data, location_city, location_state")
       .order("created_at", { ascending: false })
       .limit(50)
       .then(({ data }) => {
@@ -1601,8 +1651,8 @@ export default function ToolsPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6">
         {activeTab === "tags"        && <TagGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "description" && <DescriptionGenerator projects={projects} initialProjectId={initialProjectId} />}
-        {activeTab === "title"       && <TitleGenerator />}
-        {activeTab === "script"      && <ScriptGenerator />}
+        {activeTab === "title"       && <TitleGenerator projects={projects} initialProjectId={initialProjectId} />}
+        {activeTab === "script"      && <ScriptGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "channel"     && <ChannelNameGenerator />}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
         {activeTab === "banner"      && <BannerGenerator />}

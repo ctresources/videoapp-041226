@@ -2110,7 +2110,10 @@ export default function ProjectEditorPage() {
                 size="lg"
                 className="flex-1 gap-2"
               >
-                <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+                {/* Deliberately not naming the platform — the same render will
+                    publish to other channels, so "Generate YouTube" would age
+                    badly and read as generating the platform itself. */}
+                <Wand2 size={18} /> Spark Video
               </Button>
               {/* Recording is the free alternative, not a competing primary --
                   2a gives it an outline so the two stop shouting equally. */}

@@ -138,11 +138,19 @@ export async function POST(req: NextRequest) {
     company_phone?: string | null;
     website?: string | null;
   };
+  // On a custom topic the script names its own place — "a market update for
+  // Blue Bell" must not end up titled, tagged and filed under the saved home
+  // market. parsed.location is that resolved place, so everything from here
+  // down follows the script rather than the profile.
+  const [parsedCity, parsedState] = (parsed.location || "").split(",").map((s) => s.trim());
+  const scriptCity = parsedCity || city;
+  const scriptState = parsedState || state;
+
   const ytMeta = await generateYoutubeMetadata({
     title: parsed.title,
     script: parsed.script,
-    city,
-    state,
+    city: scriptCity,
+    state: scriptState,
     agentName: prof.full_name || undefined,
     brokerage: prof.company_name || undefined,
     keywords: parsed.keywords,
@@ -169,7 +177,7 @@ export async function POST(req: NextRequest) {
 
   // ── Create project row ──────────────────────────────────────────────────────
   const projectTitle = customTopic
-    ? `${customTopic} — ${city}, ${state}`
+    ? `${customTopic} — ${[scriptCity, scriptState].filter(Boolean).join(", ")}`
     : parsed.title;
 
   const { data: project, error: projectError } = await admin
@@ -179,10 +187,11 @@ export async function POST(req: NextRequest) {
       title: projectTitle,
       project_type: "location_script",
       status: "draft",
-      // The typed market, not the profile's home market — the CTA and other
-      // per-video copy must say the city this video is about.
-      location_city: city,
-      location_state: state,
+      // The place the script actually settled on, not the profile's home
+      // market — the CTA, the editor's AI Tools and every other per-video
+      // regeneration read these, so they must say the city this video is about.
+      location_city: scriptCity,
+      location_state: scriptState,
       ai_script: aiScript,
       seo_data: seoData,
     })

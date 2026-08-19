@@ -308,7 +308,13 @@ Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${
 
 function buildCustomRequest(params: LocationParams): Record<string, unknown> {
   const { city, state, zip, customTopic } = params;
-  const location = `${city}, ${state}${zip ? ` (zip ${zip})` : ""}`;
+  // The home market is a fallback here, not the subject. On a custom topic the
+  // user has usually named the place themselves — "a market update for Blue
+  // Bell" — and forcing the saved market over it produced scripts about the
+  // wrong town.
+  const fallbackLocation = city && state
+    ? `${city}, ${state}${zip ? ` (zip ${zip})` : ""}`
+    : "";
   const len = lengthSpec(params.targetWords);
 
   if (!customTopic) throw new Error("customTopic is required for custom video type");
@@ -340,10 +346,13 @@ VIDEO TITLE OPTIONS:
 
 BLOG POST INTRO: [2-3 sentences that could open a blog post about this topic in this area]
 
+PRIMARY LOCATION: [The single place this script is actually about, as "City, ST". Take it from the topic itself whenever the topic names one.]
+
 SOURCES USED: [List the domains you pulled data from]
 
 Rules:
-- Focus exclusively on ${location} — do not generalize or pull from other cities
+- THE TOPIC DECIDES THE PLACE. If the topic names a city, town, neighborhood or area, that is the location — write about it and nothing else.${fallbackLocation ? ` Only if the topic names no place at all, use ${fallbackLocation}.` : ""}
+- Once you have settled on that place, focus exclusively on it — do not generalize or pull from other cities
 - Search the web for real, current data — skip any metric you can't find rather than writing "data not available"
 - Keep language conversational and direct — write for home buyers, sellers, and residents
 - Aim for content that's genuinely useful, not just promotional
@@ -353,7 +362,7 @@ ${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
-        content: `Create a short social video script about "${customTopic}" for ${location}. Research this topic thoroughly and provide specific, factual content that would be valuable to real estate agents, buyers, and sellers in this area.`,
+        content: `Create a short social video script about "${customTopic}". The topic names the place to cover${fallbackLocation ? `; if it names none, cover ${fallbackLocation}` : ""}. Research it thoroughly and provide specific, factual content that would be valuable to real estate agents, buyers, and sellers in that area.`,
       },
     ],
     search_recency_filter: "month",
@@ -482,7 +491,7 @@ export function parseLocationScript(
     "VIDEO TITLE OPTIONS", "BLOG POST INTRO", "SOURCES USED",
     "TOP 5 REASONS TO LIVE HERE", "QUICK STATS", "WHO THIS PLACE IS PERFECT FOR",
     "TOP EVENTS THIS MONTH", "COMMUNITY VIBE", "RECURRING HIGHLIGHTS",
-    "MAIN CONTENT", "KEY TAKEAWAY",
+    "MAIN CONTENT", "KEY TAKEAWAY", "PRIMARY LOCATION",
   ];
 
   const hook = extractSection(raw, "HOOK", allHeadings.filter((h) => h !== "HOOK"));
@@ -532,13 +541,41 @@ export function parseLocationScript(
   }
   const script = sanitizeNarration(narrationSections.filter(Boolean).join("\n\n"));
 
+  // On a custom topic the script decides its own place — the saved market is
+  // only a fallback. Everything downstream (CTA, title, hashtags, keywords)
+  // has to follow the script, or the video talks about one town while its
+  // metadata and closing line name another.
+  const reportedLocation = extractSection(raw, "PRIMARY LOCATION", allHeadings)
+    .split("\n")[0]
+    .replace(/^[-•*]\s*/, "")
+    .trim();
+  // Guards against the model answering with a sentence or a "not specified"
+  // apology instead of a place — either would end up in the title, the
+  // hashtags and the spoken CTA. A place name is a couple of words per
+  // segment, so anything longer is prose. Deliberately not using \p{L}: the
+  // build target predates the unicode flag.
+  const looksLikePlace = (() => {
+    const candidate = reportedLocation.replace(/\.$/, "").trim();
+    if (!candidate || candidate.length > 60) return false;
+    if (/\b(not specified|unspecified|none|n\/a|unknown|various|multiple)\b/i.test(candidate)) return false;
+    const segments = candidate.split(",").map((s) => s.trim());
+    if (segments.length > 2) return false;
+    return segments.every(
+      (seg) => /^[A-Za-zÀ-ÿ\s.'-]{2,40}$/.test(seg) && seg.split(/\s+/).length <= 4,
+    );
+  })();
+  const scriptLocation =
+    videoType === "custom" && looksLikePlace ? reportedLocation : [city, state].filter(Boolean).join(", ");
+  // Bare city, for the copy that reads "…in {city}" rather than "City, ST"
+  const scriptCity = scriptLocation.split(",")[0].trim() || city;
+
   // City only — this is spoken, and the narration rule above says the same.
   // A hardcoded fallback is not bound by a prompt instruction, so it has to
   // drop the state itself or it reintroduces exactly what the rule removes.
   const cta = extractSection(raw, "CALL TO ACTION", allHeadings) ||
     (agentName
-      ? `Contact ${agentName} today to learn more about ${city}!`
-      : `Reach out today to learn more about ${city}!`);
+      ? `Contact ${agentName} today to learn more about ${scriptCity}!`
+      : `Reach out today to learn more about ${scriptCity}!`);
 
   const blogIntro = extractSection(raw, "BLOG POST INTRO", allHeadings);
   const sourcesRaw = extractSection(raw, "SOURCES USED", []);
@@ -553,7 +590,7 @@ export function parseLocationScript(
     market_update: `Market Update: ${city}, ${state}`,
     why_live_here: `Why Live in ${city}, ${state}`,
     community_events: `Events in ${city}, ${state}`,
-    custom: `${city}, ${state}`,
+    custom: scriptLocation,
   };
   const primaryTitle = titleLines[0] || defaultTitle[videoType];
 
@@ -564,20 +601,22 @@ export function parseLocationScript(
     community_events: ["LocalEvents", "CommunityEvents", "ThingsToDo", "WeekendEvents", "LocalLife"],
     custom: ["RealEstate", "LocalInfo", "RealEstateTips", "HomeBuyers", "Community"],
   };
+  const tagCity = scriptCity.replace(/\s+/g, "");
+  const tagState = (scriptLocation.split(",")[1] ?? state).trim();
   const locationHashtags = [
-    city.replace(/\s+/g, ""),
-    state,
-    `${city.replace(/\s+/g, "")}RealEstate`,
-    `${city.replace(/\s+/g, "")}Homes`,
-  ];
+    tagCity,
+    tagState,
+    `${tagCity}RealEstate`,
+    `${tagCity}Homes`,
+  ].filter(Boolean);
   const hashtags = [...baseHashtags[videoType], ...locationHashtags];
 
   const keywords = [
-    `${city} ${state} real estate`,
-    `homes for sale ${city}`,
-    `${city} housing market`,
-    `real estate agent ${city}`,
-    `${city} neighborhood`,
+    `${scriptCity} ${tagState} real estate`.trim(),
+    `homes for sale ${scriptCity}`,
+    `${scriptCity} housing market`,
+    `real estate agent ${scriptCity}`,
+    `${scriptCity} neighborhood`,
   ];
 
   const sources = sourcesRaw
@@ -600,6 +639,6 @@ export function parseLocationScript(
     sources,
     raw,
     video_type: videoType,
-    location: `${city}, ${state}`,
+    location: scriptLocation,
   };
 }

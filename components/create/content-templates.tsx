@@ -426,45 +426,8 @@ export function SectionHead({
   );
 }
 
-/** The six video shapes. A format modifies the topic; it never replaces it. */
+/** The six video shapes — topic ideas in their own right, not a modifier. */
 export const VIDEO_FORMATS = CONTENT_TEMPLATES.filter((t) => t.category === "format");
-
-interface FormatPickerProps {
-  /** Currently chosen format id, or null for "let the AI decide". */
-  value: string | null;
-  onChange: (id: string | null) => void;
-}
-
-export function FormatPicker({ value, onChange }: FormatPickerProps) {
-  return (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-      {[null, ...VIDEO_FORMATS.map((f) => f.id)].map((id) => {
-        const format = id ? VIDEO_FORMATS.find((f) => f.id === id)! : null;
-        const active = value === id;
-        return (
-          <button
-            key={id ?? "auto"}
-            type="button"
-            onClick={() => onChange(id)}
-            aria-pressed={active}
-            className={`flex flex-col gap-1 rounded-[9px] px-3.5 py-3 text-left transition-colors ${
-              active
-                ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-            }`}
-          >
-            <span className="text-[14px] font-medium text-spark-ink">
-              {format ? format.label : "Let the AI choose"}
-            </span>
-            <span className="text-[12.5px] leading-[1.4] text-spark-ink-faint">
-              {format ? format.description : "Whatever fits the topic best"}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function ContentTemplates({
   onSelect,
@@ -484,15 +447,35 @@ export function ContentTemplates({
 
   return (
     <div id="topic-templates" className="flex flex-col gap-5 scroll-mt-6">
+      {/* ── Video formats ──
+          These are topic ideas like any other — a shape you can make a video
+          about — so they sit with the templates rather than in a separate
+          step. Tapping one fills the topic. */}
+      <div className="flex flex-col gap-2.5">
+        <SectionHead label="Video formats" />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {VIDEO_FORMATS.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onSelect(resolve(template))}
+              className="flex flex-col gap-1 rounded-[9px] border border-spark-rule bg-white px-3.5 py-3 text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
+            >
+              <span className="text-[14px] font-medium text-spark-ink">{template.label}</span>
+              <span className="text-[12.5px] leading-[1.4] text-spark-ink-faint">
+                {template.description}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <SectionHead
         label="More topic ideas"
         action={expanded ? "Hide them" : `Browse all ${TEMPLATE_COUNT} ›`}
         onAction={onToggleExpanded}
       />
 
-      {/* Formats are deliberately absent here — they are a shape, not a
-          subject, so they belong to the "how should it look" step once a
-          topic exists rather than to the topic browser. */}
       {expanded && (
         <div className="flex flex-col gap-5">
           {!hasLocation && (
