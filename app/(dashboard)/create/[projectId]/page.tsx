@@ -959,34 +959,37 @@ export default function ProjectEditorPage() {
 
   function renderModeSelector() {
     return (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-[7px]">
         {/* No asterisk: a style is always set now, so nothing is being demanded. */}
-        <p className="text-xs font-bold text-slate-600">Your Video Style</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setRenderMode("voice_only")}
-            className={`flex flex-col items-start gap-1 rounded-xl border-2 px-3 py-3 text-left transition-all ${
-              renderMode === "voice_only"
-                ? "border-blue-500 bg-blue-50"
-                : "border-slate-200 bg-white hover:border-blue-300"
-            }`}
-          >
-            <span className="text-sm font-semibold text-slate-800">🎙️ Voice Only</span>
-            <span className="text-xs text-slate-500 leading-snug">AI generates b-roll scenes from your script — voice narrates, no avatar on screen</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setRenderMode("avatar_voice")}
-            className={`flex flex-col items-start gap-1 rounded-xl border-2 px-3 py-3 text-left transition-all ${
-              renderMode === "avatar_voice"
-                ? "border-primary-500 bg-primary-50"
-                : "border-slate-200 bg-white hover:border-primary-300"
-            }`}
-          >
-            <span className="text-sm font-semibold text-slate-800">🎥 Avatar + Voice</span>
-            <span className="text-xs text-slate-500 leading-snug">AI generates b-roll from your script with your avatar on screen — pick a look below</span>
-          </button>
+        <p className="spark-eyebrow text-[9px] tracking-[0.12em]">WHO&rsquo;S ON SCREEN</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {[
+            {
+              mode: "voice_only" as const,
+              label: "Voice only",
+              desc: "B-roll from your script, no face on screen",
+            },
+            {
+              mode: "avatar_voice" as const,
+              label: "Avatar + voice",
+              desc: "Your look on screen — pick one below",
+            },
+          ].map(({ mode, label, desc }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setRenderMode(mode)}
+              aria-pressed={renderMode === mode}
+              className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
+                renderMode === mode
+                  ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                  : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+              }`}
+            >
+              <span className="text-[11.5px] font-medium text-spark-ink">{label}</span>
+              <span className="text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</span>
+            </button>
+          ))}
         </div>
       </div>
     );
