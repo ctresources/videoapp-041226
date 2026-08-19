@@ -18,7 +18,12 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { TopicRadar } from "@/components/create/topic-radar";
-import { ContentTemplates, TEMPLATE_COUNT } from "@/components/create/content-templates";
+import {
+  ContentTemplates,
+  FormatPicker,
+  TEMPLATE_COUNT,
+  VIDEO_FORMATS,
+} from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
@@ -111,6 +116,10 @@ function CreatePageInner() {
   // Chosen BEFORE generating: the script has to be written to length, or a
   // "long" video ends up with a 2-minute script.
   const [locLength, setLocLength] = useState<"standard" | "long">("standard");
+  // Chosen video shape, kept apart from the topic on purpose — a format is a
+  // structure, so it is appended as an instruction rather than overwriting
+  // whatever the user actually said the video was about.
+  const [locFormat, setLocFormat] = useState<string | null>(null);
   // Length for AI-written teleprompter scripts (camera + paste flows). Camera
   // recordings are free and run up to 15 min, so this is the agent's choice.
   const [cameraScriptLength, setCameraScriptLength] = useState<CameraLength>("standard");
@@ -332,6 +341,12 @@ function CreatePageInner() {
     }
     addMarket(locCity, locState);
     setLocGenerating(true);
+    // The chosen shape rides along with the topic as a structural instruction,
+    // so picking a format never costs the user the subject they asked for.
+    const directive = locFormat
+      ? VIDEO_FORMATS.find((f) => f.id === locFormat)?.formatDirective
+      : undefined;
+    const topicForApi = [locCustomTopic.trim(), directive].filter(Boolean).join("\n\n");
     try {
       const res = await fetch("/api/ai/generate-location-script", {
         method: "POST",
@@ -340,7 +355,7 @@ function CreatePageInner() {
           videoType: "custom",
           city: locCity.trim(),
           state: locState.trim(),
-          customTopic: locCustomTopic.trim(),
+          customTopic: topicForApi,
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -349,7 +364,7 @@ function CreatePageInner() {
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || `Script generation failed (${res.status})`);
-      toast.success("Script ready!");
+      toast.success("Sparked — your script is ready to review.");
       router.push(`/create/${(data.project as { id: string }).id}?source=location`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -572,6 +587,9 @@ function CreatePageInner() {
   // with trending and formats, not all 29 templates at once.
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  // Lets the user reopen the mic after a topic is captured. Without it the page
+  // would collapse the hero the moment the first word came back.
+  const [editingTopic, setEditingTopic] = useState(false);
 
   function openTemplates() {
     setTemplatesOpen(true);
@@ -590,6 +608,9 @@ function CreatePageInner() {
   // Nothing can be generated without a market, so a first run opens the panel
   // rather than leaving the user to find "Edit".
   const showSetup = setupOpen || !locationSet;
+  // Drives the whole flow: while false the page is only about the topic, and
+  // once true it is only about how the video should look.
+  const topicSettled = !!locCustomTopic.trim() && !editingTopic;
 
   return (
     // Every tab fills the full content width — the AI-script step lays out as
@@ -642,10 +663,10 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="mb-5 flex flex-col gap-[11px]">
           <div className="flex items-center justify-between gap-3">
-            <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-amber">
-              Step 1 of 3 · choose how to create
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
+              Step 1 of 3 · choose how to start
             </p>
-            <p className="flex flex-none items-center gap-[7px] text-[11px] text-spark-ink-faint">
+            <p className="flex flex-none items-center gap-[7px] text-[13px] text-spark-ink-faint">
               <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-spark-amber">
                 <span className="block h-[6px] w-[3px] rounded-full bg-white" />
               </span>
@@ -670,7 +691,7 @@ function CreatePageInner() {
               {
                 mode: "camera" as InputMode,
                 label: "Use Camera",
-                desc: "Teleprompter, record yourself",
+                desc: "Teleprompter — speak it on camera",
                 meta: "Free · unlimited",
               },
             ].map(({ mode, label, desc, meta }) => {
@@ -701,12 +722,12 @@ function CreatePageInner() {
                     >
                       {active ? "✓" : ""}
                     </span>
-                    <span className="text-[13px] font-medium text-spark-ink">{label}</span>
+                    <span className="text-[15px] font-medium text-spark-ink">{label}</span>
                   </span>
-                  <span className="block pl-[26px] text-[11.5px] leading-[1.45] text-spark-ink-muted">
+                  <span className="block pl-[26px] text-[13px] leading-[1.45] text-spark-ink-muted">
                     {desc}
                   </span>
-                  <span className="block pl-[26px] text-[10.5px] text-spark-ink-faint">{meta}</span>
+                  <span className="block pl-[26px] text-[12px] text-spark-ink-faint">{meta}</span>
                 </button>
               );
             })}
@@ -718,128 +739,114 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
 
-          {/* ── Step 2 · Your topic ──
-              The design makes speaking the topic the whole step: a 92px mic,
-              the waveform, and the sentence building underneath it. Typing is
-              still there, but behind "type it instead" — it is the fallback
-              now, not the default. */}
-          <div className="flex flex-col gap-5">
-            <VoiceTopicHero
-              value={locCustomTopic}
-              onChange={setLocCustomTopic}
-              onSubmit={() => { if (!locGenerating) handleGenerateScript(); }}
-              onBrowseTemplates={openTemplates}
-              templateCount={TEMPLATE_COUNT}
-              disabled={locGenerating}
-            />
+          {/* ── Your setup ──
+              Market, audience and style are settings, not a step: they carry
+              over between videos and are usually already right. So they read
+              as a strip of chips, and only open into fields on Edit. */}
+          <div className="flex flex-col gap-3">
+            <div className="spark-glass flex flex-wrap items-center gap-2.5 rounded-[11px] px-4 py-3">
+              <span
+                className={`rounded-nav bg-[#F7ECD9] px-3 py-1.5 text-[13px] font-medium text-spark-amber ${
+                  locationSet ? "" : "opacity-70"
+                }`}
+              >
+                {locationSet ? `${locCity}, ${locState.toUpperCase()}` : "Add your market"}
+              </span>
+              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
+                {locAudience || "Any audience"}
+              </span>
+              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
+                {locTone || "Any style"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSetupOpen((o) => !o)}
+                className="text-[13px] font-medium text-spark-amber underline hover:text-spark-blue"
+              >
+                {showSetup ? "Done" : "Edit"}
+              </button>
+            </div>
 
-            {/* Trending leads, formats follow, and the full browser sits behind
-                "See all templates" on either heading. */}
-            <TopicRadar
-              city={locCity || undefined}
-              state={locState || undefined}
-              onSelect={(topic) => setLocCustomTopic(topic)}
-              onSeeAll={openTemplates}
-            />
-            <ContentTemplates
-              city={locCity}
-              state={locState}
-              onSelect={(template) => setLocCustomTopic(template.topic)}
-              expanded={templatesOpen}
-              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
-            />
-          </div>
-
-          {/* ── Video setup ──
-              Market, length and audience are not a step in this design: they
-              sit in the summary bar below as chips, and open here on Edit.
-              A first run has no market yet, so it starts open. */}
-          {showSetup && (
-            <Card padding="sm">
-              <p className="mb-3 font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
-                Video setup
-              </p>
-              <div>
-
-                {/* Saved market chips */}
-                {savedMarkets.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {savedMarkets.map((m) => {
-                      const isActive = (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
-                      return (
-                        <div
-                          key={`${m.city}-${m.state}`}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                            isActive
-                              ? "bg-spark-amber text-white border-spark-amber"
-                              : "bg-white text-spark-ink-soft border-spark-rule hover:border-spark-amber hover:text-spark-amber"
-                          }`}
-                          onClick={() => { setLocCity(m.city); setLocState(m.state); }}
-                        >
-                          📍 {m.city}, {m.state}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
-                            className={`ml-0.5 rounded-full w-4 h-4 flex items-center justify-center text-[10px] transition-colors ${
-                              isActive ? "hover:bg-spark-blue text-white" : "hover:bg-spark-rule-soft text-spark-ink-faint"
+            {showSetup && (
+              <Card padding="sm">
+                <div className="flex flex-col gap-4">
+                  {/* Quick-switch markets */}
+                  {savedMarkets.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {savedMarkets.map((m) => {
+                        const isActive =
+                          (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() &&
+                          (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
+                        return (
+                          <div
+                            key={`${m.city}-${m.state}`}
+                            onClick={() => { setLocCity(m.city); setLocState(m.state); }}
+                            className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                              isActive
+                                ? "border-spark-amber bg-spark-amber text-white"
+                                : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
                             }`}
                           >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                            {m.city}, {m.state}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
+                              className={`ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[12px] transition-colors ${
+                                isActive ? "text-white hover:bg-spark-blue" : "text-spark-ink-faint hover:bg-spark-rule-soft"
+                              }`}
+                              aria-label={`Remove ${m.city}, ${m.state}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                {/* City + State inputs */}
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-sm font-bold text-slate-600 block mb-1">City *</label>
-                    <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                      <input
-                        type="text"
-                        value={locCity}
-                        onChange={(e) => setLocCity(e.target.value)}
-                        placeholder="Austin"
-                        className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none min-w-0"
-                      />
-                      <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">City</label>
+                      <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                        <input
+                          type="text"
+                          value={locCity}
+                          onChange={(e) => setLocCity(e.target.value)}
+                          placeholder="Austin"
+                          className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                        />
+                        <FieldMic onTranscript={(t) => setLocCity(t.split(/[\s,]+/)[0].trim())} title="Say your city" />
+                      </div>
+                    </div>
+                    <div className="w-24">
+                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">State</label>
+                      <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                        <input
+                          type="text"
+                          value={locState}
+                          onChange={(e) => setLocState(e.target.value)}
+                          placeholder="TX"
+                          maxLength={2}
+                          className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                        />
+                        <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
+                      </div>
                     </div>
                   </div>
-                  <div className="w-20">
-                    <label className="text-sm font-bold text-slate-600 block mb-1">State *</label>
-                    <div className="flex items-center border border-slate-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-spark-amber">
-                      <input
-                        type="text"
-                        value={locState}
-                        onChange={(e) => setLocState(e.target.value)}
-                        placeholder="TX"
-                        maxLength={2}
-                        className="flex-1 text-base px-3 py-2.5 bg-transparent focus:outline-none uppercase min-w-0"
-                      />
-                      <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say your state" />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Save market hint */}
-                {locationSet && !isMarketSaved && (
-                  <button
-                    type="button"
-                    onClick={() => addMarket(locCity, locState)}
-                    className="mt-2 text-xs text-spark-amber hover:text-spark-blue font-medium flex items-center gap-1"
-                  >
-                    + Save {locCity}, {locState} As A Quick-Switch Market
-                  </button>
-                )}
+                  {locationSet && !isMarketSaved && (
+                    <button
+                      type="button"
+                      onClick={() => addMarket(locCity, locState)}
+                      className="self-start text-[13px] font-medium text-spark-amber hover:text-spark-blue"
+                    >
+                      + Save {locCity}, {locState.toUpperCase()} for quick switching
+                    </button>
+                  )}
 
-                {/* Advanced options — part of Step 1 setup, always visible */}
-                <div className="border-t border-slate-200 mt-3 pt-3">
-                  <p className="text-sm font-bold text-slate-600 mb-2">Advanced Options (Audience, Style, CTA)</p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 border-t border-spark-rule-soft pt-4 sm:grid-cols-3">
                     {[
                       {
                         label: "Audience", value: locAudience, set: setLocAudience,
@@ -850,104 +857,144 @@ function CreatePageInner() {
                         options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
                       },
                       {
-                        label: "CTA", value: locCta, set: setLocCta,
+                        label: "Call to action", value: locCta, set: setLocCta,
                         options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
                       },
                     ].map(({ label, value, set, options }) => (
                       <div key={label}>
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide block mb-1">{label}</label>
+                        <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">{label}</label>
                         <div className="relative">
                           <select
                             value={value}
                             onChange={(e) => set(e.target.value)}
-                            className="w-full text-sm px-2 py-2 border border-slate-200 rounded-lg bg-white appearance-none pr-6 focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                            className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
                           >
                             {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                           </select>
-                          <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Video length — chosen up front so the AI writes to the right length */}
-                <div className="border-t border-slate-200 mt-3 pt-3">
-                  <p className="text-sm font-bold text-slate-600 mb-2">Video Length</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([
-                      { v: "standard", title: "Standard", sub: "Up to 4 min", note: "Automatic b-roll" },
-                      { v: "long", title: "Long Video", sub: "Up to 8 min", note: "Uses your photos for visuals" },
-                    ] as const).map(({ v, title, sub, note }) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setLocLength(v)}
-                        className={`text-left p-3 rounded-xl border-2 transition-colors ${
-                          locLength === v
-                            ? "border-spark-amber bg-emerald-50"
-                            : "border-slate-200 hover:border-slate-300 bg-white"
-                        }`}
-                      >
-                        <p className="text-sm font-bold text-brand-text">{title} <span className="font-normal text-slate-500">· {sub}</span></p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{note}</p>
-                      </button>
-                    ))}
-                  </div>
-                  {locLength === "long" && (
-                    <p className="text-[11px] text-amber-600 mt-2">
-                      We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as the visuals — you&apos;ll add them on the next screen.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* ── Summary bar ──
-              The brief, reduced to chips, with the generate action on the far
-              right. This is where the old numbered "Generate the script" step
-              went — the design carries it as a footer, not a third block. */}
-          <div className="spark-glass flex flex-wrap items-center justify-between gap-3 rounded-[11px] px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span
-                className={`rounded-nav bg-[#F7ECD9] px-2.5 py-[5px] text-[11.5px] font-medium text-spark-amber ${
-                  locationSet ? "" : "opacity-70"
-                }`}
-              >
-                {locationSet ? `${locCity}, ${locState.toUpperCase()}` : "Add your market"}
-              </span>
-              <span className="spark-surface rounded-nav px-2.5 py-[5px] text-[11.5px] text-spark-ink-muted">
-                {locLength === "long" ? "Long · up to 8 min" : "Standard · up to 4 min"}
-              </span>
-              <span className="spark-surface rounded-nav px-2.5 py-[5px] text-[11.5px] text-spark-ink-muted">
-                {locAudience || "Any audience"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSetupOpen((o) => !o)}
-                className="text-[11.5px] font-medium text-spark-amber underline hover:text-spark-blue"
-              >
-                {showSetup ? "Done" : "Edit"}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="hidden text-[11.5px] text-spark-ink-faint sm:block">
-                Step 3: review the script
-              </span>
-              <Button
-                onClick={handleGenerateScript}
-                loading={locGenerating}
-                disabled={!locCustomTopic.trim() || !locationSet}
-                className="gap-2"
-              >
-                {locGenerating
-                  ? <>Researching {locCity || "your market"}…</>
-                  : <><Sparkles size={16} /> Generate My Script</>}
-              </Button>
-            </div>
+              </Card>
+            )}
           </div>
+
+          {/* ── Step 2 · Your topic ──
+              While there is no topic, this is the only thing on screen worth
+              looking at. Once one is captured it collapses to a single line so
+              step 3 can take the focus. */}
+          {!topicSettled ? (
+            <div className="flex flex-col gap-5">
+              <VoiceTopicHero
+                value={locCustomTopic}
+                onChange={setLocCustomTopic}
+                onSubmit={() => setEditingTopic(false)}
+                onCaptured={() => setEditingTopic(false)}
+                onBrowseTemplates={openTemplates}
+                templateCount={TEMPLATE_COUNT}
+                disabled={locGenerating}
+              />
+
+              <TopicRadar
+                city={locCity || undefined}
+                state={locState || undefined}
+                onSelect={(topic) => { setLocCustomTopic(topic); setEditingTopic(false); }}
+                onSeeAll={openTemplates}
+              />
+              <ContentTemplates
+                city={locCity}
+                state={locState}
+                onSelect={(template) => { setLocCustomTopic(template.topic); setEditingTopic(false); }}
+                expanded={templatesOpen}
+                onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
+              />
+            </div>
+          ) : (
+            <>
+              {/* The captured topic — the "got it" the flow was missing */}
+              <div className="spark-glass flex flex-wrap items-start gap-3 rounded-[11px] px-4 py-3.5">
+                <span className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-spark-amber text-[12px] font-bold leading-none text-white">
+                  ✓
+                </span>
+                <p className="min-w-0 flex-1 text-[16px] leading-[1.45] text-spark-ink">
+                  {locCustomTopic}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEditingTopic(true)}
+                  className="flex-none text-[13px] font-medium text-spark-amber underline hover:text-spark-blue"
+                >
+                  Change topic
+                </button>
+              </div>
+
+              {/* ── Step 3 · How it should look ── */}
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
+                    <span className="block h-1 w-1 rounded-full bg-spark-amber" />
+                    Step 3 of 3 · spark it
+                  </p>
+                  <h2 className="mt-2 text-[24px] font-bold tracking-[-0.02em] text-spark-ink">
+                    Pick a shape, then spark it
+                  </h2>
+                </div>
+
+                <FormatPicker value={locFormat} onChange={setLocFormat} />
+
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {([
+                    { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
+                    { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
+                  ] as const).map(({ v, title, sub, note }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setLocLength(v)}
+                      aria-pressed={locLength === v}
+                      className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
+                        locLength === v
+                          ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                          : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      <p className="text-[14px] font-medium text-spark-ink">
+                        {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
+                      </p>
+                      <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {locLength === "long" && (
+                  <p className="rounded-[9px] border border-spark-rule bg-spark-amber-tint px-3.5 py-2.5 text-[13px] leading-[1.5] text-spark-ink-muted">
+                    We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as
+                    the visuals — you&apos;ll add them on the next screen.
+                  </p>
+                )}
+
+                <Button
+                  onClick={handleGenerateScript}
+                  loading={locGenerating}
+                  disabled={!locCustomTopic.trim() || !locationSet}
+                  size="lg"
+                  className="w-full gap-2"
+                >
+                  {locGenerating
+                    ? <>Sparking · researching {locCity || "your market"}…</>
+                    : <><Sparkles size={18} /> Spark My Script</>}
+                </Button>
+
+                <p className="text-center text-[13px] text-spark-ink-faint">
+                  {locationSet
+                    ? "Next: review the script, then share it straight to social."
+                    : "Add your market above first — the script is written around it."}
+                </p>
+              </div>
+            </>
+          )}
 
         </div>
       )}

@@ -80,7 +80,7 @@ export function TopicRadar({ city, state, onSelect, onSeeAll }: Props) {
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
+        <p className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
           Trending in {market || "your market"}
           <button
             type="button"
@@ -96,7 +96,7 @@ export function TopicRadar({ city, state, onSelect, onSeeAll }: Props) {
           <button
             type="button"
             onClick={onSeeAll}
-            className="flex-none text-[11.5px] font-medium text-spark-amber hover:text-spark-blue"
+            className="flex-none text-[13px] font-medium text-spark-amber hover:text-spark-blue"
           >
             See all templates ›
           </button>
@@ -104,7 +104,7 @@ export function TopicRadar({ city, state, onSelect, onSeeAll }: Props) {
       </div>
 
       {loading && safeTopics.length === 0 && (
-        <div className="flex items-center gap-2 py-2 text-[11.5px] text-spark-ink-faint">
+        <div className="flex items-center gap-2 py-2 text-[13px] text-spark-ink-faint">
           <Loader2 size={12} className="animate-spin text-spark-amber" />
           Scanning your market for trending topics…
         </div>
@@ -119,13 +119,13 @@ export function TopicRadar({ city, state, onSelect, onSeeAll }: Props) {
               onClick={() => onSelect?.(t.customTopic || t.title)}
               className="flex flex-col gap-1 rounded-[9px] border border-spark-rule bg-white px-3.5 py-3 text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
             >
-              <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-spark-amber">
+              <span className="font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-spark-amber">
                 {t.category?.trim() || TYPE_LABELS[t.videoType] || "TRENDING NOW"}
               </span>
-              <span className="text-[12.5px] font-medium leading-[1.35] text-spark-ink">
+              <span className="text-[14px] font-medium leading-[1.35] text-spark-ink">
                 {t.title}
               </span>
-              <span className="text-[11px] leading-[1.4] text-spark-ink-faint">
+              <span className="text-[12.5px] leading-[1.4] text-spark-ink-faint">
                 {t.reason}
               </span>
             </button>

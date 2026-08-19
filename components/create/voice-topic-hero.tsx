@@ -18,8 +18,14 @@ const BAR_HEIGHTS = [9, 17, 26, 14, 31, 22, 34, 12, 27, 19, 30, 11, 24, 16, 28, 
 interface VoiceTopicHeroProps {
   value: string;
   onChange: (text: string) => void;
-  /** Enter in the typed field, or the mic finishing with text captured. */
+  /** Enter in the typed field. */
   onSubmit?: () => void;
+  /**
+   * Fired once a recording session ends having captured something. This is the
+   * "got it" beat — the page uses it to move on, which is why it can't just
+   * watch `value`: that fills word by word while the user is still talking.
+   */
+  onCaptured?: () => void;
   /** Jumps to the template browser below. */
   onBrowseTemplates?: () => void;
   /** How many templates the browser holds — the design writes the count into the link. */
@@ -31,6 +37,7 @@ export function VoiceTopicHero({
   value,
   onChange,
   onSubmit,
+  onCaptured,
   onBrowseTemplates,
   templateCount = 30,
   disabled = false,
@@ -47,6 +54,10 @@ export function VoiceTopicHero({
   // sentence so far rather than replacing it.
   const baseRef = useRef("");
   const gotResultRef = useRef(false);
+  // Held in a ref so `stop` can stay dependency-free and still call the
+  // latest handler rather than the one from the render that started the session.
+  const onCapturedRef = useRef(onCaptured);
+  onCapturedRef.current = onCaptured;
 
   const stop = useCallback((showHint = false) => {
     if (timeoutRef.current) {
@@ -105,7 +116,11 @@ export function VoiceTopicHero({
       setInterim(pending.trim());
     };
 
-    recognition.onend = () => stop(/* showHint= */ !gotResultRef.current);
+    recognition.onend = () => {
+      const captured = gotResultRef.current;
+      stop(/* showHint= */ !captured);
+      if (captured) onCapturedRef.current?.();
+    };
 
     recognition.onerror = (e: { error: string }) => {
       // `aborted` is what fires when we stop the session ourselves — not a fault
@@ -169,16 +184,16 @@ export function VoiceTopicHero({
     ? "Listening… hold Space or click to stop"
     : hasText
       ? "Tap the mic to add more, or edit it below"
-      : "Tap the mic, or hold Space, and say your topic";
+      : "Tap the mic, or hold Space, and speak your topic";
 
   return (
     <div className="spark-glass flex flex-col items-center gap-4 rounded-[14px] px-6 py-7 sm:px-[34px] sm:pb-[26px] sm:pt-[30px]">
-      <p className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-spark-amber">
+      <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
         <span className="block h-1 w-1 rounded-full bg-spark-amber" />
-        Step 2 of 3 · say your topic
+        Step 2 of 3 · speak your topic
       </p>
 
-      <h2 className="text-balance text-center text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">
+      <h2 className="text-balance text-center text-[30px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">
         What&rsquo;s this video about?
       </h2>
 
@@ -207,7 +222,7 @@ export function VoiceTopicHero({
         </span>
       </button>
 
-      <p className="text-center text-[12px] font-medium text-spark-ink-muted">{status}</p>
+      <p className="text-center text-[13.5px] font-medium text-spark-ink-muted">{status}</p>
 
       <div className="flex h-[34px] items-center gap-[3px]" aria-hidden="true">
         {BAR_HEIGHTS.map((h, i) => (
@@ -229,7 +244,7 @@ export function VoiceTopicHero({
       {/* Transcript. Committed words in ink, the recogniser's uncommitted tail
           greyed behind them — the same two-tone treatment as the design. */}
       {(hasText || listening) && (
-        <div className="spark-surface w-full max-w-[620px] rounded-[10px] border border-spark-rule px-4 py-[13px] text-left text-[14px] leading-[1.5] text-spark-ink">
+        <div className="spark-surface w-full max-w-[620px] rounded-[10px] border border-spark-rule px-4 py-[13px] text-left text-[17px] leading-[1.5] text-spark-ink">
           {value.trim()}
           {interim && <span className="text-spark-ink-faint">{value.trim() ? " " : ""}{interim}</span>}
           {!hasText && <span className="text-spark-ink-faint">Listening…</span>}
@@ -247,11 +262,11 @@ export function VoiceTopicHero({
             if (e.key === "Enter" && !disabled) onSubmit?.();
           }}
           placeholder="e.g. Why buyers have more leverage this fall"
-          className="w-full max-w-[620px] rounded-[10px] border border-spark-rule bg-white px-4 py-[13px] text-[14px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber"
+          className="w-full max-w-[620px] rounded-[10px] border border-spark-rule bg-white px-4 py-[13px] text-[17px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber"
         />
       )}
 
-      <div className="flex flex-wrap items-center justify-center gap-3 text-[11.5px] text-spark-ink-faint">
+      <div className="flex flex-wrap items-center justify-center gap-3 text-[13px] text-spark-ink-faint">
         <span>or</span>
         <button
           type="button"
