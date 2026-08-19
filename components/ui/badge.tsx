@@ -8,13 +8,17 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 export function Badge({ variant = "default", className, children, ...props }: BadgeProps) {
+  // Neutral and brand variants move onto the warm palette. Success, warning and
+  // error stay recognisably semantic — a green or red badge carries meaning a
+  // reader already knows how to read, and repainting those in brand colours
+  // would cost more than the consistency gains.
   const variants: Record<BadgeVariant, string> = {
-    default: "bg-slate-100 text-slate-600",
-    success: "bg-green-100 text-green-700",
-    warning: "bg-yellow-100 text-yellow-700",
-    error: "bg-red-100 text-red-600",
-    info: "bg-blue-100 text-blue-700",
-    purple: "bg-purple-100 text-purple-700",
+    default: "bg-spark-rule-soft text-spark-ink-muted",
+    success: "bg-emerald-50 text-emerald-700",
+    warning: "bg-amber-50 text-amber-700",
+    error: "bg-red-50 text-red-600",
+    info: "bg-spark-blue/10 text-spark-blue",
+    purple: "bg-spark-amber-tint text-spark-amber",
   };
 
   return (
