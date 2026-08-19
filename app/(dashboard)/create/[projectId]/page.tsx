@@ -1779,33 +1779,34 @@ export default function ProjectEditorPage() {
 
           {/* Generate video */}
           <Card>
-            <div className="flex items-center gap-2 mb-4">
-              <Video size={18} className="text-primary-500" />
-              <h3 className="font-semibold text-brand-text">Generate Video</h3>
+            <div className="mb-4">
+              <h3 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Video setup</h3>
+              <p className="mt-0.5 text-[11px] text-spark-ink-faint">A few choices, then generate</p>
             </div>
 
             {/* Video format selector */}
-            <p className="text-xs font-medium text-slate-500 mb-2">Video Format</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">FORMAT</p>
+            <div className="mb-5 grid grid-cols-2 gap-1.5">
               {videoTypes.map(({ value, label, desc, proOnly }) => (
                 <button
                   key={value}
                   onClick={() => setSelectedVideoType(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                  aria-pressed={selectedVideoType === value}
+                  className={`rounded-lg px-2.5 py-2.5 text-left transition-colors ${
                     selectedVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                      : "border border-spark-rule bg-white hover:border-spark-rule-dim"
                   } ${proOnly ? "col-span-2" : ""}`}
                 >
-                  <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
+                  <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium text-spark-ink">
                     {label}
                     {proOnly && (
-                      <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                        {longFormIncluded ? "Included In Your Plan" : "Add Credits"}
+                      <span className="rounded bg-spark-amber-tint px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.06em] text-spark-amber">
+                        {longFormIncluded ? "In your plan" : "Add credits"}
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+                  <p className="mt-0.5 text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</p>
                 </button>
               ))}
             </div>
@@ -2089,7 +2090,20 @@ export default function ProjectEditorPage() {
               );
             })()}
 
-            <div className="flex items-center gap-3 flex-wrap">
+            {/* 2a's summary line — restates the four choices just made, so the
+                button is not the first place you find out what you picked. */}
+            <p className="mb-2 text-[11px] text-spark-ink-faint">
+              {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+              {" · "}
+              {renderMode === "avatar_voice" ? "avatar on screen" : "voice only"}
+              {" · "}
+              {selectedMusicId === "none"
+                ? "no music"
+                : (MUSIC_PRESETS.find((m) => m.id === selectedMusicId)?.label ?? "custom music")}
+              {burnCaptions ? " · captions" : ""}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={handleGenerateVideo}
                 loading={videoGenerating}
@@ -2098,12 +2112,14 @@ export default function ProjectEditorPage() {
               >
                 <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
               </Button>
+              {/* Recording is the free alternative, not a competing primary --
+                  2a gives it an outline so the two stop shouting equally. */}
               <button
                 type="button"
                 onClick={openTeleprompter}
-                className="flex items-center justify-center px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-medium transition-colors shrink-0"
+                className="flex shrink-0 items-center justify-center rounded-xl border border-spark-ink px-5 py-3.5 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
               >
-                Or record yourself on camera reading the script
+                Record it myself on camera
               </button>
             </div>
             <Button
