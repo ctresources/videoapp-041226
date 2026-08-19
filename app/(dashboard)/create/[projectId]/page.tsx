@@ -1236,17 +1236,27 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
             )}
-            <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={burnCaptions}
-                onChange={(e) => setBurnCaptions(e.target.checked)}
-                className="accent-primary-500 w-4 h-4 shrink-0"
-              />
-              <span className="text-xs text-slate-600">
-                Burn synchronized captions into the video <span className="text-slate-400">(most viewers watch muted)</span>
-              </span>
-            </label>
+            {/* Captions — a switch rather than a checkbox, per 2a. It is on by
+                default and rarely changed, so it reads better as a setting than
+                as something waiting to be ticked. */}
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11.5px] text-spark-ink-soft">Captions burned in</p>
+                <p className="text-[10px] text-spark-ink-faint">Most viewers watch muted</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={burnCaptions}
+                aria-label="Burn synchronized captions into the video"
+                onClick={() => setBurnCaptions(!burnCaptions)}
+                className={`flex h-[18px] w-8 flex-none items-center rounded-full p-0.5 transition-colors ${
+                  burnCaptions ? "justify-end bg-spark-amber" : "justify-start bg-spark-rule-dim"
+                }`}
+              >
+                <span className="h-3.5 w-3.5 rounded-full bg-white" />
+              </button>
+            </div>
           </Card>
 
           {/* Paste scripts render verbatim via Direct Video — no render-mode choice */}
@@ -1822,31 +1832,41 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
             )}
-            <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={burnCaptions}
-                onChange={(e) => setBurnCaptions(e.target.checked)}
-                className="accent-primary-500 w-4 h-4 shrink-0"
-              />
-              <span className="text-xs text-slate-600">
-                Burn synchronized captions into the video <span className="text-slate-400">(most viewers watch muted)</span>
-              </span>
-            </label>
+            {/* Captions — a switch rather than a checkbox, per 2a. It is on by
+                default and rarely changed, so it reads better as a setting than
+                as something waiting to be ticked. */}
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11.5px] text-spark-ink-soft">Captions burned in</p>
+                <p className="text-[10px] text-spark-ink-faint">Most viewers watch muted</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={burnCaptions}
+                aria-label="Burn synchronized captions into the video"
+                onClick={() => setBurnCaptions(!burnCaptions)}
+                className={`flex h-[18px] w-8 flex-none items-center rounded-full p-0.5 transition-colors ${
+                  burnCaptions ? "justify-end bg-spark-amber" : "justify-start bg-spark-rule-dim"
+                }`}
+              >
+                <span className="h-3.5 w-3.5 rounded-full bg-white" />
+              </button>
+            </div>
 
             {/* Background music */}
             <div className="mt-4 mb-5">
-              <p className="text-xs font-medium text-slate-500 mb-2">Background Music</p>
+              <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">MUSIC</p>
               <div className="flex flex-wrap gap-1.5">
                 {MUSIC_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     onClick={() => selectMusic(preset)}
                     disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] transition-colors disabled:opacity-50 ${
                       selectedMusicId === preset.id
-                        ? "border-primary-500 bg-primary-50 text-primary-700"
-                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint font-medium text-spark-ink"
+                        : "border border-spark-rule text-spark-ink-soft hover:border-spark-rule-dim"
                     }`}
                   >
                     <span>{preset.emoji}</span>
@@ -1857,7 +1877,7 @@ export default function ProjectEditorPage() {
                 ))}
               </div>
               {selectedMusicId === "custom" && musicUrl && (
-                <p className="text-xs text-green-600 mt-1.5">✓ Custom track uploaded — it will play under the voiceover</p>
+                <p className="mt-1.5 text-[10.5px] text-emerald-700">✓ Custom track uploaded — it will play under the voiceover</p>
               )}
               <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
             </div>
