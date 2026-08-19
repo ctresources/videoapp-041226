@@ -302,9 +302,9 @@ function TalkingAvatarUploader({
         </div>
       ) : null}
 
-      <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-        <p className="text-xs text-blue-700 leading-relaxed flex items-start gap-1.5">
-          <Sparkles size={11} className="text-blue-500 mt-0.5 shrink-0" />
+      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+        <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
+          <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
           <span><strong>Tips:</strong> Clear front-facing photo, neutral expression, plain background, no sunglasses or hats.</span>
         </p>
       </div>
@@ -538,16 +538,16 @@ function DigitalTwinCreator({
   if (dtStatus === "pending_consent") {
     return (
       <div className="flex flex-col gap-3">
-        <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-          <CheckCircle size={15} className="text-blue-500 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-spark-blue/25 rounded-xl">
+          <CheckCircle size={15} className="text-spark-blue mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-blue-800">Approval Required</p>
-            <p className="text-xs text-blue-600 mt-0.5">
+            <p className="text-sm font-semibold text-spark-ink">Approval Required</p>
+            <p className="text-xs text-spark-blue mt-0.5">
               Your Digital Twin is trained! Click below to approve usage on HeyGen — required once.
             </p>
             <button
               onClick={handleGetConsent}
-              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-spark-amber hover:bg-spark-blue text-white text-xs font-semibold rounded-lg transition-colors"
             >
               Approve My Digital Twin →
             </button>
@@ -709,9 +709,9 @@ function DigitalTwinCreator({
         )}
       </div>
 
-      <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-        <p className="text-xs text-blue-700 leading-relaxed flex items-start gap-1.5">
-          <Sparkles size={11} className="text-blue-500 mt-0.5 shrink-0" />
+      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+        <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
+          <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
           <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, speak naturally. No sunglasses or hats.</span>
         </p>
       </div>
@@ -1050,8 +1050,8 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
       )}
 
       {/* Tips */}
-      <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-        <p className="text-xs text-blue-700 leading-relaxed">
+      <div className="p-3 bg-blue-50 border border-spark-blue/20 rounded-xl">
+        <p className="text-xs text-spark-blue leading-relaxed">
           <strong>Best results:</strong> Speak naturally for 1–3 minutes in a quiet room. No background
           music, no echo. Use the same microphone you use for client calls.
         </p>
