@@ -34,11 +34,11 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   youtube:   { label: "YouTube",   icon: PlayCircle, color: "text-red-600",    bg: "bg-red-50" },
   instagram: { label: "Instagram", icon: Camera,     color: "text-pink-600",   bg: "bg-pink-50" },
   tiktok:    { label: "TikTok",    icon: Music2,     color: "text-slate-800",  bg: "bg-slate-100" },
-  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-blue-700",   bg: "bg-blue-50" },
-  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-sky-500",    bg: "bg-sky-50" },
-  facebook:  { label: "Facebook",  icon: Globe,      color: "text-blue-600",   bg: "bg-blue-50" },
+  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-spark-blue",   bg: "bg-spark-blue/10" },
+  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-spark-blue",    bg: "bg-spark-blue/10" },
+  facebook:  { label: "Facebook",  icon: Globe,      color: "text-spark-blue",   bg: "bg-spark-blue/10" },
   threads:   { label: "Threads",   icon: Layers,     color: "text-slate-700",  bg: "bg-slate-100" },
-  bluesky:   { label: "Bluesky",   icon: Layers,     color: "text-sky-600",    bg: "bg-sky-50" },
+  bluesky:   { label: "Bluesky",   icon: Layers,     color: "text-spark-blue",    bg: "bg-spark-blue/10" },
   pinterest: { label: "Pinterest", icon: Layers,     color: "text-red-500",    bg: "bg-red-50" },
   google:    { label: "Google",    icon: Globe,      color: "text-orange-500", bg: "bg-orange-50" },
 };
@@ -139,7 +139,7 @@ function PostDrawer({ post, onClose, onCancel }: {
         <div className="flex items-center gap-2">
           <Clock size={13} className="text-slate-400" />
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            post.status === "scheduled" ? "bg-blue-100 text-blue-700" :
+            post.status === "scheduled" ? "bg-spark-blue/15 text-spark-blue" :
             post.status === "posted"    ? "bg-green-100 text-green-700" :
             post.status === "failed"    ? "bg-red-100 text-red-700" :
             "bg-slate-100 text-slate-600"

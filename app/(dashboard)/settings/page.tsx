@@ -181,8 +181,8 @@ export default function SettingsPage() {
       {/* Content Preferences */}
       <Card>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 bg-teal-50 rounded-xl flex items-center justify-center">
-            <Globe size={18} className="text-teal-500" />
+          <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
+            <Globe size={18} className="text-spark-amber" />
           </div>
           <div>
             <h3 className="font-semibold text-brand-text">Content Preferences</h3>
@@ -235,8 +235,8 @@ export default function SettingsPage() {
       {brandData && user && (
         <Card id="voice" className="scroll-mt-24">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Mic size={18} className="text-blue-500" />
+            <div className="w-9 h-9 bg-spark-blue/10 rounded-xl flex items-center justify-center">
+              <Mic size={18} className="text-spark-blue" />
             </div>
             <div>
               <h3 className="font-semibold text-brand-text">AI Voice Clone</h3>
@@ -360,8 +360,8 @@ export default function SettingsPage() {
       {/* CRM Integrations */}
       <Card>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center">
-            <Webhook size={18} className="text-violet-500" />
+          <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
+            <Webhook size={18} className="text-spark-amber" />
           </div>
           <div>
             <h3 className="font-semibold text-brand-text">CRM Integration <span className="text-xs font-medium text-slate-400">(Coming Soon)</span></h3>

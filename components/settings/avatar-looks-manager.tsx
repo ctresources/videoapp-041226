@@ -324,7 +324,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
                       {look.status === "completed" || look.status === "active" || !look.status ? (
                         <CheckCircle size={14} className="text-green-500 bg-white rounded-full" />
                       ) : look.status === "pending_consent" ? (
-                        <ShieldAlert size={14} className="text-purple-500 bg-white rounded-full" />
+                        <ShieldAlert size={14} className="text-spark-amber bg-white rounded-full" />
                       ) : look.status === "failed" ? (
                         <AlertCircle size={14} className="text-red-500 bg-white rounded-full" />
                       ) : null}
@@ -453,17 +453,17 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       )}
 
       {looks.some((l) => l.status === "pending_consent") && (
-        <div className="flex items-start gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
-          <ShieldAlert size={15} className="text-purple-500 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-2.5 p-3 bg-spark-amber-tint border border-spark-amber/30 rounded-xl">
+          <ShieldAlert size={15} className="text-spark-amber mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-xs font-medium text-purple-800">Consent required</p>
-            <p className="text-xs text-purple-600 mt-0.5">
+            <p className="text-xs font-medium text-spark-ink">Consent required</p>
+            <p className="text-xs text-spark-amber mt-0.5">
               HeyGen requires your approval before training can begin. Complete it in one click.
             </p>
             <button
               onClick={handleRequestConsent}
               disabled={consentLoading}
-              className="mt-2 flex items-center gap-1.5 text-xs font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50"
+              className="mt-2 flex items-center gap-1.5 text-xs font-medium text-spark-amber hover:text-spark-ink disabled:opacity-50"
             >
               {consentLoading
                 ? <Loader2 size={11} className="animate-spin" />

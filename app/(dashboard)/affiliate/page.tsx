@@ -116,8 +116,8 @@ export default function AffiliatePage() {
   };
 
   const statCards = [
-    { label: "Clicks", value: String(stats.clicks), icon: MousePointerClick, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Conversions", value: String(stats.conversions), icon: UserCheck, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "Clicks", value: String(stats.clicks), icon: MousePointerClick, color: "text-spark-blue", bg: "bg-spark-blue/10" },
+    { label: "Conversions", value: String(stats.conversions), icon: UserCheck, color: "text-spark-amber", bg: "bg-spark-amber-tint" },
     { label: "Pending", value: money(stats.pendingCents), icon: Clock, color: "text-amber-500", bg: "bg-amber-50" },
     { label: "Available", value: money(stats.availableCents), icon: Wallet, color: "text-primary-500", bg: "bg-primary-50" },
     { label: "Paid Out", value: money(stats.paidCents), icon: CircleCheck, color: "text-green-500", bg: "bg-green-50" },

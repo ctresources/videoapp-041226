@@ -29,11 +29,11 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   youtube:   { label: "YouTube",   icon: PlayCircle, color: "text-red-500",    bg: "bg-red-50",    border: "border-red-100" },
   instagram: { label: "Instagram", icon: Camera,     color: "text-pink-500",   bg: "bg-pink-50",   border: "border-pink-100" },
   tiktok:    { label: "TikTok",    icon: Music2,     color: "text-slate-700",  bg: "bg-slate-100", border: "border-slate-200" },
-  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100" },
-  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-sky-500",    bg: "bg-sky-50",    border: "border-sky-100" },
-  facebook:  { label: "Facebook",  icon: Share2,     color: "text-blue-500",   bg: "bg-blue-50",   border: "border-blue-100" },
+  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-spark-blue",   bg: "bg-spark-blue/10",   border: "border-spark-blue/20" },
+  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-spark-blue",    bg: "bg-spark-blue/10",    border: "border-spark-blue/20" },
+  facebook:  { label: "Facebook",  icon: Share2,     color: "text-spark-blue",   bg: "bg-spark-blue/10",   border: "border-spark-blue/20" },
   threads:   { label: "Threads",   icon: Share2,     color: "text-slate-700",  bg: "bg-slate-100", border: "border-slate-200" },
-  bluesky:   { label: "Bluesky",   icon: Globe,      color: "text-sky-400",    bg: "bg-sky-50",    border: "border-sky-100" },
+  bluesky:   { label: "Bluesky",   icon: Globe,      color: "text-spark-blue",    bg: "bg-spark-blue/10",    border: "border-spark-blue/20" },
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600",    bg: "bg-red-50",    border: "border-red-100" },
 };
 

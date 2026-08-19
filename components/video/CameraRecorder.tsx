@@ -673,7 +673,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
         {/* Branded Look — record-time overlays baked into the file. The panel
             renders even where compositing is unsupported, because the channel
             CTA lives at the bottom of it and must never disappear. */}
-        <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl animate-slideDown">
+        <div className="p-3.5 bg-spark-blue/10/60 border border-spark-blue/20 rounded-xl animate-slideDown">
             <label className="flex items-center justify-between cursor-pointer select-none">
               <span className="text-sm font-semibold text-brand-text">✨ Branded Look</span>
               {brandedSupported ? (
@@ -681,7 +681,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
                   onClick={(e) => { e.preventDefault(); setBrandedLook((v) => !v); }}
                   className={cn(
                     "relative w-10 h-6 rounded-full transition-colors",
-                    brandedLook ? "bg-indigo-500" : "bg-slate-300",
+                    brandedLook ? "bg-spark-blue" : "bg-slate-300",
                   )}
                 >
                   <div className={cn(
@@ -741,7 +741,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
                         className={cn(
                           "flex-1 py-1.5 px-1 rounded-lg text-xs font-medium border transition-all",
                           musicId === m.id
-                            ? "border-indigo-500 bg-indigo-50 text-indigo-600"
+                            ? "border-spark-blue bg-spark-blue/10 text-spark-blue"
                             : "border-slate-200 text-slate-500 hover:border-slate-300",
                         )}
                       >
@@ -758,7 +758,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
 
             {/* Sits outside the toggle on purpose — this writes to the script,
                 so turning Branded Look off must not take it away. */}
-            <div className="mt-3 pt-3 border-t border-indigo-100">
+            <div className="mt-3 pt-3 border-t border-spark-blue/20">
               <button
                 onClick={addChannelCta}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-sm transition-colors"

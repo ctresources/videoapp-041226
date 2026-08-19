@@ -306,22 +306,22 @@ export function ListingVideoForm() {
               type="button"
               onClick={() => photoInputRef.current?.click()}
               disabled={uploadingPhotos}
-              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-spark-blue/25 bg-spark-blue/10 hover:bg-spark-blue/15 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {uploadingPhotos ? (
                 <>
-                  <Loader2 size={24} className="animate-spin text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-700">Uploading photos…</span>
+                  <Loader2 size={24} className="animate-spin text-spark-blue" />
+                  <span className="text-sm font-semibold text-spark-blue">Uploading photos…</span>
                 </>
               ) : (
                 <>
-                  <ImageIcon size={24} className="text-blue-600" />
-                  <span className="text-sm font-bold text-blue-900">
+                  <ImageIcon size={24} className="text-spark-blue" />
+                  <span className="text-sm font-bold text-spark-ink">
                     {listing.photoUrls.length === 0
                       ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
                       : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
                   </span>
-                  <span className="text-xs text-blue-600 text-center">
+                  <span className="text-xs text-spark-blue text-center">
                     Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple · JPG, PNG, WEBP · max 15 MB each
                   </span>
                 </>
@@ -415,8 +415,8 @@ export function ListingVideoForm() {
           Enter listing details manually
         </button>
 
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-          <p className="text-xs text-blue-700 leading-relaxed">
+        <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
+          <p className="text-xs text-spark-blue leading-relaxed">
             <strong>What happens next:</strong> We import the listing details, then use AI to write
             a Fair Housing-compliant 60–90 second property tour voiceover script. Takes ~15 seconds.
           </p>
@@ -673,9 +673,9 @@ export function ListingVideoForm() {
             type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={uploadingPhotos}
-            className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-sm font-medium text-slate-600 hover:text-blue-700 disabled:opacity-60"
+            className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-spark-blue/25 hover:bg-spark-blue/10 transition-all text-sm font-medium text-slate-600 hover:text-spark-blue disabled:opacity-60"
           >
-            {uploadingPhotos ? <Loader2 size={16} className="animate-spin text-blue-600" /> : <ImageIcon size={16} />}
+            {uploadingPhotos ? <Loader2 size={16} className="animate-spin text-spark-blue" /> : <ImageIcon size={16} />}
             {uploadingPhotos ? "Uploading…" : `Add photos (up to ${MAX_LISTING_PHOTOS})`}
           </button>
           <input
@@ -694,8 +694,8 @@ export function ListingVideoForm() {
       )}
 
       {/* Fair Housing notice */}
-      <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-        <p className="text-xs text-blue-700 leading-relaxed">
+      <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
+        <p className="text-xs text-spark-blue leading-relaxed">
           🏛️ <strong>Fair Housing AI</strong> — Your script will be automatically reviewed to ensure compliance
           with the Fair Housing Act. We never include demographic, school, or community-composition language.
         </p>

@@ -21,9 +21,9 @@ const VIDEO_TYPE_LABELS: Record<string, string> = {
 };
 
 const VIDEO_TYPE_COLORS: Record<string, string> = {
-  market_update: "bg-blue-100 text-blue-700",
+  market_update: "bg-spark-blue/15 text-spark-blue",
   why_live_here: "bg-green-100 text-green-700",
-  community_events: "bg-purple-100 text-purple-700",
+  community_events: "bg-spark-amber-tint text-spark-amber",
   custom: "bg-orange-100 text-orange-700",
 };
 

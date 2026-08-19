@@ -71,7 +71,7 @@ export function DraftQueue({ city, state }: Props) {
   if (dismissed) return null;
 
   return (
-    <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-2xl p-5 mb-6 text-white">
+    <div className="bg-gradient-to-br from-spark-blue to-spark-blue-deep rounded-2xl p-5 mb-6 text-white">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center shrink-0">
@@ -79,7 +79,7 @@ export function DraftQueue({ city, state }: Props) {
           </div>
           <div>
             <p className="text-sm font-bold leading-tight">Your Draft Queue</p>
-            <p className="text-xs text-blue-200 mt-0.5">AI-researched topics ready to record this week</p>
+            <p className="text-xs text-white/80 mt-0.5">AI-researched topics ready to record this week</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -89,16 +89,16 @@ export function DraftQueue({ city, state }: Props) {
             className="p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
             title="Refresh"
           >
-            <RefreshCw size={13} className={`text-blue-200 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw size={13} className={`text-white/80 ${loading ? "animate-spin" : ""}`} />
           </button>
           <button onClick={handleDismiss} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-            <X size={13} className="text-blue-300" />
+            <X size={13} className="text-white/70" />
           </button>
         </div>
       </div>
 
       {loading && suggestions.length === 0 ? (
-        <div className="flex items-center gap-2 py-2 text-sm text-blue-200">
+        <div className="flex items-center gap-2 py-2 text-sm text-white/80">
           <Loader2 size={14} className="animate-spin" />
           Researching this week&apos;s best topics for your market…
         </div>
@@ -109,11 +109,11 @@ export function DraftQueue({ city, state }: Props) {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white leading-snug mb-1">{s.title}</p>
-                  <p className="text-xs text-blue-200 leading-relaxed">{s.why_now}</p>
+                  <p className="text-xs text-white/80 leading-relaxed">{s.why_now}</p>
                 </div>
                 <button
                   onClick={() => handleGenerate(s.title)}
-                  className="shrink-0 flex items-center gap-1.5 bg-white text-blue-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors mt-0.5"
+                  className="shrink-0 flex items-center gap-1.5 bg-white text-spark-ink text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-spark-blue/10 transition-colors mt-0.5"
                 >
                   Generate <ArrowRight size={12} />
                 </button>

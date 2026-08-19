@@ -31,11 +31,11 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   youtube:   { label: "YouTube",   icon: PlayCircle, color: "text-red-500" },
   instagram: { label: "Instagram", icon: Camera,     color: "text-pink-500" },
   tiktok:    { label: "TikTok",    icon: Music2,     color: "text-slate-700" },
-  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-blue-600" },
-  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-sky-500" },
-  facebook:  { label: "Facebook",  icon: Share2,     color: "text-blue-500" },
+  linkedin:  { label: "LinkedIn",  icon: AtSign,     color: "text-spark-blue" },
+  twitter:   { label: "Twitter/X", icon: AtSign,     color: "text-spark-blue" },
+  facebook:  { label: "Facebook",  icon: Share2,     color: "text-spark-blue" },
   threads:   { label: "Threads",   icon: Share2,     color: "text-slate-700" },
-  bluesky:   { label: "Bluesky",   icon: Globe,      color: "text-sky-400" },
+  bluesky:   { label: "Bluesky",   icon: Globe,      color: "text-spark-blue" },
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600" },
 };
 

@@ -17,7 +17,7 @@ const PREFERRED_TYPES: Array<Topic["videoType"]> = ["why_live_here", "market_upd
 // Rendered as template-style cards so trending reads as the first category of the browser
 const STEP_CONFIG = [
   { label: "Local Spotlight", icon: MapPin,     color: "bg-emerald-50", iconColor: "text-emerald-600" },
-  { label: "Market Pulse",    icon: TrendingUp, color: "bg-blue-50",    iconColor: "text-blue-500" },
+  { label: "Market Pulse",    icon: TrendingUp, color: "bg-spark-blue/10",    iconColor: "text-spark-blue" },
   { label: "Hot Topic",       icon: Flame,      color: "bg-orange-50",  iconColor: "text-orange-500" },
 ];
 
@@ -91,7 +91,7 @@ export function TopicRadar({ city, state, onSelect }: Props) {
 
       {loading && safeTopics.length === 0 && (
         <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
-          <Loader2 size={12} className="animate-spin text-blue-500" />
+          <Loader2 size={12} className="animate-spin text-spark-blue" />
           Scanning your market for trending topics…
         </div>
       )}

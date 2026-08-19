@@ -352,7 +352,7 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
               </div>
               <div className="flex flex-wrap gap-2">
                 {result.hashtags.map((h, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-full border border-blue-100">
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-spark-blue/10 text-spark-blue text-xs font-medium px-3 py-1.5 rounded-full border border-spark-blue/20">
                     {h}
                     <CopyButton text={h} small />
                   </span>
@@ -1484,11 +1484,11 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
       <p className="text-sm font-bold text-brand-text mb-3">How These Tools Fit Your Workflow</p>
 
       {/* The de-confusion callout — Create Video already does all of this */}
-      <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl mb-4">
-        <Video size={15} className="text-blue-500 mt-0.5 shrink-0" />
+      <div className="flex items-start gap-2.5 p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl mb-4">
+        <Video size={15} className="text-spark-blue mt-0.5 shrink-0" />
         <p className="text-sm text-slate-600 leading-relaxed">
           <strong>Making a video? You don&apos;t need to start here.</strong>{" "}
-          <Link href="/create" className="text-blue-600 font-semibold hover:underline">Create Video</Link>{" "}
+          <Link href="/create" className="text-spark-blue font-semibold hover:underline">Create Video</Link>{" "}
           automatically generates the script, title, description, and tags for every project. These tools
           are your workbench — brainstorm angles, compare versions, or refresh older videos.
         </p>
@@ -1589,7 +1589,7 @@ export default function ToolsPage() {
             <Icon size={15} />
             {label}
             {soon && (
-              <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full leading-none">
+              <span className="text-[10px] font-bold bg-spark-blue/15 text-spark-blue px-1.5 py-0.5 rounded-full leading-none">
                 Soon
               </span>
             )}

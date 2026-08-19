@@ -100,8 +100,8 @@ export default async function AnalyticsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Videos Created"   value={videos.length}    sub={`${recentVideos} this month`}  icon={Video}     color="text-primary-500"   bg="bg-primary-50" />
         <StatCard label="Posts Published"  value={publishedPosts}   sub={`${recentPosts} this month`}   icon={Share2}    color="text-green-600"     bg="bg-green-50" />
-        <StatCard label="Scheduled Posts"  value={scheduledPosts}   sub="coming up"                     icon={Clock}     color="text-blue-500"      bg="bg-blue-50" />
-        <StatCard label="Videos Rendered"  value={completedVideos}  sub="completed"                     icon={TrendingUp} color="text-purple-500"   bg="bg-purple-50" />
+        <StatCard label="Scheduled Posts"  value={scheduledPosts}   sub="coming up"                     icon={Clock}     color="text-spark-blue"      bg="bg-spark-blue/10" />
+        <StatCard label="Videos Rendered"  value={completedVideos}  sub="completed"                     icon={TrendingUp} color="text-spark-amber"   bg="bg-spark-amber-tint" />
       </div>
 
       {/* Platform breakdown */}

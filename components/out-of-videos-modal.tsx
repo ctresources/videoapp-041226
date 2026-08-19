@@ -41,8 +41,8 @@ export function OutOfVideosModal({
         </button>
 
         <div className="flex items-center gap-2.5 mb-2">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${isLong ? "bg-purple-50 border border-purple-100" : "bg-primary-50 border border-primary-100"}`}>
-            {isLong ? <Video size={18} className="text-purple-600" /> : <Zap size={18} className="text-primary-600" />}
+          <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${isLong ? "bg-spark-amber-tint border border-spark-amber/30" : "bg-primary-50 border border-primary-100"}`}>
+            {isLong ? <Video size={18} className="text-spark-amber" /> : <Zap size={18} className="text-primary-600" />}
           </div>
           <h2 className="text-lg font-black text-slate-900">
             {onFreePlan
@@ -62,7 +62,7 @@ export function OutOfVideosModal({
         <div className="space-y-2.5 mb-5">
           <Link
             href="/billing"
-            className="flex items-center justify-between gap-3 border border-blue-900 bg-blue-900 text-white rounded-xl px-4 py-3.5 hover:bg-blue-800 transition-colors"
+            className="flex items-center justify-between gap-3 border border-spark-blue bg-spark-blue text-white rounded-xl px-4 py-3.5 hover:bg-spark-blue transition-colors"
           >
             <span className="text-sm font-semibold">
               {onFreePlan ? "Choose a plan" : "Upgrade my plan"}
