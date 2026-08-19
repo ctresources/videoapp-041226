@@ -190,7 +190,7 @@ export function VoiceTopicHero({
     <div className="spark-glass flex flex-col items-center gap-4 rounded-[14px] px-6 py-7 sm:px-[34px] sm:pb-[26px] sm:pt-[30px]">
       <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
         <span className="block h-1 w-1 rounded-full bg-spark-amber" />
-        Step 2 of 3 · speak your topic
+        Speak your topic
       </p>
 
       <h2 className="text-balance text-center text-[30px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">

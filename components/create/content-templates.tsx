@@ -21,12 +21,6 @@ export interface ContentTemplate {
   iconColor: string;
   category: TemplateCategory;
   needsLocation?: boolean; // hints that {city}/{state} should be filled first
-  /**
-   * Format templates only. A format is a shape, not a subject, so picking one
-   * appends this instruction to whatever topic the user already has rather
-   * than replacing it.
-   */
-  formatDirective?: string;
 }
 
 export const CONTENT_TEMPLATES: ContentTemplate[] = [
@@ -150,8 +144,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-rose-50", iconColor: "text-rose-500",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as a day-in-the-life vlog: casual first person, following a single day from morning to evening.",
   },
   {
     id: "listicle",
@@ -163,8 +155,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-amber-50", iconColor: "text-amber-600",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as a numbered countdown of five points, fast and punchy, with the strongest item saved for last.",
   },
   {
     id: "pros_cons",
@@ -176,8 +166,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-spark-blue/10", iconColor: "text-spark-blue",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as a balanced pros-and-cons breakdown, then close by saying who it is right for.",
   },
   {
     id: "map_video",
@@ -189,8 +177,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-emerald-50", iconColor: "text-emerald-600",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as a map tour: go area by area as if pointing at a map, comparing them on budget, commute and schools.",
   },
   {
     id: "home_tour",
@@ -202,8 +188,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-spark-blue/10", iconColor: "text-spark-blue",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as a narrated room-by-room walkthrough, calling out standout features and the lifestyle each space offers.",
   },
   {
     id: "qa_myth_buster",
@@ -215,8 +199,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
     category: "format",
     needsLocation: true,
-    formatDirective:
-      "Structure this as questions and answers, taking on the myths and misconceptions people repeat about it.",
   },
 
   // ── Location-specific ─────────────────────────────────────────────────────
@@ -380,7 +362,12 @@ const CATEGORIES: { key: TemplateCategory; label: string }[] = [
 export const TEMPLATE_COUNT = CONTENT_TEMPLATES.filter((t) => t.category !== "format").length;
 
 interface ContentTemplatesProps {
-  onSelect: (template: ContentTemplate) => void;
+  /**
+   * Receives the template with `topic` already resolved for display, and the
+   * untouched `{city}`/`{state}` original as the second argument — the page
+   * keeps that so a location typed *after* picking a template still lands.
+   */
+  onSelect: (template: ContentTemplate, rawTopic: string) => void;
   city?: string;
   state?: string;
   /** Whether the full categorised browser is open. Controlled by the page. */
@@ -388,7 +375,7 @@ interface ContentTemplatesProps {
   onToggleExpanded?: () => void;
 }
 
-function substitutePlaceholders(text: string, city?: string, state?: string): string {
+export function substitutePlaceholders(text: string, city?: string, state?: string): string {
   let result = text;
   if (city) result = result.replace(/\{city\}/g, city);
   if (state) result = result.replace(/\{state\}/g, state);
@@ -458,7 +445,7 @@ export function ContentTemplates({
             <button
               key={template.id}
               type="button"
-              onClick={() => onSelect(resolve(template))}
+              onClick={() => onSelect(resolve(template), template.topic)}
               className="flex flex-col gap-1 rounded-[9px] border border-spark-rule bg-white px-3.5 py-3 text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
             >
               <span className="text-[14px] font-medium text-spark-ink">{template.label}</span>
@@ -495,7 +482,7 @@ export function ContentTemplates({
                     <button
                       key={template.id}
                       type="button"
-                      onClick={() => onSelect(resolve(template))}
+                      onClick={() => onSelect(resolve(template), template.topic)}
                       className="flex flex-col gap-1 rounded-[9px] border border-spark-rule bg-white px-3.5 py-3 text-left transition-colors hover:border-spark-amber hover:bg-spark-amber-tint"
                     >
                       <span className="text-[14px] font-medium leading-[1.35] text-spark-ink">

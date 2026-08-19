@@ -1494,7 +1494,9 @@ export default function ProjectEditorPage() {
             size="lg"
             className="w-full gap-2"
           >
-            <Wand2 size={18} /> Generate {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+            {/* Kept identical to the other branch's button — see the note on
+                captions and music below; this file renders both twice. */}
+            <Wand2 size={18} /> Spark Video
           </Button>
           <Button
             onClick={handleSaveDraft}

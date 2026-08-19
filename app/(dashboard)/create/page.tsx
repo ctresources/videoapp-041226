@@ -21,6 +21,7 @@ import { TopicRadar } from "@/components/create/topic-radar";
 import {
   ContentTemplates,
   TEMPLATE_COUNT,
+  substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
@@ -344,7 +345,13 @@ function CreatePageInner() {
           // see buildCustomRequest in lib/api/perplexity-prompts.ts.
           city: locCity.trim(),
           state: locState.trim(),
-          customTopic: locCustomTopic.trim(),
+          // A template picked before the location was filled says "your city".
+          // Re-resolving here means the order the two were done in stops
+          // mattering.
+          customTopic: (topicTemplateRaw
+            ? substitutePlaceholders(topicTemplateRaw, locCity.trim(), locState.trim())
+            : locCustomTopic
+          ).trim(),
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -576,9 +583,10 @@ function CreatePageInner() {
   // with trending and formats, not all 29 templates at once.
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
-  // Lets the user reopen the mic after a topic is captured. Without it the page
-  // would collapse the hero the moment the first word came back.
-  const [editingTopic, setEditingTopic] = useState(false);
+  // The unresolved "{city}, {state}" form of a picked template. Kept so that
+  // choosing a template before filling the location still ends up with the
+  // real place in it rather than a literal "your city".
+  const [topicTemplateRaw, setTopicTemplateRaw] = useState<string | null>(null);
 
   function openTemplates() {
     setTemplatesOpen(true);
@@ -594,12 +602,8 @@ function CreatePageInner() {
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
-  // Nothing can be generated without a market, so a first run opens the panel
-  // rather than leaving the user to find "Edit".
-  const showSetup = setupOpen || !locationSet;
-  // Drives the whole flow: while false the page is only about the topic, and
-  // once true it is only about how the video should look.
-  const topicSettled = !!locCustomTopic.trim() && !editingTopic;
+  // The two things step 1 actually needs before it can hand over.
+  const canContinue = locationSet && !!locCustomTopic.trim() && !locGenerating;
 
   return (
     // Every tab fills the full content width — the AI-script step lays out as
@@ -644,16 +648,16 @@ function CreatePageInner() {
         </button>
       )}
 
-      {/* ── Step 1 · how you're creating ──
-          The design leads with a monospace step label rather than a page title
-          or a progress rail: the eyebrow carries position in the flow, and the
-          three modes sit directly under it as full cards. The old three-tab bar
-          is gone — picking a mode reads as part of the brief, not navigation. */}
+      {/* ── Step 1 · the whole brief ──
+          Mode, place, optional audience and tone, and the topic are one step.
+          They are all answers to "what video am I making", so splitting them
+          across screens made the flow feel longer than the work. Next carries
+          on to format, avatar and music in the editor. */}
       {step === "input" && (
         <div className="mb-5 flex flex-col gap-[11px]">
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
-              Step 1 of 3 · choose how to start
+              Step 1 of 2 · how you&rsquo;re creating
             </p>
             <p className="flex flex-none items-center gap-[7px] text-[13px] text-spark-ink-faint">
               <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-spark-amber">
@@ -730,37 +734,120 @@ function CreatePageInner() {
       {inputMode === "script" && step === "input" && (
         <div className="flex flex-col gap-6">
 
-          {/* ── Your setup ──
-              No market chip. The place comes from what you say the video is
-              about — pinning it here is what made "a market update for Blue
-              Bell" come back written about the saved home market instead.
-              Audience and style are genuine settings and stay. */}
+          {/* ── Where the video is about ──
+              Per video, not per account. One agent covers several areas and
+              will make a different video for each, so this is a question the
+              page has to ask rather than a profile setting it can assume.
+              It seeds the trending list too. */}
           <div className="flex flex-col gap-3">
-            <div className="spark-glass flex flex-wrap items-center gap-2.5 rounded-[11px] px-4 py-3">
+            <div>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
+                Where is this one about?
+              </p>
+              <p className="mt-1 text-[13px] text-spark-ink-muted">
+                Speak it or type it — a different area each time is fine.
+              </p>
+            </div>
+
+            {savedMarkets.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {savedMarkets.map((m) => {
+                  const isActive =
+                    (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() &&
+                    (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
+                  return (
+                    <div
+                      key={`${m.city}-${m.state}`}
+                      onClick={() => { setLocCity(m.city); setLocState(m.state); }}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                        isActive
+                          ? "border-spark-amber bg-spark-amber text-white"
+                          : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
+                      }`}
+                    >
+                      {m.city}, {m.state}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
+                        className={`ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[12px] transition-colors ${
+                          isActive ? "text-white hover:bg-spark-blue" : "text-spark-ink-faint hover:bg-spark-rule-soft"
+                        }`}
+                        aria-label={`Remove ${m.city}, ${m.state}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">City or area</label>
+                <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                  <input
+                    type="text"
+                    value={locCity}
+                    onChange={(e) => setLocCity(e.target.value)}
+                    placeholder="Blue Bell"
+                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                  />
+                  <FieldMic onTranscript={(t) => setLocCity(t.replace(/[.,]\s*$/, "").trim())} title="Say the city" />
+                </div>
+              </div>
+              <div className="w-24">
+                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">State</label>
+                <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
+                  <input
+                    type="text"
+                    value={locState}
+                    onChange={(e) => setLocState(e.target.value)}
+                    placeholder="PA"
+                    maxLength={2}
+                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                  />
+                  <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say the state" />
+                </div>
+              </div>
+            </div>
+
+            {locationSet && !isMarketSaved && (
+              <button
+                type="button"
+                onClick={() => addMarket(locCity, locState)}
+                className="self-start text-[13px] font-medium text-spark-amber hover:text-spark-blue"
+              >
+                + Save {locCity}, {locState.toUpperCase()} so it is one tap next time
+              </button>
+            )}
+
+            {/* Audience, style, CTA and length are optional — most videos never
+                touch them, so they stay folded away rather than sitting in the
+                path of the people who don't need them. */}
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
                 {locAudience || "Any audience"}
               </span>
               <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
                 {locTone || "Any style"}
               </span>
+              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
+                {locLength === "long" ? "Up to 8 min" : "Up to 4 min"}
+              </span>
               <button
                 type="button"
                 onClick={() => setSetupOpen((o) => !o)}
                 className="text-[13px] font-medium text-spark-amber underline hover:text-spark-blue"
               >
-                {showSetup ? "Done" : "Edit"}
+                {setupOpen ? "Done" : "Edit (optional)"}
               </button>
             </div>
 
-            {showSetup && (
+            {setupOpen && (
               <Card padding="sm">
                 <div className="flex flex-col gap-4">
-                  {/* The market fields are gone on purpose. This flow gets its
-                      location from the topic; a home market saved on the
-                      profile is only the fallback for topics that name no
-                      place, and is edited in Settings. */}
-
-                  <div className="grid grid-cols-1 gap-3 border-t border-spark-rule-soft pt-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {[
                       {
                         label: "Audience", value: locAudience, set: setLocAudience,
@@ -790,123 +877,94 @@ function CreatePageInner() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Length lives here rather than with format and avatar,
+                      because the script is written to it — by the time you
+                      reach the editor the words already exist. */}
+                  <div className="border-t border-spark-rule-soft pt-4">
+                    <p className="mb-2 text-[13px] font-medium text-spark-ink-soft">Length</p>
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                      {([
+                        { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
+                        { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
+                      ] as const).map(({ v, title, sub, note }) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setLocLength(v)}
+                          aria-pressed={locLength === v}
+                          className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
+                            locLength === v
+                              ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                              : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                          }`}
+                        >
+                          <p className="text-[14px] font-medium text-spark-ink">
+                            {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
+                          </p>
+                          <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </Card>
             )}
           </div>
 
-          {/* ── Step 2 · Your topic ──
-              While there is no topic, this is the only thing on screen worth
-              looking at. Once one is captured it collapses to a single line so
-              step 3 can take the focus. */}
-          {!topicSettled ? (
-            <div className="flex flex-col gap-5">
-              <VoiceTopicHero
-                value={locCustomTopic}
-                onChange={setLocCustomTopic}
-                onSubmit={() => setEditingTopic(false)}
-                onCaptured={() => setEditingTopic(false)}
-                onBrowseTemplates={openTemplates}
-                templateCount={TEMPLATE_COUNT}
-                disabled={locGenerating}
-              />
+          {/* ── The topic ──
+              Same step, still the loudest thing on the page. */}
+          <div className="flex flex-col gap-5 border-t border-spark-rule-soft pt-6">
+            <VoiceTopicHero
+              value={locCustomTopic}
+              onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
+              onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
+              onBrowseTemplates={openTemplates}
+              templateCount={TEMPLATE_COUNT}
+              disabled={locGenerating}
+            />
 
-              <TopicRadar
-                city={locCity || undefined}
-                state={locState || undefined}
-                onSelect={(topic) => { setLocCustomTopic(topic); setEditingTopic(false); }}
-                onSeeAll={openTemplates}
-              />
-              <ContentTemplates
-                city={locCity}
-                state={locState}
-                onSelect={(template) => { setLocCustomTopic(template.topic); setEditingTopic(false); }}
-                expanded={templatesOpen}
-                onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
-              />
-            </div>
-          ) : (
-            <>
-              {/* The captured topic — the "got it" the flow was missing */}
-              <div className="spark-glass flex flex-wrap items-start gap-3 rounded-[11px] px-4 py-3.5">
-                <span className="mt-0.5 flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-spark-amber text-[12px] font-bold leading-none text-white">
-                  ✓
-                </span>
-                <p className="min-w-0 flex-1 text-[16px] leading-[1.45] text-spark-ink">
-                  {locCustomTopic}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setEditingTopic(true)}
-                  className="flex-none text-[13px] font-medium text-spark-amber underline hover:text-spark-blue"
-                >
-                  Change topic
-                </button>
-              </div>
+            <TopicRadar
+              city={locCity || undefined}
+              state={locState || undefined}
+              onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
+              onSeeAll={openTemplates}
+            />
+            <ContentTemplates
+              city={locCity}
+              state={locState}
+              onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
+              expanded={templatesOpen}
+              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
+            />
+          </div>
 
-              {/* ── Step 3 · How it should look ── */}
-              <div className="flex flex-col gap-4">
-                <div>
-                  <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
-                    <span className="block h-1 w-1 rounded-full bg-spark-amber" />
-                    Step 3 of 3 · spark it
-                  </p>
-                  <h2 className="mt-2 text-[24px] font-bold tracking-[-0.02em] text-spark-ink">
-                    How long should it be?
-                  </h2>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {([
-                    { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
-                    { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
-                  ] as const).map(({ v, title, sub, note }) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setLocLength(v)}
-                      aria-pressed={locLength === v}
-                      className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
-                        locLength === v
-                          ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                          : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                      }`}
-                    >
-                      <p className="text-[14px] font-medium text-spark-ink">
-                        {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
-                      </p>
-                      <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
-                    </button>
-                  ))}
-                </div>
-
-                {locLength === "long" && (
-                  <p className="rounded-[9px] border border-spark-rule bg-spark-amber-tint px-3.5 py-2.5 text-[13px] leading-[1.5] text-spark-ink-muted">
-                    We&apos;ll write a full ~8-minute script. Long videos show your uploaded photos as
-                    the visuals — you&apos;ll add them on the next screen.
-                  </p>
-                )}
-
-                <Button
-                  onClick={handleGenerateScript}
-                  loading={locGenerating}
-                  disabled={!locCustomTopic.trim()}
-                  size="lg"
-                  className="w-full gap-2"
-                >
-                  {locGenerating
-                    ? <>Sparking your script…</>
-                    : <><Sparkles size={18} /> Spark My Script</>}
-                </Button>
-
-                <p className="text-center text-[13px] text-spark-ink-faint">
-                  {locationSet
-                    ? "Next: review the script, then share it straight to social."
-                    : "Add your market above first — the script is written around it."}
-                </p>
-              </div>
-            </>
-          )}
+          {/* ── Next ──
+              Writing the script is what this button does, but what the user is
+              doing is moving on to the second step, so it is labelled for the
+              destination and says the wait out loud underneath. */}
+          <div className="flex flex-col gap-2 border-t border-spark-rule-soft pt-5">
+            <Button
+              onClick={handleGenerateScript}
+              loading={locGenerating}
+              disabled={!canContinue}
+              size="lg"
+              className="w-full gap-2"
+            >
+              {locGenerating
+                ? <>Sparking your script…</>
+                : <>Next · pick format, avatar &amp; music <ArrowRight size={18} /></>}
+            </Button>
+            <p className="text-center text-[13px] text-spark-ink-faint">
+              {locGenerating
+                ? "Researching the area and writing — this takes about a minute."
+                : !locationSet
+                  ? "Add the city and state above to carry on."
+                  : !locCustomTopic.trim()
+                    ? "Say or pick what the video is about to carry on."
+                    : "We'll write the script first, then you pick how it looks."}
+            </p>
+          </div>
 
         </div>
       )}
