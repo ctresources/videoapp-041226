@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EditorVoiceSession } from "@/components/create/editor-voice-session";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
@@ -1836,6 +1837,24 @@ export default function ProjectEditorPage() {
               <h3 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Video setup</h3>
               <p className="mt-0.5 text-[11px] text-spark-ink-faint">A few choices, then generate</p>
             </div>
+
+            {/* Spoken control of this rail. Sits above the controls it
+                changes so they can be watched updating, and they all stay
+                usable by hand — this is a second way in, not a replacement. */}
+            <EditorVoiceSession
+              script={editedScript}
+              disabled={videoGenerating}
+              onSettings={(st) => {
+                // Nulls mean "not mentioned" and must never clear a choice
+                // the user already made by hand.
+                if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                if (st.renderMode) setRenderMode(st.renderMode);
+                if (st.musicId) setSelectedMusicId(st.musicId);
+                if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
+              }}
+              onScript={(next) => setEditedScript(next)}
+              onRender={() => { if (!videoGenerating) handleGenerateVideo(); }}
+            />
 
             {/* Video format selector */}
             <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">FORMAT</p>

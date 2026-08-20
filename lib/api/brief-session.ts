@@ -11,7 +11,7 @@ import { parseStateAbbr } from "@/lib/utils/us-states";
  * load-bearing here, where OPENAI_API_KEY powers one optional thumbnail feature
  * that falls back to a gradient without it.
  */
-const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
+import { chatJson } from "@/lib/api/perplexity-chat";
 
 /**
  * The brief the Create page needs before it can generate. These are exactly the
@@ -155,37 +155,9 @@ Rules for "reply":
 - Once city, state and topic are all filled, read the brief back in one sentence and invite them to say "SparkReels" to make it, or tell you what to change. Whether they then agree is not your decision to record — just ask.`;
 
   try {
-    const res = await fetch(PERPLEXITY_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar",
-        temperature: 0.2,
-        max_tokens: 400,
-        // Pulling a city out of a sentence needs no web search, and leaving it
-        // on more than doubled the turn — 2.4s against 1.1s measured. In a
-        // spoken conversation that gap is the difference between a reply and
-        // an awkward pause.
-        disable_search: true,
-        messages: [{ role: "system", content: system }, ...turns],
-      }),
-    });
-    if (!res.ok) {
-      console.error(`[brief-session] perplexity ${res.status}`);
-      return null;
-    }
+    const parsed = await chatJson(system, turns, { maxTokens: 400, label: "brief-session" });
+    if (!parsed) return null;
 
-    const json = await res.json();
-    const text = json.choices?.[0]?.message?.content;
-    if (typeof text !== "string" || !text.trim()) return null;
-
-    // Fenced despite the instruction often enough to be worth stripping.
-    const parsed = JSON.parse(
-      text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim(),
-    ) as Record<string, unknown>;
     const slots = coerceSlots(parsed);
     const reply = typeof parsed.reply === "string" ? parsed.reply.trim().slice(0, 400) : "";
 
