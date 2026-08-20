@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FieldMic } from "@/components/ui/field-mic";
 import {
-  Mic, ArrowRight, CheckCircle, Loader2, FileText,
+  Mic, Keyboard, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe,
@@ -580,6 +580,9 @@ function CreatePageInner() {
   // choosing a template before filling the location still ends up with the
   // real place in it rather than a literal "your city".
   const [topicTemplateRaw, setTopicTemplateRaw] = useState<string | null>(null);
+  // Speak or type. Offered at the top of the page rather than hidden under the
+  // mic, so neither reads as the fallback.
+  const [inputStyle, setInputStyle] = useState<"speak" | "type">("speak");
   // filter(Boolean) matters: "".split(/\s+/) is [""], which counts as one word
   // and made an empty box read "1 / 500".
   const pasteWordCount = pasteScript.trim().split(/\s+/).filter(Boolean).length;
@@ -649,17 +652,60 @@ function CreatePageInner() {
           They are all answers to "what video am I making", so splitting them
           across screens made the flow feel longer than the work. Next carries
           on to format, avatar and music in the editor. */}
+      {/* ── Speak or type ──
+          The first thing on the page, because it is the thing people don't
+          realise they get to choose. Speaking was the product's whole premise
+          and it was only discoverable as a small "type it instead" link under
+          the mic — which told anyone who wanted to type that they were doing it
+          the wrong way round. Neither is the fallback. */}
+      {step === "input" && (
+        <div className="mb-5 flex flex-col gap-3 border-b border-spark-rule-soft pb-5">
+          <div>
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
+              Speak it or type it — your choice
+            </h2>
+            <p className="mt-1 text-[13px] text-spark-ink-muted">
+              Everything below works either way. Switch whenever you like.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
+            {([
+              { key: "speak" as const, label: "Speak it", desc: "Talk, we fill it in", Icon: Mic },
+              { key: "type" as const, label: "Type it", desc: "Fill it in yourself", Icon: Keyboard },
+            ]).map(({ key, label, desc, Icon }) => {
+              const active = inputStyle === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setInputStyle(key)}
+                  aria-pressed={active}
+                  className={`flex items-center gap-2.5 rounded-[11px] px-4 py-3 text-left transition-colors ${
+                    active
+                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                      : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <Icon
+                    size={18}
+                    className={`flex-none ${active ? "text-spark-amber" : "text-spark-ink-faint"}`}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-medium text-spark-ink">{label}</span>
+                    <span className="block text-[12.5px] text-spark-ink-muted">{desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {step === "input" && (
         <div className="mb-5 flex flex-col gap-[11px]">
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
               Step 1 of 2 · how you&rsquo;re creating
-            </p>
-            <p className="flex flex-none items-center gap-[7px] text-[13px] text-spark-ink-faint">
-              <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-spark-amber">
-                <span className="block h-[6px] w-[3px] rounded-full bg-white" />
-              </span>
-              or say &ldquo;AI writes it&rdquo;
             </p>
           </div>
 
@@ -918,6 +964,10 @@ function CreatePageInner() {
               onBrowseTemplates={openTemplates}
               templateCount={TEMPLATE_COUNT}
               disabled={locGenerating}
+              // Follows the choice at the top of the page, and switching inside
+              // the hero moves it back — one setting, two places to change it.
+              typed={inputStyle === "type"}
+              onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
             />
 
             <TopicRadar

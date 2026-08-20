@@ -31,6 +31,12 @@ interface VoiceTopicHeroProps {
   /** How many templates the browser holds — the design writes the count into the link. */
   templateCount?: number;
   disabled?: boolean;
+  /**
+   * Whether the typed box is showing. Controlled by the page, because the
+   * speak-or-type choice now lives at the top of it rather than under the mic.
+   */
+  typed?: boolean;
+  onTypedChange?: (typed: boolean) => void;
 }
 
 export function VoiceTopicHero({
@@ -41,11 +47,19 @@ export function VoiceTopicHero({
   onBrowseTemplates,
   templateCount = 30,
   disabled = false,
+  typed,
+  onTypedChange,
 }: VoiceTopicHeroProps) {
   const [listening, setListening] = useState(false);
   // Uncommitted words from the recogniser, shown greyed after the real text
   const [interim, setInterim] = useState("");
-  const [typing, setTyping] = useState(false);
+  // Falls back to internal state when the page does not control it.
+  const [typingLocal, setTypingLocal] = useState(false);
+  const typing = typed ?? typingLocal;
+  const setTyping = (next: boolean) => {
+    setTypingLocal(next);
+    onTypedChange?.(next);
+  };
 
   const recognitionRef = useRef<AnyRecognition>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,6 +72,8 @@ export function VoiceTopicHero({
   // latest handler rather than the one from the render that started the session.
   const onCapturedRef = useRef(onCaptured);
   onCapturedRef.current = onCaptured;
+  const onTypedChangeRef = useRef(onTypedChange);
+  onTypedChangeRef.current = onTypedChange;
 
   const stop = useCallback((showHint = false) => {
     if (timeoutRef.current) {
@@ -83,7 +99,8 @@ export function VoiceTopicHero({
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
       toast.error("Speech recognition is not supported in this browser. Try Chrome or Safari.");
-      setTyping(true);
+      setTypingLocal(true);
+      onTypedChangeRef.current?.(true);
       return;
     }
 
@@ -190,15 +207,17 @@ export function VoiceTopicHero({
     <div className="spark-glass flex flex-col items-center gap-4 rounded-[14px] px-6 py-7 sm:px-[34px] sm:pb-[26px] sm:pt-[30px]">
       <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
         <span className="block h-1 w-1 rounded-full bg-spark-amber" />
-        Speak your topic
+        {typing ? "Type your topic" : "Speak your topic"}
       </p>
 
       <h2 className="text-balance text-center text-[30px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">
         What&rsquo;s this video about?
       </h2>
 
-      {/* Mic. The rings only animate while live — a permanently pulsing button
-          reads as a decoration rather than as recording state. */}
+      {/* Mic, status and waveform belong to speak mode. In type mode they are
+          gone entirely rather than shrunk — leaving a 92px mic above a text box
+          tells whoever chose "type it" that they picked the wrong one. */}
+      {!typing && (
       <button
         type="button"
         onClick={toggle}
@@ -221,9 +240,13 @@ export function VoiceTopicHero({
           <span className="block h-[26px] w-[15px] rounded-full bg-white" />
         </span>
       </button>
+      )}
 
-      <p className="text-center text-[13.5px] font-medium text-spark-ink-muted">{status}</p>
+      {!typing && (
+        <p className="text-center text-[13.5px] font-medium text-spark-ink-muted">{status}</p>
+      )}
 
+      {!typing && (
       <div className="flex h-[34px] items-center gap-[3px]" aria-hidden="true">
         {BAR_HEIGHTS.map((h, i) => (
           <span
@@ -240,10 +263,11 @@ export function VoiceTopicHero({
           />
         ))}
       </div>
+      )}
 
       {/* Transcript. Committed words in ink, the recogniser's uncommitted tail
           greyed behind them — the same two-tone treatment as the design. */}
-      {(hasText || listening) && (
+      {!typing && (hasText || listening) && (
         <div className="spark-surface w-full max-w-[620px] rounded-[10px] border border-spark-rule px-4 py-[13px] text-left text-[17px] leading-[1.5] text-spark-ink">
           {value.trim()}
           {interim && <span className="text-spark-ink-faint">{value.trim() ? " " : ""}{interim}</span>}
@@ -270,10 +294,12 @@ export function VoiceTopicHero({
         <span>or</span>
         <button
           type="button"
-          onClick={() => setTyping((t) => !t)}
+          onClick={() => setTyping(!typing)}
           className="text-spark-amber underline hover:text-spark-blue"
         >
-          {typing ? "hide the text box" : "type it instead"}
+          {/* Switching here moves the choice at the top of the page too — it is
+              one setting, reachable from either end. */}
+          {typing ? "speak it instead" : "type it instead"}
         </button>
         <span>·</span>
         <button
