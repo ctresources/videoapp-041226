@@ -1096,6 +1096,25 @@ export default function ProjectEditorPage() {
     toast.success(`${label} copied!`);
   }
 
+  /**
+   * Hands the hook + script + CTA to the Camera tab's teleprompter in one
+   * click, instead of the user copying each field by hand. Camera's script
+   * step is a plain textarea that already accepts any pasted-in text — this
+   * just pre-fills it via the same sessionStorage handoff the tab already
+   * uses for photos/PDFs (see "camera-uploads" in this file's loadProject).
+   */
+  function handleRecordOnCamera() {
+    const combined = [selectedHook, editedScript, editedCta]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n\n");
+    if (!combined) return;
+    try {
+      sessionStorage.setItem("camera-record-script", combined);
+    } catch { /* sessionStorage unavailable */ }
+    router.push("/create?tab=camera");
+  }
+
   /** Strips the "H2: " markers the blog article uses, for on-screen reading. */
   function blogPlainText(text: string): string {
     return text.replace(/^H2:\s*/gm, "");
@@ -1867,12 +1886,21 @@ export default function ProjectEditorPage() {
                   <p className="text-[10.5px] text-spark-ink-faint">
                     Edit freely — your changes are saved when you generate the video
                   </p>
-                  <button
-                    onClick={() => copyToClipboard(editedScript, "Script")}
-                    className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
-                  >
-                    <Copy size={12} /> Copy
-                  </button>
+                  <div className="flex flex-none items-center gap-3">
+                    <button
+                      onClick={handleRecordOnCamera}
+                      title="Send the hook, script & CTA to the Camera tab's teleprompter"
+                      className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
+                    >
+                      <Camera size={12} /> Record on Camera
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(editedScript, "Script")}
+                      className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
+                    >
+                      <Copy size={12} /> Copy
+                    </button>
+                  </div>
                 </div>
                 <ScriptLengthWarning
                   words={editedScript.trim().split(/\s+/).filter(Boolean).length}

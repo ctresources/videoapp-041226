@@ -165,6 +165,17 @@ function CreatePageInner() {
     else if (tab === "listing") setInputMode("listing");
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); }
 
+    // Handed off from the editor's "Record on Camera" button — the hook,
+    // script and CTA it already generated, pre-filling the teleprompter
+    // instead of the user copying each field over by hand.
+    try {
+      const handoff = sessionStorage.getItem("camera-record-script");
+      if (handoff) {
+        setCameraGeneratedScript(handoff);
+        sessionStorage.removeItem("camera-record-script");
+      }
+    } catch { /* sessionStorage unavailable */ }
+
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
