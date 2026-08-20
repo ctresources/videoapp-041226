@@ -659,7 +659,7 @@ function CreatePageInner() {
           and it was only discoverable as a small "type it instead" link under
           the mic — which told anyone who wanted to type that they were doing it
           the wrong way round. Neither is the fallback. */}
-      {step === "input" && (
+      {step === "input" && inputMode === "script" && (
         <div className="mb-5 flex flex-col gap-3 border-b border-spark-rule-soft pb-5">
           <div>
             <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
@@ -833,7 +833,10 @@ function CreatePageInner() {
                     type="text"
                     value={locCity}
                     onChange={(e) => setLocCity(e.target.value)}
-                    placeholder="Blue Bell"
+                    // Deliberately not a real town. Naming one puts a single
+                    // market in front of every user in the country, and this
+                    // field is the whole subject of the video.
+                    placeholder="Your city or area"
                     className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
                   />
                   <FieldMic onTranscript={(t) => setLocCity(t.replace(/[.,]\s*$/, "").trim())} title="Say the city" />
@@ -846,7 +849,7 @@ function CreatePageInner() {
                     type="text"
                     value={locState}
                     onChange={(e) => setLocState(e.target.value)}
-                    placeholder="PA"
+                    placeholder="ST"
                     maxLength={2}
                     className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
                   />
@@ -1432,7 +1435,7 @@ function CreatePageInner() {
                   type="text"
                   value={locCity}
                   onChange={(e) => setLocCity(e.target.value)}
-                  placeholder="City (e.g. Willow Grove)"
+                  placeholder="City"
                   className="flex-1 min-w-0 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <input
