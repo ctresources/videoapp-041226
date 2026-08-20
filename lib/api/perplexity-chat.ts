@@ -9,6 +9,32 @@
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
+/**
+ * Search is off by default: these calls turn a sentence into structured fields,
+ * and leaving it on more than doubled a turn — 2.4s against 1.1s measured.
+ *
+ * It is switched on only for a rewrite that genuinely needs a figure the
+ * script does not already contain, which is the one case where the answer
+ * depends on the world rather than on the words in front of it.
+ */
+function requestBody(
+  system: string,
+  turns: ChatTurn[],
+  maxTokens: number,
+  temperature: number,
+  search: boolean,
+) {
+  return {
+    // sonar-pro is the research model; plain sonar is enough to read a sentence.
+    model: search ? "sonar-pro" : "sonar",
+    temperature,
+    max_tokens: maxTokens,
+    ...(search
+      ? { search_recency_filter: "month", web_search_options: { search_context_size: "high" } }
+      : { disable_search: true }),
+    messages: [{ role: "system", content: system }, ...turns],
+  };
+}
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
@@ -25,10 +51,10 @@ export interface ChatTurn {
 export async function chatJson(
   system: string,
   turns: ChatTurn[],
-  opts: { maxTokens?: number; temperature?: number; label?: string } = {},
+  opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean } = {},
 ): Promise<Record<string, unknown> | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
-  const { maxTokens = 400, temperature = 0.2, label = "chat" } = opts;
+  const { maxTokens = 400, temperature = 0.2, label = "chat", search = false } = opts;
 
   try {
     const res = await fetch(PERPLEXITY_API_URL, {
@@ -37,13 +63,7 @@ export async function chatJson(
         Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "sonar",
-        temperature,
-        max_tokens: maxTokens,
-        disable_search: true,
-        messages: [{ role: "system", content: system }, ...turns],
-      }),
+      body: JSON.stringify(requestBody(system, turns, maxTokens, temperature, search)),
     });
     if (!res.ok) {
       console.error(`[${label}] perplexity ${res.status}`);
@@ -70,10 +90,10 @@ export async function chatJson(
 export async function chatText(
   system: string,
   turns: ChatTurn[],
-  opts: { maxTokens?: number; temperature?: number; label?: string } = {},
+  opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean } = {},
 ): Promise<string | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
-  const { maxTokens = 1200, temperature = 0.4, label = "chat" } = opts;
+  const { maxTokens = 1200, temperature = 0.4, label = "chat", search = false } = opts;
 
   try {
     const res = await fetch(PERPLEXITY_API_URL, {
@@ -82,13 +102,7 @@ export async function chatText(
         Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "sonar",
-        temperature,
-        max_tokens: maxTokens,
-        disable_search: true,
-        messages: [{ role: "system", content: system }, ...turns],
-      }),
+      body: JSON.stringify(requestBody(system, turns, maxTokens, temperature, search)),
     });
     if (!res.ok) {
       console.error(`[${label}] perplexity ${res.status}`);

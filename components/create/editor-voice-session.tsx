@@ -74,11 +74,19 @@ export function EditorVoiceSession({ script, onSettings, onScript, onRender, dis
       onSettings(data.settings as EditorSettings);
       // Only when a rewrite actually came back. A failed rewrite returns null
       // and the script the user already had stays untouched.
+      //
+      // Whether it searched is said out loud, because "did you use current
+      // numbers?" has a different honest answer in each case and the script
+      // itself gives no clue which happened.
       if (typeof data.script === "string" && data.script.trim()) {
         onScript(data.script);
-        toast.success("Script updated.");
+        toast.success(
+          data.searched === true
+            ? "Script updated — looked up current figures."
+            : "Script updated using what was already in the script.",
+        );
       } else if (data.scriptEdit) {
-        toast.error("Couldn't apply that script change — the script is unchanged.");
+        toast.error("Couldn't apply that change — the script is unchanged.");
       }
       setLastReply((data.reply as string) || "");
       setTurns((t) => [...t, { role: "assistant", content: (data.reply as string) || "" }]);
