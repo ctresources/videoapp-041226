@@ -612,7 +612,6 @@ function CreatePageInner() {
   // The full template browser is collapsed until asked for — the design leads
   // with trending and formats, not all 29 templates at once.
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [setupOpen, setSetupOpen] = useState(false);
   // The unresolved "{city}, {state}" form of a picked template. Kept so that
   // choosing a template before filling the location still ends up with the
   // real place in it rather than a literal "your city".
@@ -904,94 +903,80 @@ function CreatePageInner() {
               </button>
             )}
 
-            {/* Audience, style, CTA and length are optional — most videos never
-                touch them, so they stay folded away rather than sitting in the
-                path of the people who don't need them. */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
-                {locAudience || "Any audience"}
-              </span>
-              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
-                {locTone || "Any style"}
-              </span>
-              <span className="spark-surface rounded-nav px-3 py-1.5 text-[13px] text-spark-ink-muted">
-                {locLength === "long" ? "Up to 8 min" : "Up to 4 min"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSetupOpen((o) => !o)}
-                className="text-[13px] font-medium text-spark-amber underline hover:text-spark-blue"
-              >
-                {setupOpen ? "Done" : "Edit (optional)"}
-              </button>
-            </div>
-
-            {setupOpen && (
-              <Card padding="sm">
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {[
-                      {
-                        label: "Audience", value: locAudience, set: setLocAudience,
-                        options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
-                      },
-                      {
-                        label: "Style", value: locTone, set: setLocTone,
-                        options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
-                      },
-                      {
-                        label: "Call to action", value: locCta, set: setLocCta,
-                        options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
-                      },
-                    ].map(({ label, value, set, options }) => (
-                      <div key={label}>
-                        <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">{label}</label>
-                        <div className="relative">
-                          <select
-                            value={value}
-                            onChange={(e) => set(e.target.value)}
-                            className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                          >
-                            {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                          </select>
-                          <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
-                        </div>
+            {/* Audience, style and CTA are optional and Length is the only
+                required one (it already defaults to Standard, so it is never
+                empty) — but all four stay visible and pickable up front rather
+                than behind an Edit toggle. Hiding them made "optional" read as
+                "hidden", and the user should see what they can set without a
+                click to find out. */}
+            <Card padding="sm">
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {[
+                    {
+                      label: "Audience", value: locAudience, set: setLocAudience,
+                      options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
+                    },
+                    {
+                      label: "Style", value: locTone, set: setLocTone,
+                      options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+                    },
+                    {
+                      label: "Call to action", value: locCta, set: setLocCta,
+                      options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+                    },
+                  ].map(({ label, value, set, options }) => (
+                    <div key={label}>
+                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">{label}</label>
+                      <div className="relative">
+                        <select
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
+                          className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                        >
+                          {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                        <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
                       </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Length lives here rather than with format and avatar,
+                    because the script is written to it — by the time you
+                    reach the editor the words already exist. The only
+                    required choice of the four, though it can never actually
+                    be empty since it starts on Standard. */}
+                <div className="border-t border-spark-rule-soft pt-4">
+                  <p className="mb-2 text-[13px] font-medium text-spark-ink-soft">
+                    Length <span className="text-spark-amber">*</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {([
+                      { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
+                      { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
+                    ] as const).map(({ v, title, sub, note }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setLocLength(v)}
+                        aria-pressed={locLength === v}
+                        className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
+                          locLength === v
+                            ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                            : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                        }`}
+                      >
+                        <p className="text-[14px] font-medium text-spark-ink">
+                          {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
+                        </p>
+                        <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
+                      </button>
                     ))}
                   </div>
-
-                  {/* Length lives here rather than with format and avatar,
-                      because the script is written to it — by the time you
-                      reach the editor the words already exist. */}
-                  <div className="border-t border-spark-rule-soft pt-4">
-                    <p className="mb-2 text-[13px] font-medium text-spark-ink-soft">Length</p>
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                      {([
-                        { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
-                        { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
-                      ] as const).map(({ v, title, sub, note }) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => setLocLength(v)}
-                          aria-pressed={locLength === v}
-                          className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
-                            locLength === v
-                              ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                              : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                          }`}
-                        >
-                          <p className="text-[14px] font-medium text-spark-ink">
-                            {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
-                          </p>
-                          <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
-              </Card>
-            )}
+              </div>
+            </Card>
           </div>
 
           {/* ── The topic ──
