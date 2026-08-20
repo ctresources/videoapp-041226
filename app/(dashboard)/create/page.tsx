@@ -25,6 +25,7 @@ import {
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
+import { toStateAbbr } from "@/lib/utils/us-states";
 import {
   CAMERA_LENGTHS,
   LONG_MAX_WORDS,
@@ -67,23 +68,6 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 // routes into the "paste" or "listing" flows, which remain distinct modes.
 type InputMode = "script" | "camera" | "listing" | "paste" | "content";
 
-const STATE_MAP: Record<string, string> = {
-  "alabama":"AL","alaska":"AK","arizona":"AZ","arkansas":"AR","california":"CA",
-  "colorado":"CO","connecticut":"CT","delaware":"DE","florida":"FL","georgia":"GA",
-  "hawaii":"HI","idaho":"ID","illinois":"IL","indiana":"IN","iowa":"IA","kansas":"KS",
-  "kentucky":"KY","louisiana":"LA","maine":"ME","maryland":"MD","massachusetts":"MA",
-  "michigan":"MI","minnesota":"MN","mississippi":"MS","missouri":"MO","montana":"MT",
-  "nebraska":"NE","nevada":"NV","new hampshire":"NH","new jersey":"NJ",
-  "new mexico":"NM","new york":"NY","north carolina":"NC","north dakota":"ND",
-  "ohio":"OH","oklahoma":"OK","oregon":"OR","pennsylvania":"PA","rhode island":"RI",
-  "south carolina":"SC","south dakota":"SD","tennessee":"TN","texas":"TX","utah":"UT",
-  "vermont":"VT","virginia":"VA","washington":"WA","west virginia":"WV",
-  "wisconsin":"WI","wyoming":"WY","district of columbia":"DC",
-};
-function toStateAbbr(t: string) {
-  const lower = t.trim().toLowerCase();
-  return STATE_MAP[lower] || t.trim().slice(0, 2).toUpperCase();
-}
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
