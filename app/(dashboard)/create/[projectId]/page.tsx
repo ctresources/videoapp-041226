@@ -525,6 +525,11 @@ export default function ProjectEditorPage() {
 
     const p = data as unknown as Project;
     setProject(p);
+    // Only set for a fresh (not user_edited) load — passed to initContentEdits
+    // below so the title matches whichever hook just got auto-selected.
+    // Stays undefined on a saved draft, so a title the user deliberately
+    // typed and saved is restored as-is, not silently replaced by the hook.
+    let freshDefaultHook: string | undefined;
     if (p.ai_script) {
       const aiS = p.ai_script as AiScript & { user_edited?: boolean; video_length?: string };
       setEditedScript(aiS.script || "");
@@ -538,10 +543,11 @@ export default function ProjectEditorPage() {
       } else {
         const defaultCta = await loadDefaultCta(p);
         setEditedCta(defaultCta || aiS.cta || "");
-        setSelectedHook(aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "");
+        freshDefaultHook = aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "";
+        setSelectedHook(freshDefaultHook);
       }
     }
-    initContentEdits(p);
+    initContentEdits(p, freshDefaultHook);
     setLoading(false);
   }
 
@@ -605,10 +611,19 @@ export default function ProjectEditorPage() {
   }
 
   /** Seed the editable title/description from the freshest AI copy. */
-  function initContentEdits(p: Project) {
+  /**
+   * `defaultHook`, when given, is the hook that was just auto-selected
+   * (hooks[0]) at this same generation. It comes from the same "VIDEO TITLE
+   * OPTIONS" list the model wrote, so it wins over seo_data's own
+   * independently-generated youtube_title — that separate call has no idea
+   * which hook the editor lands on, which is what produced two different
+   * titles for the same video. Left undefined when restoring a saved draft,
+   * so a title the user deliberately typed and saved is never overwritten.
+   */
+  function initContentEdits(p: Project, defaultHook?: string) {
     const seo = p.seo_data as SeoData | null;
     const ai = p.ai_script as AiScript | null;
-    setEditedTitle(seo?.youtube_title || ai?.title || p.title || "");
+    setEditedTitle(defaultHook || seo?.youtube_title || ai?.title || p.title || "");
     setEditedDescription(seo?.youtube_description || ai?.description || "");
   }
 
@@ -724,14 +739,16 @@ export default function ProjectEditorPage() {
       const { project: newProject } = body as { project: Project };
       const p = newProject as Project;
       setProject(p);
+      let freshDefaultHook: string | undefined;
       if (p.ai_script) {
         setEditedScript((p.ai_script as AiScript).script || "");
         const defaultCta = await loadDefaultCta(p);
         setEditedCta(defaultCta || (p.ai_script as AiScript).cta || "");
         const hooks = (p.ai_script as AiScript).hooks;
-        setSelectedHook(hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "");
+        freshDefaultHook = hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "";
+        setSelectedHook(freshDefaultHook);
       }
-      initContentEdits(p);
+      initContentEdits(p, freshDefaultHook);
       // Update URL to the new project ID
       router.replace(`/create/${p.id}`);
       toast.success("Script generated!");
@@ -762,8 +779,9 @@ export default function ProjectEditorPage() {
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
-      setSelectedHook(aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "");
-      setEditedTitle(seoData?.youtube_title || aiScript.title || "");
+      const freshDefaultHook = aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "";
+      setSelectedHook(freshDefaultHook);
+      setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
       toast.success("Script regenerated!");
     } catch (err) {
@@ -817,8 +835,9 @@ export default function ProjectEditorPage() {
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
-      setSelectedHook(aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "");
-      setEditedTitle(seoData?.youtube_title || aiScript.title || "");
+      const freshDefaultHook = aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "";
+      setSelectedHook(freshDefaultHook);
+      setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
       toast.success("Script regenerated!");
     } catch (err) {
@@ -1749,7 +1768,11 @@ export default function ProjectEditorPage() {
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setSelectedHook(hook)}
+                    // Picking a hook option is choosing a title too — they came
+                    // from the same "VIDEO TITLE OPTIONS" list the model wrote,
+                    // and showing one as the title while a different one sat
+                    // selected as the hook was the actual inconsistency.
+                    onClick={() => { setSelectedHook(hook); setEditedTitle(hook); }}
                     aria-pressed={active}
                     className={`group flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors ${
                       active
