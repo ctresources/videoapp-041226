@@ -142,17 +142,37 @@ export async function GET(req: NextRequest) {
 
     // If still rendering, query HeyGen directly (webhook fallback)
     if (status === "rendering" || status === "pending") {
-      // Auto-fail jobs stuck for more than 30 minutes
+      // Backstop for renders that vanish silently — HeyGen reports real
+      // failures through the webhook, so this is not the normal failure path.
+      // Tripping it early is the expensive mistake: it discards a video that
+      // was still being made and refunds credits for one the user may still
+      // receive, since a late webhook un-fails the row.
+      //
+      // HeyGen documents 5-10x the finished video length, so the ceiling has to
+      // follow the video kind or one number is wrong for the other:
+      //   short  500 words   = 3.4 min  ->  17-34 min   -> 45 covers it
+      //   long   1160 words  = 8.0 min  ->  40-80 min   -> 90 covers it
+      // Admin long form (2175 words, ~15 min, up to 150) is deliberately not
+      // covered — that is a testing path, not one a customer reaches.
       const ageMs = Date.now() - new Date(video.created_at as string).getTime();
-      if (ageMs > 30 * 60 * 1000) {
+      const isLongRender =
+        storedMeta.credit_kind === "long" ||
+        String(video.video_type ?? "").includes("long");
+      const timeoutMin = isLongRender ? 90 : 45;
+      if (ageMs > timeoutMin * 60 * 1000) {
         status = "failed";
-        errorMsg = "Render timed out after 30 minutes";
-        await admin.from("generated_videos").update({ render_status: "failed" }).eq("id", video.id);
+        errorMsg = `Render timed out after ${timeoutMin} minutes`;
+        // Persist the reason like the other fail branches do, or this one reads
+        // back as a bare "Render failed" once the live poll is gone.
+        await admin
+          .from("generated_videos")
+          .update({ render_status: "failed", metadata: { ...storedMeta, render_error: errorMsg } })
+          .eq("id", video.id);
         if (video.project_id) {
           await admin.from("projects").update({ status: "error" }).eq("id", video.project_id);
         }
         await refundVideoCredits(admin, video.id as string);
-        console.warn(`[status] Auto-failed ${video.id} after 30-min timeout`);
+        console.warn(`[status] Auto-failed ${video.id} after ${timeoutMin}-min timeout (kind=${isLongRender ? "long" : "short"})`);
       } else {
       try {
         const provider = video.render_provider as string;
@@ -341,7 +361,7 @@ export async function GET(req: NextRequest) {
         // Don't fail the status check if HeyGen poll fails; keep DB value
         console.warn("[status] HeyGen direct poll failed:", pollErr);
       }
-      } // end 30-min timeout else
+      } // end render-timeout else
     }
 
     const progress = status === "completed" ? 1 : status === "failed" ? 0 : 0.5;

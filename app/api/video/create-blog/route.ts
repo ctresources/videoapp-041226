@@ -28,13 +28,11 @@ export const maxDuration = 300;
 // prompt — so length is capped by both plan AND the prompt budget. Past ~4 min
 // the script squeezes out the quality instructions, and at ~4.8 min there is no
 // room left for any of them, so 4 min is the practical ceiling.
-// These are standardMaxWords() from lib/utils/video-length.ts, which calls
-// itself the one source of truth for length — so read them from it rather than
-// keeping a second copy here that can silently drift out of step.
-const MAX_SHORT_WORDS_3MIN = standardMaxWords(null);     // Starter — 3 min
-const MAX_SHORT_WORDS_4MIN = standardMaxWords("pro");    // Agent / Pro
-// Back-compat default for any caller that doesn't resolve a plan.
-const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS_3MIN;
+// One number for every plan now — read from lib/utils/video-length.ts, which
+// calls itself the one source of truth for length, rather than kept as a second
+// copy here that can silently drift out of step.
+const MAX_SHORT_WORDS = standardMaxWords();
+const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS;
 
 // LONG videos render on Direct Video (script is a separate field, no prompt
 // limit), so this is a pure product/cost choice: 8 min at $1/min (Avatar III
@@ -485,8 +483,11 @@ export async function POST(req: NextRequest) {
   // tier is "free" is silently held to 3 minutes, which breaks the long-video
   // testing that being an admin is for. (canUseDigitalTwin already does this;
   // this cap was the one place still keyed on tier alone.)
-  const shortFormMaxWords =
-    isAdmin || tier === "agent" || tier === "pro" ? MAX_SHORT_WORDS_4MIN : MAX_SHORT_WORDS_3MIN;
+  // Short form is 500 words on every plan now, admin included — the split
+  // bought ~25 seconds of extra video and cost a second set of length rules.
+  // Long form still varies: Direct Video takes the script as a separate field
+  // with no prompt budget, so admins get HeyGen's ~15-minute ceiling for tests.
+  const shortFormMaxWords = MAX_SHORT_WORDS;
   const longFormMaxWords = isAdmin ? MAX_LONG_FORM_SCRIPT_WORDS_ADMIN : MAX_LONG_FORM_SCRIPT_WORDS;
   const maxScriptWords = isLongForm ? longFormMaxWords : shortFormMaxWords;
 
