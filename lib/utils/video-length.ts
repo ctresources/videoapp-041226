@@ -58,6 +58,30 @@ export function minutesFor(words: number): number {
 }
 
 /**
+ * Trims a script to a word budget, ending on a complete sentence.
+ *
+ * Was local to the render route only, so a script could be shown to the user
+ * at 594 words — well past its 500-word cap — and only get clamped silently
+ * later, at render time. The number the user sees has to be the number they
+ * get, so this now runs right after generation too, not just before render.
+ *
+ * Slicing at exactly maxWords and bolting on a full stop used to end a real
+ * video on "...roughly 30 to 45 minutes outside of peak rush hour by." — the
+ * sentence boundary is what stops that.
+ */
+export function clampScript(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= maxWords) return text;
+
+  const cut = words.slice(0, maxWords).join(" ");
+  const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  // Only honour the sentence boundary if it keeps most of the budget — falling
+  // back to a hard slice beats dropping a third of the script to find a period.
+  if (lastStop > 0 && lastStop >= cut.length * 0.6) return cut.slice(0, lastStop + 1).trim();
+  return cut + ".";
+}
+
+/**
  * Camera / teleprompter scripts. These are NOT rendered by HeyGen — the agent
  * records themselves — so there's no per-minute cost and the only limit is the
  * 15-minute recording cap. Lengths are a creative choice, not a budget one.

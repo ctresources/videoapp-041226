@@ -18,7 +18,7 @@ import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
-import { standardMaxWords } from "@/lib/utils/video-length";
+import { standardMaxWords, clampScript } from "@/lib/utils/video-length";
 
 export const maxDuration = 300;
 
@@ -32,7 +32,6 @@ export const maxDuration = 300;
 // calls itself the one source of truth for length, rather than kept as a second
 // copy here that can silently drift out of step.
 const MAX_SHORT_WORDS = standardMaxWords();
-const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS;
 
 // LONG videos render on Direct Video (script is a separate field, no prompt
 // limit), so this is a pure product/cost choice: 8 min at $1/min (Avatar III
@@ -49,25 +48,10 @@ const MAX_LONG_FORM_SCRIPT_WORDS_ADMIN = 2175; // ~15 min
 // Short and long videos draw from SEPARATE monthly allowances (1 each), so
 // there is no shared cost multiplier. See the plan allotments in lib/stripe.ts.
 
-/**
- * Trims a script to the word budget, ending on a complete sentence.
- *
- * This used to slice at exactly maxWords and bolt on a full stop, which ended
- * one real video on "...roughly 30 to 45 minutes outside of peak rush hour by."
- * The prompt now states the cap so this should rarely fire at all, but when it
- * does the last thing the viewer hears should at least be a finished thought.
- */
-function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
-  const words = text.trim().split(/\s+/);
-  if (words.length <= maxWords) return text;
-
-  const cut = words.slice(0, maxWords).join(" ");
-  const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  // Only honour the sentence boundary if it keeps most of the budget — falling
-  // back to a hard slice beats dropping a third of the script to find a period.
-  if (lastStop > 0 && lastStop >= cut.length * 0.6) return cut.slice(0, lastStop + 1).trim();
-  return cut + ".";
-}
+// clampScript now lives in lib/utils/video-length.ts, shared with the
+// generation-time clamp — a script must never be shown to the user at a
+// length this route would then silently cut down further. Every call site
+// below still reads clampScript(text, maxWords) unchanged.
 
 /**
  * Expand common address/unit abbreviations into full words so the TTS engine

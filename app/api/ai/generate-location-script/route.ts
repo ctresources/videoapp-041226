@@ -7,7 +7,7 @@ import {
   LocationParams,
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
-import { targetWords, maxWords, type VideoLength } from "@/lib/utils/video-length";
+import { targetWords, maxWords, clampScript, type VideoLength } from "@/lib/utils/video-length";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -109,12 +109,25 @@ export async function POST(req: NextRequest) {
   // ── Parse into structured ai_script ────────────────────────────────────────
   const parsed = parseLocationScript(raw, videoType, city, state, agentName);
 
+  // The prompt states the cap, but a model overshooting it is not a
+  // hypothetical — one real generation came back 594 words against a
+  // 500-word cap. Without this, the user sees and edits that longer number
+  // in the editor, then the render clamp in create-blog/route.ts quietly
+  // trims it down later — a second, invisible edit after the one they just
+  // made. Clamping here means the word count shown is the word count spoken.
+  //
+  // The same reserve-the-CTA-first math as the render clamp, so this cannot
+  // agree with the number shown and then disagree with what render enforces.
+  const ctaClamped = clampScript(parsed.cta, 200);
+  const ctaWordCount = ctaClamped.trim().split(/\s+/).filter(Boolean).length;
+  const scriptClamped = clampScript(parsed.script, Math.max(50, cap - ctaWordCount));
+
   const aiScript = {
     title: parsed.title,
     hook: parsed.hook,
     hooks: parsed.hooks,
-    script: parsed.script,
-    cta: parsed.cta,
+    script: scriptClamped,
+    cta: ctaClamped,
     description: parsed.description,
     hashtags: parsed.hashtags,
     keywords: parsed.keywords,

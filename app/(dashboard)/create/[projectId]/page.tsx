@@ -11,6 +11,7 @@ import { resolveCta } from "@/lib/utils/default-cta";
 import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
 import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
+import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import {
   ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
@@ -113,7 +114,7 @@ const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: b
   { value: "youtube_long", label: "Long Video / Blog", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
-const LONG_CAP_WORDS = 1160; // ~8 min at 145 wpm
+// LONG_MAX_WORDS used to be a second copy of this number, kept in step by hand.
 const mins = (words: number) => Math.round((words / 145) * 10) / 10;
 
 /**
@@ -161,7 +162,7 @@ function ScriptLengthWarning({
   standardCap: number;
   onSwitchToLong?: () => void;
 }) {
-  const cap = isLong ? LONG_CAP_WORDS : standardCap;
+  const cap = isLong ? LONG_MAX_WORDS : standardCap;
   if (words <= cap) return null;
   // The fill is the share of the script that survives the clamp and the tick
   // sits on the cap, so the empty run after it is literally what gets cut.
@@ -1416,7 +1417,7 @@ export default function ProjectEditorPage() {
             <ScriptLengthWarning
               words={editedScript.trim().split(/\s+/).filter(Boolean).length}
               isLong={selectedVideoType === "youtube_long"}
-              standardCap={longFormIncluded ? 580 : 435}
+              standardCap={standardMaxWords()}
               onSwitchToLong={() => setSelectedVideoType("youtube_long")}
             />
           </Card>
@@ -1765,7 +1766,7 @@ export default function ProjectEditorPage() {
                 <ScriptLengthWarning
                   words={editedScript.trim().split(/\s+/).filter(Boolean).length}
                   isLong={selectedVideoType === "youtube_long"}
-                  standardCap={longFormIncluded ? 580 : 435}
+                  standardCap={standardMaxWords()}
                   onSwitchToLong={() => setSelectedVideoType("youtube_long")}
                 />
               </>
