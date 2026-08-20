@@ -18,6 +18,7 @@ import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
+import { standardMaxWords } from "@/lib/utils/video-length";
 
 export const maxDuration = 300;
 
@@ -27,8 +28,11 @@ export const maxDuration = 300;
 // prompt — so length is capped by both plan AND the prompt budget. Past ~4 min
 // the script squeezes out the quality instructions, and at ~4.8 min there is no
 // room left for any of them, so 4 min is the practical ceiling.
-const MAX_SHORT_WORDS_3MIN = 435;  // Starter
-const MAX_SHORT_WORDS_4MIN = 580;  // Agent / Pro
+// These are standardMaxWords() from lib/utils/video-length.ts, which calls
+// itself the one source of truth for length — so read them from it rather than
+// keeping a second copy here that can silently drift out of step.
+const MAX_SHORT_WORDS_3MIN = standardMaxWords(null);     // Starter — 3 min
+const MAX_SHORT_WORDS_4MIN = standardMaxWords("pro");    // Agent / Pro
 // Back-compat default for any caller that doesn't resolve a plan.
 const MAX_SCRIPT_WORDS = MAX_SHORT_WORDS_3MIN;
 
@@ -47,10 +51,24 @@ const MAX_LONG_FORM_SCRIPT_WORDS_ADMIN = 2175; // ~15 min
 // Short and long videos draw from SEPARATE monthly allowances (1 each), so
 // there is no shared cost multiplier. See the plan allotments in lib/stripe.ts.
 
+/**
+ * Trims a script to the word budget, ending on a complete sentence.
+ *
+ * This used to slice at exactly maxWords and bolt on a full stop, which ended
+ * one real video on "...roughly 30 to 45 minutes outside of peak rush hour by."
+ * The prompt now states the cap so this should rarely fire at all, but when it
+ * does the last thing the viewer hears should at least be a finished thought.
+ */
 function clampScript(text: string, maxWords: number = MAX_SCRIPT_WORDS): string {
   const words = text.trim().split(/\s+/);
   if (words.length <= maxWords) return text;
-  return words.slice(0, maxWords).join(" ") + ".";
+
+  const cut = words.slice(0, maxWords).join(" ");
+  const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  // Only honour the sentence boundary if it keeps most of the budget — falling
+  // back to a hard slice beats dropping a third of the script to find a period.
+  if (lastStop > 0 && lastStop >= cut.length * 0.6) return cut.slice(0, lastStop + 1).trim();
+  return cut + ".";
 }
 
 /**

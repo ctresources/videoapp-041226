@@ -7,7 +7,7 @@ import {
   LocationParams,
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
-import { targetWords, type VideoLength } from "@/lib/utils/video-length";
+import { targetWords, maxWords, type VideoLength } from "@/lib/utils/video-length";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -83,11 +83,17 @@ export async function POST(req: NextRequest) {
   // ~1,100-word script, a standard one ~400-520 depending on plan. Without this
   // the AI always wrote ~300 words and a "long" video came out ~2 minutes.
   const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
-  const words = targetWords(videoLength === "long" ? "long" : "standard", tier);
+  const length: VideoLength = videoLength === "long" ? "long" : "standard";
+  const words = targetWords(length, tier);
+  // The cap is stated in the prompt too. Asking for a target without naming the
+  // limit is what produced 676-word scripts against a 522-word target, which
+  // were then cut mid-sentence at render time.
+  const cap = maxWords(length, tier);
 
   const params: LocationParams = {
     city, state, zip, month, year, customTopic, audience, tone, ctaPreference,
     targetWords: words,
+    maxWords: cap,
   };
   const agentName = (profile as { full_name?: string | null }).full_name || undefined;
 

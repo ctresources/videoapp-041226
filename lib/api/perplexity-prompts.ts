@@ -44,14 +44,22 @@ export interface LocationParams {
    * existing callers behave exactly as before.
    */
   targetWords?: number;
+  /**
+   * The cap the script is sliced at before rendering. Stated to the model as a
+   * hard limit so it stops on its own rather than being cut mid-sentence.
+   */
+  maxWords?: number;
 }
 
 /** Narration length instruction + a matching max_tokens budget. */
-function lengthSpec(targetWords?: number): { instruction: string; maxTokens: number } {
+function lengthSpec(targetWords?: number, hardMaxWords?: number): { instruction: string; maxTokens: number } {
   const words = targetWords && targetWords > 0 ? targetWords : 300;
   const minutes = Math.round((words / 145) * 10) / 10;
   const low = Math.round(words * 0.92);
   const high = Math.round(words * 1.08);
+  // Everything past this is sliced off before rendering, so it is a real
+  // ceiling and the model needs to be told so.
+  const hardMax = hardMaxWords && hardMaxWords > words ? hardMaxWords : Math.round(words * 1.1);
 
   // ~1.4 tokens per word, plus headroom for the hook, titles, blog intro and
   // sources that share the same response.
@@ -63,7 +71,15 @@ function lengthSpec(targetWords?: number): { instruction: string; maxTokens: num
       : `Cover 3-5 key points about the topic with specific data, stats, or facts where available.`;
 
   return {
-    instruction: `${depth} Aim for ${low}-${high} words total (about ${minutes} minutes of speech). Getting close to this length matters — a script that is far short will produce a video shorter than the user paid for.`,
+    // Both directions carry a consequence. Stating only the short one is what
+    // produced 676-word scripts against a 522-word target: there was no reason
+    // given to stop, and the overflow was then amputated mid-sentence.
+    instruction: `${depth} Aim for ${low}-${high} words total (about ${minutes} minutes of speech). ` +
+      `HARD LIMIT: do not exceed ${hardMax} words. The script is cut off at that point before it is ` +
+      `recorded, so anything beyond it is never spoken and the video ends mid-sentence. ` +
+      `Equally, a script far below the range produces a video shorter than the user paid for. ` +
+      `Count your words and finish inside the range — reaching a proper conclusion within ${hardMax} ` +
+      `words matters more than covering one extra point.`,
     maxTokens,
   };
 }
@@ -315,7 +331,7 @@ function buildCustomRequest(params: LocationParams): Record<string, unknown> {
   const fallbackLocation = city && state
     ? `${city}, ${state}${zip ? ` (zip ${zip})` : ""}`
     : "";
-  const len = lengthSpec(params.targetWords);
+  const len = lengthSpec(params.targetWords, params.maxWords);
 
   if (!customTopic) throw new Error("customTopic is required for custom video type");
 
@@ -430,7 +446,7 @@ export async function generateLocationScript(
     // community_events). The custom type states its own target inline, so it's
     // already handled; applying it twice would give conflicting numbers.
     if (videoType !== "custom" && params.targetWords) {
-      const len = lengthSpec(params.targetWords);
+      const len = lengthSpec(params.targetWords, params.maxWords);
       systemMsg.content += `\n\nSCRIPT LENGTH: ${len.instruction} Expand every section proportionally to reach it — never repeat yourself or add filler to hit the count.`;
       requestBody.max_tokens = len.maxTokens;
     }

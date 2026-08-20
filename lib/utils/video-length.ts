@@ -10,9 +10,16 @@ export const WPM = 145;
 
 export type VideoLength = "standard" | "long";
 
-/** Plan-aware maximum for a STANDARD (Video Agent) video. */
+/**
+ * Plan-aware maximum for a STANDARD (Video Agent) video.
+ *
+ * 500 rather than the 580 this used to be. A 580-word script renders as a
+ * 4-minute video, and on the Video Agent that took ~23 minutes against the
+ * ~12 that a 3-minute video takes — long enough to be mistaken for a stall and
+ * close enough to the 30-minute auto-fail to be uncomfortable.
+ */
 export function standardMaxWords(tier: string | null | undefined): number {
-  return tier === "agent" || tier === "pro" ? 580 : 435; // 4 min vs 3 min
+  return tier === "agent" || tier === "pro" ? 500 : 435; // ~3.4 min vs 3 min
 }
 
 /** Plan-aware maximum runtime in minutes for a STANDARD video. */
@@ -27,6 +34,10 @@ export const LONG_MAX_MINUTES = 8;
 /**
  * Words the AI should aim for. Slightly under the hard cap so a script that
  * runs a little long still isn't truncated.
+ *
+ * The margin only works if the prompt treats the cap as a limit rather than a
+ * suggestion — see lengthSpec in lib/api/perplexity-prompts.ts, which used to
+ * penalise only *short* scripts and so reliably overshot by ~30%.
  */
 export function targetWords(length: VideoLength, tier: string | null | undefined): number {
   return length === "long" ? 1100 : Math.round(standardMaxWords(tier) * 0.9);
