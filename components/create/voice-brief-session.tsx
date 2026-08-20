@@ -26,8 +26,15 @@ interface Turn {
 interface Props {
   /** Applies whatever the conversation has established. */
   onSlots: (slots: BriefSlots) => void;
-  /** The agent said the wake word and the brief is complete. */
-  onReady: () => void;
+  /**
+   * The agent said the wake word and the brief is complete.
+   *
+   * Receives the slots directly. onSlots and onReady fire in the same tick, so
+   * anything onReady read back from React state would be a render behind — and
+   * one utterance carrying the whole brief plus the wake word is exactly the
+   * case where that state is still empty.
+   */
+  onReady: (slots: BriefSlots) => void;
   /** Escape hatch — hands over to the typed form. */
   onSwitchToTyping: () => void;
   disabled?: boolean;
@@ -84,7 +91,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
       onSlots(data.slots as BriefSlots);
       setTurns((t) => [...t, { role: "assistant", content: data.reply as string }]);
-      if (data.ready === true) onReady();
+      if (data.ready === true) onReady(data.slots as BriefSlots);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't follow that — try again.");
       setTurns((t) => [

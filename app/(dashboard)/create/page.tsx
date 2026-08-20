@@ -148,6 +148,9 @@ function CreatePageInner() {
   const [cameraPdfUrlExtracting, setCameraPdfUrlExtracting] = useState(false);
   const [cameraGeneratedScript, setCameraGeneratedScript] = useState("");
   const [cameraScriptGenerating, setCameraScriptGenerating] = useState(false);
+  // The camera tab had no topic field at all — its only AI path was "write
+  // from my uploads". The spoken brief supplies one.
+  const [cameraVoiceTopic, setCameraVoiceTopic] = useState("");
 
   // Paste tab upload-based script generation
   const [pasteUploadGenerating, setPasteUploadGenerating] = useState(false);
@@ -321,13 +324,22 @@ function CreatePageInner() {
     persistMarkets(updated);
   }
 
-  async function handleGenerateScript() {
+  /**
+   * `spoken` carries values straight from the voice session. Its onReady and
+   * onSlots fire in the same tick, so anything read back from React state
+   * here would be a render behind — and one utterance carrying the whole
+   * brief plus the wake word is exactly when that state is still empty.
+   */
+  async function handleGenerateScript(spoken?: { city?: string | null; state?: string | null; topic?: string | null }) {
+    const city = (spoken?.city ?? locCity).trim();
+    const state = (spoken?.state ?? locState).trim();
+    const topic = (spoken?.topic ?? locCustomTopic).trim();
     // No market gate any more — the topic carries its own location, and the
     // saved market is only a fallback for topics that name no place.
-    if (!locCustomTopic.trim()) {
+    if (!topic) {
       return toast.error("Please enter or pick a topic");
     }
-    if (locationSet) addMarket(locCity, locState);
+    if (city && state) addMarket(city, state);
     setLocGenerating(true);
     try {
       const res = await fetch("/api/ai/generate-location-script", {
@@ -337,14 +349,14 @@ function CreatePageInner() {
           videoType: "custom",
           // A fallback only. If the topic names a place, that place wins —
           // see buildCustomRequest in lib/api/perplexity-prompts.ts.
-          city: locCity.trim(),
-          state: locState.trim(),
+          city,
+          state,
           // A template picked before the location was filled says "your city".
           // Re-resolving here means the order the two were done in stops
           // mattering.
           customTopic: (topicTemplateRaw
-            ? substitutePlaceholders(topicTemplateRaw, locCity.trim(), locState.trim())
-            : locCustomTopic
+            ? substitutePlaceholders(topicTemplateRaw, city, state)
+            : topic
           ).trim(),
           audience: locAudience || undefined,
           tone: locTone || undefined,
@@ -494,6 +506,30 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
       setPasteUploadGenerating(false);
+    }
+  }
+
+  /**
+   * Teleprompter script from a topic the agent spoke, rather than from
+   * uploads. Same endpoint — it already accepts either.
+   */
+  async function handleCameraScriptFromTopic(topic: string) {
+    if (!topic.trim()) return;
+    setCameraScriptGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-camera-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, length: cameraScriptLength }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
+      setCameraGeneratedScript(data.script as string);
+      toast.success("Script ready — it's loaded in your teleprompter.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate script");
+    } finally {
+      setCameraScriptGenerating(false);
     }
   }
 
@@ -659,7 +695,7 @@ function CreatePageInner() {
           and it was only discoverable as a small "type it instead" link under
           the mic — which told anyone who wanted to type that they were doing it
           the wrong way round. Neither is the fallback. */}
-      {step === "input" && inputMode === "script" && (
+      {step === "input" && (inputMode === "script" || inputMode === "camera") && (
         <div className="mb-5 flex flex-col gap-3 border-b border-spark-rule-soft pb-5">
           <div>
             <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
@@ -977,7 +1013,7 @@ function CreatePageInner() {
                   if (s.tone) setLocTone(s.tone);
                   if (s.length) setLocLength(s.length);
                 }}
-                onReady={() => { if (!locGenerating) handleGenerateScript(); }}
+                onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
               />
             ) : (
               <VoiceTopicHero
@@ -1013,7 +1049,8 @@ function CreatePageInner() {
               destination and says the wait out loud underneath. */}
           <div className="flex flex-col gap-2 border-t border-spark-rule-soft pt-5">
             <Button
-              onClick={handleGenerateScript}
+              // Wrapped: bare, the click event would arrive as the spoken overrides.
+              onClick={() => handleGenerateScript()}
               loading={locGenerating}
               disabled={!canContinue}
               size="lg"
@@ -1422,6 +1459,31 @@ function CreatePageInner() {
                 <p className="text-sm text-slate-500">Speak Your Script — The Teleprompter Scrolls As You Record</p>
               </div>
             </div>
+
+            {/* ── Spoken brief ──
+                The camera tab's only AI path was "write from my uploads", so
+                an agent with nothing to upload had no way to get a script.
+                Speaking one fills the market above and writes the
+                teleprompter. Same session component and endpoint as the
+                AI-writes-it tab — the brief is the same brief. */}
+            {inputStyle === "speak" && (
+              <div className="mb-4">
+                <VoiceBriefSession
+                  disabled={cameraScriptGenerating}
+                  onSwitchToTyping={() => setInputStyle("type")}
+                  onSlots={(sl) => {
+                    if (sl.city) setLocCity(sl.city);
+                    if (sl.state) setLocState(sl.state);
+                    if (sl.topic) setCameraVoiceTopic(sl.topic);
+                    // The brief speaks in standard/long; the teleprompter has
+                    // four lengths. Map onto the nearest and leave the
+                    // four-way picker for anything finer.
+                    if (sl.length) setCameraScriptLength(sl.length === "long" ? "full" : "standard");
+                  }}
+                  onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic)}
+                />
+              </div>
+            )}
 
             {/* Market for THIS video. Without it the CTA and end card silently
                 fell back to the profile's home city — a Willow Grove listing
