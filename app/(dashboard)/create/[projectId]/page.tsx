@@ -1103,11 +1103,11 @@ export default function ProjectEditorPage() {
    * just pre-fills it via the same sessionStorage handoff the tab already
    * uses for photos/PDFs (see "camera-uploads" in this file's loadProject).
    */
-  function handleRecordOnCamera() {
-    const combined = [selectedHook, editedScript, editedCta]
+  function handleRecordOnCamera(text?: string) {
+    const combined = (text ?? [selectedHook, editedScript, editedCta]
       .map((part) => part.trim())
       .filter(Boolean)
-      .join("\n\n");
+      .join("\n\n")).trim();
     if (!combined) return;
     try {
       sessionStorage.setItem("camera-record-script", combined);
@@ -1888,7 +1888,7 @@ export default function ProjectEditorPage() {
                   </p>
                   <div className="flex flex-none items-center gap-3">
                     <button
-                      onClick={handleRecordOnCamera}
+                      onClick={() => handleRecordOnCamera()}
                       title="Send the hook, script & CTA to the Camera tab's teleprompter"
                       className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
                     >
@@ -2503,6 +2503,21 @@ export default function ProjectEditorPage() {
                       className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
                     >
                       <Copy size={12} /> Copy as text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRecordOnCamera(
+                          [script.blog_intro, script.blog_body, script.blog_conclusion]
+                            .filter(Boolean)
+                            .map(blogPlainText)
+                            .join("\n\n"),
+                        )
+                      }
+                      title="Send this blog post to the Camera tab's teleprompter — camera recordings run up to 15 minutes"
+                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
+                    >
+                      <Camera size={12} /> Record on Camera
                     </button>
                     <span className="text-xs text-slate-400">
                       {[script.blog_intro, script.blog_body, script.blog_conclusion]
