@@ -25,7 +25,16 @@ import {
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
-import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
+import {
+  CAMERA_LENGTHS,
+  LONG_MAX_WORDS,
+  minutesFor,
+  standardMaxWords,
+  type CameraLength,
+} from "@/lib/utils/video-length";
+
+/** Pasted scripts are measured against both caps — the length is picked later. */
+const SHORT_MAX_WORDS = standardMaxWords();
 
 /**
  * Copies photos scraped off a listing page into our own storage so the camera
@@ -587,6 +596,9 @@ function CreatePageInner() {
   // choosing a template before filling the location still ends up with the
   // real place in it rather than a literal "your city".
   const [topicTemplateRaw, setTopicTemplateRaw] = useState<string | null>(null);
+  // filter(Boolean) matters: "".split(/\s+/) is [""], which counts as one word
+  // and made an empty box read "1 / 500".
+  const pasteWordCount = pasteScript.trim().split(/\s+/).filter(Boolean).length;
 
   function openTemplates() {
     setTemplatesOpen(true);
@@ -1072,26 +1084,64 @@ function CreatePageInner() {
               </p>
             </div>
 
-            {/* Script textarea */}
+            {/* Script textarea.
+                The length of the video is not chosen here — it is picked in the
+                editor — so a pasted script can't be measured against one limit.
+                Both are shown, and the count says which one the script currently
+                fits, rather than asserting 500 at someone writing an 8-minute
+                video. Limits come from video-length.ts, not from a number typed
+                in here, so they follow the caps. */}
             <div className="mb-4">
               <label className="text-sm font-bold text-slate-600 block mb-1">
                 Your Script *
-                {pasteScript && (
-                  <span className={`ml-2 font-normal ${pasteScript.trim().split(/\s+/).length > 500 ? "text-red-500" : "text-slate-400"}`}>
-                    {pasteScript.trim().split(/\s+/).length} / 500 words
+                {pasteWordCount > 0 && (
+                  <span
+                    className={`ml-2 font-normal ${
+                      pasteWordCount > LONG_MAX_WORDS
+                        ? "text-red-500"
+                        : pasteWordCount > SHORT_MAX_WORDS
+                          ? "text-amber-600"
+                          : "text-slate-400"
+                    }`}
+                  >
+                    {pasteWordCount.toLocaleString()} words · ~{minutesFor(pasteWordCount)} min
                   </span>
                 )}
               </label>
               <textarea
                 value={pasteScript}
                 onChange={(e) => setPasteScript(e.target.value)}
-                placeholder="Paste or type your script here. The AI avatar will speak this text exactly — keep it under 500 words for best results."
+                placeholder={`Paste or type your script here. The AI avatar speaks it exactly as written — up to ${SHORT_MAX_WORDS} words for a standard video, or ${LONG_MAX_WORDS.toLocaleString()} for a long one.`}
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber resize-none leading-relaxed"
               />
-              {pasteScript.trim().split(/\s+/).filter(Boolean).length > 500 && (
-                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> Over 500 Words — The Script Will Be Trimmed At Generation Time.
+
+              {pasteWordCount === 0 ? (
+                <p className="text-xs text-slate-400 mt-1">
+                  Standard video: up to {SHORT_MAX_WORDS} words (~{minutesFor(SHORT_MAX_WORDS)} min) ·
+                  Long video: up to {LONG_MAX_WORDS.toLocaleString()} words (~{minutesFor(LONG_MAX_WORDS)} min)
+                </p>
+              ) : pasteWordCount <= SHORT_MAX_WORDS ? (
+                <p className="text-xs text-slate-400 mt-1">
+                  Fits a standard video ({SHORT_MAX_WORDS} words max). A long video takes up to{" "}
+                  {LONG_MAX_WORDS.toLocaleString()}.
+                </p>
+              ) : pasteWordCount <= LONG_MAX_WORDS ? (
+                <p className="text-xs text-amber-600 mt-1 flex items-start gap-1">
+                  <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                  <span>
+                    Too long for a standard video — choose <strong>Long video</strong> on the next
+                    screen, or cut {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-xs text-red-500 mt-1 flex items-start gap-1">
+                  <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                  <span>
+                    Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
+                    The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
+                    before recording.
+                  </span>
                 </p>
               )}
             </div>
