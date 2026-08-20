@@ -1712,41 +1712,6 @@ export default function ProjectEditorPage() {
           </div>
         </div>
 
-        {/* Two different projects can end up on this screen — one made from a
-            voice-note recording, one from AI Writes It / Camera — and each
-            only has enough stored to redo its own kind of request. Never
-            both: a project has voice_recording_id or ai_script.custom_topic,
-            not either indiscriminately. */}
-        {project.voice_recording_id ? (
-          <button
-            type="button"
-            onClick={handleRegenerateScript}
-            disabled={generating}
-            className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-3 py-1.5 text-[11.5px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
-          >
-            <RefreshCw
-              size={13}
-              strokeWidth={1.8}
-              className={generating ? "animate-spin" : undefined}
-            />
-            Regenerate
-          </button>
-        ) : project.ai_script?.custom_topic && project.location_city && project.location_state ? (
-          <button
-            type="button"
-            onClick={handleRegenerateLocationScript}
-            disabled={generating}
-            title="Redo the script from the original topic and market — asks first, since this replaces your edits"
-            className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-3 py-1.5 text-[11.5px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
-          >
-            <RefreshCw
-              size={13}
-              strokeWidth={1.8}
-              className={generating ? "animate-spin" : undefined}
-            />
-            Regenerate
-          </button>
-        ) : null}
       </div>
 
       {script ? (
@@ -1835,11 +1800,11 @@ export default function ProjectEditorPage() {
 
           {/* Script (editable) */}
           <Card padding="sm">
-            <button
-              onClick={() => toggle("script")}
-              className="flex items-center justify-between w-full px-2 py-1 mb-2"
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex items-center justify-between w-full px-2 py-1 mb-2">
+              <button
+                onClick={() => toggle("script")}
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+              >
                 <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
                   VIDEO SCRIPT
                 </h3>
@@ -1849,9 +1814,48 @@ export default function ProjectEditorPage() {
                   {editedScript.trim().split(/\s+/).filter(Boolean).length} words ·{" "}
                   {mins(editedScript.trim().split(/\s+/).filter(Boolean).length)} min
                 </span>
+              </button>
+              <div className="flex flex-none items-center gap-2">
+                {/* Two different projects can end up on this screen — one made
+                    from a voice-note recording, one from AI Writes It / Camera
+                    — and each only has enough stored to redo its own kind of
+                    request. Never both: a project has voice_recording_id or
+                    ai_script.custom_topic, not either indiscriminately. */}
+                {project.voice_recording_id ? (
+                  <button
+                    type="button"
+                    onClick={handleRegenerateScript}
+                    disabled={generating}
+                    className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      size={12}
+                      strokeWidth={1.8}
+                      className={generating ? "animate-spin" : undefined}
+                    />
+                    Regenerate
+                  </button>
+                ) : project.ai_script?.custom_topic && project.location_city && project.location_state ? (
+                  <button
+                    type="button"
+                    onClick={handleRegenerateLocationScript}
+                    disabled={generating}
+                    title="Redo the script from the original topic and market — asks first, since this replaces your edits"
+                    className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      size={12}
+                      strokeWidth={1.8}
+                      className={generating ? "animate-spin" : undefined}
+                    />
+                    Regenerate
+                  </button>
+                ) : null}
+                <button onClick={() => toggle("script")} aria-label="Toggle script section">
+                  {expandedSections.script ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                </button>
               </div>
-              {expandedSections.script ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-            </button>
+            </div>
             {expandedSections.script && (
               <>
                 <textarea
