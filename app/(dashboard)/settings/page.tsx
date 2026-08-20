@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/supabase-provider";
 import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone } from "lucide-react";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
+import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,7 +43,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years")
+      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -52,6 +53,7 @@ export default function SettingsPage() {
           preferred_language: string | null; location_city: string | null; location_state: string | null;
           avatar_url: string | null; logo_url: string | null; voice_clone_id: string | null;
           heygen_voice_id: string | null; heygen_photo_id: string | null;
+          heygen_brand_kit_id: string | null;
           website: string | null; license_number: string | null;
           heygen_digital_twin_group_id: string | null; heygen_digital_twin_look_id: string | null;
           default_cta: string | null; market_years: string | null;
@@ -76,6 +78,7 @@ export default function SettingsPage() {
             logo_url:        row.logo_url,
             voice_clone_id:  row.voice_clone_id,
             heygen_voice_id: row.heygen_voice_id,
+            heygen_brand_kit_id: row.heygen_brand_kit_id,
             heygen_photo_id: row.heygen_photo_id,
             website:         row.website,
             license_number:  row.license_number,
@@ -257,6 +260,17 @@ export default function SettingsPage() {
               } : prev);
             }}
           />
+
+          {/* Hidden entirely when the HeyGen account has no brand kits. */}
+          <div className="mt-5 border-t border-spark-rule-soft pt-5">
+            <BrandKitPicker
+              userId={user.id}
+              currentBrandKitId={brandData.heygen_brand_kit_id ?? null}
+              onUpdate={(brandKitId) => {
+                setBrandData((prev) => prev ? { ...prev, heygen_brand_kit_id: brandKitId } : prev);
+              }}
+            />
+          </div>
         </Card>
       )}
 

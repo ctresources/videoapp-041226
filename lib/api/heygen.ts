@@ -455,6 +455,18 @@ export interface GenerateVideoAgentParams {
   callbackUrl?: string;
   callbackId?: string;
   styleId?: string;
+  /**
+   * Applies the account's brand kit — colors, fonts and logo — to everything
+   * the agent builds. The prompt previously just asked for the logo to be
+   * placed "prominently (top-left or top-center)", which a generative agent is
+   * free to ignore; this is the deterministic version of that request.
+   */
+  brandKitId?: string;
+}
+
+export interface BrandKit {
+  id: string;
+  name: string;
 }
 
 export interface VideoAgentSession {
@@ -486,6 +498,45 @@ export async function getCinematicStyleId(): Promise<string | null> {
   }
 }
 
+
+/**
+ * Fetch the account's brand kits (GET /v3/brand-kits).
+ *
+ * Returns [] on failure rather than throwing — a missing brand kit must never
+ * be the reason a render doesn't happen; the video just isn't branded.
+ */
+export async function listBrandKits(): Promise<BrandKit[]> {
+  const kits: BrandKit[] = [];
+  // The endpoint pages at 20 and this account already returns has_more: true,
+  // so a single fetch would silently hide brand kits the user has made.
+  const MAX_PAGES = 10;
+  let token: string | undefined;
+
+  try {
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+      const res = await fetch(`${HEYGEN_API}/v3/brand-kits${qs}`, {
+        headers: { "x-api-key": getApiKey() },
+      });
+      if (!res.ok) {
+        console.warn(`[heygen] brand kits ${res.status}`);
+        break;
+      }
+      const json = await res.json();
+      const rows = Array.isArray(json.data) ? json.data : (json.data?.brand_kits ?? []);
+      for (const k of rows as Record<string, unknown>[]) {
+        const id = String(k.brand_kit_id ?? k.id ?? "");
+        if (id) kits.push({ id, name: String(k.name ?? "Untitled brand kit") });
+      }
+      if (!json.has_more || !json.next_token) break;
+      token = String(json.next_token);
+    }
+  } catch (e) {
+    // Whatever was collected before the failure is still usable.
+    console.warn("[heygen] brand kits failed:", e);
+  }
+  return kits;
+}
 
 /**
  * Fetch all completed looks for an avatar group (GET /v3/avatars/looks).
@@ -696,12 +747,14 @@ export async function generateVideoAgent(
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
     ...(params.styleId && { style_id: params.styleId }),
+    ...(params.brandKitId && { brand_kit_id: params.brandKitId }),
   };
 
   console.log(
     `[heygen] Submitting Video Agent v3 (${params.prompt.length} chars, ` +
     `orientation=${params.orientation ?? "auto"}, avatar=${params.avatarId ?? "none"}, ` +
-    `voice=${params.voiceId ?? "none"}, files=${params.files?.length ?? 0})`,
+    `voice=${params.voiceId ?? "none"}, files=${params.files?.length ?? 0}, ` +
+    `brandKit=${params.brandKitId ?? "none"})`,
   );
 
   const res = await fetch(`${HEYGEN_API}/v3/video-agents`, {

@@ -426,7 +426,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id")
     .eq("id", user.id)
     .single();
 
@@ -436,6 +436,7 @@ export async function POST(req: NextRequest) {
     heygen_digital_twin_look_id: string | null;
     avatar_url: string | null;
     logo_url: string | null;
+    heygen_brand_kit_id: string | null;
     full_name: string | null;
     company_name: string | null;
     phone: string | null;
@@ -860,6 +861,10 @@ export async function POST(req: NextRequest) {
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
+      // Colors, fonts and logo applied by HeyGen rather than requested in the
+      // prompt. Null when the agent hasn't picked one — the render is then
+      // exactly what it was before.
+      brandKitId: profile.heygen_brand_kit_id || undefined,
     });
 
     await admin

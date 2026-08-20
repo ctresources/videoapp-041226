@@ -27,6 +27,8 @@ export interface BrandProfileInitial {
   license_number: string | null;
   heygen_digital_twin_group_id: string | null;
   heygen_digital_twin_look_id: string | null;
+  /** Chosen HeyGen brand kit, applied to Video Agent graphics. Null = none. */
+  heygen_brand_kit_id: string | null;
 }
 
 interface BrandProfileProps {
