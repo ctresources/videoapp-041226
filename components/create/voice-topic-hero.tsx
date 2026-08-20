@@ -1,15 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRecognition = any;
-
-// iOS Safari sometimes hangs without ever firing onend/onerror, so every
-// session gets a hard stop. Longer than FieldMic's 12s — this is a whole
-// sentence being dictated, not a two-word city name.
-const TIMEOUT_MS = 30000;
+import { useEffect, useRef, useState } from "react";
+import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
 // Resting heights, straight from the design's 18-bar waveform. The bars keep
 // these heights when idle and get scaled by the `wave` animation while live.
@@ -50,9 +42,6 @@ export function VoiceTopicHero({
   typed,
   onTypedChange,
 }: VoiceTopicHeroProps) {
-  const [listening, setListening] = useState(false);
-  // Uncommitted words from the recogniser, shown greyed after the real text
-  const [interim, setInterim] = useState("");
   // Falls back to internal state when the page does not control it.
   const [typingLocal, setTypingLocal] = useState(false);
   const typing = typed ?? typingLocal;
@@ -61,136 +50,44 @@ export function VoiceTopicHero({
     onTypedChange?.(next);
   };
 
-  const recognitionRef = useRef<AnyRecognition>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // What `value` was when the session started, so each result appends to the
+  // What `value` was when the session started, so speech appends to the
   // sentence so far rather than replacing it.
   const baseRef = useRef("");
-  const gotResultRef = useRef(false);
-  // Held in a ref so `stop` can stay dependency-free and still call the
-  // latest handler rather than the one from the render that started the session.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const onCapturedRef = useRef(onCaptured);
   onCapturedRef.current = onCaptured;
-  const onTypedChangeRef = useRef(onTypedChange);
-  onTypedChangeRef.current = onTypedChange;
 
-  const stop = useCallback((showHint = false) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    try {
-      recognitionRef.current?.stop();
-    } catch {
-      /* already stopped */
-    }
-    recognitionRef.current = null;
-    setListening(false);
-    setInterim("");
-    if (showHint) toast("No speech detected — tap the mic and try again.", { icon: "🎙️" });
-  }, []);
+  // The recogniser lives in a shared hook — the session component needs the
+  // same one, and two copies of something with this many edge cases (the iOS
+  // hang, `aborted` not being a real error, re-entrant stop) would drift.
+  const { listening, interim, transcript, start, stop } = useSpeechRecognition({
+    disabled,
+    holdSpace: true,
+    onUnsupported: () => setTyping(true),
+    onSessionEnd: (finalText) => {
+      if (!finalText) return;
+      onChangeRef.current([baseRef.current, finalText].filter(Boolean).join(" "));
+      onCapturedRef.current?.();
+    },
+  });
 
-  const start = useCallback(() => {
-    if (disabled || recognitionRef.current) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SR) {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Safari.");
-      setTypingLocal(true);
-      onTypedChangeRef.current?.(true);
-      return;
-    }
-
-    const recognition = new SR() as AnyRecognition;
-    recognition.lang = "en-US";
-    // Unlike FieldMic, the hero shows the sentence building as it is spoken —
-    // that needs interim results and a continuous session.
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.maxAlternatives = 1;
-
-    baseRef.current = value.trim();
-    gotResultRef.current = false;
-
-    recognition.onresult = (e: {
-      resultIndex: number;
-      results: { length: number; [k: number]: { isFinal: boolean; [k: number]: { transcript: string } } };
-    }) => {
-      let settled = "";
-      let pending = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const result = e.results[i];
-        if (result.isFinal) settled += result[0].transcript;
-        else pending += result[0].transcript;
-      }
-      if (settled.trim()) {
-        gotResultRef.current = true;
-        onChange([baseRef.current, settled.trim()].filter(Boolean).join(" "));
-      }
-      setInterim(pending.trim());
-    };
-
-    recognition.onend = () => {
-      const captured = gotResultRef.current;
-      stop(/* showHint= */ !captured);
-      if (captured) onCapturedRef.current?.();
-    };
-
-    recognition.onerror = (e: { error: string }) => {
-      // `aborted` is what fires when we stop the session ourselves — not a fault
-      if (e.error === "aborted") return;
-      const msg =
-        e.error === "not-allowed" ? "Microphone access denied. Please allow mic access and try again." :
-        e.error === "network"     ? "Network error during speech recognition. Check your connection." :
-        e.error === "no-speech"   ? "No speech detected — tap the mic and try again." :
-        "Speech recognition failed. Try again.";
-      toast.error(msg);
-      stop();
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setListening(true);
-    timeoutRef.current = setTimeout(() => stop(!gotResultRef.current), TIMEOUT_MS);
-  }, [disabled, onChange, stop, value]);
+  // Push settled words up as they land, so the topic fills while talking
+  // rather than all at once when the session ends.
+  useEffect(() => {
+    if (!listening || !transcript) return;
+    onChangeRef.current([baseRef.current, transcript].filter(Boolean).join(" "));
+  }, [listening, transcript]);
 
   function toggle() {
-    if (listening) stop();
-    else start();
+    if (listening) {
+      stop();
+      return;
+    }
+    baseRef.current = value.trim();
+    start();
   }
-
-  // Hold-to-talk. Space is only a shortcut when the user isn't typing into
-  // something, or it would swallow every space in the sentence they're writing.
-  useEffect(() => {
-    function isTypingTarget(t: EventTarget | null) {
-      const el = t as HTMLElement | null;
-      if (!el) return false;
-      const tag = el.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.code !== "Space" || e.repeat || isTypingTarget(e.target) || disabled) return;
-      e.preventDefault();
-      start();
-    }
-    function onKeyUp(e: KeyboardEvent) {
-      if (e.code !== "Space" || isTypingTarget(e.target)) return;
-      e.preventDefault();
-      if (recognitionRef.current) stop();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
-    };
-  }, [start, stop, disabled]);
-
-  // Never leave a recogniser running behind an unmounted component
-  useEffect(() => () => stop(), [stop]);
 
   useEffect(() => {
     if (typing) inputRef.current?.focus();
@@ -218,28 +115,28 @@ export function VoiceTopicHero({
           gone entirely rather than shrunk — leaving a 92px mic above a text box
           tells whoever chose "type it" that they picked the wrong one. */}
       {!typing && (
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={disabled}
-        aria-pressed={listening}
-        aria-label={listening ? "Stop recording" : "Record your topic"}
-        className="relative my-0.5 flex h-[92px] w-[92px] items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {listening && (
-          <>
-            <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/20" />
-            <span
-              className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/20"
-              style={{ animationDelay: "1.1s" }}
-            />
-          </>
-        )}
-        <span className="relative flex h-[92px] w-[92px] items-center justify-center rounded-full bg-gradient-to-b from-spark-amber-glow to-spark-amber shadow-mic transition-transform hover:scale-[1.03] active:scale-100">
-          {/* The design's mic is a plain rounded capsule, not a lucide glyph */}
-          <span className="block h-[26px] w-[15px] rounded-full bg-white" />
-        </span>
-      </button>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={disabled}
+          aria-pressed={listening}
+          aria-label={listening ? "Stop recording" : "Record your topic"}
+          className="relative my-0.5 flex h-[92px] w-[92px] items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {listening && (
+            <>
+              <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/20" />
+              <span
+                className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/20"
+                style={{ animationDelay: "1.1s" }}
+              />
+            </>
+          )}
+          <span className="relative flex h-[92px] w-[92px] items-center justify-center rounded-full bg-gradient-to-b from-spark-amber-glow to-spark-amber shadow-mic transition-transform hover:scale-[1.03] active:scale-100">
+            {/* The design's mic is a plain rounded capsule, not a lucide glyph */}
+            <span className="block h-[26px] w-[15px] rounded-full bg-white" />
+          </span>
+        </button>
       )}
 
       {!typing && (
@@ -247,22 +144,22 @@ export function VoiceTopicHero({
       )}
 
       {!typing && (
-      <div className="flex h-[34px] items-center gap-[3px]" aria-hidden="true">
-        {BAR_HEIGHTS.map((h, i) => (
-          <span
-            key={i}
-            className={`w-[3px] rounded-full ${
-              listening ? "animate-wave bg-spark-amber" : "bg-spark-rule"
-            }`}
-            style={{
-              height: `${h}px`,
-              // Staggering the delay is what makes the row read as a waveform
-              // rather than eighteen bars breathing in unison.
-              animationDelay: listening ? `${(i % 6) * 110}ms` : undefined,
-            }}
-          />
-        ))}
-      </div>
+        <div className="flex h-[34px] items-center gap-[3px]" aria-hidden="true">
+          {BAR_HEIGHTS.map((h, i) => (
+            <span
+              key={i}
+              className={`w-[3px] rounded-full ${
+                listening ? "animate-wave bg-spark-amber" : "bg-spark-rule"
+              }`}
+              style={{
+                height: `${h}px`,
+                // Staggering the delay is what makes the row read as a waveform
+                // rather than eighteen bars breathing in unison.
+                animationDelay: listening ? `${(i % 6) * 110}ms` : undefined,
+              }}
+            />
+          ))}
+        </div>
       )}
 
       {/* Transcript. Committed words in ink, the recogniser's uncommitted tail

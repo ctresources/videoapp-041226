@@ -24,6 +24,7 @@ import {
   substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
+import { VoiceBriefSession } from "@/components/create/voice-brief-session";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import {
@@ -955,20 +956,38 @@ function CreatePageInner() {
           </div>
 
           {/* ── The topic ──
-              Same step, still the loudest thing on the page. */}
+              Same step, still the loudest thing on the page. Speaking is a
+              conversation that fills the fields above as it goes; typing is the
+              plain box. The choice is the one made at the top of the page. */}
           <div className="flex flex-col gap-5 border-t border-spark-rule-soft pt-6">
-            <VoiceTopicHero
-              value={locCustomTopic}
-              onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
-              onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
-              onBrowseTemplates={openTemplates}
-              templateCount={TEMPLATE_COUNT}
-              disabled={locGenerating}
-              // Follows the choice at the top of the page, and switching inside
-              // the hero moves it back — one setting, two places to change it.
-              typed={inputStyle === "type"}
-              onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
-            />
+            {inputStyle === "speak" ? (
+              <VoiceBriefSession
+                disabled={locGenerating}
+                onSwitchToTyping={() => setInputStyle("type")}
+                // Only ever fills blanks it has an answer for — a null slot
+                // must not wipe something already typed or picked from a chip.
+                onSlots={(s) => {
+                  if (s.city) setLocCity(s.city);
+                  if (s.state) setLocState(s.state);
+                  if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
+                  if (s.audience) setLocAudience(s.audience);
+                  if (s.tone) setLocTone(s.tone);
+                  if (s.length) setLocLength(s.length);
+                }}
+                onReady={() => { if (!locGenerating) handleGenerateScript(); }}
+              />
+            ) : (
+              <VoiceTopicHero
+                value={locCustomTopic}
+                onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
+                onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
+                onBrowseTemplates={openTemplates}
+                templateCount={TEMPLATE_COUNT}
+                disabled={locGenerating}
+                typed
+                onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
+              />
+            )}
 
             <TopicRadar
               city={locCity || undefined}
