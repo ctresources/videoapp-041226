@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     tone,
     ctaPreference,
     videoLength,
+    regenerateOnly,
   } = body as {
     videoType: LocationVideoType;
     city: string;
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest) {
     ctaPreference?: string;
     /** "long" asks for an ~8-minute script; anything else is a standard video. */
     videoLength?: VideoLength;
+    /**
+     * Redoing an existing project's script, not starting a new one. Skips the
+     * project insert and returns { aiScript, seoData } directly — the same
+     * shape the voice-note Regenerate button already gets from
+     * generate-script — so the editor applies it to local state and the user
+     * decides whether to keep it, exactly like every other script edit.
+     */
+    regenerateOnly?: boolean;
   };
 
   // Basic validation
@@ -107,7 +116,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Parse into structured ai_script ────────────────────────────────────────
-  const parsed = parseLocationScript(raw, videoType, city, state, agentName);
+  const parsed = parseLocationScript(raw, videoType, city, state, agentName, ctaPreference);
 
   // The prompt states the cap, but a model overshooting it is not a
   // hypothetical — one real generation came back 594 words against a
@@ -193,6 +202,17 @@ export async function POST(req: NextRequest) {
     youtube_description: ytMeta?.youtube_description || parsed.description || parsed.hook,
     thumbnail_url: thumbnailUrl,
   };
+
+  if (regenerateOnly) {
+    await admin.from("api_usage_log").insert({
+      user_id: user.id,
+      api_provider: "perplexity",
+      endpoint: "generate-location-script-regenerate",
+      credits_used: 0,
+      response_status: 200,
+    });
+    return NextResponse.json({ aiScript, seoData });
+  }
 
   // ── Create project row ──────────────────────────────────────────────────────
   const projectTitle = customTopic

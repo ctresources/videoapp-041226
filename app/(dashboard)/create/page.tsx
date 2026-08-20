@@ -923,7 +923,10 @@ function CreatePageInner() {
                     },
                     {
                       label: "Call to action", value: locCta, set: setLocCta,
-                      options: [["", "Default"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+                      // "None" is a real choice now, not just an unset dropdown
+                      // — it tells the script to skip the CTA section entirely
+                      // rather than fall back to a generic "reach out today".
+                      options: [["", "Default"], ["none", "None"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
                     },
                   ].map(({ label, value, set, options }) => (
                     <div key={label}>

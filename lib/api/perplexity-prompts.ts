@@ -427,6 +427,21 @@ const TONE_SCRIPT_GUIDANCE: Record<string, string> = {
   "Educational": "Helpful, informative, authoritative. Explain things clearly. Position the agent as a knowledgeable guide.",
 };
 
+/**
+ * What the CTA dropdown in Create's settings actually asks for.
+ *
+ * The dropdown existed and its value was threaded all the way into
+ * LocationParams and even saved to the database, but nothing ever read it —
+ * selecting "Text" produced the exact same generic CTA as leaving it on
+ * "Default". This is what makes each option do something.
+ */
+const CTA_PREFERENCE_GUIDANCE: Record<string, string> = {
+  call: "Ask the viewer to call — the CTA should be built around calling, not texting or visiting a website.",
+  text: "Ask the viewer to text — the CTA should be built around texting, not calling or visiting a website.",
+  website: "Ask the viewer to visit the website — the CTA should point them there, not to a call or text.",
+  consultation: "Ask the viewer to book a consultation — the CTA should invite them to schedule time, not just call or text.",
+};
+
 export async function generateLocationScript(
   videoType: LocationVideoType,
   params: LocationParams,
@@ -436,9 +451,19 @@ export async function generateLocationScript(
   const messages = requestBody.messages as { role: string; content: string }[];
   const systemMsg = messages.find((m) => m.role === "system");
   if (systemMsg) {
-    const nameClause = agentName
-      ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".`
-      : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".`;
+    // The CTA is optional — a viewer isn't owed a pitch just because the video
+    // exists. "none" means genuinely no CALL TO ACTION section at all, not a
+    // softer one, so this branches before the usual "must be specific" clause
+    // rather than layering on top of it.
+    const skipCta = params.ctaPreference === "none";
+    const preferenceGuidance = !skipCta && params.ctaPreference && CTA_PREFERENCE_GUIDANCE[params.ctaPreference]
+      ? ` ${CTA_PREFERENCE_GUIDANCE[params.ctaPreference]}`
+      : "";
+    const nameClause = skipCta
+      ? `Do NOT include a CALL TO ACTION section — leave it out entirely, or return it empty if the format requires the heading. This video is informational only; it should not ask the viewer to do anything.`
+      : agentName
+        ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".${preferenceGuidance}`
+        : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".${preferenceGuidance}`;
 
     const audienceGuidance = params.audience && AUDIENCE_SCRIPT_GUIDANCE[params.audience]
       ? `\nTarget Audience: ${params.audience}. ${AUDIENCE_SCRIPT_GUIDANCE[params.audience]}`
@@ -506,7 +531,8 @@ export function parseLocationScript(
   videoType: LocationVideoType,
   city: string,
   state: string,
-  agentName?: string
+  agentName?: string,
+  ctaPreference?: string,
 ): ParsedLocationScript {
   // All section headings across all four video types
   const allHeadings = [
@@ -596,10 +622,18 @@ export function parseLocationScript(
   // City only — this is spoken, and the narration rule above says the same.
   // A hardcoded fallback is not bound by a prompt instruction, so it has to
   // drop the state itself or it reintroduces exactly what the rule removes.
-  const cta = extractSection(raw, "CALL TO ACTION", allHeadings) ||
-    (agentName
-      ? `Contact ${agentName} today to learn more about ${scriptCity}!`
-      : `Reach out today to learn more about ${scriptCity}!`);
+  //
+  // "none" is a guarantee, not a request the model can still grant or ignore
+  // — extracting nothing rather than checking whether the model complied
+  // means a CTA can never sneak through this path even if it wrote one
+  // anyway. The generic "Reach out today" fallback that exists for every
+  // other case would be exactly the wrong thing to silently apply here.
+  const cta = ctaPreference === "none"
+    ? ""
+    : extractSection(raw, "CALL TO ACTION", allHeadings) ||
+      (agentName
+        ? `Contact ${agentName} today to learn more about ${scriptCity}!`
+        : `Reach out today to learn more about ${scriptCity}!`);
 
   const blogIntro = extractSection(raw, "BLOG POST INTRO", allHeadings);
   // The article proper. Older responses (and the three non-custom video types)
