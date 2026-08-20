@@ -100,16 +100,32 @@ export function VoiceTopicHero({
       ? "Tap the mic to add more, or edit it below"
       : "Tap the mic, or hold Space, and speak your topic";
 
+  // Typed mode sits as one row inside the page's shared "Your topic" section
+  // now, alongside trending and templates — it does not need its own card,
+  // eyebrow or question heading; the section header above already says what
+  // this is. The speak-mode branch below is currently unreachable (the page
+  // always renders VoiceBriefSession for speaking instead) but is left as it
+  // was rather than restyled blind.
   return (
-    <div className="spark-glass flex flex-col items-center gap-4 rounded-[14px] px-6 py-7 sm:px-[34px] sm:pb-[26px] sm:pt-[30px]">
-      <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
-        <span className="block h-1 w-1 rounded-full bg-spark-amber" />
-        {typing ? "Type your topic" : "Speak your topic"}
-      </p>
+    <div
+      className={
+        typing
+          ? "flex flex-col gap-2.5"
+          : "spark-glass flex flex-col items-center gap-4 rounded-[14px] px-6 py-7 sm:px-[34px] sm:pb-[26px] sm:pt-[30px]"
+      }
+    >
+      {!typing && (
+        <>
+          <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-spark-amber">
+            <span className="block h-1 w-1 rounded-full bg-spark-amber" />
+            Speak your topic
+          </p>
 
-      <h2 className="text-balance text-center text-[30px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">
-        What&rsquo;s this video about?
-      </h2>
+          <h2 className="text-balance text-center text-[30px] font-bold leading-[1.2] tracking-[-0.02em] text-spark-ink">
+            What&rsquo;s this video about?
+          </h2>
+        </>
+      )}
 
       {/* Mic, status and waveform belong to speak mode. In type mode they are
           gone entirely rather than shrunk — leaving a 92px mic above a text box
@@ -183,11 +199,18 @@ export function VoiceTopicHero({
             if (e.key === "Enter" && !disabled) onSubmit?.();
           }}
           placeholder="e.g. Why buyers have more leverage this fall"
-          className="w-full max-w-[620px] rounded-[10px] border border-spark-rule bg-white px-4 py-[13px] text-[17px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber"
+          // No max-w here: as a centered card it needed one to keep the line
+          // readable, but as a row inside the section it should fill the
+          // width the section already has, not strand space on either side.
+          className="w-full rounded-[10px] border border-spark-rule bg-white px-4 py-[13px] text-[17px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber"
         />
       )}
 
-      <div className="flex flex-wrap items-center justify-center gap-3 text-[13px] text-spark-ink-faint">
+      <div
+        className={`flex flex-wrap items-center gap-3 text-[13px] text-spark-ink-faint ${
+          typing ? "justify-start" : "justify-center"
+        }`}
+      >
         <span>or</span>
         <button
           type="button"

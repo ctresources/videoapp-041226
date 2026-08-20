@@ -979,11 +979,18 @@ function CreatePageInner() {
             </Card>
           </div>
 
-          {/* ── The topic ──
-              Same step, still the loudest thing on the page. Speaking is a
-              conversation that fills the fields above as it goes; typing is the
-              plain box. The choice is the one made at the top of the page. */}
+          {/* ── Your topic ──
+              One section, not three. Speaking, typing, trending and templates
+              are all just different paths to the same one field, and used to
+              read as separate destinations — a tall standalone voice card
+              with its own heading, then a "Trending" header, then a "Video
+              formats" header. One shared eyebrow now; speak/type is simply
+              the first row under it, sized like a row rather than a screen. */}
           <div className="flex flex-col gap-5 border-t border-spark-rule-soft pt-6">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
+              Your topic
+            </p>
+
             {inputStyle === "speak" ? (
               <VoiceBriefSession
                 disabled={locGenerating}
