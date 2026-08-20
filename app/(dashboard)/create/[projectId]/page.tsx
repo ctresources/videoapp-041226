@@ -1011,6 +1011,57 @@ export default function ProjectEditorPage() {
     toast.success(`${label} copied!`);
   }
 
+  /** Strips the "H2: " markers the blog article uses, for on-screen reading. */
+  function blogPlainText(text: string): string {
+    return text.replace(/^H2:\s*/gm, "");
+  }
+
+  /**
+   * The blog article comes back as plain text with headings marked "H2: " and
+   * paragraphs separated by blank lines. This turns that into the markup a
+   * website expects, so the whole point of the feature — paste it into your
+   * blog — doesn't require the agent to re-add every heading by hand.
+   */
+  function blogAsHtml(sections: { intro: string; body: string; conclusion: string }): string {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const blocks: string[] = [];
+    let para: string[] = [];
+    const flush = () => {
+      if (para.length) blocks.push(`<p>${esc(para.join(" "))}</p>`);
+      para = [];
+    };
+    // Line by line rather than by blank-line block. The model does not reliably
+    // leave a blank line after a heading, and treating a whole block as one
+    // unit swallowed the paragraphs under it into the <h2>.
+    for (const chunk of [sections.intro, sections.body, sections.conclusion]) {
+      if (!chunk?.trim()) continue;
+      for (const rawLine of chunk.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) { flush(); continue; }
+        if (/^H2:\s*/.test(line)) {
+          flush();
+          blocks.push(`<h2>${esc(line.replace(/^H2:\s*/, ""))}</h2>`);
+          continue;
+        }
+        para.push(line);
+      }
+      flush();
+    }
+    return blocks.join("\n");
+  }
+
+  function copyBlogHtml() {
+    if (!script) return;
+    const html = blogAsHtml({
+      intro: script.blog_intro || "",
+      body: script.blog_body || "",
+      conclusion: script.blog_conclusion || "",
+    });
+    navigator.clipboard.writeText(html);
+    toast.success("Blog HTML copied — paste into your site's HTML view.");
+  }
+
   function toggle(section: string) {
     setExpandedSections((p) => ({ ...p, [section]: !p[section] }));
   }
@@ -2256,6 +2307,44 @@ export default function ProjectEditorPage() {
               </button>
               {expandedSections.blog && (
                 <div className="px-2 space-y-3">
+                  {/* Copy the whole article as markup — the article now carries
+                      headings, and re-adding them by hand after pasting was the
+                      obvious thing this feature was missing. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={copyBlogHtml}
+                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                    >
+                      <Copy size={12} /> Copy as HTML
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyToClipboard(
+                          [script.blog_intro, script.blog_body, script.blog_conclusion]
+                            .filter(Boolean)
+                            .map(blogPlainText)
+                            .join("\n\n"),
+                          "Blog post",
+                        )
+                      }
+                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                    >
+                      <Copy size={12} /> Copy as text
+                    </button>
+                    <span className="text-xs text-slate-400">
+                      {[script.blog_intro, script.blog_body, script.blog_conclusion]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim()
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .length.toLocaleString()}{" "}
+                      words
+                    </span>
+                  </div>
+
                   {[
                     { label: "Introduction", value: script.blog_intro },
                     { label: "Body", value: script.blog_body },
@@ -2264,8 +2353,11 @@ export default function ProjectEditorPage() {
                     <div key={label}>
                       <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
                       <div className="bg-slate-50 rounded-xl p-3 text-sm text-slate-700 leading-relaxed flex items-start justify-between gap-2">
-                        <span className="flex-1">{value}</span>
-                        <button onClick={() => copyToClipboard(value, label)} className="shrink-0 mt-0.5">
+                        {/* pre-wrap: the article's paragraph breaks and headings
+                            are newlines, and a plain span collapsed them all
+                            into one block of text. */}
+                        <span className="flex-1 whitespace-pre-wrap">{blogPlainText(value)}</span>
+                        <button onClick={() => copyToClipboard(blogPlainText(value), label)} className="shrink-0 mt-0.5">
                           <Copy size={12} className="text-slate-400" />
                         </button>
                       </div>

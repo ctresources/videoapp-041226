@@ -61,9 +61,12 @@ function lengthSpec(targetWords?: number, hardMaxWords?: number): { instruction:
   // ceiling and the model needs to be told so.
   const hardMax = hardMaxWords && hardMaxWords > words ? hardMaxWords : Math.round(words * 1.1);
 
-  // ~1.4 tokens per word, plus headroom for the hook, titles, blog intro and
-  // sources that share the same response.
-  const maxTokens = Math.min(6000, Math.round(words * 1.4) + 900);
+  // ~1.4 tokens per word for the script, plus headroom for the hook, titles and
+  // sources sharing the response, plus ~1,300 words of blog article on top —
+  // that is the bulk of the budget now, and leaving it out truncated the
+  // response before the sections that come after it.
+  const BLOG_TOKENS = Math.round(1300 * 1.4);
+  const maxTokens = Math.min(6000, Math.round(words * 1.4) + 900 + BLOG_TOKENS);
 
   const depth =
     words >= 900
@@ -360,7 +363,11 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — curiosity or question format]
 3. [Option 3 — "did you know" or discovery angle]
 
-BLOG POST INTRO: [2-3 sentences that could open a blog post about this topic in this area]
+BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Lead with something concrete about the area.]
+
+BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard. Use 4-6 section headings, each on its own line and prefixed exactly "H2: " — the words after that prefix are the heading. Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
+
+BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with a clear next step.]
 
 PRIMARY LOCATION: [The single place this script is actually about, as "City, ST". Take it from the topic itself whenever the topic names one.]
 
@@ -504,7 +511,8 @@ export function parseLocationScript(
   // All section headings across all four video types
   const allHeadings = [
     "HOOK", "MARKET STATS", "MARKET NARRATIVE", "CALL TO ACTION",
-    "VIDEO TITLE OPTIONS", "BLOG POST INTRO", "SOURCES USED",
+    "VIDEO TITLE OPTIONS", "BLOG POST INTRO", "BLOG POST BODY",
+    "BLOG POST CONCLUSION", "SOURCES USED",
     "TOP 5 REASONS TO LIVE HERE", "QUICK STATS", "WHO THIS PLACE IS PERFECT FOR",
     "TOP EVENTS THIS MONTH", "COMMUNITY VIBE", "RECURRING HIGHLIGHTS",
     "MAIN CONTENT", "KEY TAKEAWAY", "PRIMARY LOCATION",
@@ -594,6 +602,11 @@ export function parseLocationScript(
       : `Reach out today to learn more about ${scriptCity}!`);
 
   const blogIntro = extractSection(raw, "BLOG POST INTRO", allHeadings);
+  // The article proper. Older responses (and the three non-custom video types)
+  // have no BLOG POST BODY section, so blogBody below stays the fallback and
+  // nothing that already worked stops working.
+  const blogArticle = extractSection(raw, "BLOG POST BODY", allHeadings);
+  const blogOutro = extractSection(raw, "BLOG POST CONCLUSION", allHeadings);
   const sourcesRaw = extractSection(raw, "SOURCES USED", []);
 
   // Extract VIDEO TITLE OPTIONS (numbered list → array)
@@ -650,8 +663,12 @@ export function parseLocationScript(
     hashtags,
     keywords,
     blog_intro: blogIntro,
-    blog_body: blogBody || script,
-    blog_conclusion: cta,
+    // Prefer the written article. blogBody — the narration sections with emoji
+    // headings glued on — was measurably the script plus six words, so the
+    // "blog post" was the video transcript. It stays as the fallback for the
+    // video types that don't ask for an article.
+    blog_body: blogArticle || blogBody || script,
+    blog_conclusion: blogOutro || cta,
     sources,
     raw,
     video_type: videoType,
