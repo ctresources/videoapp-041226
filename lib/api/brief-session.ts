@@ -1,13 +1,17 @@
-import OpenAI from "openai";
 import { standardMaxWords, LONG_MAX_WORDS, minutesFor } from "@/lib/utils/video-length";
 import { parseStateAbbr } from "@/lib/utils/us-states";
 
-let _openai: OpenAI | null = null;
-function getOpenAI(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
-  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return _openai;
-}
+/**
+ * The spoken half of the voice session is the browser's Web Speech API — free,
+ * no server round trip, and it streams interim results, which is what lets the
+ * transcript fill in as someone talks. This module is only the other half:
+ * turning what they said into the brief fields and deciding what to say back.
+ *
+ * Perplexity rather than OpenAI because it is already configured and already
+ * load-bearing here, where OPENAI_API_KEY powers one optional thumbnail feature
+ * that falls back to a gradient without it.
+ */
+const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
 /**
  * The brief the Create page needs before it can generate. These are exactly the
@@ -82,6 +86,35 @@ export function coerceSlots(raw: unknown): BriefSlots {
 }
 
 /**
+ * Did the agent just say to go ahead?
+ *
+ * Decided here rather than asked of the model. Consent is a high-stakes binary
+ * — a wrong yes starts a render they pay for — and when the model was asked, it
+ * answered false to a plain "yes go ahead", which is the other failure: you say
+ * it and nothing happens. A short matcher is duller and far more predictable.
+ */
+export function saidGoAhead(lastUserTurn: string): boolean {
+  const t = lastUserTurn.toLowerCase().trim().replace(/[.!\s]+$/, "");
+  // "no, don't go ahead" and "not yet" both contain affirmatives, so negation
+  // is checked first and wins outright — including over the wake word.
+  if (/\b(no|nope|not yet|don'?t|do not|wait|hold on|hang on|stop|cancel|change)\b/.test(t)) return false;
+  // "SparkReels" is the wake word — saying the product name fires the render.
+  // Browser speech recognition splits it as often as not, so "spark reels",
+  // "spark reel" and "sparkreel" all have to count.
+  if (/(^|\b)spark\s?reels?(\b|$)/.test(t)) return true;
+
+  // Unambiguous anywhere in the sentence.
+  if (/(^|\b)(go ahead|go for it|generate it|let'?s go|yes|yep|yeah|yup|that'?s right|sounds good|perfect|correct)(\b|$)/.test(t)) {
+    return true;
+  }
+  // "make it", "do it" and bare "generate" only count as the last thing said.
+  // "make it about schools" and "make it shorter" are the user refining the
+  // brief, not agreeing to it, and firing a paid render on those is the exact
+  // mistake this function exists to avoid.
+  return /\b(make it|do it|generate)(\s+(now|please|then|thanks|thank you))*$/.test(t);
+}
+
+/**
  * Reads a whole conversation and returns the brief so far plus what to say next.
  *
  * The entire transcript is re-read every turn rather than patching the previous
@@ -89,12 +122,11 @@ export function coerceSlots(raw: unknown): BriefSlots {
  * earlier answer, and incremental extraction gets corrections wrong exactly when
  * a user is most likely to make them — while talking.
  *
- * Returns null when OPENAI_API_KEY is missing or the call fails; the caller
+ * Returns null when PERPLEXITY_API_KEY is missing or the call fails; the caller
  * falls back to the typed form rather than stranding the user mid-sentence.
  */
 export async function runBriefTurn(turns: BriefTurn[]): Promise<BriefSessionResult | null> {
-  const openai = getOpenAI();
-  if (!openai) return null;
+  if (!process.env.PERPLEXITY_API_KEY) return null;
 
   const shortWords = standardMaxWords();
   const system = `You are taking a video brief from a real estate agent, out loud, one short exchange at a time.
@@ -106,8 +138,8 @@ Collect these fields:
 - tone: one of ${TONES.join(", ")} — optional
 - length: "standard" (~${minutesFor(shortWords)} min, ${shortWords} words) or "long" (~${minutesFor(LONG_MAX_WORDS)} min) — optional
 
-Return ONLY this JSON:
-{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"reply":"","ready":false}
+Return ONLY this JSON, no code fence:
+{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"reply":""}
 
 Rules for the fields:
 - Re-read the WHOLE conversation each time and return the current value of every field. A later correction replaces an earlier answer — if they said Buyers and then "actually sellers", audience is Sellers.
@@ -120,35 +152,46 @@ Rules for "reply":
 - Ask for ONE missing required field at a time — market first, then topic.
 - When you have both, read the brief back in a single sentence and ask if they want to go ahead.
 - Never ask about audience, tone or length. Take them if offered, but they are optional and asking for them makes the conversation drag.
-
-Rules for "ready":
-- true ONLY when city, state and topic are all filled AND the agent has just said to go ahead ("go ahead", "do it", "yes", "generate it", "that's right").
-- Answering a question is not consent. If they just told you the topic, ready is false — confirm first.`;
+- Once city, state and topic are all filled, read the brief back in one sentence and invite them to say "SparkReels" to make it, or tell you what to change. Whether they then agree is not your decision to record — just ask.`;
 
   try {
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 400,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        ...turns.map((t) => ({ role: t.role, content: t.content })),
-      ],
+    const res = await fetch(PERPLEXITY_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        temperature: 0.2,
+        max_tokens: 400,
+        // Pulling a city out of a sentence needs no web search, and leaving it
+        // on more than doubled the turn — 2.4s against 1.1s measured. In a
+        // spoken conversation that gap is the difference between a reply and
+        // an awkward pause.
+        disable_search: true,
+        messages: [{ role: "system", content: system }, ...turns],
+      }),
     });
+    if (!res.ok) {
+      console.error(`[brief-session] perplexity ${res.status}`);
+      return null;
+    }
 
-    const text = res.choices[0]?.message?.content;
-    if (!text) return null;
+    const json = await res.json();
+    const text = json.choices?.[0]?.message?.content;
+    if (typeof text !== "string" || !text.trim()) return null;
 
-    const parsed = JSON.parse(text) as Record<string, unknown>;
+    // Fenced despite the instruction often enough to be worth stripping.
+    const parsed = JSON.parse(
+      text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim(),
+    ) as Record<string, unknown>;
     const slots = coerceSlots(parsed);
     const reply = typeof parsed.reply === "string" ? parsed.reply.trim().slice(0, 400) : "";
 
-    // `ready` is decided here, not taken on trust: the model is asked for a
-    // judgement about consent, and a wrong `true` starts a render the agent
-    // never asked for and pays for.
     const hasRequired = !!(slots.city && slots.state && slots.topic);
-    const ready = hasRequired && parsed.ready === true;
+    const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
+    const ready = hasRequired && saidGoAhead(lastUser);
 
     return {
       slots,
