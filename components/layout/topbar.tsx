@@ -34,7 +34,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     )?.[1] ?? "SparkReels";
 
   return (
-    <header className="relative flex h-[46px] shrink-0 items-center justify-between border-b border-spark-rule bg-white px-4 md:px-5">
+    <header className="flex h-[46px] shrink-0 items-center justify-between border-b border-spark-rule bg-white px-4 md:px-5">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
@@ -57,12 +57,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           />
         </Link>
         <h1 className="hidden text-[12.5px] font-medium text-spark-ink md:block">{title}</h1>
-      </div>
-
-      <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-3 whitespace-nowrap rounded-full border border-spark-amber/40 bg-white px-4 py-1 text-[22px] text-spark-ink-muted md:flex">
-        Hold{" "}
-        <span className="spark-cta-gradient rounded-md px-2.5 py-1 font-semibold text-white">Space</span>{" "}
-        anywhere to talk
       </div>
 
       <div className="flex items-center gap-3.5">

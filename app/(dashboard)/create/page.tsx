@@ -734,7 +734,7 @@ function CreatePageInner() {
                   }`}
                 >
                   <Icon
-                    size={18}
+                    size={26}
                     className={`flex-none ${active ? "text-spark-amber" : "text-spark-ink-faint"}`}
                   />
                   <span className="min-w-0">
@@ -745,6 +745,11 @@ function CreatePageInner() {
               );
             })}
           </div>
+          <p className="text-[12px] text-spark-ink-faint">
+            Hold{" "}
+            <span className="spark-cta-gradient rounded px-1.5 py-0.5 font-semibold text-white">Space</span>{" "}
+            anywhere to talk
+          </p>
         </div>
       )}
 
