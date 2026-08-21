@@ -56,6 +56,20 @@
     background: linear-gradient(90deg, #BA7517, #866D39, #52665D, #1B5E82);
   }
 
+  /* Same gradient, for buttons — this replaced the old solid-amber /
+     hover-to-blue crossfade, so the only hover feedback left is a brightness
+     bump rather than a color change. */
+  .spark-cta-gradient {
+    background: linear-gradient(90deg, #BA7517, #866D39, #52665D, #1B5E82);
+    transition: filter .15s, box-shadow .15s;
+  }
+  .spark-cta-gradient:hover {
+    filter: brightness(1.08);
+  }
+  .spark-cta-gradient:active {
+    filter: brightness(0.96);
+  }
+
   /* Frosted cards used for the live script preview. The white-on-white border
      plus inset highlight is what sells the glass; don't drop it. */
   .spark-glass {

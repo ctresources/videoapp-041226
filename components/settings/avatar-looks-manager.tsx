@@ -393,7 +393,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
               <button
                 onClick={handleAddLook}
                 disabled={adding}
-                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium bg-primary-500 text-white rounded-lg py-2 hover:bg-primary-600 disabled:opacity-50 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium spark-cta-gradient text-white rounded-lg py-2 disabled:opacity-50"
               >
                 {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                 {adding ? "Creating…" : "Create look"}

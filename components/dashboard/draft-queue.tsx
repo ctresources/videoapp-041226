@@ -71,15 +71,15 @@ export function DraftQueue({ city, state }: Props) {
   if (dismissed) return null;
 
   return (
-    <div className="bg-gradient-to-br from-spark-blue to-spark-blue-deep rounded-2xl p-5 mb-6 text-white">
+    <div className="spark-banner-gradient rounded-2xl p-5 mb-6 text-white">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center shrink-0">
             <Sparkles size={16} className="text-yellow-300" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight">Your Draft Queue</p>
-            <p className="text-xs text-white/80 mt-0.5">AI-researched topics ready to record this week</p>
+            <p className="text-sm font-bold leading-tight text-spark-ink">Your Draft Queue</p>
+            <p className="text-xs text-primary-100 mt-0.5">AI-researched topics ready to record this week</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -98,7 +98,7 @@ export function DraftQueue({ city, state }: Props) {
       </div>
 
       {loading && suggestions.length === 0 ? (
-        <div className="flex items-center gap-2 py-2 text-sm text-white/80">
+        <div className="flex items-center gap-2 py-2 text-sm text-primary-100">
           <Loader2 size={14} className="animate-spin" />
           Researching this week&apos;s best topics for your market…
         </div>

@@ -182,7 +182,7 @@ function TagGenerator({ projects, initialProjectId }: { projects: Project[]; ini
       <button
         onClick={generate}
         disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Generating…" : "Generate"}
@@ -325,7 +325,7 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
       <button
         onClick={generate}
         disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Generating…" : "Generate Description"}
@@ -450,7 +450,7 @@ function TitleGenerator({
       </div>
 
       <button onClick={generate} disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50">
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Generating…" : "Generate Titles"}
       </button>
@@ -567,7 +567,7 @@ function ScriptGenerator({
       </div>
 
       <button onClick={generate} disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50">
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Generating…" : "Generate Script"}
       </button>
@@ -678,7 +678,7 @@ function ChannelNameGenerator() {
       </div>
 
       <button onClick={generate} disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50">
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Generating…" : "Generate Channel Names"}
       </button>
@@ -791,7 +791,7 @@ function AnswerBlocksGenerator() {
       </div>
 
       <button onClick={generate} disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors">
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50">
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Researching your market…" : "Generate Answer Blocks"}
       </button>
@@ -822,7 +822,7 @@ function AnswerBlocksGenerator() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/create?topic=${encodeURIComponent(b.videoTopic)}${city ? `&city=${encodeURIComponent(city)}` : ""}${state ? `&state=${encodeURIComponent(state)}` : ""}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-500 text-white rounded-lg text-xs font-semibold hover:bg-primary-600 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold"
                   >
                     <Video size={13} /> Make this video
                   </Link>
@@ -1185,7 +1185,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       <button
         onClick={() => generate(false)}
         disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Creating your thumbnail…" : "Generate Thumbnail"}
@@ -1214,7 +1214,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             <button
               onClick={() => generate(true)}
               disabled={loading}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg px-3 py-1.5 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-white spark-cta-gradient rounded-lg px-3 py-1.5 disabled:opacity-50"
               title="Redraws the current text and photo on this same background"
             >
               {loading ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
@@ -1487,7 +1487,7 @@ function BannerGenerator() {
       <button
         onClick={generate}
         disabled={loading}
-        className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
         {loading ? "Creating your banner…" : "Generate Banner"}

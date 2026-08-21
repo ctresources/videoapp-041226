@@ -220,7 +220,7 @@ export default function HelpPage() {
           </ol>
           <Link
             href="/create"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 spark-cta-gradient text-white text-sm font-semibold rounded-xl"
           >
             <Sparkles size={15} /> Create Your First Video
           </Link>

@@ -1596,7 +1596,7 @@ function CreatePageInner() {
                     placeholder="https://example.com/article"
                     className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
                   />
-                  <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="bg-spark-amber hover:bg-spark-amber text-white whitespace-nowrap">Fetch</Button>
+                  <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="whitespace-nowrap">Fetch</Button>
                 </div>
               )}
               <p className="text-[11px] text-slate-400 mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
@@ -1607,7 +1607,7 @@ function CreatePageInner() {
                     size="sm"
                     loading={cameraScriptGenerating}
                     onClick={handleGenerateScriptFromCameraUploads}
-                    className="w-full gap-1.5 bg-spark-amber hover:bg-spark-amber text-white"
+                    className="w-full gap-1.5"
                   >
                     {cameraScriptGenerating
                       ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
