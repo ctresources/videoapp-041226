@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -16,11 +17,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // scrolling page with no scroll container of its own — overflow-hidden there
   // cut off everything below the fold.
   const fullBleed = pathname === "/create";
+  // /create and /create/[projectId] already own their own Space shortcut (or,
+  // for the editor's script textarea, deliberately opt out of one).
+  const onCreateRoute = pathname.startsWith("/create");
 
   return (
     // No background here: the paper gradient lives on <body> and would be
     // covered by an opaque colour at this level.
     <div className="flex min-h-screen">
+      <GlobalVoiceShortcut disabled={onCreateRoute} />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
