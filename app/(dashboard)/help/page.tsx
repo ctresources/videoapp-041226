@@ -142,9 +142,9 @@ export default function HelpPage() {
             <Step n={7} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
               On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
               pick <strong>Speak It</strong> or <strong>Type It</strong> at the top — everything below works
-              either way. Speaking it is a real conversation: hold{" "}
-              <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Space</span>{" "}
-              anywhere on the page (or tap the mic) and just talk — your city, the topic, who it&apos;s for, the
+              either way. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
+              <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
+              anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
               tone, how long. It fills in whatever it catches and asks a quick follow-up for anything missing,
               then say <strong>&ldquo;SparkReels&rdquo;</strong> — or just say you&apos;re ready — and it writes
               the script. Prefer typing, or want a suggestion instead of a blank field? Tap a{" "}

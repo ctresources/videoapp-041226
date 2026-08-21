@@ -31,7 +31,7 @@ export function GlobalVoiceShortcut({ disabled }: { disabled: boolean }) {
 
   useEffect(() => {
     if (listening) {
-      toast("🎙️ Listening… release Space to start a video from what you said", {
+      toast("🎙️ Listening… release Spacebar to start a video from what you said", {
         id: "global-voice-shortcut",
         duration: 4000,
       });

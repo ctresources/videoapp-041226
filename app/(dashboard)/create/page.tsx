@@ -742,9 +742,8 @@ function CreatePageInner() {
                     <span className="block text-[12.5px] text-spark-ink-muted">{desc}</span>
                     {key === "speak" && (
                       <span className="mt-0.5 block text-[11px] text-spark-ink-faint">
-                        Hold{" "}
-                        <span className="spark-cta-gradient rounded px-1 py-0.5 font-semibold text-white">Space</span>{" "}
-                        anywhere to talk
+                        Click the mic, or hold{" "}
+                        <span className="spark-cta-gradient rounded px-1 py-0.5 font-semibold text-white">Spacebar</span>
                       </span>
                     )}
                   </span>

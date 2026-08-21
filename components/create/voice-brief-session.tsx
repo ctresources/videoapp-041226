@@ -146,8 +146,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const status = thinking
     ? "Thinking…"
     : listening
-      ? "Listening — hold Space or click to stop"
-      : "Tap the mic, or hold Space, and answer";
+      // Space is push-to-talk — release it (not hold it) to stop.
+      ? "Listening — click the mic, or release Spacebar, to stop"
+      : "Click the mic, or hold Spacebar, and answer";
 
   const secondLine = listening ? (live || "Listening…") : summary || lastAssistant;
 
