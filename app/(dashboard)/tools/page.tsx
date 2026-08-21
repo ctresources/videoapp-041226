@@ -1620,13 +1620,13 @@ export default function ToolsPage() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-primary-500 to-orange-400 text-white">
+      <div className="mb-6 p-6 rounded-2xl spark-banner-gradient text-white">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
               <Sparkles size={18} />
             </div>
-            <h1 className="text-xl font-bold">AI Tools</h1>
+            <h1 className="text-xl font-bold text-spark-ink">AI Tools</h1>
           </div>
           <button
             onClick={() => setShowHelp((v) => !v)}
@@ -1635,7 +1635,7 @@ export default function ToolsPage() {
             <HelpCircle size={13} /> How To Use
           </button>
         </div>
-        <p className="text-sm text-white/80 mt-1">Supercharge your content creation with AI</p>
+        <p className="text-sm text-primary-100 mt-1">Supercharge your content creation with AI</p>
       </div>
 
       {/* How-to-use workflow panel */}

@@ -330,8 +330,8 @@ export default async function DashboardPage() {
       </Suspense>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <div className="bg-gradient-to-r from-primary-500 to-secondary-500 rounded-2xl p-6 text-white">
-          <h3 className="font-bold text-lg mb-1">Create a New Video</h3>
+        <div className="spark-banner-gradient rounded-2xl p-6 text-white">
+          <h3 className="font-bold text-lg mb-1 text-spark-ink">Create a New Video</h3>
           <p className="text-primary-100 text-sm mb-4">
             Record Your Voice Or Pick A Template — We Handle The Rest.
           </p>
@@ -341,13 +341,13 @@ export default async function DashboardPage() {
             </Button>
           </Link>
         </div>
-        <div className="bg-gradient-to-r from-spark-amber to-accent-500 rounded-2xl p-6 text-white">
-          <h3 className="font-bold text-lg mb-1">Content Calendar</h3>
-          <p className="text-white/85 text-sm mb-4">
+        <div className="spark-banner-gradient rounded-2xl p-6 text-white">
+          <h3 className="font-bold text-lg mb-1 text-spark-ink">Content Calendar</h3>
+          <p className="text-primary-100 text-sm mb-4">
             View And Manage All Your Scheduled Posts Across Every Platform.
           </p>
           <Link href="/calendar">
-            <Button className="bg-white text-spark-amber hover:bg-spark-amber-tint gap-2" size="md">
+            <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
               <CalendarDays size={16} /> View Calendar
             </Button>
           </Link>

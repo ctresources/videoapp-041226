@@ -49,6 +49,13 @@
     background: var(--spark-paper);
   }
 
+  /* Warm-luxury banner gradient — amber gold through bronze and teal to deep
+     ocean blue. Used for the bold hero/CTA cards (dashboard shortcuts, AI
+     Tools header, Help hero), replacing the old two-stop amber→blue. */
+  .spark-banner-gradient {
+    background: linear-gradient(90deg, #BA7517, #866D39, #52665D, #1B5E82);
+  }
+
   /* Frosted cards used for the live script preview. The white-on-white border
      plus inset highlight is what sells the glass; don't drop it. */
   .spark-glass {

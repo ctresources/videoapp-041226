@@ -48,14 +48,14 @@ export default function HelpPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Hero */}
-      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-br from-primary-500 to-orange-400 text-white">
+      <div className="mb-6 p-6 rounded-2xl spark-banner-gradient text-white">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
             <Rocket size={18} />
           </div>
-          <h1 className="text-xl font-bold">How It Works</h1>
+          <h1 className="text-xl font-bold text-spark-ink">How It Works</h1>
         </div>
-        <p className="text-sm text-white/85">
+        <p className="text-sm text-primary-100">
           From blank account to published video — set up once, then every video takes about 5 minutes of your time.
         </p>
       </div>
