@@ -240,34 +240,34 @@ const steps = [
 
 const pricingTiers = [
   {
-    name: "Starter",
-    price: "$59",
+    name: "Creator",
+    price: "$79",
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
   },
   {
-    name: "Agent",
+    name: "Producer",
     price: "$189",
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
   },
   {
-    name: "Pro",
-    price: "$299",
+    name: "Influencer",
+    price: "$269",
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "5 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon"],
+    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -883,7 +883,7 @@ export default function LandingPage() {
                 Full neighborhood tours, property walkthroughs, deep market breakdowns — the
                 long-format videos that actually rank on YouTube search. Uses your own listing photos.
               </p>
-              <p className="text-lg text-slate-400">Best for building a channel that gets found. On Agent and Pro.</p>
+              <p className="text-lg text-slate-400">Best for building a channel that gets found. On Producer and Influencer.</p>
             </div>
           </div>
 

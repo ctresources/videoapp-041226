@@ -490,8 +490,8 @@ export default function ProjectEditorPage() {
     if (data) {
       setContactInfo(data as typeof contactInfo);
       const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
-      // Agent (2/mo) and Pro (5/mo) include long videos in their allowance;
-      // Starter buys them one at a time as an add-on.
+      // Producer (2/mo) and Influencer (4/mo) include long videos in their
+      // allowance; Creator buys them one at a time as an add-on.
       setLongFormIncluded(
         p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
       );

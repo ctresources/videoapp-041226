@@ -14,11 +14,15 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  * `videos` is kept as the short-video count for older callers that still read
  * it. Users never see the word "credit" — the UI shows video counts and minutes.
  */
+// Plan keys (starter/agent/pro) and `tier` values are internal identifiers —
+// they're stored in profiles.subscription_tier, read by the Stripe webhook,
+// and passed as the checkout `plan` param. Renaming the *display* name below
+// does not touch any of that; only `name`/`price`/`blurb` are user-facing.
 export const PLANS = {
   starter: {
-    name: "Starter",
+    name: "Creator",
     priceId: process.env.STRIPE_PRICE_STARTER!,
-    price: 59,
+    price: 79,
     videos: 4,
     shortVideos: 4,
     longVideos: 0,
@@ -26,7 +30,7 @@ export const PLANS = {
     tier: "starter" as const,
   },
   agent: {
-    name: "Agent",
+    name: "Producer",
     priceId: process.env.STRIPE_PRICE_AGENT!,
     price: 189,
     videos: 4,
@@ -36,13 +40,13 @@ export const PLANS = {
     tier: "agent" as const,
   },
   pro: {
-    name: "Pro",
+    name: "Influencer",
     priceId: process.env.STRIPE_PRICE_PRO!,
-    price: 299,
+    price: 269,
     videos: 4,
     shortVideos: 4,
-    longVideos: 5,
-    blurb: "4 short + 5 long videos",
+    longVideos: 4,
+    blurb: "4 short + 4 long videos",
     tier: "pro" as const,
   },
 } as const;

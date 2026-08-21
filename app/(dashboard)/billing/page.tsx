@@ -15,8 +15,8 @@ import {
 const PLANS = [
   {
     key: "starter",
-    name: "Starter",
-    price: 59,
+    name: "Creator",
+    price: 79,
     videos: 4,
     longVideos: 0,
     blurb: "4 short videos",
@@ -33,11 +33,12 @@ const PLANS = [
       "YouTube (16:9) & Reel (9:16) formats",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
+      "Buy extra videos anytime — add-ons never expire",
     ],
   },
   {
     key: "agent",
-    name: "Agent",
+    name: "Producer",
     price: 189,
     videos: 4,
     longVideos: 2,
@@ -56,19 +57,20 @@ const PLANS = [
       "YouTube (16:9) & Reel (9:16) formats",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
+      "Buy extra videos anytime — add-ons never expire",
     ],
   },
   {
     key: "pro",
-    name: "Pro",
-    price: 299,
+    name: "Influencer",
+    price: 269,
     videos: 4,
-    longVideos: 5,
-    blurb: "4 short + 5 long videos",
+    longVideos: 4,
+    blurb: "4 short + 4 long videos",
     highlighted: false,
     features: [
       "4 short AI videos/month — up to 4 minutes each, with automatic b-roll",
-      "5 long AI videos/month — up to 8 minutes each, using your photos for visuals",
+      "4 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Digital twin avatar",
       "Priority rendering",
@@ -80,6 +82,7 @@ const PLANS = [
       "YouTube (16:9) & Reel (9:16) formats",
       "1 social platform (YouTube)",
       "Other platforms coming soon",
+      "Buy extra videos anytime — add-ons never expire",
     ],
   },
 ];
@@ -96,7 +99,7 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: { success?: string; canceled?: string; error?: string; added?: string; kind?: string };
+  searchParams: { success?: string; plan?: string; canceled?: string; error?: string; added?: string; kind?: string };
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -176,8 +179,8 @@ export default async function BillingPage({
             <p className="font-semibold text-sm">You&apos;re all set! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
               {isTrialing
-                ? `Your 7-day free trial of the ${searchParams.success} plan has started. No charge until your trial ends.`
-                : `Your ${searchParams.success} plan is now active. Start creating videos.`}
+                ? `Your 7-day free trial of the ${PLANS.find((p) => p.key === searchParams.plan)?.name ?? "new"} plan has started. No charge until your trial ends.`
+                : `Your ${PLANS.find((p) => p.key === searchParams.plan)?.name ?? "new"} plan is now active. Start creating videos.`}
             </p>
           </div>
         </div>

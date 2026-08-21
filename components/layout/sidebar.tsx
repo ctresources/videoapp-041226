@@ -99,9 +99,9 @@ const navItems = [
 const PLAN_LABELS: Record<string, string> = {
   free: "Free plan",
   beta: "Beta access",
-  starter: "Starter plan",
-  agent: "Agent plan",
-  pro: "Pro plan",
+  starter: "Creator plan",
+  agent: "Producer plan",
+  pro: "Influencer plan",
 };
 
 // The dashboard layout renders this twice — once inside the mobile drawer and
