@@ -199,17 +199,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         )}
       </nav>
 
-      {/* Voice shortcut + account */}
-      <div className="mt-auto flex flex-col gap-1.5 px-4 py-3.5">
-        <div className="spark-eyebrow text-[9px]">VOICE SHORTCUT</div>
-        <div className="text-[11px] leading-[1.45] text-spark-ink-muted">
-          Hold{" "}
-          <span className="spark-surface rounded px-[5px] py-px text-spark-ink">Space</span>{" "}
-          anywhere to talk
-        </div>
-      </div>
-
-      <div className="mx-4 h-px bg-spark-rule-soft" />
+      <div className="mx-4 mt-auto h-px bg-spark-rule-soft" />
 
       <div className="px-2 pt-3">
         <div className="mb-1 flex items-center gap-2.5 px-2">

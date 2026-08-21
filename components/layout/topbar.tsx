@@ -59,7 +59,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         <h1 className="hidden text-[12.5px] font-medium text-spark-ink md:block">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-3.5">
+        <div className="hidden items-center gap-1.5 text-[11px] text-spark-ink-muted md:flex">
+          Hold{" "}
+          <span className="spark-surface rounded px-[5px] py-px text-spark-ink">Space</span>{" "}
+          anywhere to talk
+        </div>
         <div
           className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e3d5bb] text-[10px] font-semibold text-spark-ink"
           title={user?.email ?? undefined}
