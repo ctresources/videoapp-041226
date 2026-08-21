@@ -707,12 +707,19 @@ function CreatePageInner() {
           the wrong way round. Neither is the fallback. */}
       {step === "input" && (inputMode === "script" || inputMode === "camera") && (
         <div className="mb-4 flex flex-col gap-2.5 border-b border-spark-rule-soft pb-4">
-          <div>
-            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
-              Speak it or type it — your choice
-            </h2>
-            <p className="mt-1 text-[13px] text-spark-ink-muted">
-              Everything below works either way. Switch whenever you like.
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
+                Speak it or type it — your choice
+              </h2>
+              <p className="mt-1 text-[13px] text-spark-ink-muted">
+                Everything below works either way. Switch whenever you like.
+              </p>
+            </div>
+            <p className="text-[12px] text-spark-ink-faint">
+              Hold{" "}
+              <span className="spark-cta-gradient rounded px-1.5 py-0.5 font-semibold text-white">Space</span>{" "}
+              anywhere to talk
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
@@ -745,11 +752,6 @@ function CreatePageInner() {
               );
             })}
           </div>
-          <p className="text-[12px] text-spark-ink-faint">
-            Hold{" "}
-            <span className="spark-cta-gradient rounded px-1.5 py-0.5 font-semibold text-white">Space</span>{" "}
-            anywhere to talk
-          </p>
         </div>
       )}
 
@@ -796,25 +798,25 @@ function CreatePageInner() {
                   aria-pressed={active}
                   className={`flex flex-col gap-1 rounded-[11px] px-3.5 py-3 text-left transition-colors ${
                     active
-                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                      ? "spark-cta-gradient"
                       : "spark-glass hover:border-spark-rule-dim"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {/* Radio, not a checkbox — these three are exclusive */}
                     <span
-                      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[9px] font-bold leading-none text-white ${
-                        active ? "bg-spark-amber" : "border-[1.5px] border-spark-rule-dim"
+                      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[9px] font-bold leading-none ${
+                        active ? "bg-white text-spark-amber" : "border-[1.5px] border-spark-rule-dim text-white"
                       }`}
                     >
                       {active ? "✓" : ""}
                     </span>
                     <span className="text-[15px] font-medium text-spark-ink">{label}</span>
                   </span>
-                  <span className="block pl-[26px] text-[13px] leading-[1.45] text-spark-ink-muted">
+                  <span className={`block pl-[26px] text-[13px] leading-[1.45] ${active ? "text-primary-100" : "text-spark-ink-muted"}`}>
                     {desc}
                   </span>
-                  <span className="block pl-[26px] text-[12px] text-spark-ink-faint">{meta}</span>
+                  <span className={`block pl-[26px] text-[12px] ${active ? "text-primary-100" : "text-spark-ink-faint"}`}>{meta}</span>
                 </button>
               );
             })}
@@ -833,6 +835,7 @@ function CreatePageInner() {
               will make a different video for each, so this is a question the
               page has to ask rather than a profile setting it can assume.
               It seeds the trending list too. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="flex flex-col gap-3">
             <div>
               <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
@@ -918,16 +921,17 @@ function CreatePageInner() {
                 + Save {locCity}, {locState.toUpperCase()} so it is one tap next time
               </button>
             )}
+          </div>
 
-            {/* Audience, style and CTA are optional and Length is the only
-                required one (it already defaults to Standard, so it is never
-                empty) — but all four stay visible and pickable up front rather
-                than behind an Edit toggle. Hiding them made "optional" read as
-                "hidden", and the user should see what they can set without a
-                click to find out. */}
-            <Card padding="sm" className="p-3">
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          {/* Audience, style and CTA are optional and Length is the only
+              required one (it already defaults to Standard, so it is never
+              empty) — but all four stay visible and pickable up front rather
+              than behind an Edit toggle. Hiding them made "optional" read as
+              "hidden", and the user should see what they can set without a
+              click to find out. */}
+          <Card padding="sm" className="p-3">
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
                   {[
                     {
                       label: "Audience", value: locAudience, set: setLocAudience,
