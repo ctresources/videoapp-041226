@@ -706,7 +706,7 @@ function CreatePageInner() {
           the mic — which told anyone who wanted to type that they were doing it
           the wrong way round. Neither is the fallback. */}
       {step === "input" && (inputMode === "script" || inputMode === "camera") && (
-        <div className="mb-5 flex flex-col gap-3 border-b border-spark-rule-soft pb-5">
+        <div className="mb-4 flex flex-col gap-2.5 border-b border-spark-rule-soft pb-4">
           <div>
             <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
               Speak it or type it — your choice
@@ -727,7 +727,7 @@ function CreatePageInner() {
                   type="button"
                   onClick={() => setInputStyle(key)}
                   aria-pressed={active}
-                  className={`flex items-center gap-2.5 rounded-[11px] px-4 py-3 text-left transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-[11px] px-3.5 py-2.5 text-left transition-colors ${
                     active
                       ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                       : "border border-spark-rule bg-white hover:border-spark-rule-dim"
@@ -749,7 +749,7 @@ function CreatePageInner() {
       )}
 
       {step === "input" && (
-        <div className="mb-5 flex flex-col gap-[11px]">
+        <div className="mb-4 flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
               Step 1 of 2 · how you&rsquo;re creating
@@ -789,7 +789,7 @@ function CreatePageInner() {
                   // the pill toggle inside switches to My Listings.
                   onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
                   aria-pressed={active}
-                  className={`flex flex-col gap-1 rounded-[11px] px-4 py-3.5 text-left transition-colors ${
+                  className={`flex flex-col gap-1 rounded-[11px] px-3.5 py-3 text-left transition-colors ${
                     active
                       ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                       : "spark-glass hover:border-spark-rule-dim"
@@ -821,7 +821,7 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
 
           {/* ── Where the video is about ──
               Per video, not per account. One agent covers several areas and
@@ -920,9 +920,9 @@ function CreatePageInner() {
                 than behind an Edit toggle. Hiding them made "optional" read as
                 "hidden", and the user should see what they can set without a
                 click to find out. */}
-            <Card padding="sm">
-              <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Card padding="sm" className="p-3">
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   {[
                     {
                       label: "Audience", value: locAudience, set: setLocAudience,
@@ -961,11 +961,11 @@ function CreatePageInner() {
                     reach the editor the words already exist. The only
                     required choice of the four, though it can never actually
                     be empty since it starts on Standard. */}
-                <div className="border-t border-spark-rule-soft pt-4">
+                <div className="border-t border-spark-rule-soft pt-3">
                   <p className="mb-2 text-[13px] font-medium text-spark-ink-soft">
                     Length <span className="text-spark-amber">*</span>
                   </p>
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {([
                       { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
                       { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
@@ -1000,7 +1000,7 @@ function CreatePageInner() {
               with its own heading, then a "Trending" header, then a "Video
               formats" header. One shared eyebrow now; speak/type is simply
               the first row under it, sized like a row rather than a screen. */}
-          <div className="flex flex-col gap-5 border-t border-spark-rule-soft pt-6">
+          <div className="flex flex-col gap-4 border-t border-spark-rule-soft pt-4">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
               Your topic
             </p>
@@ -1053,7 +1053,7 @@ function CreatePageInner() {
               Writing the script is what this button does, but what the user is
               doing is moving on to the second step, so it is labelled for the
               destination and says the wait out loud underneath. */}
-          <div className="flex flex-col gap-2 border-t border-spark-rule-soft pt-5">
+          <div className="flex flex-col gap-2 border-t border-spark-rule-soft pt-4">
             <Button
               // Wrapped: bare, the click event would arrive as the spoken overrides.
               onClick={() => handleGenerateScript()}
@@ -1096,7 +1096,7 @@ function CreatePageInner() {
           </div>
           {/* Left column: the script itself */}
           <div className="flex flex-col gap-3 min-w-0">
-          <Card padding="sm" className="border-t-4 border-t-violet-500">
+          <Card padding="sm" className="p-3 border-t-4 border-t-violet-500">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-spark-amber to-spark-amber-glow text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
@@ -1106,7 +1106,7 @@ function CreatePageInner() {
             </div>
 
             {/* Let AI Spark The Script */}
-            <div className="mb-5 pb-5 border-b border-slate-100">
+            <div className="mb-4 pb-4 border-b border-slate-100">
               <p className="text-sm font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
               <div className="mb-2">
                 <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
@@ -1297,7 +1297,7 @@ function CreatePageInner() {
           </div>{/* end left column */}
 
           {/* Right column: media & docs */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-purple-400">
+          <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-purple-400">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-spark-amber to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-sm">
                 <ImageIcon size={17} />
@@ -1417,7 +1417,7 @@ function CreatePageInner() {
               🏠 My Listings
             </button>
           </div>
-          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
+          <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
                 <Building2 size={17} className="text-white" />
@@ -1431,7 +1431,7 @@ function CreatePageInner() {
           </Card>
 
           {/* What you get — keeps the right column balanced */}
-          <Card padding="sm" className="min-w-0 lg:sticky lg:top-4 border-t-4 border-t-teal-400">
+          <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-teal-400">
             <p className="text-base font-bold text-brand-text mb-3">🏡 What Your Listing Video Includes</p>
             <ul className="text-sm text-slate-600 space-y-2.5">
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
@@ -1455,7 +1455,7 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
         <div className="max-w-3xl">
-          <Card padding="sm" className="min-w-0 border-t-4 border-t-emerald-500">
+          <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
                 <Video size={17} className="text-white" />
