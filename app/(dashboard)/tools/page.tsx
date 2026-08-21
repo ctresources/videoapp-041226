@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot,
+  Megaphone, Bot, Camera,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -819,12 +819,32 @@ function AnswerBlocksGenerator() {
                 <p className="text-[10px] font-bold text-primary-700 uppercase tracking-wide mb-2">Record this video</p>
                 <p className="text-sm font-semibold text-slate-800 mb-1">{b.videoTopic}</p>
                 <p className="text-xs text-slate-500 italic mb-3">Open with: &ldquo;{b.videoHook}&rdquo;</p>
-                <Link
-                  href={`/create?topic=${encodeURIComponent(b.videoTopic)}${city ? `&city=${encodeURIComponent(city)}` : ""}${state ? `&state=${encodeURIComponent(state)}` : ""}`}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-500 text-white rounded-lg text-xs font-semibold hover:bg-primary-600 transition-colors"
-                >
-                  <Video size={13} /> Make this video
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/create?topic=${encodeURIComponent(b.videoTopic)}${city ? `&city=${encodeURIComponent(city)}` : ""}${state ? `&state=${encodeURIComponent(state)}` : ""}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-500 text-white rounded-lg text-xs font-semibold hover:bg-primary-600 transition-colors"
+                  >
+                    <Video size={13} /> Make this video
+                  </Link>
+                  <Link
+                    href="/create?tab=camera"
+                    onClick={() => {
+                      // Same sessionStorage handoff the editor's Record on
+                      // Camera button uses — pre-fills the Camera tab's
+                      // teleprompter instead of asking the user to retype
+                      // the hook and topic there.
+                      try {
+                        sessionStorage.setItem(
+                          "camera-record-script",
+                          `${b.videoHook}\n\n${b.videoTopic}`,
+                        );
+                      } catch { /* sessionStorage unavailable */ }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-primary-200 text-primary-700 rounded-lg text-xs font-semibold hover:border-primary-400 transition-colors"
+                  >
+                    <Camera size={13} /> Record on Camera
+                  </Link>
+                </div>
               </div>
 
               <div className="p-4">
