@@ -469,6 +469,15 @@ export interface BrandKit {
   name: string;
 }
 
+export interface BrandKitDetail {
+  id: string;
+  name: string;
+  status: "loading" | "completed" | "error";
+  /** Hex colors HeyGen pulled from the site, e.g. ["#FF5733", ...]. */
+  colors: string[];
+  hasLogo: boolean;
+}
+
 export interface VideoAgentSession {
   sessionId: string;
   /** "generating" = storyboard phase; "thinking" = agent reasoning; "processing" = rendering */
@@ -536,6 +545,54 @@ export async function listBrandKits(): Promise<BrandKit[]> {
     console.warn("[heygen] brand kits failed:", e);
   }
   return kits;
+}
+
+/**
+ * Build a brand kit from a public website (POST /v3/brand-kits) — HeyGen
+ * extracts colors, logo and fonts from the page itself, so the user never
+ * has to open HeyGen or pick anything by hand. Returns immediately with
+ * status "loading"; call getBrandKit to poll until it's "completed".
+ */
+export async function createBrandKit(url: string, name?: string): Promise<{ id: string; status: string }> {
+  const res = await fetch(`${HEYGEN_API}/v3/brand-kits`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    body: JSON.stringify({ url, ...(name ? { name } : {}) }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`HeyGen brand kit creation failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
+  const json = await res.json();
+  const id = String(json.data?.brand_kit_id ?? "");
+  if (!id) throw new Error("HeyGen did not return a brand_kit_id");
+  return { id, status: String(json.data?.status ?? "loading") };
+}
+
+/**
+ * Poll a single brand kit's assembly status (GET /v3/brand-kits/{id}).
+ * Returns null on failure rather than throwing — same reasoning as
+ * listBrandKits: a lookup hiccup should never break the settings page.
+ */
+export async function getBrandKit(brandKitId: string): Promise<BrandKitDetail | null> {
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/brand-kits/${encodeURIComponent(brandKitId)}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const d = json.data ?? {};
+    return {
+      id: String(d.brand_kit_id ?? brandKitId),
+      name: String(d.name ?? "My brand kit"),
+      status: d.status === "completed" || d.status === "error" ? d.status : "loading",
+      colors: Array.isArray(d.colors) ? d.colors.filter((c: unknown) => typeof c === "string") : [],
+      hasLogo: Array.isArray(d.logos) && d.logos.length > 0,
+    };
+  } catch (e) {
+    console.warn("[heygen] get brand kit failed:", e);
+    return null;
+  }
 }
 
 /**
