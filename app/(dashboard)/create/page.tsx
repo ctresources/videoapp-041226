@@ -706,20 +706,13 @@ function CreatePageInner() {
           the mic — which told anyone who wanted to type that they were doing it
           the wrong way round. Neither is the fallback. */}
       {step === "input" && (inputMode === "script" || inputMode === "camera") && (
-        <div className="mb-4 flex flex-col gap-2.5 border-b border-spark-rule-soft pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
-                Speak it or type it — your choice
-              </h2>
-              <p className="mt-1 text-[13px] text-spark-ink-muted">
-                Everything below works either way. Switch whenever you like.
-              </p>
-            </div>
-            <p className="text-[12px] text-spark-ink-faint">
-              Hold{" "}
-              <span className="spark-cta-gradient rounded px-1.5 py-0.5 font-semibold text-white">Space</span>{" "}
-              anywhere to talk
+        <div className="mb-3 flex flex-col gap-2 border-b border-spark-rule-soft pb-3">
+          <div>
+            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
+              Speak it or type it — your choice
+            </h2>
+            <p className="mt-1 text-[13px] text-spark-ink-muted">
+              Everything below works either way. Switch whenever you like.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
@@ -747,6 +740,13 @@ function CreatePageInner() {
                   <span className="min-w-0">
                     <span className="block text-[15px] font-medium text-spark-ink">{label}</span>
                     <span className="block text-[12.5px] text-spark-ink-muted">{desc}</span>
+                    {key === "speak" && (
+                      <span className="mt-0.5 block text-[11px] text-spark-ink-faint">
+                        Hold{" "}
+                        <span className="spark-cta-gradient rounded px-1 py-0.5 font-semibold text-white">Space</span>{" "}
+                        anywhere to talk
+                      </span>
+                    )}
                   </span>
                 </button>
               );
@@ -756,7 +756,7 @@ function CreatePageInner() {
       )}
 
       {step === "input" && (
-        <div className="mb-4 flex flex-col gap-2.5">
+        <div className="mb-3 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
               Step 1 of 2 · how you&rsquo;re creating
@@ -828,14 +828,14 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
 
           {/* ── Where the video is about ──
               Per video, not per account. One agent covers several areas and
               will make a different video for each, so this is a question the
               page has to ask rather than a profile setting it can assume.
               It seeds the trending list too. */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="flex flex-col gap-3">
             <div>
               <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
@@ -1009,7 +1009,7 @@ function CreatePageInner() {
               with its own heading, then a "Trending" header, then a "Video
               formats" header. One shared eyebrow now; speak/type is simply
               the first row under it, sized like a row rather than a screen. */}
-          <div className="flex flex-col gap-4 border-t border-spark-rule-soft pt-4">
+          <div className="flex flex-col gap-3 border-t border-spark-rule-soft pt-3">
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
               Your topic
             </p>
