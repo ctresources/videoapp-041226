@@ -755,6 +755,64 @@ function CreatePageInner() {
         </div>
       )}
 
+      {/* ── Your topic ──
+          Moved up next to the Speak it / Type it picker rather than after
+          Step 1 and the location/settings block — the working mic (in
+          VoiceBriefSession below) was three sections and a scroll away from
+          the "Speak it" tile that looked like it should trigger it. One
+          section, not three: speaking, typing, trending and templates are
+          all just different paths to the same one field. */}
+      {inputMode === "script" && step === "input" && (
+        <div className="mb-3 flex flex-col gap-3 border-b border-spark-rule-soft pb-3">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
+            Your topic
+          </p>
+
+          {inputStyle === "speak" ? (
+            <VoiceBriefSession
+              disabled={locGenerating}
+              onSwitchToTyping={() => setInputStyle("type")}
+              // Only ever fills blanks it has an answer for — a null slot
+              // must not wipe something already typed or picked from a chip.
+              onSlots={(s) => {
+                if (s.city) setLocCity(s.city);
+                if (s.state) setLocState(s.state);
+                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
+                if (s.audience) setLocAudience(s.audience);
+                if (s.tone) setLocTone(s.tone);
+                if (s.length) setLocLength(s.length);
+              }}
+              onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
+            />
+          ) : (
+            <VoiceTopicHero
+              value={locCustomTopic}
+              onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
+              onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
+              onBrowseTemplates={openTemplates}
+              templateCount={TEMPLATE_COUNT}
+              disabled={locGenerating}
+              typed
+              onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
+            />
+          )}
+
+          <TopicRadar
+            city={locCity || undefined}
+            state={locState || undefined}
+            onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
+            onSeeAll={openTemplates}
+          />
+          <ContentTemplates
+            city={locCity}
+            state={locState}
+            onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
+            expanded={templatesOpen}
+            onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
+          />
+        </div>
+      )}
+
       {step === "input" && (
         <div className="mb-3 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
@@ -1002,62 +1060,6 @@ function CreatePageInner() {
             </Card>
           </div>
 
-          {/* ── Your topic ──
-              One section, not three. Speaking, typing, trending and templates
-              are all just different paths to the same one field, and used to
-              read as separate destinations — a tall standalone voice card
-              with its own heading, then a "Trending" header, then a "Video
-              formats" header. One shared eyebrow now; speak/type is simply
-              the first row under it, sized like a row rather than a screen. */}
-          <div className="flex flex-col gap-3 border-t border-spark-rule-soft pt-3">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
-              Your topic
-            </p>
-
-            {inputStyle === "speak" ? (
-              <VoiceBriefSession
-                disabled={locGenerating}
-                onSwitchToTyping={() => setInputStyle("type")}
-                // Only ever fills blanks it has an answer for — a null slot
-                // must not wipe something already typed or picked from a chip.
-                onSlots={(s) => {
-                  if (s.city) setLocCity(s.city);
-                  if (s.state) setLocState(s.state);
-                  if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
-                  if (s.audience) setLocAudience(s.audience);
-                  if (s.tone) setLocTone(s.tone);
-                  if (s.length) setLocLength(s.length);
-                }}
-                onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
-              />
-            ) : (
-              <VoiceTopicHero
-                value={locCustomTopic}
-                onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
-                onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
-                onBrowseTemplates={openTemplates}
-                templateCount={TEMPLATE_COUNT}
-                disabled={locGenerating}
-                typed
-                onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
-              />
-            )}
-
-            <TopicRadar
-              city={locCity || undefined}
-              state={locState || undefined}
-              onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
-              onSeeAll={openTemplates}
-            />
-            <ContentTemplates
-              city={locCity}
-              state={locState}
-              onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
-              expanded={templatesOpen}
-              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
-            />
-          </div>
-
           {/* ── Next ──
               Writing the script is what this button does, but what the user is
               doing is moving on to the second step, so it is labelled for the
@@ -1096,7 +1098,7 @@ function CreatePageInner() {
         <div className="grid lg:grid-cols-2 gap-3 items-start">
           {/* Sub-toggle — switch between the two My Content flows */}
           <div className="lg:col-span-2 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-spark-amber text-white border-spark-amber">
+            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
               📄 Paste / Upload Script
             </button>
             <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-slate-600 border-slate-200 hover:border-spark-rule-dim transition-colors">
@@ -1151,7 +1153,7 @@ function CreatePageInner() {
                   loading={pasteAiGenerating}
                   disabled={!pasteAiTopic.trim()}
                   onClick={handleAiWriteForPaste}
-                  className="bg-spark-amber hover:bg-spark-blue text-white whitespace-nowrap gap-1"
+                  className="whitespace-nowrap gap-1"
                 >
                   <Sparkles size={13} /> Spark It
                 </Button>
@@ -1292,7 +1294,7 @@ function CreatePageInner() {
             loading={pasteGenerating}
             disabled={!pasteScript.trim()}
             size="lg"
-            className="w-full gap-2 bg-spark-amber hover:bg-spark-blue"
+            className="w-full gap-2"
           >
             {pasteGenerating
               ? <>Saving Script…</>
@@ -1385,7 +1387,7 @@ function CreatePageInner() {
                     placeholder="https://example.com/article"
                     className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
                   />
-                  <Button size="sm" loading={pastePdfUrlExtracting} disabled={!pastePdfUrlInput.trim()} onClick={handlePasteUrlExtract} className="bg-spark-amber hover:bg-spark-blue text-white whitespace-nowrap">Fetch</Button>
+                  <Button size="sm" loading={pastePdfUrlExtracting} disabled={!pastePdfUrlInput.trim()} onClick={handlePasteUrlExtract} className="whitespace-nowrap">Fetch</Button>
                 </div>
               )}
               <p className="text-[11px] text-slate-400 mt-1">{pastePdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
@@ -1398,7 +1400,7 @@ function CreatePageInner() {
                   size="sm"
                   loading={pasteUploadGenerating}
                   onClick={handleGenerateScriptFromPasteUploads}
-                  className="w-full gap-1.5 bg-spark-amber hover:bg-spark-blue text-white"
+                  className="w-full gap-1.5"
                 >
                   {pasteUploadGenerating
                     ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
@@ -1422,7 +1424,7 @@ function CreatePageInner() {
             <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-slate-600 border-slate-200 hover:border-spark-rule-dim transition-colors">
               📄 Paste / Upload Script
             </button>
-            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-spark-amber text-white border-spark-amber">
+            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
               🏠 My Listings
             </button>
           </div>
