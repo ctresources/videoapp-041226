@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 
@@ -132,6 +133,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const gate = await freeTrialGateResponse(user.id);
+  if (gate) return gate;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
