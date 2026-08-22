@@ -19,6 +19,48 @@ export const MAX_BETA_USERS = Number(process.env.MAX_BETA_USERS ?? 100);
  */
 const BETA_START_AT = process.env.BETA_START_AT || null;
 
+/**
+ * A free-tier signup that never touches its one free video within this many
+ * days quietly stops occupying one of the 100 marketed beta slots, so a new
+ * person can take it. Internal only — never state this in user-facing copy;
+ * the account itself is untouched (login still works, the credit is not
+ * revoked), it just no longer blocks a new signup while dormant.
+ */
+const RECLAIM_DORMANT_TRIAL_AFTER_DAYS = 30;
+const RECLAIM_MS = RECLAIM_DORMANT_TRIAL_AFTER_DAYS * 24 * 60 * 60 * 1000;
+/** profiles.credits_remaining default for a fresh free-tier signup — "unused" means still exactly this. */
+const FREE_VIDEO_STARTING_CREDITS = 1;
+
+interface CapacityRow {
+  subscription_tier: string | null;
+  credits_remaining: number | null;
+  created_at: string;
+}
+
+function isDormantUnusedTrial(p: CapacityRow): boolean {
+  if (p.subscription_tier !== "free") return false;
+  if (p.credits_remaining !== FREE_VIDEO_STARTING_CREDITS) return false; // any usage, or a purchased add-on, disqualifies
+  return Date.now() - new Date(p.created_at).getTime() > RECLAIM_MS;
+}
+
+/**
+ * Rows that count toward the 100-slot cap: excludes admins (the owner's own
+ * test/support logins) and dormant free-tier accounts (see above). Fetches
+ * rows rather than a head-only count because the dormant check needs
+ * per-row fields — the cap tops out at 100 rows, so this is cheap.
+ */
+async function countedProfiles(admin: any, extraFilter?: (q: any) => any): Promise<number> {
+  let query = admin
+    .from("profiles")
+    .select("subscription_tier, credits_remaining, created_at")
+    .neq("role", "admin");
+  if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
+  if (extraFilter) query = extraFilter(query);
+  const { data } = await query;
+  const rows = (data ?? []) as CapacityRow[];
+  return rows.filter((r) => !isDormantUnusedTrial(r)).length;
+}
+
 export interface Capacity {
   open: boolean;
   count: number;
@@ -28,13 +70,7 @@ export interface Capacity {
 
 /** Current signup capacity, for display and for pre-signup gating. */
 export async function getCapacity(admin: any): Promise<Capacity> {
-  // Admin accounts (the owner's own test/support logins) don't count against
-  // the 100 real-agent beta slots.
-  let query = admin.from("profiles").select("*", { count: "exact", head: true }).neq("role", "admin");
-  if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
-  const { count } = await query;
-
-  const total = count ?? 0;
+  const total = await countedProfiles(admin);
   return {
     // `<` not `<=`: with 100 profiles the beta is full, not open for one more.
     open: total < MAX_BETA_USERS,
@@ -54,15 +90,8 @@ export async function getCapacity(admin: any): Promise<Capacity> {
  * profiles have already filled the beta.
  */
 export async function hasCapacityForNewUser(admin: any, newUserId: string): Promise<boolean> {
-  let query = admin
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .neq("id", newUserId)
-    .neq("role", "admin");
-  if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
-  const { count } = await query;
-
-  return (count ?? 0) < MAX_BETA_USERS;
+  const total = await countedProfiles(admin, (q) => q.neq("id", newUserId));
+  return total < MAX_BETA_USERS;
 }
 
 /** Spots remaining at which the owner gets a heads-up email. */
