@@ -28,7 +28,9 @@ export interface Capacity {
 
 /** Current signup capacity, for display and for pre-signup gating. */
 export async function getCapacity(admin: any): Promise<Capacity> {
-  let query = admin.from("profiles").select("*", { count: "exact", head: true });
+  // Admin accounts (the owner's own test/support logins) don't count against
+  // the 100 real-agent beta slots.
+  let query = admin.from("profiles").select("*", { count: "exact", head: true }).neq("role", "admin");
   if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
   const { count } = await query;
 
@@ -55,7 +57,8 @@ export async function hasCapacityForNewUser(admin: any, newUserId: string): Prom
   let query = admin
     .from("profiles")
     .select("*", { count: "exact", head: true })
-    .neq("id", newUserId);
+    .neq("id", newUserId)
+    .neq("role", "admin");
   if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
   const { count } = await query;
 
