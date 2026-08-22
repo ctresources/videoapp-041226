@@ -199,7 +199,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         )}
       </nav>
 
-      <div className="mx-4 mt-auto h-px bg-spark-rule-soft" />
+      <div className="mx-4 mt-3 h-px bg-spark-rule-soft" />
 
       <div className="px-2 pt-3">
         <div className="mb-1 flex items-center gap-2.5 px-2">

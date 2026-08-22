@@ -65,6 +65,15 @@ export async function uploadVideoPhoto(file: File): Promise<UploadedPhoto> {
     throw new Error(`"${file.name}" is over 25MB — please use a smaller image.`);
   }
 
+  // This upload never passes through our own API — it goes straight to
+  // Supabase Storage — so the free-trial gate has to be checked explicitly
+  // here rather than at a route boundary. See app/api/video/photo-upload-gate.
+  const gateRes = await fetch("/api/video/photo-upload-gate");
+  if (!gateRes.ok) {
+    const body = await gateRes.json().catch(() => null);
+    throw new Error(body?.error || "Photo uploads aren't available right now.");
+  }
+
   // Re-encode to a small JPEG (renderable + HeyGen-compatible + fast to upload).
   const jpeg = await toDownscaledJpeg(file);
 
