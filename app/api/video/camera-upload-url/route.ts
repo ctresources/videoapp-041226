@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cameraTrialExpired } from "@/lib/utils/camera-trial";
+import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 15;
@@ -18,24 +18,13 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const admin = createAdminClient();
-
   // Checked here too, not just at save time — otherwise a trial-expired
   // user would upload the whole recording (sometimes 100+ MB) before
   // finding out it can't be saved.
-  const { data: gateProfile } = await admin
-    .from("profiles")
-    .select("created_at, subscription_tier, role")
-    .eq("id", user.id)
-    .single();
-  const gp = gateProfile as { created_at: string; subscription_tier: string | null; role: string | null } | null;
-  if (gp && gp.role !== "admin" && cameraTrialExpired(gp.created_at, gp.subscription_tier)) {
-    return NextResponse.json(
-      { error: "Your 30-day free camera trial has ended. Pick a plan to keep recording.", code: "camera_trial_expired" },
-      { status: 403 },
-    );
-  }
+  const gate = await freeTrialGateResponse(user.id);
+  if (gate) return gate;
 
+  const admin = createAdminClient();
   const { ext } = (await req.json()) as { ext?: string };
   const safeExt = ext === "mp4" ? "mp4" : "webm";
   const path = `camera-recordings/${user.id}/${Date.now()}.${safeExt}`;

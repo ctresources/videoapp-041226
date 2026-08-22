@@ -410,7 +410,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at")
     .eq("id", user.id)
     .single();
 
@@ -435,6 +435,7 @@ export async function POST(req: NextRequest) {
     purchased_long_videos: number;
     role: string | null;
     subscription_tier: string | null;
+    first_video_generated_at: string | null;
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
@@ -498,6 +499,16 @@ export async function POST(req: NextRequest) {
   const videoKind: VideoKind = isLongForm ? "long" : "short";
   const charge = chargeFor(profile, videoKind);
   const creditCost = 1;
+
+  // Starts the free-trial clock (camera recording, AI Tools — see
+  // lib/utils/free-trial.ts) the moment a free-tier user's first video is
+  // actually generated, not at signup. Set once; a null check means this
+  // never overwrites a clock that's already running.
+  const userId = user.id;
+  async function startFreeTrialClockIfNeeded() {
+    if (tier !== "free" || profile?.first_video_generated_at) return;
+    await admin.from("profiles").update({ first_video_generated_at: new Date().toISOString() }).eq("id", userId);
+  }
 
   if (!isAdmin && !charge) {
     // `code` and `kind` let the client open the plan picker instead of
@@ -757,6 +768,7 @@ export async function POST(req: NextRequest) {
       // them, so balances still drained to zero and had to be topped up by hand
       // (one admin account was manually set to 9999 short videos).
       if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+      await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
@@ -861,6 +873,7 @@ export async function POST(req: NextRequest) {
       // them, so balances still drained to zero and had to be topped up by hand
       // (one admin account was manually set to 9999 short videos).
       if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+      await startFreeTrialClockIfNeeded();
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",

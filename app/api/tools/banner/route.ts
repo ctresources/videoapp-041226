@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { renderAndSaveBanner } from "@/lib/utils/banner-render";
+import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 // QR generation + multi-photo compositing at 2560×1440 can take a bit.
@@ -14,6 +15,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const gate = await freeTrialGateResponse(user.id);
+  if (gate) return gate;
 
   const body = (await req.json()) as {
     headline?: string;

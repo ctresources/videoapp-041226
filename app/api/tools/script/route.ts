@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -9,6 +10,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const gate = await freeTrialGateResponse(user.id);
+  if (gate) return gate;
 
   const { topic, city, state, videoType = "blog_video" } = await req.json() as {
     topic: string;
