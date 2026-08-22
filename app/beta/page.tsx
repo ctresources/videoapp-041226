@@ -12,7 +12,7 @@ import Link from "next/link";
 const perks = [
   { icon: Sparkles, text: "1 free AI video — one short video, up to 3 minutes long." },
   { icon: Camera,   text: "Photo avatar + your cloned voice. Digital twin is a paid-plan feature." },
-  { icon: Camera,   text: "Unlimited camera recordings — record yourself, free forever, no cap." },
+  { icon: Camera,   text: "Unlimited camera recordings for your first 30 days — record yourself, no cap." },
   { icon: CheckCircle, text: "Built-in teleprompter — your script scrolls while you record." },
   { icon: CheckCircle, text: "AI script writer, thumbnails, channel banner and the rest of the AI tools." },
   { icon: CheckCircle, text: "No credit card required." },
@@ -187,8 +187,9 @@ export default function BetaPage() {
               <Clock size={16} className="text-slate-400 shrink-0 mt-0.5" />
               <p className="text-xs text-slate-500 leading-relaxed">
                 <span className="font-semibold text-slate-700">After your free video:</span> your
-                camera recordings and AI tools stay free forever. To make more AI videos — or longer
-                ones, up to 8 minutes — you pick a plan. No auto-charge, and nothing expires on you.
+                AI tools stay free forever, and camera recording stays free for 30 days from
+                today. To make more AI videos — or longer ones, up to 8 minutes — or to keep
+                recording on camera after day 30, you pick a plan. No auto-charge.
               </p>
             </div>
 

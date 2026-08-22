@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cameraTrialExpired } from "@/lib/utils/camera-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -10,6 +11,22 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+
+  // Free-tier camera recording is a 30-day trial, not forever — paid plans
+  // are unaffected. Checked here, not just in the UI, since this is the
+  // actual point a recording gets persisted.
+  const { data: gateProfile } = await admin
+    .from("profiles")
+    .select("created_at, subscription_tier, role")
+    .eq("id", user.id)
+    .single();
+  const gp = gateProfile as { created_at: string; subscription_tier: string | null; role: string | null } | null;
+  if (gp && gp.role !== "admin" && cameraTrialExpired(gp.created_at, gp.subscription_tier)) {
+    return NextResponse.json(
+      { error: "Your 30-day free camera trial has ended. Pick a plan to keep recording.", code: "camera_trial_expired" },
+      { status: 403 },
+    );
+  }
 
   // Two entry modes:
   //  - JSON { storagePath }: the browser already uploaded the file directly to

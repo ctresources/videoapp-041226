@@ -132,10 +132,13 @@ export default function HelpPage() {
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Use Camera</td>
                   <td className="py-2 pr-3">Film yourself with the teleprompter</td>
-                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited</td>
+                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
               </tbody>
             </table>
+            <p className="text-xs text-slate-400 mt-1.5">
+              * Unlimited on any paid plan. On the free 100-agent beta, camera recording is unlimited for your first 30 days.
+            </p>
           </div>
 
           <div className="flex flex-col gap-4">
