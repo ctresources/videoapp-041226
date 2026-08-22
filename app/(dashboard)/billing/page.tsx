@@ -434,7 +434,7 @@ export default async function BillingPage({
           affected by your monthly reset, and remain yours even if you cancel. Because of that,
           add-on purchases are non-refundable.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 1-video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -451,28 +451,6 @@ export default async function BillingPage({
             <a href="/api/stripe/credits?pack=short1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy 1 Video <ArrowRight size={12} />
-              </Button>
-            </a>
-          </div>
-          {/* 2-video pack */}
-          <div className="rounded-2xl p-5 border border-primary-400 ring-2 ring-primary-100 bg-white flex flex-col gap-3 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-[10px] font-black px-3 py-1 rounded-full">
-              Best Value
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center">
-                <Zap size={15} className="text-primary-500" />
-              </div>
-              <p className="font-bold text-brand-text">2 Short Videos</p>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$48</span>
-              <span className="text-slate-400 text-sm">one-time</span>
-            </div>
-            <p className="text-xs text-slate-500">Two short videos at $24 each — save $2 vs buying one at a time.</p>
-            <a href="/api/stripe/credits?pack=short2">
-              <Button variant="primary" size="sm" className="w-full gap-1.5">
-                Buy 2 Videos <ArrowRight size={12} />
               </Button>
             </a>
           </div>

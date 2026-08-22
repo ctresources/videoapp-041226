@@ -11,11 +11,11 @@ export const dynamic = "force-dynamic";
 // an 8-min long ~$21 — $25/$49 holds ~68%/~57% margin against that.
 const CREDIT_PACKS = {
   short1: { credits: 1, amount: 2500, kind: "short", label: "1 Short Video" },
-  short2: { credits: 2, amount: 4800, kind: "short", label: "2 Short Videos" },
   long1:  { credits: 1, amount: 4900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
   // Legacy query-param aliases so any old link or bookmark still resolves.
+  // "2" (the old 2-video pack) intentionally dropped — falls through to the
+  // !packInfo redirect to /billing below rather than resolving to anything.
   "1": { credits: 1, amount: 2500, kind: "short", label: "1 Short Video" },
-  "2": { credits: 2, amount: 4800, kind: "short", label: "2 Short Videos" },
   "3": { credits: 1, amount: 4900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
 } as const;
 
