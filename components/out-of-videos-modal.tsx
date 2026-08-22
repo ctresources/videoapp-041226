@@ -76,7 +76,7 @@ export function OutOfVideosModal({
               className="flex items-center justify-between gap-3 border border-slate-200 rounded-xl px-4 py-3.5 hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
               <span className="text-sm font-semibold text-slate-700">
-                {isLong ? "Buy one long video — $39" : "Buy more short videos — from $15"}
+                {isLong ? "Buy one long video — $49" : "Buy more short videos — from $25"}
               </span>
               <ArrowRight size={16} className="text-slate-400" />
             </Link>

@@ -444,7 +444,7 @@ export default async function BillingPage({
               <p className="font-bold text-brand-text">1 Short Video</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$15</span>
+              <span className="text-3xl font-black text-brand-text">$25</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">One short video, up to 4 minutes. Added to your account instantly.</p>
@@ -466,10 +466,10 @@ export default async function BillingPage({
               <p className="font-bold text-brand-text">2 Short Videos</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$28</span>
+              <span className="text-3xl font-black text-brand-text">$48</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">Two short videos at $14 each — save $2 vs buying one at a time.</p>
+            <p className="text-xs text-slate-500">Two short videos at $24 each — save $2 vs buying one at a time.</p>
             <a href="/api/stripe/credits?pack=short2">
               <Button variant="primary" size="sm" className="w-full gap-1.5">
                 Buy 2 Videos <ArrowRight size={12} />
@@ -485,7 +485,7 @@ export default async function BillingPage({
               <p className="font-bold text-brand-text">Long Video</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$39</span>
+              <span className="text-3xl font-black text-brand-text">$49</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">One long AI video, up to 8 minutes, using your photos for visuals. Works on any plan.</p>

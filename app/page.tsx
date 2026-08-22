@@ -933,15 +933,15 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-wrap gap-3 shrink-0 text-xl">
                 <div className="border border-slate-200 px-4 py-2">
-                  <span className="font-black text-slate-900">$15</span>
+                  <span className="font-black text-slate-900">$25</span>
                   <span className="text-slate-500 text-lg"> · One short video, up to 4 minutes</span>
                 </div>
                 <div className="border border-slate-200 px-4 py-2">
-                  <span className="font-black text-slate-900">$28</span>
-                  <span className="text-slate-500 text-lg"> · Two short videos ($14 each)</span>
+                  <span className="font-black text-slate-900">$48</span>
+                  <span className="text-slate-500 text-lg"> · Two short videos ($24 each)</span>
                 </div>
                 <div className="border border-blue-900 px-4 py-2 bg-blue-50">
-                  <span className="font-black text-blue-900">$39</span>
+                  <span className="font-black text-blue-900">$49</span>
                   <span className="text-slate-600 text-lg"> · One long video, up to 8 minutes</span>
                 </div>
               </div>

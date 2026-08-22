@@ -509,7 +509,7 @@ export async function POST(req: NextRequest) {
         kind: videoKind,
         tier,
         error: isLongForm
-          ? "You've used all your long videos. Buy another for $39 in Billing, upgrade your plan, or record one free with the camera teleprompter."
+          ? "You've used all your long videos. Buy another for $49 in Billing, upgrade your plan, or record one free with the camera teleprompter."
           : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
       },
       { status: 402 },

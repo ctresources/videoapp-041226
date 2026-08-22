@@ -1389,7 +1389,7 @@ export default function ProjectEditorPage() {
                     <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
                   <a href="/api/stripe/credits?pack=long1" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
+                    <Button size="sm" variant="outline" className="w-full">One Long Video · $49</Button>
                   </a>
                 </div>
               </div>
@@ -2043,7 +2043,7 @@ export default function ProjectEditorPage() {
                     <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
                   </Link>
                   <a href="/api/stripe/credits?pack=long1" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">One Long Video · $39</Button>
+                    <Button size="sm" variant="outline" className="w-full">One Long Video · $49</Button>
                   </a>
                 </div>
               </div>
