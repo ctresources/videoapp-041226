@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FieldMic } from "@/components/ui/field-mic";
 import {
-  Mic, Keyboard, ArrowRight, CheckCircle, Loader2, FileText,
+  Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe,
@@ -25,6 +25,8 @@ import {
 } from "@/components/create/content-templates";
 import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
+import { usePublishCreateProgress } from "@/components/layout/create-progress";
+import { ComposerCard } from "@/components/create/composer-card";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import {
@@ -69,6 +71,18 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 // routes into the "paste" or "listing" flows, which remain distinct modes.
 type InputMode = "script" | "camera" | "listing" | "paste" | "content";
 
+// Shown one at a time above the composer while the topic is still blank, to
+// answer "what am I supposed to say into this" without a paragraph of help
+// text. Kept market-agnostic: the page has no city yet when these are on
+// screen, so a line naming one would be wrong more often than right.
+const TRY_LINES = [
+  "Prices are up around here — sellers need to hear this.",
+  "Just sold on the corner. Tell the whole story.",
+  "What $500K actually buys in this area.",
+  "Three things I'd fix before you list this fall.",
+  "The commute question everybody asks me.",
+  "Rates moved. Here's the real monthly number.",
+];
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
@@ -651,10 +665,34 @@ function CreatePageInner() {
   // The two things step 1 actually needs before it can hand over.
   const canContinue = locationSet && !!locCustomTopic.trim() && !locGenerating;
 
+  // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
+  // paste, listing and camera all move through the same processing states, and
+  // "Step 1" is the page's own existing language for where you are.
+  const railLabel =
+    step === "uploading" ? "Uploading"
+      : step === "transcribing" ? "Transcribing"
+        : step === "done" ? "Ready"
+          : locGenerating ? "Sparking"
+            : "Step 1";
+  const railPercent =
+    step === "done" ? 100
+      : step === "transcribing" ? 75
+        : locGenerating ? 60
+          : step === "uploading" ? 50
+            : canContinue || readyToContinue ? 25
+              : 10;
+  usePublishCreateProgress(railLabel, railPercent);
+
+  // Only the AI-script flow has been moved onto the fixed bar so far; the
+  // paste, listing and camera flows still carry their own inline CTAs.
+  const showActionBar = inputMode === "script" && step === "input";
+
   return (
     // Every tab fills the full content width — the AI-script step lays out as
     // two equal columns, the other tabs flow full-width single column.
-    <div className="w-full">
+    // The bottom padding clears the fixed action bar so the last card is not
+    // trapped underneath it.
+    <div className={`w-full ${showActionBar ? "pb-28" : ""}`}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -699,74 +737,31 @@ function CreatePageInner() {
           They are all answers to "what video am I making", so splitting them
           across screens made the flow feel longer than the work. Next carries
           on to format, avatar and music in the editor. */}
-      {/* ── Speak or type ──
-          The first thing on the page, because it is the thing people don't
-          realise they get to choose. Speaking was the product's whole premise
-          and it was only discoverable as a small "type it instead" link under
-          the mic — which told anyone who wanted to type that they were doing it
-          the wrong way round. Neither is the fallback. */}
-      {step === "input" && (inputMode === "script" || inputMode === "camera") && (
-        <div className="mb-3 flex flex-col gap-2 border-b border-spark-rule-soft pb-3">
-          <div>
-            <h2 className="text-[20px] font-bold tracking-[-0.02em] text-spark-ink">
-              Speak it or type it — your choice
-            </h2>
-            <p className="mt-1 text-[13px] text-spark-ink-muted">
-              Everything below works either way. Switch whenever you like.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 sm:max-w-md">
-            {([
-              { key: "speak" as const, label: "Speak it", desc: "Talk, we fill it in", Icon: Mic },
-              { key: "type" as const, label: "Type it", desc: "Fill it in yourself", Icon: Keyboard },
-            ]).map(({ key, label, desc, Icon }) => {
-              const active = inputStyle === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setInputStyle(key)}
-                  aria-pressed={active}
-                  className={`flex items-center gap-2.5 rounded-[11px] px-3.5 py-2.5 text-left transition-colors ${
-                    active
-                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                      : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                  }`}
-                >
-                  <Icon
-                    size={26}
-                    className={`flex-none ${active ? "text-spark-amber" : "text-spark-ink-faint"}`}
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-[15px] font-medium text-spark-ink">{label}</span>
-                    <span className="block text-[12.5px] text-spark-ink-muted">{desc}</span>
-                    {key === "speak" && (
-                      <span className="mt-0.5 block text-[11px] text-spark-ink-faint">
-                        Click the mic, or hold{" "}
-                        <span className="spark-cta-gradient rounded px-1 py-0.5 font-semibold text-white">Spacebar</span>
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* ── Your topic ──
-          Moved up next to the Speak it / Type it picker rather than after
-          Step 1 and the location/settings block — the working mic (in
-          VoiceBriefSession below) was three sections and a scroll away from
-          the "Speak it" tile that looked like it should trigger it. One
-          section, not three: speaking, typing, trending and templates are
-          all just different paths to the same one field. */}
+          One card, per the v2 composer. The speak-or-type choice used to be
+          two large tiles in a section of their own, above a second section
+          holding the actual input — two headings and a rule between the
+          decision and the thing it changed. It is now a segmented control in
+          this card's header, next to the input it switches.
+
+          Trending and templates stay below the card rather than inside it:
+          they are other ways to fill the same field, not part of the composer,
+          and folding them in would have made the card the whole page. */}
       {inputMode === "script" && step === "input" && (
         <div className="mb-3 flex flex-col gap-3 border-b border-spark-rule-soft pb-3">
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
-            Your topic
-          </p>
-
+          <ComposerCard
+            inputStyle={inputStyle}
+            onInputStyleChange={setInputStyle}
+            disabled={locGenerating}
+            showTryLine={!locCustomTopic.trim()}
+            tryLines={TRY_LINES}
+            chips={[
+              { label: "Topic", ask: "What's it about?", ok: !!locCustomTopic.trim() },
+              { label: "Market", ask: "Which town?", ok: locationSet },
+              { label: "Audience", ask: "Who's it for?", ok: !!locAudience.trim() },
+              { label: "Tone", ask: "What tone?", ok: !!locTone.trim() },
+            ]}
+          >
           {inputStyle === "speak" ? (
             <VoiceBriefSession
               disabled={locGenerating}
@@ -795,6 +790,7 @@ function CreatePageInner() {
               onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
             />
           )}
+          </ComposerCard>
 
           <TopicRadar
             city={locCity || undefined}
@@ -1059,24 +1055,25 @@ function CreatePageInner() {
             </Card>
           </div>
 
-          {/* ── Next ──
-              Writing the script is what this button does, but what the user is
-              doing is moving on to the second step, so it is labelled for the
-              destination and says the wait out loud underneath. */}
-          <div className="flex flex-col gap-2 border-t border-spark-rule-soft pt-4">
-            <Button
-              // Wrapped: bare, the click event would arrive as the spoken overrides.
-              onClick={() => handleGenerateScript()}
-              loading={locGenerating}
-              disabled={!canContinue}
-              size="lg"
-              className="w-full gap-2"
-            >
-              {locGenerating
-                ? <>Sparking your script…</>
-                : <>Next · pick format, avatar &amp; music <ArrowRight size={18} /></>}
-            </Button>
-            <p className="text-center text-[13px] text-spark-ink-faint">
+          {/* The Next button itself now lives in the fixed footer below, so it
+              stays reachable without scrolling to the bottom of the brief.
+              This spacer keeps the last card clear of it. */}
+          <div className="h-2" />
+
+        </div>
+      )}
+
+      {/* ── Fixed action bar ──
+          v2 pins the primary action to the bottom of the screen with the
+          status line beside it, so "what do I do next" never scrolls away.
+          The Back slot is held open but empty: this page is step 1, and step 2
+          is a different route, so there is nowhere back to go yet. */}
+      {inputMode === "script" && step === "input" && (
+        <div className="fixed inset-x-0 bottom-0 left-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur md:left-[184px]">
+          <div className="flex items-center gap-4 px-4 py-3 md:px-6">
+            {/* Back slot — reserved for when step 1 splits into v2's steps. */}
+            <div className="flex-none" />
+            <p className="min-w-0 flex-1 truncate text-[13px] text-spark-ink-faint">
               {locGenerating
                 ? "Researching the area and writing — this takes about a minute."
                 : !locationSet
@@ -1085,8 +1082,19 @@ function CreatePageInner() {
                     ? "Say or pick what the video is about to carry on."
                     : "We'll write the script first, then you pick how it looks."}
             </p>
+            <Button
+              // Wrapped: bare, the click event would arrive as the spoken overrides.
+              onClick={() => handleGenerateScript()}
+              loading={locGenerating}
+              disabled={!canContinue}
+              size="lg"
+              className="flex-none gap-2"
+            >
+              {locGenerating
+                ? <>Sparking your script…</>
+                : <>Next · pick format, avatar &amp; music <ArrowRight size={18} /></>}
+            </Button>
           </div>
-
         </div>
       )}
 
