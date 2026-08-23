@@ -233,6 +233,9 @@ export default function ProjectEditorPage() {
   // Set once a render has been accepted, so the last steps can link straight
   // to the video rather than the whole My Videos list.
   const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
+  // The HeyGen job behind the current render, so step 4 can poll it.
+  const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  const [renderFailed, setRenderFailed] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   // Background music for the AI render — same presets as the video editor.
@@ -933,6 +936,9 @@ export default function ProjectEditorPage() {
     // Move to the generating step immediately. The render outlives this page,
     // so the step reflects that the work has started, not that it finished.
     setEditorStep(4);
+    // Clear the previous attempt, or a retry inherits its failure and job id.
+    setRenderFailed(false);
+    setRenderJobId(null);
 
     // create-blog handles all videoTypes (blog_long, reel_9x16, short_1x1, youtube_16x9)
     const endpoint = "/api/video/create-blog";
@@ -996,7 +1002,8 @@ export default function ProjectEditorPage() {
 
       const body = await safeJson(res);
       if (!body?.video) throw new Error("Invalid response from video generator");
-      const { video } = body as { video: { id: string; render_status?: string } };
+      const { video } = body as { video: { id: string; render_status?: string; render_job_id?: string } };
+      setRenderJobId(video.render_job_id ?? null);
       // Stays on the generating step rather than jumping to My Videos. The
       // render outlives this page either way, and leaving immediately skipped
       // past the publishing assets — the title, description and hashtags that
@@ -2089,9 +2096,10 @@ export default function ProjectEditorPage() {
                   { title: "Sparked", sub: "Script and hooks written" },
                   { title: "Generating", sub: `Building ${shape}` },
                 ]}
-                // The first two genuinely finished before this screen existed;
-                // the third is running server-side and is not polled here.
+                // The first two genuinely finished before this screen existed.
                 activeIndex={2}
+                renderJobId={renderJobId}
+                onSettled={(s) => setRenderFailed(s === "failed")}
                 note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page — you'll find it in My Videos.`}
               />
             );
@@ -2291,14 +2299,16 @@ export default function ProjectEditorPage() {
           <StepFooter
             onBack={
               editorStep === 2 ? () => router.push("/create")
-                : editorStep === 4 ? undefined
+                // Nothing to go back to mid-render — unless it failed, in which
+                // case the setup step is exactly where the fix is.
+                : editorStep === 4 ? (renderFailed ? () => setEditorStep(3) : undefined)
                   : () => setEditorStep(editorStep === 5 ? 4 : 2)
             }
-            backLabel={editorStep === 2 ? "Brief" : editorStep === 5 ? "Back" : "Script"}
+            backLabel={editorStep === 2 ? "Brief" : editorStep === 4 ? "Setup" : editorStep === 5 ? "Back" : "Script"}
             hint={
               editorStep === 2 ? "Happy with it? Set the video up next"
                 : editorStep === 3 ? `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
-                  : editorStep === 4 ? "Rendering — you can close this page"
+                  : editorStep === 4 ? (renderFailed ? "Change something and try again" : "Rendering — you can close this page")
                     : "Copy these into your post when you publish"
             }
           >
@@ -2316,8 +2326,15 @@ export default function ProjectEditorPage() {
               </Button>
             )}
             {editorStep === 4 && (
-              <Button onClick={() => setEditorStep(5)} size="lg" className="gap-2">
-                Publishing assets <ArrowRight size={17} />
+              <Button
+                onClick={() => (renderFailed ? handleGenerateVideo() : setEditorStep(5))}
+                loading={videoGenerating}
+                size="lg"
+                className="gap-2"
+              >
+                {renderFailed
+                  ? <><Wand2 size={17} /> Try again</>
+                  : <>Publishing assets <ArrowRight size={17} /></>}
               </Button>
             )}
             {editorStep === 5 && (
