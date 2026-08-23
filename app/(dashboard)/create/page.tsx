@@ -27,6 +27,7 @@ import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard } from "@/components/create/composer-card";
+import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import {
@@ -1068,34 +1069,31 @@ function CreatePageInner() {
           status line beside it, so "what do I do next" never scrolls away.
           The Back slot is held open but empty: this page is step 1, and step 2
           is a different route, so there is nowhere back to go yet. */}
-      {inputMode === "script" && step === "input" && (
-        <div className="fixed inset-x-0 bottom-0 left-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur md:left-[184px]">
-          <div className="flex items-center gap-4 px-4 py-3 md:px-6">
-            {/* Back slot — reserved for when step 1 splits into v2's steps. */}
-            <div className="flex-none" />
-            <p className="min-w-0 flex-1 truncate text-[13px] text-spark-ink-faint">
-              {locGenerating
-                ? "Researching the area and writing — this takes about a minute."
-                : !locationSet
-                  ? "Add the city and state above to carry on."
-                  : !locCustomTopic.trim()
-                    ? "Say or pick what the video is about to carry on."
-                    : "We'll write the script first, then you pick how it looks."}
-            </p>
-            <Button
-              // Wrapped: bare, the click event would arrive as the spoken overrides.
-              onClick={() => handleGenerateScript()}
-              loading={locGenerating}
-              disabled={!canContinue}
-              size="lg"
-              className="flex-none gap-2"
-            >
-              {locGenerating
-                ? <>Sparking your script…</>
-                : <>Next · pick format, avatar &amp; music <ArrowRight size={18} /></>}
-            </Button>
-          </div>
-        </div>
+      {showActionBar && (
+        <StepFooter
+          hint={
+            locGenerating
+              ? "Researching the area and writing — this takes about a minute."
+              : !locationSet
+                ? "Add the city and state above to carry on."
+                : !locCustomTopic.trim()
+                  ? "Say or pick what the video is about to carry on."
+                  : "We'll write the script first, then you pick how it looks."
+          }
+        >
+          <Button
+            // Wrapped: bare, the click event would arrive as the spoken overrides.
+            onClick={() => handleGenerateScript()}
+            loading={locGenerating}
+            disabled={!canContinue}
+            size="lg"
+            className="gap-2"
+          >
+            {locGenerating
+              ? <>Sparking your script…</>
+              : <>Next · video setup <ArrowRight size={18} /></>}
+          </Button>
+        </StepFooter>
       )}
 
       {/* ══════════════════════════════════════════

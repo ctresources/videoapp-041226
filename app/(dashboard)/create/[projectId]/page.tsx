@@ -13,8 +13,10 @@ import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
+import { usePublishCreateProgress } from "@/components/layout/create-progress";
+import { StepFooter } from "@/components/create/step-footer";
 import {
-  ArrowLeft, Sparkles, FileText, Search, Video, RefreshCw,
+  ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
   User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save,
 } from "lucide-react";
@@ -222,6 +224,14 @@ export default function ProjectEditorPage() {
   // Remaining allowance, so the Generate button can say so up front.
   const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  // Where the user is in the flow that began on /create. Step 1 is the brief on
+  // that route; this page owns 2 through 5. Kept in state rather than the URL:
+  // the URL already identifies the project, and putting the step there would
+  // mean the back button walked steps instead of leaving the editor.
+  const [editorStep, setEditorStep] = useState<2 | 3 | 4 | 5>(2);
+  // Set once a render has been accepted, so the last steps can link straight
+  // to the video rather than the whole My Videos list.
+  const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   // Background music for the AI render — same presets as the video editor.
@@ -919,6 +929,9 @@ export default function ProjectEditorPage() {
   async function handleGenerateVideo() {
     if (!project) return;
     setVideoGenerating(true);
+    // Move to the generating step immediately. The render outlives this page,
+    // so the step reflects that the work has started, not that it finished.
+    setEditorStep(4);
 
     // create-blog handles all videoTypes (blog_long, reel_9x16, short_1x1, youtube_16x9)
     const endpoint = "/api/video/create-blog";
@@ -973,6 +986,8 @@ export default function ProjectEditorPage() {
             kind: err.kind === "long" ? "long" : "short",
             tier: (err.tier as string) ?? "free",
           });
+          // Nothing is rendering, so the generating step would be a lie.
+          setEditorStep(3);
           return;
         }
         throw new Error((err?.error as string) || `Video generation failed (${res.status})`);
@@ -981,14 +996,19 @@ export default function ProjectEditorPage() {
       const body = await safeJson(res);
       if (!body?.video) throw new Error("Invalid response from video generator");
       const { video } = body as { video: { id: string; render_status?: string } };
+      // Stays on the generating step rather than jumping to My Videos. The
+      // render outlives this page either way, and leaving immediately skipped
+      // past the publishing assets — the title, description and hashtags that
+      // were written for this video and are needed to post it.
+      setRenderedVideoId(video.id);
       if (video.render_status === "completed") {
-        toast.success("Video ready! Redirecting to preview...", { duration: 3000 });
+        toast.success("Video ready — it's in My Videos.", { duration: 4000 });
       } else {
         toast.success("Video is rendering. You'll see it in My Videos shortly.", { duration: 5000 });
       }
-      router.push(`/videos?highlight=${video.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start video generation");
+      setEditorStep(3);
     } finally {
       setVideoGenerating(false);
     }
@@ -1281,6 +1301,19 @@ export default function ProjectEditorPage() {
     }
   }
 
+  // Feeds the same topbar rail /create started. Must sit above every early
+  // return below — a hook cannot run after a conditional return.
+  usePublishCreateProgress(
+    videoGenerating || editorStep === 4 ? "Generating"
+      : editorStep === 5 ? "Publish"
+        : editorStep === 3 ? "Setup"
+          : "Script",
+    videoGenerating || editorStep === 4 ? 80
+      : editorStep === 5 ? 100
+        : editorStep === 3 ? 60
+          : 40,
+  );
+
   // Loading / generating states
   if (loading || generating) {
     return (
@@ -1371,7 +1404,9 @@ export default function ProjectEditorPage() {
   const seo = project.seo_data as SeoData | null;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    // pb-28 clears the fixed step footer, which is out of flow and would
+    // otherwise sit on top of the last card.
+    <div className="max-w-3xl mx-auto pb-28">
       {/* Header — 2a's project bar. The title leads at a quieter weight than
           before, with the market and status reduced to a single sub-line, so
           the script below is the loudest thing on the page. */}
@@ -1400,6 +1435,8 @@ export default function ProjectEditorPage() {
 
       {script ? (
         <div className="flex flex-col gap-4">
+          {/* ── Step 2 · Script ── */}
+          {editorStep === 2 && (<>
           {/* Hook options — 2a. The radio circle replaces the old #1/#2
               numbering: the hooks are alternatives, not a ranking, and numbering
               them implied an order that was never there.
@@ -1626,7 +1663,10 @@ export default function ProjectEditorPage() {
               </p>
             )}
           </Card>
+          </>)}
 
+          {/* ── Step 3 · Setup ── */}
+          {editorStep === 3 && (<>
           {/* Settings nudge */}
           <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
             <Settings size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -2018,37 +2058,30 @@ export default function ProjectEditorPage() {
               {burnCaptions ? " · captions" : ""}
             </p>
 
+            {/* Spark Video itself now lives in the fixed footer, so the primary
+                action stays reachable without scrolling this long card. These
+                two are the alternatives to it, and stay here with the settings
+                they relate to. */}
             <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleGenerateVideo}
-                loading={videoGenerating}
-                size="lg"
-                className="flex-1 gap-2"
-              >
-                {/* Deliberately not naming the platform — the same render will
-                    publish to other channels, so "Generate YouTube" would age
-                    badly and read as generating the platform itself. */}
-                <Wand2 size={18} /> Spark Video
-              </Button>
               {/* Recording is the free alternative, not a competing primary --
                   2a gives it an outline so the two stop shouting equally. */}
               <button
                 type="button"
                 onClick={openTeleprompter}
-                className="flex shrink-0 items-center justify-center rounded-xl border border-spark-ink px-5 py-3.5 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
+                className="flex flex-1 items-center justify-center rounded-xl border border-spark-ink px-5 py-3.5 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
               >
                 Record it myself on camera
               </button>
+              <Button
+                onClick={handleSaveDraft}
+                loading={savingDraft}
+                variant="outline"
+                size="sm"
+                className="flex-none gap-1.5"
+              >
+                <Save size={14} /> Save Draft
+              </Button>
             </div>
-            <Button
-              onClick={handleSaveDraft}
-              loading={savingDraft}
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5 mt-2"
-            >
-              <Save size={14} /> Save Draft &amp; Finish Later
-            </Button>
             {(() => {
               const eta = renderEta({
                 pastedScript: false,
@@ -2062,7 +2095,39 @@ export default function ProjectEditorPage() {
               );
             })()}
           </Card>
+          </>)}
 
+          {/* ── Step 4 · Generating ──
+              Placeholder shape only: the v2 pipeline card replaces this next. */}
+          {editorStep === 4 && (
+            <Card className="flex flex-col items-center gap-4 py-16 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-spark-amber-tint">
+                <Wand2 className="h-8 w-8 animate-pulse text-spark-amber" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-spark-ink">Generating your video…</p>
+                {(() => {
+                  const eta = renderEta({
+                    pastedScript: isPaste,
+                    longForm: selectedVideoType === "youtube_long",
+                  });
+                  return (
+                    <p className="mt-1 text-sm text-spark-ink-muted">
+                      This takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll see it in
+                      My Videos when it&apos;s ready — it keeps rendering if you close this page.
+                    </p>
+                  );
+                })()}
+              </div>
+            </Card>
+          )}
+
+          {/* ── Step 5 · Publishing assets ──
+              Written at the same time as the script, but they are what you
+              need when you go to post rather than when you are setting the
+              video up, so they get their own step at the end rather than
+              sitting under the script waiting to be scrolled past. */}
+          {editorStep === 5 && (<>
           {/* Social Content Pack */}
           {seo && (
             <Card padding="sm">
@@ -2244,6 +2309,52 @@ export default function ProjectEditorPage() {
               )}
             </Card>
           )}
+          </>)}
+
+          {/* The flow's Back/Next control. Rendered inside the script branch
+              because the empty state below has nothing to step through. */}
+          <StepFooter
+            onBack={
+              editorStep === 2 ? () => router.push("/create")
+                : editorStep === 4 ? undefined
+                  : () => setEditorStep(editorStep === 5 ? 4 : 2)
+            }
+            backLabel={editorStep === 2 ? "Brief" : editorStep === 5 ? "Back" : "Script"}
+            hint={
+              editorStep === 2 ? "Happy with it? Set the video up next"
+                : editorStep === 3 ? `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                  : editorStep === 4 ? "Rendering — you can close this page"
+                    : "Copy these into your post when you publish"
+            }
+          >
+            {editorStep === 2 && (
+              <Button onClick={() => setEditorStep(3)} size="lg" className="gap-2">
+                Next · video setup <ArrowRight size={17} />
+              </Button>
+            )}
+            {editorStep === 3 && (
+              <Button onClick={handleGenerateVideo} loading={videoGenerating} size="lg" className="gap-2">
+                {/* Deliberately not naming the platform — the same render will
+                    publish to other channels, so "Generate YouTube" would age
+                    badly and read as generating the platform itself. */}
+                <Wand2 size={17} /> Spark Video
+              </Button>
+            )}
+            {editorStep === 4 && (
+              <Button onClick={() => setEditorStep(5)} size="lg" className="gap-2">
+                Publishing assets <ArrowRight size={17} />
+              </Button>
+            )}
+            {editorStep === 5 && (
+              <Button
+                onClick={() => router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos")}
+                size="lg"
+                className="gap-2"
+              >
+                Done <ArrowRight size={17} />
+              </Button>
+            )}
+          </StepFooter>
         </div>
       ) : (
         <Card className="text-center py-12">
