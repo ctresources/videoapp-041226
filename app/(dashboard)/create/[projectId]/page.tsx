@@ -1325,351 +1325,16 @@ export default function ProjectEditorPage() {
 
   const script = project.ai_script as AiScript | null;
 
-  // ── Paste source: minimal format + avatar picker before generating ────────
-  if (source === "paste" && !videoGenerating) {
-    return (
-      <div className="max-w-xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/create">
-            <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-              <ArrowLeft size={18} className="text-slate-400" />
-            </button>
-          </Link>
-          <div>
-            <h2 className="text-lg font-bold text-brand-text leading-tight">{project.title}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{(script?.script || "").trim().split(/\s+/).length} words · ready to generate</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {/* Video format */}
-          <Card>
-            <p className="text-sm font-semibold text-brand-text mb-3">Video Format</p>
-            <div className="grid grid-cols-2 gap-2">
-              {videoTypes.map(({ value, label, desc, proOnly }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedVideoType(value)}
-                  className={`text-left p-3 rounded-xl border-2 transition-all ${
-                    selectedVideoType === value
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-slate-200 hover:border-slate-300"
-                  } ${proOnly ? "col-span-2" : ""}`}
-                >
-                  <p className="text-sm font-medium text-brand-text flex items-center gap-1.5">
-                    {label}
-                    {proOnly && (
-                      <span className="text-[9px] font-bold uppercase tracking-wide bg-primary-100 text-primary-600 rounded px-1.5 py-0.5">
-                        {longFormIncluded ? "Included In Your Plan" : "Add Credits"}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-                </button>
-              ))}
-            </div>
-            {selectedVideoType === "youtube_long" && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-xs font-semibold text-amber-900 mb-1">How long videos work</p>
-                <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
-                  <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
-                  <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
-                  <li>Uses one of your long-video allowance — separate from your short videos.</li>
-                </ul>
-              </div>
-            )}
-            {selectedVideoType === "youtube_long" && !longFormIncluded && (
-              <div className="mt-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-                <p className="text-xs text-slate-600">
-                  Long videos have their own monthly allowance, separate from your short videos.
-                  Included with Agent (2/month) and Pro (5/month), or buy one as you go.
-                </p>
-                <div className="flex gap-2 mt-2">
-                  <Link href="/billing" className="flex-1">
-                    <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
-                  </Link>
-                  <a href="/api/stripe/credits?pack=long1" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">One Long Video · $49</Button>
-                  </a>
-                </div>
-              </div>
-            )}
-            {/* Captions — a switch rather than a checkbox, per 2a. It is on by
-                default and rarely changed, so it reads better as a setting than
-                as something waiting to be ticked. */}
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11.5px] text-spark-ink-soft">Captions burned in</p>
-                <p className="text-[10px] text-spark-ink-faint">Most viewers watch muted</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={burnCaptions}
-                aria-label="Burn synchronized captions into the video"
-                onClick={() => setBurnCaptions(!burnCaptions)}
-                className={`flex h-[18px] w-8 flex-none items-center rounded-full p-0.5 transition-colors ${
-                  burnCaptions ? "justify-end bg-spark-amber" : "justify-start bg-spark-rule-dim"
-                }`}
-              >
-                <span className="h-3.5 w-3.5 rounded-full bg-white" />
-              </button>
-            </div>
-          </Card>
-
-          {/* Paste scripts render verbatim via Direct Video — no render-mode choice */}
-          <Card>
-            <div className="flex items-start gap-2.5">
-              <Video size={16} className="text-primary-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-brand-text">Your avatar reads your script</p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  We render your pasted script word-for-word as a talking-head video, so nothing gets shortened or rewritten.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Avatar look */}
-          {(looksLoading || looks.length > 0) && (
-            <Card>
-              <p className="text-sm font-semibold text-brand-text mb-1">Choose Your Avatar</p>
-              <p className="text-xs text-slate-400 mb-1">
-                📸 <span className="font-medium text-slate-500">Photo Avatar</span> — created from your headshot &nbsp;·&nbsp;
-                🎬 <span className="font-medium text-slate-500">Digital Twin</span> — created from your video recording
-              </p>
-              <p className="text-xs text-slate-400 mb-3">
-                📐 Tip: pick a look made from a <span className="font-medium text-slate-500">horizontal photo</span> for YouTube videos, a <span className="font-medium text-slate-500">vertical photo</span> for Reels — it fills the frame without black bars.
-              </p>
-              {looksLoading ? (
-                <div className="flex gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="w-20 h-24 rounded-xl bg-slate-100 animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {looks.map((look) => {
-                    const isProcessing = look.status === "processing" || look.status === "pending";
-                    return (
-                      <button
-                        key={look.id}
-                        onClick={() => { if (!isProcessing) setSelectedLookId(look.id); }}
-                        title={look.name}
-                        disabled={isProcessing}
-                        className={`relative rounded-xl border-2 overflow-hidden transition-all shrink-0 ${
-                          isProcessing
-                            ? "border-slate-200 opacity-60 cursor-wait"
-                            : selectedLookId === look.id
-                              ? "border-primary-500 ring-2 ring-primary-200"
-                              : "border-slate-200 hover:border-slate-300"
-                        }`}
-                        style={{ width: 72, height: 88 }}
-                      >
-                        {look.preview_image_url ? (
-                          <img src={look.preview_image_url} alt={look.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                            <User size={24} className="text-slate-300" />
-                          </div>
-                        )}
-                        {isProcessing && (
-                          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1">
-                            <Loader2 size={16} className="text-white animate-spin" />
-                            <p className="text-white text-[8px] font-medium">Generating</p>
-                          </div>
-                        )}
-                        {!isProcessing && look.avatar_type === "digital_twin" && (
-                          <div className="absolute top-1 left-1 bg-spark-amber rounded px-1 py-0.5">
-                            <p className="text-white text-[7px] font-bold leading-none">DT</p>
-                          </div>
-                        )}
-                        {!isProcessing && selectedLookId === look.id && (
-                          <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
-                            <CheckCircle size={10} className="text-white" />
-                          </div>
-                        )}
-                        {!isProcessing && (
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-1">
-                            <p className="text-white text-[9px] leading-tight truncate">{look.name}</p>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
-            </Card>
-          )}
-
-          {/* Editable script */}
-          <Card>
-            <p className="text-sm font-semibold text-brand-text mb-2">
-              Script
-              <span className="ml-2 text-xs font-normal text-slate-400">{editedScript.trim().split(/\s+/).filter(Boolean).length} words</span>
-            </p>
-            <textarea
-              value={editedScript}
-              onChange={(e) => setEditedScript(e.target.value)}
-              rows={8}
-              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">Edit before generating — your changes will be used.</p>
-            <ScriptLengthWarning
-              words={editedScript.trim().split(/\s+/).filter(Boolean).length}
-              isLong={selectedVideoType === "youtube_long"}
-              standardCap={standardMaxWords()}
-              onSwitchToLong={() => setSelectedVideoType("youtube_long")}
-            />
-          </Card>
-
-          {/* Editable CTA */}
-          <Card>
-            <p className="text-sm font-semibold text-brand-text mb-2">Call To Action</p>
-            <textarea
-              value={editedCta}
-              onChange={(e) => setEditedCta(e.target.value)}
-              rows={3}
-              placeholder="e.g. Call or text me to get started — I'd love to help!"
-              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">Spoken at the end of your video. Leave blank to skip.</p>
-          </Card>
-
-          {/* Background music */}
-          <Card>
-            <p className="text-sm font-semibold text-brand-text mb-2">Background Music <span className="text-xs font-normal text-slate-400">(optional)</span></p>
-            <div className="flex flex-wrap gap-1.5">
-              {MUSIC_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  onClick={() => selectMusic(preset)}
-                  disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
-                    selectedMusicId === preset.id
-                      ? "border-primary-500 bg-primary-50 text-primary-700"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300"
-                  }`}
-                >
-                  <span>{preset.emoji}</span>
-                  {uploadingMusic && preset.id === "custom" ? "Uploading…"
-                    : musicResolving && selectedMusicId === preset.id ? "Loading…"
-                    : preset.label}
-                </button>
-              ))}
-            </div>
-            {musicUrl && selectedMusicId !== "none" && (
-              <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                <CheckCircle size={11} /> Music selected · plays low under your voiceover
-              </p>
-            )}
-            <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
-          </Card>
-
-          {/* Photo Upload */}
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-brand-text">Add Photos <span className="text-xs font-normal text-slate-400">(optional · up to 8)</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {uploadedPhotos.map((photo, i) => (
-                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
-                  <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
-                  <button onClick={() => removePhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X size={14} className="text-white" />
-                  </button>
-                </div>
-              ))}
-              {uploadedPhotos.length < 8 && (
-                <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
-                  {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
-                  <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
-                </label>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">Shown as full-screen background b-roll while your avatar reads your script (up to 8 photos, cycled evenly).</p>
-            {selectedVideoType === "youtube_long" && uploadedPhotos.length === 0 && (
-              <p className="text-[11px] text-amber-600 mt-1.5">
-                Long videos read your full script start to finish, so your photos are the visuals. Without any, it&apos;s your avatar on screen for the whole 8 minutes.
-              </p>
-            )}
-          </Card>
-
-          {/* PDF / URL Attachment */}
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-brand-text">Attach Doc / URL <span className="text-xs font-normal text-slate-400">(optional)</span></p>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
-                <button onClick={() => setPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pdfMode === "upload" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
-                <button onClick={() => setPdfMode("url")} className={`px-2.5 py-1 transition-colors ${pdfMode === "url" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
-              </div>
-            </div>
-            {pdfMode === "upload" ? (
-              pdfUrl ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <FileText size={16} className="text-green-600 shrink-0" />
-                  <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                </div>
-              ) : (
-                <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
-                  {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                  <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                  <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
-                </label>
-              )
-            ) : pdfUrl ? (
-              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <Globe size={16} className="text-green-600 shrink-0" />
-                <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); setPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={pdfUrlInput}
-                  onChange={(e) => setPdfUrlInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !pdfUrlExtracting && pdfUrlInput.trim()) handleUrlExtract(); }}
-                  placeholder="https://example.com/article"
-                  className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <Button size="sm" loading={pdfUrlExtracting} disabled={!pdfUrlInput.trim()} onClick={handleUrlExtract} className="whitespace-nowrap">Fetch</Button>
-              </div>
-            )}
-            <p className="text-[11px] text-slate-400 mt-1.5">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
-          </Card>
-
-          {/* Generate button */}
-          <Button
-            onClick={handleGenerateVideo}
-            loading={videoGenerating}
-            size="lg"
-            className="w-full gap-2"
-          >
-            {/* Kept identical to the other branch's button — see the note on
-                captions and music below; this file renders both twice. */}
-            <Wand2 size={18} /> Spark Video
-          </Button>
-          <Button
-            onClick={handleSaveDraft}
-            loading={savingDraft}
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5 -mt-1"
-          >
-            <Save size={14} /> Save Draft &amp; Finish Later
-          </Button>
-          <p className="text-xs text-slate-400 text-center -mt-2">
-            Video ready in {renderEta({ pastedScript: true, longForm: selectedVideoType === "youtube_long" }).range}
-            {" "}· you&apos;ll see it in My Videos
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Pasted scripts are rendered word for word via Direct Video. That rules out
+  // three things the AI flow offers — alternative hooks, the voice-only /
+  // avatar choice, and rewriting the script by voice — but everything else
+  // (format, captions, music, avatar look, photos, docs) is identical.
+  //
+  // This used to be a second full return branch further up, a near-copy of the
+  // layout below. Keeping two copies in agreement failed in practice: the
+  // generate button was renamed in one and not the other and shipped saying
+  // the wrong thing for a whole commit. One layout, three exceptions.
+  const isPaste = source === "paste";
 
   // ── Paste source: generating spinner ─────────────────────────────────────
   if (source === "paste" && videoGenerating) {
@@ -1737,7 +1402,11 @@ export default function ProjectEditorPage() {
         <div className="flex flex-col gap-4">
           {/* Hook options — 2a. The radio circle replaces the old #1/#2
               numbering: the hooks are alternatives, not a ranking, and numbering
-              them implied an order that was never there. */}
+              them implied an order that was never there.
+
+              Not for pasted scripts: those are read word for word, so an
+              AI-written opening line is not on offer. */}
+          {!isPaste && (
           <Card padding="sm">
             <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
               <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
@@ -1816,6 +1485,7 @@ export default function ProjectEditorPage() {
               />
             </div>
           </Card>
+          )}
 
           {/* Script (editable) */}
           <Card padding="sm">
@@ -1980,7 +1650,11 @@ export default function ProjectEditorPage() {
 
             {/* Spoken control of this rail. Sits above the controls it
                 changes so they can be watched updating, and they all stay
-                usable by hand — this is a second way in, not a replacement. */}
+                usable by hand — this is a second way in, not a replacement.
+
+                Withheld for pasted scripts: onScript rewrites the script, and
+                the promise there is that it is rendered word for word. */}
+            {!isPaste && (
             <EditorVoiceSession
               script={editedScript}
               disabled={videoGenerating}
@@ -1995,6 +1669,7 @@ export default function ProjectEditorPage() {
               onScript={(next) => setEditedScript(next)}
               onRender={() => { if (!videoGenerating) handleGenerateVideo(); }}
             />
+            )}
 
             {/* Video format selector */}
             <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">FORMAT</p>
@@ -2098,8 +1773,24 @@ export default function ProjectEditorPage() {
               <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
             </div>
 
-            {/* Video style selector */}
-            <div className="mb-5">{renderModeSelector()}</div>
+            {/* Video style selector. A pasted script always renders verbatim
+                through Direct Video, so there is no voice-only/avatar choice
+                to make — it gets told what will happen instead of being asked. */}
+            <div className="mb-5">
+              {isPaste ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-spark-rule bg-white px-3 py-2.5">
+                  <Video size={16} className="mt-0.5 shrink-0 text-spark-amber" />
+                  <div className="min-w-0">
+                    <p className="text-[11.5px] font-medium text-spark-ink">Your avatar reads your script</p>
+                    <p className="mt-0.5 text-[10px] leading-[1.4] text-spark-ink-muted">
+                      Rendered word for word as a talking-head video, so nothing gets shortened or rewritten.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                renderModeSelector()
+              )}
+            </div>
 
             {/* Avatar look selector.
                 Only Avatar + Voice puts a look on screen — lookId is dropped at
