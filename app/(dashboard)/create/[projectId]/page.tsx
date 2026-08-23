@@ -348,6 +348,15 @@ export default function ProjectEditorPage() {
       .catch(() => {});
   }, []);
 
+  // ?record=1 — arriving from "Record again" on a finished camera video. Lands
+  // on the setup step with the script loaded, rather than opening the camera
+  // straight away: re-recording usually means changing something first, and a
+  // permission prompt firing on page load is startling.
+  useEffect(() => {
+    if (searchParams.get("record") === "1" && editedScript) setEditorStep(3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editedScript]);
+
   // Voice-follow lifecycle: listen whenever the teleprompter is open with Flow
   // on. Previously the follower only started if Flow was already on when
   // recording began — toggling Flow mid-session (or before recording) did

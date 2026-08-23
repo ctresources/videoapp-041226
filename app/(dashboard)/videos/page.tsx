@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
-  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe,
+  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -36,7 +36,7 @@ interface GeneratedVideo {
   created_at: string;
   project_id: string;
   metadata?: { render_error?: string; credit_kind?: "short" | "long" } | null;
-  projects?: { title: string; ai_script?: { hook?: string } | null } | null;
+  projects?: { title: string; ai_script?: { hook?: string; script?: string } | null } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
 }
@@ -645,6 +645,26 @@ function VideosContent() {
                           </Button>
                         </a>
                       </div>
+
+                      {/* Back into the flow that made this. A finished video
+                          used to be a dead end: the only way to change
+                          anything was to start again from a blank brief and
+                          retype the whole thing. */}
+                      {video.project_id && video.projects?.ai_script?.script && (
+                        <Link
+                          href={
+                            video.render_provider === "camera"
+                              ? `/create/${video.project_id}?record=1`
+                              : `/create/${video.project_id}`
+                          }
+                        >
+                          <Button variant="outline" size="sm" className="w-full gap-1.5">
+                            {video.render_provider === "camera"
+                              ? <><Camera size={13} /> Record again</>
+                              : <><RefreshCw size={13} /> Edit &amp; remake</>}
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   )}
 
@@ -657,7 +677,17 @@ function VideosContent() {
                         </p>
                       )}
                     <div className="flex gap-2">
-                      <Link href="/create" className="flex-1">
+                      {/* Back to the project that failed, not a blank brief —
+                          the script survived the render, and starting over
+                          meant retyping it. */}
+                      <Link
+                        href={
+                          video.project_id && video.projects?.ai_script?.script
+                            ? `/create/${video.project_id}`
+                            : "/create"
+                        }
+                        className="flex-1"
+                      >
                         <Button variant="outline" size="sm" className="w-full gap-1.5 text-red-600 border-red-200">
                           <Plus size={13} /> Try Again
                         </Button>
