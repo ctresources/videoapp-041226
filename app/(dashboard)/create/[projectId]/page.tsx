@@ -15,6 +15,7 @@ import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { StepFooter } from "@/components/create/step-footer";
+import { RenderPipeline } from "@/components/create/render-pipeline";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
@@ -1369,38 +1370,6 @@ export default function ProjectEditorPage() {
   // the wrong thing for a whole commit. One layout, three exceptions.
   const isPaste = source === "paste";
 
-  // ── Paste source: generating spinner ─────────────────────────────────────
-  if (source === "paste" && videoGenerating) {
-    return (
-      <div className="max-w-xl mx-auto">
-        <Card className="flex flex-col items-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center">
-            <Wand2 className="w-8 h-8 text-primary-500 animate-pulse" />
-          </div>
-          <div>
-            <p className="font-semibold text-brand-text text-lg">Generating Your Video…</p>
-            {(() => {
-              const eta = renderEta({
-                pastedScript: true,
-                longForm: selectedVideoType === "youtube_long",
-              });
-              return (
-                <p className="text-slate-400 text-sm mt-1">
-                  This takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll see it in
-                  My Videos when ready — it keeps rendering if you close this page.
-                </p>
-              );
-            })()}
-          </div>
-          <div className="flex gap-1.5 mt-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="w-2 h-2 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-        </Card>
-      </div>
-    );
-  }
   const seo = project.seo_data as SeoData | null;
 
   return (
@@ -2097,30 +2066,36 @@ export default function ProjectEditorPage() {
           </Card>
           </>)}
 
-          {/* ── Step 4 · Generating ──
-              Placeholder shape only: the v2 pipeline card replaces this next. */}
-          {editorStep === 4 && (
-            <Card className="flex flex-col items-center gap-4 py-16 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-spark-amber-tint">
-                <Wand2 className="h-8 w-8 animate-pulse text-spark-amber" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-spark-ink">Generating your video…</p>
-                {(() => {
-                  const eta = renderEta({
-                    pastedScript: isPaste,
-                    longForm: selectedVideoType === "youtube_long",
-                  });
-                  return (
-                    <p className="mt-1 text-sm text-spark-ink-muted">
-                      This takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll see it in
-                      My Videos when it&apos;s ready — it keeps rendering if you close this page.
-                    </p>
-                  );
-                })()}
-              </div>
-            </Card>
-          )}
+          {/* ── Step 4 · Generating ── */}
+          {editorStep === 4 && (() => {
+            const eta = renderEta({
+              pastedScript: isPaste,
+              longForm: selectedVideoType === "youtube_long",
+            });
+            const shape = selectedVideoType === "reel_9x16" ? "9:16 for Reels"
+              : selectedVideoType === "short_1x1" ? "1:1 square"
+                : "16:9 for YouTube";
+            const market = [project.location_city, project.location_state].filter(Boolean).join(", ");
+            return (
+              <RenderPipeline
+                queueLabel={[
+                  selectedVideoType === "reel_9x16" ? "Reel" : "YouTube",
+                  shape,
+                  market || null,
+                ].filter(Boolean).join(" · ")}
+                title={editedTitle || project.title}
+                stages={[
+                  { title: "Spoke", sub: "Your brief, captured" },
+                  { title: "Sparked", sub: "Script and hooks written" },
+                  { title: "Generating", sub: `Building ${shape}` },
+                ]}
+                // The first two genuinely finished before this screen existed;
+                // the third is running server-side and is not polled here.
+                activeIndex={2}
+                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page — you'll find it in My Videos.`}
+              />
+            );
+          })()}
 
           {/* ── Step 5 · Publishing assets ──
               Written at the same time as the script, but they are what you
