@@ -1299,6 +1299,7 @@ export default function ProjectEditorPage() {
         projectId,
         videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
         title: `Teleprompter: ${project?.title ?? "Recording"}`,
+        script: [selectedHook || script?.hook, editedScript, editedCta].filter(Boolean).join("\n\n"),
       });
       closeTeleprompter();
       toast.success("Recording saved! No AI charges — your video is ready.");

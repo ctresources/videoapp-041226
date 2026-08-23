@@ -508,7 +508,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
     setSaving(true);
     try {
       const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
-      const { videoId, title: savedName } = await uploadCameraRecording(videoBlob, { title });
+      const { videoId, title: savedName } = await uploadCameraRecording(videoBlob, { title, script });
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
       setShowPublish(true);

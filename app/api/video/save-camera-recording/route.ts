@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import { generateSeoData } from "@/lib/api/perplexity";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
   let projectId: string | null;
   let videoType: string;
   let title: string;
+  let spokenScript: string;
   let uploadedInline = false;
 
   const contentType = req.headers.get("content-type") || "";
@@ -38,6 +40,7 @@ export async function POST(req: NextRequest) {
       projectId?: string;
       videoType?: string;
       title?: string;
+      script?: string;
     };
 
     if (!body.storagePath) {
@@ -52,12 +55,14 @@ export async function POST(req: NextRequest) {
     projectId = body.projectId || null;
     videoType = body.videoType || "reel_9x16";
     title = (body.title || "Camera Recording").slice(0, 120);
+    spokenScript = (body.script || "").trim();
   } else {
     const formData = await req.formData();
     const file = formData.get("video") as File | null;
     projectId = formData.get("projectId") as string | null;
     videoType = (formData.get("videoType") as string) || "reel_9x16";
     title = ((formData.get("title") as string) || "Camera Recording").slice(0, 120);
+    spokenScript = ((formData.get("script") as string) || "").trim();
 
     if (!file) return NextResponse.json({ error: "No video file provided" }, { status: 400 });
 
@@ -130,6 +135,52 @@ export async function POST(req: NextRequest) {
     .from("projects")
     .update({ status: "ready" })
     .eq("id", resolvedProjectId);
+
+  // Titles, descriptions and hashtags for a camera video.
+  //
+  // Every other way of making a video writes these when the script is written.
+  // Camera recordings never had a script-writing step, so they arrived in My
+  // Videos with nothing to post them with. Generated from what was actually
+  // read on camera.
+  //
+  // Non-fatal and deliberately last: the recording is already saved and
+  // playable by this point, so a slow or failed SEO call must not lose it.
+  // Skipped when the project already has SEO — the teleprompter path comes
+  // from a scripted project that wrote its own, and regenerating would
+  // overwrite wording the user may have edited.
+  if (spokenScript.length > 40) {
+    try {
+      const { data: existing } = await admin
+        .from("projects")
+        .select("seo_data, ai_script")
+        .eq("id", resolvedProjectId)
+        .single();
+
+      const already = (existing as { seo_data: unknown } | null)?.seo_data;
+      if (!already) {
+        // Bounded: the recording is already saved and playable, so this must
+        // never be what makes the request time out. Losing the metadata is
+        // recoverable; reporting a failed save for a video that exists is not.
+        const seo = await Promise.race([
+          generateSeoData(title, spokenScript, []),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
+        ]);
+        if (!seo) throw new Error("SEO generation timed out");
+        await admin
+          .from("projects")
+          .update({
+            seo_data: seo as unknown as Record<string, unknown>,
+            // Keeps the script with the project so the editor and Publish
+            // window have something to show for a camera video.
+            ai_script: (existing as { ai_script: unknown } | null)?.ai_script
+              ?? { title, script: spokenScript, hook: "", keywords: [] },
+          })
+          .eq("id", resolvedProjectId);
+      }
+    } catch (err) {
+      console.error("[save-camera-recording] SEO generation failed (non-fatal):", err);
+    }
+  }
 
   return NextResponse.json({ video: { id: (videoRow as { id: string }).id }, videoId: (videoRow as { id: string }).id, title });
 }

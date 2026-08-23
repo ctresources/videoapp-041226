@@ -8,7 +8,14 @@ import { createClient } from "@/lib/supabase/client";
  */
 export async function uploadCameraRecording(
   blob: Blob,
-  opts: { title?: string; projectId?: string; videoType?: string } = {},
+  opts: {
+    title?: string;
+    projectId?: string;
+    videoType?: string;
+    /** What was read on camera. Used to write the description and hashtags —
+     *  without it a camera video reaches My Videos with nothing to post it. */
+    script?: string;
+  } = {},
 ): Promise<{ videoId: string; title: string }> {
   const ext = blob.type.includes("mp4") ? "mp4" : "webm";
 
