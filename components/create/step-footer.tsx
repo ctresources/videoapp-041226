@@ -35,10 +35,16 @@ export function StepFooter({ onBack, backLabel = "Back", hint, children }: StepF
             {backLabel}
           </button>
         )}
+        {/* Hidden on phones. Squeezed between Back and the primary button there
+            is no room for it to say anything — it collapses to two words and an
+            ellipsis, which is worse than the space it costs. */}
         {hint && (
-          <p className="min-w-0 flex-1 truncate text-[13px] text-spark-ink-faint">{hint}</p>
+          <p className="hidden min-w-0 flex-1 truncate text-[13px] text-spark-ink-faint sm:block">
+            {hint}
+          </p>
         )}
-        {!hint && <div className="min-w-0 flex-1" />}
+        <div className="min-w-0 flex-1 sm:hidden" />
+        {!hint && <div className="hidden min-w-0 flex-1 sm:block" />}
         <div className="flex-none">{children}</div>
       </div>
     </div>

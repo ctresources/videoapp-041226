@@ -198,7 +198,7 @@ export function VoiceTopicHero({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !disabled) onSubmit?.();
           }}
-          placeholder="e.g. Why buyers have more leverage this fall"
+          placeholder="Type what you want, or hit the mic and just say it…"
           // No max-w here: as a centered card it needed one to keep the line
           // readable, but as a row inside the section it should fill the
           // width the section already has, not strand space on either side.

@@ -17,9 +17,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
-import { TopicRadar } from "@/components/create/topic-radar";
+import { SparkPanel } from "@/components/create/spark-panel";
 import {
-  ContentTemplates,
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
@@ -651,9 +650,10 @@ function CreatePageInner() {
 
   function openTemplates() {
     setTemplatesOpen(true);
-    // Let the section render before scrolling, or we land on its old height
+    // Points at the spark panel, which now holds the full list in its picker —
+    // the old expanding browser and its #topic-templates anchor are gone.
     setTimeout(
-      () => document.getElementById("topic-templates")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      () => document.getElementById("spark-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }),
       0,
     );
   }
@@ -693,7 +693,11 @@ function CreatePageInner() {
     // two equal columns, the other tabs flow full-width single column.
     // The bottom padding clears the fixed action bar so the last card is not
     // trapped underneath it.
-    <div className={`w-full ${showActionBar ? "pb-28" : ""}`}>
+    // One centred column with its own gutters, matching the design and the
+    // step footer's width. The route opts out of the shared page padding, so
+    // without this the content ran edge to edge — flush against the sidebar on
+    // desktop and touching both screen edges on a phone.
+    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${showActionBar ? "pb-28" : "pb-6"}`}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -878,37 +882,15 @@ function CreatePageInner() {
           </ComposerCard>
 
           {/* ── Spark an idea ──
-              Trending and the template browser share one shaded panel, as in
-              the design, rather than floating as two loose sections. They fill
-              the same field the composer does, so they read as alternatives to
-              it, not as separate steps. */}
-          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-4">
-            <div className="mb-4 flex items-center gap-3.5">
-              <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-spark-amber text-[16px] text-white">
-                ✦
-              </span>
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                  Why? · Spark an idea
-                </span>
-                <span className="text-[17px] font-semibold text-spark-ink">Say or Choose to Spark</span>
-              </div>
-            </div>
-
-            <TopicRadar
-              city={locCity || undefined}
-              state={locState || undefined}
-              onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
-              onSeeAll={openTemplates}
-            />
-            <ContentTemplates
-              city={locCity}
-              state={locState}
-              onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
-              expanded={templatesOpen}
-              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
-            />
-          </section>
+              Trending, formats and the full template list are one panel with
+              three tabs now, rather than a trending row plus an expanding
+              browser below it. They all fill the same field the composer does,
+              so they read as alternatives to it, not as separate steps. */}
+          <SparkPanel
+            city={locCity || undefined}
+            state={locState || undefined}
+            onSelect={(topic, raw) => { setLocCustomTopic(topic); setTopicTemplateRaw(raw); }}
+          />
         </div>
       )}
 
@@ -1131,8 +1113,8 @@ function CreatePageInner() {
             className="gap-2"
           >
             {locGenerating
-              ? <>Sparking your script…</>
-              : <>Next · video setup <ArrowRight size={18} /></>}
+              ? <>Sparking<span className="hidden sm:inline"> your script</span>…</>
+              : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
           </Button>
         </StepFooter>
       )}

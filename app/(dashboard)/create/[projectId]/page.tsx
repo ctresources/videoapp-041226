@@ -2324,7 +2324,7 @@ export default function ProjectEditorPage() {
           >
             {editorStep === 2 && (
               <Button onClick={() => setEditorStep(3)} size="lg" className="gap-2">
-                Next · video setup <ArrowRight size={17} />
+                Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={17} />
               </Button>
             )}
             {editorStep === 3 && (
@@ -2344,7 +2344,7 @@ export default function ProjectEditorPage() {
               >
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Publishing assets <ArrowRight size={17} /></>}
+                  : <>Publish<span className="hidden sm:inline">ing</span> assets <ArrowRight size={17} /></>}
               </Button>
             )}
             {editorStep === 5 && (

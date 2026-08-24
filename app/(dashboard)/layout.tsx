@@ -60,7 +60,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main
           className={cn(
             "flex-1 min-h-0",
-            fullBleed ? "" : "overflow-auto p-4 md:p-6"
+            // Create keeps the scroll container every other route has; it only
+            // opts out of the shared padding, because its header treatment and
+            // footer are edge to edge and it sets its own gutters.
+            fullBleed ? "overflow-auto" : "overflow-auto p-4 md:p-6"
           )}
         >
           {children}
