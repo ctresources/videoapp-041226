@@ -87,6 +87,7 @@ interface AiScript {
   tone?: string;
   cta_preference?: string;
   video_length?: "standard" | "long";
+  video_platform?: "reel" | "youtube";
 }
 
 interface SeoData {
@@ -554,11 +555,15 @@ export default function ProjectEditorPage() {
     // typed and saved is restored as-is, not silently replaced by the hook.
     let freshDefaultHook: string | undefined;
     if (p.ai_script) {
-      const aiS = p.ai_script as AiScript & { user_edited?: boolean; video_length?: string };
+      const aiS = p.ai_script as AiScript & { user_edited?: boolean; video_length?: string; video_platform?: string };
       setEditedScript(aiS.script || "");
-      // Honour the length chosen before the script was written, so an ~8-minute
-      // script doesn't land on a standard format and get trimmed.
+      // Honour the format chosen before the script was written, so an ~8-minute
+      // script doesn't land on a standard format and get trimmed, and a reel
+      // asked for on step 1 doesn't arrive here as a landscape video.
+      // Long form renders landscape only, so length wins where they disagree.
       if (aiS.video_length === "long") setSelectedVideoType("youtube_long");
+      else if (aiS.video_platform === "reel") setSelectedVideoType("reel_9x16");
+      else if (aiS.video_platform === "youtube") setSelectedVideoType("youtube_16x9");
       if (aiS.user_edited) {
         // A saved draft — restore the user's own CTA and hook exactly as saved
         setEditedCta(aiS.cta || "");

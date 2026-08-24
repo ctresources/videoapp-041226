@@ -25,10 +25,12 @@ export interface BriefSlots {
   audience: string | null;
   tone: string | null;
   length: "standard" | "long" | null;
+  /** Vertical reel or landscape YouTube. */
+  platform: "reel" | "youtube" | null;
 }
 
 export const EMPTY_SLOTS: BriefSlots = {
-  city: null, state: null, topic: null, audience: null, tone: null, length: null,
+  city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
 };
 
 export interface BriefTurn {
@@ -74,6 +76,7 @@ export function coerceSlots(raw: unknown): BriefSlots {
   // which is a real abbreviation for a different place.
   const stateRaw = str(o.state, 40);
   const length = str(o.length);
+  const platform = str(o.platform);
 
   return {
     city: str(o.city, 80),
@@ -82,6 +85,7 @@ export function coerceSlots(raw: unknown): BriefSlots {
     audience: pick(o.audience, AUDIENCES),
     tone: pick(o.tone, TONES),
     length: length === "long" ? "long" : length === "standard" ? "standard" : null,
+    platform: platform === "reel" ? "reel" : platform === "youtube" ? "youtube" : null,
   };
 }
 
@@ -137,14 +141,16 @@ Collect these fields:
 - audience: one of ${AUDIENCES.join(", ")} — optional
 - tone: one of ${TONES.join(", ")} — optional
 - length: "standard" (~${minutesFor(shortWords)} min, ${shortWords} words) or "long" (~${minutesFor(LONG_MAX_WORDS)} min) — optional
+- platform: "reel" (vertical, for Reels, TikTok, Shorts) or "youtube" (landscape) — optional
 
 Return ONLY this JSON, no code fence:
-{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"reply":""}
+{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"platform":null,"reply":""}
 
 Rules for the fields:
 - Re-read the WHOLE conversation each time and return the current value of every field. A later correction replaces an earlier answer — if they said Buyers and then "actually sellers", audience is Sellers.
 - Never invent a value. If they haven't said it, it stays null. Only use the listed audience and tone words; if what they said isn't one of them, leave it null rather than forcing the nearest.
 - "under four minutes", "keep it short" → standard. "eight minutes", "long version", "in depth" → long.
+- "reel", "TikTok", "short", "vertical" → platform reel. "YouTube", "landscape", "horizontal" → platform youtube. Long videos render landscape, so "long" implies youtube unless they say otherwise.
 - Keep topic close to their words. Don't expand it into a script brief.
 
 Rules for "reply":

@@ -14,10 +14,11 @@ export interface BriefSlots {
   audience: string | null;
   tone: string | null;
   length: "standard" | "long" | null;
+  platform: "reel" | "youtube" | null;
 }
 
 const EMPTY_SLOTS: BriefSlots = {
-  city: null, state: null, topic: null, audience: null, tone: null, length: null,
+  city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
 };
 
 interface Turn {

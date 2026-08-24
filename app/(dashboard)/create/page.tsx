@@ -123,6 +123,13 @@ function CreatePageInner() {
   // Chosen BEFORE generating: the script has to be written to length, or a
   // "long" video ends up with a 2-minute script.
   const [locLength, setLocLength] = useState<"standard" | "long">("standard");
+  // Reel or YouTube, asked here rather than in the editor. It is one of the
+  // four things the composer's chips prompt you to say, and a chip cannot
+  // prompt for something this step has no way to answer.
+  const [locPlatform, setLocPlatform] = useState<"reel" | "youtube">("youtube");
+  // Whether the format was actually chosen, as opposed to left on its default.
+  // Only the chip cares — the value is valid either way.
+  const [formatTouched, setFormatTouched] = useState(false);
   // Length for AI-written teleprompter scripts (camera + paste flows). Camera
   // recordings are free and run up to 15 min, so this is the agent's choice.
   const [cameraScriptLength, setCameraScriptLength] = useState<CameraLength>("standard");
@@ -387,6 +394,7 @@ function CreatePageInner() {
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
           videoLength: locLength,
+          videoPlatform: locPlatform,
         }),
       });
       const data = await safeJson(res);
@@ -848,7 +856,10 @@ function CreatePageInner() {
               { label: "Topic", ask: "What's it about?", ok: !!locCustomTopic.trim() },
               { label: "Market", ask: "Which town?", ok: locationSet },
               { label: "Audience", ask: "Who's it for?", ok: !!locAudience.trim() },
-              { label: "Tone", ask: "What tone?", ok: !!locTone.trim() },
+              // Always satisfiable now that format is asked on this step. It
+              // starts on a default, so this reads as "set" from the outset —
+              // the chip is a reminder of what you can say, not a blocker.
+              { label: "Format", ask: "Reel or YouTube?", ok: formatTouched },
             ]}
           >
           {inputStyle === "speak" ? (
@@ -863,7 +874,12 @@ function CreatePageInner() {
                 if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
                 if (s.audience) setLocAudience(s.audience);
                 if (s.tone) setLocTone(s.tone);
-                if (s.length) setLocLength(s.length);
+                if (s.length) { setLocLength(s.length); setFormatTouched(true); }
+                if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
+                // Long form renders landscape only. Said together, "long reel"
+                // has to resolve to something buildable, and the length is the
+                // half that changes the script.
+                if (s.length === "long") setLocPlatform("youtube");
               }}
               onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
             />
@@ -1042,38 +1058,60 @@ function CreatePageInner() {
                   ))}
                 </div>
 
-                {/* Length lives here rather than with format and avatar,
-                    because the script is written to it — by the time you
-                    reach the editor the words already exist. The only
-                    required choice of the four, though it can never actually
-                    be empty since it starts on Standard. */}
-                <div className="border-t border-spark-rule-soft pt-3">
-                  <p className="mb-2 text-[13px] font-medium text-spark-ink-soft">
-                    Length <span className="text-spark-amber">*</span>
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {([
-                      { v: "standard", title: "Standard", sub: "Up to 4 minutes", note: "Automatic b-roll" },
-                      { v: "long", title: "Long video", sub: "Up to 8 minutes", note: "Uses your photos for visuals" },
-                    ] as const).map(({ v, title, sub, note }) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setLocLength(v)}
-                        aria-pressed={locLength === v}
-                        className={`rounded-[9px] px-3.5 py-3 text-left transition-colors ${
-                          locLength === v
-                            ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                            : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                        }`}
-                      >
-                        <p className="text-[14px] font-medium text-spark-ink">
-                          {title} <span className="font-normal text-spark-ink-muted">· {sub}</span>
-                        </p>
-                        <p className="mt-0.5 text-[12.5px] text-spark-ink-faint">{note}</p>
-                      </button>
-                    ))}
+                {/* ── What? · Reel or YouTube ──
+                    Shape and length together, because they are one decision
+                    to say out loud ("a short reel", "a long YouTube one") and
+                    because the script is written to the length — by the time
+                    you reach the editor the words already exist.
+
+                    Three tiles, not the design's four: long form renders
+                    landscape only, so a vertical 8-minute option would be a
+                    tile that cannot be built. */}
+                <div className="mt-6">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
+                      What? · Reel or YouTube
+                    </p>
+                    <p className="text-[14px] text-spark-ink-muted">Default — change it anytime</p>
                   </div>
+                  <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {([
+                      { p: "reel", l: "standard", title: "Reel", sub: "4 min · 9:16", w: "11px", h: "17px" },
+                      { p: "youtube", l: "standard", title: "YouTube", sub: "4 min · 16:9", w: "20px", h: "12px" },
+                      { p: "youtube", l: "long", title: "YouTube", sub: "8 min · 16:9", w: "20px", h: "12px" },
+                    ] as const).map(({ p, l, title, sub, w, h }) => {
+                      const on = locPlatform === p && locLength === l;
+                      return (
+                        <button
+                          key={`${p}-${l}`}
+                          type="button"
+                          onClick={() => { setLocPlatform(p); setLocLength(l); setFormatTouched(true); }}
+                          aria-pressed={on}
+                          className={`relative flex min-h-[58px] flex-col justify-center gap-0.5 rounded-[12px] border bg-white px-3 py-2.5 text-left transition-colors ${
+                            on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
+                          }`}
+                        >
+                          {on && (
+                            <span className="pointer-events-none absolute -inset-px rounded-[13px] border-[2.5px] border-spark-amber" />
+                          )}
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`flex-none rounded-[3px] border-[1.5px] ${on ? "border-spark-amber" : "border-spark-ink-faint"}`}
+                              style={{ width: w, height: h }}
+                            />
+                            <span className="text-[14px] font-semibold leading-[1.1] text-spark-ink">{title}</span>
+                          </span>
+                          <span className="text-[12px] leading-[1.2] text-spark-ink-muted">{sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {locLength === "long" && (
+                    <p className="mt-2 text-[12.5px] leading-[1.4] text-spark-ink-faint">
+                      Long videos read your full script start to finish and use your uploaded photos
+                      as the visuals.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

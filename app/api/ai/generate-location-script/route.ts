@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     tone,
     ctaPreference,
     videoLength,
+    videoPlatform,
     regenerateOnly,
   } = body as {
     videoType: LocationVideoType;
@@ -43,6 +44,9 @@ export async function POST(req: NextRequest) {
     ctaPreference?: string;
     /** "long" asks for an ~8-minute script; anything else is a standard video. */
     videoLength?: VideoLength;
+    /** Vertical reel or landscape YouTube. Chosen on step 1 so the editor can
+     *  preselect it; does not change the script, only the shape it renders in. */
+    videoPlatform?: "reel" | "youtube";
     /**
      * Redoing an existing project's script, not starting a new one. Skips the
      * project insert and returns { aiScript, seoData } directly — the same
@@ -154,6 +158,7 @@ export async function POST(req: NextRequest) {
     // Lets the editor preselect the matching format instead of defaulting to a
     // standard video and silently trimming a long script.
     video_length: videoLength === "long" ? "long" : "standard",
+    video_platform: videoPlatform === "reel" ? "reel" : "youtube",
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata in parallel — non-blocking
