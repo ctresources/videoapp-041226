@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+/* Brand kit typography: Playfair Display for display headlines, Inter for
+   everything else. Replaces DM Sans, which stood in before the brand guide
+   was applied. */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -23,15 +26,18 @@
     background: var(--spark-paper);
     background-attachment: fixed;
     color: #2C2C2A;
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Headings stay in Inter. Playfair is reserved for the display moments the
+     brand guide names -- hero headlines and campaign type -- and is opted into
+     with font-display, not inherited by every h3 on a settings card. */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    font-weight: 700;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
     color: #2C2C2A;
     line-height: 1.25;
     letter-spacing: -0.02em;

@@ -61,72 +61,38 @@ export function ComposerCard({
   }, [showTryLine, tryLines.length]);
 
   return (
-    <div className="rounded-[20px] border-[1.5px] border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] sm:px-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-ink-muted">
-          Your topic
-        </p>
-
-        {/* The speak-or-type choice, as a segmented control inside the card
-            rather than the two big tiles that used to sit above it. Same
-            decision, a quarter of the height — and next to the thing it
-            actually changes. */}
-        <div className="flex flex-none items-center gap-0.5 rounded-nav border border-spark-rule bg-spark-paper p-0.5">
-          {([
-            { key: "speak" as const, label: "Speak", Icon: Mic },
-            { key: "type" as const, label: "Type", Icon: Keyboard },
-          ]).map(({ key, label, Icon }) => {
-            const active = inputStyle === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onInputStyleChange(key)}
-                disabled={disabled}
-                aria-pressed={active}
-                className={`flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  active
-                    ? "bg-white text-spark-ink shadow-[0_1px_2px_rgba(44,44,42,0.08)]"
-                    : "text-spark-ink-muted hover:text-spark-ink"
-                }`}
-              >
-                <Icon size={13} className={active ? "text-spark-amber" : undefined} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Rotating example. Keyed on the index so each line animates in rather
-          than the text swapping in place. */}
+    <>
+      {/* Rotating example, above the card as in the design — it is a prompt to
+          the person, not a label on the field. Keyed on the index so each line
+          animates in rather than the text swapping in place. */}
       {showTryLine && tryLines.length > 0 && (
-        <div className="mb-4 flex items-start gap-3">
-          <span className="mt-1 flex-none font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-spark-amber">
+        <div className="flex items-start gap-3">
+          <span className="mt-1.5 flex-none text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A3660F]">
             Try
           </span>
           <p
             key={tryIdx}
-            className="min-w-0 animate-slideDown text-balance text-[19px] font-bold leading-[1.28] tracking-[-0.01em] text-spark-ink sm:text-[22px]"
+            className="min-w-0 animate-slideDown font-display text-balance text-[21px] font-semibold leading-[1.28] tracking-[-0.01em] text-spark-ink sm:text-[24px]"
           >
             &ldquo;{tryLines[tryIdx % tryLines.length]}&rdquo;
           </p>
         </div>
       )}
 
-      {children}
+      <div className="rounded-[22px] border-[1.5px] border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
+        {children}
 
-      {/* Reminder chips. Deliberately below the input: they are a checklist of
-          what is still missing, not labels for what to fill in next. */}
-      {chips.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-spark-rule-soft pt-3">
+        {/* One bottom row: what is still missing, and the way in. The chips are
+            a checklist rather than field labels, so they sit under the input
+            with the controls, not above it as headings. */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {chips.map((chip) => (
             <span
               key={chip.label}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12.5px] font-semibold ${
                 chip.ok
                   ? "border-spark-blue/25 bg-spark-blue/10 text-spark-blue"
-                  : "border-spark-rule bg-spark-paper text-spark-ink-muted"
+                  : "border-spark-rule bg-[#faf8f2] text-spark-ink-muted"
               }`}
             >
               <span
@@ -137,8 +103,38 @@ export function ComposerCard({
               {chip.ok ? chip.label : chip.ask}
             </span>
           ))}
+
+          {/* The speak-or-type choice, as a segmented control in the same row
+              rather than the two big tiles that used to sit above the card.
+              Same decision, a quarter of the height — and beside the input it
+              actually changes. */}
+          <div className="ml-auto flex flex-none items-center gap-0.5 rounded-nav border border-spark-rule bg-[#faf8f2] p-0.5">
+            {([
+              { key: "speak" as const, label: "Speak", Icon: Mic },
+              { key: "type" as const, label: "Type", Icon: Keyboard },
+            ]).map(({ key, label, Icon }) => {
+              const active = inputStyle === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onInputStyleChange(key)}
+                  disabled={disabled}
+                  aria-pressed={active}
+                  className={`flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    active
+                      ? "bg-white text-spark-ink shadow-[0_1px_2px_rgba(44,44,42,0.08)]"
+                      : "text-spark-ink-muted hover:text-spark-ink"
+                  }`}
+                >
+                  <Icon size={13} className={active ? "text-spark-amber" : undefined} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

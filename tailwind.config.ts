@@ -55,8 +55,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        heading: ["'DM Sans'", "system-ui", "sans-serif"],
-        body: ["'DM Sans'", "system-ui", "sans-serif"],
+        // Brand kit: Playfair Display for display type, Inter for UI and body.
+        display: ["'Playfair Display'", "Georgia", "serif"],
+        heading: ["'Inter'", "system-ui", "sans-serif"],
+        body: ["'Inter'", "system-ui", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {

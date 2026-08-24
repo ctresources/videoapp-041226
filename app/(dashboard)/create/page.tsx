@@ -738,6 +738,87 @@ function CreatePageInner() {
           They are all answers to "what video am I making", so splitting them
           across screens made the flow feel longer than the work. Next carries
           on to format, avatar and music in the editor. */}
+      {/* ── Hero ──
+          The one display-type moment on the page. Playfair is opted into here
+          rather than inherited by every heading, per the brand guide, and the
+          second half carries the four-stop gradient. */}
+      {step === "input" && (
+        <div className="pt-2">
+          <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
+            Hit the Mic.{" "}
+            <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
+              Be Visible.
+            </span>
+          </h1>
+          <p className="mt-3 text-[17px] leading-[1.4] text-spark-ink-muted text-pretty sm:text-[19px]">
+            {inputMode === "camera"
+              ? "Your face, your voice, your script — the teleprompter does the rest."
+              : inputMode === "paste" || inputMode === "listing" || inputMode === "content"
+                ? "Bring a listing sheet, a link or your photos. We turn it into a video."
+                : "No script, no prep, no camera. Just your expertise."}
+          </p>
+        </div>
+      )}
+
+      {/* ── How you're creating ──
+          Above the composer, not below it: which of the three you pick decides
+          what the rest of the page even shows, so it cannot come after the
+          thing it changes. */}
+      {step === "input" && (
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {[
+            {
+              mode: "script" as InputMode,
+              kicker: "Fastest",
+              label: "AI writes it",
+              desc: "Say it, we script it",
+            },
+            {
+              mode: "content" as InputMode,
+              kicker: "Doc, link or photos",
+              label: "From my material",
+              desc: "We extract, you deliver",
+            },
+            {
+              mode: "camera" as InputMode,
+              kicker: "Up to 15 min",
+              label: "My camera",
+              desc: "You on screen",
+            },
+          ].map(({ mode, kicker, label, desc }) => {
+            // The merged tab stays lit while the user is in either sub-flow
+            const active =
+              inputMode === mode ||
+              (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
+            return (
+              <button
+                key={mode}
+                type="button"
+                // The merged tab drops straight into the Paste/Upload flow —
+                // the pill toggle inside switches to My Listings.
+                onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
+                aria-pressed={active}
+                className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
+                  active
+                    ? "border-[1.5px] border-spark-amber bg-white"
+                    : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
+                }`}
+              >
+                <span
+                  className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
+                    active ? "text-[#A3660F]" : "text-spark-ink-faint"
+                  }`}
+                >
+                  {kicker}
+                </span>
+                <span className="text-[15.5px] font-semibold leading-[1.15] text-spark-ink">{label}</span>
+                <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── Your topic ──
           One card, per the v2 composer. The speak-or-type choice used to be
           two large tiles in a section of their own, above a second section
@@ -749,7 +830,10 @@ function CreatePageInner() {
           they are other ways to fill the same field, not part of the composer,
           and folding them in would have made the card the whole page. */}
       {inputMode === "script" && step === "input" && (
-        <div className="mb-3 flex flex-col gap-3 border-b border-spark-rule-soft pb-3">
+        <div className="mt-7 flex flex-col gap-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
+            AI writes it · Step 1 of 5
+          </p>
           <ComposerCard
             inputStyle={inputStyle}
             onInputStyleChange={setInputStyle}
@@ -793,110 +877,64 @@ function CreatePageInner() {
           )}
           </ComposerCard>
 
-          <TopicRadar
-            city={locCity || undefined}
-            state={locState || undefined}
-            onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
-            onSeeAll={openTemplates}
-          />
-          <ContentTemplates
-            city={locCity}
-            state={locState}
-            onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
-            expanded={templatesOpen}
-            onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
-          />
+          {/* ── Spark an idea ──
+              Trending and the template browser share one shaded panel, as in
+              the design, rather than floating as two loose sections. They fill
+              the same field the composer does, so they read as alternatives to
+              it, not as separate steps. */}
+          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-4">
+            <div className="mb-4 flex items-center gap-3.5">
+              <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-spark-amber text-[16px] text-white">
+                ✦
+              </span>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
+                  Why? · Spark an idea
+                </span>
+                <span className="text-[17px] font-semibold text-spark-ink">Say or Choose to Spark</span>
+              </div>
+            </div>
+
+            <TopicRadar
+              city={locCity || undefined}
+              state={locState || undefined}
+              onSelect={(topic) => { setLocCustomTopic(topic); setTopicTemplateRaw(null); }}
+              onSeeAll={openTemplates}
+            />
+            <ContentTemplates
+              city={locCity}
+              state={locState}
+              onSelect={(template, raw) => { setLocCustomTopic(template.topic); setTopicTemplateRaw(raw); }}
+              expanded={templatesOpen}
+              onToggleExpanded={() => (templatesOpen ? setTemplatesOpen(false) : openTemplates())}
+            />
+          </section>
         </div>
       )}
 
-      {step === "input" && (
-        <div className="mb-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
-              Step 1 of 2 · how you&rsquo;re creating
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-[11px] sm:grid-cols-3">
-            {[
-              {
-                mode: "script" as InputMode,
-                label: "AI Writes It",
-                desc: "Speak a topic, get a broadcast-quality script",
-                meta: "Fastest · 3 min",
-              },
-              {
-                mode: "content" as InputMode,
-                label: "My Content & Listings",
-                desc: "Your script, docs, photos or a listing",
-                meta: "Bring your own",
-              },
-              {
-                mode: "camera" as InputMode,
-                label: "Use Camera",
-                desc: "Teleprompter — speak it on camera",
-                meta: "Free · unlimited",
-              },
-            ].map(({ mode, label, desc, meta }) => {
-              // The merged tab stays lit while the user is in either sub-flow
-              const active =
-                inputMode === mode ||
-                (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  // The merged tab drops straight into the Paste/Upload flow —
-                  // the pill toggle inside switches to My Listings.
-                  onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
-                  aria-pressed={active}
-                  className={`flex flex-col gap-1 rounded-[11px] px-3.5 py-3 text-left transition-colors ${
-                    active
-                      ? "spark-cta-gradient"
-                      : "spark-glass hover:border-spark-rule-dim"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {/* Radio, not a checkbox — these three are exclusive */}
-                    <span
-                      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[9px] font-bold leading-none ${
-                        active ? "bg-white text-spark-amber" : "border-[1.5px] border-spark-rule-dim text-white"
-                      }`}
-                    >
-                      {active ? "✓" : ""}
-                    </span>
-                    <span className="text-[15px] font-medium text-spark-ink">{label}</span>
-                  </span>
-                  <span className={`block pl-[26px] text-[13px] leading-[1.45] ${active ? "text-primary-100" : "text-spark-ink-muted"}`}>
-                    {desc}
-                  </span>
-                  <span className={`block pl-[26px] text-[12px] ${active ? "text-primary-100" : "text-spark-ink-faint"}`}>{meta}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3">
 
-          {/* ── Where the video is about ──
-              Per video, not per account. One agent covers several areas and
-              will make a different video for each, so this is a question the
-              page has to ask rather than a profile setting it can assume.
-              It seeds the trending list too. */}
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {/* ── Where / Who / What ──
+              One shaded panel of questions, as in the design, rather than a
+              two-column grid of loose fields.
+
+              Where is per video, not per account: one agent covers several
+              areas and will make a different video for each, so this is a
+              question the page has to ask rather than a profile setting it can
+              assume. It seeds the trending list too. */}
+          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5">
           <div className="flex flex-col gap-3">
-            <div>
-              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.13em] text-spark-amber">
-                Where is this one about?
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
+                Where? · City and state
               </p>
-              <p className="mt-1 text-[13px] text-spark-ink-muted">
-                Speak it or type it — a different area each time is fine.
+              <p className="text-[14px] text-spark-ink-muted">
+                {locationSet ? "Set" : "Say it or type it"}
               </p>
             </div>
 
@@ -982,8 +1020,11 @@ function CreatePageInner() {
               empty) — but all four stay visible and pickable up front rather
               than behind an Edit toggle. Hiding them made "optional" read as
               "hidden", and the user should see what they can set without a
-              click to find out. */}
-          <Card padding="sm" className="p-3">
+              click to find out.
+
+              No card of its own now: these sit inside the shaded ask panel
+              with Where, so the page asks its questions in one place. */}
+          <div className="mt-6">
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
                   {[
@@ -1053,8 +1094,8 @@ function CreatePageInner() {
                   </div>
                 </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </section>
 
           {/* The Next button itself now lives in the fixed footer below, so it
               stays reachable without scrolling to the bottom of the brief.
