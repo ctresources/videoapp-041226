@@ -29,6 +29,12 @@ interface VoiceTopicHeroProps {
    */
   typed?: boolean;
   onTypedChange?: (typed: boolean) => void;
+  /**
+   * Example briefs, cycled through the placeholder while the field is empty
+   * and unfocused. Typing mode's answer to the Try line that speak mode shows
+   * above the card — this is where someone typing is actually looking.
+   */
+  placeholderExamples?: string[];
 }
 
 export function VoiceTopicHero({
@@ -41,7 +47,10 @@ export function VoiceTopicHero({
   disabled = false,
   typed,
   onTypedChange,
+  placeholderExamples = [],
 }: VoiceTopicHeroProps) {
+  const [exampleIdx, setExampleIdx] = useState(0);
+  const [focused, setFocused] = useState(false);
   // Falls back to internal state when the page does not control it.
   const [typingLocal, setTypingLocal] = useState(false);
   const typing = typed ?? typingLocal;
@@ -92,6 +101,16 @@ export function VoiceTopicHero({
   useEffect(() => {
     if (typing) inputRef.current?.focus();
   }, [typing]);
+
+  // Only while the field is empty and nobody is in it. Text changing under a
+  // caret while someone pauses to think is unsettling, and once there is a
+  // value the placeholder is not rendered anyway.
+  const rotating = typing && !focused && !value && placeholderExamples.length > 1;
+  useEffect(() => {
+    if (!rotating) return;
+    const id = setInterval(() => setExampleIdx((i) => i + 1), 3600);
+    return () => clearInterval(id);
+  }, [rotating]);
 
   const hasText = !!(value.trim() || interim);
   const status = listening
@@ -198,7 +217,13 @@ export function VoiceTopicHero({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !disabled) onSubmit?.();
           }}
-          placeholder="Type what you want, or hit the mic and just say it…"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={
+            placeholderExamples.length
+              ? placeholderExamples[exampleIdx % placeholderExamples.length]
+              : "Type what you want, or hit the mic and just say it…"
+          }
           // No max-w here: as a centered card it needed one to keep the line
           // readable, but as a row inside the section it should fill the
           // width the section already has, not strand space on either side.

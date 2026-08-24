@@ -75,13 +75,17 @@ type InputMode = "script" | "camera" | "listing" | "paste" | "content";
 // answer "what am I supposed to say into this" without a paragraph of help
 // text. Kept market-agnostic: the page has no city yet when these are on
 // screen, so a line naming one would be wrong more often than right.
+// Whole spoken sentences, not topic fragments. These double as the typed
+// field's placeholder, and a three-word example there taught people to type
+// three words and stop — leaving the market, audience and tone to be asked
+// for separately when they could have said it all in one breath.
 const TRY_LINES = [
-  "Prices are up around here — sellers need to hear this.",
-  "Just sold on the corner. Tell the whole story.",
-  "What $500K actually buys in this area.",
-  "Three things I'd fix before you list this fall.",
-  "The commute question everybody asks me.",
-  "Rates moved. Here's the real monthly number.",
+  "Make a market update for my area — prices are up, homes are moving fast.",
+  "Tell the story of the home I just sold, start to finish.",
+  "Show what five hundred thousand actually buys around here.",
+  "Three things I'd fix before listing this fall, aimed at sellers.",
+  "Answer the commute question everybody keeps asking me.",
+  "Explain what today's rates mean for a real monthly payment.",
 ];
 
 function formatTime(s: number) {
@@ -850,11 +854,14 @@ function CreatePageInner() {
             inputStyle={inputStyle}
             onInputStyleChange={setInputStyle}
             disabled={locGenerating}
-            showTryLine={!locCustomTopic.trim()}
+            // Speak mode only. Typing mode rotates the same lines through the
+            // field's placeholder instead, which is where someone typing is
+            // actually looking — and speak mode has no field to put them in.
+            showTryLine={inputStyle === "speak" && !locCustomTopic.trim()}
             tryLines={TRY_LINES}
             chips={[
               { label: "Topic", ask: "What's it about?", ok: !!locCustomTopic.trim() },
-              { label: "Market", ask: "Which town?", ok: locationSet },
+              { label: "Which town?", ask: "Which town?", ok: locationSet },
               { label: "Audience", ask: "Who's it for?", ok: !!locAudience.trim() },
               // Always satisfiable now that format is asked on this step. It
               // starts on a default, so this reads as "set" from the outset —
@@ -893,6 +900,7 @@ function CreatePageInner() {
               disabled={locGenerating}
               typed
               onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
+              placeholderExamples={TRY_LINES}
             />
           )}
           </ComposerCard>
