@@ -133,7 +133,17 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [turns, thinking, showTranscript]);
 
   const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+  const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
   const live = [transcript, interim].filter(Boolean).join(" ");
+
+  // What you said, kept on screen after you stop talking.
+  //
+  // This used to be dropped the instant listening ended: the live transcript
+  // was only rendered while `listening`, and the line fell back to a summary
+  // built from slots that do not exist until the request comes back. So your
+  // words vanished and the opening question reappeared, which reads as though
+  // nothing was heard at all.
+  const heard = listening ? live : lastUser;
 
   // What voice has captured so far, condensed to one line — the compact
   // stand-in for the big centered heading the old design used.
@@ -151,7 +161,10 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       ? "Listening — click the mic, or release Spacebar, to stop"
       : "Click the mic, or hold Spacebar, and answer";
 
-  const secondLine = listening ? (live || "Listening…") : summary || lastAssistant;
+  // The reply sits under what you said, rather than replacing it.
+  const secondLine = listening
+    ? (live ? "" : "Listening…")
+    : thinking ? "" : summary || lastAssistant;
 
   return (
     <div className="flex flex-col gap-2">
@@ -172,9 +185,24 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-spark-ink">{status}</p>
-          <p className="mt-0.5 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
-            {secondLine}
-          </p>
+
+          {/* Not truncated. A brief is a sentence or two, and clipping it to
+              one line hid the end of what was just said — including the wake
+              word, which is the part that matters most. */}
+          {heard && (
+            <p className="mt-1 text-[15px] leading-[1.45] text-spark-ink">
+              {heard}
+              {listening && interim && (
+                <span className="ml-0.5 inline-block h-[15px] w-px translate-y-[2px] animate-pulse bg-spark-amber" />
+              )}
+            </p>
+          )}
+
+          {secondLine && (
+            <p className="mt-0.5 text-[12px] leading-[1.45] text-spark-ink-muted">
+              {secondLine}
+            </p>
+          )}
         </div>
 
         {/* Full back-and-forth, off by default. The compact row above already
