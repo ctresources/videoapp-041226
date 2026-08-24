@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Mic, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
 const OPENING_LINE = "What are we making? Tell me the area and what it's about.";
+
+/** Browser speech splits the name as often as not, so all three spellings count. */
+const WAKE_WORD = /(^|\b)spark\s?reels?(\b|$)/i;
 
 export interface BriefSlots {
   city: string | null;
@@ -65,7 +68,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const [thinking, setThinking] = useState(false);
   const [slots, setSlots] = useState<BriefSlots>(EMPTY_SLOTS);
   const [showTranscript, setShowTranscript] = useState(false);
+  // What is in the box. Speech fills it, and it stays editable afterwards so a
+  // misheard word can be fixed by hand instead of by saying the whole thing
+  // again — "Ambler" coming back as "Amber" should cost one keystroke.
+  const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
   // Guards against a second submit while a turn is in flight, without waiting
   // for the `thinking` state to land.
   const busyRef = useRef(false);
@@ -119,7 +127,14 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [onSlots, onReady, onSwitchToTyping]);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    onSessionEnd: send,
+    // Speech lands in the box rather than being sent straight off, so what was
+    // heard can be read and corrected before it counts. The exception is the
+    // wake word: saying it is an explicit "go", and stopping to ask someone to
+    // confirm what they just confirmed would undo the hands-free path.
+    onSessionEnd: (text) => {
+      setDraft(text);
+      if (WAKE_WORD.test(text)) send(text);
+    },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
     holdSpace: true,
@@ -136,14 +151,24 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
   const live = [transcript, interim].filter(Boolean).join(" ");
 
-  // What you said, kept on screen after you stop talking.
-  //
-  // This used to be dropped the instant listening ended: the live transcript
-  // was only rendered while `listening`, and the line fell back to a summary
-  // built from slots that do not exist until the request comes back. So your
-  // words vanished and the opening question reappeared, which reads as though
-  // nothing was heard at all.
-  const heard = listening ? live : lastUser;
+  // One box for both ways in: the live transcript while the mic is on, your own
+  // editable text once it is off. Speech fills it, typing corrects it, and a
+  // misheard town costs a keystroke rather than saying the whole brief again.
+  const boxValue = listening ? live : draft;
+
+  function submitDraft() {
+    const text = draft.trim();
+    if (!text || thinking || disabled) return;
+    // Goes as another turn. The session re-reads the whole conversation each
+    // time, so a corrected sentence overrides what it heard before — the same
+    // mechanism that makes "actually, make it sellers" work.
+    send(text);
+    setDraft("");
+  }
+
+  // Everything the script actually needs. Until these are in, saying the wake
+  // word would start a render of a brief with no place or no subject.
+  const briefReady = !!(slots.topic && slots.city && slots.state);
 
   // What voice has captured so far, condensed to one line — the compact
   // stand-in for the big centered heading the old design used.
@@ -168,36 +193,45 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-start gap-2.5">
+      {/* The box. Speech writes into it, typing edits it, and Send commits —
+          one field for both ways in rather than a transcript you can only read
+          next to a separate place to type. */}
+      <textarea
+        ref={boxRef}
+        value={boxValue}
+        onChange={(e) => setDraft(e.target.value)}
+        // Locked only while the mic is running, where the recogniser owns the
+        // value and a keystroke would be overwritten on the next result.
+        readOnly={listening}
+        disabled={disabled}
+        rows={2}
+        placeholder="Type what you want, or hit the mic and just say it…"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submitDraft();
+          }
+        }}
+        className="w-full resize-none rounded-[12px] border border-spark-rule bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60"
+      />
+
+      <div className="flex items-center gap-2.5">
         <button
           type="button"
           onClick={toggle}
           disabled={disabled || thinking}
           aria-pressed={listening}
-          aria-label={listening ? "Stop recording" : "Answer"}
-          className="relative flex h-9 w-9 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={listening ? "Stop recording" : "Speak"}
+          className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:opacity-50"
         >
           {listening && (
             <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />
           )}
-          <Mic size={16} className="relative text-white" />
+          <Mic size={18} className="relative text-white" />
         </button>
 
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-spark-ink">{status}</p>
-
-          {/* Not truncated. A brief is a sentence or two, and clipping it to
-              one line hid the end of what was just said — including the wake
-              word, which is the part that matters most. */}
-          {heard && (
-            <p className="mt-1 text-[15px] leading-[1.45] text-spark-ink">
-              {heard}
-              {listening && interim && (
-                <span className="ml-0.5 inline-block h-[15px] w-px translate-y-[2px] animate-pulse bg-spark-amber" />
-              )}
-            </p>
-          )}
-
           {secondLine && (
             <p className="mt-0.5 text-[12px] leading-[1.45] text-spark-ink-muted">
               {secondLine}
@@ -205,20 +239,28 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           )}
         </div>
 
-        {/* Full back-and-forth, off by default. The compact row above already
-            shows what matters — what was captured — so the turn-by-turn
-            transcript is a "show more", not something that should cost space
-            by default. */}
+        {/* Full back-and-forth, off by default. The box above already shows
+            what matters — what was captured — so the turn-by-turn transcript
+            is a "show more", not something that should cost space by default. */}
         {turns.length > 1 && (
           <button
             type="button"
             onClick={() => setShowTranscript((v) => !v)}
-            className="flex flex-none items-center gap-1 self-center text-[12px] font-medium text-spark-amber hover:text-spark-blue"
+            className="flex flex-none items-center gap-1 text-[12px] font-medium text-spark-amber hover:text-spark-blue"
           >
             Conversation
             {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={submitDraft}
+          disabled={!draft.trim() || thinking || disabled || listening}
+          className="flex-none rounded-full bg-spark-blue px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+        >
+          Send
+        </button>
       </div>
 
       {showTranscript && turns.length > 1 && (
@@ -242,13 +284,24 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         </div>
       )}
 
-      <p className="flex flex-wrap items-center gap-1.5 text-[12px] text-spark-ink-faint">
-        <span>Say</span>
-        <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-medium text-spark-amber">
-          SparkReels
-        </span>
-        <span>to make it</span>
-      </p>
+      {/* The wake word, said only once saying it would do something.
+          It used to sit here permanently, from the moment the page loaded --
+          so the first thing you were told was how to fire a render of a brief
+          that had no town and no subject yet. Now it appears when the brief is
+          actually complete, and says what it will do. */}
+      {briefReady && !listening && !thinking && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[13px] text-spark-ink">
+          <CheckCircle size={14} className="flex-none text-spark-blue" />
+          <span className="font-medium">That&rsquo;s everything I need.</span>
+          <span className="text-spark-ink-muted">
+            Say{" "}
+            <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-semibold text-spark-amber">
+              SparkReels
+            </span>{" "}
+            to write the script, or keep talking to change something.
+          </span>
+        </div>
+      )}
     </div>
   );
 }

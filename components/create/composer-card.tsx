@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, Keyboard } from "lucide-react";
 
 /** One thing the brief needs. Shows the question until it has an answer, then
  *  the short label — the v2 design's way of asking for four things without
@@ -16,8 +15,6 @@ export interface ComposerChip {
 }
 
 interface ComposerCardProps {
-  inputStyle: "speak" | "type";
-  onInputStyleChange: (next: "speak" | "type") => void;
   chips: ComposerChip[];
   /** Rotating example lines, shown only while the brief is still empty. */
   tryLines?: string[];
@@ -42,12 +39,9 @@ interface ComposerCardProps {
  * been wrong for every path except speaking.
  */
 export function ComposerCard({
-  inputStyle,
-  onInputStyleChange,
   chips,
   tryLines = [],
   showTryLine = false,
-  disabled = false,
   children,
 }: ComposerCardProps) {
   const [tryIdx, setTryIdx] = useState(0);
@@ -103,36 +97,6 @@ export function ComposerCard({
               {chip.ok ? chip.label : chip.ask}
             </span>
           ))}
-
-          {/* The speak-or-type choice, as a segmented control in the same row
-              rather than the two big tiles that used to sit above the card.
-              Same decision, a quarter of the height — and beside the input it
-              actually changes. */}
-          <div className="ml-auto flex flex-none items-center gap-0.5 rounded-nav border border-spark-rule bg-[#faf8f2] p-0.5">
-            {([
-              { key: "speak" as const, label: "Speak", Icon: Mic },
-              { key: "type" as const, label: "Type", Icon: Keyboard },
-            ]).map(({ key, label, Icon }) => {
-              const active = inputStyle === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => onInputStyleChange(key)}
-                  disabled={disabled}
-                  aria-pressed={active}
-                  className={`flex items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                    active
-                      ? "bg-white text-spark-ink shadow-[0_1px_2px_rgba(44,44,42,0.08)]"
-                      : "text-spark-ink-muted hover:text-spark-ink"
-                  }`}
-                >
-                  <Icon size={13} className={active ? "text-spark-amber" : undefined} />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
     </>

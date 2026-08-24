@@ -22,7 +22,6 @@ import {
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
-import { VoiceTopicHero } from "@/components/create/voice-topic-hero";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard } from "@/components/create/composer-card";
@@ -653,9 +652,6 @@ function CreatePageInner() {
   // choosing a template before filling the location still ends up with the
   // real place in it rather than a literal "your city".
   const [topicTemplateRaw, setTopicTemplateRaw] = useState<string | null>(null);
-  // Speak or type. Offered at the top of the page rather than hidden under the
-  // mic, so neither reads as the fallback.
-  const [inputStyle, setInputStyle] = useState<"speak" | "type">("speak");
   // filter(Boolean) matters: "".split(/\s+/) is [""], which counts as one word
   // and made an empty box read "1 / 500".
   const pasteWordCount = pasteScript.trim().split(/\s+/).filter(Boolean).length;
@@ -851,13 +847,7 @@ function CreatePageInner() {
             AI writes it · Step 1 of 5
           </p>
           <ComposerCard
-            inputStyle={inputStyle}
-            onInputStyleChange={setInputStyle}
-            disabled={locGenerating}
-            // Speak mode only. Typing mode rotates the same lines through the
-            // field's placeholder instead, which is where someone typing is
-            // actually looking — and speak mode has no field to put them in.
-            showTryLine={inputStyle === "speak" && !locCustomTopic.trim()}
+            showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
             chips={[
               { label: "Topic", ask: "What's it about?", ok: !!locCustomTopic.trim() },
@@ -869,10 +859,14 @@ function CreatePageInner() {
               { label: "Format", ask: "Reel or YouTube?", ok: formatTouched },
             ]}
           >
-          {inputStyle === "speak" ? (
+            {/* One input for both ways in. Speech writes into the box, typing
+                edits it, and Send commits — so a misheard word is a keystroke
+                to fix rather than the whole brief said again. The speak-or-type
+                choice this replaced was asking which of two boxes to show, when
+                the answer was always "the one that takes both". */}
             <VoiceBriefSession
               disabled={locGenerating}
-              onSwitchToTyping={() => setInputStyle("type")}
+              onSwitchToTyping={() => { /* the box already takes typing */ }}
               // Only ever fills blanks it has an answer for — a null slot
               // must not wipe something already typed or picked from a chip.
               onSlots={(s) => {
@@ -890,19 +884,6 @@ function CreatePageInner() {
               }}
               onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
             />
-          ) : (
-            <VoiceTopicHero
-              value={locCustomTopic}
-              onChange={(t) => { setLocCustomTopic(t); setTopicTemplateRaw(null); }}
-              onSubmit={() => { if (canContinue && !locGenerating) handleGenerateScript(); }}
-              onBrowseTemplates={openTemplates}
-              templateCount={TEMPLATE_COUNT}
-              disabled={locGenerating}
-              typed
-              onTypedChange={(t) => setInputStyle(t ? "type" : "speak")}
-              placeholderExamples={TRY_LINES}
-            />
-          )}
           </ComposerCard>
 
           {/* ── Spark an idea ──
@@ -1557,11 +1538,10 @@ function CreatePageInner() {
                 Speaking one fills the market above and writes the
                 teleprompter. Same session component and endpoint as the
                 AI-writes-it tab — the brief is the same brief. */}
-            {inputStyle === "speak" && (
-              <div className="mb-4">
+            <div className="mb-4">
                 <VoiceBriefSession
                   disabled={cameraScriptGenerating}
-                  onSwitchToTyping={() => setInputStyle("type")}
+                  onSwitchToTyping={() => { /* the box already takes typing */ }}
                   onSlots={(sl) => {
                     if (sl.city) setLocCity(sl.city);
                     if (sl.state) setLocState(sl.state);
@@ -1573,8 +1553,7 @@ function CreatePageInner() {
                   }}
                   onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic)}
                 />
-              </div>
-            )}
+            </div>
 
             {/* Market for THIS video. Without it the CTA and end card silently
                 fell back to the profile's home city — a Willow Grove listing
