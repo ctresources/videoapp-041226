@@ -55,6 +55,10 @@ export function useSpeechRecognition({
   // The recogniser's uncommitted tail, kept in a ref so onend can read it
   // without waiting for a render.
   const pendingRef = useRef("");
+  // Whether this session has already handed its words over. A session can end
+  // by the mic being pressed, by silence, or by the browser stopping on its
+  // own, and more than one of those can fire for a single session.
+  const endedRef = useRef(false);
   // Handlers live in refs so start/stop can stay dependency-free and still call
   // the current ones rather than those from the render that opened the session.
   const onSessionEndRef = useRef(onSessionEnd);
@@ -62,7 +66,9 @@ export function useSpeechRecognition({
   const onUnsupportedRef = useRef(onUnsupported);
   onUnsupportedRef.current = onUnsupported;
 
-  const stop = useCallback((showHint = false) => {
+  /** `deliver: false` tears the session down without handing its words over —
+   *  used on unmount, where there is no longer anyone to hand them to. */
+  const stop = useCallback((deliver = true) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -79,7 +85,22 @@ export function useSpeechRecognition({
     }
     setListening(false);
     setInterim("");
-    if (showHint) toast("No speech detected — tap the mic and try again.", { icon: "🎙️" });
+
+    // Deliver here rather than in onend.
+    //
+    // onend guards on the ref still pointing at its own session, which is what
+    // stops a re-entrant stop() firing the handler once per level. But pressing
+    // the mic to stop clears that ref first, so by the time onend ran the guard
+    // was already false and the turn was dropped on the floor: nothing sent, no
+    // slots, no reply. Only falling silent and letting the timeout end the
+    // session ever reached the handler.
+    //
+    // endedRef makes it exactly once per session however the session ends.
+    if (!deliver || !active || endedRef.current) return;
+    endedRef.current = true;
+    const captured = [settledRef.current, pendingRef.current].filter(Boolean).join(" ").trim();
+    if (!captured) toast("No speech detected — tap the mic and try again.", { icon: "🎙️" });
+    onSessionEndRef.current?.(captured);
   }, []);
 
   const start = useCallback(() => {
@@ -104,6 +125,7 @@ export function useSpeechRecognition({
 
     settledRef.current = "";
     pendingRef.current = "";
+    endedRef.current = false;
     setTranscript("");
 
     recognition.onresult = (e: {
@@ -122,20 +144,12 @@ export function useSpeechRecognition({
       setInterim(pendingRef.current);
     };
 
+    // The session ending on its own — silence, or the browser giving up.
+    // stop() does the delivering for every path, so this only has to route
+    // into it; its endedRef guard makes a second onend harmless.
     recognition.onend = () => {
-      // Guard against a duplicate onend for the same session: the handler is
-      // what starts a turn, and firing it twice sends the same words twice.
       if (recognitionRef.current !== recognition) return;
-      // The uncommitted tail counts. Browsers usually finalise before onend,
-      // but not when the session is stopped mid-phrase — and there the tail is
-      // the end of the sentence the user just watched appear. Dropping it made
-      // whole utterances vanish on stop, or arrive truncated.
-      //
-      // settled and pending are disjoint: onresult splits one results list by
-      // isFinal, so joining them cannot duplicate a word.
-      const captured = [settledRef.current, pendingRef.current].filter(Boolean).join(" ").trim();
-      stop(/* showHint= */ !captured);
-      onSessionEndRef.current?.(captured);
+      stop();
     };
 
     recognition.onerror = (e: { error: string }) => {
@@ -153,7 +167,7 @@ export function useSpeechRecognition({
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
-    timeoutRef.current = setTimeout(() => stop(!settledRef.current), TIMEOUT_MS);
+    timeoutRef.current = setTimeout(() => stop(), TIMEOUT_MS);
   }, [disabled, stop]);
 
   const toggle = useCallback(() => {
@@ -190,7 +204,7 @@ export function useSpeechRecognition({
   }, [holdSpace, start, stop, disabled]);
 
   // Never leave a recogniser running behind an unmounted component
-  useEffect(() => () => stop(), [stop]);
+  useEffect(() => () => stop(/* deliver= */ false), [stop]);
 
   return { listening, interim, transcript, start, stop, toggle };
 }

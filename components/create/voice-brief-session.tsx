@@ -131,13 +131,19 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [onSlots, onReady, onSwitchToTyping]);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    // Stopping ends your turn and the session answers, so speaking is a
-    // conversation rather than a way of filling a box you then have to submit.
+    // What you said stays in the box, so it can be read and corrected before
+    // it counts — and so Send is lit and obviously the next thing to press.
+    // The exception is the wake word: saying it is an explicit go, and asking
+    // someone to confirm what they just confirmed would undo hands-free.
     onSessionEnd: (captured) => {
       const text = captured.trim();
       if (!text) return;
-      send(text);
-      setDraft("");
+      if (WAKE_WORD.test(text)) {
+        send(text);
+        setDraft("");
+        return;
+      }
+      setDraft(text);
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
