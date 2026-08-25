@@ -677,20 +677,38 @@ function CreatePageInner() {
   // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
   // paste, listing and camera all move through the same processing states, and
   // "Step 1" is the page's own existing language for where you are.
+  // Every tab writes a script; they just start from different material. The
+  // rail read only the AI tab's state before, so it sat at "Step 1 · 10%"
+  // through an entire paste or camera brief however much had been filled in.
+  const anyGenerating =
+    locGenerating || pasteGenerating || pasteUploadGenerating || cameraScriptGenerating;
+  const tabReady =
+    inputMode === "script" ? canContinue
+      : inputMode === "camera" ? readyToContinue || !!cameraVoiceTopic.trim() || !!cameraGeneratedScript.trim()
+        : inputMode === "paste" ? !!pasteScript.trim()
+          : false;
+
   const railLabel =
     step === "uploading" ? "Uploading"
       : step === "transcribing" ? "Transcribing"
         : step === "done" ? "Ready"
-          : locGenerating ? "Sparking"
+          : anyGenerating ? "Sparking"
             : "Step 1";
   const railPercent =
     step === "done" ? 100
       : step === "transcribing" ? 75
-        : locGenerating ? 60
+        : anyGenerating ? 60
           : step === "uploading" ? 50
-            : canContinue || readyToContinue ? 25
+            : tabReady ? 25
               : 10;
   usePublishCreateProgress(railLabel, railPercent);
+
+  // Which of the three ways in you are on. Shown on every tab: they are all
+  // step 1 of the same five, and only the AI tab said so.
+  const tabLabel =
+    inputMode === "camera" ? "My camera"
+      : inputMode === "script" ? "AI writes it"
+        : "From my material";
 
   // Only the AI-script flow has been moved onto the fixed bar so far; the
   // paste, listing and camera flows still carry their own inline CTAs.
@@ -844,7 +862,7 @@ function CreatePageInner() {
       {inputMode === "script" && step === "input" && (
         <div className="mt-7 flex flex-col gap-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            AI writes it · Step 1 of 5
+            {tabLabel} · Step 1 of 5
           </p>
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
@@ -1152,7 +1170,10 @@ function CreatePageInner() {
           PASTE SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
-        <div className="grid lg:grid-cols-2 gap-3 items-start">
+        <div className="mt-7 grid lg:grid-cols-2 gap-3 items-start">
+          <p className="lg:col-span-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
+            {tabLabel} · Step 1 of 5
+          </p>
           {/* Sub-toggle — switch between the two My Content flows */}
           <div className="lg:col-span-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
@@ -1522,7 +1543,10 @@ function CreatePageInner() {
           stretch into unreadable lines on a wide monitor.
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
-        <div className="max-w-3xl">
+        <div className="mt-7 max-w-3xl">
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
+            {tabLabel} · Step 1 of 5
+          </p>
           <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
