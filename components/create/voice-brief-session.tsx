@@ -46,6 +46,14 @@ interface Props {
   /** Escape hatch — hands over to the typed form. */
   onSwitchToTyping: () => void;
   disabled?: boolean;
+  /**
+   * Text dropped into the box from outside — picking a trending topic or a
+   * template. It lands as a draft rather than being sent, so it can be added
+   * to ("...aimed at downsizers") before it counts as your turn.
+   *
+   * Carries a nonce because picking the same topic twice must still land.
+   */
+  seed?: { text: string; n: number };
 }
 
 /**
@@ -65,7 +73,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed }: Props) {
   const [turns, setTurns] = useState<Turn[]>([{ role: "assistant", content: OPENING_LINE }]);
   const [thinking, setThinking] = useState(false);
   const [slots, setSlots] = useState<BriefSlots>(EMPTY_SLOTS);
@@ -129,24 +137,33 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [onSlots, onReady, onSwitchToTyping]);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    // What you said stays in the box, so it can be read and corrected before
-    // it counts — and so Send is lit and obviously the next thing to press.
-    // The exception is the wake word: saying it is an explicit go, and asking
-    // someone to confirm what they just confirmed would undo hands-free.
+    // Stopping ends your turn and the session answers — asks for whatever is
+    // still missing, or reads the brief back and asks if you are done.
+    // Leaving the words sitting in the box waiting for Send meant that falling
+    // silent looked like nothing had happened at all.
+    //
+    // What you said stays visible on the "You said" line, and a correction
+    // goes as another turn: the session re-reads the whole conversation each
+    // time, so a later sentence overrides an earlier one.
     onSessionEnd: (captured) => {
       const text = captured.trim();
       if (!text) return;
-      if (saidGoAhead(text)) {
-        send(text);
-        setDraft("");
-        return;
-      }
-      setDraft(text);
+      send(text);
+      setDraft("");
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
     holdSpace: true,
   });
+
+  // A picked topic lands in the box and puts the cursor after it, so it reads
+  // as a starting point you can add to rather than a decision already made.
+  useEffect(() => {
+    if (!seed?.text) return;
+    setDraft(seed.text);
+    boxRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed?.n]);
 
   // Keep the newest exchange in view as the conversation grows, but only while
   // the transcript is actually open — no point animating a scroll no one sees.

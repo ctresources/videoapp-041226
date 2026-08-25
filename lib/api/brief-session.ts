@@ -83,7 +83,12 @@ export function coerceSlots(raw: unknown): BriefSlots {
     city: str(o.city, 80),
     state: stateRaw ? parseStateAbbr(stateRaw) : null,
     topic: str(o.topic, 300),
-    audience: pick(o.audience, AUDIENCES),
+    // Free text, not one of a fixed six. "People relocating" is a real
+    // audience and a closed vocabulary silently dropped it — the model
+    // returned it, pick() found no match, and it landed as null with nothing
+    // saying why. The list is a set of suggestions in the prompt now, not a
+    // gate here. Capped and trimmed like any other spoken field.
+    audience: str(o.audience, 60),
     tone: pick(o.tone, TONES),
     length: length === "long" ? "long" : length === "standard" ? "standard" : null,
     platform: platform === "reel" ? "reel" : platform === "youtube" ? "youtube" : null,
@@ -113,7 +118,7 @@ export async function runBriefTurn(turns: BriefTurn[]): Promise<BriefSessionResu
 Collect these fields:
 - city and state (state as a 2-letter abbreviation) — REQUIRED
 - topic: what the video is about, in the agent's own words — REQUIRED
-- audience: one of ${AUDIENCES.join(", ")} — optional
+- audience: who the video is for, in their words. Common ones are ${AUDIENCES.join(", ")}, but anything they say counts — "people relocating", "downsizers", "first responders". Do not force it to the nearest common one — optional
 - tone: one of ${TONES.join(", ")} — optional
 - length: "standard" (~${minutesFor(shortWords)} min, ${shortWords} words) or "long" (~${minutesFor(LONG_MAX_WORDS)} min) — optional
 - platform: "reel" (vertical 9:16) or "youtube" (horizontal 16:9) — optional
@@ -123,7 +128,7 @@ Return ONLY this JSON, no code fence:
 
 Rules for the fields:
 - Re-read the WHOLE conversation each time and return the current value of every field. A later correction replaces an earlier answer — if they said Buyers and then "actually sellers", audience is Sellers.
-- Never invent a value. If they haven't said it, it stays null. Only use the listed audience and tone words; if what they said isn't one of them, leave it null rather than forcing the nearest.
+- Never invent a value. If they haven't said it, it stays null. Tone must be one of the listed words or null — do not force the nearest. Audience is their own words, kept short.
 - Length: "shorts", "a short one", "under four minutes", "keep it short" → standard. "longform", "long video", "eight minutes", "in depth" → long.
 - Shape: "vertical", "nine by sixteen", "reel", "TikTok" → platform reel. "horizontal", "landscape", "sixteen by nine", "YouTube" → platform youtube.
 - Shorts run either way up, but longform is horizontal only — so if length is long, platform is always youtube, whatever shape they asked for.

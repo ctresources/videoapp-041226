@@ -78,6 +78,10 @@ type InputMode = "script" | "camera" | "listing" | "paste" | "content";
 // field's placeholder, and a three-word example there taught people to type
 // three words and stop — leaving the market, audience and tone to be asked
 // for separately when they could have said it all in one breath.
+/** The common ones, offered first. Anything else you say joins them. */
+const BASE_AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"];
+const AUDIENCE_KEY = "spark_custom_audiences";
+
 const TRY_LINES = [
   "Make a market update for my area — prices are up, homes are moving fast.",
   "Tell the story of the home I just sold, start to finish.",
@@ -121,6 +125,10 @@ function CreatePageInner() {
 
   // Advanced options
   const [locAudience, setLocAudience] = useState("");
+  // Audiences this user has used that are not one of the common six.
+  const [customAudiences, setCustomAudiences] = useState<string[]>([]);
+  // A topic picked from the spark panel, on its way into the composer box.
+  const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
   // Chosen BEFORE generating: the script has to be written to length, or a
@@ -178,6 +186,13 @@ function CreatePageInner() {
 
   // Paste tab upload-based script generation
   const [pasteUploadGenerating, setPasteUploadGenerating] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(AUDIENCE_KEY) ?? "[]");
+      if (Array.isArray(saved)) setCustomAudiences(saved.filter((a) => typeof a === "string"));
+    } catch { /* private mode, or a corrupt entry — the six defaults still work */ }
+  }, []);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -351,6 +366,22 @@ function CreatePageInner() {
     const updated = [...savedMarkets, { city: c, state: s }];
     setSavedMarkets(updated);
     persistMarkets(updated);
+  }
+
+  /**
+   * Remembers an audience that is not one of the common six, so "people
+   * relocating" is in the picker next time rather than something you have to
+   * say again. Local, not on the profile: it is a convenience for this
+   * browser, and nothing else reads it.
+   */
+  function rememberAudience(raw: string) {
+    const a = raw.trim();
+    if (!a) return;
+    const known = [...BASE_AUDIENCES, ...customAudiences];
+    if (known.some((k) => k.toLowerCase() === a.toLowerCase())) return;
+    const updated = [...customAudiences, a].slice(-12);
+    setCustomAudiences(updated);
+    try { localStorage.setItem(AUDIENCE_KEY, JSON.stringify(updated)); } catch { /* private mode */ }
   }
 
   function removeMarket(city: string, state: string) {
@@ -893,7 +924,7 @@ function CreatePageInner() {
                 if (s.city) setLocCity(s.city);
                 if (s.state) setLocState(s.state);
                 if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
-                if (s.audience) setLocAudience(s.audience);
+                if (s.audience) { setLocAudience(s.audience); rememberAudience(s.audience); }
                 if (s.tone) setLocTone(s.tone);
                 if (s.length) { setLocLength(s.length); setFormatTouched(true); }
                 if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
@@ -903,6 +934,7 @@ function CreatePageInner() {
                 if (s.length === "long") setLocPlatform("youtube");
               }}
               onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
+              seed={sparkSeed}
             />
           </ComposerCard>
 
@@ -914,7 +946,14 @@ function CreatePageInner() {
           <SparkPanel
             city={locCity || undefined}
             state={locState || undefined}
-            onSelect={(topic, raw) => { setLocCustomTopic(topic); setTopicTemplateRaw(raw); }}
+            // Also drops the topic into the composer, so a pick is the start of
+            // a sentence you can add to rather than a silent field change
+            // somewhere further down the page.
+            onSelect={(topic, raw) => {
+              setLocCustomTopic(topic);
+              setTopicTemplateRaw(raw);
+              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
+            }}
           />
         </div>
       )}
@@ -1036,8 +1075,17 @@ function CreatePageInner() {
               <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
                   {[
                     {
+                      // Custom audiences join the list. Saying "people
+                      // relocating" used to land nowhere: the value was not one
+                      // of the six, so the select showed blank and the answer
+                      // was silently lost. Anything spoken or saved is an
+                      // option here, and persists for next time.
                       label: "Audience", value: locAudience, set: setLocAudience,
-                      options: [["", "Any"], ["Buyers", "Buyers"], ["Sellers", "Sellers"], ["Investors", "Investors"], ["First-Time Buyers", "First-Time"], ["Luxury", "Luxury"], ["Mixed", "Mixed"]],
+                      options: [
+                        ["", "Any"],
+                        ...BASE_AUDIENCES.map((a) => [a, a] as [string, string]),
+                        ...customAudiences.map((a) => [a, a] as [string, string]),
+                      ] as [string, string][],
                     },
                     {
                       label: "Style", value: locTone, set: setLocTone,

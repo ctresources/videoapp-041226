@@ -262,7 +262,7 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
             }}
             className="min-w-0 flex-1 cursor-pointer appearance-none border-none bg-transparent text-[16px] text-spark-ink focus:outline-none"
           >
-            <option value="">{restCount} more to choose from</option>
+            <option value="">Browse the rest</option>
             {TABS.map(({ key, label }) =>
               rest[key].length ? (
                 <optgroup key={key} label={label}>
