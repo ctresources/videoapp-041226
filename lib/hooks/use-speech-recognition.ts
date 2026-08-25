@@ -12,6 +12,17 @@ type AnyRecognition = any;
  */
 const TIMEOUT_MS = 30000;
 
+/**
+ * How long a pause means "I'm done".
+ *
+ * There was no answer to this before: with `continuous = true` the recogniser
+ * is told NOT to stop on its own, so the end of a turn was whatever Chrome
+ * happened to decide — usually seconds later, sometimes not until the 30s cap,
+ * and different again on Safari. Long enough to think mid-sentence, short
+ * enough that falling silent feels like it ended your turn.
+ */
+const SILENCE_MS = 3000;
+
 export interface UseSpeechRecognitionOptions {
   /**
    * Fired once when a listening session ends, with everything settled during
@@ -51,6 +62,10 @@ export function useSpeechRecognition({
 
   const recognitionRef = useRef<AnyRecognition>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Restarted on every result, so it only ever fires after a real pause. Armed
+  // by the first words rather than by the session opening — otherwise the
+  // three seconds run out while you are still deciding what to say.
+  const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settledRef = useRef("");
   // The recogniser's uncommitted tail, kept in a ref so onend can read it
   // without waiting for a render.
@@ -72,6 +87,10 @@ export function useSpeechRecognition({
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+    }
+    if (silenceRef.current) {
+      clearTimeout(silenceRef.current);
+      silenceRef.current = null;
     }
     // Clear the ref BEFORE stopping. Some implementations fire `onend`
     // synchronously from inside stop(), and onend calls back into here — with
@@ -142,6 +161,12 @@ export function useSpeechRecognition({
       pendingRef.current = pending.trim();
       setTranscript(settledRef.current);
       setInterim(pendingRef.current);
+
+      // Every word pushes the end of the turn further out; stopping pushing
+      // ends it. Interim results count, so this tracks the voice rather than
+      // the recogniser's slower decisions about what it heard.
+      if (silenceRef.current) clearTimeout(silenceRef.current);
+      silenceRef.current = setTimeout(() => stop(), SILENCE_MS);
     };
 
     // The session ending on its own — silence, or the browser giving up.

@@ -129,10 +129,13 @@ Return ONLY this JSON, no code fence:
 Rules for the fields:
 - Re-read the WHOLE conversation each time and return the current value of every field. A later correction replaces an earlier answer — if they said Buyers and then "actually sellers", audience is Sellers.
 - Never invent a value. If they haven't said it, it stays null. Tone must be one of the listed words or null — do not force the nearest. Audience is their own words, kept short.
-- Length: "shorts", "a short one", "under four minutes", "keep it short" → standard. "longform", "long video", "eight minutes", "in depth" → long.
-- Shape: "vertical", "nine by sixteen", "reel", "TikTok" → platform reel. "horizontal", "landscape", "sixteen by nine", "YouTube" → platform youtube.
-- Shorts run either way up, but longform is horizontal only — so if length is long, platform is always youtube, whatever shape they asked for.
+- A turn that only names who it is for — "for first-time buyers", "aim it at downsizers", "this one's for investors" — fills audience and changes nothing else. Once the brief already looks complete it is still a real answer: record it, and say back that you have got it.
+- Length: "a short one", "under four minutes", "keep it short" → standard. "longform", "long video", "eight minutes", "in depth" → long.
+- Shape: "vertical", "nine by sixteen", "reel", "TikTok" → platform reel. "horizontal", "landscape", "sixteen by nine", "a YouTube video" → platform youtube.
+- "Shorts", "a Shorts", "Reels" and "TikToks" name a format that is BOTH: set length to "standard" AND platform to "reel". They are vertical — the word "Shorts" must never be read as the platform "youtube" just because YouTube is where Shorts live.
+- A standard video can be either shape, but longform is horizontal only — so if length is long, platform is always youtube, whatever shape they asked for.
 - Keep topic close to their words. Don't expand it into a script brief.
+- Anything about length or shape is a format instruction, never part of the topic. "Make it a Shorts" sets the format; it is not something the video is about, and it must not be appended to what they said the video covers.
 
 Rules for "reply":
 - One or two sentences. It is spoken aloud, so no lists, no markdown, no field names.

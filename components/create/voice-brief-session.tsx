@@ -290,9 +290,50 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
   return (
     <div className="flex flex-col gap-2">
+      {/* The conversation reads above the box it is typed into, the way every
+          other conversation on a screen does. It used to open underneath —
+          below the box and below the summary — so the question you were
+          answering sat further down the page than your answer to it. The
+          toggle moved up with it rather than staying by the summary: a control
+          at the bottom opening a panel at the top is two places to look. */}
+      {turns.length > 1 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((v) => !v)}
+            className="flex items-center gap-1 text-[12px] font-medium text-spark-amber hover:text-spark-blue"
+          >
+            Conversation
+            {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+        </div>
+      )}
+
+      {showTranscript && turns.length > 1 && (
+        <div
+          ref={scrollRef}
+          className="spark-surface max-h-[140px] overflow-y-auto rounded-[9px] border border-spark-rule px-3.5 py-2.5"
+        >
+          <div className="flex flex-col gap-1.5">
+            {turns.map((t, i) => (
+              <p
+                key={i}
+                className={`text-[13px] leading-[1.5] ${
+                  t.role === "user" ? "text-spark-ink" : "text-spark-ink-faint"
+                }`}
+              >
+                {t.role === "user" ? "" : "— "}
+                {t.content}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* What you last said, so a spoken turn does not disappear the moment
-          the box clears to take the next one. */}
-      {lastUser && !listening && (
+          the box clears to take the next one. Redundant once the full
+          transcript is open, which ends on the same line. */}
+      {lastUser && !listening && !showTranscript && (
         <p className="pl-8.5 text-[13px] leading-[1.45] text-spark-ink-muted">
           <span className="text-spark-ink-faint">You said:</span> {lastUser}
         </p>
@@ -355,50 +396,22 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           {summary}
         </p>
 
-        {/* Full back-and-forth, off by default. The box above already shows
-            what matters — what was captured — so the turn-by-turn transcript
-            is a "show more", not something that should cost space by default. */}
-        {turns.length > 1 && (
+        {/* Only when it has something to send.
+            Speaking commits on its own — you stop talking and the turn goes —
+            so Send is the typing half of the box and nothing else. Sitting
+            there greyed out next to Spark Script, it read as the other way to
+            start the script, which is the one thing it never does. */}
+        {!listening && !!draft.trim() && (
           <button
             type="button"
-            onClick={() => setShowTranscript((v) => !v)}
-            className="flex flex-none items-center gap-1 text-[12px] font-medium text-spark-amber hover:text-spark-blue"
+            onClick={submitDraft}
+            disabled={thinking || disabled}
+            className="flex-none rounded-full bg-spark-blue px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
           >
-            Conversation
-            {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            Send
           </button>
         )}
-
-        <button
-          type="button"
-          onClick={submitDraft}
-          disabled={!draft.trim() || thinking || disabled || listening}
-          className="flex-none rounded-full bg-spark-blue px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-        >
-          Send
-        </button>
       </div>
-
-      {showTranscript && turns.length > 1 && (
-        <div
-          ref={scrollRef}
-          className="spark-surface max-h-[140px] overflow-y-auto rounded-[9px] border border-spark-rule px-3.5 py-2.5"
-        >
-          <div className="flex flex-col gap-1.5">
-            {turns.map((t, i) => (
-              <p
-                key={i}
-                className={`text-[13px] leading-[1.5] ${
-                  t.role === "user" ? "text-spark-ink" : "text-spark-ink-faint"
-                }`}
-              >
-                {t.role === "user" ? "" : "— "}
-                {t.content}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* The wake word, said only once saying it would do something.
           It used to sit here permanently, from the moment the page loaded --
