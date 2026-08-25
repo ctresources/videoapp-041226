@@ -1,5 +1,6 @@
 import { standardMaxWords, LONG_MAX_WORDS, minutesFor } from "@/lib/utils/video-length";
 import { parseStateAbbr } from "@/lib/utils/us-states";
+import { saidGoAhead } from "@/lib/utils/wake-word";
 
 /**
  * The spoken half of the voice session is the browser's Web Speech API — free,
@@ -89,43 +90,8 @@ export function coerceSlots(raw: unknown): BriefSlots {
   };
 }
 
-/**
- * Did the agent just say to go ahead?
- *
- * Decided here rather than asked of the model. Consent is a high-stakes binary
- * — a wrong yes starts a render they pay for — and when the model was asked, it
- * answered false to a plain "yes go ahead", which is the other failure: you say
- * it and nothing happens. A short matcher is duller and far more predictable.
- */
-export function saidGoAhead(lastUserTurn: string): boolean {
-  const t = lastUserTurn.toLowerCase().trim().replace(/[.!\s]+$/, "");
-  // "no, don't go ahead" and "not yet" both contain affirmatives, so negation
-  // is checked first and wins outright — including over the wake word.
-  if (/\b(no|nope|not yet|don'?t|do not|wait|hold on|hang on|stop|cancel|change)\b/.test(t)) return false;
-  // "Spark script" is the wake word: it names what actually happens next, and
-  // keeps it distinct from "Spark video", the separate paid step in the editor.
-  // The brand name still counts — it was the wake word first and people learned
-  // it — but it is no longer what the UI teaches, because "Reels" in it read as
-  // the video format of the same name.
-  //
-  // Shared with the editor session, which asks for "Spark video" at its own
-  // step, so both verbs are accepted here rather than split across two
-  // matchers that could drift apart.
-  //
-  // Speech recognition splits them as often as not, so "spark script",
-  // "sparkscript", "spark video", "spark reels" and "sparkreel" all count.
-  if (/(^|\b)spark\s?(script|video|reels?)(\b|$)/.test(t)) return true;
-
-  // Unambiguous anywhere in the sentence.
-  if (/(^|\b)(go ahead|go for it|generate it|let'?s go|yes|yep|yeah|yup|that'?s right|sounds good|perfect|correct)(\b|$)/.test(t)) {
-    return true;
-  }
-  // "make it", "do it" and bare "generate" only count as the last thing said.
-  // "make it about schools" and "make it shorter" are the user refining the
-  // brief, not agreeing to it, and firing a paid render on those is the exact
-  // mistake this function exists to avoid.
-  return /\b(make it|do it|generate)(\s+(now|please|then|thanks|thank you))*$/.test(t);
-}
+// Re-exported so the editor session and the route keep importing it from here.
+export { saidGoAhead };
 
 /**
  * Reads a whole conversation and returns the brief so far plus what to say next.

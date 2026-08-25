@@ -1959,7 +1959,13 @@ export default function ProjectEditorPage() {
               )}
             </div>
 
-            {/* PDF / URL Attachment */}
+            {/* PDF / URL attachment — From my material only.
+                It feeds the visual prompt, so it is not inert on the AI flow,
+                but by this step that script is already written and the label
+                promises to "enrich your video" from a document. Bringing
+                material is what the other tab is for; offering it here, four
+                steps in, reads as a step that was missed. */}
+            {isPaste && (<>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-slate-500">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
               <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
@@ -2003,6 +2009,7 @@ export default function ProjectEditorPage() {
               )}
               <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
+            </>)}
 
             {/* Say it up front when the render can't succeed, rather than
                 letting someone finish the whole flow and hit a 402. */}
@@ -2031,7 +2038,7 @@ export default function ProjectEditorPage() {
             <p className="text-[11px] text-spark-ink-faint">
               Click <span className="font-medium text-spark-ink-soft">Spark Video</span> or say{" "}
               <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-medium text-spark-amber">
-                SparkReels
+                Spark Video
               </span>{" "}
               to generate the video once you&rsquo;re 100% ready.
             </p>

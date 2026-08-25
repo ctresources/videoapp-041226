@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Mic, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { saidGoAhead } from "@/lib/utils/wake-word";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
 // "Sparking" rather than "making": it is the product's own verb, and the
@@ -10,9 +11,6 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 // than a form. Kept to one question — it is read aloud.
 const OPENING_LINE = "What are we sparking today?";
 
-/** Matches lib/api/brief-session.ts's saidGoAhead. "Spark script" is what the
- *  UI teaches; the brand name still counts for anyone who learned it first. */
-const WAKE_WORD = /(^|\b)spark\s?(script|reels?)(\b|$)/i;
 
 export interface BriefSlots {
   city: string | null;
@@ -138,7 +136,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     onSessionEnd: (captured) => {
       const text = captured.trim();
       if (!text) return;
-      if (WAKE_WORD.test(text)) {
+      if (saidGoAhead(text)) {
         send(text);
         setDraft("");
         return;
