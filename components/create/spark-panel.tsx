@@ -134,13 +134,21 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
     ideas: CONTENT_TEMPLATES.filter((t) => t.category !== "format").map(toSpark),
   }), [trending]);
 
-  const pool = pools[tab];
-  const six = useMemo(() => shuffled(pool, seed).slice(0, SHOWN), [pool, seed]);
+  // Every tab's six, not just the open one. All three are a tab click away, so
+  // anything drawn on any of them is already reachable by looking — the picker
+  // is for what is not. Trending and Formats hold exactly six, so they are
+  // fully on the cards and contribute nothing here.
+  const sixByTab = useMemo(() => ({
+    trending: shuffled(pools.trending, seed).slice(0, SHOWN),
+    formats: shuffled(pools.formats, seed).slice(0, SHOWN),
+    ideas: shuffled(pools.ideas, seed).slice(0, SHOWN),
+  }), [pools, seed]);
+  const six = sixByTab[tab];
 
-  // The picker holds what the cards do not. Listing all 35 meant six of them
-  // were already on screen an inch above, so the count promised more than it
-  // added and the first entries were duplicates of what you were looking at.
-  const shownTitles = useMemo(() => new Set(six.map((s) => s.title)), [six]);
+  const shownTitles = useMemo(
+    () => new Set([...sixByTab.trending, ...sixByTab.formats, ...sixByTab.ideas].map((s) => s.title)),
+    [sixByTab],
+  );
   const rest = useMemo(() => {
     const out: Record<keyof typeof pools, Spark[]> = { trending: [], formats: [], ideas: [] };
     (Object.keys(pools) as (keyof typeof pools)[]).forEach((k) => {
