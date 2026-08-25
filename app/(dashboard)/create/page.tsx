@@ -813,13 +813,9 @@ function CreatePageInner() {
               Be Visible.
             </span>
           </h1>
-          <p className="mt-3 text-[17px] leading-[1.4] text-spark-ink-muted text-pretty sm:text-[19px]">
-            {inputMode === "camera"
-              ? "Your face, your voice, your script — the teleprompter does the rest."
-              : inputMode === "paste" || inputMode === "listing" || inputMode === "content"
-                ? "Bring a listing sheet, a link or your photos. We turn it into a video."
-                : "No script, no prep, no camera. Just your local take."}
-          </p>
+          {/* No subline. It was pitching the product to someone who has
+              already bought it and is here to make a video — that argument
+              belongs on the landing page, not above the tool. */}
         </div>
       )}
 
