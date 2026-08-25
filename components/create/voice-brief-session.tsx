@@ -5,7 +5,10 @@ import toast from "react-hot-toast";
 import { Mic, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
-const OPENING_LINE = "What are we making? Tell me the area and what it's about.";
+// "Sparking" rather than "making": it is the product's own verb, and the
+// opening line is the one place the tool gets to sound like someone rather
+// than a form. Kept to one question — it is read aloud.
+const OPENING_LINE = "What are we sparking today? Give me the town and what's on your mind.";
 
 /** Matches lib/api/brief-session.ts's saidGoAhead. "Spark script" is what the
  *  UI teaches; the brand name still counts for anyone who learned it first. */
@@ -225,7 +228,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         readOnly={listening}
         disabled={disabled}
         rows={2}
-        placeholder="Type what you want, or hit the mic and just say it…"
+        placeholder="Say it or type it — whatever you'd tell a client…"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
