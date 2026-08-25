@@ -191,14 +191,25 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     // goes as another turn: the session re-reads the whole conversation each
     // time, so a later sentence overrides an earlier one.
     onSessionEnd: (captured) => {
-      const text = captured.trim();
-      if (!text) return;
+      const spoken = captured.trim();
+      if (!spoken) return;
+      // Speech adds to what is already in the box rather than replacing it.
+      // Picking a trending topic and then saying "in Blue Bell, PA" is the
+      // whole reason a pick lands as a draft instead of being sent — but the
+      // mic used to own the box outright, so the topic vanished the moment you
+      // pressed it and only the spoken half was ever sent.
+      const base = draft.trim();
+      const text = [base, spoken].filter(Boolean).join(" ");
       setDraft("");
       // The wake word, once the brief is genuinely complete: go now rather than
       // spend a model round trip being told what a regex already knows. The
       // turn is still recorded, so the transcript reads the way it was said.
-      if (briefReady && saidGoAhead(text)) {
-        setTurns((t) => [...t, { role: "user", content: text }]);
+      //
+      // Only when the wake word is the whole of what was said — with unsent
+      // text still in the box, that text has to reach the brief first, so it
+      // goes as a turn and the server decides `ready` the usual way.
+      if (!base && briefReady && saidGoAhead(spoken)) {
+        setTurns((t) => [...t, { role: "user", content: spoken }]);
         sparkNow();
         return;
       }
@@ -229,10 +240,24 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
   const live = [transcript, interim].filter(Boolean).join(" ");
 
-  // One box for both ways in: the live transcript while the mic is on, your own
-  // editable text once it is off. Speech fills it, typing corrects it, and a
+  // One box for both ways in. Speech fills it, typing corrects it, and a
   // misheard town costs a keystroke rather than saying the whole brief again.
-  const boxValue = listening ? live : draft;
+  //
+  // While the mic is on it shows what was already there plus the words landing
+  // now — the same string that will be sent. It used to show the live
+  // transcript alone, so pressing the mic wiped a topic you had just picked
+  // off the screen, and there was no way to tell it had only gone from view
+  // rather than been thrown away. It had in fact been thrown away.
+  const boxValue = listening ? [draft.trim(), live].filter(Boolean).join(" ") : draft;
+
+  // Two rows is not many. Once speech is appending to a topic already in the
+  // box, the words landing now sit below the fold — so the one thing you want
+  // to watch while talking is the one thing you cannot see.
+  useEffect(() => {
+    if (!listening) return;
+    const el = boxRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [listening, boxValue]);
 
   function submitDraft() {
     const text = draft.trim();
