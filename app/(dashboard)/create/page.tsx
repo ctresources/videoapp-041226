@@ -856,7 +856,7 @@ function CreatePageInner() {
               // Always satisfiable now that format is asked on this step. It
               // starts on a default, so this reads as "set" from the outset —
               // the chip is a reminder of what you can say, not a blocker.
-              { label: "Format", ask: "Reel or YouTube?", ok: formatTouched },
+              { label: "Format", ask: "Shorts or longform?", ok: formatTouched },
             ]}
           >
             {/* One input for both ways in. Speech writes into the box, typing
@@ -1047,27 +1047,29 @@ function CreatePageInner() {
                   ))}
                 </div>
 
-                {/* ── What? · Reel or YouTube ──
+                {/* ── What? · Shorts or Longform ──
                     Shape and length together, because they are one decision
-                    to say out loud ("a short reel", "a long YouTube one") and
-                    because the script is written to the length — by the time
-                    you reach the editor the words already exist.
+                    to say out loud ("a short vertical one", "a longform video")
+                    and because the script is written to the length — by the
+                    time you reach the editor the words already exist.
 
-                    Three tiles, not the design's four: long form renders
-                    landscape only, so a vertical 8-minute option would be a
-                    tile that cannot be built. */}
+                    Shorts run either way up; longform is horizontal only. That
+                    is not a UI choice — the render refuses long form for
+                    vertical (see isLongForm in api/video/create-blog), so a
+                    vertical longform tile would quietly clamp the script back
+                    to four minutes. */}
                 <div className="mt-6">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                      What? · Reel or YouTube
+                      What? · Shorts or Longform
                     </p>
                     <p className="text-[14px] text-spark-ink-muted">Default — change it anytime</p>
                   </div>
                   <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {([
-                      { p: "reel", l: "standard", title: "Reel", sub: "4 min · 9:16", w: "11px", h: "17px" },
-                      { p: "youtube", l: "standard", title: "YouTube", sub: "4 min · 16:9", w: "20px", h: "12px" },
-                      { p: "youtube", l: "long", title: "YouTube", sub: "8 min · 16:9", w: "20px", h: "12px" },
+                      { p: "reel", l: "standard", title: "Shorts", sub: "Under 4 min · 9:16 (vertical)", w: "11px", h: "17px" },
+                      { p: "youtube", l: "standard", title: "Shorts", sub: "Under 4 min · 16:9 (horizontal)", w: "20px", h: "12px" },
+                      { p: "youtube", l: "long", title: "Longform", sub: "Over 4 min · 16:9 (horizontal)", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
                       const on = locPlatform === p && locLength === l;
                       return (
@@ -1097,8 +1099,8 @@ function CreatePageInner() {
                   </div>
                   {locLength === "long" && (
                     <p className="mt-2 text-[12.5px] leading-[1.4] text-spark-ink-faint">
-                      Long videos read your full script start to finish and use your uploaded photos
-                      as the visuals.
+                      Longform runs up to 8 minutes, reads your full script start to finish, and
+                      uses your uploaded photos as the visuals. Horizontal only.
                     </p>
                   )}
                 </div>
@@ -1176,7 +1178,7 @@ function CreatePageInner() {
               <p className="text-sm font-bold text-slate-600 mb-2">Let AI Spark The Script</p>
               <div className="mb-2">
                 <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {CAMERA_LENGTHS.map((l) => (
                     <button
                       key={l.key}

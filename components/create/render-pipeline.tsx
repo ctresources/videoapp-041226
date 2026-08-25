@@ -54,7 +54,7 @@ function useRenderStatus(renderJobId: string | null) {
 }
 
 interface RenderPipelineProps {
-  /** Format and market line above the title — "Reel · 9:16 · Ambler, PA". */
+  /** Format and market line above the title — "Shorts · 9:16 (vertical) · Ambler, PA". */
   queueLabel: string;
   /** What is being made. */
   title: string;

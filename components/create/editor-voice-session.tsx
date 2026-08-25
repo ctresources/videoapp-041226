@@ -140,7 +140,7 @@ export function EditorVoiceSession({ script, onSettings, onScript, onRender, dis
           <p className="mt-0.5 text-[12px] leading-[1.45] text-spark-ink-muted">
             {live ||
               lastReply ||
-              "“Make it a reel, voice only, upbeat music.” Or “make the opening punchier.” Say SparkReels to render."}
+              "“Make it vertical, voice only, upbeat music.” Or “make the opening punchier.” Say Spark video to render."}
           </p>
         </div>
       </div>

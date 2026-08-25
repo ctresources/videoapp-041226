@@ -7,8 +7,9 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
 const OPENING_LINE = "What are we making? Tell me the area and what it's about.";
 
-/** Browser speech splits the name as often as not, so all three spellings count. */
-const WAKE_WORD = /(^|\b)spark\s?reels?(\b|$)/i;
+/** Matches lib/api/brief-session.ts's saidGoAhead. "Spark script" is what the
+ *  UI teaches; the brand name still counts for anyone who learned it first. */
+const WAKE_WORD = /(^|\b)spark\s?(script|reels?)(\b|$)/i;
 
 export interface BriefSlots {
   city: string | null;
@@ -296,9 +297,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           <span className="text-spark-ink-muted">
             Say{" "}
             <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-semibold text-spark-amber">
-              SparkReels
+              Spark Script
             </span>{" "}
-            to write the script, or keep talking to change something.
+            to write it, or keep talking to change something.
           </span>
         </div>
       )}

@@ -122,9 +122,9 @@ type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 type VideoChoice = VideoType | "youtube_long";
 
 const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "youtube_16x9", label: "YouTube", desc: "Landscape 16:9 · up to 4 min · automatic b-roll", credits: 1 },
-  { value: "reel_9x16", label: "Reel / TikTok / Short", desc: "Vertical 9:16 · up to 4 min · automatic b-roll", credits: 1 },
-  { value: "youtube_long", label: "Long Video / Blog", desc: "Landscape 16:9 · up to 8 min · uses your photos for visuals", proOnly: true, credits: 1 },
+  { value: "reel_9x16", label: "Shorts", desc: "Under 4 min · 9:16 (vertical) · automatic b-roll", credits: 1 },
+  { value: "youtube_16x9", label: "Shorts", desc: "Under 4 min · 16:9 (horizontal) · automatic b-roll", credits: 1 },
+  { value: "youtube_long", label: "Longform", desc: "Over 4 min, up to 8 · 16:9 (horizontal) · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
 // LONG_MAX_WORDS used to be a second copy of this number, kept in step by hand.
@@ -2094,14 +2094,14 @@ export default function ProjectEditorPage() {
               pastedScript: isPaste,
               longForm: selectedVideoType === "youtube_long",
             });
-            const shape = selectedVideoType === "reel_9x16" ? "9:16 for Reels"
-              : selectedVideoType === "short_1x1" ? "1:1 square"
-                : "16:9 for YouTube";
+            const shape = selectedVideoType === "reel_9x16" ? "9:16 (vertical)"
+              : selectedVideoType === "short_1x1" ? "1:1 (square)"
+                : "16:9 (horizontal)";
             const market = [project.location_city, project.location_state].filter(Boolean).join(", ");
             return (
               <RenderPipeline
                 queueLabel={[
-                  selectedVideoType === "reel_9x16" ? "Reel" : "YouTube",
+                  selectedVideoType === "youtube_long" ? "Longform" : "Shorts",
                   shape,
                   market || null,
                 ].filter(Boolean).join(" · ")}

@@ -81,7 +81,7 @@ Return ONLY this JSON, no code fence:
 {"videoType":null,"renderMode":null,"musicId":null,"captions":null,"scriptEdit":null,"needsFacts":false,"reply":""}
 
 Fields — return the CURRENT value of each, re-reading the whole conversation, and null for anything never mentioned:
-- videoType: "youtube_16x9" (landscape, YouTube), "reel_9x16" (vertical, reel, TikTok, Short), "youtube_long" (long video, 8 minutes, blog)
+- videoType: "reel_9x16" (shorts, vertical, 9:16, reel, TikTok), "youtube_16x9" (shorts, horizontal, 16:9, YouTube), "youtube_long" (longform, over 4 minutes, horizontal only)
 - renderMode: "avatar_voice" (avatar on screen, on camera, show me) or "voice_only" (voice only, no avatar, just narration)
 - musicId: one of ${musicList}, or "none" for no music
 - captions: true or false (subtitles, captions, burned-in text)
@@ -91,7 +91,7 @@ Fields — return the CURRENT value of each, re-reading the whole conversation, 
 Rules:
 - Never invent a value. Only use the listed ids. If what they said isn't one of them, leave it null rather than forcing the nearest.
 - A later instruction replaces an earlier one.
-- "reply" is one or two spoken sentences saying what you changed, then inviting "SparkReels" to render. No lists, no markdown, no field names.
+- "reply" is one or two spoken sentences saying what you changed, then inviting "Spark video" to render. No lists, no markdown, no field names.
 - Do not decide whether they consented to render — just invite it.`;
 
   const parsed = await chatJson(system, turns, { maxTokens: 400, label: "editor-session" });
@@ -105,7 +105,7 @@ Rules:
   const reply =
     typeof parsed.reply === "string" && parsed.reply.trim()
       ? parsed.reply.trim().slice(0, 400)
-      : "Got it. Say SparkReels to render.";
+      : "Got it. Say Spark video to render.";
 
   // Search costs a slower turn and a research-grade model, so it is spent
   // only where the answer depends on the world rather than on the words
