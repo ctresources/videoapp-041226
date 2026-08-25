@@ -136,7 +136,19 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
 
   const pool = pools[tab];
   const six = useMemo(() => shuffled(pool, seed).slice(0, SHOWN), [pool, seed]);
-  const totalCount = pools.trending.length + pools.formats.length + pools.ideas.length;
+
+  // The picker holds what the cards do not. Listing all 35 meant six of them
+  // were already on screen an inch above, so the count promised more than it
+  // added and the first entries were duplicates of what you were looking at.
+  const shownTitles = useMemo(() => new Set(six.map((s) => s.title)), [six]);
+  const rest = useMemo(() => {
+    const out: Record<keyof typeof pools, Spark[]> = { trending: [], formats: [], ideas: [] };
+    (Object.keys(pools) as (keyof typeof pools)[]).forEach((k) => {
+      out[k] = pools[k].filter((s) => !shownTitles.has(s.title));
+    });
+    return out;
+  }, [pools, shownTitles]);
+  const restCount = rest.trending.length + rest.formats.length + rest.ideas.length;
 
   function pick(s: Spark) {
     onSelect(substitutePlaceholders(s.raw, city?.trim(), state?.trim()), s.raw);
@@ -147,20 +159,20 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       id="spark-panel"
       className="scroll-mt-6 rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-4 py-4 sm:px-5"
     >
-      <div className="flex items-center gap-3.5">
-        <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-spark-amber text-[16px] text-white">
-          ✦
+      {/* "What's it about?" matches the chip — the thing this fills is the
+          topic, which is a what, and two names for one field is how someone
+          ends up hunting for a question they already answered.
+
+          The subtitle says what is actually in the panel. "Say or Choose to
+          Spark" was instructing rather than describing, and reads as talking
+          down once you can plainly see three tabs and six cards. */}
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
+          What&rsquo;s it about?
         </span>
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          {/* "What's it about?", matching the chip. The mock labelled this
-              "Why?" as one of a Why/Where/Who/What set, but the thing it fills
-              is the topic — which is a what. Two names for one field is how
-              you get someone hunting for a question they already answered. */}
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-            What&rsquo;s it about? · Spark an idea
-          </span>
-          <span className="text-[17px] font-semibold text-spark-ink">Say or Choose to Spark</span>
-        </div>
+        <span className="text-[17px] font-semibold text-spark-ink">
+          Topics, ideas and templates to spark you
+        </span>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -226,34 +238,38 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
         </div>
       )}
 
-      {/* Everything, in one control. Replaces the expanding browser that used
-          to push the rest of the page down by several screens. */}
-      <label className="mt-3.5 flex min-h-[60px] cursor-pointer items-center gap-3 rounded-[14px] border border-spark-rule bg-white px-4 py-3">
-        <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.13em] text-spark-ink-faint">
-          Or pick from
-        </span>
-        <select
-          value=""
-          onChange={(e) => {
-            const [group, idx] = e.target.value.split(":");
-            const s = pools[group as keyof typeof pools]?.[Number(idx)];
-            if (s) pick(s);
-          }}
-          className="min-w-0 flex-1 cursor-pointer appearance-none border-none bg-transparent text-[16px] text-spark-ink focus:outline-none"
-        >
-          <option value="">All {totalCount} topics</option>
-          {TABS.map(({ key, label }) => (
-            <optgroup key={key} label={label}>
-              {pools[key].map((s, i) => (
-                <option key={`${key}-${i}`} value={`${key}:${i}`}>
-                  {s.title}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <span className="flex-none text-[13px] text-spark-amber">▾</span>
-      </label>
+      {/* Everything the cards are not showing. Replaces the expanding browser
+          that used to push the rest of the page down by several screens. */}
+      {restCount > 0 && (
+        <label className="mt-3.5 flex min-h-[60px] cursor-pointer items-center gap-3 rounded-[14px] border border-spark-rule bg-white px-4 py-3">
+          <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.13em] text-spark-ink-faint">
+            Other sparks
+          </span>
+          <select
+            value=""
+            onChange={(e) => {
+              const [group, idx] = e.target.value.split(":");
+              const s = rest[group as keyof typeof rest]?.[Number(idx)];
+              if (s) pick(s);
+            }}
+            className="min-w-0 flex-1 cursor-pointer appearance-none border-none bg-transparent text-[16px] text-spark-ink focus:outline-none"
+          >
+            <option value="">{restCount} more to choose from</option>
+            {TABS.map(({ key, label }) =>
+              rest[key].length ? (
+                <optgroup key={key} label={label}>
+                  {rest[key].map((s, i) => (
+                    <option key={`${key}-${i}`} value={`${key}:${i}`}>
+                      {s.title}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null
+            )}
+          </select>
+          <span className="flex-none text-[13px] text-spark-amber">▾</span>
+        </label>
+      )}
     </section>
   );
 }

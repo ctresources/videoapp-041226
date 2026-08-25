@@ -189,26 +189,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
   return (
     <div className="flex flex-col gap-2">
-      {/* What the session just asked, above the box you answer it in.
-          This is a conversation — it asks for the market, then the topic, and
-          re-reads everything each turn so a correction lands. That was already
-          true, but the question was rendered as a 12px muted caption under the
-          mic, which reads as a status line, not as someone waiting on you. */}
-      {(lastAssistant || thinking) && (
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-spark-amber text-[12px] text-white">
-            ✦
-          </span>
-          <p className="min-w-0 flex-1 text-[15px] leading-[1.45] text-spark-ink">
-            {thinking ? (
-              <span className="text-spark-ink-faint">Thinking…</span>
-            ) : (
-              lastAssistant
-            )}
-          </p>
-        </div>
-      )}
-
       {/* What you last said, so a spoken turn does not disappear the moment
           the box clears to take the next one. */}
       {lastUser && !listening && (
@@ -217,9 +197,14 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         </p>
       )}
 
-      {/* Mic above the box, not beside it. You either press it or start
-          talking — it is the first move, so it reads before the field rather
-          than as a control attached to what you have already typed. */}
+      {/* Mic above the box, not beside it — you either press it or start
+          talking, so it is the first move rather than a control attached to
+          text you have already typed.
+
+          The session's question rides on this row instead of having a line and
+          an avatar of its own. It was saying "What are we sparking today?"
+          directly above a mic labelled "Say it or type it", which is the same
+          instruction told twice, once by a face. */}
       <div className="flex items-center gap-2.5">
         <button
           type="button"
@@ -234,8 +219,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           )}
           <Mic size={18} className="relative text-white" />
         </button>
-        <p className="min-w-0 flex-1 text-[13px] font-medium text-spark-ink">
-          {status || "Say it or type it"}
+        <p
+          className={`min-w-0 flex-1 text-[15px] leading-[1.4] ${
+            status ? "text-spark-ink-muted" : "font-medium text-spark-ink"
+          }`}
+        >
+          {status || lastAssistant || "Say it or type it"}
         </p>
       </div>
 
