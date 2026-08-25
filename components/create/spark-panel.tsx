@@ -152,8 +152,12 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
           ✦
         </span>
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          {/* "What's it about?", matching the chip. The mock labelled this
+              "Why?" as one of a Why/Where/Who/What set, but the thing it fills
+              is the topic — which is a what. Two names for one field is how
+              you get someone hunting for a question they already answered. */}
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-            Why? · Spark an idea
+            What&rsquo;s it about? · Spark an idea
           </span>
           <span className="text-[17px] font-semibold text-spark-ink">Say or Choose to Spark</span>
         </div>

@@ -1061,7 +1061,7 @@ function CreatePageInner() {
                 <div className="mt-6">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                      What? · Shorts or Longform
+                      Shorts or longform?
                     </p>
                     <p className="text-[14px] text-spark-ink-muted">Default — change it anytime</p>
                   </div>

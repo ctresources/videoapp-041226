@@ -52,6 +52,9 @@ export function useSpeechRecognition({
   const recognitionRef = useRef<AnyRecognition>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settledRef = useRef("");
+  // The recogniser's uncommitted tail, kept in a ref so onend can read it
+  // without waiting for a render.
+  const pendingRef = useRef("");
   // Handlers live in refs so start/stop can stay dependency-free and still call
   // the current ones rather than those from the render that opened the session.
   const onSessionEndRef = useRef(onSessionEnd);
@@ -100,6 +103,7 @@ export function useSpeechRecognition({
     recognition.maxAlternatives = 1;
 
     settledRef.current = "";
+    pendingRef.current = "";
     setTranscript("");
 
     recognition.onresult = (e: {
@@ -113,15 +117,23 @@ export function useSpeechRecognition({
         else pending += result[0].transcript;
       }
       settledRef.current = settled.trim();
+      pendingRef.current = pending.trim();
       setTranscript(settledRef.current);
-      setInterim(pending.trim());
+      setInterim(pendingRef.current);
     };
 
     recognition.onend = () => {
       // Guard against a duplicate onend for the same session: the handler is
       // what starts a turn, and firing it twice sends the same words twice.
       if (recognitionRef.current !== recognition) return;
-      const captured = settledRef.current;
+      // The uncommitted tail counts. Browsers usually finalise before onend,
+      // but not when the session is stopped mid-phrase — and there the tail is
+      // the end of the sentence the user just watched appear. Dropping it made
+      // whole utterances vanish on stop, or arrive truncated.
+      //
+      // settled and pending are disjoint: onresult splits one results list by
+      // isFinal, so joining them cannot duplicate a word.
+      const captured = [settledRef.current, pendingRef.current].filter(Boolean).join(" ").trim();
       stop(/* showHint= */ !captured);
       onSessionEndRef.current?.(captured);
     };

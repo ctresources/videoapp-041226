@@ -8,7 +8,7 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 // "Sparking" rather than "making": it is the product's own verb, and the
 // opening line is the one place the tool gets to sound like someone rather
 // than a form. Kept to one question — it is read aloud.
-const OPENING_LINE = "What are we sparking today? Give me the town and what's on your mind.";
+const OPENING_LINE = "What are we sparking today?";
 
 /** Matches lib/api/brief-session.ts's saidGoAhead. "Spark script" is what the
  *  UI teaches; the brand name still counts for anyone who learned it first. */
@@ -131,13 +131,13 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [onSlots, onReady, onSwitchToTyping]);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    // Speech lands in the box rather than being sent straight off, so what was
-    // heard can be read and corrected before it counts. The exception is the
-    // wake word: saying it is an explicit "go", and stopping to ask someone to
-    // confirm what they just confirmed would undo the hands-free path.
-    onSessionEnd: (text) => {
-      setDraft(text);
-      if (WAKE_WORD.test(text)) send(text);
+    // Stopping ends your turn and the session answers, so speaking is a
+    // conversation rather than a way of filling a box you then have to submit.
+    onSessionEnd: (captured) => {
+      const text = captured.trim();
+      if (!text) return;
+      send(text);
+      setDraft("");
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
@@ -183,16 +183,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     slots.length === "long" ? "long length" : slots.length === "standard" ? "standard length" : null,
   ].filter(Boolean).join(" · ");
 
-  const status = thinking
-    ? "Thinking…"
-    : listening
-      // Space is push-to-talk — release it (not hold it) to stop.
-      ? "Listening — click the mic, or release Spacebar, to stop"
-      : "Click the mic, or hold Spacebar, and answer";
-
-  // The reply now has its own line above the box, so this is only the running
-  // summary of what has been captured — never a second copy of the question.
-  const secondLine = listening ? (live ? "" : "Listening…") : thinking ? "" : summary;
+  // Only while it is doing something. Idle instructions sat here permanently
+  // restating what the mic button and the box already show.
+  const status = thinking ? "Thinking…" : listening ? "Listening — click to stop" : "";
 
   return (
     <div className="flex flex-col gap-2">
@@ -216,28 +209,17 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         </div>
       )}
 
-      {/* The box. Speech writes into it, typing edits it, and Send commits —
-          one field for both ways in rather than a transcript you can only read
-          next to a separate place to type. */}
-      <textarea
-        ref={boxRef}
-        value={boxValue}
-        onChange={(e) => setDraft(e.target.value)}
-        // Locked only while the mic is running, where the recogniser owns the
-        // value and a keystroke would be overwritten on the next result.
-        readOnly={listening}
-        disabled={disabled}
-        rows={2}
-        placeholder="Say it or type it — whatever you'd tell a client…"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submitDraft();
-          }
-        }}
-        className="w-full resize-none rounded-[12px] border border-spark-rule bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60"
-      />
+      {/* What you last said, so a spoken turn does not disappear the moment
+          the box clears to take the next one. */}
+      {lastUser && !listening && (
+        <p className="pl-8.5 text-[13px] leading-[1.45] text-spark-ink-muted">
+          <span className="text-spark-ink-faint">You said:</span> {lastUser}
+        </p>
+      )}
 
+      {/* Mic above the box, not beside it. You either press it or start
+          talking — it is the first move, so it reads before the field rather
+          than as a control attached to what you have already typed. */}
       <div className="flex items-center gap-2.5">
         <button
           type="button"
@@ -252,15 +234,36 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           )}
           <Mic size={18} className="relative text-white" />
         </button>
+        <p className="min-w-0 flex-1 text-[13px] font-medium text-spark-ink">
+          {status || "Say it or type it"}
+        </p>
+      </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-spark-ink">{status}</p>
-          {secondLine && (
-            <p className="mt-0.5 text-[12px] leading-[1.45] text-spark-ink-muted">
-              {secondLine}
-            </p>
-          )}
-        </div>
+      <textarea
+        ref={boxRef}
+        value={boxValue}
+        onChange={(e) => setDraft(e.target.value)}
+        // Locked only while the mic is running, where the recogniser owns the
+        // value and a keystroke would be overwritten on the next result.
+        readOnly={listening}
+        disabled={disabled}
+        rows={2}
+        placeholder="Say it or type it…"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submitDraft();
+          }
+        }}
+        className="w-full resize-none rounded-[12px] border border-spark-rule bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60"
+      />
+
+      <div className="flex items-center gap-2.5">
+        {/* The running brief, so what has actually been captured is visible
+            without opening the full transcript. */}
+        <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
+          {summary}
+        </p>
 
         {/* Full back-and-forth, off by default. The box above already shows
             what matters — what was captured — so the turn-by-turn transcript
