@@ -187,13 +187,32 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       ? "Listening — click the mic, or release Spacebar, to stop"
       : "Click the mic, or hold Spacebar, and answer";
 
-  // The reply sits under what you said, rather than replacing it.
-  const secondLine = listening
-    ? (live ? "" : "Listening…")
-    : thinking ? "" : summary || lastAssistant;
+  // The reply now has its own line above the box, so this is only the running
+  // summary of what has been captured — never a second copy of the question.
+  const secondLine = listening ? (live ? "" : "Listening…") : thinking ? "" : summary;
 
   return (
     <div className="flex flex-col gap-2">
+      {/* What the session just asked, above the box you answer it in.
+          This is a conversation — it asks for the market, then the topic, and
+          re-reads everything each turn so a correction lands. That was already
+          true, but the question was rendered as a 12px muted caption under the
+          mic, which reads as a status line, not as someone waiting on you. */}
+      {(lastAssistant || thinking) && (
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-spark-amber text-[12px] text-white">
+            ✦
+          </span>
+          <p className="min-w-0 flex-1 text-[15px] leading-[1.45] text-spark-ink">
+            {thinking ? (
+              <span className="text-spark-ink-faint">Thinking…</span>
+            ) : (
+              lastAssistant
+            )}
+          </p>
+        </div>
+      )}
+
       {/* The box. Speech writes into it, typing edits it, and Send commits —
           one field for both ways in rather than a transcript you can only read
           next to a separate place to type. */}
