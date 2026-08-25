@@ -93,6 +93,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const turnsRef = useRef(turns);
   turnsRef.current = turns;
 
+  // Same reason: the wake word can arrive on the recogniser's callback, which
+  // outlives the render that made it, and it must hand over the slots as they
+  // stand now rather than as they were when that callback was created.
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+
   const send = useCallback(async (spoken: string) => {
     const said = spoken.trim();
     if (!said || busyRef.current) return;
@@ -136,6 +142,45 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     }
   }, [onSlots, onReady, onSwitchToTyping]);
 
+  // Everything the script actually needs. Until these are in, saying the wake
+  // word would start a render of a brief with no place or no subject.
+  const briefReady = !!(slots.topic && slots.city && slots.state);
+
+  // Latched the moment we hand over, so a second click or a repeated wake word
+  // cannot fire two generations in the tick before `disabled` arrives.
+  const [sparking, setSparking] = useState(false);
+  const sparkingRef = useRef(false);
+
+  /**
+   * Go — from the button, or from hearing the wake word.
+   *
+   * Fires straight off the slots this session already holds rather than posting
+   * "Spark script" as another turn. `ready` is decided server-side, so the wake
+   * word only did something after a full model round trip — several seconds in
+   * which the card said nothing had changed, and the thing anyone does while
+   * nothing is happening is say it again. Recognising it needs no model:
+   * saidGoAhead is the same matcher the server runs, and the brief is already
+   * complete on this side.
+   */
+  const sparkNow = useCallback(() => {
+    if (sparkingRef.current || busyRef.current || disabled) return;
+    sparkingRef.current = true;
+    setSparking(true);
+    onReady(slotsRef.current);
+  }, [disabled, onReady]);
+
+  // The parent holds `disabled` on while it generates. Coming back off means
+  // the generation failed and this card is live again — so the button and the
+  // wake word both have to work a second time.
+  const wasDisabled = useRef(disabled);
+  useEffect(() => {
+    if (wasDisabled.current && !disabled) {
+      sparkingRef.current = false;
+      setSparking(false);
+    }
+    wasDisabled.current = disabled;
+  }, [disabled]);
+
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
     // Stopping ends your turn and the session answers — asks for whatever is
     // still missing, or reads the brief back and asks if you are done.
@@ -148,8 +193,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     onSessionEnd: (captured) => {
       const text = captured.trim();
       if (!text) return;
-      send(text);
       setDraft("");
+      // The wake word, once the brief is genuinely complete: go now rather than
+      // spend a model round trip being told what a regex already knows. The
+      // turn is still recorded, so the transcript reads the way it was said.
+      if (briefReady && saidGoAhead(text)) {
+        setTurns((t) => [...t, { role: "user", content: text }]);
+        sparkNow();
+        return;
+      }
+      send(text);
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
@@ -184,16 +237,18 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   function submitDraft() {
     const text = draft.trim();
     if (!text || thinking || disabled) return;
+    setDraft("");
+    // Typed or spoken, the wake word does the same thing.
+    if (briefReady && saidGoAhead(text)) {
+      setTurns((t) => [...t, { role: "user", content: text }]);
+      sparkNow();
+      return;
+    }
     // Goes as another turn. The session re-reads the whole conversation each
     // time, so a corrected sentence overrides what it heard before — the same
     // mechanism that makes "actually, make it sellers" work.
     send(text);
-    setDraft("");
   }
-
-  // Everything the script actually needs. Until these are in, saying the wake
-  // word would start a render of a brief with no place or no subject.
-  const briefReady = !!(slots.topic && slots.city && slots.state);
 
   // What voice has captured so far, condensed to one line — the compact
   // stand-in for the big centered heading the old design used.
@@ -326,16 +381,31 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           that had no town and no subject yet. Now it appears when the brief is
           actually complete, and says what it will do. */}
       {briefReady && !listening && !thinking && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[13px] text-spark-ink">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[13px] text-spark-ink">
           <CheckCircle size={14} className="flex-none text-spark-blue" />
-          <span className="font-medium">That&rsquo;s everything I need.</span>
-          <span className="text-spark-ink-muted">
-            Say{" "}
-            <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-semibold text-spark-amber">
-              Spark Script
-            </span>{" "}
-            to write it, or keep talking to change something.
-          </span>
+          {sparking ? (
+            <span className="font-medium">Sparking your script — this takes about a minute.</span>
+          ) : (
+            <>
+              <span className="font-medium">That&rsquo;s everything I need.</span>
+              <span className="min-w-0 text-spark-ink-muted">
+                Tap Spark Script, or just say it. Keep talking to change anything.
+              </span>
+              {/* A button, not only a phrase to say. The wake word was written
+                  here as a styled pill, which reads as something to press —
+                  and pressing it did nothing, so saying it and getting no
+                  answer looked like the same nothing. Whichever way it is
+                  reached now, it fires the identical path. */}
+              <button
+                type="button"
+                onClick={sparkNow}
+                disabled={disabled}
+                className="ml-auto flex-none rounded-full bg-spark-amber px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+              >
+                Spark Script
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

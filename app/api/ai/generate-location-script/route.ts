@@ -10,6 +10,22 @@ import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { targetWords, maxWords, clampScript, type VideoLength } from "@/lib/utils/video-length";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * The heaviest route in the app and, until now, the only script route that
+ * never said so: a research-backed Perplexity script plus a ~1,300-word blog,
+ * then a second call for the YouTube copy. It was running on the platform
+ * default and being cut off as a 504 — after the script had already been
+ * written and paid for, with nothing saved and nothing to show for it.
+ */
+export const maxDuration = 300;
+
+/**
+ * The YouTube copy is optional — a failure here is already tolerated. Time
+ * is the half that wasn't: an upstream call that hangs rather than fails
+ * takes the finished script down with it.
+ */
+const YT_META_TIMEOUT_MS = 45_000;
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -179,17 +195,20 @@ export async function POST(req: NextRequest) {
   const scriptCity = parsedCity || city;
   const scriptState = parsedState || state;
 
-  const ytMeta = await generateYoutubeMetadata({
-    title: parsed.title,
-    script: parsed.script,
-    city: scriptCity,
-    state: scriptState,
-    agentName: prof.full_name || undefined,
-    brokerage: prof.company_name || undefined,
-    keywords: parsed.keywords,
-    website: prof.website || undefined,
-    phone: prof.phone || prof.company_phone || undefined,
-  }).catch((err) => {
+  const ytMeta = await Promise.race([
+    generateYoutubeMetadata({
+      title: parsed.title,
+      script: parsed.script,
+      city: scriptCity,
+      state: scriptState,
+      agentName: prof.full_name || undefined,
+      brokerage: prof.company_name || undefined,
+      keywords: parsed.keywords,
+      website: prof.website || undefined,
+      phone: prof.phone || prof.company_phone || undefined,
+    }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), YT_META_TIMEOUT_MS)),
+  ]).catch((err) => {
     console.error("[generate-location-script] YouTube metadata failed:", err);
     return null;
   });
