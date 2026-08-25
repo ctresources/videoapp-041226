@@ -818,7 +818,7 @@ function CreatePageInner() {
               ? "Your face, your voice, your script — the teleprompter does the rest."
               : inputMode === "paste" || inputMode === "listing" || inputMode === "content"
                 ? "Bring a listing sheet, a link or your photos. We turn it into a video."
-                : "No script, no prep, no camera. Just your expertise."}
+                : "No script, no prep, no camera. Just your local take."}
           </p>
         </div>
       )}
