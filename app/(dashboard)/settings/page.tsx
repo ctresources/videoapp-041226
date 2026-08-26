@@ -286,7 +286,6 @@ export default function SettingsPage() {
               to, and looked for here, where it wasn't. */}
           <div className="mb-5 border-b border-spark-rule-soft pb-5">
             <BrandKitPicker
-              userId={user.id}
               currentBrandKitId={brandData.heygen_brand_kit_id ?? null}
               onUpdate={(brandKitId) => {
                 setBrandData((prev) => prev ? { ...prev, heygen_brand_kit_id: brandKitId } : prev);

@@ -13,7 +13,6 @@ interface BrandKitDetail {
 }
 
 interface Props {
-  userId: string;
   currentBrandKitId: string | null;
   onUpdate?: (brandKitId: string | null) => void;
 }
