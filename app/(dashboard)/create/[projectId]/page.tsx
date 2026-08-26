@@ -1716,7 +1716,6 @@ export default function ProjectEditorPage() {
                 if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
               }}
               onScript={(next) => setEditedScript(next)}
-              onRender={() => { if (!videoGenerating) handleGenerateVideo(); }}
             />
             )}
 
@@ -2071,11 +2070,15 @@ export default function ProjectEditorPage() {
                 firing it spend a credit, and a warning printed smaller than
                 the thing it is warning about is one nobody reads. */}
             <p className="mb-1 text-[22px] font-semibold leading-[1.3] text-spark-ink-soft">
-              Click <span className="text-spark-ink">Spark Video</span> or say{" "}
-              <span className="rounded-nav bg-[#F7ECD9] px-2 py-0.5 text-spark-amber">
-                Spark Video
-              </span>{" "}
-              to generate the video once you&rsquo;re 100% ready
+              {/* Click only, and it says so. The spoken wake word used to work
+                  from the mic at the top of this card — six hundred pixels
+                  above the sentence promising it, and absent entirely on a
+                  pasted script, where the voice rail is not rendered. Rather
+                  than move the mic down, the render no longer answers to
+                  voice at all: it is the one action here that spends a video
+                  and cannot be taken back. */}
+              Click <span className="text-spark-ink">Spark Video</span> to generate
+              the video once you&rsquo;re 100% ready
               {/* Short and long are separate allowances, charged by which
                   format is selected: create-blog spends one of whichever
                   `isLongForm` resolves to. Naming the wrong kind here, or a
@@ -2118,14 +2121,18 @@ export default function ProjectEditorPage() {
               <button
                 type="button"
                 onClick={openTeleprompter}
-                className="flex flex-1 flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-3 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
+                // Bigger type, same button: the padding gives back roughly
+                // what the larger lines take, so the row keeps its height
+                // against Save Draft next to it. Explicit leading because
+                // that is what makes the trade predictable.
+                className="flex flex-1 flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2 text-[16px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
               >
                 Record it myself on camera
                 {/* The other half of the sentence above. Saying what Spark
                     Video costs without saying that this costs nothing leaves
                     the free option looking like the same charge. Nothing in
                     save-camera-recording touches an allowance. */}
-                <span className="mt-0.5 text-[11px] font-normal opacity-70">
+                <span className="mt-0.5 text-[12px] font-normal leading-[1.2] opacity-70">
                   Free — no credit used
                 </span>
               </button>

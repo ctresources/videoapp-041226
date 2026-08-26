@@ -24,8 +24,6 @@ interface Props {
   onSettings: (settings: EditorSettings) => void;
   /** A rewritten script — only ever called when the agent asked for a change. */
   onScript: (script: string) => void;
-  /** The agent said the wake word. */
-  onRender: () => void;
   disabled?: boolean;
 }
 
@@ -38,7 +36,7 @@ interface Props {
  * in, not a replacement. That is also why there is no big mic and no waveform
  * here, unlike the Create page where the mic *is* the screen.
  */
-export function EditorVoiceSession({ script, onSettings, onScript, onRender, disabled = false }: Props) {
+export function EditorVoiceSession({ script, onSettings, onScript, disabled = false }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [lastReply, setLastReply] = useState("");
@@ -90,14 +88,16 @@ export function EditorVoiceSession({ script, onSettings, onScript, onRender, dis
       }
       setLastReply((data.reply as string) || "");
       setTurns((t) => [...t, { role: "assistant", content: (data.reply as string) || "" }]);
-      if (data.ready === true) onRender();
+      // Deliberately nothing here that starts a render. Voice moves the
+      // controls on this rail, all of which can be moved back by hand;
+      // spending a video is a click, and only a click.
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Didn't catch that — try again.");
     } finally {
       setThinking(false);
       busyRef.current = false;
     }
-  }, [onSettings, onScript, onRender]);
+  }, [onSettings, onScript]);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
     onSessionEnd: send,

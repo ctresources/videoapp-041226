@@ -1,5 +1,4 @@
 import { chatJson, chatText, type ChatTurn } from "@/lib/api/perplexity-chat";
-import { saidGoAhead } from "@/lib/api/brief-session";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
@@ -30,7 +29,6 @@ export interface EditorTurnResult {
    */
   searched: boolean;
   reply: string;
-  ready: boolean;
 }
 
 const VIDEO_TYPES = ["youtube_16x9", "reel_9x16", "youtube_long"] as const;
@@ -91,8 +89,8 @@ Fields — return the CURRENT value of each, re-reading the whole conversation, 
 Rules:
 - Never invent a value. Only use the listed ids. If what they said isn't one of them, leave it null rather than forcing the nearest.
 - A later instruction replaces an earlier one.
-- "reply" is one or two spoken sentences saying what you changed, then inviting "Spark video" to render. No lists, no markdown, no field names.
-- Do not decide whether they consented to render — just invite it.`;
+- "reply" is one or two spoken sentences saying what you changed. No lists, no markdown, no field names.
+- Never invite them to say anything to render, and never imply speaking can start it. Rendering is done by clicking the Spark Video button and nothing else. If they ask you to render, say they can click Spark Video when they are ready.`;
 
   const parsed = await chatJson(system, turns, { maxTokens: 400, label: "editor-session" });
   if (!parsed) return null;
@@ -105,7 +103,7 @@ Rules:
   const reply =
     typeof parsed.reply === "string" && parsed.reply.trim()
       ? parsed.reply.trim().slice(0, 400)
-      : "Got it. Say Spark video to render.";
+      : "Got it. Click Spark Video when you're ready.";
 
   // Search costs a slower turn and a research-grade model, so it is spent
   // only where the answer depends on the world rather than on the words
@@ -118,15 +116,17 @@ Rules:
     rewritten = await rewriteScript(script, scriptEdit, needsFacts);
   }
 
-  const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
+  // No `ready` here any more. Every other spoken instruction on this screen
+  // moves a control the user can see and move back; rendering spends a video
+  // and cannot be undone, so it is the one thing voice does not do. The
+  // matcher this used to call fires on "yes" and "go ahead" as well as the
+  // wake word — fine for choosing music, not for a charge.
   return {
     settings,
     script: rewritten,
     scriptEdit,
     searched: searched && !!rewritten,
     reply,
-    // Same rule as the brief: consent is decided here, not by the model.
-    ready: saidGoAhead(lastUser),
   };
 }
 
