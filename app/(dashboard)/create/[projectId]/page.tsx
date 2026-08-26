@@ -121,10 +121,14 @@ type VideoType = "blog_long" | "reel_9x16" | "short_1x1" | "youtube_16x9";
 // "youtube_long" is a client-side choice that maps to youtube_16x9 + longForm:true
 type VideoChoice = VideoType | "youtube_long";
 
-const videoTypes: { value: VideoChoice; label: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "reel_9x16", label: "Shorts", desc: "Under 4 min · 9:16 (vertical) · automatic b-roll", credits: 1 },
-  { value: "youtube_16x9", label: "Shorts", desc: "Under 4 min · 16:9 (horizontal) · automatic b-roll", credits: 1 },
-  { value: "youtube_long", label: "Longform", desc: "Over 4 min, up to 8 · 16:9 (horizontal) · uses your photos for visuals", proOnly: true, credits: 1 },
+// `ratio` is what the buttons carry and `desc` is what the line under them
+// says. Both labels are "Shorts", so the aspect is the whole of what tells
+// the two apart — it has to be on the button itself, while the rest of the
+// detail only has to be true of the one you have actually picked.
+const videoTypes: { value: VideoChoice; label: string; ratio: string; desc: string; proOnly?: boolean; credits: number }[] = [
+  { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "Under 4 min · vertical · automatic b-roll", credits: 1 },
+  { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "Under 4 min · horizontal · automatic b-roll", credits: 1 },
+  { value: "youtube_long", label: "Longform", ratio: "16:9", desc: "Over 4 min, up to 8 · horizontal · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
 // LONG_MAX_WORDS used to be a second copy of this number, kept in step by hand.
@@ -1704,30 +1708,38 @@ export default function ProjectEditorPage() {
 
             {/* Video format selector */}
             <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">FORMAT</p>
-            <div className="mb-5 grid grid-cols-2 gap-1.5">
-              {videoTypes.map(({ value, label, desc, proOnly }) => (
+            {/* One row of chips rather than three stacked cards. Every option
+                repeated "Under 4 min" and its own aspect at full size, so the
+                block cost the height of three paragraphs to say a thing you
+                choose once — and the two Shorts, identically titled, still
+                had to be told apart by reading to the middle of a sentence.
+                The aspect rides on the chip; the rest describes whichever one
+                is selected, on a single line underneath. */}
+            <div className="flex flex-wrap gap-1.5">
+              {videoTypes.map(({ value, label, ratio, proOnly }) => (
                 <button
                   key={value}
                   onClick={() => setSelectedVideoType(value)}
                   aria-pressed={selectedVideoType === value}
-                  className={`rounded-lg px-2.5 py-2.5 text-left transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] leading-none transition-colors ${
                     selectedVideoType === value
                       ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                       : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                  } ${proOnly ? "col-span-2" : ""}`}
+                  }`}
                 >
-                  <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-medium text-spark-ink">
-                    {label}
-                    {proOnly && (
-                      <span className="rounded bg-spark-amber-tint px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.06em] text-spark-amber">
-                        {longFormIncluded ? "In your plan" : "Add credits"}
-                      </span>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</p>
+                  <span className="font-medium text-spark-ink">{label}</span>
+                  <span className="text-spark-ink-muted">{ratio}</span>
+                  {proOnly && (
+                    <span className="rounded bg-spark-amber-tint px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.06em] text-spark-amber">
+                      {longFormIncluded ? "In your plan" : "Add credits"}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
+            <p className="mb-5 mt-1.5 text-[10px] leading-[1.35] text-spark-ink-muted">
+              {videoTypes.find((v) => v.value === selectedVideoType)?.desc}
+            </p>
             {selectedVideoType === "youtube_long" && (
               <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                 <p className="text-xs font-semibold text-amber-900 mb-1">How long videos work</p>
