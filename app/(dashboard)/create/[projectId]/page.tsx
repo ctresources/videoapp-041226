@@ -2060,7 +2060,15 @@ export default function ProjectEditorPage() {
               <span className="rounded-nav bg-[#F7ECD9] px-2 py-0.5 text-spark-amber">
                 Spark Video
               </span>{" "}
-              to generate the video once you&rsquo;re 100% ready.
+              to generate the video once you&rsquo;re 100% ready — this uses{" "}
+              {/* Short and long are separate allowances, charged by which
+                  format is selected: create-blog spends one of whichever
+                  `isLongForm` resolves to. Naming the wrong one here would be
+                  worse than naming neither. */}
+              <span className="text-spark-ink">
+                1 of your {selectedVideoType === "youtube_long" ? "long" : "short"} videos
+              </span>
+              .
             </p>
 
             {/* 2a's summary line — restates the four choices just made, so the
@@ -2089,9 +2097,16 @@ export default function ProjectEditorPage() {
               <button
                 type="button"
                 onClick={openTeleprompter}
-                className="flex flex-1 items-center justify-center rounded-xl border border-spark-ink px-5 py-3.5 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
+                className="flex flex-1 flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-3 text-[13px] font-medium text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
               >
                 Record it myself on camera
+                {/* The other half of the sentence above. Saying what Spark
+                    Video costs without saying that this costs nothing leaves
+                    the free option looking like the same charge. Nothing in
+                    save-camera-recording touches an allowance. */}
+                <span className="mt-0.5 text-[11px] font-normal opacity-70">
+                  Free — no credit used
+                </span>
               </button>
               <Button
                 onClick={handleSaveDraft}
