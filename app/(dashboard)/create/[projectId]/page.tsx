@@ -2050,10 +2050,14 @@ export default function ProjectEditorPage() {
             {/* Said once, right above the choices it's about — this is the
                 last thing read before the button, so it's where "are you
                 sure" belongs, not buried in a tooltip or a toast after the
-                fact. */}
-            <p className="text-[11px] text-spark-ink-faint">
-              Click <span className="font-medium text-spark-ink-soft">Spark Video</span> or say{" "}
-              <span className="rounded-nav bg-[#F7ECD9] px-1.5 py-0.5 font-medium text-spark-amber">
+                fact.
+
+                Set large and bold rather than at caption size: both ways of
+                firing it spend a credit, and a warning printed smaller than
+                the thing it is warning about is one nobody reads. */}
+            <p className="mb-1 text-[22px] font-semibold leading-[1.3] text-spark-ink-soft">
+              Click <span className="text-spark-ink">Spark Video</span> or say{" "}
+              <span className="rounded-nav bg-[#F7ECD9] px-2 py-0.5 text-spark-amber">
                 Spark Video
               </span>{" "}
               to generate the video once you&rsquo;re 100% ready.
