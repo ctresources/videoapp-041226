@@ -243,6 +243,10 @@ export default function ProjectEditorPage() {
   const [renderFailed, setRenderFailed] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
+  // The chosen format's row, read in the two places that describe it — the
+  // line under the chips and the summary above the button. Looked up once so
+  // they cannot come to disagree about what was picked.
+  const selectedFormat = videoTypes.find((v) => v.value === selectedVideoType);
   // Background music for the AI render — same presets as the video editor.
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
@@ -1738,7 +1742,7 @@ export default function ProjectEditorPage() {
               ))}
             </div>
             <p className="mb-5 mt-1.5 text-[10px] leading-[1.35] text-spark-ink-muted">
-              {videoTypes.find((v) => v.value === selectedVideoType)?.desc}
+              {selectedFormat?.desc}
             </p>
             {selectedVideoType === "youtube_long" && (
               <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -2058,7 +2062,10 @@ export default function ProjectEditorPage() {
             {/* 2a's summary line — restates the four choices just made, so the
                 button is not the first place you find out what you picked. */}
             <p className="mb-2 text-[11px] text-spark-ink-faint">
-              {videoTypes.find((v) => v.value === selectedVideoType)?.label}
+              {/* With the ratio, for the same reason the chips carry it: both
+                  short formats are called Shorts, so the label alone cannot
+                  say which one is about to be rendered. */}
+              {selectedFormat && `${selectedFormat.label} ${selectedFormat.ratio}`}
               {" · "}
               {renderMode === "avatar_voice" ? "avatar on screen" : "voice only"}
               {" · "}
