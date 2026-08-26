@@ -247,6 +247,18 @@ export default function ProjectEditorPage() {
   // line under the chips and the summary above the button. Looked up once so
   // they cannot come to disagree about what was picked.
   const selectedFormat = videoTypes.find((v) => v.value === selectedVideoType);
+  // Which allowance this render will actually charge. Mirrors the `longForm`
+  // flag sent to create-blog, which is what decides it server-side.
+  const selectedKind: "short" | "long" = selectedVideoType === "youtube_long" ? "long" : "short";
+  // How many of that kind are left. /api/profile/allowance has already added
+  // the monthly plan balance to any purchased add-ons, and the plan is what
+  // sets the monthly one — so this number is plan-correct without the page
+  // knowing anything about tiers.
+  const videosLeft = allowance ? (selectedKind === "long" ? allowance.long : allowance.short) : null;
+  // Say the price only when there is a true one to say. Admins are never
+  // charged, someone at zero is already being told so by the banner above,
+  // and before the fetch lands there is no number at all.
+  const showVideoCost = !!allowance && !allowance.isAdmin && (videosLeft ?? 0) > 0;
   // Background music for the AI render — same presets as the video editor.
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [selectedMusicId, setSelectedMusicId] = useState("none");
@@ -254,7 +266,6 @@ export default function ProjectEditorPage() {
   const [musicResolving, setMusicResolving] = useState(false);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const [longFormIncluded, setLongFormIncluded] = useState(false);
-  const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   // Whether the presenter appears on screen — nothing more. This ONLY decides
   // if lookId is sent; the render engine is chosen server-side from the script
   // source (see useDirectVideo in app/api/video/create-blog/route.ts).
@@ -516,18 +527,17 @@ export default function ProjectEditorPage() {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, credits_remaining")
+      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role")
       .eq("id", user.id)
       .single();
     if (data) {
       setContactInfo(data as typeof contactInfo);
-      const p = data as { subscription_tier?: string | null; role?: string | null; credits_remaining?: number | null };
+      const p = data as { subscription_tier?: string | null; role?: string | null };
       // Producer (2/mo) and Influencer (4/mo) include long videos in their
       // allowance; Creator buys them one at a time as an add-on.
       setLongFormIncluded(
         p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
       );
-      setCreditsLeft(typeof p.credits_remaining === "number" ? p.credits_remaining : null);
     }
   }
 
@@ -2060,14 +2070,20 @@ export default function ProjectEditorPage() {
               <span className="rounded-nav bg-[#F7ECD9] px-2 py-0.5 text-spark-amber">
                 Spark Video
               </span>{" "}
-              to generate the video once you&rsquo;re 100% ready — this uses{" "}
+              to generate the video once you&rsquo;re 100% ready
               {/* Short and long are separate allowances, charged by which
                   format is selected: create-blog spends one of whichever
-                  `isLongForm` resolves to. Naming the wrong one here would be
-                  worse than naming neither. */}
-              <span className="text-spark-ink">
-                1 of your {selectedVideoType === "youtube_long" ? "long" : "short"} videos
-              </span>
+                  `isLongForm` resolves to. Naming the wrong kind here, or a
+                  count from the other one, would be worse than naming none. */}
+              {showVideoCost && (
+                <>
+                  {" — this uses "}
+                  <span className="text-spark-ink">
+                    1 of your {videosLeft} {selectedKind} video
+                    {videosLeft === 1 ? "" : "s"}
+                  </span>
+                </>
+              )}
               .
             </p>
 
