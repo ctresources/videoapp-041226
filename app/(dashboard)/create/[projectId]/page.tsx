@@ -1767,8 +1767,13 @@ export default function ProjectEditorPage() {
             {selectedVideoType === "youtube_long" && !longFormIncluded && (
               <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
                 <p className="text-xs text-slate-600">
+                  {/* "Agent" and "Pro" are the internal tier keys, never plan
+                      names — PLANS in lib/stripe.ts calls them Producer and
+                      Influencer, and it is what the webhook grants from. The
+                      counts come from the same place: longVideos is 2 and 4,
+                      not 5. */}
                   Long videos have their own monthly allowance, separate from your short videos.
-                  Included with Agent (2/month) and Pro (5/month), or buy one as you go.
+                  Included with Producer (2/month) and Influencer (4/month), or buy one as you go.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link href="/billing" className="flex-1">

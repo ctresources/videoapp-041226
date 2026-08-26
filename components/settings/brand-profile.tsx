@@ -491,14 +491,17 @@ function DigitalTwinCreator({
           </p>
           <p className="text-xs text-amber-800 mt-1 leading-relaxed">
             {hasTwin
-              ? "Your trained twin is kept — videos will use your photo avatar until you move back to Agent or Pro, then it works again with no retraining."
+              // "Agent" and "Pro" are internal tier keys, not plan names —
+              // PLANS in lib/stripe.ts calls these Producer and Influencer,
+              // which is what Billing and the sidebar show.
+              ? "Your trained twin is kept — videos will use your photo avatar until you move back to Producer or Influencer, then it works again with no retraining."
               : "Train a photorealistic twin of yourself from a short video. Your photo avatar works on every plan and needs just one photo."}
           </p>
           <Link
             href="/billing"
             className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-3 py-1.5 transition-colors"
           >
-            {hasTwin ? "Restore with Agent or Pro" : "Upgrade to unlock"}
+            {hasTwin ? "Restore with Producer or Influencer" : "Upgrade to unlock"}
           </Link>
         </div>
       </div>
