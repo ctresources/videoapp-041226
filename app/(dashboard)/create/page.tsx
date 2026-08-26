@@ -1391,8 +1391,23 @@ function CreatePageInner() {
                 video. Limits come from video-length.ts, not from a number typed
                 in here, so they follow the caps. */}
             <div className="mb-4">
-              <label className="text-sm font-bold text-spark-ink-soft block mb-1">
+              <label className="flex items-center gap-1.5 text-sm font-bold text-spark-ink-soft mb-1">
                 Your Script *
+                {/* This tab had no mic at all — the one way in that was
+                    typing only. Dictation appends rather than replaces: it is
+                    for adding a paragraph to what is already there, and a
+                    script someone pasted must never be wiped by a stray tap.
+
+                    The words are taken down as spoken and not sent anywhere
+                    to be rewritten. What this tab promises is that the avatar
+                    reads the script exactly as written, and that promise has
+                    to survive the script being spoken rather than typed. */}
+                <FieldMic
+                  title="Dictate — adds to the end of your script"
+                  onTranscript={(t) =>
+                    setPasteScript((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
+                  }
+                />
                 {pasteWordCount > 0 && (
                   <span
                     className={`ml-2 font-normal ${

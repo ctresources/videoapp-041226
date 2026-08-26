@@ -24,6 +24,13 @@ interface Props {
   onSettings: (settings: EditorSettings) => void;
   /** A rewritten script — only ever called when the agent asked for a change. */
   onScript: (script: string) => void;
+  /**
+   * Which step this is sitting on. Both scopes accept both kinds of
+   * instruction — the model is not told to refuse settings on the Script
+   * step — it only decides which example the hint leads with, so the
+   * suggestion matches what is actually on screen to watch change.
+   */
+  scope?: "script" | "setup";
   disabled?: boolean;
 }
 
@@ -36,7 +43,7 @@ interface Props {
  * in, not a replacement. That is also why there is no big mic and no waveform
  * here, unlike the Create page where the mic *is* the screen.
  */
-export function EditorVoiceSession({ script, onSettings, onScript, disabled = false }: Props) {
+export function EditorVoiceSession({ script, onSettings, onScript, scope = "setup", disabled = false }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [lastReply, setLastReply] = useState("");
@@ -135,12 +142,16 @@ export function EditorVoiceSession({ script, onSettings, onScript, disabled = fa
               ? "Thinking…"
               : listening
                 ? "Listening — click to stop"
-                : "Change it by voice"}
+                : scope === "script"
+                  ? "Change the script by voice"
+                  : "Change it by voice"}
           </p>
           <p className="mt-0.5 text-[12px] leading-[1.45] text-spark-ink-muted">
             {live ||
               lastReply ||
-              "“Make it vertical, voice only, upbeat music.” Or “make the opening punchier.”"}
+              (scope === "script"
+                ? "“Make the opening punchier.” Or “cut the part about taxes.”"
+                : "“Make it vertical, voice only, upbeat music.” Or “make the opening punchier.”")}
           </p>
         </div>
       </div>

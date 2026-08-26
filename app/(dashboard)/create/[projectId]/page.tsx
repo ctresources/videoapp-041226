@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EditorVoiceSession } from "@/components/create/editor-voice-session";
+import { FieldMic } from "@/components/ui/field-mic";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
@@ -1446,6 +1447,32 @@ export default function ProjectEditorPage() {
         <div className="flex flex-col gap-4">
           {/* ── Step 2 · Script ── */}
           {editorStep === 2 && (<>
+          {/* The Script step had no mic, though it is the step most worth
+              talking to — "make the opening punchier", "cut the part about
+              taxes" — and the same session was already sitting one step
+              later, where the script is no longer the thing on screen.
+
+              Withheld for pasted scripts for the same reason the hooks are:
+              those are rendered word for word, and a spoken rewrite is
+              exactly the promise this tab makes and must not break.
+
+              Settings spoken here still land; they are simply not visible
+              until Setup, which is why the hint leads with script edits. */}
+          {!isPaste && (
+            <EditorVoiceSession
+              script={editedScript}
+              scope="script"
+              disabled={videoGenerating}
+              onSettings={(st) => {
+                if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                if (st.renderMode) setRenderMode(st.renderMode);
+                if (st.musicId) setSelectedMusicId(st.musicId);
+                if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
+              }}
+              onScript={(next) => setEditedScript(next)}
+            />
+          )}
+
           {/* Hook options — 2a. The radio circle replaces the old #1/#2
               numbering: the hooks are alternatives, not a ranking, and numbering
               them implied an order that was never there.
@@ -2219,9 +2246,24 @@ export default function ProjectEditorPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-xs font-medium text-slate-500">Video Title <span className="font-normal text-slate-400">(editable)</span></p>
-                      <button onClick={() => copyToClipboard(editedTitle, "Title")} title="Copy title">
-                        <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        {/* Publish was the last step with no mic. These two
+                            fields are the only editable things on it, and
+                            they are the ones that get retyped most — a title
+                            reworded for the platform it is going to.
+
+                            A title is one line, so speaking it replaces it.
+                            The description is a paragraph you add to, so it
+                            appends. Neither posts anything: publishing stays
+                            a click, for the same reason rendering does. */}
+                        <FieldMic
+                          title="Say the title — replaces what's there"
+                          onTranscript={(t) => setEditedTitle(t.replace(/[.]\s*$/, "").trim())}
+                        />
+                        <button onClick={() => copyToClipboard(editedTitle, "Title")} title="Copy title">
+                          <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                        </button>
+                      </div>
                     </div>
                     <input
                       type="text"
@@ -2234,9 +2276,17 @@ export default function ProjectEditorPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-xs font-medium text-slate-500">Video Description <span className="font-normal text-slate-400">(editable)</span></p>
-                      <button onClick={() => copyToClipboard(editedDescription, "Description")} title="Copy description">
-                        <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        <FieldMic
+                          title="Dictate — adds to the end of the description"
+                          onTranscript={(t) =>
+                            setEditedDescription((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
+                          }
+                        />
+                        <button onClick={() => copyToClipboard(editedDescription, "Description")} title="Copy description">
+                          <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={editedDescription}
