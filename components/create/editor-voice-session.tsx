@@ -4,6 +4,15 @@ import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Mic } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
+import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
+
+/** Same words the rail's own chips and summary use, so a setting reads the
+ *  same whether it was spoken or clicked. */
+const VIDEO_TYPE_LABELS: Record<string, string> = {
+  reel_9x16: "Shorts 9:16",
+  youtube_16x9: "Shorts 16:9",
+  youtube_long: "Longform",
+};
 
 export interface EditorSettings {
   videoType: "youtube_16x9" | "reel_9x16" | "youtube_long" | null;
@@ -47,6 +56,19 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [lastReply, setLastReply] = useState("");
+  // What voice has changed about the settings this session.
+  //
+  // On the Script step the controls these move are a step away, so the change
+  // landed with nothing on screen to show it — only the spoken reply saying
+  // so in prose. This is the visible half.
+  //
+  // Accumulated rather than replaced: a turn returns the current value of
+  // every field with null for anything never mentioned, so a null must leave
+  // an earlier turn's answer alone. `??` and not `||` — captions:false is a
+  // real answer, and `||` would drop it.
+  const [voiceSet, setVoiceSet] = useState<EditorSettings>({
+    videoType: null, renderMode: null, musicId: null, captions: null,
+  });
   const busyRef = useRef(false);
   const turnsRef = useRef(turns);
   turnsRef.current = turns;
@@ -76,7 +98,14 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
         throw new Error((data.error as string) || `Failed (${res.status})`);
       }
 
-      onSettings(data.settings as EditorSettings);
+      const settings = data.settings as EditorSettings;
+      onSettings(settings);
+      setVoiceSet((prev) => ({
+        videoType: settings.videoType ?? prev.videoType,
+        renderMode: settings.renderMode ?? prev.renderMode,
+        musicId: settings.musicId ?? prev.musicId,
+        captions: settings.captions ?? prev.captions,
+      }));
       // Only when a rewrite actually came back. A failed rewrite returns null
       // and the script the user already had stays untouched.
       //
@@ -117,6 +146,24 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
 
   const live = [transcript, interim].filter(Boolean).join(" ");
 
+  // Only where the controls themselves are not on screen. On Setup they are
+  // directly below, and a chip repeating a chip is noise.
+  const spokenSettings =
+    scope !== "script"
+      ? []
+      : [
+          voiceSet.videoType ? VIDEO_TYPE_LABELS[voiceSet.videoType] : null,
+          voiceSet.renderMode
+            ? voiceSet.renderMode === "avatar_voice" ? "avatar on screen" : "voice only"
+            : null,
+          voiceSet.musicId
+            ? voiceSet.musicId === "none"
+              ? "no music"
+              : (MUSIC_PRESETS.find((m) => m.id === voiceSet.musicId)?.label ?? "custom music")
+            : null,
+          voiceSet.captions === null ? null : voiceSet.captions ? "captions" : "no captions",
+        ].filter((s): s is string => !!s);
+
   return (
     <div className="mb-4 rounded-xl border border-spark-rule bg-spark-amber-tint/40 p-3">
       <div className="flex items-start gap-2.5">
@@ -153,6 +200,21 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
                 ? "“Make the opening punchier.” Or “cut the part about taxes.”"
                 : "“Make it vertical, voice only, upbeat music.” Or “make the opening punchier.”")}
           </p>
+
+          {spokenSettings.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              <span className="text-[11px] text-spark-ink-faint">Also set:</span>
+              {spokenSettings.map((s) => (
+                <span
+                  key={s}
+                  className="rounded-nav border border-spark-rule bg-white px-1.5 py-0.5 text-[11px] font-medium text-spark-ink-soft"
+                >
+                  {s}
+                </span>
+              ))}
+              <span className="text-[11px] text-spark-ink-faint">— shown on Setup</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
