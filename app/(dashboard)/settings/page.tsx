@@ -261,20 +261,10 @@ export default function SettingsPage() {
             }}
           />
 
-          {/* Hidden entirely when the HeyGen account has no brand kits. */}
-          <div className="mt-5 border-t border-spark-rule-soft pt-5">
-            <BrandKitPicker
-              userId={user.id}
-              currentBrandKitId={brandData.heygen_brand_kit_id ?? null}
-              onUpdate={(brandKitId) => {
-                setBrandData((prev) => prev ? { ...prev, heygen_brand_kit_id: brandKitId } : prev);
-              }}
-            />
-          </div>
         </Card>
       )}
 
-      {/* Brand & AI Profile — contact info, photos, avatar */}
+      {/* Brand & AI Profile — brand kit, contact info, photos, avatar */}
       {brandData && user && (
         <Card>
           <div className="flex items-center gap-3 mb-5">
@@ -284,10 +274,26 @@ export default function SettingsPage() {
             <div>
               <h3 className="font-semibold text-brand-text">Brand & AI Profile</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Contact info, photos, and AI avatar
+                Brand kit, contact info, photos, and AI avatar
               </p>
             </div>
           </div>
+
+          {/* The brand kit is the most brand-like thing on the page, so it
+              leads the card that is named for brand. It used to hang off the
+              bottom of AI Voice Clone, one divider below a mic — filed under
+              the feature it was built next to rather than the one it belongs
+              to, and looked for here, where it wasn't. */}
+          <div className="mb-5 border-b border-spark-rule-soft pb-5">
+            <BrandKitPicker
+              userId={user.id}
+              currentBrandKitId={brandData.heygen_brand_kit_id ?? null}
+              onUpdate={(brandKitId) => {
+                setBrandData((prev) => prev ? { ...prev, heygen_brand_kit_id: brandKitId } : prev);
+              }}
+            />
+          </div>
+
           <BrandProfile
             userId={user.id}
             email={user.email ?? ""}
