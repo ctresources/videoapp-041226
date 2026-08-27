@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
+  getCinematicStyleId,
   generateVideoV3,
   resolveVoiceId,
   getAvatarLooks,
@@ -849,11 +850,23 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
     }
 
+    // A house look for what the agent composes, rather than leaving it to
+    // whatever it settles on that run. This was written months ago and never
+    // called, so every render has been going out unstyled.
+    //
+    // Free, in the sense that matters: style_id is a parameter on the Video
+    // Agent job already being paid for at $0.097/sec — not HeyGen's
+    // separately-priced Cinematic Avatar product, which this app never calls.
+    // Cached after the first success, and null on failure, in which case the
+    // render is exactly what it was before.
+    const styleId = await getCinematicStyleId();
+
     const sessionId = await generateVideoAgent({
       prompt,
       avatarId,
       voiceId,
       orientation,
+      styleId: styleId || undefined,
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,

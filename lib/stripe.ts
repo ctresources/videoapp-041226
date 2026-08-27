@@ -22,7 +22,11 @@ export const PLANS = {
   starter: {
     name: "Creator",
     priceId: process.env.STRIPE_PRICE_STARTER!,
-    price: 79,
+    // $79 did not cover its own renders. Four short videos run through Video
+    // Agent, the second-dearest endpoint on HeyGen's card, and at the old
+    // 500-word cap that was $80.28 of HeyGen against $79 of revenue — before
+    // Stripe. $99 against a 400-word cap leaves ~30%. See standardMaxWords.
+    price: 99,
     videos: 4,
     shortVideos: 4,
     longVideos: 0,

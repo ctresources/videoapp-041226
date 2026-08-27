@@ -23,12 +23,20 @@ export type VideoLength = "standard" | "long";
  * lengths ever come back.
  */
 export function standardMaxWords(_tier?: string | null): number {
-  return 500; // ~3.4 min at 145 wpm
+  // 400, down from 500, on cost. Short videos render through HeyGen's Video
+  // Agent at $0.097/sec, so every 100 words is 41 seconds and about $4 — the
+  // single largest dial on a standard video's cost, and the one nobody sees.
+  //
+  // 400 words is ~2.8 minutes, which is still inside the "up to 3 minutes"
+  // every plan page already advertises. 500 was ~3.4 minutes: longer than
+  // what was sold, and it was the difference between Creator covering its
+  // renders and not.
+  return 400; // ~2.8 min at 145 wpm
 }
 
 /** Maximum runtime in minutes for a STANDARD video. */
 export function standardMaxMinutes(_tier?: string | null): number {
-  return 4; // the slot; 500 words actually lands at ~3.4
+  return 4; // the slot; 400 words actually lands at ~2.8
 }
 
 /** A LONG video is 8 minutes on every plan. */

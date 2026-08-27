@@ -487,11 +487,26 @@ export interface VideoAgentSession {
 }
 
 /**
+ * The library's first cinematic style, cached for the life of the process.
+ *
+ * Only a successful lookup is cached — a null is a failed fetch, not an
+ * answer, and caching it would leave every later render styleless until the
+ * next deploy.
+ */
+let cachedCinematicStyleId: string | null = null;
+
+/**
  * Fetch the first cinematic style ID from HeyGen's style library.
  * Used to apply a professional cinematic look to Video Agent renders.
  * Returns null on failure — the caller should proceed without a style_id.
+ *
+ * Worth being precise about what this costs, because the names collide:
+ * style_id is a parameter on a Video Agent job, billed at the Video Agent
+ * rate like any other. It is NOT HeyGen's separately-priced Cinematic Avatar
+ * product. Passing it changes the look, not the bill.
  */
 export async function getCinematicStyleId(): Promise<string | null> {
+  if (cachedCinematicStyleId) return cachedCinematicStyleId;
   try {
     const res = await fetch(
       `${HEYGEN_API}/v3/video-agents/styles?tag=cinematic&limit=1`,
@@ -500,7 +515,10 @@ export async function getCinematicStyleId(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     const styleId = data.data?.[0]?.style_id || null;
-    if (styleId) console.log(`[heygen] Using cinematic style: ${styleId}`);
+    if (styleId) {
+      cachedCinematicStyleId = styleId;
+      console.log(`[heygen] Using cinematic style: ${styleId}`);
+    }
     return styleId;
   } catch {
     return null;
