@@ -245,6 +245,11 @@ export default function ProjectEditorPage() {
   // The HeyGen job behind the current render, so step 4 can poll it.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderFailed, setRenderFailed] = useState(false);
+  // The render finishing was only ever recorded as "not failed", so the page
+  // learned it was done and did nothing with the knowledge: the footer went on
+  // saying "Rendering — you can close this page" and the only route to the
+  // finished video was the My Videos link in the nav.
+  const [renderComplete, setRenderComplete] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   // The chosen format's row, read in the two places that describe it — the
@@ -2226,7 +2231,14 @@ export default function ProjectEditorPage() {
                 // The first two genuinely finished before this screen existed.
                 activeIndex={2}
                 renderJobId={renderJobId}
-                onSettled={(s) => setRenderFailed(s === "failed")}
+                // Fires once per mount, guarded inside RenderPipeline.
+                onSettled={(s) => {
+                  setRenderFailed(s === "failed");
+                  setRenderComplete(s === "completed");
+                  // Said out loud as well as shown, because the wait is long
+                  // enough that nobody is watching the screen when it lands.
+                  if (s === "completed") toast.success("Your video is ready.");
+                }}
                 note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page — you'll find it in My Videos.`}
               />
             );
@@ -2458,7 +2470,11 @@ export default function ProjectEditorPage() {
             hint={
               editorStep === 2 ? "Happy with it? Set the video up next"
                 : editorStep === 3 ? `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
-                  : editorStep === 4 ? (renderFailed ? "Change something and try again" : "Rendering — you can close this page")
+                  : editorStep === 4 ? (
+                      renderFailed ? "Change something and try again"
+                        : renderComplete ? "Your video is ready"
+                          : "Rendering — you can close this page"
+                    )
                     : "Copy these into your post when you publish"
             }
           >
@@ -2475,7 +2491,29 @@ export default function ProjectEditorPage() {
                 <Wand2 size={17} /> Spark Video
               </Button>
             )}
-            {editorStep === 4 && (
+            {/* Once it is done, the finished video is the thing you want, and
+                until now there was no button that led to it — the copy said
+                "you'll find it in My Videos" and meant it literally. The share
+                kit stays reachable beside it rather than being replaced: the
+                titles, captions and blog post are still the reason step 5
+                exists. */}
+            {editorStep === 4 && renderComplete && !renderFailed && (
+              <>
+                <Button variant="outline" size="lg" onClick={() => setEditorStep(5)} className="gap-2">
+                  Share kit
+                </Button>
+                <Button
+                  size="lg"
+                  className="gap-2"
+                  onClick={() =>
+                    router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos")
+                  }
+                >
+                  Watch it <ArrowRight size={17} />
+                </Button>
+              </>
+            )}
+            {editorStep === 4 && !(renderComplete && !renderFailed) && (
               <Button
                 onClick={() => (renderFailed ? handleGenerateVideo() : setEditorStep(5))}
                 loading={videoGenerating}
