@@ -378,8 +378,14 @@ export function ListingVideoForm() {
               Import <ArrowRight size={14} />
             </Button>
           </div>
+          {/* Shortened links do work and were not mentioned, so a slow one
+              read as an unsupported one. They take longer because the
+              redirect has to be followed before the real page is even
+              fetched — worth saying, so a wait looks like a wait. */}
           <p className="text-xs text-slate-400 mt-1.5">
             Supported: Zillow · Realtor.com · Redfin · Homes.com · Trulia · Compass
+            <br />
+            Short links (myre.io, bit.ly) work too — they just take a few seconds longer.
           </p>
         </div>
 

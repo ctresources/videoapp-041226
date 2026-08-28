@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
 import { extractImageUrls } from "@/lib/utils/listing-photos";
 
-export const maxDuration = 30;
+// 60, not 30. The PDF branch fetches up to 20MB and then parses it with
+// unpdf; with the fetch alone allowed 20s, 30 left too little for the parse.
+export const maxDuration = 60;
 
 function extractTextFromHtml(html: string): string {
   let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ");
@@ -67,7 +69,11 @@ export async function POST(req: NextRequest) {
         "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
         Accept: "text/html,text/plain,application/xhtml+xml,application/pdf",
       },
-      signal: AbortSignal.timeout(12000),
+      // 20s, up from 12s. This is a plain fetch with no rendering, so it does
+      // not need the 45s the listing scraper does — but a shortened link is
+      // resolved on this clock too, and 12s left little room for a slow host
+      // once the redirect had been followed.
+      signal: AbortSignal.timeout(20000),
     });
 
     if (!res.ok) {
