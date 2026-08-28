@@ -172,7 +172,21 @@ async function parseListingWithPerplexity(markdown: string): Promise<ListingData
   // Listing pages are large and the beds/baths/sqft facts often sit well past
   // the first few thousand characters — truncating at 8k hid them and the
   // model filled the gaps with invented values.
-  const truncated = markdown.slice(0, 30000);
+  //
+  // 60k, because 30k was still cutting real pages: a myre.io listing arrived
+  // at 42,750 characters and a third of it never reached the model. The tail
+  // is where the remarks and the feature list usually sit, which is exactly
+  // what came back thin.
+  const LIMIT = 60000;
+  const truncated = markdown.slice(0, LIMIT);
+  if (markdown.length > LIMIT) {
+    // Logged rather than silent, so the next time something comes back short
+    // there is a line saying whether the page was cut or simply did not say.
+    console.warn(
+      `[scrape-listing] page truncated: ${markdown.length} chars → ${LIMIT}; ` +
+      `${markdown.length - LIMIT} chars not sent to the parser`,
+    );
+  }
 
   const prompt = `You are extracting facts from ONE specific real estate listing page. Return ONLY a valid JSON object.
 
@@ -194,8 +208,8 @@ Return a JSON object with these exact keys (use null if not found):
   "sqft": number or null,
   "yearBuilt": number or null,
   "propertyType": "Single Family" | "Condo" | "Townhouse" | "Multi-Family" | "Land" | "Other",
-  "description": "property description (max 300 chars)",
-  "features": ["feature 1", "feature 2", ...] (max 8 items),
+  "description": "the listing's own description, copied as written (max 1200 chars)",
+  "features": ["feature 1", "feature 2", ...] (max 12 items),
   "agentName": "listing agent name or empty string",
   "mlsId": "MLS# or empty string",
   "daysOnMarket": number or null,
@@ -224,7 +238,11 @@ Return ONLY the JSON object. No markdown, no explanation.`;
       ],
       // Deterministic extraction — no creative gap-filling.
       temperature: 0,
-      max_tokens: 800,
+      // 1500, up from 800. A 1,200-character description and twelve features
+      // do not fit in 800 tokens alongside the rest of the object, and the
+      // JSON would have been cut off mid-string — which the parser below
+      // would have read as a failure, not as a shorter answer.
+      max_tokens: 1500,
       // Keep the model from pulling facts off the live web instead of the page.
       search_domain_filter: [],
       return_related_questions: false,
