@@ -663,14 +663,25 @@ export function ListingVideoForm() {
         )}
       </div>
 
-      {/* Listing Photos — show uploaded photos; no duplicate upload when already added */}
-      {listing.photoUrls.length > 0 ? (
-        <div>
-          <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-            <Camera size={12} /> Listing Photos
-            <span className="text-slate-400 font-normal">({listing.photoUrls.length} uploaded · used as b-roll)</span>
-          </label>
-          <div className="grid grid-cols-4 gap-2">
+      {/* Listing Photos.
+          One block, not two branches. The add button and — worse — the file
+          input itself used to live in the empty-state branch only, so an
+          import that brought back photos removed the only way to add any: a
+          scrape that found eleven left a twelfth slot that could not be
+          filled, and a photo the scraper picked badly could be deleted but
+          never replaced. */}
+      <div>
+        <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
+          <Camera size={12} /> Listing Photos
+          <span className="text-slate-400 font-normal">
+            {listing.photoUrls.length > 0
+              ? `(${listing.photoUrls.length} of ${MAX_LISTING_PHOTOS} · used as b-roll)`
+              : "(optional · used as b-roll)"}
+          </span>
+        </label>
+
+        {listing.photoUrls.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-2">
             {listing.photoUrls.map((url, i) => (
               <div
                 key={`${url}-${i}`}
@@ -690,12 +701,9 @@ export function ListingVideoForm() {
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        <div>
-          <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-            <Camera size={12} /> Listing Photos <span className="text-slate-400 font-normal">(optional · used as b-roll)</span>
-          </label>
+        )}
+
+        {listing.photoUrls.length < MAX_LISTING_PHOTOS ? (
           <button
             type="button"
             onClick={() => photoInputRef.current?.click()}
@@ -703,22 +711,36 @@ export function ListingVideoForm() {
             className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-spark-blue/25 hover:bg-spark-blue/10 transition-all text-sm font-medium text-slate-600 hover:text-spark-blue disabled:opacity-60"
           >
             {uploadingPhotos ? <Loader2 size={16} className="animate-spin text-spark-blue" /> : <ImageIcon size={16} />}
-            {uploadingPhotos ? "Uploading…" : `Add photos (up to ${MAX_LISTING_PHOTOS})`}
+            {uploadingPhotos
+              ? "Uploading…"
+              : listing.photoUrls.length === 0
+                ? `Add photos (up to ${MAX_LISTING_PHOTOS})`
+                : `Add more photos (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slot${
+                    MAX_LISTING_PHOTOS - listing.photoUrls.length === 1 ? "" : "s"
+                  } left)`}
           </button>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files && files.length > 0) handlePhotosUpload(files);
-              if (photoInputRef.current) photoInputRef.current.value = "";
-            }}
-          />
-        </div>
-      )}
+        ) : (
+          // The render uses twelve. Saying so beats an add button that would
+          // only refuse, and points at the way to make room.
+          <p className="text-[11px] text-slate-400">
+            All {MAX_LISTING_PHOTOS} slots full — that is what the video uses. Remove one to swap it out.
+          </p>
+        )}
+
+        {/* Always mounted, whichever state the block is in. */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) handlePhotosUpload(files);
+            if (photoInputRef.current) photoInputRef.current.value = "";
+          }}
+        />
+      </div>
 
       {/* Fair Housing notice */}
       <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
