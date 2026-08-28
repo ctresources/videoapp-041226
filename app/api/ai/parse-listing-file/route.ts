@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
+import { coerceListing } from "@/lib/utils/listing-data";
 
 export const maxDuration = 60;
 
@@ -126,7 +127,9 @@ Return ONLY the JSON object. No markdown, no explanation.`;
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in AI response");
 
-  return JSON.parse(jsonMatch[0]) as ListingData;
+  // Same coercion as the URL scraper — an uploaded MLS export is no more
+  // obliged to fill every field than a web page is.
+  return coerceListing(JSON.parse(jsonMatch[0]));
 }
 
 export async function POST(req: NextRequest) {

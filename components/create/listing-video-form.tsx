@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { createClient } from "@/lib/supabase/client";
+import { coerceListing } from "@/lib/utils/listing-data";
 import { RENDERED_SCRIPT_LENGTHS, ceilMinutesFor, type VideoLength } from "@/lib/utils/video-length";
 
 /**
@@ -115,7 +116,10 @@ export function ListingVideoForm({ onRecordYourself }: {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scrape failed");
-      setListing(data.listing);
+      // Coerced here too, not only on the server: a listing saved before
+      // that fix can still hold nulls, and one null price is enough to
+      // take the whole page down on `price.trim()`.
+      setListing(coerceListing(data.listing));
       setStep("review");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not read listing");
@@ -194,7 +198,7 @@ export function ListingVideoForm({ onRecordYourself }: {
         );
       }
 
-      if (data.listing) setListing(data.listing);
+      if (data.listing) setListing(coerceListing(data.listing));
       setManualMode(true);
       setStep("review");
 

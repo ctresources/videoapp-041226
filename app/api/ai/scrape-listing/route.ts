@@ -3,6 +3,7 @@ import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import { extractImageUrls } from "@/lib/utils/listing-photos";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { coerceListing } from "@/lib/utils/listing-data";
 
 /**
  * Two upstream calls in series — Jina renders the page, then Perplexity reads
@@ -257,7 +258,9 @@ Return ONLY the JSON object. No markdown, no explanation.`;
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON found in Perplexity response");
 
-  const parsed = JSON.parse(jsonMatch[0]) as ListingData;
+  // Coerced, not asserted: the model may answer null for any field and
+  // the client treats these as strings.
+  const parsed = coerceListing(JSON.parse(jsonMatch[0]));
 
   // ── Anti-hallucination cross-check ──────────────────────────────────────
   // Every numeric fact must actually appear in the source page. If the model
