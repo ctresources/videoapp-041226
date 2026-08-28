@@ -146,9 +146,10 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { listing, videoLength } = await req.json() as {
+  const { listing, videoLength, renderMode } = await req.json() as {
     listing: ListingData;
     videoLength?: VideoLength;
+    renderMode?: "voice_only" | "avatar_voice";
   };
   if (!listing?.address) {
     return NextResponse.json({ error: "Listing data is required" }, { status: 400 });
@@ -214,6 +215,9 @@ export async function POST(req: NextRequest) {
     // cap — the render quietly undoing the length that was just asked for.
     video_length: length,
     video_platform: length === "long" ? "youtube" : "reel",
+    // Read back by the editor, which otherwise opens on its avatar default —
+    // so a tour asked for as voice-only arrived with a face on screen anyway.
+    render_mode: renderMode === "voice_only" ? "voice_only" : "avatar_voice",
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata — non-blocking

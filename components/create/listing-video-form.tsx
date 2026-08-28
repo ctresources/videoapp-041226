@@ -73,6 +73,10 @@ export function ListingVideoForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [videoLength, setVideoLength] = useState<VideoLength>("standard");
+  // Defaults to the avatar, which is what the editor has always defaulted to —
+  // this only makes the other choice reachable before the script is written,
+  // rather than two screens later.
+  const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
   // Long videos are a separate allowance. Offering the option to someone with
   // none would write an eight-minute script the render then refuses — so the
   // choice only appears once there is one to spend. The server checks too;
@@ -266,7 +270,7 @@ export function ListingVideoForm() {
       const res = await fetch("/api/ai/listing-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing, videoLength }),
+        body: JSON.stringify({ listing, videoLength, renderMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -748,6 +752,36 @@ export function ListingVideoForm() {
           🏛️ <strong>Fair Housing AI</strong> — Your script will be automatically reviewed to ensure compliance
           with the Fair Housing Act. We never include demographic, school, or community-composition language.
         </p>
+      </div>
+
+      {/* Who's on screen. The same choice the editor offers on its setup step,
+          brought forward because on a listing it is the one that matters most:
+          the photos ARE the video, and an avatar shares the frame with them.
+          Same wording as the editor, so it reads as the same decision rather
+          than a second one. */}
+      <div>
+        <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Who&rsquo;s On Screen</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {([
+            { mode: "avatar_voice" as const, label: "Avatar + voice", desc: "you present it" },
+            { mode: "voice_only" as const, label: "Voice only", desc: "photos fill the frame" },
+          ]).map(({ mode, label, desc }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setRenderMode(mode)}
+              aria-pressed={renderMode === mode}
+              className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                renderMode === mode
+                  ? "border-spark-amber bg-spark-amber-tint"
+                  : "border-spark-rule bg-white hover:border-spark-rule-dim"
+              }`}
+            >
+              <span className="block text-[11px] font-bold text-brand-text">{label}</span>
+              <span className="block text-[10px] text-spark-ink-muted">{desc}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Script length. Same two the renderer supports and the same budgets

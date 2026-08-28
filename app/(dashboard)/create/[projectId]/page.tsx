@@ -89,6 +89,9 @@ interface AiScript {
   cta_preference?: string;
   video_length?: "standard" | "long";
   video_platform?: "reel" | "youtube";
+  /** Chosen before the script was written — currently only by the listing
+   *  form, where "voice only" gives the property photos the whole frame. */
+  render_mode?: "voice_only" | "avatar_voice";
 }
 
 interface SeoData {
@@ -574,7 +577,10 @@ export default function ProjectEditorPage() {
     // typed and saved is restored as-is, not silently replaced by the hook.
     let freshDefaultHook: string | undefined;
     if (p.ai_script) {
-      const aiS = p.ai_script as AiScript & { user_edited?: boolean; video_length?: string; video_platform?: string };
+      const aiS = p.ai_script as AiScript & {
+        user_edited?: boolean; video_length?: string; video_platform?: string;
+        render_mode?: "voice_only" | "avatar_voice";
+      };
       setEditedScript(aiS.script || "");
       // Honour the format chosen before the script was written, so an ~8-minute
       // script doesn't land on a standard format and get trimmed, and a reel
@@ -583,6 +589,12 @@ export default function ProjectEditorPage() {
       if (aiS.video_length === "long") setSelectedVideoType("youtube_long");
       else if (aiS.video_platform === "reel") setSelectedVideoType("reel_9x16");
       else if (aiS.video_platform === "youtube") setSelectedVideoType("youtube_16x9");
+      // Same idea for who is on screen: chosen on the listing form, before
+      // there was a script to look at, and honoured here rather than being
+      // silently reset to the avatar default.
+      if (aiS.render_mode === "voice_only" || aiS.render_mode === "avatar_voice") {
+        setRenderMode(aiS.render_mode);
+      }
       if (aiS.user_edited) {
         // A saved draft — restore the user's own CTA and hook exactly as saved
         setEditedCta(aiS.cta || "");
