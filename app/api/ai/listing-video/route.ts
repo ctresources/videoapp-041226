@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import type { ListingData } from "../scrape-listing/route";
+import {
+  targetWords, maxWords, minutesFor, clampScript, type VideoLength,
+} from "@/lib/utils/video-length";
+import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 
 /**
  * Pull the city and state out of a listing address.
@@ -31,7 +35,18 @@ function parseCityState(address: string): { city?: string; state?: string } {
   return { city: tail };
 }
 
-async function generateListingScript(listing: ListingData, agentName?: string): Promise<{
+async function generateListingScript(
+  listing: ListingData,
+  agentName?: string,
+  /**
+   * The same two lengths every other script in the app is written to, rather
+   * than a "60–90 second, under 200 words" rule of its own. 200 words is
+   * about 1:20 — barely half of the shortest video the app renders, so a
+   * listing tour arrived far shorter than the format it was going into.
+   */
+  length: VideoLength = "standard",
+  tier?: string | null,
+): Promise<{
   title: string;
   script: string;
   hook: string;
@@ -50,11 +65,16 @@ async function generateListingScript(listing: ListingData, agentName?: string): 
     listing.lotSize || "",
   ].filter(Boolean).join(" · ");
 
+  // Both from video-length.ts, so a listing script is measured by the same
+  // ruler as every other script and by the clamp that trims it at render.
+  const target = targetWords(length, tier);
+  const cap = maxWords(length, tier);
+
   const prompt = `${FAIR_HOUSING_GUARDRAIL}
 
 ---
 
-You are a real estate video script writer. Write an engaging 60–90 second property tour script for this listing.
+You are a real estate video script writer. Write an engaging property tour script for this listing, about ${target} words — roughly ${minutesFor(target)} minutes spoken aloud. Never exceed ${cap} words.
 
 LISTING:
 Address: ${listing.address}
@@ -70,7 +90,8 @@ INSTRUCTIONS:
 - Highlight the top 3–4 features conversationally
 - Mention the price and key specs naturally
 - End with a clear call to action to schedule a showing${agentName ? ` — must include the agent's name: "${agentName}"` : ""}
-- Keep it under 200 words — this is a voiceover script, not text
+- Aim for ${target} words and never pass ${cap} — this is a voiceover script, not text. Do not pad or repeat to reach the length; if the listing genuinely has less to say, say less.
+${length === "long" ? "- This is a long tour: walk the property room by room, and give each space a specific detail from the listing rather than an adjective.\n" : ""}
 - Do NOT mention schools, churches, demographics, neighborhood composition, or anything that could violate Fair Housing laws
 - Naturally include Fair Housing Equal Opportunity language at the very end
 
@@ -103,7 +124,11 @@ Return ONLY a JSON object:
       model: "sonar",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
-      max_tokens: 1000,
+      // Has to hold the script itself plus title, hook, CTA, description,
+      // 10 hashtags and 6 keywords. 1000 was sized for a 200-word script; a
+      // 1,160-word one needs roughly 1,600 tokens before the rest of the
+      // object, and a JSON response cut off mid-string reads as a failure.
+      max_tokens: length === "long" ? 2600 : 1400,
     }),
   });
 
@@ -121,7 +146,10 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { listing } = await req.json() as { listing: ListingData };
+  const { listing, videoLength } = await req.json() as {
+    listing: ListingData;
+    videoLength?: VideoLength;
+  };
   if (!listing?.address) {
     return NextResponse.json({ error: "Listing data is required" }, { status: 400 });
   }
@@ -129,7 +157,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, company_name, phone, company_phone, website, location_city, location_state")
+    .select(`full_name, company_name, phone, company_phone, website, location_city, location_state, subscription_tier, role, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
 
@@ -137,15 +165,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
 
+  // Asking for a long script with no long videos to spend would write one the
+  // render then refuses — a wasted wait ending in a 402. Fall back to standard
+  // instead of failing: the script is still the one they can actually make.
+  const isAdmin = (profile as { role?: string | null }).role === "admin";
+  const canGoLong = isAdmin || availableFor(profile as never, "long") > 0;
+  const length: VideoLength = videoLength === "long" && canGoLong ? "long" : "standard";
+  const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
+
   // Generate script
   let scriptData: Awaited<ReturnType<typeof generateListingScript>>;
   try {
     const agentName = (profile as { full_name?: string | null }).full_name || undefined;
-    scriptData = await generateListingScript(listing, agentName);
+    scriptData = await generateListingScript(listing, agentName, length, tier);
   } catch (err) {
     console.error("Listing script error:", err);
     return NextResponse.json({ error: "Failed to generate script. Please try again." }, { status: 500 });
   }
+
+  // The prompt states the cap, but a model overshooting it is not
+  // hypothetical — the same clamp runs after every other script in the app for
+  // that reason. Doing it here means the word count the editor shows is the
+  // word count that gets spoken, rather than one the render silently trims.
+  const ctaClamped = clampScript(scriptData.cta ?? "", 200);
+  const ctaWords = ctaClamped.trim().split(/\s+/).filter(Boolean).length;
+  scriptData.cta = ctaClamped;
+  scriptData.script = clampScript(
+    scriptData.script ?? "",
+    Math.max(50, maxWords(length, tier) - ctaWords),
+  );
 
   const aiScript = {
     title: scriptData.title,
@@ -161,6 +209,11 @@ export async function POST(req: NextRequest) {
     blog_conclusion: "",
     video_type: "listing_video",
     location: listing.address,
+    // Without these the editor opened every listing on the default format.
+    // A long script landing on Shorts is clamped straight back to the short
+    // cap — the render quietly undoing the length that was just asked for.
+    video_length: length,
+    video_platform: length === "long" ? "youtube" : "reel",
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata — non-blocking

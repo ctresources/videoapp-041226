@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { createClient } from "@/lib/supabase/client";
+import { RENDERED_SCRIPT_LENGTHS, ceilMinutesFor, type VideoLength } from "@/lib/utils/video-length";
 
 /**
  * Upload a single image directly from the browser to Supabase Storage.
@@ -71,6 +72,19 @@ export function ListingVideoForm() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [videoLength, setVideoLength] = useState<VideoLength>("standard");
+  // Long videos are a separate allowance. Offering the option to someone with
+  // none would write an eight-minute script the render then refuses — so the
+  // choice only appears once there is one to spend. The server checks too;
+  // this is what stops the dead end being reachable.
+  const [longAvailable, setLongAvailable] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => a && setLongAvailable(a.isAdmin || a.long > 0))
+      .catch(() => {});
+  }, []);
 
   const MAX_LISTING_PHOTOS = 12;
 
@@ -252,7 +266,7 @@ export function ListingVideoForm() {
       const res = await fetch("/api/ai/listing-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing }),
+        body: JSON.stringify({ listing, videoLength }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -712,6 +726,41 @@ export function ListingVideoForm() {
           🏛️ <strong>Fair Housing AI</strong> — Your script will be automatically reviewed to ensure compliance
           with the Fair Housing Act. We never include demographic, school, or community-composition language.
         </p>
+      </div>
+
+      {/* Script length. Same two the renderer supports and the same budgets
+          the clamp enforces, so the tour is written to the length it will
+          actually be spoken at. It used to be a fixed "under 200 words" —
+          about 1:20, barely half the shortest video the app renders. */}
+      <div>
+        <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Script Length</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {RENDERED_SCRIPT_LENGTHS.map((l) => {
+            const isLong = l.key === "rendered_long";
+            const locked = isLong && !longAvailable;
+            const value: VideoLength = isLong ? "long" : "standard";
+            return (
+              <button
+                key={l.key}
+                type="button"
+                disabled={locked}
+                onClick={() => setVideoLength(value)}
+                aria-pressed={videoLength === value}
+                title={locked ? "Long videos are a separate allowance — add one in Billing" : undefined}
+                className={`px-2 py-1.5 rounded-lg border text-center transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                  videoLength === value && !locked
+                    ? "border-spark-amber bg-spark-amber-tint"
+                    : "border-spark-rule bg-white hover:border-spark-rule-dim disabled:hover:border-spark-rule"
+                }`}
+              >
+                <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                <span className="block text-[10px] text-spark-ink-muted">
+                  {locked ? "needs a long video" : `up to ${ceilMinutesFor(l.words)} min`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Generate button */}
