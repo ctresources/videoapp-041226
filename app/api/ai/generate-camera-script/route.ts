@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
-import { cameraTargetWords, minutesFor, type CameraLength } from "@/lib/utils/video-length";
+import {
+  cameraTargetWords, minutesFor,
+  type CameraLength, type RenderedScriptLength,
+} from "@/lib/utils/video-length";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
@@ -19,7 +22,10 @@ export async function POST(req: NextRequest) {
 
   // Camera recordings are free and support up to 15 minutes, so the length is
   // purely the agent's choice. Defaults to the previous ~400-word behaviour.
-  const words = cameraTargetWords(length as CameraLength | undefined);
+  // Teleprompter keys from the camera tab, render-matched keys from the paste
+  // tab. Anything unrecognised falls back to the standard budget rather than
+  // to a number that would be clamped later.
+  const words = cameraTargetWords(length as CameraLength | RenderedScriptLength | undefined);
   const low = Math.round(words * 0.92);
   const high = Math.round(words * 1.08);
   const mins = minutesFor(words);

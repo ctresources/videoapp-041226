@@ -107,6 +107,40 @@ export const CAMERA_LENGTHS = [
 
 export type CameraLength = (typeof CAMERA_LENGTHS)[number]["key"];
 
-export function cameraTargetWords(length: CameraLength | undefined): number {
-  return CAMERA_LENGTHS.find((l) => l.key === length)?.words ?? 400;
+/**
+ * Script lengths offered where the script WILL be rendered by HeyGen — the
+ * paste / upload tab's "Let AI Spark The Script".
+ *
+ * That tab was showing CAMERA_LENGTHS, which is written for the teleprompter,
+ * where nothing renders and the only ceiling is the 15-minute recording cap.
+ * Three of its five options were longer than the renderer accepts, so the AI
+ * wrote a script the user had chosen and the clamp then cut: "Shorts 4 min"
+ * (580 words) came back a third shorter, and "Longform 15 min" (2,175) lost
+ * roughly half — or 82% of it, if the editor's format was left on Shorts.
+ *
+ * Two options here because the renderer has two lengths. Both derive from the
+ * same constants the clamp uses, so this cannot drift away from what actually
+ * gets spoken.
+ */
+export const RENDERED_SCRIPT_LENGTHS = [
+  { key: "rendered_short", label: "Shorts",   words: standardMaxWords() },
+  { key: "rendered_long",  label: "Longform", words: LONG_MAX_WORDS },
+] as const;
+
+export type RenderedScriptLength = (typeof RENDERED_SCRIPT_LENGTHS)[number]["key"];
+
+/** Whole minutes to advertise for a word budget — rounded up, so 400 words
+ *  reads as the "up to 3 min" every plan page already promises. */
+export function ceilMinutesFor(words: number): number {
+  return Math.ceil(words / WPM);
+}
+
+export function cameraTargetWords(
+  length: CameraLength | RenderedScriptLength | undefined,
+): number {
+  return (
+    CAMERA_LENGTHS.find((l) => l.key === length)?.words ??
+    RENDERED_SCRIPT_LENGTHS.find((l) => l.key === length)?.words ??
+    standardMaxWords()
+  );
 }

@@ -29,11 +29,13 @@ import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import {
-  CAMERA_LENGTHS,
+  RENDERED_SCRIPT_LENGTHS,
+  ceilMinutesFor,
   LONG_MAX_WORDS,
   minutesFor,
   standardMaxWords,
   type CameraLength,
+  type RenderedScriptLength,
 } from "@/lib/utils/video-length";
 
 /** Pasted scripts are measured against both caps — the length is picked later. */
@@ -144,6 +146,11 @@ function CreatePageInner() {
   // Length for AI-written teleprompter scripts (camera + paste flows). Camera
   // recordings are free and run up to 15 min, so this is the agent's choice.
   const [cameraScriptLength, setCameraScriptLength] = useState<CameraLength>("standard");
+  // Separate from the camera length above. The two tabs answer to different
+  // ceilings — the teleprompter to the 15-minute recording cap, this one to
+  // what HeyGen will actually render — and they were sharing one value, so a
+  // length picked for a recording silently set the length of a paid render.
+  const [pasteScriptLength, setPasteScriptLength] = useState<RenderedScriptLength>("rendered_short");
 
   const [locGenerating, setLocGenerating] = useState(false);
 
@@ -563,7 +570,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length, length: cameraScriptLength }),
+        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length, length: pasteScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -661,7 +668,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: pasteAiTopic, length: cameraScriptLength }),
+        body: JSON.stringify({ topic: pasteAiTopic, length: pasteScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed");
@@ -1310,20 +1317,28 @@ function CreatePageInner() {
               <p className="text-sm font-bold text-spark-ink-soft mb-2">Let AI Spark The Script</p>
               <div className="mb-2">
                 <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Script Length</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {CAMERA_LENGTHS.map((l) => (
+                {/* The renderer's two lengths, not the teleprompter's five.
+                    This tab's script goes to HeyGen and is clamped there, so
+                    offering 4- and 15-minute options meant writing a script
+                    the user picked and then cutting it — quietly, after they
+                    had read it. */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {RENDERED_SCRIPT_LENGTHS.map((l) => (
                     <button
                       key={l.key}
                       type="button"
-                      onClick={() => setCameraScriptLength(l.key)}
+                      onClick={() => setPasteScriptLength(l.key)}
+                      aria-pressed={pasteScriptLength === l.key}
                       className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
-                        cameraScriptLength === l.key
+                        pasteScriptLength === l.key
                           ? "border-spark-amber bg-spark-amber-tint"
                           : "border-spark-rule bg-white hover:border-spark-rule-dim"
                       }`}
                     >
                       <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
-                      <span className="block text-[10px] text-spark-ink-muted">{l.minutes} min</span>
+                      <span className="block text-[10px] text-spark-ink-muted">
+                        up to {ceilMinutesFor(l.words)} min
+                      </span>
                     </button>
                   ))}
                 </div>
