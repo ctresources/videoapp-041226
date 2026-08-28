@@ -61,7 +61,18 @@ const EMPTY_LISTING: ListingData = {
 
 const PROPERTY_TYPES = ["Single Family", "Condo", "Townhouse", "Multi-Family", "Land", "Other"];
 
-export function ListingVideoForm() {
+export function ListingVideoForm({ onRecordYourself }: {
+  /**
+   * Hand the finished script and the listing's photos to the camera tab.
+   *
+   * The editor's teleprompter cannot composite photos — only CameraRecorder
+   * can, and only there are they rehosted first, which canvas recording
+   * requires. Sending a listing to the editor to be read aloud therefore
+   * dropped every photo, on the one flow where the photos are the video. So
+   * this crosses to the recorder that works instead of building a second one.
+   */
+  onRecordYourself?: (script: string, photoUrls: string[]) => void;
+} = {}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("url");
   const [url, setUrl] = useState("");
@@ -256,11 +267,11 @@ export function ListingVideoForm() {
 
   // ── Generate ───────────────────────────────────────────────────────────────
   /**
-   * Both buttons write the same script — the only difference is where you land
-   * with it. `record` adds ?record=1, the deep link the editor already honours
-   * for "Record again": it opens on the setup step with the script loaded and
-   * deliberately does NOT start the camera, because a permission prompt firing
-   * on page load is startling.
+   * Both buttons write the same script; only what happens next differs.
+   *
+   * `record` asks for the script alone and hands it to the camera tab — no
+   * project row, because a recording is not a render and an unused draft in
+   * My Videos is just litter.
    */
   async function handleGenerate(record = false) {
     if (!listing.address.trim()) return toast.error("Address is required");
@@ -270,12 +281,23 @@ export function ListingVideoForm() {
       const res = await fetch("/api/ai/listing-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing, videoLength, renderMode }),
+        body: JSON.stringify({ listing, videoLength, renderMode, ...(record && { scriptOnly: true }) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
-      toast.success(record ? "Script ready — set up your shot." : "Listing script ready!");
-      router.push(`/create/${data.project.id}?source=listing${record ? "&record=1" : ""}`);
+
+      if (record) {
+        toast.success("Script ready — set up your shot.");
+        // Back to review before handing over: the parent switches tabs, which
+        // unmounts this, but if that ever stops being true the form must not
+        // be left sitting on a spinner that has nothing left to wait for.
+        setStep("review");
+        onRecordYourself?.(data.script as string, listing.photoUrls);
+        return;
+      }
+
+      toast.success("Listing script ready!");
+      router.push(`/create/${data.project.id}?source=listing`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
       setStep("review");
@@ -829,11 +851,9 @@ export function ListingVideoForm() {
         🎬 Generate My Listing Video <ArrowRight size={16} />
       </Button>
 
-      {/* The teleprompter was reachable from a listing already, but only by
-          landing in the editor, continuing past the script step and finding
-          the button down in the video setup. Agents who film their own tours
-          should not have to walk through the AI render to get there. Same
-          script either way — this only changes where you arrive with it. */}
+      {/* Goes to the camera tab, not the editor's teleprompter: only the
+          camera tab's recorder composites photos, and only there are they
+          rehosted first, which canvas recording requires. */}
       <button
         type="button"
         onClick={() => handleGenerate(true)}
@@ -842,7 +862,7 @@ export function ListingVideoForm() {
       >
         🎥 Read it myself on camera
         <span className="mt-0.5 text-[12px] font-normal opacity-70">
-          Teleprompter · free — no credit used
+          Teleprompter{listing.photoUrls.length > 0 ? ` · your ${listing.photoUrls.length} photos as b-roll` : ""} · free
         </span>
       </button>
 

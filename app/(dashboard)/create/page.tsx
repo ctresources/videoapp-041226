@@ -1643,7 +1643,24 @@ function CreatePageInner() {
                 <p className="text-sm text-spark-ink-muted">Upload Photos · Import From Zillow · Enter Manually</p>
               </div>
             </div>
-            <ListingVideoForm />
+            {/* "Read it myself on camera" crosses to the camera tab rather
+                than the editor's teleprompter. Only this tab's recorder
+                composites photos, and the rehost below is what makes that
+                possible at all: a canvas cannot record a third-party image,
+                so scraped listing photos have to be copied into our storage
+                first or the recording fails outright. */}
+            <ListingVideoForm
+              onRecordYourself={async (script, photoUrls) => {
+                setCameraGeneratedScript(script);
+                setInputMode("camera");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (photoUrls.length === 0) return;
+                const safe = await rehostPhotos(photoUrls.slice(0, 12));
+                setCameraPhotos(
+                  safe.map((url, i) => ({ url, name: `Listing photo ${i + 1}`, preview: url })),
+                );
+              }}
+            />
           </Card>
 
           {/* What you get — keeps the right column balanced */}

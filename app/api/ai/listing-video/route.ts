@@ -146,10 +146,19 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { listing, videoLength, renderMode } = await req.json() as {
+  const { listing, videoLength, renderMode, scriptOnly } = await req.json() as {
     listing: ListingData;
     videoLength?: VideoLength;
     renderMode?: "voice_only" | "avatar_voice";
+    /**
+     * Write the script and stop — no project row, no SEO pass.
+     *
+     * For "read it myself on camera", where the teleprompter needs the words
+     * and nothing else. Creating a draft project for a video that is about to
+     * be recorded rather than rendered would leave an orphan in My Videos that
+     * nobody asked for. Mirrors regenerateOnly in generate-location-script.
+     */
+    scriptOnly?: boolean;
   };
   if (!listing?.address) {
     return NextResponse.json({ error: "Listing data is required" }, { status: 400 });
@@ -219,6 +228,19 @@ export async function POST(req: NextRequest) {
     // so a tour asked for as voice-only arrived with a face on screen anyway.
     render_mode: renderMode === "voice_only" ? "voice_only" : "avatar_voice",
   };
+
+  // Everything below this point exists to make a renderable project. A camera
+  // recording needs none of it — the teleprompter wants the words, and the
+  // recorder writes its own video row when the take is saved.
+  if (scriptOnly) {
+    return NextResponse.json({
+      aiScript,
+      script: [scriptData.hook, scriptData.script, scriptData.cta]
+        .map((s) => (s ?? "").trim())
+        .filter(Boolean)
+        .join("\n\n"),
+    });
+  }
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata — non-blocking
   const prof = profile as {
