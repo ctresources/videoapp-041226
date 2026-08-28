@@ -237,7 +237,14 @@ export function ListingVideoForm() {
   }
 
   // ── Generate ───────────────────────────────────────────────────────────────
-  async function handleGenerate() {
+  /**
+   * Both buttons write the same script — the only difference is where you land
+   * with it. `record` adds ?record=1, the deep link the editor already honours
+   * for "Record again": it opens on the setup step with the script loaded and
+   * deliberately does NOT start the camera, because a permission prompt firing
+   * on page load is startling.
+   */
+  async function handleGenerate(record = false) {
     if (!listing.address.trim()) return toast.error("Address is required");
     if (!listing.price.trim()) return toast.error("Price is required");
     setStep("generating");
@@ -249,8 +256,8 @@ export function ListingVideoForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
-      toast.success("Listing script ready!");
-      router.push(`/create/${data.project.id}?source=listing`);
+      toast.success(record ? "Script ready — set up your shot." : "Listing script ready!");
+      router.push(`/create/${data.project.id}?source=listing${record ? "&record=1" : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
       setStep("review");
@@ -709,15 +716,34 @@ export function ListingVideoForm() {
 
       {/* Generate button */}
       <Button
-        onClick={handleGenerate}
+        onClick={() => handleGenerate()}
         disabled={!listing.address.trim() || !listing.price.trim()}
         size="lg"
         className="w-full gap-2"
       >
         🎬 Generate My Listing Video <ArrowRight size={16} />
       </Button>
+
+      {/* The teleprompter was reachable from a listing already, but only by
+          landing in the editor, continuing past the script step and finding
+          the button down in the video setup. Agents who film their own tours
+          should not have to walk through the AI render to get there. Same
+          script either way — this only changes where you arrive with it. */}
+      <button
+        type="button"
+        onClick={() => handleGenerate(true)}
+        disabled={!listing.address.trim() || !listing.price.trim()}
+        className="flex w-full flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2.5 text-[15px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-spark-ink"
+      >
+        🎥 Read it myself on camera
+        <span className="mt-0.5 text-[12px] font-normal opacity-70">
+          Teleprompter · free — no credit used
+        </span>
+      </button>
+
       <p className="text-xs text-slate-400 text-center -mt-2">
-        We write the script first — review it on the next screen, then hit Generate to render the video.
+        We write the script first — review it on the next screen, then either render it with your
+        avatar or read it to camera yourself.
       </p>
     </div>
   );
