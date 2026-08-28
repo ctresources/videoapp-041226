@@ -2482,9 +2482,20 @@ export default function ProjectEditorPage() {
                 size="lg"
                 className="gap-2"
               >
+                {/* One text node, not a word split across a span.
+                    Button is `inline-flex … gap-2`, so every child is a flex
+                    item with 0.5rem between it and the next — "Publish",
+                    "ing", "assets" and the arrow rendered as four of them and
+                    the label read "Publish ing assets".
+
+                    "Publishing assets" was a noun phrase — the titles,
+                    captions and blog copy waiting on the next step — but on a
+                    screen that says "Rendering" it reads as a verb, as though
+                    the video were being published. "Kit" cannot be read as
+                    something in progress. */}
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Publish<span className="hidden sm:inline">ing</span> assets <ArrowRight size={17} /></>}
+                  : <>Publishing kit <ArrowRight size={17} /></>}
               </Button>
             )}
             {editorStep === 5 && (
