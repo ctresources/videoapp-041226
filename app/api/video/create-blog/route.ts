@@ -183,6 +183,16 @@ function buildVideoAgentPrompt(params: {
   listingPhotoCount?: number;
   extraPhotoCount?: number;
   pdfContent?: string;
+  /**
+   * Whether an avatar is actually being placed on screen.
+   *
+   * Omitting avatar_id was treated as enough to mean "voice only", but this
+   * prompt then went on demanding a full-screen presenter, a 50/50 intercut
+   * and an avatar title card — so the agent supplied a stock presenter to
+   * satisfy the instructions it had been given. Voice-only has to be said
+   * here too, not only left unsaid in the payload.
+   */
+  hasAvatar: boolean;
 }): { head: string; tail: string } {
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const locationOr = location || "the local area";
@@ -232,7 +242,12 @@ ${totalPhotos} photo(s) are attached${listingCount > 0 ? ` (${listingCount} of t
 - Use ALL of them as the primary b-roll; cycle so each gets ~5–10s of screen time.
 - Crop/scale every photo to FILL the frame edge-to-edge (cover scaling) — never letterbox or pillarbox, even for portrait photos.
 - Gentle Ken Burns motion (slow pan + zoom) on each.
-- Match each photo to the sentence describing it. Do NOT replace them with stock or generated imagery; stock b-roll only between photos for transitions.`
+- Match each photo to the sentence describing it.
+${listingCount > 0
+  ? `- THESE PHOTOS ARE THE ONLY PROPERTY VISUALS PERMITTED. Every shot of a home, room, yard, exterior, street or interior must come from the attached photos. Do NOT add, generate or source ANY other property imagery — no stock houses, no stock interiors, no AI-invented rooms, not even for a transition or a background fill. A house that is not this house misrepresents the listing.
+- If the narration outruns the photos, hold, re-use or slowly move across the attached photos, or cut to a plain branded text card. Running out of photos is never a reason to invent one.
+- Non-property b-roll (maps, generic lifestyle, abstract texture) is allowed only where the script is not describing the home itself.`
+  : "- Do NOT replace them with stock or generated imagery; stock b-roll only between photos for transitions."}`
     : "";
 
   const monthName = new Date().toLocaleString("en-US", { month: "long" });
@@ -257,7 +272,7 @@ ${totalPhotos} photo(s) are attached${listingCount > 0 ? ` (${listingCount} of t
 
 ${orientationBlock}
 
-TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
+${params.hasAvatar ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
 - EVERY text or graphic element — captions, headlines, hooks, lower-thirds, stats, numbers, charts, infographics, logos, badges, arrows — must sit ENTIRELY inside the BOTTOM 20% of the canvas (on a 1080-tall frame that is the bottom ~216px; on a 1920-tall frame ~384px).
 - The TOP 80% is a NO-OVERLAY ZONE. The presenter's head and face are there. Never center an overlay, never place text beside the head, never over the chest or shoulders. This applies even when the presenter is only partly visible.
 - Standard treatment: a full-width semi-transparent dark bar pinned to the bottom edge, white or soft-gold text inside.
@@ -266,7 +281,10 @@ TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
 
 AVATAR + B-ROLL INTERCUT (MANDATORY)
 - When on camera the presenter is FULL SCREEN, filling the entire ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop. Always the animated, lip-synced avatar; never a static image.
-- Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.
+- Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.` : `NO PRESENTER — VOICEOVER ONLY (RULE #1)
+- This video has NO on-screen presenter. Do NOT place any person, avatar, host, narrator, spokesperson or talking head in any scene — not full screen, not in a corner, not in an inset, not for one frame. No avatar was supplied and none may be substituted.
+- The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
+- With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.`}
 
 LOCATION ACCURACY — ${locationOr}, ${monthName}
 - Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
@@ -282,7 +300,9 @@ FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 - Render the script as written, but add no non-compliant visuals or overlays of your own.
 
 SCENE 1 — TITLE CARD (this frame is also the thumbnail)
-- Full-screen talking presenter filling the entire ${canvasLabel} canvas — the avatar IS the thumbnail; no separate background photo.
+${params.hasAvatar
+  ? `- Full-screen talking presenter filling the entire ${canvasLabel} canvas — the avatar IS the thumbnail; no separate background photo.`
+  : `- The strongest available visual, full-screen and filling the entire ${canvasLabel} canvas. No presenter, no person, no talking head.`}
 - MANDATORY OVERLAY: a full-width dark semi-transparent bar across the bottom 20% containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
 - No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
 
@@ -291,7 +311,9 @@ FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
 - On-screen only, never narrated: ${contactLine}
 - Show phone numbers exactly as provided — no leading "1", no country code.
 - Bold CTA headline: "${ctaText}"
-- Presenter full-screen or beside the card; fill the whole canvas (blurred enlarged footage or b-roll behind if needed) — never black bars.
+${params.hasAvatar
+  ? "- Presenter full-screen or beside the card; fill the whole canvas (blurred enlarged footage or b-roll behind if needed) — never black bars."
+  : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
 DURATION (CRITICAL)
 - Maximum ${params.isLongForm ? "40 scenes; vary the visuals every 20–30 seconds to hold attention" : "10 scenes"}.
@@ -576,6 +598,12 @@ export async function POST(req: NextRequest) {
       isShortForm,
       isSquare: videoType === "short_1x1",
       isLongForm,
+      // lookId is what avatarId is derived from below, so this is the same
+      // condition that decides whether avatar_id is sent at all — the prompt
+      // and the payload cannot disagree about whether there is a presenter.
+      // They did: the payload said no avatar, the prompt demanded one on
+      // screen half the time, and HeyGen resolved it with a stock one.
+      hasAvatar: !!lookId,
       burnCaptions: captions !== false,
       hookText,
       listingAddress,
