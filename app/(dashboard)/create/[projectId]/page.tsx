@@ -2492,10 +2492,11 @@ export default function ProjectEditorPage() {
                     captions and blog copy waiting on the next step — but on a
                     screen that says "Rendering" it reads as a verb, as though
                     the video were being published. "Kit" cannot be read as
-                    something in progress. */}
+                    something in progress, and "Share" is the product's own
+                    third verb: speak, spark, share. */}
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Publishing kit <ArrowRight size={17} /></>}
+                  : <>Share kit <ArrowRight size={17} /></>}
               </Button>
             )}
             {editorStep === 5 && (
