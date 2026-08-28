@@ -120,6 +120,15 @@ async function fetchWithJina(url: string): Promise<string> {
     headers: {
       Accept: "text/plain",
       "X-Return-Format": "markdown",
+      // Ask for the consolidated image list.
+      //
+      // Without it Jina returns only the images inline in the markdown, which
+      // on a lazy-loading gallery is the handful rendered before scroll — a
+      // Zillow listing with 28 photos came back with 6. This header adds the
+      // trailing "Images:" block covering everything on the page, which
+      // extractImageUrls has always had a parser for (its BARE_IMAGE source)
+      // and never received, because nothing asked for it.
+      "X-With-Images-Summary": "true",
       ...(key && { Authorization: `Bearer ${key}` }),
     },
     // 45s, up from 20s. Jina has to follow the link, render the page and turn

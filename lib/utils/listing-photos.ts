@@ -94,6 +94,38 @@ function unwrapProxy(href: string, base: string): string {
   return current;
 }
 
+/**
+ * Rendition written into the FILENAME rather than the query string.
+ *
+ * Zillow is the important case and does all three of these:
+ *   <hash>-cc_ft_768.jpg
+ *   <hash>-uncropped_scaled_within_1344_1008.webp
+ *   <hash>-p_e.jpg
+ *
+ * De-duplicating on query parameters alone treated those as three different
+ * photos. That did no harm while only a handful of images came back, but with
+ * the full image list it would fill all twelve slots with the same few photos
+ * at different sizes. Anchored to known rendition words and to a trailing
+ * WxH, so an ordinary filename that happens to end in digits is left alone.
+ */
+const RENDITION_PATH =
+  /(-(?:cc_ft|uncropped_scaled_within|p)_[a-z0-9_]+|[-_]\d{2,4}x\d{2,4})(?=\.[a-z0-9]{3,4}$)/i;
+
+/**
+ * Rough pixel size of a rendition, for choosing between two URLs of the same
+ * photo. The largest number in the last path segment: `-cc_ft_1536` beats
+ * `-cc_ft_384`, `_1344_1008` beats `_768`. Only ever compared against another
+ * rendition of the SAME photo, so a filename like `lot-2024.jpg` scoring 2024
+ * costs nothing — nothing else shares its identity.
+ */
+function renditionWidth(href: string): number {
+  const last = href.split("?")[0].split("/").pop() ?? "";
+  // .match, not .matchAll — this project's TS target predates iterating a
+  // RegExpStringIterator, and an array of strings is all that is wanted here.
+  const runs = last.match(/\d{2,5}/g);
+  return runs ? runs.reduce((max, n) => Math.max(max, Number(n)), 0) : 0;
+}
+
 /** Identity of the photo itself, ignoring which rendition of it this URL asks for. */
 function photoIdentity(href: string): string {
   let url: URL;
@@ -107,7 +139,8 @@ function photoIdentity(href: string): string {
     if (!RENDITION_PARAMS.has(name.toLowerCase())) kept.push(`${name}=${value}`);
   });
   kept.sort();
-  return `${url.origin}${url.pathname}${kept.length ? `?${kept.join("&")}` : ""}`;
+  const path = url.pathname.replace(RENDITION_PATH, "");
+  return `${url.origin}${path}${kept.length ? `?${kept.join("&")}` : ""}`;
 }
 
 /**
@@ -116,10 +149,13 @@ function photoIdentity(href: string): string {
  */
 export function extractImageUrls(markdown: string, pageUrl: string): string[] {
   const found: string[] = [];
-  const seen = new Set<string>();
+  // Where each photo landed in `found`, and how big the rendition we kept was.
+  // A Set of identities would keep whichever URL the page happened to list
+  // first, and pages list the thumbnail first — so the b-roll was a 384px
+  // image stretched over a 1080p frame.
+  const chosen = new Map<string, { index: number; width: number }>();
 
   const push = (raw: string, needsPhotoExt: boolean) => {
-    if (found.length >= MAX_PHOTOS) return;
     let abs: string;
     try {
       abs = new URL(raw, pageUrl).href;
@@ -134,18 +170,36 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
     if (needsPhotoExt ? !PHOTO_EXT.test(abs) : NON_PHOTO_EXT.test(abs)) return;
 
     const key = photoIdentity(abs);
-    if (seen.has(key)) return;
     if (NON_PHOTO.test(key)) return;
-    seen.add(key);
+
+    const width = renditionWidth(abs);
+    const existing = chosen.get(key);
+    if (existing) {
+      // Same photo again. Not a new slot — but if this one is bigger, it is
+      // the copy worth keeping.
+      if (width > existing.width) {
+        found[existing.index] = abs;
+        existing.width = width;
+      }
+      return;
+    }
+
+    // The cap applies to NEW photos only. Checking it before the duplicate
+    // test above would freeze the first twelve at whatever size they were
+    // first listed at, which is the small one.
+    if (found.length >= MAX_PHOTOS) return;
+    chosen.set(key, { index: found.length, width });
     found.push(abs);
   };
 
   for (const { re, needsPhotoExt } of SOURCES) {
     re.lastIndex = 0; // module-level regexes are stateful with /g
     let m: RegExpExecArray | null;
+    // Deliberately reads to the end rather than stopping at MAX_PHOTOS: a
+    // larger rendition of a photo already held usually appears later in the
+    // page than its thumbnail, and stopping early never saw it.
     while ((m = re.exec(markdown)) !== null) {
       push(m[1] ?? m[0], needsPhotoExt);
-      if (found.length >= MAX_PHOTOS) break;
     }
   }
 
