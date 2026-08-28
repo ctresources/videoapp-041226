@@ -4,6 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractImageUrls } from "@/lib/utils/listing-photos";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
+/**
+ * Two upstream calls in series — Jina renders the page, then Perplexity reads
+ * it — and this route declared no duration at all, so it ran on the platform
+ * default while its own fetch was willing to wait 20 seconds.
+ */
+export const maxDuration = 60;
+
 export interface ListingData {
   address: string;
   price: string;
@@ -114,7 +121,13 @@ async function fetchWithJina(url: string): Promise<string> {
       "X-Return-Format": "markdown",
       ...(key && { Authorization: `Bearer ${key}` }),
     },
-    signal: AbortSignal.timeout(20000),
+    // 45s, up from 20s. Jina has to follow the link, render the page and turn
+    // it into markdown, and 20 seconds was not enough for the ordinary case of
+    // a shortened link (myre.io, bit.ly) pointing at a JS-rendered agent site:
+    // the redirect is resolved first, then a slow page is rendered second.
+    // Those timed out and the user was told the listing could not be READ,
+    // which sent them off to retype a link that was working fine.
+    signal: AbortSignal.timeout(45000),
   });
   if (!res.ok) {
     if (!key && (res.status === 403 || res.status === 429)) {
@@ -316,6 +329,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Listing import has hit its usage limit for now. Please enter the details manually, or try again later." },
         { status: 503 },
+      );
+    }
+
+    // A timeout is not an unreadable listing, and saying so sent people off to
+    // retype a link that was fine. Shortened links are the usual cause: the
+    // redirect is resolved first and the real page rendered second.
+    if (err instanceof Error && err.name === "TimeoutError") {
+      return NextResponse.json(
+        { error: "That listing took too long to load — try Import again, or enter the details manually." },
+        { status: 504 },
       );
     }
 
