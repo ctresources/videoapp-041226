@@ -327,7 +327,31 @@ export async function POST(req: NextRequest) {
     // Photos come from the markdown, not the model — see extractImageUrls.
     // Resolved against the final URL so relative paths work after a redirect.
     listing.photoUrls = extractImageUrls(markdown, url);
-    console.log(`[scrape-listing] ${listing.photoUrls.length} photo(s) found for ${parsedUrl.hostname}`);
+
+    // A page can be fetched perfectly and still not be a listing.
+    //
+    // An off-market listing on an IDX site returns 200 with a real page that
+    // says "maybe it went off the market" and carries no facts at all. The
+    // parser then does the right thing and finds nothing — but returning that
+    // as a success handed back an empty form with no explanation, and the few
+    // images such a page does have are site furniture rather than the property.
+    //
+    // Address and price are the two the form itself requires, so a page
+    // offering neither is not one this flow can use.
+    if (!listing.address.trim() && !listing.price.trim()) {
+      console.warn(
+        `[scrape-listing] No listing on ${parsedUrl.hostname}${parsedUrl.pathname} ` +
+        `(${markdown.length} chars read, ${listing.photoUrls.length} image(s))`,
+      );
+      throw new Error("NOT_A_LISTING");
+    }
+    // With the path, not just the host. Every short link logs as "myre.io",
+    // so two imports of different listings were indistinguishable in the logs
+    // at exactly the moment that difference was the answer.
+    console.log(
+      `[scrape-listing] ${listing.photoUrls.length} photo(s) found for ` +
+      `${parsedUrl.hostname}${parsedUrl.pathname}`,
+    );
     return NextResponse.json({ listing });
   } catch (err) {
     console.error("Scrape listing error:", err);
@@ -350,6 +374,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Listing import has hit its usage limit for now. Please enter the details manually, or try again later." },
         { status: 503 },
+      );
+    }
+
+    // The page read fine — it just wasn't a listing. Say which, because the
+    // fix is a different link (or the manual form), not a retry.
+    if (code === "NOT_A_LISTING") {
+      return NextResponse.json(
+        {
+          error:
+            "That page doesn't show a listing — it may have sold or come off the market. " +
+            "Check the link, or enter the details manually.",
+        },
+        { status: 422 },
       );
     }
 
