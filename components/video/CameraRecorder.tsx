@@ -525,10 +525,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
     void compositeRef.current.setPhotos(useBroll ? photos : []);
   }, [photos, useBroll]);
 
-  // A finished take exists only as a Blob in this tab until it is saved.
-  // Closing the page, or walking back to another step, took a recording that
-  // had just been made with nothing anywhere to show for it — no upload had
-  // ever been attempted, so there was not even a failure to report.
+  // Still worth warning, but the window is now only the seconds between a take
+  // finishing and its upload completing — not for as long as someone fails to
+  // notice a button.
   useEffect(() => {
     if (!videoBlob || savedVideoId) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -539,21 +538,59 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
     return () => window.removeEventListener("beforeunload", warn);
   }, [videoBlob, savedVideoId]);
 
-  async function handleSaveForSocial() {
-    if (!videoBlob) return;
+  /**
+   * Put the take in My Videos.
+   *
+   * `openShare` is what the button passes. The automatic save below does not —
+   * a share sheet appearing unasked, over a take nobody has watched yet, is
+   * startling.
+   */
+  async function saveTake(blob: Blob, openShare: boolean) {
     setSaving(true);
     try {
       const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
-      const { videoId, title: savedName } = await uploadCameraRecording(videoBlob, { title, script });
+      const { videoId, title: savedName } = await uploadCameraRecording(blob, { title, script });
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
-      setShowPublish(true);
+      if (openShare) setShowPublish(true);
+      return videoId;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
+      return null;
     } finally {
       setSaving(false);
     }
   }
+
+  async function handleSaveForSocial() {
+    if (!videoBlob) return;
+    // Already saved by the effect below — this is only the share sheet now.
+    if (savedVideoId) { setShowPublish(true); return; }
+    await saveTake(videoBlob, true);
+  }
+
+  /**
+   * Save the take as soon as it exists, rather than waiting to be asked.
+   *
+   * Vercel had no call to camera-upload-url or save-camera-recording in the
+   * whole window on two separate days: a recording was made, the page moved
+   * on, and nothing had ever been sent. The beforeunload warning added after
+   * the first time only covers closing the tab — stepping somewhere else
+   * inside the app is a React route change and fires nothing.
+   *
+   * The editor's teleprompter has always uploaded the moment it stops. To the
+   * person holding the camera these are the same feature, and only one of them
+   * kept the footage. A retake now costs a spare row in My Videos, which is a
+   * delete; the alternative cost the whole recording.
+   */
+  useEffect(() => {
+    if (!videoBlob || savedVideoId || saving) return;
+    (async () => {
+      const id = await saveTake(videoBlob, false);
+      if (id) toast.success("Saved to My Videos.");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoBlob]);
 
   useEffect(() => {
     return () => {
@@ -1006,7 +1043,11 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
         </div>
         <div className="flex items-center justify-between px-1">
           <p className="text-sm font-semibold text-brand-text">
-            {savedVideoId ? "Saved to My Videos" : "Recording complete — not saved yet"}
+            {savedVideoId
+              ? "Saved to My Videos"
+              : saving
+                ? "Saving to My Videos…"
+                : "Recording complete"}
           </p>
           <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
         </div>
@@ -1031,7 +1072,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> Save to My Videos</>
+              <><Share2 size={16} /> {savedVideoId ? "Share it" : "Save to My Videos"}</>
             )}
           </Button>
         </div>

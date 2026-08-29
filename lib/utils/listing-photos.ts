@@ -58,8 +58,35 @@ const NOT_THE_PROPERTY = /\/maps\/api\/staticmap|[?&]maptype=|mapbox|openstreetm
  * Showing another property in a tour of this one misrepresents the listing,
  * so these are dropped even though it means the gallery stays at whatever the
  * article yielded. Fewer real photos beats more wrong ones.
+ *
+ * `-h_n` joined it after an agent's own headshot — the one on the listing
+ * page — came through as one of twelve. It is a photograph, at a plausible
+ * size, of a person rather than a property.
  */
-const PROPERTY_CARD_RENDITION = /-p_[a-z]\.(?:jpe?g|png|webp|avif)(?:$|\?)/i;
+const NOT_GALLERY_RENDITION = /-(?:p_[a-z]|h_n)\.(?:jpe?g|png|webp|avif)(?:$|\?)/i;
+
+/**
+ * The smallest a declared rendition can be and still be a listing photo.
+ *
+ * With `-p_c` blocked, the similar-homes carousel came back a second time as
+ * `-cc_ft_192` — same images, the rendition code the gallery uses, just tiny.
+ * The gallery's own photos are served at 576 and above, so the size separates
+ * them where the code no longer does.
+ *
+ * It is also the right call on quality alone: a 192px image stretched across
+ * a 1080p frame is not worth a slot even when it is the correct house.
+ */
+const MIN_RENDITION_PX = 300;
+
+/** A single dimension declared in the rendition suffix, or 0 if none is. */
+function declaredWidth(href: string): number {
+  const last = href.split("?")[0].split("/").pop() ?? "";
+  const dash = last.lastIndexOf("-");
+  if (dash < 0) return 0;
+  const suffix = last.slice(dash + 1).replace(/\.[a-z0-9]+$/i, "");
+  const runs = suffix.match(/\d{2,5}/g);
+  return runs ? runs.reduce((max, n) => Math.max(max, Number(n)), 0) : 0;
+}
 
 /**
  * A size declared in the filename that is too small to be a listing photo.
@@ -244,7 +271,9 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
     if (needsPhotoExt ? !PHOTO_EXT.test(abs) : NON_PHOTO_EXT.test(abs)) return;
     if (TRACKER.test(abs)) return;
     if (NOT_THE_PROPERTY.test(abs)) return;
-    if (PROPERTY_CARD_RENDITION.test(abs)) return;
+    if (NOT_GALLERY_RENDITION.test(abs)) return;
+    const declared = declaredWidth(abs);
+    if (declared > 0 && declared < MIN_RENDITION_PX) return;
     if (isTinyDeclaredSize(abs)) return;
 
     const key = photoIdentity(abs);
