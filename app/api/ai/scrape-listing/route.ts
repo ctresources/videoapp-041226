@@ -64,8 +64,15 @@ function isPubliclyFetchable(u: URL): boolean {
  */
 const PHOTO_SECOND_LOOK = 8;
 
-/** Raw HTML is large; only the head of it is worth scanning for <img> tags. */
-const RAW_HTML_SCAN_LIMIT = 400_000;
+/**
+ * How much raw HTML to scan.
+ *
+ * Was 400k, which is smaller than a Zillow listing page — and Zillow does not
+ * put its gallery in <img> tags at all, it ships them as URLs inside embedded
+ * JSON near the end of the document. So the cap was cutting off precisely the
+ * part worth reading, and the merge silently added nothing.
+ */
+const RAW_HTML_SCAN_LIMIT = 3_000_000;
 
 /**
  * The page as the server sends it, no rendering.
@@ -376,17 +383,28 @@ export async function POST(req: NextRequest) {
     // its article body, so they lead.
     if (listing.photoUrls.length < PHOTO_SECOND_LOOK) {
       const html = await fetchRawHtml(url);
-      if (html) {
+      if (!html) {
+        // Silence here was indistinguishable from "not attempted", "blocked"
+        // and "found nothing new" — three different problems, no way to tell
+        // them apart from the outside.
+        console.warn("[scrape-listing] second look: no raw HTML (blocked, non-HTML, or timed out)");
+      } else {
         const merged = extractImageUrls(`${markdown}\n${html}`, url);
-        if (merged.length > listing.photoUrls.length) {
-          console.log(
-            `[scrape-listing] raw HTML added ${merged.length - listing.photoUrls.length} photo(s) ` +
-            `(${listing.photoUrls.length} → ${merged.length})`,
-          );
-          listing.photoUrls = merged;
-        }
+        console.log(
+          `[scrape-listing] second look: ${html.length} chars of HTML, ` +
+          `${listing.photoUrls.length} → ${merged.length} photo(s)`,
+        );
+        if (merged.length > listing.photoUrls.length) listing.photoUrls = merged;
       }
     }
+
+    // The URLs themselves, not just the count. Twice now a photo problem has
+    // turned on WHICH images were picked — an MLS attribution logo among them,
+    // a thumbnail chosen where the full size existed — and neither of those is
+    // visible in a number.
+    console.log(
+      `[scrape-listing] photos: ${listing.photoUrls.map((u) => u.slice(0, 120)).join(" | ")}`,
+    );
 
     // A page can be fetched perfectly and still not be a listing.
     //

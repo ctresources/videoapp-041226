@@ -8,9 +8,17 @@
  * reliable than asking a language model to copy URLs verbatim.
  */
 
-/** Junk that appears as an image on nearly every listing page. */
+/**
+ * Junk that appears as an image on nearly every listing page.
+ *
+ * Substring matching, no word boundaries — so "logo" already catches
+ * mls-logo, sourcelogo and the like. The MLS attribution mark that reached a
+ * gallery was not caught by any of these, which means its URL says nothing
+ * about what it is; see the photos log in scrape-listing for what actually
+ * came back before adding guesses here.
+ */
 const NON_PHOTO =
-  /logo|icon|sprite|pixel|badge|avatar|headshot|placeholder|blank|spacer|favicon|watermark|banner|button|arrow|thumb_?nail|1x1|transparent/i;
+  /logo|icon|sprite|pixel|badge|avatar|headshot|placeholder|blank|spacer|favicon|watermark|banner|button|arrow|thumb_?nail|1x1|transparent|attribution|brokerage|courtesy|disclaimer/i;
 
 /** Ends in a photo extension — the only thing a bare URL has to go on. */
 const PHOTO_EXT = /\.(jpe?g|png|webp|avif)($|\?)/i;
