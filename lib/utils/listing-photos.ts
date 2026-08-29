@@ -47,6 +47,21 @@ const TRACKER =
 const NOT_THE_PROPERTY = /\/maps\/api\/staticmap|[?&]maptype=|mapbox|openstreetmap/i;
 
 /**
+ * Zillow's property-CARD thumbnail rendition — a different listing.
+ *
+ * A 28-photo listing imported twelve, and seven came from here. The evidence:
+ * every image the article markdown yielded was `-cc_ft_*` (the gallery), and
+ * every image the raw HTML added was `-p_c` — the "similar homes" carousel
+ * further down the page, which is other people's houses. Same CDN, same
+ * shape, indistinguishable by any other test.
+ *
+ * Showing another property in a tour of this one misrepresents the listing,
+ * so these are dropped even though it means the gallery stays at whatever the
+ * article yielded. Fewer real photos beats more wrong ones.
+ */
+const PROPERTY_CARD_RENDITION = /-p_[a-z]\.(?:jpe?g|png|webp|avif)(?:$|\?)/i;
+
+/**
  * A size declared in the filename that is too small to be a listing photo.
  *
  * Zillow's MLS attribution mark is `<hash>-zillow_web_95_35.jpg` — 95×35
@@ -192,7 +207,13 @@ function photoIdentity(href: string): string {
     if (!RENDITION_PARAMS.has(name.toLowerCase())) kept.push(`${name}=${value}`);
   });
   kept.sort();
-  const path = url.pathname.replace(RENDITION_PATH, "");
+  // Extension stripped as well as the rendition. The same photo is served as
+  // .jpg and .webp — `<hash>-cc_ft_960.jpg` and `<hash>-cc_ft_192.webp` are
+  // one picture, and keeping the extension in the identity let the small webp
+  // through as a thirteenth "photo" that was really the first one again.
+  const path = url.pathname
+    .replace(RENDITION_PATH, "")
+    .replace(/\.(?:jpe?g|png|webp|avif)$/i, "");
   return `${url.origin}${path}${kept.length ? `?${kept.join("&")}` : ""}`;
 }
 
@@ -223,6 +244,7 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
     if (needsPhotoExt ? !PHOTO_EXT.test(abs) : NON_PHOTO_EXT.test(abs)) return;
     if (TRACKER.test(abs)) return;
     if (NOT_THE_PROPERTY.test(abs)) return;
+    if (PROPERTY_CARD_RENDITION.test(abs)) return;
     if (isTinyDeclaredSize(abs)) return;
 
     const key = photoIdentity(abs);
