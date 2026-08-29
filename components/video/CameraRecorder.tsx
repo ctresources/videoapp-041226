@@ -68,11 +68,20 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, photos = [] }: {
+export function CameraRecorder({ city, state, initialScript, photos = [], onPhaseChange }: {
   city?: string; state?: string; initialScript?: string;
   /** Photo URLs used as b-roll behind the speaker. Must be CORS-clean — see
    *  /api/photos/rehost — or they are silently dropped at load. */
   photos?: string[];
+  /**
+   * Which of this component's own phases is showing.
+   *
+   * The page above renders the market field, the uploads card and the doc/URL
+   * attach permanently, so once the camera opened — and again once a take had
+   * been recorded — all of that setup was still sitting above the result. The
+   * page uses this to fold the setup away while the camera has the screen.
+   */
+  onPhaseChange?: (phase: CamStep) => void;
 } = {}) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
@@ -80,6 +89,11 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
   useEffect(() => {
     if (initialScript) setScript(initialScript);
   }, [initialScript]);
+
+  useEffect(() => {
+    onPhaseChange?.(step);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   const [showSpark, setShowSpark] = useState(false);
   const [sparkTopic, setSparkTopic] = useState("");
   // Camera recordings are free and run up to 15 min, so script length is purely

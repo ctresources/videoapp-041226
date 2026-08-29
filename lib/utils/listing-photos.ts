@@ -78,6 +78,38 @@ const NOT_GALLERY_RENDITION = /-(?:p_[a-z]|h_n)\.(?:jpe?g|png|webp|avif)(?:$|\?)
  */
 const MIN_RENDITION_PX = 300;
 
+/**
+ * Ask Zillow's CDN for a bigger copy than the page happened to reference.
+ *
+ * A page links whatever size its layout needed — mostly `cc_ft_576` — and 576
+ * pixels stretched across a 1080p frame is the soft, washed-out b-roll you see
+ * behind the speaker. The CDN serves any size for the same photo, so the URL
+ * can simply ask for more.
+ *
+ * 1536 because it is the largest that actually resolves. Measured against a
+ * real photo from this listing:
+ *   cc_ft_576   200   35,529 bytes
+ *   cc_ft_960   200   87,749 bytes
+ *   cc_ft_1536  200  124,797 bytes
+ *   cc_ft_1920  404        0 bytes
+ * Only ever upgrades — a URL already asking for 1536 or more is left alone,
+ * so this can never shrink a photo.
+ */
+const ZILLOW_TARGET_PX = 1536;
+
+function upgradeRendition(href: string): string {
+  if (!/(^|\.)zillowstatic\.com$/i.test(safeHost(href))) return href;
+  return href.replace(
+    /-cc_ft_(\d{2,5})(\.[a-z0-9]+)$/i,
+    (whole, px: string, ext: string) =>
+      Number(px) < ZILLOW_TARGET_PX ? `-cc_ft_${ZILLOW_TARGET_PX}${ext}` : whole,
+  );
+}
+
+function safeHost(href: string): string {
+  try { return new URL(href).hostname; } catch { return ""; }
+}
+
 /** A single dimension declared in the rendition suffix, or 0 if none is. */
 function declaredWidth(href: string): number {
   const last = href.split("?")[0].split("/").pop() ?? "";
@@ -285,7 +317,7 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
       // Same photo again. Not a new slot — but if this one is bigger, it is
       // the copy worth keeping.
       if (width > existing.width) {
-        found[existing.index] = abs;
+        found[existing.index] = upgradeRendition(abs);
         existing.width = width;
       }
       return;
@@ -296,7 +328,7 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
     // first listed at, which is the small one.
     if (found.length >= MAX_PHOTOS) return;
     chosen.set(key, { index: found.length, width });
-    found.push(abs);
+    found.push(upgradeRendition(abs));
   };
 
   for (const { re, needsPhotoExt } of SOURCES) {

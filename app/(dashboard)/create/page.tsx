@@ -190,6 +190,17 @@ function CreatePageInner() {
   // Camera tab uploads
   const [cameraPhotos, setCameraPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
   const [cameraPhotoUploading, setCameraPhotoUploading] = useState(false);
+  /**
+   * Which phase CameraRecorder is in.
+   *
+   * Its setup — the spoken brief, the market field, the photos and the doc
+   * attach — is rendered by this page, above the recorder. So once the camera
+   * opened, and again once a take was recorded and playing, every one of those
+   * inputs was still sitting on screen above the result: the doc/URL attach
+   * appearing "again" underneath a finished video. They fold away while the
+   * camera has the screen and come back if the take is discarded.
+   */
+  const [cameraPhase, setCameraPhase] = useState<"script" | "camera" | "done">("script");
   const [cameraPdfUploading, setCameraPdfUploading] = useState(false);
   const [cameraPdfText, setCameraPdfText] = useState("");
   const [cameraPdfUrl, setCameraPdfUrl] = useState("");
@@ -463,6 +474,14 @@ function CreatePageInner() {
     } finally {
       setLocGenerating(false);
     }
+  }
+
+  /** Move a photo within one of the {url,name,preview} arrays. */
+  function reorder<T>(list: T[], from: number, to: number): T[] {
+    const next = [...list];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    return next;
   }
 
   async function handlePastePhotosUpload(files: FileList) {
@@ -1567,6 +1586,7 @@ function CreatePageInner() {
               photos={pastePhotos}
               onAddPhotos={handlePastePhotosUpload}
               onRemovePhoto={removePastePhoto}
+              onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
               photosUploading={pastePhotoUploading}
               doc={{
                 mode: pastePdfMode,
@@ -1692,6 +1712,7 @@ function CreatePageInner() {
                 Speaking one fills the market above and writes the
                 teleprompter. Same session component and endpoint as the
                 AI-writes-it tab — the brief is the same brief. */}
+            {cameraPhase === "script" && (<>
             <div className="mb-4">
                 <VoiceBriefSession
                   disabled={cameraScriptGenerating}
@@ -1745,6 +1766,7 @@ function CreatePageInner() {
                 photos={cameraPhotos}
                 onAddPhotos={handleCameraPhotosUpload}
                 onRemovePhoto={removeCameraPhoto}
+                onReorderPhotos={(from, to) => setCameraPhotos((p) => reorder(p, from, to))}
                 photosUploading={cameraPhotoUploading}
                 blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you."
                 doc={{
@@ -1785,8 +1807,10 @@ function CreatePageInner() {
                 </div>
               )}
             </div>
+            </>)}
 
             <CameraRecorder
+              onPhaseChange={setCameraPhase}
               city={locCity || undefined}
               state={locState || undefined}
               initialScript={cameraGeneratedScript || undefined}

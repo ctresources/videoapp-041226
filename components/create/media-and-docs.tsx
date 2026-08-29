@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Image as ImageIcon, Plus, X, Loader2, Paperclip, FileText, Globe,
@@ -40,6 +41,15 @@ interface Props {
   photos: MediaPhoto[];
   onAddPhotos: (files: FileList) => void;
   onRemovePhoto: (index: number) => void;
+  /**
+   * Move a photo. Omit and the grid is not draggable.
+   *
+   * Order is not decoration: b-roll plays the array in order and follows the
+   * reader's position in the script, so photo 1 is on screen for the opening
+   * line. Without this the only way to put the kitchen shot next to the
+   * kitchen sentence was to delete everything after it and re-upload.
+   */
+  onReorderPhotos?: (from: number, to: number) => void;
   photosUploading: boolean;
   maxPhotos?: number;
   /** Omit to render photos only. */
@@ -65,12 +75,17 @@ export function MediaAndDocs({
   photos,
   onAddPhotos,
   onRemovePhoto,
+  onReorderPhotos,
   photosUploading,
   maxPhotos = 12,
   doc,
   blurb = "Photos become b-roll · Docs & URLs enrich the script",
 }: Props) {
   const room = maxPhotos - photos.length;
+  // Which tile is being dragged, and which one it is currently over. Held here
+  // rather than on the DOM so the drop target can be shown before the drop.
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   return (
     <>
@@ -128,10 +143,41 @@ export function MediaAndDocs({
             {photos.map((photo, i) => (
               <div
                 key={`${photo.url}-${i}`}
-                className="relative w-16 h-16 rounded-xl overflow-hidden border border-spark-rule shrink-0 group"
+                draggable={!!onReorderPhotos}
+                onDragStart={() => setDragFrom(i)}
+                onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
+                onDragOver={(e) => {
+                  if (!onReorderPhotos || dragFrom === null) return;
+                  e.preventDefault();          // without this the drop never fires
+                  setDragOver(i);
+                }}
+                onDrop={(e) => {
+                  if (!onReorderPhotos || dragFrom === null) return;
+                  e.preventDefault();
+                  if (dragFrom !== i) onReorderPhotos(dragFrom, i);
+                  setDragFrom(null);
+                  setDragOver(null);
+                }}
+                className={`relative w-16 h-16 rounded-xl overflow-hidden border shrink-0 group transition-all ${
+                  onReorderPhotos ? "cursor-grab active:cursor-grabbing" : ""
+                } ${
+                  dragOver === i && dragFrom !== i
+                    ? "border-spark-amber ring-2 ring-spark-amber"
+                    : "border-spark-rule"
+                } ${dragFrom === i ? "opacity-40" : ""}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
+                <img
+                  src={photo.preview}
+                  alt={photo.name}
+                  draggable={false}
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+                {/* The play order, which is also the order they are spoken
+                    over — the number is the point of being able to drag. */}
+                <span className="absolute bottom-0 left-0 px-1 text-[9px] font-bold text-white bg-black/60 rounded-tr">
+                  {i + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => onRemovePhoto(i)}
@@ -163,7 +209,8 @@ export function MediaAndDocs({
             )}
             {/* The count is in the header; this says what is left to add. */}
             <p className="text-[11px] text-spark-ink-faint self-center ml-1">
-              {room > 0 ? `${room} more can be added` : "All slots full — remove one to swap it out"}
+              {onReorderPhotos ? "Drag to reorder · " : ""}
+              {room > 0 ? `${room} more can be added` : "all slots full — remove one to swap it out"}
             </p>
           </div>
         )}
