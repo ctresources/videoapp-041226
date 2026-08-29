@@ -8,6 +8,7 @@ import { PublishModal } from "@/components/social/PublishModal";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { TranslateModal } from "@/components/videos/TranslateModal";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
@@ -36,7 +37,7 @@ interface GeneratedVideo {
   created_at: string;
   project_id: string;
   metadata?: { render_error?: string; credit_kind?: "short" | "long" } | null;
-  projects?: { title: string; ai_script?: { hook?: string; script?: string } | null } | null;
+  projects?: { title: string; ai_script?: { hook?: string; script?: string; cta?: string } | null } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
 }
@@ -240,6 +241,7 @@ function DeleteVideoModal({
 
 function VideosContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const highlightId = searchParams.get("highlight");
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
   const [drafts, setDrafts] = useState<DraftProject[]>([]);
@@ -651,19 +653,41 @@ function VideosContent() {
                           anything was to start again from a blank brief and
                           retype the whole thing. */}
                       {video.project_id && video.projects?.ai_script?.script && (
-                        <Link
-                          href={
-                            video.render_provider === "camera"
-                              ? `/create/${video.project_id}?record=1`
-                              : `/create/${video.project_id}`
-                          }
-                        >
-                          <Button variant="outline" size="sm" className="w-full gap-1.5">
-                            {video.render_provider === "camera"
-                              ? <><Camera size={13} /> Record again</>
-                              : <><RefreshCw size={13} /> Edit &amp; remake</>}
+                        video.render_provider === "camera" ? (
+                          /* Straight back to the camera tab, which is where
+                             this was recorded — the recorder that composites
+                             the photos, the branding and the music.
+                             ?record=1 sent it to the editor's Video setup
+                             step instead: format, avatar looks, music beds,
+                             none of which apply to a take you read yourself,
+                             and the teleprompter another scroll below that.
+                             Same sessionStorage handoff the editor's own
+                             "Record on Camera" button uses. */
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-1.5"
+                            onClick={() => {
+                              const s = video.projects?.ai_script;
+                              const combined = [s?.hook, s?.script, s?.cta]
+                                .map((t) => (t ?? "").trim())
+                                .filter(Boolean)
+                                .join("\n\n");
+                              try {
+                                sessionStorage.setItem("camera-record-script", combined);
+                              } catch { /* sessionStorage unavailable */ }
+                              router.push("/create?tab=camera");
+                            }}
+                          >
+                            <Camera size={13} /> Record again
                           </Button>
-                        </Link>
+                        ) : (
+                          <Link href={`/create/${video.project_id}`}>
+                            <Button variant="outline" size="sm" className="w-full gap-1.5">
+                              <RefreshCw size={13} /> Edit &amp; remake
+                            </Button>
+                          </Link>
+                        )
                       )}
                     </div>
                   )}
