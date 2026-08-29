@@ -1536,7 +1536,7 @@ const HOW_TO_STEPS: { step: string; title: string; when: string; detail: string 
   { step: "1", title: "Title Generator", when: "Before you commit to a topic",
     detail: "Generate 8 title angles (question, data hook, urgency…), pick the strongest — a sharp title keeps the whole video focused." },
   { step: "2", title: "Script Generator", when: "Draft & compare without creating a project",
-    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → Paste / Upload when you're ready to render." },
+    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → From my material → I have the script when you're ready to render." },
   { step: "3", title: "Create Your Video", when: "The main event",
     detail: "Use the Create Video page — it researches your market and generates the script, title, description, and tags in one flow." },
   { step: "4", title: "Description Generator", when: "After the video renders",

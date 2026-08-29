@@ -152,6 +152,16 @@ function CreatePageInner() {
   // what HeyGen will actually render — and they were sharing one value, so a
   // length picked for a recording silently set the length of a paid render.
   const [pasteScriptLength, setPasteScriptLength] = useState<RenderedScriptLength>("rendered_short");
+  /**
+   * Whose words go in the box.
+   *
+   * This tab's promise is that the avatar speaks your script exactly as
+   * written, and the first thing on it was a panel offering to write one for
+   * you — the AI-writes-it tab in miniature, at the top of the tab that exists
+   * not to do that. Defaults to your own words, which is what the tab is for;
+   * the AI draft is still here, one click away, for a starting point to edit.
+   */
+  const [pasteSource, setPasteSource] = useState<"own" | "ai">("own");
 
   const [locGenerating, setLocGenerating] = useState(false);
 
@@ -1302,10 +1312,10 @@ function CreatePageInner() {
           {/* Sub-toggle — switch between the two My Content flows */}
           <div className="lg:col-span-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
-              📄 Paste / Upload Script
+              📄 I have the script
             </button>
             <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-spark-ink-soft border-spark-rule hover:border-spark-rule-dim transition-colors">
-              🏠 My Listings
+              🏠 I have a listing
             </button>
           </div>
           {/* Left column: the script itself */}
@@ -1315,11 +1325,38 @@ function CreatePageInner() {
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-spark-amber to-spark-amber-glow text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
               <div>
                 <p className="text-base font-bold text-brand-text">Your Script</p>
-                <p className="text-sm text-spark-ink-muted">Paste It, Type It, Or Let AI Spark It</p>
+                <p className="text-sm text-spark-ink-muted">Spoken exactly as written</p>
+              </div>
+            </div>
+
+            {/* Which way in — asked before anything else, the way the listings
+                tab asks how you want to get the details in. */}
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { key: "own" as const, label: "I'll paste or type it", sub: "spoken exactly as written" },
+                  { key: "ai" as const, label: "Let AI draft it", sub: "then edit it yourself" },
+                ]).map(({ key, label, sub }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPasteSource(key)}
+                    aria-pressed={pasteSource === key}
+                    className={`px-2.5 py-2 rounded-lg border text-left transition-colors ${
+                      pasteSource === key
+                        ? "border-spark-amber bg-spark-amber-tint"
+                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span className="block text-[12px] font-bold text-brand-text">{label}</span>
+                    <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Let AI Spark The Script */}
+            {pasteSource === "ai" && (
             <div className="mb-4 pb-4 border-b border-spark-rule-soft">
               <p className="text-sm font-bold text-spark-ink-soft mb-2">Let AI Spark The Script</p>
               <div className="mb-2">
@@ -1375,6 +1412,7 @@ function CreatePageInner() {
                 </p>
               )}
             </div>
+            )}
 
             {/* Title */}
             <div className="mb-4">
@@ -1575,10 +1613,10 @@ function CreatePageInner() {
           {/* Sub-toggle — switch between the two My Content flows */}
           <div className="lg:col-span-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-spark-ink-soft border-spark-rule hover:border-spark-rule-dim transition-colors">
-              📄 Paste / Upload Script
+              📄 I have the script
             </button>
             <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
-              🏠 My Listings
+              🏠 I have a listing
             </button>
           </div>
           <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
