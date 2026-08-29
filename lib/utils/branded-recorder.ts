@@ -319,6 +319,41 @@ export class BrandedComposite {
   /** True once at least one photo survived loading and can be used as b-roll. */
   get hasBroll(): boolean { return this.photos.length > 0; }
 
+  /**
+   * Replace the b-roll after init.
+   *
+   * Photos were loaded once, in init(), from whatever the caller held when the
+   * camera started. Anything added later — pasting a listing URL on the camera
+   * tab, which appends to the same array — was invisible to the composite: the
+   * screen showed twelve photos and the recording used the five that existed
+   * when the preview began.
+   *
+   * Loading is the slow part and the draw loop is running throughout, so the
+   * new set is loaded fully before it is swapped in; the old photos keep
+   * playing until then rather than the b-roll blinking out mid-take. A photo
+   * that fails CORS is dropped here exactly as it is in init().
+   */
+  async setPhotos(urls: string[]): Promise<void> {
+    const wanted = urls.slice(0, 12);
+    // Same list, in the same order — nothing to do, and reloading would restart
+    // the Ken Burns push on whatever is on screen.
+    if (
+      wanted.length === this.photoUrls.length &&
+      wanted.every((u, i) => u === this.photoUrls[i])
+    ) return;
+
+    const loaded = await Promise.all(wanted.map((u) => loadImage(u, 6000)));
+    if (this.destroyed) return;
+
+    this.photoUrls = wanted;
+    this.photos = loaded.filter((p): p is HTMLImageElement => p !== null);
+
+    // The indices pointed into the old array. Left as they were, a shorter new
+    // list would index past its end and draw nothing.
+    if (this.brollIndex >= this.photos.length) this.brollIndex = -1;
+    if (this.prevIndex !== null && this.prevIndex >= this.photos.length) this.prevIndex = null;
+  }
+
   /** Starts or resumes the b-roll clock — it only runs while recording, so a
    *  long pause doesn't silently skip past several photos. */
   startBroll() {

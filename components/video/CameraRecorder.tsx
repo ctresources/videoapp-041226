@@ -297,6 +297,20 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
       if (!teleRef.current) return;
       scrollPosRef.current += speedRef.current / 30;
       teleRef.current.scrollTop = scrollPosRef.current;
+
+      // Feed the composite from the scroll position.
+      //
+      // The b-roll has always been able to follow the script — currentBrollShot
+      // uses scriptProgress whenever it is set — but only voice-follow ever set
+      // it. On auto-scroll it stayed null and the photos ran on a stopwatch,
+      // which is why the pictures did not match the words. The prompter's own
+      // position is a perfectly good measure of how far through the read we
+      // are, and it is already being computed here every 33ms.
+      const el = teleRef.current;
+      const scrollable = el.scrollHeight - el.clientHeight;
+      if (scrollable > 0) {
+        compositeRef.current?.setScriptProgress(scrollPosRef.current / scrollable);
+      }
     }, 33);
   }
 
@@ -502,6 +516,14 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
       setSparking(false);
     }
   }
+
+  // Photos can arrive after the camera is already running — pasting a listing
+  // URL on this tab appends to the same array — and the composite loaded its
+  // set once at init. Keep them in step for as long as it exists.
+  useEffect(() => {
+    if (!compositeRef.current) return;
+    void compositeRef.current.setPhotos(useBroll ? photos : []);
+  }, [photos, useBroll]);
 
   // A finished take exists only as a Blob in this tab until it is saved.
   // Closing the page, or walking back to another step, took a recording that

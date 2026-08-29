@@ -11,6 +11,7 @@ import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { VoiceFollower, isVoiceFollowSupported, followWordInContainer, tokenizeScript } from "@/lib/utils/voice-follow";
 import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
+import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
@@ -344,6 +345,12 @@ export default function ProjectEditorPage() {
   const tpFollowerRef = useRef<VoiceFollower | null>(null);
   const tpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  // Branded composite for the teleprompter — logo, contact card, music and the
+  // listing's photos as b-roll. This screen used to record the raw camera
+  // stream, so recording a listing yourself dropped every photo.
+  const tpCompositeRef = useRef<BrandedComposite | null>(null);
+  const [brandInfo, setBrandInfo] = useState<BrandInfo>({});
+  const [tpBrandedReady, setTpBrandedReady] = useState(false);
   const recordedChunksRef = useRef<Blob[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
@@ -395,9 +402,16 @@ export default function ProjectEditorPage() {
     setTpAutoScroll(false);
     const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
     const flowText = [tpHook, editedScript, editedCta].filter(Boolean).join(" ");
+    const flowWords = tokenizeScript(flowText).length;
     const follower = new VoiceFollower(
       flowText,
-      (i) => followWordInContainer(scrollContainerRef.current, i),
+      (i) => {
+        followWordInContainer(scrollContainerRef.current, i);
+        // Photos follow the reader rather than a stopwatch. Without this the
+        // b-roll advances on its own clock and the picture on screen has no
+        // relationship to the sentence being spoken.
+        if (flowWords > 0) tpCompositeRef.current?.setScriptProgress(i / flowWords);
+      },
       () => {
         tpFollowerRef.current = null;
         toast("Voice-follow unavailable — use the Auto-scroll toggle instead.", { icon: "🎚️" });
@@ -536,12 +550,30 @@ export default function ProjectEditorPage() {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role")
+      // The last five are for the teleprompter's branded composite — logo,
+      // headshot, licence line and market on the end card. The editor had
+      // never needed them because its recorder composited nothing.
+      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state")
       .eq("id", user.id)
       .single();
     if (data) {
       setContactInfo(data as typeof contactInfo);
-      const p = data as { subscription_tier?: string | null; role?: string | null };
+      const p = data as {
+        subscription_tier?: string | null; role?: string | null;
+        full_name?: string | null; company_name?: string | null; phone?: string | null;
+        license_number?: string | null; logo_url?: string | null; avatar_url?: string | null;
+        location_city?: string | null; location_state?: string | null;
+      };
+      setBrandInfo({
+        name: p.full_name,
+        brokerage: p.company_name,
+        license: p.license_number,
+        phone: p.phone,
+        city: p.location_city,
+        state: p.location_state,
+        logoUrl: p.logo_url,
+        headshotUrl: p.avatar_url,
+      });
       // Producer (2/mo) and Influencer (4/mo) include long videos in their
       // allowance; Creator buys them one at a time as an add-on.
       setLongFormIncluded(
@@ -1261,7 +1293,16 @@ export default function ProjectEditorPage() {
       if (!lastTime) lastTime = time;
       const delta = time - lastTime;
       lastTime = time;
-      if (container) container.scrollTop += (tpSpeed * delta) / 600;
+      if (container) {
+        container.scrollTop += (tpSpeed * delta) / 600;
+        // Auto-scroll gets to drive the b-roll too. Flow mode feeds progress
+        // from the reader's voice; on auto the prompter's own position is the
+        // same measure, and without either the photos run on a stopwatch.
+        const scrollable = container.scrollHeight - container.clientHeight;
+        if (scrollable > 0) {
+          tpCompositeRef.current?.setScriptProgress(container.scrollTop / scrollable);
+        }
+      }
       scrollAnimRef.current = requestAnimationFrame(step);
     }
     scrollAnimRef.current = requestAnimationFrame(step);
@@ -1273,10 +1314,46 @@ export default function ProjectEditorPage() {
     if (!showTeleprompter || !cameraStreamRef.current) return;
     const video = cameraVideoRef.current;
     if (video) {
-      video.srcObject = cameraStreamRef.current;
+      // Composite when there is one — preview must match what records.
+      video.srcObject = tpCompositeRef.current?.stream ?? cameraStreamRef.current;
       video.play().catch(() => {});
     }
-  }, [showTeleprompter]);
+  }, [showTeleprompter, tpBrandedReady]);
+
+  /**
+   * Photos this video should use as b-roll, CORS-clean.
+   *
+   * A canvas cannot draw a third-party image, and a tainted canvas cannot be
+   * recorded at all — so scraped listing photos have to be copied into our own
+   * storage before they can appear in a take. The AI render never needed this
+   * because HeyGen fetches the URLs server-side, which is why the editor had
+   * no rehost step and its listing photos were never usable here.
+   */
+  async function teleprompterPhotos(): Promise<string[]> {
+    // listing_data is not on the Project type — the editor never read it,
+    // which is the whole reason a listing's photos could not reach a take.
+    const listingData = (project as unknown as { listing_data?: { photoUrls?: unknown } } | null)
+      ?.listing_data;
+    const listingPhotos = Array.isArray(listingData?.photoUrls)
+      ? (listingData.photoUrls as unknown[]).filter(
+          (u): u is string => typeof u === "string" && u.startsWith("http"),
+        )
+      : [];
+    const all = [...listingPhotos, ...uploadedPhotos.map((p) => p.url)].slice(0, 12);
+    if (all.length === 0) return [];
+    try {
+      const res = await fetch("/api/photos/rehost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: all }),
+      });
+      const body = await safeJson(res);
+      const out = Array.isArray(body?.urls) ? (body!.urls as string[]) : null;
+      return out && out.length === all.length ? out : all;
+    } catch {
+      return all;
+    }
+  }
 
   async function openTeleprompter() {
     try {
@@ -1287,6 +1364,28 @@ export default function ProjectEditorPage() {
       });
       cameraStreamRef.current = stream;
       setShowTeleprompter(true);
+
+      // Everything below is an upgrade, never a requirement: if the composite
+      // cannot be built the raw camera stream is recorded exactly as before.
+      if (!BrandedComposite.isSupported()) return;
+      try {
+        const photos = await teleprompterPhotos();
+        const composite = new BrandedComposite(brandInfo, musicUrl, photos);
+        await composite.init(stream);
+        tpCompositeRef.current = composite;
+        setTpBrandedReady(true);
+        const video = cameraVideoRef.current;
+        if (video) {
+          // The composited canvas, not the raw camera: what is previewed has
+          // to be what gets recorded, or the framing is a surprise at the end.
+          video.srcObject = composite.stream;
+          video.play().catch(() => {});
+        }
+      } catch (e) {
+        console.warn("[teleprompter] branded composite unavailable:", e);
+        tpCompositeRef.current = null;
+        setTpBrandedReady(false);
+      }
     } catch {
       toast.error("Camera / microphone access is required for teleprompter recording");
     }
@@ -1302,6 +1401,9 @@ export default function ProjectEditorPage() {
       cameraStreamRef.current.getTracks().forEach((t) => t.stop());
       cameraStreamRef.current = null;
     }
+    tpCompositeRef.current?.destroy();
+    tpCompositeRef.current = null;
+    setTpBrandedReady(false);
     setTpAutoScroll(false);
     setTpRecording(false);
     setShowTeleprompter(false);
@@ -1313,7 +1415,12 @@ export default function ProjectEditorPage() {
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
       ? "video/webm;codecs=vp9,opus"
       : "video/webm";
-    const mr = new MediaRecorder(cameraStreamRef.current, { mimeType });
+    // The composited canvas carries the branding, b-roll and music bed; the
+    // raw camera is the fallback when no composite could be built.
+    const source = tpCompositeRef.current?.stream ?? cameraStreamRef.current;
+    const mr = new MediaRecorder(source, { mimeType });
+    tpCompositeRef.current?.startMusic();
+    tpCompositeRef.current?.startBroll();
     mr.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
     mr.onstop = handleTpRecordingDone;
     mr.start(500);
@@ -1327,9 +1434,20 @@ export default function ProjectEditorPage() {
   }
 
   function stopTpRecording() {
-    mediaRecorderRef.current?.stop();
     if (tpTimerRef.current) { clearInterval(tpTimerRef.current); tpTimerRef.current = null; }
     setTpRecording(false);
+    tpCompositeRef.current?.pauseBroll();
+
+    // Hold on the branded contact card for a beat before finalising, the same
+    // as the camera tab does — stopping the recorder immediately cuts the take
+    // off the moment the card appears.
+    const composite = tpCompositeRef.current;
+    if (composite) {
+      composite.beginEndCard();
+      setTimeout(() => mediaRecorderRef.current?.stop(), 3150);
+      return;
+    }
+    mediaRecorderRef.current?.stop();
   }
 
   // Auto-stop at 15:00 — YouTube requires phone verification for longer uploads
