@@ -794,16 +794,20 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
 
             {/* Sits outside the toggle on purpose — this writes to the script,
                 so turning Branded Look off must not take it away. */}
+            {/* Appends a sentence to the script. It was a full-width filled
+                button in a fourth colour, as loud as Open Camera — so a small
+                text edit looked like a way to move forward. Outline, sized to
+                its own words. */}
             <div className="mt-3 pt-3 border-t border-spark-blue/20">
               <button
                 onClick={addChannelCta}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white text-sm font-semibold transition-colors"
                 title="Append your subscribe & contact CTA to the script"
               >
                 <Megaphone size={15} />
                 Add Channel CTA
               </button>
-              <p className="text-[11px] text-slate-400 mt-1.5 text-center">
+              <p className="text-[11px] text-slate-400 mt-1.5">
                 Adds your subscribe &amp; contact ask to the end of the script, so the teleprompter reads it for you.
               </p>
             </div>

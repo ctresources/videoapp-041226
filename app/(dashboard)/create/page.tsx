@@ -1259,16 +1259,22 @@ function CreatePageInner() {
               : readyToContinue
                 ? "We'll transcribe your recording, then you can edit it."
                 : cameraGeneratedScript.trim()
-                  ? "Script ready — scroll up to read it on camera."
+                  ? "Script ready — press Open Camera to record it."
                   : "Say or pick what the video is about, and we'll write the script."
           }
         >
+          {/* Three ways into this tab, and the footer used to know about two.
+              With a script already written from uploads there is no topic to
+              spark from, so it showed a disabled Spark script — a dead primary
+              beside a hint telling you to look elsewhere. It now carries an
+              action only when it has one, and Open Camera in the card below is
+              left to be the next step it already is. */}
           {readyToContinue ? (
             <Button onClick={handleContinue} size="lg" className="gap-2">
               Transcribe<span className="hidden sm:inline"> &amp; continue</span>{" "}
               <ArrowRight size={18} />
             </Button>
-          ) : (
+          ) : cameraGeneratedScript.trim() ? null : (
             <Button
               onClick={() => handleCameraScriptFromTopic(cameraVoiceTopic)}
               loading={cameraScriptGenerating}
@@ -1598,20 +1604,23 @@ function CreatePageInner() {
               <p className="text-[11px] text-spark-ink-faint mt-1">{pastePdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
             </div>
 
-            {/* Generate script from uploads */}
+            {/* Generate script from uploads. The same sub-action as the
+                camera tab's, demoted the same way — it competes with this
+                tab's real primary in the footer for the same reason. */}
             {(pastePdfText || pastePhotos.length > 0) && (
               <div className="mb-4">
                 <Button
                   size="sm"
+                  variant="outline"
                   loading={pasteUploadGenerating}
                   onClick={handleGenerateScriptFromPasteUploads}
-                  className="w-full gap-1.5"
+                  className="gap-1.5"
                 >
                   {pasteUploadGenerating
                     ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
-                    : <><Sparkles size={13} /> Generate Script from My Uploads</>}
+                    : <><Sparkles size={13} /> Write the script from these</>}
                 </Button>
-                <p className="text-[11px] text-spark-ink-faint mt-1 text-center">AI will write a script based on your attached doc{pastePhotos.length > 0 ? " and photos" : ""}.</p>
+                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script based on your attached doc{pastePhotos.length > 0 ? " and photos" : ""}.</p>
               </div>
             )}
 
@@ -1835,19 +1844,24 @@ function CreatePageInner() {
               )}
               <p className="text-[11px] text-spark-ink-faint mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
 
+              {/* A sub-action of this card, styled like one. Full-width and
+                  filled, it read as the step's primary and competed with Open
+                  Camera further down — three buttons on the screen looked
+                  equally like the next thing to press. */}
               {(cameraPdfText || cameraPhotos.length > 0) && (
                 <div className="mt-3">
                   <Button
                     size="sm"
+                    variant="outline"
                     loading={cameraScriptGenerating}
                     onClick={handleGenerateScriptFromCameraUploads}
-                    className="w-full gap-1.5"
+                    className="gap-1.5"
                   >
                     {cameraScriptGenerating
                       ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
-                      : <><Sparkles size={13} /> Generate Teleprompter Script from My Uploads</>}
+                      : <><Sparkles size={13} /> Write the script from these</>}
                   </Button>
-                  <p className="text-[11px] text-spark-ink-faint mt-1 text-center">Script will be loaded into your teleprompter below.</p>
+                  <p className="text-[11px] text-spark-ink-faint mt-1.5">Loads into your teleprompter below.</p>
                 </div>
               )}
             </div>
