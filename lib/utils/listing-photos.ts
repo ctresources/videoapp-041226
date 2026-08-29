@@ -20,6 +20,38 @@
 const NON_PHOTO =
   /logo|icon|sprite|pixel|badge|avatar|headshot|placeholder|blank|spacer|favicon|watermark|banner|button|arrow|thumb_?nail|1x1|transparent|attribution|brokerage|courtesy|disclaimer/i;
 
+/**
+ * Analytics beacons dressed as images.
+ *
+ * A Facebook tracking pixel reached a real gallery:
+ *   https://www.facebook.com/tr/?id=…&ev=PageView&dl=https://www.zillow.com/
+ * It has no file extension, so the "must end in a photo extension" rule never
+ * applied — that rule is deliberately relaxed for <img> and markdown images,
+ * because listing CDNs serve extension-less URLs. And nothing in NON_PHOTO
+ * matches "/tr/?id=". These are matched by what they are instead.
+ */
+const TRACKER =
+  /facebook\.com\/tr|google-analytics|googletagmanager|doubleclick|scorecardresearch|quantserve|adsystem|\/collect\?|\/beacon|\/pixel\b|\/tr\/?\?/i;
+
+/**
+ * A size declared in the filename that is too small to be a listing photo.
+ *
+ * Zillow's MLS attribution mark is `<hash>-zillow_web_95_35.jpg` — 95×35
+ * pixels, indistinguishable from a photo by every other test, and it landed in
+ * a gallery as one of six. Two numbers are required before this rejects
+ * anything: `-cc_ft_576` declares one dimension and is a real photo, and a
+ * photo simply numbered `-12.jpg` must not be mistaken for a 12px image.
+ */
+function isTinyDeclaredSize(href: string): boolean {
+  const last = href.split("?")[0].split("/").pop() ?? "";
+  const dash = last.lastIndexOf("-");
+  if (dash < 0) return false;
+  const suffix = last.slice(dash + 1).replace(/\.[a-z0-9]+$/i, "");
+  const nums = suffix.match(/\d{1,5}/g);
+  if (!nums || nums.length < 2) return false;
+  return nums.every((n) => Number(n) < 200);
+}
+
 /** Ends in a photo extension — the only thing a bare URL has to go on. */
 const PHOTO_EXT = /\.(jpe?g|png|webp|avif)($|\?)/i;
 
@@ -176,6 +208,8 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
     if (!/^https?:/.test(abs)) return;
 
     if (needsPhotoExt ? !PHOTO_EXT.test(abs) : NON_PHOTO_EXT.test(abs)) return;
+    if (TRACKER.test(abs)) return;
+    if (isTinyDeclaredSize(abs)) return;
 
     const key = photoIdentity(abs);
     if (NON_PHOTO.test(key)) return;

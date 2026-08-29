@@ -89,13 +89,32 @@ const RAW_HTML_SCAN_LIMIT = 3_000_000;
 async function fetchRawHtml(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": BROWSER_UA, Accept: "text/html,application/xhtml+xml" },
-      signal: AbortSignal.timeout(10000),
+      headers: {
+        // The honest-bot UA that extract-url uses, not the Chrome one this
+        // file uses for Jina. A datacentre IP claiming to be Chrome is the
+        // combination bot detection is tuned for; the same fetch under this
+        // agent is what pulled twelve photos out of the listing that Jina's
+        // markdown showed five of.
+        "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      // 20s, matching extract-url. 10s was optimistic for a listing portal.
+      signal: AbortSignal.timeout(20000),
     });
-    if (!res.ok) return null;
-    if (!(res.headers.get("content-type") || "").includes("text/html")) return null;
+    if (!res.ok) {
+      console.warn(`[scrape-listing] raw HTML fetch refused: HTTP ${res.status}`);
+      return null;
+    }
+    const type = res.headers.get("content-type") || "";
+    if (!type.includes("text/html")) {
+      console.warn(`[scrape-listing] raw HTML fetch returned ${type || "no content-type"}`);
+      return null;
+    }
     return (await res.text()).slice(0, RAW_HTML_SCAN_LIMIT);
-  } catch {
+  } catch (e) {
+    console.warn(
+      `[scrape-listing] raw HTML fetch failed: ${e instanceof Error ? e.name : "unknown"}`,
+    );
     return null;
   }
 }
