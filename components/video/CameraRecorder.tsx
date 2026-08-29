@@ -503,6 +503,20 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
     }
   }
 
+  // A finished take exists only as a Blob in this tab until it is saved.
+  // Closing the page, or walking back to another step, took a recording that
+  // had just been made with nothing anywhere to show for it — no upload had
+  // ever been attempted, so there was not even a failure to report.
+  useEffect(() => {
+    if (!videoBlob || savedVideoId) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [videoBlob, savedVideoId]);
+
   async function handleSaveForSocial() {
     if (!videoBlob) return;
     setSaving(true);
@@ -965,7 +979,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
           )}
         </div>
         <div className="flex items-center justify-between px-1">
-          <p className="text-sm font-semibold text-brand-text">Recording complete</p>
+          <p className="text-sm font-semibold text-brand-text">
+            {savedVideoId ? "Saved to My Videos" : "Recording complete — not saved yet"}
+          </p>
           <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
         </div>
 
@@ -980,10 +996,16 @@ export function CameraRecorder({ city, state, initialScript, photos = [] }: {
             size="lg"
             className="gap-2"
           >
+            {/* "Upload to Social" read as "publish this to Instagram", which
+                is a thing to decide later — so a recording someone only wanted
+                to KEEP was left unsaved, and it lives in a Blob in this tab
+                until the page goes away. This button is the only thing that
+                puts the take in My Videos, and it has to say so. Publishing
+                still follows: the share sheet opens once it is saved. */}
             {saving ? (
-              <><Loader2 size={16} className="animate-spin" /> Uploading...</>
+              <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> Upload to Social</>
+              <><Share2 size={16} /> Save to My Videos</>
             )}
           </Button>
         </div>
