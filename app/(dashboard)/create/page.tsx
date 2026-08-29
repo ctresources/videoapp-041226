@@ -201,6 +201,21 @@ function CreatePageInner() {
    * camera has the screen and come back if the take is discarded.
    */
   const [cameraPhase, setCameraPhase] = useState<"script" | "camera" | "done">("script");
+  /**
+   * Where this tab's script comes from.
+   *
+   * There were four ways to get one and no hierarchy between them: a mic at
+   * the top of the card, a "write from these" button inside the uploads box, a
+   * "Spark with AI" link on the script itself, and — below Open Camera, past a
+   * tips list, at the very bottom of nine sections — an audio drop zone that
+   * transcribes a recording you already made. That last one is a script
+   * source like the rest, and it was the least findable thing on the page.
+   *
+   * Asked once, up front, the way the listings tab asks how to get the
+   * details in. Photos are not in the list: they are b-roll, not a script,
+   * and stay available whichever way in you pick.
+   */
+  const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own">("speak");
   const [cameraPdfUploading, setCameraPdfUploading] = useState(false);
   const [cameraPdfText, setCameraPdfText] = useState("");
   const [cameraPdfUrl, setCameraPdfUrl] = useState("");
@@ -1289,11 +1304,10 @@ function CreatePageInner() {
         </StepFooter>
       )}
 
-      {/* My Camera. Three ways in, not one — a spoken topic, uploaded material,
-          or an existing recording — so the bar follows whichever you used
-          rather than showing one action that is wrong for the other two. The
-          uploads card keeps its own "write from these" button, which is a
-          sub-action of that card, not the step's primary. */}
+      {/* My Camera. Four ways in, and the bar follows whichever was chosen
+          rather than offering one action that is wrong for the other three.
+          Each route keeps its own sub-action inside its own card; the bar is
+          for the step, not for the card. */}
       {inputMode === "camera" && step === "input" && (
         <StepFooter
           hint={
@@ -1303,7 +1317,13 @@ function CreatePageInner() {
                 ? "We'll transcribe your recording, then you can edit it."
                 : cameraGeneratedScript.trim()
                   ? "Script ready — press Open Camera to record it."
-                  : "Say or pick what the video is about, and we'll write the script."
+                  : cameraSource === "speak"
+                    ? "Say what the video is about, and we'll write the script."
+                    : cameraSource === "uploads"
+                      ? "Attach a doc or URL, then write the script from it."
+                      : cameraSource === "audio"
+                        ? "Drop an audio file and we'll transcribe it into a script."
+                        : "Type your script below, then press Open Camera."
           }
         >
           {/* Three ways into this tab, and the footer used to know about two.
@@ -1317,7 +1337,10 @@ function CreatePageInner() {
               Transcribe<span className="hidden sm:inline"> &amp; continue</span>{" "}
               <ArrowRight size={18} />
             </Button>
-          ) : cameraGeneratedScript.trim() ? null : (
+          ) : cameraGeneratedScript.trim() || cameraSource !== "speak" ? null : (
+            // Only the spoken route has anything for this button to spark
+            // FROM. On the others it could only ever render disabled, which is
+            // the dead primary this footer already had once.
             <Button
               onClick={() => handleCameraScriptFromTopic(cameraVoiceTopic)}
               loading={cameraScriptGenerating}
@@ -1701,8 +1724,8 @@ function CreatePageInner() {
                 <Video size={17} className="text-white" />
               </div>
               <div>
-                <p className="text-base font-bold text-brand-text">Speak + Teleprompter</p>
-                <p className="text-sm text-spark-ink-muted">Speak Your Script — The Teleprompter Scrolls As You Record</p>
+                <p className="text-base font-bold text-brand-text">Your script</p>
+                <p className="text-sm text-spark-ink-muted">However it gets written, the teleprompter scrolls as you record</p>
               </div>
             </div>
 
@@ -1713,6 +1736,34 @@ function CreatePageInner() {
                 teleprompter. Same session component and endpoint as the
                 AI-writes-it tab — the brief is the same brief. */}
             {cameraPhase === "script" && (<>
+            <div className="mb-4">
+              <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Where your script comes from</p>
+              <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+                {([
+                  { key: "speak" as const,   label: "Speak a topic",  sub: "we write it" },
+                  { key: "uploads" as const, label: "From a doc/URL", sub: "we read it first" },
+                  { key: "audio" as const,   label: "Upload audio",   sub: "we transcribe it" },
+                  { key: "own" as const,     label: "I'll write it",  sub: "type it below" },
+                ]).map(({ key, label, sub }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCameraSource(key)}
+                    aria-pressed={cameraSource === key}
+                    className={`px-2.5 py-2 rounded-lg border text-left transition-colors ${
+                      cameraSource === key
+                        ? "border-spark-amber bg-spark-amber-tint"
+                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span className="block text-[12px] font-bold text-brand-text">{label}</span>
+                    <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {cameraSource === "speak" && (
             <div className="mb-4">
                 <VoiceBriefSession
                   disabled={cameraScriptGenerating}
@@ -1729,6 +1780,17 @@ function CreatePageInner() {
                   onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic)}
                 />
             </div>
+            )}
+
+            {/* The audio a recording already exists in — transcribed into a
+                script. It used to live below Open Camera, under the tips
+                list, at the bottom of the page: a way IN, placed after the
+                way out. */}
+            {cameraSource === "audio" && (
+              <div className="mb-4">
+                <VoiceUploader onFileSelected={handleFileSelected} />
+              </div>
+            )}
 
             {/* Market for THIS video. Without it the CTA and end card silently
                 fell back to the profile's home city — a Willow Grove listing
@@ -1768,8 +1830,12 @@ function CreatePageInner() {
                 onRemovePhoto={removeCameraPhoto}
                 onReorderPhotos={(from, to) => setCameraPhotos((p) => reorder(p, from, to))}
                 photosUploading={cameraPhotoUploading}
-                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you."
-                doc={{
+                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner."
+                // Only on the doc route. Photos are b-roll on every route, but
+                // an attachment is a script source, and offering one beside a
+                // script you are about to type yourself is the clutter the
+                // chooser above exists to remove.
+                doc={cameraSource !== "uploads" ? undefined : {
                   mode: cameraPdfMode,
                   onModeChange: setCameraPdfMode,
                   attached: !!cameraPdfUrl,
@@ -1790,7 +1856,7 @@ function CreatePageInner() {
                   filled, it read as the step's primary and competed with Open
                   Camera further down — three buttons on the screen looked
                   equally like the next thing to press. */}
-              {(cameraPdfText || cameraPhotos.length > 0) && (
+              {cameraSource === "uploads" && (cameraPdfText || cameraPhotos.length > 0) && (
                 <div className="mt-3">
                   <Button
                     size="sm"
@@ -1817,20 +1883,6 @@ function CreatePageInner() {
               photos={cameraPhotos.map((p) => p.url)}
             />
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-spark-rule" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="px-3 bg-white text-xs font-semibold text-spark-ink-faint uppercase tracking-wide">
-                  or upload a file
-                </span>
-              </div>
-            </div>
-
-            {/* Continue lives on the fixed bar now — see the camera footer. */}
-            <VoiceUploader onFileSelected={handleFileSelected} />
           </Card>
 
         </div>
