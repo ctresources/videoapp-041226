@@ -57,6 +57,42 @@ function isPubliclyFetchable(u: URL): boolean {
   return true;
 }
 
+/**
+ * How few photos is too few to accept without a second look. Under this, the
+ * raw HTML is fetched as well. Twelve is what the video uses, so anything at
+ * or above eight is a full-looking gallery and not worth another request.
+ */
+const PHOTO_SECOND_LOOK = 8;
+
+/** Raw HTML is large; only the head of it is worth scanning for <img> tags. */
+const RAW_HTML_SCAN_LIMIT = 400_000;
+
+/**
+ * The page as the server sends it, no rendering.
+ *
+ * Jina distils a page down to readable markdown, which is exactly what the
+ * fact parser wants and exactly wrong for galleries: on Zillow the distillate
+ * kept five images while the untouched HTML held twelve. This app already
+ * proved that — /api/ai/extract-url does a plain fetch and pulled twelve from
+ * the same listing that the Jina path found five in.
+ *
+ * Best effort. Scraper-hostile hosts will 403 this, which costs nothing: the
+ * markdown's photos are already in hand and this only ever adds.
+ */
+async function fetchRawHtml(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": BROWSER_UA, Accept: "text/html,application/xhtml+xml" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+    if (!(res.headers.get("content-type") || "").includes("text/html")) return null;
+    return (await res.text()).slice(0, RAW_HTML_SCAN_LIMIT);
+  } catch {
+    return null;
+  }
+}
+
 /** A real browser UA — shorteners and IDX hosts often 403 default agents. */
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
@@ -120,15 +156,11 @@ async function fetchWithJina(url: string): Promise<string> {
     headers: {
       Accept: "text/plain",
       "X-Return-Format": "markdown",
-      // Ask for the consolidated image list.
-      //
-      // Without it Jina returns only the images inline in the markdown, which
-      // on a lazy-loading gallery is the handful rendered before scroll — a
-      // Zillow listing with 28 photos came back with 6. This header adds the
-      // trailing "Images:" block covering everything on the page, which
-      // extractImageUrls has always had a parser for (its BARE_IMAGE source)
-      // and never received, because nothing asked for it.
-      "X-With-Images-Summary": "true",
+      // X-With-Images-Summary was tried here and reverted: instead of adding
+      // the gallery it halved the page, 11,518 characters down to 5,361, and
+      // returned one photo FEWER. Whatever it changes about the extraction is
+      // not worth the text it costs — and the text is what the parser needs
+      // most. The gallery is recovered from the raw HTML instead, below.
       ...(key && { Authorization: `Bearer ${key}` }),
     },
     // 45s, up from 20s. Jina has to follow the link, render the page and turn
@@ -336,6 +368,25 @@ export async function POST(req: NextRequest) {
     // Photos come from the markdown, not the model — see extractImageUrls.
     // Resolved against the final URL so relative paths work after a redirect.
     listing.photoUrls = extractImageUrls(markdown, url);
+
+    // A short gallery usually means the distillation dropped it rather than
+    // that the listing has five photos. Scanning markdown and raw HTML as one
+    // string lets extractImageUrls do the de-duplication across both, and
+    // keeps the markdown's photos first — those are the ones the page put in
+    // its article body, so they lead.
+    if (listing.photoUrls.length < PHOTO_SECOND_LOOK) {
+      const html = await fetchRawHtml(url);
+      if (html) {
+        const merged = extractImageUrls(`${markdown}\n${html}`, url);
+        if (merged.length > listing.photoUrls.length) {
+          console.log(
+            `[scrape-listing] raw HTML added ${merged.length - listing.photoUrls.length} photo(s) ` +
+            `(${listing.photoUrls.length} → ${merged.length})`,
+          );
+          listing.photoUrls = merged;
+        }
+      }
+    }
 
     // A page can be fetched perfectly and still not be a listing.
     //
