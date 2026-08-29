@@ -69,9 +69,10 @@ async function safeJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 type Step = "input" | "uploading" | "transcribing" | "done";
-// "content" is the merged My Content & Listings tab — it shows a chooser that
-// routes into the "paste" or "listing" flows, which remain distinct modes.
-type InputMode = "script" | "camera" | "listing" | "paste" | "content";
+// One mode per tab. "content" used to be a fifth, a merged tab that showed a
+// chooser routing into "paste" or "listing" — those two are their own tabs
+// now, so the mode that only existed to hold them is gone.
+type InputMode = "script" | "camera" | "listing" | "paste";
 
 // Shown one at a time above the composer while the topic is still blank, to
 // answer "what am I supposed to say into this" without a paragraph of help
@@ -218,8 +219,12 @@ function CreatePageInner() {
     const urlCity = searchParams.get("city");
     const urlState = searchParams.get("state");
 
+    // ?tab= now reaches every tab. "paste" had no route in while it was a
+    // sub-flow, so a link could land you on the parent and leave you to find
+    // the toggle; there is no parent any more.
     if (tab === "camera") setInputMode("camera");
     else if (tab === "listing") setInputMode("listing");
+    else if (tab === "paste" || tab === "script") setInputMode(tab);
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); }
 
     // Handed off from the editor's "Record on Camera" button — the hook,
@@ -757,7 +762,8 @@ function CreatePageInner() {
   const tabLabel =
     inputMode === "camera" ? "My camera"
       : inputMode === "script" ? "AI writes it"
-        : "From my material";
+        : inputMode === "listing" ? "My listing"
+          : "My script";
 
   const showActionBar = inputMode === "script" && step === "input";
   // Listings keep their own submit inside ListingVideoForm, which owns that
@@ -838,11 +844,17 @@ function CreatePageInner() {
       )}
 
       {/* ── How you're creating ──
-          Above the composer, not below it: which of the three you pick decides
-          what the rest of the page even shows, so it cannot come after the
-          thing it changes. */}
+          Four siblings, not three with a toggle inside one of them. My
+          script and My listing were grouped under "From my material" because
+          both start from something you already have — but one is delivered
+          word for word and the other is written for you, which is the sharpest
+          distinction on this screen and was the one buried a level down.
+
+          Above the composer, not below it: which you pick decides what the
+          rest of the page even shows, so it cannot come after the thing it
+          changes. */}
       {step === "input" && (
-        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               mode: "script" as InputMode,
@@ -851,10 +863,16 @@ function CreatePageInner() {
               desc: "Say it, we script it",
             },
             {
-              mode: "content" as InputMode,
-              kicker: "Doc, link or photos",
-              label: "From my material",
-              desc: "We extract, you deliver",
+              mode: "paste" as InputMode,
+              kicker: "Word for word",
+              label: "My script",
+              desc: "Spoken exactly as written",
+            },
+            {
+              mode: "listing" as InputMode,
+              kicker: "Zillow or MLS",
+              label: "My listing",
+              desc: "We write the tour",
             },
             {
               mode: "camera" as InputMode,
@@ -863,17 +881,12 @@ function CreatePageInner() {
               desc: "You on screen",
             },
           ].map(({ mode, kicker, label, desc }) => {
-            // The merged tab stays lit while the user is in either sub-flow
-            const active =
-              inputMode === mode ||
-              (mode === "content" && (inputMode === "paste" || inputMode === "listing"));
+            const active = inputMode === mode;
             return (
               <button
                 key={mode}
                 type="button"
-                // The merged tab drops straight into the Paste/Upload flow —
-                // the pill toggle inside switches to My Listings.
-                onClick={() => setInputMode(mode === "content" ? "paste" : mode)}
+                onClick={() => setInputMode(mode)}
                 aria-pressed={active}
                 className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
                   active
@@ -1309,15 +1322,6 @@ function CreatePageInner() {
           <p className="lg:col-span-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
             {tabLabel} · Step 1 of 5
           </p>
-          {/* Sub-toggle — switch between the two My Content flows */}
-          <div className="lg:col-span-2 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
-              📄 I have the script
-            </button>
-            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-spark-ink-soft border-spark-rule hover:border-spark-rule-dim transition-colors">
-              🏠 I have a listing
-            </button>
-          </div>
           {/* Left column: the script itself */}
           <div className="flex flex-col gap-3 min-w-0">
           <Card padding="sm" className="p-3 border-t-4 border-t-spark-amber">
@@ -1610,15 +1614,6 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "listing" && (
         <div className="grid lg:grid-cols-2 gap-3 items-start">
-          {/* Sub-toggle — switch between the two My Content flows */}
-          <div className="lg:col-span-2 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setInputMode("paste")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 bg-white text-spark-ink-soft border-spark-rule hover:border-spark-rule-dim transition-colors">
-              📄 I have the script
-            </button>
-            <button type="button" onClick={() => setInputMode("listing")} className="px-4 py-2 rounded-full text-sm font-semibold border-2 spark-cta-gradient text-white border-transparent">
-              🏠 I have a listing
-            </button>
-          </div>
           <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
