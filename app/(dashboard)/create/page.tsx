@@ -12,6 +12,7 @@ import {
   Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
+import { MediaAndDocs } from "@/components/create/media-and-docs";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -1520,89 +1521,27 @@ function CreatePageInner() {
 
           {/* Right column: media & docs */}
           <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-spark-amber">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-spark-amber to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <ImageIcon size={17} />
-              </span>
-              <div>
-                <p className="text-base font-bold text-brand-text">Media &amp; Docs <span className="text-sm font-normal text-spark-ink-faint">(Optional)</span></p>
-                <p className="text-sm text-spark-ink-muted">Photos Become B-Roll · Docs &amp; URLs Enrich The Script</p>
-              </div>
-            </div>
-            {/* Photo Upload */}
-            <div className="mb-4 pb-4 border-b border-spark-rule-soft">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-spark-ink-soft">Photos <span className="font-normal text-spark-ink-faint">(optional · up to 12 · used as b-roll)</span></p>
-                {pastePhotos.length > 0 && <span className="text-xs text-spark-ink-faint">{pastePhotos.length}/12</span>}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {pastePhotos.map((photo, i) => (
-                  <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-spark-rule shrink-0 group">
-                    <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removePastePhoto(i)}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={14} className="text-white" />
-                    </button>
-                  </div>
-                ))}
-                {pastePhotos.length < 12 && (
-                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${pastePhotoUploading ? "border-spark-rule-dim bg-spark-amber-tint" : "border-spark-rule hover:border-spark-rule-dim"}`}>
-                    {pastePhotoUploading ? <Loader2 size={18} className="text-spark-amber animate-spin" /> : <Plus size={18} className="text-spark-ink-faint" />}
-                    <input type="file" accept="image/*" multiple className="sr-only" disabled={pastePhotoUploading} onChange={(e) => { if (e.target.files?.length) handlePastePhotosUpload(e.target.files); }} />
-                  </label>
-                )}
-                {pastePhotos.length === 0 && !pastePhotoUploading && (
-                  <p className="text-[11px] text-spark-ink-faint self-center ml-1">Click + to add photos — they&apos;ll be used as b-roll.</p>
-                )}
-              </div>
-            </div>
-
-            {/* PDF / URL Attachment */}
-            <div className="mb-4 pb-4 border-b border-spark-rule-soft">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-spark-ink-soft">Attach Doc / URL <span className="font-normal text-spark-ink-faint">(optional)</span></p>
-                <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
-                  <button onClick={() => setPastePdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "upload" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"}`}>Upload PDF</button>
-                  <button onClick={() => setPastePdfMode("url")} className={`px-2.5 py-1 transition-colors ${pastePdfMode === "url" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"}`}>Add URL</button>
-                </div>
-              </div>
-              {pastePdfMode === "upload" ? (
-                pastePdfUrl ? (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <FileText size={16} className="text-green-600 shrink-0" />
-                    <span className="text-sm text-green-800 flex-1 truncate">{pastePdfName}</span>
-                    <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                  </div>
-                ) : (
-                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pastePdfUploading ? "border-spark-rule-dim bg-spark-amber-tint" : "border-spark-rule hover:border-spark-rule-dim"}`}>
-                    {pastePdfUploading ? <Loader2 size={16} className="text-spark-amber animate-spin shrink-0" /> : <Paperclip size={16} className="text-spark-ink-faint shrink-0" />}
-                    <span className="text-sm text-spark-ink-muted">{pastePdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pastePdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePastePdfUpload(f); }} />
-                  </label>
-                )
-              ) : pastePdfUrl ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <Globe size={16} className="text-green-600 shrink-0" />
-                  <span className="text-sm text-green-800 flex-1 truncate">{pastePdfName}</span>
-                  <button onClick={() => { setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={pastePdfUrlInput}
-                    onChange={(e) => setPastePdfUrlInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !pastePdfUrlExtracting && pastePdfUrlInput.trim()) handlePasteUrlExtract(); }}
-                    placeholder="https://example.com/article"
-                    className="flex-1 text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                  />
-                  <Button size="sm" loading={pastePdfUrlExtracting} disabled={!pastePdfUrlInput.trim()} onClick={handlePasteUrlExtract} className="whitespace-nowrap">Fetch</Button>
-                </div>
-              )}
-              <p className="text-[11px] text-spark-ink-faint mt-1">{pastePdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
-            </div>
+            <MediaAndDocs
+              photos={pastePhotos}
+              onAddPhotos={handlePastePhotosUpload}
+              onRemovePhoto={removePastePhoto}
+              photosUploading={pastePhotoUploading}
+              doc={{
+                mode: pastePdfMode,
+                onModeChange: setPastePdfMode,
+                attached: !!pastePdfUrl,
+                attachedName: pastePdfName,
+                onClear: () => {
+                  setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
+                },
+                uploading: pastePdfUploading,
+                onUploadPdf: handlePastePdfUpload,
+                urlInput: pastePdfUrlInput,
+                onUrlInputChange: setPastePdfUrlInput,
+                onFetchUrl: handlePasteUrlExtract,
+                fetching: pastePdfUrlExtracting,
+              }}
+            />
 
             {/* Generate script from uploads. The same sub-action as the
                 camera tab's, demoted the same way — it competes with this
@@ -1678,7 +1617,10 @@ function CreatePageInner() {
             <ul className="text-sm text-spark-ink-soft space-y-2.5">
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> AI script highlighting price, beds/baths, and standout features</li>
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your AI avatar and cloned voice presenting the property</li>
+              {/* Stated unconditionally until the form grew a Who's On Screen
+                  choice — on Voice only there is no avatar at all, which is
+                  the better option for a tour where the photos carry it. */}
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your cloned voice narrating — with your AI avatar on screen, or the photos full-frame</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your logo, contact card, and Fair-Housing-safe wording built in</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
             </ul>
@@ -1766,83 +1708,28 @@ function CreatePageInner() {
             {/* Photos & docs. Sits above the script because it feeds it — the AI
                   writes from these, and they become the b-roll. */}
             <div className="mb-4 rounded-xl border border-spark-rule p-3.5">
-              <div className="flex items-center gap-2.5 mb-1">
-                <span className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                  <ImageIcon size={17} className="text-white" />
-                </span>
-                <p className="text-base font-bold text-brand-text">Add Photos &amp; Docs <span className="text-sm font-normal text-spark-ink-faint">(Optional)</span></p>
-              </div>
-              <p className="text-sm text-spark-ink-muted mb-3">Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you.</p>
-
-              {/* Photo grid */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-spark-ink-soft">Photos <span className="font-normal text-spark-ink-faint">(up to 12)</span></p>
-                  {cameraPhotos.length > 0 && <span className="text-xs text-spark-ink-faint">{cameraPhotos.length}/12</span>}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {cameraPhotos.map((photo, i) => (
-                    <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-spark-rule shrink-0 group">
-                      <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
-                      <button onClick={() => removeCameraPhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={14} className="text-white" />
-                      </button>
-                    </div>
-                  ))}
-                  {cameraPhotos.length < 12 && (
-                    <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${cameraPhotoUploading ? "border-spark-rule-dim bg-emerald-50" : "border-spark-rule hover:border-spark-rule-dim"}`}>
-                      {cameraPhotoUploading ? <Loader2 size={18} className="text-spark-amber animate-spin" /> : <Plus size={18} className="text-spark-ink-faint" />}
-                      <input type="file" accept="image/*" multiple className="sr-only" disabled={cameraPhotoUploading} onChange={(e) => { if (e.target.files?.length) handleCameraPhotosUpload(e.target.files); }} />
-                    </label>
-                  )}
-                  {cameraPhotos.length === 0 && !cameraPhotoUploading && (
-                    <p className="text-[11px] text-spark-ink-faint self-center ml-1">Click + to add photos.</p>
-                  )}
-                </div>
-              </div>
-
-              {/* PDF / URL */}
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-spark-ink-soft">Attach Doc / URL <span className="font-normal text-spark-ink-faint">(optional)</span></p>
-                <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
-                  <button onClick={() => setCameraPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "upload" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"}`}>Upload PDF</button>
-                  <button onClick={() => setCameraPdfMode("url")} className={`px-2.5 py-1 transition-colors ${cameraPdfMode === "url" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"}`}>Add URL</button>
-                </div>
-              </div>
-              {cameraPdfMode === "upload" ? (
-                cameraPdfUrl ? (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <FileText size={16} className="text-green-600 shrink-0" />
-                    <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
-                    <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                  </div>
-                ) : (
-                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${cameraPdfUploading ? "border-spark-rule-dim bg-emerald-50" : "border-spark-rule hover:border-spark-rule-dim"}`}>
-                    {cameraPdfUploading ? <Loader2 size={16} className="text-spark-amber animate-spin shrink-0" /> : <Paperclip size={16} className="text-spark-ink-faint shrink-0" />}
-                    <span className="text-sm text-spark-ink-muted">{cameraPdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={cameraPdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCameraPdfUpload(f); }} />
-                  </label>
-                )
-              ) : cameraPdfUrl ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <Globe size={16} className="text-green-600 shrink-0" />
-                  <span className="text-sm text-green-800 flex-1 truncate">{cameraPdfName}</span>
-                  <button onClick={() => { setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={cameraPdfUrlInput}
-                    onChange={(e) => setCameraPdfUrlInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !cameraPdfUrlExtracting && cameraPdfUrlInput.trim()) handleCameraUrlExtract(); }}
-                    placeholder="https://example.com/article"
-                    className="flex-1 text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                  />
-                  <Button size="sm" loading={cameraPdfUrlExtracting} disabled={!cameraPdfUrlInput.trim()} onClick={handleCameraUrlExtract} className="whitespace-nowrap">Fetch</Button>
-                </div>
-              )}
-              <p className="text-[11px] text-spark-ink-faint mt-1">{cameraPdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
+              <MediaAndDocs
+                photos={cameraPhotos}
+                onAddPhotos={handleCameraPhotosUpload}
+                onRemovePhoto={removeCameraPhoto}
+                photosUploading={cameraPhotoUploading}
+                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner. They also shape the script the AI writes for you."
+                doc={{
+                  mode: cameraPdfMode,
+                  onModeChange: setCameraPdfMode,
+                  attached: !!cameraPdfUrl,
+                  attachedName: cameraPdfName,
+                  onClear: () => {
+                    setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput("");
+                  },
+                  uploading: cameraPdfUploading,
+                  onUploadPdf: handleCameraPdfUpload,
+                  urlInput: cameraPdfUrlInput,
+                  onUrlInputChange: setCameraPdfUrlInput,
+                  onFetchUrl: handleCameraUrlExtract,
+                  fetching: cameraPdfUrlExtracting,
+                }}
+              />
 
               {/* A sub-action of this card, styled like one. Full-width and
                   filled, it read as the step's primary and competed with Open

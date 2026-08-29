@@ -474,8 +474,14 @@ export function ListingVideoForm({ onRecordYourself }: {
 
         <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
           <p className="text-xs text-spark-blue leading-relaxed">
+            {/* Was "60–90 second", which stopped being true when listing
+                scripts moved onto the same word budgets as every other script
+                in the app. Read from RENDERED_SCRIPT_LENGTHS so it cannot go
+                stale again the next time those change. */}
             <strong>What happens next:</strong> We import the listing details, then use AI to write
-            a Fair Housing-compliant 60–90 second property tour voiceover script. Takes ~15 seconds.
+            a Fair Housing-compliant property tour voiceover script — up to{" "}
+            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
+            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform. Takes ~15 seconds.
           </p>
         </div>
       </div>
