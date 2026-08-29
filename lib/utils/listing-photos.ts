@@ -34,6 +34,19 @@ const TRACKER =
   /facebook\.com\/tr|google-analytics|googletagmanager|doubleclick|scorecardresearch|quantserve|adsystem|\/collect\?|\/beacon|\/pixel\b|\/tr\/?\?/i;
 
 /**
+ * Real images that are not photographs of the property.
+ *
+ * Zillow embeds a Google satellite tile beside its gallery:
+ *   maps.googleapis.com/maps/api/staticmap?…&maptype=satellite&size=316x234
+ * It is a genuine image at a respectable size and passes every other test —
+ * it simply is not the house, and it is jarring cut between interior shots.
+ *
+ * Aimed at the staticmap endpoint rather than the map hosts, so a Street View
+ * frame — which IS a picture of the property's exterior — is left alone.
+ */
+const NOT_THE_PROPERTY = /\/maps\/api\/staticmap|[?&]maptype=|mapbox|openstreetmap/i;
+
+/**
  * A size declared in the filename that is too small to be a listing photo.
  *
  * Zillow's MLS attribution mark is `<hash>-zillow_web_95_35.jpg` — 95×35
@@ -209,6 +222,7 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
 
     if (needsPhotoExt ? !PHOTO_EXT.test(abs) : NON_PHOTO_EXT.test(abs)) return;
     if (TRACKER.test(abs)) return;
+    if (NOT_THE_PROPERTY.test(abs)) return;
     if (isTinyDeclaredSize(abs)) return;
 
     const key = photoIdentity(abs);
