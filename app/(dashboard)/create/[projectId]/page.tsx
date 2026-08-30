@@ -360,6 +360,20 @@ export default function ProjectEditorPage() {
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
+  /**
+   * A pasted script skips the script step.
+   *
+   * Step 2 exists to show you the script for the first time — which is true
+   * arriving from a spoken brief or a listing, and false arriving from My
+   * script, where you either typed it or watched the AI draft it into the box
+   * in front of you. It re-showed the same words in the same editable box and
+   * called itself a step. The Call to Action, the one thing on it that was
+   * genuinely new, moved to Setup.
+   *
+   * Set after the project loads, because `source` is read from the URL and
+   * the script has to exist before there is anything to skip past.
+   */
+  const skipScriptStep = source === "paste";
 
   // Pasted scripts always render via Direct Video (avatar speaks the script
   // verbatim), so preset the render mode and skip the Voice-Only/Avatar choice.
@@ -389,6 +403,7 @@ export default function ProjectEditorPage() {
   // straight away: re-recording usually means changing something first, and a
   // permission prompt firing on page load is startling.
   useEffect(() => {
+    if (skipScriptStep && editedScript) setEditorStep(3);
     if (searchParams.get("record") === "1" && editedScript) setEditorStep(3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editedScript]);
@@ -944,7 +959,11 @@ export default function ProjectEditorPage() {
   }
 
   async function handlePhotosUpload(files: FileList) {
-    const remaining = 8 - uploadedPhotos.length;
+    // 12, matching what the renderers actually take: Direct Video and
+    // long-form use 12 (create-blog slices there), and the Video Agent uses 5
+    // with a warning below saying so. 8 was neither, so a listing handing over
+    // its twelve photos produced a counter reading 12/8.
+    const remaining = 12 - uploadedPhotos.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     setPhotoUploading(true);
@@ -1790,6 +1809,15 @@ export default function ProjectEditorPage() {
             )}
           </Card>
 
+          </>)}
+
+          {/* ── Step 3 · Setup ── */}
+          {editorStep === 3 && (<>
+          {/* The closing line, moved here from the script step.
+              My script skips that step now — it had already shown the
+              script — and the CTA was the one thing on it that was not a
+              second look at something already read. It belongs with the
+              rest of what goes into the video. */}
           {/* CTA */}
           <Card padding="sm">
             <div className="flex items-center justify-between px-2 py-1 mb-2">
@@ -1834,10 +1862,7 @@ export default function ProjectEditorPage() {
               </p>
             )}
           </Card>
-          </>)}
 
-          {/* ── Step 3 · Setup ── */}
-          {editorStep === 3 && (<>
           {/* Settings nudge */}
           <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
             <Settings size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -2132,8 +2157,8 @@ export default function ProjectEditorPage() {
 
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 8)</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/8</span>}
+              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 12)</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
             </div>
             {/* The 5-file cap belongs to the Video Agent, which renders everything
                 EXCEPT pasted scripts and long-form (see useDirectVideo in
@@ -2159,7 +2184,7 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               ))}
-              {uploadedPhotos.length < 8 && (
+              {uploadedPhotos.length < 12 && (
                 <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
                   {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                   <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
@@ -2578,12 +2603,19 @@ export default function ProjectEditorPage() {
           <StepFooter
             onBack={
               editorStep === 2 ? () => router.push("/create")
+                : editorStep === 3 && skipScriptStep ? () => router.push("/create?tab=paste")
                 // Nothing to go back to mid-render — unless it failed, in which
                 // case the setup step is exactly where the fix is.
                 : editorStep === 4 ? (renderFailed ? () => setEditorStep(3) : undefined)
                   : () => setEditorStep(editorStep === 5 ? 4 : 2)
             }
-            backLabel={editorStep === 2 ? "Brief" : editorStep === 4 ? "Setup" : editorStep === 5 ? "Back" : "Script"}
+            backLabel={
+              editorStep === 2 ? "Brief"
+                : editorStep === 4 ? "Setup"
+                  : editorStep === 5 ? "Back"
+                    : skipScriptStep ? "My script"
+                      : "Script"
+            }
             hint={
               editorStep === 2 ? "Happy with it? Set the video up next"
                 : editorStep === 3 ? `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
