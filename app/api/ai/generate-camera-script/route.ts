@@ -16,9 +16,19 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic, pdfText, photoCount, length } = await req.json();
+  const { topic, pdfText, photoCount, length, city, state } = await req.json();
   const hasTopic = !!(topic?.trim());
   const hasDocs = !!(pdfText?.trim());
+
+  // The market the agent set for this video, asked before the script is
+  // written. A fallback only, the same way generate-location-script treats it:
+  // if the topic or the source material names a town, that town wins. Without
+  // it a script about "spring inventory" named no place at all, and the town
+  // only ever appeared in the CTA that was stapled on afterwards.
+  const market = [city, state].map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean).join(", ");
+  const marketRule = market
+    ? `\n- The video is for ${market}. Ground it there — name the market and speak to people buying or selling in it. If the topic or source material names a different place, that place wins.`
+    : "";
 
   // Camera recordings are free and support up to 15 minutes, so the length is
   // purely the agent's choice. Defaults to the previous ~400-word behaviour.
@@ -62,7 +72,7 @@ ${(pdfText as string).slice(0, 3000)}
 ${photoLine}${topicLine}
 
 Rules:
-- Open with a strong hook sentence that grabs attention immediately
+- Open with a strong hook sentence that grabs attention immediately${marketRule}
 - Natural spoken language, short punchy sentences
 - Draw on specific details from the source material
 - End with a clear call to action (e.g. "Give me a call" or "Send me a message today")
@@ -72,7 +82,7 @@ Rules:
     userPrompt = `Write a ${mins}-minute teleprompter script for a real estate agent video about: "${topic}"
 
 Rules:
-- Open with a strong hook sentence that grabs attention immediately
+- Open with a strong hook sentence that grabs attention immediately${marketRule}
 - Natural spoken language, short punchy sentences
 - Include real value: stats, tips, or insights relevant to the topic
 - End with a clear call to action (e.g. "Give me a call" or "Send me a message today")

@@ -638,7 +638,16 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfText: pastePdfText || undefined, photoCount: pastePhotos.length, length: pasteScriptLength }),
+        // Market goes with the request, not just onto the project afterwards.
+        // It is asked above the script for exactly this reason — a script that
+        // names no town cannot be given one by the CTA alone.
+        body: JSON.stringify({
+          pdfText: pastePdfText || undefined,
+          photoCount: pastePhotos.length,
+          length: pasteScriptLength,
+          city: pasteCity.trim() || undefined,
+          state: pasteState.trim() || undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -654,15 +663,29 @@ function CreatePageInner() {
   /**
    * Teleprompter script from a topic the agent spoke, rather than from
    * uploads. Same endpoint — it already accepts either.
+   *
+   * `spoken` carries the market straight from the voice session for the same
+   * reason handleGenerateScript takes it: onSlots and onReady fire in the same
+   * tick, so locCity read back from state here would be a render behind.
    */
-  async function handleCameraScriptFromTopic(topic: string) {
+  async function handleCameraScriptFromTopic(
+    topic: string,
+    spoken?: { city?: string | null; state?: string | null },
+  ) {
     if (!topic.trim()) return;
+    const city = (spoken?.city ?? locCity).trim();
+    const state = (spoken?.state ?? locState).trim();
     setCameraScriptGenerating(true);
     try {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, length: cameraScriptLength }),
+        body: JSON.stringify({
+          topic,
+          length: cameraScriptLength,
+          city: city || undefined,
+          state: state || undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -681,7 +704,13 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfText: cameraPdfText || undefined, photoCount: cameraPhotos.length, length: cameraScriptLength }),
+        body: JSON.stringify({
+          pdfText: cameraPdfText || undefined,
+          photoCount: cameraPhotos.length,
+          length: cameraScriptLength,
+          city: locCity.trim() || undefined,
+          state: locState.trim() || undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
@@ -736,7 +765,12 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: pasteAiTopic, length: pasteScriptLength }),
+        body: JSON.stringify({
+          topic: pasteAiTopic,
+          length: pasteScriptLength,
+          city: pasteCity.trim() || undefined,
+          state: pasteState.trim() || undefined,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed");
@@ -1456,6 +1490,45 @@ function CreatePageInner() {
               }}
             />
 
+            {/* Market for THIS video, asked before either way of writing the
+                script rather than after both. Sitting at the foot of the card
+                it was answered last, so every AI route — the topic spark and
+                the write-from-uploads button — ran with the town still blank
+                and wrote to the profile's home city. The script names the
+                place, so the place has to be known first.
+
+                Not just metadata either: this becomes the project's
+                city/state, which the editor's CTA falls back off. Left blank
+                it uses the profile's home city, so a Willow Grove listing went
+                out saying Blue Bell. */}
+            <div className="mb-4 pb-4 border-b border-spark-rule-soft">
+              <p className="text-sm font-bold text-spark-ink-muted uppercase tracking-wide mb-1">Market For This Video</p>
+              <p className="text-xs text-spark-ink-faint mb-2 normal-case font-normal">
+                Spoken in your channel CTA and used for titles and tags — set it to the property&apos;s town, not your office.
+              </p>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={pasteCity}
+                    onChange={(e) => setPasteCity(e.target.value)}
+                    placeholder="City"
+                    className="w-full text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                  />
+                </div>
+                <div className="w-20">
+                  <input
+                    type="text"
+                    value={pasteState}
+                    onChange={(e) => setPasteState(e.target.value)}
+                    placeholder="ST"
+                    maxLength={2}
+                    className="w-full text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Generate script from uploads. The same sub-action as the
                 camera tab's, demoted the same way — it competes with this
                 tab's real primary in the footer for the same reason. */}
@@ -1640,38 +1713,6 @@ function CreatePageInner() {
                 </p>
               )}
             </div>
-
-            {/* Optional city/state */}
-            <div className="border-t border-spark-rule-soft pt-3">
-              {/* Not just metadata: this becomes the project's city/state, which
-                  the editor's CTA falls back off. Left blank it uses the profile's
-                  home city, so a Willow Grove listing went out saying Blue Bell. */}
-              <p className="text-sm font-bold text-spark-ink-muted uppercase tracking-wide mb-1">Market For This Video</p>
-              <p className="text-xs text-spark-ink-faint mb-2 normal-case font-normal">
-                Spoken in your channel CTA and used for titles and tags — set it to the property&apos;s town, not your office.
-              </p>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={pasteCity}
-                    onChange={(e) => setPasteCity(e.target.value)}
-                    placeholder="City"
-                    className="w-full text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                  />
-                </div>
-                <div className="w-20">
-                  <input
-                    type="text"
-                    value={pasteState}
-                    onChange={(e) => setPasteState(e.target.value)}
-                    placeholder="ST"
-                    maxLength={2}
-                    className="w-full text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber uppercase"
-                  />
-                </div>
-              </div>
-            </div>
           </Card>
 
           {/* The button itself is in the fixed footer — this column is long
@@ -1839,7 +1880,7 @@ function CreatePageInner() {
                     // four-way picker for anything finer.
                     if (sl.length) setCameraScriptLength(sl.length === "long" ? "full" : "standard");
                   }}
-                  onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic)}
+                  onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic, sl)}
                 />
             </div>
             )}
