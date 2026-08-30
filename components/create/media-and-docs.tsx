@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Image as ImageIcon, Plus, X, Loader2, Paperclip, FileText, Globe,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 export interface MediaPhoto {
@@ -143,6 +144,10 @@ export function MediaAndDocs({
             {photos.map((photo, i) => (
               <div
                 key={`${photo.url}-${i}`}
+                /* Dragging is a pointer-device convenience layered on top of
+                   the arrows below. HTML5 drag events never fire on touch, so
+                   on a phone this attribute simply does nothing — which is why
+                   the arrows are the real mechanism rather than a fallback. */
                 draggable={!!onReorderPhotos}
                 onDragStart={() => setDragFrom(i)}
                 onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
@@ -158,7 +163,7 @@ export function MediaAndDocs({
                   setDragFrom(null);
                   setDragOver(null);
                 }}
-                className={`relative w-16 h-16 rounded-xl overflow-hidden border shrink-0 group transition-all ${
+                className={`relative w-20 h-20 rounded-xl overflow-hidden border shrink-0 group transition-all ${
                   onReorderPhotos ? "cursor-grab active:cursor-grabbing" : ""
                 } ${
                   dragOver === i && dragFrom !== i
@@ -173,25 +178,57 @@ export function MediaAndDocs({
                   draggable={false}
                   className="w-full h-full object-cover pointer-events-none"
                 />
-                {/* The play order, which is also the order they are spoken
-                    over — the number is the point of being able to drag. */}
-                <span className="absolute bottom-0 left-0 px-1 text-[9px] font-bold text-white bg-black/60 rounded-tr">
+
+                {/* Play order — the order they are spoken over. */}
+                <span className="absolute top-0 left-0 px-1 text-[9px] font-bold text-white bg-black/60 rounded-br pointer-events-none">
                   {i + 1}
                 </span>
+
+                {/* Remove. Its own corner rather than the whole tile, so the
+                    tile can carry the move controls too. */}
                 <button
                   type="button"
                   onClick={() => onRemovePhoto(i)}
                   aria-label={`Remove ${photo.name}`}
-                  className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-0 right-0 p-1 bg-black/55 hover:bg-red-500 rounded-bl transition-colors"
                 >
-                  <X size={14} className="text-white" />
+                  <X size={12} className="text-white" />
                 </button>
+
+                {/* Move left / right.
+                    These are the reorder mechanism, not a fallback: HTML5
+                    drag does not exist on touch, and the agents using this
+                    are on phones. Kept visible without hover for the same
+                    reason — the remove button was hover-gated, which on a
+                    phone meant it could not be relied on either. */}
+                {onReorderPhotos && (
+                  <div className="absolute inset-x-0 bottom-0 flex justify-between bg-gradient-to-t from-black/70 to-transparent">
+                    <button
+                      type="button"
+                      onClick={() => onReorderPhotos(i, i - 1)}
+                      disabled={i === 0}
+                      aria-label={`Move ${photo.name} earlier`}
+                      className="p-1 text-white disabled:opacity-25 enabled:hover:text-spark-amber"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReorderPhotos(i, i + 1)}
+                      disabled={i === photos.length - 1}
+                      aria-label={`Move ${photo.name} later`}
+                      className="p-1 text-white disabled:opacity-25 enabled:hover:text-spark-amber"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {room > 0 && (
               <label
                 title={`Add ${room} more`}
-                className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${
+                className={`w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${
                   photosUploading
                     ? "border-spark-rule-dim bg-spark-amber-tint"
                     : "border-spark-rule hover:border-spark-rule-dim"
@@ -209,7 +246,7 @@ export function MediaAndDocs({
             )}
             {/* The count is in the header; this says what is left to add. */}
             <p className="text-[11px] text-spark-ink-faint self-center ml-1">
-              {onReorderPhotos ? "Drag to reorder · " : ""}
+              {onReorderPhotos ? "Arrows reorder · drag works too on a computer · " : ""}
               {room > 0 ? `${room} more can be added` : "all slots full — remove one to swap it out"}
             </p>
           </div>
