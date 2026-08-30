@@ -12,6 +12,7 @@ import {
   Plus, X, Paperclip, ImageIcon, Globe,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
+import { ClipBrander } from "@/components/video/clip-brander";
 import { MediaAndDocs } from "@/components/create/media-and-docs";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -216,6 +217,23 @@ function CreatePageInner() {
    * and stay available whichever way in you pick.
    */
   const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own">("speak");
+  /**
+   * Record here, or brand a clip already shot.
+   *
+   * Branding an existing clip re-records it in real time from a foreground
+   * tab, which a phone cannot do — the screen locks, the tab suspends, and the
+   * file comes out short. So the option is only offered on a pointer device
+   * with a wide viewport, and recording in the app stays the answer everywhere
+   * else. Checked after mount because there is no window on the server.
+   */
+  const [cameraMode, setCameraMode] = useState<"record" | "brand">("record");
+  const [canBrandClips, setCanBrandClips] = useState(false);
+  useEffect(() => {
+    const desktop =
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+      window.innerWidth >= 900;
+    setCanBrandClips(desktop);
+  }, []);
   const [cameraPdfUploading, setCameraPdfUploading] = useState(false);
   const [cameraPdfText, setCameraPdfText] = useState("");
   const [cameraPdfUrl, setCameraPdfUrl] = useState("");
@@ -1745,6 +1763,40 @@ function CreatePageInner() {
                 Speaking one fills the market above and writes the
                 teleprompter. Same session component and endpoint as the
                 AI-writes-it tab — the brief is the same brief. */}
+            {/* Record here, or brand something already shot. Only offered on
+                a desktop — see canBrandClips. */}
+            {canBrandClips && cameraPhase === "script" && (
+              <div className="mb-4 grid grid-cols-2 gap-1.5">
+                {([
+                  { key: "record" as const, label: "Record it here", sub: "branding burned in live" },
+                  { key: "brand" as const,  label: "Brand a clip I shot", sub: "up to 2 min · desktop" },
+                ]).map(({ key, label, sub }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCameraMode(key)}
+                    aria-pressed={cameraMode === key}
+                    className={`px-2.5 py-2 rounded-lg border text-left transition-colors ${
+                      cameraMode === key
+                        ? "border-spark-amber bg-spark-amber-tint"
+                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span className="block text-[12px] font-bold text-brand-text">{label}</span>
+                    <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {cameraMode === "brand" && canBrandClips ? (
+              <ClipBrander
+                musicUrl={null}
+                photos={cameraPhotos.map((p) => p.url)}
+                title={locCity ? `${locCity} clip` : "Camera clip"}
+              />
+            ) : (<>
+
             {cameraPhase === "script" && (<>
             <div className="mb-4">
               <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Where your script comes from</p>
@@ -1892,6 +1944,7 @@ function CreatePageInner() {
               initialScript={cameraGeneratedScript || undefined}
               photos={cameraPhotos.map((p) => p.url)}
             />
+            </>)}
 
           </Card>
 

@@ -89,6 +89,8 @@ export class BrandedComposite {
   private brollShownAt = 0;
   private brollPass = 0;
   private scriptProgress: number | null = null;
+  /** Frames are coming from a file rather than a live camera. */
+  private fromFile = false;
   /** Set when the chosen music never loaded, so the caller can say so rather
    *  than letting the user record in silence expecting a soundtrack. */
   musicUnavailable = false;
@@ -113,14 +115,19 @@ export class BrandedComposite {
    * on top. display:none suspends decoding for the same reason, so the element
    * is parked off-screen instead.
    */
-  private mountVideoElement(cameraStream: MediaStream): HTMLVideoElement {
+  private mountVideoElement(source: MediaStream | string): HTMLVideoElement {
     const el = document.createElement("video");
-    el.muted = true;
+    // A live camera is muted on purpose — its audio is captured from the mic
+    // track, and playing it back would echo. A FILE's audio is the audio, and
+    // it is read out of the element itself, so muting it here would record a
+    // silent video.
+    el.muted = typeof source !== "string";
     el.playsInline = true;
     el.autoplay = true;
     el.style.cssText =
       "position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;";
-    el.srcObject = cameraStream;
+    if (typeof source === "string") el.src = source;
+    else el.srcObject = source;
     document.body.appendChild(el);
     return el;
   }
@@ -181,9 +188,14 @@ export class BrandedComposite {
   }
 
   /** Builds the composite pipeline from the raw camera stream. */
-  async init(cameraStream: MediaStream): Promise<MediaStream> {
+  /**
+   * @param source a live camera MediaStream, or an object URL for a file the
+   *   user already shot. The overlays, b-roll and music are identical either
+   *   way — only where the frames and the audio come from differs.
+   */
+  async init(source: MediaStream | string): Promise<MediaStream> {
     try {
-      return await this.build(cameraStream);
+      return await this.build(source);
     } catch (err) {
       // Never leave a half-built pipeline (or its mounted element) behind —
       // the caller drops its reference and falls back to the plain path.
@@ -193,11 +205,13 @@ export class BrandedComposite {
     }
   }
 
-  private async build(cameraStream: MediaStream): Promise<MediaStream> {
-    const track = cameraStream.getVideoTracks()[0];
+  private async build(source: MediaStream | string): Promise<MediaStream> {
+    const fromFile = typeof source === "string";
+    this.fromFile = fromFile;
+    const track = fromFile ? null : source.getVideoTracks()[0];
     const settings = track?.getSettings() ?? {};
 
-    const videoEl = this.mountVideoElement(cameraStream);
+    const videoEl = this.mountVideoElement(source);
     this.videoEl = videoEl;
     // Muted playback of a local stream shouldn't be blocked, but the frame
     // wait below is the real gate either way.
@@ -235,25 +249,40 @@ export class BrandedComposite {
     );
     this.photos = loadedPhotos.filter((p): p is HTMLImageElement => p !== null);
 
-    // Audio: mic only, or mic + ducked music bed via WebAudio
-    let audioTrack = cameraStream.getAudioTracks()[0] ?? null;
-    if (this.musicUrl) {
+    // Audio: the source's own, optionally mixed with a ducked music bed.
+    //
+    // A file has no audio track to take directly — its sound lives inside the
+    // element — so a graph is built even without music, purely to get a track
+    // out. Note that createMediaElementSource REDIRECTS the element's audio
+    // into the graph: once called, the element stops feeding the speakers, so
+    // everything wanted in the recording has to be connected to `dest`.
+    let audioTrack = fromFile ? null : source.getAudioTracks()[0] ?? null;
+    const needsGraph = !!this.musicUrl || fromFile;
+    if (needsGraph) {
       // Load the track before wiring any of it up. A src that 404s or is
       // unreadable still yields a working graph that outputs pure silence, so
       // the recording came out with no music and nothing said why.
-      const musicEl = new Audio();
-      musicEl.crossOrigin = "anonymous";
-      musicEl.loop = true;
-      musicEl.src = this.musicUrl;
-      const musicReady = await new Promise<boolean>((resolve) => {
-        const timer = setTimeout(() => resolve(false), 5000);
-        musicEl.addEventListener("canplay", () => { clearTimeout(timer); resolve(true); }, { once: true });
-        musicEl.addEventListener("error", () => { clearTimeout(timer); resolve(false); }, { once: true });
-        musicEl.load();
-      });
+      let musicEl: HTMLAudioElement | null = null;
+      let musicReady = false;
+      if (this.musicUrl) {
+        musicEl = new Audio();
+        musicEl.crossOrigin = "anonymous";
+        musicEl.loop = true;
+        musicEl.src = this.musicUrl;
+        const el = musicEl;
+        musicReady = await new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => resolve(false), 5000);
+          el.addEventListener("canplay", () => { clearTimeout(timer); resolve(true); }, { once: true });
+          el.addEventListener("error", () => { clearTimeout(timer); resolve(false); }, { once: true });
+          el.load();
+        });
+        if (!musicReady) this.musicUnavailable = true;
+      }
 
-      if (!musicReady) {
-        this.musicUnavailable = true;
+      // A file still needs the graph even with no music, to get an audio track
+      // out of the element at all.
+      if (!musicReady && !fromFile) {
+        // nothing to build — the mic track already stands on its own
       } else try {
         const audioCtx = new AudioContext();
         const dest = audioCtx.createMediaStreamDestination();
@@ -263,19 +292,24 @@ export class BrandedComposite {
         // element playing that same stream — which silently emptied the
         // picture-in-picture while photos and audio carried on fine. The node
         // has no use for the video track regardless.
-        const micStream = new MediaStream(cameraStream.getAudioTracks());
-        const micSrc = audioCtx.createMediaStreamSource(micStream);
-        const micGain = audioCtx.createGain();
-        micGain.gain.value = 1.0;
-        micSrc.connect(micGain).connect(dest);
+        const voiceSrc = fromFile
+          // The file's own soundtrack. From here it reaches the recording only
+          // through this graph — the element no longer plays to the speakers.
+          ? audioCtx.createMediaElementSource(videoEl)
+          : audioCtx.createMediaStreamSource(new MediaStream(source.getAudioTracks()));
+        const voiceGain = audioCtx.createGain();
+        voiceGain.gain.value = 1.0;
+        voiceSrc.connect(voiceGain).connect(dest);
 
-        const musicSrc = audioCtx.createMediaElementSource(musicEl);
-        const musicGain = audioCtx.createGain();
-        musicGain.gain.value = 0.1; // ducked well under the voice
-        musicSrc.connect(musicGain).connect(dest);
+        if (musicReady && musicEl) {
+          const musicSrc = audioCtx.createMediaElementSource(musicEl);
+          const musicGain = audioCtx.createGain();
+          musicGain.gain.value = 0.1; // ducked well under the voice
+          musicSrc.connect(musicGain).connect(dest);
+          this.musicEl = musicEl;
+        }
 
         this.audioCtx = audioCtx;
-        this.musicEl = musicEl;
         audioTrack = dest.stream.getAudioTracks()[0];
       } catch {
         // Music mixing failed — record voice-only rather than aborting
@@ -315,6 +349,15 @@ export class BrandedComposite {
     this.musicEl?.play().catch(() => {});
   }
   pauseMusic() { this.musicEl?.pause(); }
+
+  /**
+   * The element the frames are being read from.
+   *
+   * Exposed for the file case only: the caller needs its currentTime for a
+   * progress bar and its `ended` event to know when to stop recording. A live
+   * camera has neither — it stops when the user says so.
+   */
+  get sourceElement(): HTMLVideoElement | null { return this.videoEl; }
 
   /** True once at least one photo survived loading and can be used as b-roll. */
   get hasBroll(): boolean { return this.photos.length > 0; }
@@ -365,6 +408,15 @@ export class BrandedComposite {
     this.brollRunning = false;
   }
   private tickBroll() {
+    // A file plays on its own clock. Wall time and media time are the same
+    // thing for a live camera, but the moment playback buffers — or the tab is
+    // backgrounded and rAF throttles — they part company, and the b-roll walks
+    // away from the footage it is supposed to sit under.
+    if (this.fromFile && this.videoEl) {
+      this.brollElapsed = this.videoEl.currentTime * 1000;
+      this.brollLastTick = performance.now();
+      return;
+    }
     const now = performance.now();
     if (this.brollRunning) this.brollElapsed += now - this.brollLastTick;
     this.brollLastTick = now;
@@ -384,6 +436,7 @@ export class BrandedComposite {
    *  how far through the crossfade in. Null means the speaker stays full-frame. */
   private currentBrollShot() {
     if (this.photos.length === 0) return null;
+    if (this.fromFile) this.tickBroll();   // media clock, sampled per frame
     const t = this.brollElapsed - BROLL_LEAD_IN_MS;
     if (t < 0) return null;
 
