@@ -420,9 +420,25 @@ export async function POST(req: NextRequest) {
   const aiScript = project.ai_script as Record<string, unknown> | null;
   const seoData = project.seo_data as Record<string, unknown> | null;
   const listingData = project.listing_data as Record<string, unknown> | null;
-  const listingPhotos = (listingData?.photoUrls as string[] | undefined)?.filter(
-    (u) => typeof u === "string" && u.startsWith("http"),
-  ) ?? [];
+  /**
+   * The listing's own photos, minus anything the editor is already sending.
+   *
+   * The editor loads these into its photo grid so they can be seen, removed
+   * and reordered — which means they arrive again in extraPhotoUrls. Merged
+   * blindly, one photo counted twice, and against the Video Agent's five-photo
+   * budget that meant five slots holding two or three pictures.
+   *
+   * The editor's copy wins where they overlap: it reflects what was actually
+   * chosen, including a removal.
+   */
+  const sentByEditor = new Set(
+    Array.isArray(extraPhotoUrls)
+      ? extraPhotoUrls.filter((u): u is string => typeof u === "string")
+      : [],
+  );
+  const listingPhotos = ((listingData?.photoUrls as string[] | undefined) ?? []).filter(
+    (u) => typeof u === "string" && u.startsWith("http") && !sentByEditor.has(u),
+  );
 
   const rawScript = script || (aiScript?.script as string) || project.title;
 

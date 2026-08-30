@@ -246,6 +246,14 @@ export default function ProjectEditorPage() {
   // The HeyGen job behind the current render, so step 4 can poll it.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderFailed, setRenderFailed] = useState(false);
+  /**
+   * "I'll record it" — the third answer to who's on screen.
+   *
+   * Deliberately not a renderMode: nothing server-side accepts it, and it does
+   * not describe an AI render at all. It decides what this page shows and
+   * what the footer offers, and nothing more.
+   */
+  const [selfRecord, setSelfRecord] = useState(false);
   // The render finishing was only ever recorded as "not failed", so the page
   // learned it was done and did nothing with the knowledge: the footer went on
   // saying "Rendering — you can close this page" and the only route to the
@@ -597,6 +605,32 @@ export default function ProjectEditorPage() {
     }
   }
 
+  /**
+   * Show a listing's own photos in the editor's grid.
+   *
+   * They live on listing_data, which only the render read — so the grid sat
+   * empty and offered to add photos while twelve already existed and were
+   * being used. Loading them here makes them visible, removable and
+   * reorderable like any other; create-blog drops any it sees in
+   * extraPhotoUrls from its own listing set, so nothing is counted twice.
+   */
+  function seedPhotosFromListing(p: Project) {
+    const data = (p as unknown as { listing_data?: { photoUrls?: unknown } }).listing_data;
+    const urls = Array.isArray(data?.photoUrls)
+      ? (data.photoUrls as unknown[]).filter(
+          (u): u is string => typeof u === "string" && u.startsWith("http"),
+        )
+      : [];
+    if (urls.length === 0) return;
+    setUploadedPhotos((prev) =>
+      prev.length > 0
+        ? prev
+        : urls.slice(0, 12).map((url, i) => ({
+            url, name: `Listing photo ${i + 1}`, preview: url,
+          })),
+    );
+  }
+
   async function loadProject() {
     setLoading(true);
     const supabase = createClient();
@@ -623,6 +657,7 @@ export default function ProjectEditorPage() {
 
     const p = data as unknown as Project;
     setProject(p);
+    seedPhotosFromListing(p);
     // Only set for a fresh (not user_edited) load — passed to initContentEdits
     // below so the title matches whichever hook just got auto-selected.
     // Stays undefined on a saved draft, so a title the user deliberately
@@ -1176,7 +1211,13 @@ export default function ProjectEditorPage() {
       <div className="flex flex-col gap-[7px]">
         {/* No asterisk: a style is always set now, so nothing is being demanded. */}
         <p className="spark-eyebrow text-[9px] tracking-[0.12em]">WHO&rsquo;S ON SCREEN</p>
-        <div className="grid grid-cols-2 gap-1.5">
+        {/* Three answers, not two and a button.
+            Reading it yourself was a separate control three sections below,
+            which made it look like a setting rather than the third answer to
+            the same question. It is the one that makes everything under this
+            heading — which look, which photos, which format — stop mattering,
+            so it belongs in the choice itself. */}
+        <div className="grid gap-1.5 sm:grid-cols-3">
           {[
             {
               mode: "voice_only" as const,
@@ -1188,14 +1229,26 @@ export default function ProjectEditorPage() {
               label: "Avatar + voice",
               desc: "Your look on screen — pick one below",
             },
+            {
+              mode: "self" as const,
+              label: "I'll record it",
+              desc: "You on camera, free — no credit used",
+            },
           ].map(({ mode, label, desc }) => (
             <button
               key={mode}
               type="button"
-              onClick={() => setRenderMode(mode)}
-              aria-pressed={renderMode === mode}
+              // "self" is not a render mode — nothing server-side accepts it.
+              // It only decides what this page shows, and the footer turns into
+              // Open Camera. The two real modes still set renderMode.
+              onClick={() => {
+                if (mode === "self") { setSelfRecord(true); return; }
+                setSelfRecord(false);
+                setRenderMode(mode);
+              }}
+              aria-pressed={mode === "self" ? selfRecord : !selfRecord && renderMode === mode}
               className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
-                renderMode === mode
+                (mode === "self" ? selfRecord : !selfRecord && renderMode === mode)
                   ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                   : "border border-spark-rule bg-white hover:border-spark-rule-dim"
               }`}
@@ -1906,121 +1959,6 @@ export default function ProjectEditorPage() {
             />
             )}
 
-            {/* Video format selector */}
-            <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">FORMAT</p>
-            {/* One row of chips rather than three stacked cards. Every option
-                repeated "Under 4 min" and its own aspect at full size, so the
-                block cost the height of three paragraphs to say a thing you
-                choose once — and the two Shorts, identically titled, still
-                had to be told apart by reading to the middle of a sentence.
-                The aspect rides on the chip; the rest describes whichever one
-                is selected, on a single line underneath. */}
-            <div className="flex flex-wrap gap-1.5">
-              {videoTypes.map(({ value, label, ratio, proOnly }) => (
-                <button
-                  key={value}
-                  onClick={() => setSelectedVideoType(value)}
-                  aria-pressed={selectedVideoType === value}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11.5px] leading-none transition-colors ${
-                    selectedVideoType === value
-                      ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
-                      : "border border-spark-rule bg-white hover:border-spark-rule-dim"
-                  }`}
-                >
-                  <span className="font-medium text-spark-ink">{label}</span>
-                  <span className="text-spark-ink-muted">{ratio}</span>
-                  {proOnly && (
-                    <span className="rounded bg-spark-amber-tint px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.06em] text-spark-amber">
-                      {longFormIncluded ? "In your plan" : "Add credits"}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <p className="mb-5 mt-1.5 text-[10px] leading-[1.35] text-spark-ink-muted">
-              {selectedFormat?.desc}
-            </p>
-            {selectedVideoType === "youtube_long" && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-xs font-semibold text-amber-900 mb-1">How long videos work</p>
-                <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc list-inside">
-                  <li>Your full script is read start to finish — up to 8 minutes (about 1,160 words).</li>
-                  <li><strong>Your uploaded photos are the visuals</strong> — add them below. Without photos it&apos;s your avatar on screen the whole time.</li>
-                  <li>Uses one of your long-video allowance — separate from your short videos.</li>
-                </ul>
-              </div>
-            )}
-            {selectedVideoType === "youtube_long" && !longFormIncluded && (
-              <div className="-mt-3 mb-5 p-3 bg-primary-50 border border-primary-100 rounded-xl">
-                <p className="text-xs text-slate-600">
-                  {/* "Agent" and "Pro" are the internal tier keys, never plan
-                      names — PLANS in lib/stripe.ts calls them Producer and
-                      Influencer, and it is what the webhook grants from. The
-                      counts come from the same place: longVideos is 2 and 4,
-                      not 5. */}
-                  Long videos have their own monthly allowance, separate from your short videos.
-                  Included with Producer (2/month) and Influencer (4/month), or buy one as you go.
-                </p>
-                <div className="flex gap-2 mt-2">
-                  <Link href="/billing" className="flex-1">
-                    <Button size="sm" variant="primary" className="w-full">Upgrade Plan</Button>
-                  </Link>
-                  <a href="/api/stripe/credits?pack=long1" className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full">One Long Video · $49</Button>
-                  </a>
-                </div>
-              </div>
-            )}
-            {/* Captions — a switch rather than a checkbox, per 2a. It is on by
-                default and rarely changed, so it reads better as a setting than
-                as something waiting to be ticked. */}
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11.5px] text-spark-ink-soft">Captions burned in</p>
-                <p className="text-[10px] text-spark-ink-faint">Most viewers watch muted</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={burnCaptions}
-                aria-label="Burn synchronized captions into the video"
-                onClick={() => setBurnCaptions(!burnCaptions)}
-                className={`flex h-[18px] w-8 flex-none items-center rounded-full p-0.5 transition-colors ${
-                  burnCaptions ? "justify-end bg-spark-amber" : "justify-start bg-spark-rule-dim"
-                }`}
-              >
-                <span className="h-3.5 w-3.5 rounded-full bg-white" />
-              </button>
-            </div>
-
-            {/* Background music */}
-            <div className="mt-4 mb-5">
-              <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">MUSIC</p>
-              <div className="flex flex-wrap gap-1.5">
-                {MUSIC_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => selectMusic(preset)}
-                    disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
-                    className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] transition-colors disabled:opacity-50 ${
-                      selectedMusicId === preset.id
-                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint font-medium text-spark-ink"
-                        : "border border-spark-rule text-spark-ink-soft hover:border-spark-rule-dim"
-                    }`}
-                  >
-                    <span>{preset.emoji}</span>
-                    {uploadingMusic && preset.id === "custom" ? "Uploading…"
-                      : musicResolving && selectedMusicId === preset.id ? "Loading…"
-                      : preset.label}
-                  </button>
-                ))}
-              </div>
-              {selectedMusicId === "custom" && musicUrl && (
-                <p className="mt-1.5 text-[10.5px] text-emerald-700">✓ Custom track uploaded — it will play under the voiceover</p>
-              )}
-              <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
-            </div>
-
             {/* Video style selector. A pasted script always renders verbatim
                 through Direct Video, so there is no voice-only/avatar choice
                 to make — it gets told what will happen instead of being asked. */}
@@ -2039,26 +1977,11 @@ export default function ProjectEditorPage() {
                 renderModeSelector()
               )}
             </div>
-
-            {/* Reading it yourself is the third answer to "who's on screen",
-                so it sits with the other two rather than at the far bottom of
-                the card next to Save Draft. Everything below this line —
-                which look, which photos — only matters if the AI renders it,
-                and choosing this skips all of it. */}
-            <button
-              type="button"
-              onClick={openTeleprompter}
-              className="mb-4 flex w-full flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2 text-[15px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
-            >
-              Record it myself on camera
-              {/* Saying what Spark Video costs without saying this costs
-                  nothing leaves the free option looking like the same charge.
-                  Nothing in save-camera-recording touches an allowance. */}
-              <span className="mt-0.5 text-[12px] font-normal leading-[1.2] opacity-70">
-                Free — no credit used · your photos as b-roll
-              </span>
-            </button>
-
+            {/* Hidden when you are the one on camera. The look, the format
+                and the photos below all describe a render that will not
+                happen — leaving them on screen invited choices that would be
+                thrown away. */}
+            {!selfRecord && (<>
             {/* Avatar look selector.
                 Only Avatar + Voice puts a look on screen — lookId is dropped at
                 submit in Voice Only mode. The picker used to render identically
@@ -2195,56 +2118,55 @@ export default function ProjectEditorPage() {
               )}
             </div>
 
-            {/* PDF / URL attachment — From my material only.
-                It feeds the visual prompt, so it is not inert on the AI flow,
-                but by this step that script is already written and the label
-                promises to "enrich your video" from a document. Bringing
-                material is what the other tab is for; offering it here, four
-                steps in, reads as a step that was missed. */}
-            {isPaste && (<>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500">Attach PDF / URL <span className="font-normal text-slate-400">(optional)</span></p>
-              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
-                <button onClick={() => setPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pdfMode === "upload" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
-                <button onClick={() => setPdfMode("url")} className={`px-2.5 py-1 transition-colors ${pdfMode === "url" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>
+            {/* Captions — a switch rather than a checkbox, per 2a. It is on by
+                default and rarely changed, so it reads better as a setting than
+                as something waiting to be ticked. */}
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11.5px] text-spark-ink-soft">Captions burned in</p>
+                <p className="text-[10px] text-spark-ink-faint">Most viewers watch muted</p>
               </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={burnCaptions}
+                aria-label="Burn synchronized captions into the video"
+                onClick={() => setBurnCaptions(!burnCaptions)}
+                className={`flex h-[18px] w-8 flex-none items-center rounded-full p-0.5 transition-colors ${
+                  burnCaptions ? "justify-end bg-spark-amber" : "justify-start bg-spark-rule-dim"
+                }`}
+              >
+                <span className="h-3.5 w-3.5 rounded-full bg-white" />
+              </button>
             </div>
-            <div className="mb-5">
-              {pdfMode === "upload" ? (
-                pdfUrl ? (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <FileText size={16} className="text-green-600 shrink-0" />
-                    <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                    <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                  </div>
-                ) : (
-                  <label className={`flex items-center gap-2 p-3 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${pdfUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
-                    {pdfUploading ? <Loader2 size={16} className="text-primary-500 animate-spin shrink-0" /> : <Paperclip size={16} className="text-slate-400 shrink-0" />}
-                    <span className="text-sm text-slate-500">{pdfUploading ? "Extracting PDF content…" : "Click to attach a PDF"}</span>
-                    <input type="file" accept=".pdf,application/pdf" className="sr-only" disabled={pdfUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); }} />
-                  </label>
-                )
-              ) : pdfUrl ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <Globe size={16} className="text-green-600 shrink-0" />
-                  <span className="text-sm text-green-800 flex-1 truncate">{pdfName}</span>
-                  <button onClick={() => { setPdfUrl(""); setPdfText(""); setPdfName(""); setPdfUrlInput(""); }} className="p-0.5 rounded hover:bg-green-100"><X size={14} className="text-green-700" /></button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={pdfUrlInput}
-                    onChange={(e) => setPdfUrlInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !pdfUrlExtracting && pdfUrlInput.trim()) handleUrlExtract(); }}
-                    placeholder="https://example.com/article"
-                    className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                  <Button size="sm" loading={pdfUrlExtracting} disabled={!pdfUrlInput.trim()} onClick={handleUrlExtract} className="whitespace-nowrap">Fetch</Button>
-                </div>
+            {/* Background music */}
+            <div className="mt-4 mb-5">
+              <p className="spark-eyebrow mb-2 text-[9px] tracking-[0.12em]">MUSIC</p>
+              <div className="flex flex-wrap gap-1.5">
+                {MUSIC_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => selectMusic(preset)}
+                    disabled={musicResolving || (uploadingMusic && preset.id === "custom")}
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] transition-colors disabled:opacity-50 ${
+                      selectedMusicId === preset.id
+                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint font-medium text-spark-ink"
+                        : "border border-spark-rule text-spark-ink-soft hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span>{preset.emoji}</span>
+                    {uploadingMusic && preset.id === "custom" ? "Uploading…"
+                      : musicResolving && selectedMusicId === preset.id ? "Loading…"
+                      : preset.label}
+                  </button>
+                ))}
+              </div>
+              {selectedMusicId === "custom" && musicUrl && (
+                <p className="mt-1.5 text-[10.5px] text-emerald-700">✓ Custom track uploaded — it will play under the voiceover</p>
               )}
-              <p className="text-[11px] text-slate-400 mt-1">{pdfMode === "upload" ? "PDF content will be extracted and used to enrich your video." : "Web page content will be extracted and used to enrich your video."}</p>
+              <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
             </div>
+
             </>)}
 
             {/* Say it up front when the render can't succeed, rather than
@@ -2275,6 +2197,7 @@ export default function ProjectEditorPage() {
                 Set large and bold rather than at caption size: both ways of
                 firing it spend a credit, and a warning printed smaller than
                 the thing it is warning about is one nobody reads. */}
+            {!selfRecord && (
             <p className="mb-1 text-[22px] font-semibold leading-[1.3] text-spark-ink-soft">
               {/* Click only, and it says so. The spoken wake word used to work
                   from the mic at the top of this card — six hundred pixels
@@ -2300,6 +2223,7 @@ export default function ProjectEditorPage() {
               )}
               .
             </p>
+            )}
 
             {/* 2a's summary line — restates the four choices just made, so the
                 button is not the first place you find out what you picked. */}
@@ -2618,7 +2542,11 @@ export default function ProjectEditorPage() {
             }
             hint={
               editorStep === 2 ? "Happy with it? Set the video up next"
-                : editorStep === 3 ? `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                : editorStep === 3 ? (
+                    selfRecord
+                      ? "Free — your photos play as b-roll while you read"
+                      : `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                  )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"
                         : renderComplete ? "Your video is ready"
@@ -2632,7 +2560,14 @@ export default function ProjectEditorPage() {
                 Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={17} />
               </Button>
             )}
-            {editorStep === 3 && (
+            {editorStep === 3 && selfRecord && (
+              // No credit, no render — so it is not Spark Video, and saying
+              // so on the button is the last chance to be clear about it.
+              <Button onClick={openTeleprompter} size="lg" className="gap-2">
+                <Camera size={17} /> Open Camera
+              </Button>
+            )}
+            {editorStep === 3 && !selfRecord && (
               <Button onClick={handleGenerateVideo} loading={videoGenerating} size="lg" className="gap-2">
                 {/* Deliberately not naming the platform — the same render will
                     publish to other channels, so "Generate YouTube" would age
