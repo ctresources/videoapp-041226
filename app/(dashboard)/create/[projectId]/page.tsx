@@ -2015,6 +2015,25 @@ export default function ProjectEditorPage() {
               )}
             </div>
 
+            {/* Reading it yourself is the third answer to "who's on screen",
+                so it sits with the other two rather than at the far bottom of
+                the card next to Save Draft. Everything below this line —
+                which look, which photos — only matters if the AI renders it,
+                and choosing this skips all of it. */}
+            <button
+              type="button"
+              onClick={openTeleprompter}
+              className="mb-4 flex w-full flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2 text-[15px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
+            >
+              Record it myself on camera
+              {/* Saying what Spark Video costs without saying this costs
+                  nothing leaves the free option looking like the same charge.
+                  Nothing in save-camera-recording touches an allowance. */}
+              <span className="mt-0.5 text-[12px] font-normal leading-[1.2] opacity-70">
+                Free — no credit used · your photos as b-roll
+              </span>
+            </button>
+
             {/* Avatar look selector.
                 Only Avatar + Voice puts a look on screen — lookId is dropped at
                 submit in Voice Only mode. The picker used to render identically
@@ -2278,26 +2297,6 @@ export default function ProjectEditorPage() {
                 two are the alternatives to it, and stay here with the settings
                 they relate to. */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Recording is the free alternative, not a competing primary --
-                  2a gives it an outline so the two stop shouting equally. */}
-              <button
-                type="button"
-                onClick={openTeleprompter}
-                // Bigger type, same button: the padding gives back roughly
-                // what the larger lines take, so the row keeps its height
-                // against Save Draft next to it. Explicit leading because
-                // that is what makes the trade predictable.
-                className="flex flex-1 flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2 text-[16px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white"
-              >
-                Record it myself on camera
-                {/* The other half of the sentence above. Saying what Spark
-                    Video costs without saying that this costs nothing leaves
-                    the free option looking like the same charge. Nothing in
-                    save-camera-recording touches an allowance. */}
-                <span className="mt-0.5 text-[12px] font-normal leading-[1.2] opacity-70">
-                  Free — no credit used
-                </span>
-              </button>
               <Button
                 onClick={handleSaveDraft}
                 loading={savingDraft}
