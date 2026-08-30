@@ -128,6 +128,29 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   const [camError, setCamError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
+  /** 3, 2, 1 — null when not counting. */
+  const [countdown, setCountdown] = useState<number | null>(null);
+  /**
+   * Mirror the PREVIEW only.
+   *
+   * Reading yourself unmirrored is disorienting — you lean left and the
+   * picture leans right. The recording must never be flipped, though: mirrored
+   * footage reverses signage, logos and anything written in the room. Branded
+   * mode has always shown the true composite, so this only offers the choice
+   * where the preview is the raw camera.
+   */
+  const [mirrorPreview, setMirrorPreview] = useState(true);
+  /** Average luminance of the preview, 0–1. Null until first sampled. */
+  const [brightness, setBrightness] = useState<number | null>(null);
+  /**
+   * Every take from this session, newest last.
+   *
+   * Recording again used to replace the preview, so comparing two takes meant
+   * going to My Videos and back. They are all saved either way — this is about
+   * being able to look at them here before deciding.
+   */
+  const [takes, setTakes] = useState<{ url: string; blob: Blob; seconds: number }[]>([]);
+  const [viewingTake, setViewingTake] = useState(0);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
   const [showPublish, setShowPublish] = useState(false);
   const [ctaProfile, setCtaProfile] = useState<{
@@ -335,6 +358,63 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     }
   }
 
+  /**
+   * Three seconds before the light goes on.
+   *
+   * Recording began the instant the button was pressed, so every take opened
+   * with a hand returning to the desk and a face still settling. The
+   * teleprompter starts with the recording, not with the count.
+   */
+  function beginCountdown() {
+    if (countdown !== null || isRecording) return;
+    setCountdown(3);
+    const tick = setInterval(() => {
+      setCountdown((n) => {
+        if (n === null) { clearInterval(tick); return null; }
+        if (n <= 1) {
+          clearInterval(tick);
+          // Out of the state updater — starting a recorder mid-render is not
+          // something React should be asked to reason about.
+          setTimeout(() => { setCountdown(null); startRecording(); }, 0);
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+  }
+
+  /**
+   * Average luminance of the preview, sampled while framing up.
+   *
+   * Deliberately only brightness. "Too close" or "off centre" would need face
+   * detection, which is not dependable across browsers — and a framing warning
+   * that fires on the wrong thing is worse than none. Backlighting is the
+   * complaint the tips list already leads with, and it is measurable.
+   */
+  useEffect(() => {
+    if (step !== "camera" || isRecording) return;
+    const probe = document.createElement("canvas");
+    probe.width = 32; probe.height = 18;
+    const ctx = probe.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    const id = setInterval(() => {
+      const el = videoRef.current;
+      if (!el || el.readyState < 2) return;
+      try {
+        ctx.drawImage(el, 0, 0, probe.width, probe.height);
+        const { data } = ctx.getImageData(0, 0, probe.width, probe.height);
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          // Rec. 601 luma — close enough for "is this person in the dark".
+          sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        }
+        setBrightness(sum / (data.length / 4) / 255);
+      } catch { /* a tainted or not-yet-ready frame — try again next tick */ }
+    }, 1200);
+    return () => clearInterval(id);
+  }, [step, isRecording]);
+
   function startRecording() {
     // Branded Look records the composited canvas stream; plain mode records
     // the raw camera stream exactly as before.
@@ -365,8 +445,16 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     recorder.onstop = () => {
       const type = mimeType || "video/webm";
       const blob = new Blob(chunksRef.current, { type });
+      const url = URL.createObjectURL(blob);
       setVideoBlob(blob);
-      setVideoUrl(URL.createObjectURL(blob));
+      setVideoUrl(url);
+      // Kept rather than replaced. Each is saved to My Videos on its own, but
+      // choosing between two takes should not mean leaving this screen.
+      setTakes((prev) => {
+        const next = [...prev, { url, blob, seconds }];
+        setViewingTake(next.length - 1);
+        return next;
+      });
       closeCamera();
       setStep("done");
     };
@@ -482,7 +570,8 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     closeCamera();
     stopPrompter();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    // Not revoked: the takes list still points at it, and a retake is the
+    // one moment you most want the previous take still playable.
     setVideoUrl(null);
     setVideoBlob(null);
     setIsRecording(false);
@@ -597,14 +686,25 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
    * kept the footage. A retake now costs a spare row in My Videos, which is a
    * delete; the alternative cost the whole recording.
    */
+  const savedBlobsRef = useRef(new WeakSet<Blob>());
   useEffect(() => {
-    if (!videoBlob || savedVideoId || saving) return;
+    // Keyed on the blob, not on savedVideoId. That id belongs to whichever
+    // take saved last, so guarding on it meant take two was never uploaded —
+    // the retake feature quietly losing exactly what it exists to keep.
+    if (!videoBlob || saving || savedBlobsRef.current.has(videoBlob)) return;
+    savedBlobsRef.current.add(videoBlob);
     (async () => {
       const id = await saveTake(videoBlob, false);
       if (id) toast.success("Saved to My Videos.");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoBlob]);
+
+  const takesRef = useRef(takes);
+  takesRef.current = takes;
+  useEffect(() => () => {
+    takesRef.current.forEach((t) => URL.revokeObjectURL(t.url));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -942,8 +1042,46 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
             playsInline
             // Branded preview shows the composited canvas (unmirrored, WYSIWYG);
             // plain preview mirrors like a selfie camera.
-            className={cn("w-full h-full object-cover", !brandedActive && "[transform:scaleX(-1)]")}
+            className={cn(
+              "w-full h-full object-cover",
+              // Branded mode previews the actual composite — flipping that
+              // would show something the file does not contain.
+              !brandedActive && mirrorPreview && "[transform:scaleX(-1)]",
+            )}
           />
+          {countdown !== null && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45">
+              <span className="text-white text-[92px] font-bold leading-none tabular-nums drop-shadow-lg">
+                {countdown === 0 ? "Go" : countdown}
+              </span>
+            </div>
+          )}
+
+          {/* Measured, not guessed. Only while framing up — mid-take it would
+              be something you cannot act on without starting over. */}
+          {!isRecording && countdown === null && brightness !== null && brightness < 0.22 && (
+            <div className="absolute bottom-3 left-3 right-3 flex items-start gap-2 rounded-xl bg-amber-500/90 px-3 py-2 backdrop-blur-sm">
+              <Lightbulb size={15} className="mt-0.5 shrink-0 text-white" />
+              <p className="text-[12px] leading-[1.4] text-white">
+                It&rsquo;s dark where you are. Face a window or a lamp — never with the light
+                behind you — or this will come out grainy.
+              </p>
+            </div>
+          )}
+
+          {/* Mirroring is for the reader, not the recording. Saying so stops
+              the obvious worry that the video will come out backwards. */}
+          {!brandedActive && !isRecording && countdown === null && (
+            <button
+              type="button"
+              onClick={() => setMirrorPreview((m) => !m)}
+              className="absolute top-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-sm hover:bg-black/80"
+              title="Only flips what you see here — the recording is never mirrored"
+            >
+              {mirrorPreview ? "Mirrored" : "True view"}
+            </button>
+          )}
+
           {isRecording && !isPaused && (
             <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -1010,8 +1148,13 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
                 <Button onClick={handleReset} variant="ghost" size="lg" className="gap-2 flex-1 text-white hover:bg-white/10">
                   <RotateCcw size={15} /> Back
                 </Button>
-                <Button onClick={startRecording} size="lg" className="gap-2 flex-[2]">
-                  <Video size={17} /> Start Recording
+                <Button
+                  onClick={beginCountdown}
+                  disabled={countdown !== null}
+                  size="lg"
+                  className="gap-2 flex-[2]"
+                >
+                  <Video size={17} /> {countdown !== null ? "Starting…" : "Start Recording"}
                 </Button>
               </>
             )}
@@ -1046,15 +1189,39 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     <>
       <div className="flex flex-col gap-4">
         <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
-          {videoUrl && (
+          {(takes[viewingTake]?.url ?? videoUrl) && (
             <video
-              src={videoUrl}
+              src={takes[viewingTake]?.url ?? videoUrl ?? undefined}
               controls
               playsInline
               className="w-full h-full object-cover"
             />
           )}
         </div>
+
+        {/* Every take from this session. Each is already in My Videos on its
+            own — this is so two of them can be compared without leaving. */}
+        {takes.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-spark-ink-muted">Takes</span>
+            {takes.map((t, i) => (
+              <button
+                key={t.url}
+                type="button"
+                onClick={() => setViewingTake(i)}
+                aria-pressed={i === viewingTake}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  i === viewingTake
+                    ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                    : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+                }`}
+              >
+                {i + 1} · {formatTime(t.seconds)}
+              </button>
+            ))}
+            <span className="text-[11px] text-spark-ink-faint">all saved</span>
+          </div>
+        )}
         <div className="flex items-center justify-between px-1">
           <p className="text-sm font-semibold text-brand-text">
             {savedVideoId
