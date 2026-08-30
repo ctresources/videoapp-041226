@@ -1320,7 +1320,7 @@ function CreatePageInner() {
                   : cameraSource === "speak"
                     ? "Say what the video is about, and we'll write the script."
                     : cameraSource === "uploads"
-                      ? "Attach a doc or URL, then write the script from it."
+                      ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"
                         ? "Drop an audio file and we'll transcribe it into a script."
                         : "Type your script below, then press Open Camera."
@@ -1360,12 +1360,17 @@ function CreatePageInner() {
           PASTE SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
-        <div className="mt-7 grid lg:grid-cols-2 gap-3 items-start">
-          <p className="lg:col-span-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
+        <div className="mt-7 max-w-3xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
             {tabLabel} · Step 1 of 5
           </p>
-          {/* Left column: the script itself */}
-          <div className="flex flex-col gap-3 min-w-0">
+          {/* One column, top to bottom.
+              Two columns asked which side to begin on and answered neither:
+              the script on the left, the material that feeds it on the right,
+              and no reading order between them. Now the page IS the order —
+              choose how the script gets written, give it what it needs, read
+              what came back. */}
+          <div className="flex flex-col gap-3 min-w-0 mt-2">
           <Card padding="sm" className="p-3 border-t-4 border-t-spark-amber">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-spark-amber to-spark-amber-glow text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
@@ -1400,6 +1405,58 @@ function CreatePageInner() {
                 ))}
               </div>
             </div>
+
+            {/* Material first, then the button that uses it. The spark
+                controls used to sit above the photos and the PDF, so the
+                only way to feed them was to scroll past the button, add
+                the material, and come back up. */}
+            <MediaAndDocs
+              photos={pastePhotos}
+              onAddPhotos={handlePastePhotosUpload}
+              onRemovePhoto={removePastePhoto}
+              onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
+              photosUploading={pastePhotoUploading}
+              blurb="Photos become b-roll in the video"
+              // Only when the AI is writing. A script spoken exactly as
+              // written has nothing to take from an attachment — offering
+              // one next to your own words implied it would be read, and
+              // it never was.
+              doc={pasteSource !== "ai" ? undefined : {
+                mode: pastePdfMode,
+                onModeChange: setPastePdfMode,
+                attached: !!pastePdfUrl,
+                attachedName: pastePdfName,
+                onClear: () => {
+                  setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
+                },
+                uploading: pastePdfUploading,
+                onUploadPdf: handlePastePdfUpload,
+                urlInput: pastePdfUrlInput,
+                onUrlInputChange: setPastePdfUrlInput,
+                onFetchUrl: handlePasteUrlExtract,
+                fetching: pastePdfUrlExtracting,
+              }}
+            />
+
+            {/* Generate script from uploads. The same sub-action as the
+                camera tab's, demoted the same way — it competes with this
+                tab's real primary in the footer for the same reason. */}
+            {pasteSource === "ai" && (pastePdfText || pastePhotos.length > 0) && (
+              <div className="mb-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={pasteUploadGenerating}
+                  onClick={handleGenerateScriptFromPasteUploads}
+                  className="gap-1.5"
+                >
+                  {pasteUploadGenerating
+                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
+                    : <><Sparkles size={13} /> Write the script from these</>}
+                </Button>
+                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script based on your attached PDF{pastePhotos.length > 0 ? " and photos" : ""}.</p>
+              </div>
+            )}
 
             {/* Let AI Spark The Script */}
             {pasteSource === "ai" && (
@@ -1601,54 +1658,7 @@ function CreatePageInner() {
 
           {/* The button itself is in the fixed footer — this column is long
               enough that the primary action was below the fold on arrival. */}
-          </div>{/* end left column */}
-
-          {/* Right column: media & docs */}
-          <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-spark-amber">
-            <MediaAndDocs
-              photos={pastePhotos}
-              onAddPhotos={handlePastePhotosUpload}
-              onRemovePhoto={removePastePhoto}
-              onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
-              photosUploading={pastePhotoUploading}
-              doc={{
-                mode: pastePdfMode,
-                onModeChange: setPastePdfMode,
-                attached: !!pastePdfUrl,
-                attachedName: pastePdfName,
-                onClear: () => {
-                  setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
-                },
-                uploading: pastePdfUploading,
-                onUploadPdf: handlePastePdfUpload,
-                urlInput: pastePdfUrlInput,
-                onUrlInputChange: setPastePdfUrlInput,
-                onFetchUrl: handlePasteUrlExtract,
-                fetching: pastePdfUrlExtracting,
-              }}
-            />
-
-            {/* Generate script from uploads. The same sub-action as the
-                camera tab's, demoted the same way — it competes with this
-                tab's real primary in the footer for the same reason. */}
-            {(pastePdfText || pastePhotos.length > 0) && (
-              <div className="mb-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  loading={pasteUploadGenerating}
-                  onClick={handleGenerateScriptFromPasteUploads}
-                  className="gap-1.5"
-                >
-                  {pasteUploadGenerating
-                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
-                    : <><Sparkles size={13} /> Write the script from these</>}
-                </Button>
-                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script based on your attached doc{pastePhotos.length > 0 ? " and photos" : ""}.</p>
-              </div>
-            )}
-
-          </Card>
+          </div>
         </div>
       )}
 
@@ -1741,7 +1751,7 @@ function CreatePageInner() {
               <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
                 {([
                   { key: "speak" as const,   label: "Speak a topic",  sub: "we write it" },
-                  { key: "uploads" as const, label: "From a doc/URL", sub: "we read it first" },
+                  { key: "uploads" as const, label: "From a PDF/URL", sub: "we read it first" },
                   { key: "audio" as const,   label: "Upload audio",   sub: "we transcribe it" },
                   { key: "own" as const,     label: "I'll write it",  sub: "type it below" },
                 ]).map(({ key, label, sub }) => (

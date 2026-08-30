@@ -2159,7 +2159,7 @@ export default function ProjectEditorPage() {
                 steps in, reads as a step that was missed. */}
             {isPaste && (<>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500">Attach Doc / URL <span className="font-normal text-slate-400">(optional)</span></p>
+              <p className="text-xs font-medium text-slate-500">Attach PDF / URL <span className="font-normal text-slate-400">(optional)</span></p>
               <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[11px] font-semibold">
                 <button onClick={() => setPdfMode("upload")} className={`px-2.5 py-1 transition-colors ${pdfMode === "upload" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Upload PDF</button>
                 <button onClick={() => setPdfMode("url")} className={`px-2.5 py-1 transition-colors ${pdfMode === "url" ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>Add URL</button>

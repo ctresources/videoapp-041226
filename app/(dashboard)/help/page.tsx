@@ -121,7 +121,7 @@ export default function HelpPage() {
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">I have the script</td>
-                  <td className="py-2 pr-3">You already have a script, docs, or photos</td>
+                  <td className="py-2 pr-3">You already have a script, a PDF, or photos</td>
                   <td className="py-2 whitespace-nowrap">1 credit (6 long-form)</td>
                 </tr>
                 <tr className="border-t border-slate-100">

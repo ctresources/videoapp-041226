@@ -79,7 +79,7 @@ export function MediaAndDocs({
   photosUploading,
   maxPhotos = 12,
   doc,
-  blurb = "Photos become b-roll · Docs & URLs enrich the script",
+  blurb = "Photos become b-roll · a PDF or URL feeds the script",
 }: Props) {
   const room = maxPhotos - photos.length;
   // Which tile is being dragged, and which one it is currently over. Held here
@@ -95,7 +95,7 @@ export function MediaAndDocs({
         </span>
         <div>
           <p className="text-base font-bold text-brand-text">
-            Media &amp; Docs <span className="text-sm font-normal text-spark-ink-faint">(Optional)</span>
+            Media &amp; PDF <span className="text-sm font-normal text-spark-ink-faint">(Optional)</span>
           </p>
           <p className="text-sm text-spark-ink-muted">{blurb}</p>
         </div>
@@ -221,7 +221,7 @@ export function MediaAndDocs({
         <div className="mb-4 pb-4 border-b border-spark-rule-soft">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-bold text-spark-ink-soft">
-              Attach Doc / URL <span className="font-normal text-spark-ink-faint">(optional)</span>
+              Attach PDF / URL <span className="font-normal text-spark-ink-faint">(optional)</span>
             </p>
             <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
               <button
