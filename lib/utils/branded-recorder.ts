@@ -10,6 +10,11 @@
  *
  * Callers MUST keep the plain (non-composited) path as fallback: construction
  * or init() can throw, and isSupported() gates the feature entirely.
+ *
+ * The `unbranded` option produces the cut most MLS boards require of listing
+ * media: no logo, no name bar, no licence, no contact end card. It is not the
+ * same as switching the composite off — music, photo b-roll and burned-in
+ * captions all survive, because none of those identify the agent.
  */
 
 export interface BrandInfo {
@@ -99,7 +104,23 @@ export class BrandedComposite {
     private brand: BrandInfo,
     private musicUrl: string | null,
     private photoUrls: string[] = [],
+    /**
+     * Suppresses everything that identifies the agent — logo watermark, name
+     * bar, licence line and the contact end card. The brand info is still
+     * accepted and simply goes undrawn, so the caller does not have to hold two
+     * shapes of the same object.
+     */
+    private unbranded = false,
   ) {}
+
+  /**
+   * Whether a contact card will be drawn at the end.
+   *
+   * Callers hold the recorder open for ~3s after beginEndCard() so the card
+   * lands in the file. With no card to wait for, that pause is three seconds of
+   * dead footage — so they ask first rather than assuming.
+   */
+  get showsEndCard(): boolean { return !this.unbranded; }
 
   static isSupported(): boolean {
     return (
@@ -489,6 +510,9 @@ export class BrandedComposite {
    * caller decides when recording stops; the card simply holds until then.
    */
   beginEndCard() {
+    // An unbranded cut ends on the footage. Latching here would put a contact
+    // card on the end of the very video that is not allowed to carry one.
+    if (this.unbranded) return;
     this.endCardLatched = true;
   }
 
@@ -556,8 +580,13 @@ export class BrandedComposite {
     // A momentary stall mid-recording keeps the last good frame rather than
     // punching a black hole into the video.
 
+    // Everything from here to the captions identifies the agent, and is what
+    // an unbranded cut has to be free of. Captions, music and photo b-roll are
+    // deliberately not in this bracket — none of them name anyone.
+    const showBrand = !this.unbranded;
+
     // Logo watermark — top right
-    if (this.logo) {
+    if (showBrand && this.logo) {
       const lw = W * 0.11;
       const lh = lw * (this.logo.height / this.logo.width);
       ctx.globalAlpha = 0.92;
@@ -566,7 +595,7 @@ export class BrandedComposite {
     }
 
     // Name bar — bottom left
-    const name = this.brand.name?.trim();
+    const name = showBrand ? this.brand.name?.trim() : "";
     if (name) {
       const sub = [this.brand.brokerage, this.brand.license ? `Lic# ${this.brand.license}` : ""]
         .filter(Boolean)

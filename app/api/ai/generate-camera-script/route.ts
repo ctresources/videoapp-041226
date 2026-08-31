@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic, pdfText, photoCount, length, city, state } = await req.json();
+  const { topic, pdfText, photoCount, length, city, state, unbranded } = await req.json();
   const hasTopic = !!(topic?.trim());
   const hasDocs = !!(pdfText?.trim());
 
@@ -29,6 +29,21 @@ export async function POST(req: NextRequest) {
   const marketRule = market
     ? `\n- The video is for ${market}. Ground it there — name the market and speak to people buying or selling in it. If the topic or source material names a different place, that place wins.`
     : "";
+
+  /**
+   * Unbranded cut — for listing media most MLS boards require to carry no
+   * agent identification.
+   *
+   * Suppressing the overlays is only half of it. This prompt has always been
+   * told to close on "give me a call", and a spoken invitation to contact the
+   * agent breaks an unbranded rule exactly as surely as a logo does. Miss this
+   * and the picture is compliant while the audio isn't — the kind of failure a
+   * board catches and the agent doesn't.
+   */
+  const isUnbranded = unbranded === true;
+  const ctaRule = isUnbranded
+    ? `\n- UNBRANDED VIDEO. Do not name the agent, a brokerage, a team, a licence number, a phone number, an email address or a website, and do not invite the viewer to make contact in any way — no "call me", no "reach out", no "message me". Close on the property or the subject itself.`
+    : `\n- End with a clear call to action (e.g. "Give me a call" or "Send me a message today")`;
 
   // Camera recordings are free and support up to 15 minutes, so the length is
   // purely the agent's choice. Defaults to the previous ~400-word behaviour.
@@ -56,7 +71,9 @@ export async function POST(req: NextRequest) {
   }
 
   const systemPrompt = `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.
-
+${isUnbranded ? `
+This script is for an UNBRANDED video and must contain no agent identification of any kind: no names, no brokerage, no team, no licence number, no phone number, no email, no website, and no invitation to contact anyone. This is a compliance requirement, not a style preference — it outranks any instruction elsewhere in this request about how to close the script.
+` : ""}
 ${FAIR_HOUSING_SHORT}`;
 
   let userPrompt: string;
@@ -74,8 +91,7 @@ ${photoLine}${topicLine}
 Rules:
 - Open with a strong hook sentence that grabs attention immediately${marketRule}
 - Natural spoken language, short punchy sentences
-- Draw on specific details from the source material
-- End with a clear call to action (e.g. "Give me a call" or "Send me a message today")
+- Draw on specific details from the source material${ctaRule}
 - ${lengthRule}${depthRule}
 - Return ONLY the script text — no title, no labels, no markdown`;
   } else {
@@ -84,8 +100,7 @@ Rules:
 Rules:
 - Open with a strong hook sentence that grabs attention immediately${marketRule}
 - Natural spoken language, short punchy sentences
-- Include real value: stats, tips, or insights relevant to the topic
-- End with a clear call to action (e.g. "Give me a call" or "Send me a message today")
+- Include real value: stats, tips, or insights relevant to the topic${ctaRule}
 - ${lengthRule}${depthRule}
 - Return ONLY the script text — no title, no labels, no markdown`;
   }

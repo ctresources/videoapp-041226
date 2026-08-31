@@ -359,6 +359,15 @@ export default function ProjectEditorPage() {
   const tpCompositeRef = useRef<BrandedComposite | null>(null);
   const [brandInfo, setBrandInfo] = useState<BrandInfo>({});
   const [tpBrandedReady, setTpBrandedReady] = useState(false);
+  /**
+   * Unbranded cut — no logo, name bar, licence or contact end card, for the
+   * listing media most MLS boards require to carry no agent identification.
+   *
+   * Read once, when the composite is built in openTeleprompter, so it belongs
+   * with the video-setup choices rather than inside the recording overlay.
+   * Photos and music still play: neither identifies anyone.
+   */
+  const [tpUnbranded, setTpUnbranded] = useState(false);
   const recordedChunksRef = useRef<Blob[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
@@ -1442,7 +1451,7 @@ export default function ProjectEditorPage() {
       if (!BrandedComposite.isSupported()) return;
       try {
         const photos = await teleprompterPhotos();
-        const composite = new BrandedComposite(brandInfo, musicUrl, photos);
+        const composite = new BrandedComposite(brandInfo, musicUrl, photos, tpUnbranded);
         await composite.init(stream);
         tpCompositeRef.current = composite;
         setTpBrandedReady(true);
@@ -1513,8 +1522,10 @@ export default function ProjectEditorPage() {
     // Hold on the branded contact card for a beat before finalising, the same
     // as the camera tab does — stopping the recorder immediately cuts the take
     // off the moment the card appears.
+    // An unbranded cut has no card to hold on, so waiting would only record
+    // three seconds of a frozen last frame.
     const composite = tpCompositeRef.current;
-    if (composite) {
+    if (composite?.showsEndCard) {
       composite.beginEndCard();
       setTimeout(() => mediaRecorderRef.current?.stop(), 3150);
       return;
@@ -2168,6 +2179,32 @@ export default function ProjectEditorPage() {
             </div>
 
             </>)}
+
+            {/* The one setting that belongs to the camera path rather than the
+                render. It has to be decided here: the overlays are built into
+                the composite the moment the camera opens, so a toggle inside
+                the recording overlay would come too late to change anything. */}
+            {selfRecord && (
+              <label className="mb-5 flex cursor-pointer items-start gap-2.5 rounded-xl border border-spark-rule px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={tpUnbranded}
+                  onChange={(e) => setTpUnbranded(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-spark-amber"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-spark-ink">
+                    Unbranded cut for the MLS
+                  </span>
+                  <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+                    Records without your logo, name bar, licence or contact end card — photos and
+                    music still play. Your script is not rewritten, so read it through first: a
+                    spoken &ldquo;give me a call&rdquo; breaks unbranded rules as surely as a logo
+                    does. Check what your board requires; the rules vary.
+                  </span>
+                </span>
+              </label>
+            )}
 
             {/* Say it up front when the render can't succeed, rather than
                 letting someone finish the whole flow and hit a 402. */}

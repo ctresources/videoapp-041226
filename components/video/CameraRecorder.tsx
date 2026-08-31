@@ -112,6 +112,15 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   // recording path.
   const [brandedLook, setBrandedLook] = useState(true);
   const [brandedSupported, setBrandedSupported] = useState(false);
+  /**
+   * The unbranded cut most MLS boards require of listing media.
+   *
+   * Not the same as turning Branded Look off: captions, music and photo b-roll
+   * all survive, because none of them identify the agent. What goes is the
+   * logo, the name bar, the licence and the contact end card — and the spoken
+   * call to action, which the script generator is told to leave out.
+   */
+  const [unbranded, setUnbranded] = useState(false);
   const [liveCaptions, setLiveCaptions] = useState(true);
   // Photos fill the frame while the speaker stays on in a corner. On by
   // default when photos exist — that's why they were uploaded.
@@ -225,13 +234,14 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   // Auto-stop at the 15-minute cap so the video stays YouTube-publishable.
   // Branded Look appends a ~3s end card, so it stops early enough to fit.
   useEffect(() => {
-    const cap = brandedActive ? MAX_RECORD_SECONDS - Math.ceil(END_CARD_MS / 1000) - 1 : MAX_RECORD_SECONDS;
+    const reserveEndCard = brandedActive && !unbranded;
+    const cap = reserveEndCard ? MAX_RECORD_SECONDS - Math.ceil(END_CARD_MS / 1000) - 1 : MAX_RECORD_SECONDS;
     if (isRecording && seconds >= cap) {
       stopRecording();
       toast("15-minute limit reached — your recording has been saved.", { icon: "⏱️" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seconds, isRecording, brandedActive]);
+  }, [seconds, isRecording, brandedActive, unbranded]);
 
   // Attach the preview stream once the camera step has actually mounted its
   // <video>. openCamera() runs while the script step is still on screen, so it
@@ -276,6 +286,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
             },
             music,
             useBroll ? photos : [],
+            unbranded,
           );
           previewStream = await composite.init(stream);
           compositeRef.current = composite;
@@ -552,7 +563,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
 
     // Branded Look: show the branded end card for ~3s before finalizing —
     // music keeps playing underneath, then recorder.onstop tears everything down.
-    if (brandedActive && compositeRef.current) {
+    // An unbranded cut has no card to hold on, so it finalises immediately
+    // rather than recording three seconds of a frozen last frame.
+    if (brandedActive && compositeRef.current?.showsEndCard) {
       stoppingRef.current = true;
       compositeRef.current.beginEndCard();
       setTimeout(() => {
@@ -599,18 +612,25 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: sparkTopic.trim(), length: sparkLength }),
+        body: JSON.stringify({ topic: sparkTopic.trim(), length: sparkLength, unbranded }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
       // Append the user's default CTA so the teleprompter always closes with
       // it — they'd otherwise have to remember the Add Channel CTA button.
-      const cta = buildChannelCta();
+      //
+      // Except on an unbranded cut, where the CTA is the whole problem: it
+      // names the agent and asks the viewer to call them. Suppressing the
+      // overlays and then stapling that onto the script would produce a video
+      // that looks compliant and isn't.
+      const cta = unbranded ? "" : buildChannelCta();
       const generated = (data.script as string) || "";
       setScript(cta.trim() ? `${generated.trimEnd()}\n\n${cta}` : generated);
       setShowSpark(false);
       setSparkTopic("");
-      toast.success("Script ready — your channel CTA is at the end!");
+      toast.success(unbranded
+        ? "Script ready — written unbranded, with no contact ask."
+        : "Script ready — your channel CTA is at the end!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -879,12 +899,33 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
               )}
             </label>
             <p className="text-xs text-slate-500 mt-1">
-              {brandedSupported
-                ? "Burns your logo, name bar, and a 3-second branded end card into the recording — no editing needed."
-                : "This browser can't burn overlays into a recording, so your video records plain."}
+              {!brandedSupported
+                ? "This browser can't burn overlays into a recording, so your video records plain."
+                : unbranded
+                  ? "Unbranded: captions, b-roll and music still get burned in, but nothing that names you."
+                  : "Burns your logo, name bar, and a 3-second branded end card into the recording — no editing needed."}
             </p>
             {brandedSupported && brandedLook && (
               <div className="mt-3 flex flex-col gap-2.5">
+                {/* MLS listing media generally may not identify the agent.
+                    Sits at the top of the panel because it changes what every
+                    option below it produces — and it also reaches the script,
+                    which is the half that is easy to miss. */}
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={unbranded}
+                    onChange={(e) => setUnbranded(e.target.checked)}
+                    className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
+                  />
+                  <span className="text-xs text-slate-600">
+                    <strong>Unbranded cut for the MLS</strong> — no logo, name bar, licence or end
+                    card, and Spark It writes the script with no contact ask.{" "}
+                    <span className="text-slate-400">
+                      Check what your board requires; the rules vary.
+                    </span>
+                  </span>
+                </label>
                 {photos.length > 0 && (
                   <label className="flex items-start gap-2 cursor-pointer select-none">
                     <input
@@ -948,16 +989,25 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
                 text edit looked like a way to move forward. Outline, sized to
                 its own words. */}
             <div className="mt-3 pt-3 border-t border-spark-blue/20">
+              {/* Disabled rather than hidden on an unbranded cut: the button
+                  appends your name and an invitation to call you, which is the
+                  exact thing the cut may not contain. Hiding it would leave the
+                  agent hunting for a control that had silently moved. */}
               <button
                 onClick={addChannelCta}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white text-sm font-semibold transition-colors"
-                title="Append your subscribe & contact CTA to the script"
+                disabled={unbranded}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+                title={unbranded
+                  ? "Unavailable on an unbranded cut — the CTA names you and asks for contact"
+                  : "Append your subscribe & contact CTA to the script"}
               >
                 <Megaphone size={15} />
                 Add Channel CTA
               </button>
               <p className="text-[11px] text-slate-400 mt-1.5">
-                Adds your subscribe &amp; contact ask to the end of the script, so the teleprompter reads it for you.
+                {unbranded
+                  ? "Off for an unbranded cut — the CTA names you and asks the viewer to get in touch."
+                  : "Adds your subscribe & contact ask to the end of the script, so the teleprompter reads it for you."}
               </p>
             </div>
           </div>

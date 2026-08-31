@@ -71,6 +71,14 @@ export function ClipBrander({ photos = [], title }: {
     return q ? `/api/music/track?q=${encodeURIComponent(q)}` : null;
   })();
 
+  /**
+   * The unbranded cut most MLS boards require of listing media: no logo, no
+   * name bar, no licence, no end card. Music and photo b-roll stay — neither
+   * identifies the agent — so this is a narrower thing than switching the
+   * composite off.
+   */
+  const [unbranded, setUnbranded] = useState(false);
+
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
@@ -144,7 +152,7 @@ export function ClipBrander({ photos = [], title }: {
     chunksRef.current = [];
 
     try {
-      const composite = new BrandedComposite(brand, musicUrl, photos);
+      const composite = new BrandedComposite(brand, musicUrl, photos, unbranded);
       const stream = await composite.init(url);
       compositeRef.current = composite;
 
@@ -169,7 +177,9 @@ export function ClipBrander({ photos = [], title }: {
         compositeRef.current = null;
         try {
           const { videoId } = await uploadCameraRecording(blob, {
-            title: `${title || fileName} — branded`,
+            // The suffix is how the two cuts of the same clip are told apart in
+            // My Videos, where they are otherwise the same title twice.
+            title: `${title || fileName} — ${unbranded ? "unbranded" : "branded"}`,
             script: "",
           });
           setSavedId(videoId);
@@ -199,7 +209,9 @@ export function ClipBrander({ photos = [], title }: {
         composite.pauseBroll();
         composite.beginEndCard();
         // Hold on the branded end card before finalising, as a live take does.
-        setTimeout(() => recorderRef.current?.stop(), 3150);
+        // An unbranded cut has no card to hold on, so the same wait would only
+        // staple three seconds of a frozen last frame onto the end.
+        setTimeout(() => recorderRef.current?.stop(), composite.showsEndCard ? 3150 : 250);
       };
     } catch (err) {
       compositeRef.current?.destroy();
@@ -253,10 +265,36 @@ export function ClipBrander({ photos = [], title }: {
             <span className="text-[11px] text-spark-ink-faint">{Math.round(duration)}s</span>
           </div>
           <p className="text-[11px] leading-[1.45] text-spark-ink-muted">
-            Your logo, name bar, photos as b-roll and the end card get burned in. It plays through
-            once in real time — about {Math.round(duration)} seconds — so leave this tab open and
-            in front until it finishes.
+            {unbranded
+              ? <>Your photos as b-roll and any music get burned in — no logo, name bar, licence or
+                  end card. It plays through once in real time</>
+              : <>Your logo, name bar, photos as b-roll and the end card get burned in. It plays
+                  through once in real time</>
+            } — about {Math.round(duration)} seconds — so leave this tab open and in front until it
+            finishes.
           </p>
+
+          {/* MLS listing media generally may not identify the agent. The toggle
+              lives beside the render button rather than in settings because it
+              is a per-video decision: the same walkthrough is usually wanted
+              both ways, one cut for the board and one for social. */}
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-spark-rule px-2.5 py-2">
+            <input
+              type="checkbox"
+              checked={unbranded}
+              onChange={(e) => setUnbranded(e.target.checked)}
+              className="mt-0.5 size-3.5 shrink-0 accent-spark-amber"
+            />
+            <span className="min-w-0">
+              <span className="block text-[12px] font-semibold text-spark-ink">
+                Unbranded cut for the MLS
+              </span>
+              <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+                Leaves out your logo, name bar, licence and contact end card. Check what your board
+                requires — the rules vary.
+              </span>
+            </span>
+          </label>
           <div>
             <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Music bed</p>
             <div className="flex flex-wrap gap-1.5">
@@ -288,7 +326,7 @@ export function ClipBrander({ photos = [], title }: {
           </p>
 
           <Button onClick={render} size="lg" className="gap-2">
-            Brand this clip
+            {unbranded ? "Render unbranded cut" : "Brand this clip"}
           </Button>
         </div>
       )}
@@ -310,7 +348,8 @@ export function ClipBrander({ photos = [], title }: {
                 />
               </div>
               <p className="text-[11px] text-spark-ink-muted">
-                Branding — {Math.round(progress * 100)}%. Keep this tab in front; switching away
+                {unbranded ? "Rendering" : "Branding"} — {Math.round(progress * 100)}%. Keep this
+                tab in front; switching away
                 drops frames from the recording.
               </p>
             </>
