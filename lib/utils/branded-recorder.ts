@@ -101,6 +101,17 @@ export class BrandedComposite {
   private destroyed = false;
   private hasDrawnFrame = false;
   private photos: HTMLImageElement[] = [];
+  /**
+   * A video playing behind the speaker, in place of the photo b-roll.
+   *
+   * The second of the two video elements this class can be juggling, and the
+   * reason the b-roll ticker had to grow a second branch: photos are stills
+   * held on a clock we control, while this has a clock of its own that keeps
+   * running whether or not anything is being recorded.
+   */
+  private brollVideoEl: HTMLVideoElement | null = null;
+  /** When the clip was handed the background, for the fade in. 0 = not yet. */
+  private brollVideoAt = 0;
   private brollElapsed = 0;
   private brollLastTick = 0;
   private brollRunning = false;
@@ -254,13 +265,18 @@ export class BrandedComposite {
    *   audio. The picture still comes from the file; the footage plays muted
    *   while the speaker reads over it. Meaningless for a live camera, whose
    *   audio is already the microphone.
+   * @param opts.brollVideo an object URL for a clip that plays BEHIND a live
+   *   camera, with the speaker in the corner — the moving equivalent of the
+   *   photo b-roll, and it takes precedence over the photos when both are
+   *   given. Always silent: the speaker is the one talking. Must be an object
+   *   URL or same-origin, or it taints the canvas and nothing can be recorded.
    */
   async init(
     source: MediaStream | string,
-    opts?: { narrateWith?: MediaStream | null },
+    opts?: { narrateWith?: MediaStream | null; brollVideo?: string | null },
   ): Promise<MediaStream> {
     try {
-      return await this.build(source, opts?.narrateWith ?? null);
+      return await this.build(source, opts?.narrateWith ?? null, opts?.brollVideo ?? null);
     } catch (err) {
       // Never leave a half-built pipeline (or its mounted element) behind —
       // the caller drops its reference and falls back to the plain path.
@@ -273,6 +289,7 @@ export class BrandedComposite {
   private async build(
     source: MediaStream | string,
     narrateWith: MediaStream | null,
+    brollVideo: string | null,
   ): Promise<MediaStream> {
     const fromFile = typeof source === "string";
     this.fromFile = fromFile;
@@ -316,6 +333,31 @@ export class BrandedComposite {
       this.photoUrls.slice(0, 12).map((u) => loadImage(u, 6000)),
     );
     this.photos = loadedPhotos.filter((p): p is HTMLImageElement => p !== null);
+
+    // The moving b-roll. Loaded but not started — it takes the background
+    // after the lead-in, and starting it now would mean its opening seconds
+    // played to nobody.
+    //
+    // A failure here drops the b-roll and nothing else: the take is a person
+    // talking to camera, and losing the background behind them is a far better
+    // outcome than losing the recording.
+    if (brollVideo) {
+      try {
+        const el = this.mountVideoElement(brollVideo, true);
+        el.loop = true;      // a clip shorter than the take runs again
+        el.preload = "auto"; // decoded and ready, so the handover is not a stall
+        await BrandedComposite.waitForFirstFrame(el, 6000);
+        // Wound back rather than merely paused: mountVideoElement autoplays,
+        // so by now it has usually played a fraction of a second to nobody.
+        el.pause();
+        try { el.currentTime = 0; } catch { /* seeking unsupported — start late */ }
+        this.brollVideoEl = el;
+      } catch (err) {
+        console.warn("[branded-recorder] video b-roll unavailable:", err);
+        this.brollVideoEl?.remove();
+        this.brollVideoEl = null;
+      }
+    }
 
     // Audio: the source's own, optionally mixed with a ducked music bed.
     //
@@ -456,7 +498,7 @@ export class BrandedComposite {
   get sourceElement(): HTMLVideoElement | null { return this.videoEl; }
 
   /** True once at least one photo survived loading and can be used as b-roll. */
-  get hasBroll(): boolean { return this.photos.length > 0; }
+  get hasBroll(): boolean { return this.photos.length > 0 || this.brollVideoEl !== null; }
 
   /**
    * Replace the b-roll after init.
@@ -498,10 +540,16 @@ export class BrandedComposite {
   startBroll() {
     this.brollLastTick = performance.now();
     this.brollRunning = true;
+    // The clip has a clock of its own, and it is the one clock here that does
+    // not stop when the recording does. Left running through a pause it walks
+    // away from the take: you come back to a background thirty seconds further
+    // on than the moment you stopped at.
+    if (this.brollVideoAt !== 0) void this.brollVideoEl?.play().catch(() => {});
   }
   pauseBroll() {
     this.tickBroll();
     this.brollRunning = false;
+    this.brollVideoEl?.pause();
   }
   private tickBroll() {
     // A file plays on its own clock. Wall time and media time are the same
@@ -526,6 +574,31 @@ export class BrandedComposite {
    */
   setScriptProgress(p: number) {
     this.scriptProgress = Math.max(0, Math.min(1, p));
+  }
+
+  /**
+   * Whether the video b-roll owns the background this frame, and how far
+   * through its fade in.
+   *
+   * It waits out the same lead-in the photos do — the speaker holds the frame
+   * long enough to land an opening line — and starts playing at the moment it
+   * takes over rather than at the moment it loaded, so nothing of it is spent
+   * off screen. Null keeps the speaker full-frame.
+   */
+  private brollVideoShot(): { fade: number } | null {
+    const el = this.brollVideoEl;
+    if (!el) return null;
+    if (this.brollElapsed < BROLL_LEAD_IN_MS) return null;
+
+    if (this.brollVideoAt === 0) {
+      this.brollVideoAt = performance.now();
+      void el.play().catch(() => { /* left paused; the frame below stays the speaker */ });
+    }
+    // Decoding not caught up yet. Drawing it now is a black rectangle over the
+    // person talking, so the speaker keeps the frame for another few frames.
+    if (el.readyState < 2 || !el.videoWidth) return null;
+
+    return { fade: Math.min(1, (performance.now() - this.brollVideoAt) / BROLL_FADE_MS) };
   }
 
   /** Which photo is on screen right now, how far into its Ken Burns push, and
@@ -608,6 +681,14 @@ export class BrandedComposite {
       }
     } catch { /* noop */ }
     this.videoEl = null;
+    try {
+      // The object URL belongs to the caller, which revokes it — this only
+      // stops the element decoding and takes it out of the document.
+      this.brollVideoEl?.pause();
+      this.brollVideoEl?.removeAttribute("src");
+      this.brollVideoEl?.remove();
+    } catch { /* noop */ }
+    this.brollVideoEl = null;
     this.stream?.getVideoTracks().forEach((t) => t.stop());
     this.stream = null;
   }
@@ -639,8 +720,16 @@ export class BrandedComposite {
       return;
     }
 
-    const shot = this.currentBrollShot();
-    if (shot) {
+    // A moving background wins over the stills when both were supplied —
+    // cutting between the two would be two different ideas of what the
+    // background is, alternating.
+    const clip = this.brollVideoShot();
+    const shot = clip ? null : this.currentBrollShot();
+    if (clip) {
+      this.drawBrollVideo(W, H, clip.fade);
+      this.drawCameraPip(W, H);
+      this.hasDrawnFrame = true;
+    } else if (shot) {
       // Photo fills the frame, speaker stays present in the corner.
       this.drawBrollBackground(shot, W, H);
       this.drawCameraPip(W, H);
@@ -725,6 +814,44 @@ export class BrandedComposite {
         ctx.fillText(line, W / 2 - tw / 2, y);
       });
     }
+  }
+
+  /**
+   * The b-roll clip, cropped to fill the frame, with the speaker fading out
+   * beneath it on the handover.
+   *
+   * No Ken Burns push here, unlike the photos: that exists to give a still
+   * picture some life, and this one is already moving. Adding a slow zoom on
+   * top of whatever the footage is doing reads as a wobble.
+   */
+  private drawBrollVideo(W: number, H: number, fade: number) {
+    const ctx = this.ctx;
+    const el = this.brollVideoEl;
+    if (!ctx || !el) return;
+
+    if (fade < 1) {
+      if (this.videoEl && this.videoEl.readyState >= 2) {
+        ctx.drawImage(this.videoEl, 0, 0, W, H); // the speaker, dissolving out
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.globalAlpha = fade;
+    }
+
+    // Cover-crop, the same rule the photos use: fill the frame and lose the
+    // overhang, rather than letterbox a portrait clip into a landscape take.
+    const vw = el.videoWidth;
+    const vh = el.videoHeight;
+    if (vw && vh) {
+      const target = W / H;
+      let sw = vw;
+      let sh = vh;
+      if (vw / vh > target) sw = sh * target;
+      else sh = sw / target;
+      ctx.drawImage(el, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, W, H);
+    }
+    ctx.globalAlpha = 1;
   }
 
   /** Lays the outgoing frame down first so a photo change reads as a crossfade

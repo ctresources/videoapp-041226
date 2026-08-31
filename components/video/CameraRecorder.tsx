@@ -18,6 +18,7 @@ import {
   Share2,
   Lightbulb,
   Megaphone,
+  Film,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
@@ -125,6 +126,19 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   // Photos fill the frame while the speaker stays on in a corner. On by
   // default when photos exist — that's why they were uploaded.
   const [useBroll, setUseBroll] = useState(true);
+  /**
+   * Footage of your own playing behind you, instead of the photos.
+   *
+   * The last combination in the matrix: your clip fills the frame while you
+   * present in the corner. Held as an object URL because that is what the
+   * composite can draw without tainting the canvas — a remote URL would make
+   * the whole recording unreadable, not just the background.
+   */
+  const [brollVideoUrl, setBrollVideoUrl] = useState<string | null>(null);
+  const [brollVideoName, setBrollVideoName] = useState("");
+  useEffect(() => () => {
+    if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
+  }, [brollVideoUrl]);
   const [musicId, setMusicId] = useState("none");
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
@@ -295,10 +309,12 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
               headshotUrl: ctaProfile?.avatar_url,
             },
             music,
-            useBroll ? photos : [],
+            // A clip behind you takes the background, so the photos would be
+            // loaded and then never drawn — twelve images fetched for nothing.
+            useBroll && !brollVideoUrl ? photos : [],
             unbranded,
           );
-          previewStream = await composite.init(stream);
+          previewStream = await composite.init(stream, { brollVideo: brollVideoUrl });
           compositeRef.current = composite;
           setBrandedActive(true);
           if (composite.musicUnavailable) {
@@ -659,8 +675,8 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   // set once at init. Keep them in step for as long as it exists.
   useEffect(() => {
     if (!compositeRef.current) return;
-    void compositeRef.current.setPhotos(useBroll ? photos : []);
-  }, [photos, useBroll]);
+    void compositeRef.current.setPhotos(useBroll && !brollVideoUrl ? photos : []);
+  }, [photos, useBroll, brollVideoUrl]);
 
   // Still worth warning, but the window is now only the seconds between a take
   // finishing and its upload completing — not for as long as someone fails to
@@ -944,11 +960,70 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
                     </span>
                   </span>
                 </label>
-                {photos.length > 0 && (
+                {/* Your own footage behind you. Sits above the photos because
+                    it replaces them: the composite draws one background, and
+                    cutting between a clip and a slideshow would be two
+                    different ideas of what is behind you, alternating. */}
+                <div className="flex flex-col gap-1.5">
                   <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <span className="flex-1 text-xs text-slate-600">
+                      <strong>Play my footage behind me</strong> — your clip fills the screen while
+                      you present in the corner.{" "}
+                      <span className="text-slate-400">
+                        Silent, and it loops if it is shorter than your take.
+                      </span>
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300">
+                      <Film size={13} />
+                      {brollVideoUrl ? "Choose a different clip" : "Choose a clip"}
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
+                          setBrollVideoUrl(URL.createObjectURL(f));
+                          setBrollVideoName(f.name);
+                        }}
+                      />
+                    </label>
+                    {brollVideoUrl && (
+                      <>
+                        <span className="min-w-0 flex-1 truncate text-[11px] text-slate-500">
+                          {brollVideoName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            URL.revokeObjectURL(brollVideoUrl);
+                            setBrollVideoUrl(null);
+                            setBrollVideoName("");
+                          }}
+                          className="shrink-0 text-[11px] font-medium text-slate-400 underline hover:text-slate-600"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {brollVideoUrl && (
+                    <p className="text-[11px] leading-[1.45] text-slate-400">
+                      Chosen before the camera opens — the background is built into the recording,
+                      so it cannot be swapped once you are rolling.
+                    </p>
+                  )}
+                </div>
+
+                {photos.length > 0 && (
+                  <label className={`flex items-start gap-2 select-none ${brollVideoUrl ? "opacity-45" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
-                      checked={useBroll}
+                      checked={useBroll && !brollVideoUrl}
+                      disabled={!!brollVideoUrl}
                       onChange={(e) => setUseBroll(e.target.checked)}
                       className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
                     />
