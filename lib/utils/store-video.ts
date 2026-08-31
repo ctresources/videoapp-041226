@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
+import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -198,10 +199,20 @@ export async function downloadAndStoreVideo(
       if (mixed) { processed = mixed; changed = true; }
     }
 
-    if (changed) {
+    // Last in the chain, deliberately. Every pass above writes its own MP4 and
+    // ffmpeg parks the index at the end unless told not to, so a faststart done
+    // any earlier would be undone by the next step that touched the file.
+    const fast = await ensureFaststart(processed, videoId);
+    // Kept apart from `changed`, which means "post-processing produced
+    // something that was asked for". A remux is repair work nobody requested,
+    // and folding it in would silence the did-nothing warning below.
+    const remuxed = fast !== processed;
+    if (remuxed) processed = fast;
+
+    if (changed || remuxed) {
       // New URL, so anyone already holding the raw copy refetches the finished one.
       publicUrl = await store(processed, Date.now());
-      console.log(`[store-video] Re-stored processed ${videoId} → ${publicUrl}`);
+      console.log(`[store-video] Re-stored ${videoId} (processed=${changed}, faststart=${remuxed}) → ${publicUrl}`);
     }
     // post_processed means "the pass ran to completion" — the repair path uses
     // it to avoid re-mixing music into an already-finished video. It does NOT
