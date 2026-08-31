@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { createClient } from "@/lib/supabase/client";
+import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 /**
  * Two minutes.
@@ -25,8 +26,7 @@ const ACCEPTED = ["video/mp4", "video/webm", "video/quicktime"];
 
 type Phase = "pick" | "checking" | "ready" | "rendering" | "done";
 
-export function ClipBrander({ musicUrl, photos = [], title }: {
-  musicUrl: string | null;
+export function ClipBrander({ photos = [], title }: {
   /** CORS-clean URLs — see /api/photos/rehost. */
   photos?: string[];
   title: string;
@@ -56,6 +56,19 @@ export function ClipBrander({ musicUrl, photos = [], title }: {
       } catch { /* brand overlays simply stay empty */ }
     })();
   }, []);
+
+  /**
+   * Music is chosen here rather than passed in.
+   *
+   * The first cut took a musicUrl prop and the caller hardcoded null, so there
+   * was no music and no way to ask for any — the bed was silently impossible
+   * rather than merely off.
+   */
+  const [musicId, setMusicId] = useState("none");
+  const musicUrl = (() => {
+    const q = MUSIC_PRESETS.find((m) => m.id === musicId)?.query;
+    return q ? `/api/music/track?q=${encodeURIComponent(q)}` : null;
+  })();
 
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +253,36 @@ export function ClipBrander({ musicUrl, photos = [], title }: {
             once in real time — about {Math.round(duration)} seconds — so leave this tab open and
             in front until it finishes.
           </p>
+          <div>
+            <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Music bed</p>
+            <div className="flex flex-wrap gap-1.5">
+              {MUSIC_PRESETS.filter((m) => m.id !== "custom").map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMusicId(m.id)}
+                  aria-pressed={musicId === m.id}
+                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    musicId === m.id
+                      ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                      : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+                  }`}
+                >
+                  {m.emoji} {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Said plainly rather than left as a gap someone has to notice.
+              Live captions come from listening to a microphone as you speak;
+              a file that already exists has no microphone to listen to, and
+              transcribing its audio is a separate job this does not do yet. */}
+          <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
+            No captions on an uploaded clip — those are transcribed live while you speak, so they
+            only work when you record here.
+          </p>
+
           <Button onClick={render} size="lg" className="gap-2">
             Brand this clip
           </Button>

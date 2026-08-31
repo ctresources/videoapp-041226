@@ -1832,7 +1832,6 @@ function CreatePageInner() {
 
             {cameraMode === "brand" && canBrandClips ? (
               <ClipBrander
-                musicUrl={null}
                 photos={cameraPhotos.map((p) => p.url)}
                 title={locCity ? `${locCity} clip` : "Camera clip"}
               />
