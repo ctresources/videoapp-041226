@@ -89,7 +89,12 @@ export async function POST(req: NextRequest) {
     let seoTitle = typeof seo.youtube_title === "string" ? seo.youtube_title : "";
     let hashtags = Array.isArray(seo.hashtags) ? seo.hashtags : [];
 
-    if (words >= MIN_WORDS_FOR_SEO) {
+    // A re-recorded voiceover already carries the exact script that was read,
+    // and the description was written from it. A transcription of that same
+    // reading is the same words with recognition errors in them — strictly
+    // worse input, so it stays out. The transcript is still worth having: it
+    // is what the captions and the .srt are made of.
+    if (words >= MIN_WORDS_FOR_SEO && !existingScript) {
       // Bounded, and non-fatal: the transcript is the point of this request and
       // is already saved by now. Losing the SEO pass costs a description;
       // failing the request over it would cost the transcript too.

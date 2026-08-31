@@ -168,13 +168,18 @@ export class BrandedComposite {
    * on top. display:none suspends decoding for the same reason, so the element
    * is parked off-screen instead.
    */
-  private mountVideoElement(source: MediaStream | string): HTMLVideoElement {
+  private mountVideoElement(source: MediaStream | string, forceMuted = false): HTMLVideoElement {
     const el = document.createElement("video");
     // A live camera is muted on purpose — its audio is captured from the mic
     // track, and playing it back would echo. A FILE's audio is the audio, and
     // it is read out of the element itself, so muting it here would record a
     // silent video.
-    el.muted = typeof source !== "string";
+    //
+    // forceMuted is the third case: a file whose narration is being replaced.
+    // The old audio must not reach the recording OR the room — the speaker is
+    // reading over the top of it, and hearing themselves from a week ago is
+    // impossible to talk through.
+    el.muted = typeof source !== "string" || forceMuted;
     el.playsInline = true;
     el.autoplay = true;
     el.style.cssText =
@@ -245,10 +250,17 @@ export class BrandedComposite {
    * @param source a live camera MediaStream, or an object URL for a file the
    *   user already shot. The overlays, b-roll and music are identical either
    *   way — only where the frames and the audio come from differs.
+   * @param opts.narrateWith a microphone stream that REPLACES the file's own
+   *   audio. The picture still comes from the file; the footage plays muted
+   *   while the speaker reads over it. Meaningless for a live camera, whose
+   *   audio is already the microphone.
    */
-  async init(source: MediaStream | string): Promise<MediaStream> {
+  async init(
+    source: MediaStream | string,
+    opts?: { narrateWith?: MediaStream | null },
+  ): Promise<MediaStream> {
     try {
-      return await this.build(source);
+      return await this.build(source, opts?.narrateWith ?? null);
     } catch (err) {
       // Never leave a half-built pipeline (or its mounted element) behind —
       // the caller drops its reference and falls back to the plain path.
@@ -258,13 +270,16 @@ export class BrandedComposite {
     }
   }
 
-  private async build(source: MediaStream | string): Promise<MediaStream> {
+  private async build(
+    source: MediaStream | string,
+    narrateWith: MediaStream | null,
+  ): Promise<MediaStream> {
     const fromFile = typeof source === "string";
     this.fromFile = fromFile;
     const track = fromFile ? null : source.getVideoTracks()[0];
     const settings = track?.getSettings() ?? {};
 
-    const videoEl = this.mountVideoElement(source);
+    const videoEl = this.mountVideoElement(source, !!narrateWith);
     this.videoEl = videoEl;
     // Muted playback of a local stream shouldn't be blocked, but the frame
     // wait below is the real gate either way.
@@ -309,8 +324,21 @@ export class BrandedComposite {
     // out. Note that createMediaElementSource REDIRECTS the element's audio
     // into the graph: once called, the element stops feeding the speakers, so
     // everything wanted in the recording has to be connected to `dest`.
-    let audioTrack = fromFile ? null : source.getAudioTracks()[0] ?? null;
-    const needsGraph = !!this.musicUrl || fromFile;
+    //
+    // Three sources, not two. A live camera speaks through its microphone
+    // track; a file normally speaks for itself, out of the element; and a
+    // re-recorded voiceover is a file whose narration comes from a microphone
+    // instead, with the footage muted. The last is why this is a lookup rather
+    // than a `fromFile` branch — whether the clip has audio of its own never
+    // decides anything, only where the voice is coming from does.
+    const voiceStream: MediaStream | null =
+      narrateWith ?? (fromFile ? null : (source as MediaStream));
+    const useFileAudio = fromFile && !narrateWith;
+
+    let audioTrack = voiceStream?.getAudioTracks()[0] ?? null;
+    // A graph exists to mix music in, or to get a track out of an element that
+    // has no track of its own. A microphone already is a track.
+    const needsGraph = !!this.musicUrl || useFileAudio;
     if (needsGraph) {
       // Load the track before wiring any of it up. A src that 404s or is
       // unreadable still yields a working graph that outputs pure silence, so
@@ -349,7 +377,7 @@ export class BrandedComposite {
 
       // A file still needs the graph even with no music, to get an audio track
       // out of the element at all.
-      if (!musicReady && !fromFile) {
+      if (!musicReady && !useFileAudio) {
         // nothing to build — the mic track already stands on its own
       } else try {
         const audioCtx = new AudioContext();
@@ -360,11 +388,11 @@ export class BrandedComposite {
         // element playing that same stream — which silently emptied the
         // picture-in-picture while photos and audio carried on fine. The node
         // has no use for the video track regardless.
-        const voiceSrc = fromFile
+        const voiceSrc = useFileAudio
           // The file's own soundtrack. From here it reaches the recording only
           // through this graph — the element no longer plays to the speakers.
           ? audioCtx.createMediaElementSource(videoEl)
-          : audioCtx.createMediaStreamSource(new MediaStream(source.getAudioTracks()));
+          : audioCtx.createMediaStreamSource(new MediaStream(voiceStream!.getAudioTracks()));
         const voiceGain = audioCtx.createGain();
         voiceGain.gain.value = 1.0;
         voiceSrc.connect(voiceGain).connect(dest);

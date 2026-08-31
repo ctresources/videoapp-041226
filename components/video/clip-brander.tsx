@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { resolveCta } from "@/lib/utils/default-cta";
+import { WPM } from "@/lib/utils/video-length";
+import { LiveTranscriber } from "@/lib/utils/voice-follow";
+import { extractSpeechWav, ClipAudioUnavailable } from "@/lib/utils/clip-audio";
 
 /**
  * Two minutes.
@@ -162,6 +165,22 @@ export function ClipBrander({ photos = [], title }: {
     return () => { warm.src = ""; };
   }, [musicUrl]);
 
+  // ── Picture and voice are separate decisions ─────────────────────────────
+  //
+  // Not a branch on whether the clip has audio. A silent walkthrough and one
+  // whose narration was flubbed need the identical thing — new words over
+  // existing footage — and the only difference between them is whether there
+  // was something to discard. Detecting audio would set the default at most;
+  // it does not decide what you are allowed to do.
+  const [voiceMode, setVoiceMode] = useState<"keep" | "narrate">("keep");
+  const [script, setScript] = useState("");
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [liveCaptions, setLiveCaptions] = useState(true);
+  const fileRef = useRef<File | null>(null);
+  const micRef = useRef<MediaStream | null>(null);
+  const transcriberRef = useRef<LiveTranscriber | null>(null);
+  const teleRef = useRef<HTMLDivElement>(null);
+
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
@@ -169,6 +188,17 @@ export function ClipBrander({ photos = [], title }: {
   const [progress, setProgress] = useState(0);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptState>({ status: "off" });
+
+  /**
+   * How many words fit the footage, at normal speaking pace.
+   *
+   * The new narration cannot run longer than the picture it sits under — the
+   * clip ends when it ends, and anything still being read is simply cut off.
+   * So the budget is the clip's own length, not a length the writer chose.
+   */
+  const wordBudget = Math.round((duration / 60) * WPM);
+  const scriptWords = script.trim() ? script.trim().split(/\s+/).length : 0;
+  const overBudget = wordBudget > 0 && scriptWords > wordBudget * 1.05;
 
   /**
    * Read the clip's own audio, once it is saved and reachable by URL.
@@ -197,6 +227,14 @@ export function ClipBrander({ photos = [], title }: {
     }
   }
 
+  /** Everything the new-voiceover path holds open. Safe to call twice. */
+  function stopNarration() {
+    transcriberRef.current?.stop();
+    transcriberRef.current = null;
+    micRef.current?.getTracks().forEach((t) => t.stop());
+    micRef.current = null;
+  }
+
   const urlRef = useRef<string | null>(null);
   const compositeRef = useRef<BrandedComposite | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -207,7 +245,50 @@ export function ClipBrander({ photos = [], title }: {
   useEffect(() => () => {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     compositeRef.current?.destroy();
+    stopNarration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * The words already in the clip, as the first draft of the new ones.
+   *
+   * Someone re-recording a voiceover is nearly always fixing a take, not
+   * starting again — so the useful starting point is what they said the first
+   * time, with the stumble in it, ready to be edited out. A blank box asks
+   * them to reconstruct from memory something they have a recording of.
+   *
+   * The audio is decoded here and only the speech is sent, which is what keeps
+   * a 300 MB walkthrough from having to reach a server at all.
+   */
+  async function fetchDraftScript() {
+    const file = fileRef.current;
+    if (!file) return;
+    setDraftLoading(true);
+    setError(null);
+    try {
+      const wav = await extractSpeechWav(file);
+      const form = new FormData();
+      form.append("audio", wav, "clip.wav");
+      const res = await fetch("/api/voice/quick-transcribe", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Could not read the audio");
+      const text = (data.transcript as string || "").trim();
+      if (!text) {
+        setError("No speech found in that clip — type or paste what you want to say instead.");
+        return;
+      }
+      setScript(text);
+      toast.success("Loaded what the clip says — edit it, then record.");
+    } catch (err) {
+      setError(
+        err instanceof ClipAudioUnavailable
+          ? `${err.message} Type or paste your script instead.`
+          : err instanceof Error ? err.message : "Could not read the audio",
+      );
+    } finally {
+      setDraftLoading(false);
+    }
+  }
 
   async function handleFile(file: File) {
     setError(null);
@@ -222,6 +303,9 @@ export function ClipBrander({ photos = [], title }: {
 
     setPhase("checking");
     setFileName(file.name);
+    // Held so the draft script can be read out of the same file later, without
+    // asking for it a second time.
+    fileRef.current = file;
     // A filename is a starting point, not a title — "24 Shagbark Ct E.mp4" is
     // closer to useful than "Camera Recording", and it is there to be typed
     // over rather than accepted.
@@ -267,6 +351,23 @@ export function ClipBrander({ photos = [], title }: {
     chunksRef.current = [];
 
     try {
+      // Asked for before anything starts. A permission prompt appearing after
+      // the clip is already playing would cost the opening line, and the clip
+      // only plays once.
+      let mic: MediaStream | null = null;
+      if (voiceMode === "narrate") {
+        try {
+          mic = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+          });
+        } catch {
+          setError("Microphone access is needed to record a new voiceover.");
+          setPhase("ready");
+          return;
+        }
+        micRef.current = mic;
+      }
+
       // The market fields override the profile's, because the end card offers
       // "more real estate in {city}" and that should be the town this footage
       // is of, not the town the agent happens to work from.
@@ -274,8 +375,20 @@ export function ClipBrander({ photos = [], title }: {
         { ...brand, city: city || brand.city, state: state || brand.state },
         musicUrl, photos, unbranded, musicLevel,
       );
-      const stream = await composite.init(url);
+      const stream = await composite.init(url, { narrateWith: mic });
       compositeRef.current = composite;
+
+      // Burned-in captions come free with a re-recorded voiceover and only
+      // then: they are transcribed from a microphone as it is spoken into,
+      // and a clip that already exists has no microphone to listen to.
+      if (mic && liveCaptions) {
+        const transcriber = new LiveTranscriber(
+          (text) => composite.setCaption(text),
+          () => toast("Live captions aren't supported in this browser.", { icon: "💬" }),
+        );
+        transcriber.start();
+        transcriberRef.current = transcriber;
+      }
 
       // Show the composited canvas, so what is being written is what is on
       // screen — there is no other way to tell it is working.
@@ -299,6 +412,7 @@ export function ClipBrander({ photos = [], title }: {
         const size = composite.dimensions;
         composite.destroy();
         compositeRef.current = null;
+        stopNarration();
         setPhase("saving");
         try {
           const { videoId } = await uploadCameraRecording(blob, {
@@ -316,7 +430,10 @@ export function ClipBrander({ photos = [], title }: {
             // letterboxed inside a portrait frame. The file was always correct;
             // only the label was wrong.
             videoType: videoTypeForSize(size),
-            script: "",
+            // What was actually said. On a re-recorded voiceover that is the
+            // script just read, which is better than any transcription of it —
+            // so the description is written from the words themselves.
+            script: voiceMode === "narrate" ? script.trim() : "",
           });
           setSavedId(videoId);
           setPhase("done");
@@ -350,8 +467,20 @@ export function ClipBrander({ photos = [], title }: {
       const source = composite.sourceElement;
       if (!source) throw new Error("No source element");
       const tick = setInterval(() => {
-        if (source.duration > 0) setProgress(source.currentTime / source.duration);
-      }, 250);
+        if (source.duration <= 0) return;
+        const at = source.currentTime / source.duration;
+        setProgress(at);
+        // The prompter is paced by the footage rather than by a speed setting,
+        // which is the whole point here: the words have to land with the
+        // picture, and the picture is the thing that cannot be slowed down.
+        // Reaching the end of the script early means slow down, and that is
+        // information worth having while there is still time to act on it.
+        const el = teleRef.current;
+        if (el) {
+          const travel = el.scrollHeight - el.clientHeight;
+          if (travel > 0) el.scrollTop = travel * Math.min(1, at);
+        }
+      }, 100);
       source.onended = () => {
         clearInterval(tick);
         setProgress(1);
@@ -365,6 +494,7 @@ export function ClipBrander({ photos = [], title }: {
     } catch (err) {
       compositeRef.current?.destroy();
       compositeRef.current = null;
+      stopNarration();
       setError(err instanceof Error ? err.message : "Could not brand that clip");
       setPhase("ready");
     }
@@ -457,6 +587,83 @@ export function ClipBrander({ photos = [], title }: {
               </span>
             </span>
           </label>
+          {/* Picture and voice are separate decisions. This is the voice one,
+              and it is deliberately not phrased around whether the clip has
+              audio: a silent walkthrough and a flubbed one want the same
+              thing, and only differ in whether anything is being discarded. */}
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Voice</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([
+                { id: "keep", label: "Keep the clip's audio", note: "What you said on the day." },
+                { id: "narrate", label: "Record a new voiceover", note: "Read over the footage." },
+              ] as const).map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setVoiceMode(v.id)}
+                  aria-pressed={voiceMode === v.id}
+                  className={`rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+                    voiceMode === v.id
+                      ? "border-spark-amber bg-spark-amber-tint"
+                      : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <span className="block text-[12px] font-semibold text-spark-ink">{v.label}</span>
+                  <span className="block text-[10.5px] text-spark-ink-faint">{v.note}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {voiceMode === "narrate" && (
+            <div className="flex flex-col gap-1.5 rounded-lg border border-spark-rule bg-spark-amber-tint/40 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold text-spark-ink-muted">Your script</p>
+                <button
+                  type="button"
+                  onClick={fetchDraftScript}
+                  disabled={draftLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1 text-[11px] font-medium text-spark-ink-muted transition-colors hover:border-spark-rule-dim disabled:opacity-50"
+                >
+                  {draftLoading && <Loader2 size={11} className="animate-spin text-spark-amber" />}
+                  {draftLoading ? "Reading the clip…" : "Use the words already in this clip"}
+                </button>
+              </div>
+              <textarea
+                value={script}
+                onChange={(e) => setScript(e.target.value)}
+                rows={5}
+                placeholder="What you want to say over this footage. Start from what the clip already says, then fix the bit you fluffed."
+                className="resize-y rounded-lg border border-spark-rule bg-white px-2.5 py-2 text-[13px] leading-[1.5] text-spark-ink outline-none focus:border-spark-amber"
+              />
+              {/* The budget is the footage, not a preference. Whatever is still
+                  being read when the picture ends is simply not in the video. */}
+              <p className={`text-[11px] leading-[1.45] ${overBudget ? "font-medium text-amber-700" : "text-spark-ink-faint"}`}>
+                {scriptWords} of about {wordBudget} words — {Math.round(duration)}s of footage at a
+                normal speaking pace.
+                {overBudget && " That is longer than the clip. The end will be cut off mid-sentence."}
+              </p>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={liveCaptions}
+                  onChange={(e) => setLiveCaptions(e.target.checked)}
+                  className="mt-0.5 size-3.5 shrink-0 accent-spark-amber"
+                />
+                <span className="text-[11px] leading-[1.45] text-spark-ink-muted">
+                  <strong className="font-semibold text-spark-ink">Burn in captions</strong> as you
+                  speak — possible here only because you are the one talking.{" "}
+                  <span className="text-spark-ink-faint">A misheard word is permanent.</span>
+                </span>
+              </label>
+              <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
+                The footage plays muted while you read. It runs once, in real time, and there is no
+                pausing — the clip does not wait.
+              </p>
+            </div>
+          )}
+
           <div>
             <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Music bed</p>
             <div className="flex flex-wrap gap-1.5">
@@ -610,8 +817,15 @@ export function ClipBrander({ photos = [], title }: {
             )}
           </div>
 
-          <Button onClick={render} size="lg" className="gap-2">
-            {unbranded ? "Render unbranded cut" : "Brand this clip"}
+          <Button
+            onClick={render}
+            size="lg"
+            className="gap-2"
+            disabled={voiceMode === "narrate" && !script.trim()}
+          >
+            {voiceMode === "narrate"
+              ? "Record the voiceover"
+              : unbranded ? "Render unbranded cut" : "Brand this clip"}
           </Button>
         </div>
       )}
@@ -624,6 +838,23 @@ export function ClipBrander({ photos = [], title }: {
             playsInline
             className="w-full rounded-xl border border-spark-rule bg-black"
           />
+          {/* The prompter, paced by the footage. Sits under the preview rather
+              than over it: the picture is what the words have to match, and
+              covering it would be reading blind. */}
+          {phase === "rendering" && voiceMode === "narrate" && (
+            <div
+              ref={teleRef}
+              className="max-h-44 overflow-hidden rounded-xl border border-spark-rule bg-spark-ink px-4 py-3"
+            >
+              <p className="whitespace-pre-wrap text-center text-[19px] font-semibold leading-[1.55] text-white">
+                {script}
+              </p>
+              {/* Read-ahead room, so the last line can reach the middle of the
+                  box rather than stopping at the bottom edge. */}
+              <div className="h-20" />
+            </div>
+          )}
+
           {phase === "rendering" ? (
             <>
               <div className="h-2 w-full overflow-hidden rounded-full bg-spark-rule">
