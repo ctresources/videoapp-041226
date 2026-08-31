@@ -516,6 +516,20 @@ export class BrandedComposite {
   // ── Drawing ────────────────────────────────────────────────────────────────
 
   private drawFrame(W: number, H: number) {
+    /**
+     * Type scale, from the SHORT edge of the frame.
+     *
+     * Every size here was a fraction of H, which is right for landscape and
+     * badly wrong for portrait: a phone held upright records ~1080x1920, so
+     * captions at H * 0.048 came out at 92px instead of the ~35px they are on
+     * a 1280x720 webcam — near enough three times over, filling the frame.
+     *
+     * min(W, H) is the same number as H on any landscape frame, so nothing
+     * changes there; only portrait is corrected. Positions still key off H
+     * and W directly, because those genuinely are about where in the frame
+     * something sits.
+     */
+    const S = Math.min(W, H);
     const ctx = this.ctx;
     if (!ctx) return;
     const now = performance.now();
@@ -557,10 +571,10 @@ export class BrandedComposite {
       const sub = [this.brand.brokerage, this.brand.license ? `Lic# ${this.brand.license}` : ""]
         .filter(Boolean)
         .join("  ·  ");
-      const nameSize = Math.round(H * 0.032);
-      const subSize = Math.round(H * 0.022);
-      const padX = Math.round(H * 0.02);
-      const padY = Math.round(H * 0.014);
+      const nameSize = Math.round(S * 0.032);
+      const subSize = Math.round(S * 0.022);
+      const padX = Math.round(S * 0.02);
+      const padY = Math.round(S * 0.014);
 
       ctx.font = `700 ${nameSize}px Arial, sans-serif`;
       const nameW = ctx.measureText(name).width;
@@ -589,7 +603,7 @@ export class BrandedComposite {
 
     // Live captions — bottom center, above the name bar zone
     if (this.caption.text && now - this.caption.at < 4000) {
-      const capSize = Math.round(H * 0.048);
+      const capSize = Math.round(S * 0.048);
       ctx.font = `800 ${capSize}px Arial, sans-serif`;
       ctx.textBaseline = "middle";
       const lines = wrapText(this.caption.text, 32).slice(-2);
@@ -704,6 +718,9 @@ export class BrandedComposite {
   }
 
   private drawEndCard(W: number, H: number) {
+    // Same reason as drawFrame: text off the short edge, so a portrait phone
+    // recording does not end on a contact card three times oversized.
+    const S = Math.min(W, H);
     const ctx = this.ctx;
     if (!ctx) return;
 
@@ -746,7 +763,7 @@ export class BrandedComposite {
 
     if (this.brand.name) {
       ctx.fillStyle = "#ffffff";
-      ctx.font = `800 ${Math.round(H * 0.06)}px Arial, sans-serif`;
+      ctx.font = `800 ${Math.round(S * 0.06)}px Arial, sans-serif`;
       ctx.fillText(this.brand.name, W / 2, y);
       y += H * 0.085;
     }
@@ -754,7 +771,7 @@ export class BrandedComposite {
     const subLine = [this.brand.brokerage, this.brand.phone].filter(Boolean).join("  ·  ");
     if (subLine) {
       ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.font = `500 ${Math.round(H * 0.035)}px Arial, sans-serif`;
+      ctx.font = `500 ${Math.round(S * 0.035)}px Arial, sans-serif`;
       ctx.fillText(subLine, W / 2, y);
       y += H * 0.07;
     }
@@ -769,7 +786,7 @@ export class BrandedComposite {
       ? `Subscribe, like or follow for more real estate in ${market}`
       : "Subscribe, like or follow for more local real estate";
 
-    const askSize = Math.round(H * 0.032);
+    const askSize = Math.round(S * 0.032);
     ctx.fillStyle = "#f59e0b";
     ctx.font = `700 ${askSize}px Arial, sans-serif`;
     const perLine = Math.max(18, Math.floor((W * 0.86) / (askSize * 0.52)));
