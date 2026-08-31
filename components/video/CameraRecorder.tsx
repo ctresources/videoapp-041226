@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
+import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
@@ -425,10 +426,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     if (teleRef.current) teleRef.current.scrollTop = 0;
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    const mimeType =
-      ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find(
-        (t) => MediaRecorder.isTypeSupported(t),
-      ) || "";
+    const mimeType = pickRecordingMimeType();
 
     // Cap the bitrate — the browser default (often 5–8 Mbps at 1080p) produced
     // 500 MB+ files for long recordings, which storage rejected outright and
@@ -443,7 +441,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
-      const type = mimeType || "video/webm";
+      const type = recordedType(recorder, mimeType);
       const blob = new Blob(chunksRef.current, { type });
       const url = URL.createObjectURL(blob);
       setVideoBlob(blob);

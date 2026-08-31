@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
+import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -135,6 +136,57 @@ export async function POST(req: NextRequest) {
     .from("projects")
     .update({ status: "ready" })
     .eq("id", resolvedProjectId);
+
+  // Make sure the recording will start on an iPhone.
+  //
+  // Recordings never pass through this server — the browser uploads them
+  // straight to storage, since a 15-minute take dwarfs the serverless body
+  // limit. So the only way to know how the file is laid out is to read its
+  // head back, which is why this is a range request rather than a download.
+  //
+  // A browser recording MP4 writes a fragmented one, and those carry their
+  // index at the front already, so this should find nothing to do. It exists
+  // so that stays a checked fact rather than an assumption: if some browser
+  // ever writes a plain MP4 with the index at the end, iPhones would quietly
+  // stop playing camera videos again and nothing would say why.
+  const videoId = (videoRow as { id: string }).id;
+  if (storagePath.endsWith(".mp4")) {
+    try {
+      const head = await fetch(publicUrl, { headers: { Range: "bytes=0-262143" } });
+      const needsFix = head.ok && needsFaststart(Buffer.from(await head.arrayBuffer()));
+      if (needsFix) {
+        const full = await fetch(publicUrl);
+        const buf = Buffer.from(await full.arrayBuffer());
+        // Remuxing means holding the whole file in memory and writing it twice.
+        // A long take is hundreds of megabytes and would blow the time and
+        // memory budget, so an oversized one is reported rather than attempted
+        // — a loud log beats a request that dies halfway through a rewrite.
+        if (buf.length > 80 * 1024 * 1024) {
+          console.error(
+            `[save-camera-recording] ${videoId}: MP4 index is at the end and the file is ` +
+            `${Math.round(buf.length / 1024 / 1024)} MB — too large to remux here. It will not ` +
+            `play on iOS. The recorder should be producing fragmented MP4; find out why it isn't.`,
+          );
+        } else {
+          const fixed = await ensureFaststart(buf, videoId);
+          if (fixed !== buf) {
+            await admin.storage
+              .from("assets")
+              .upload(storagePath, fixed, { contentType: "video/mp4", upsert: true });
+            // Same path, so a copy already in a cache would otherwise win.
+            await admin
+              .from("generated_videos")
+              .update({ video_url: `${publicUrl}?v=${Date.now()}` })
+              .eq("id", videoId);
+          }
+        }
+      }
+    } catch (err) {
+      // The recording is saved and listed by this point. A layout it might not
+      // have needed fixing is not worth failing the save over.
+      console.error("[save-camera-recording] faststart check failed (non-fatal):", err);
+    }
+  }
 
   // Titles, descriptions and hashtags for a camera video.
   //

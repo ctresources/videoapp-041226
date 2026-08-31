@@ -8,6 +8,7 @@ import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
+import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 
 /**
  * Two minutes.
@@ -154,13 +155,16 @@ export function ClipBrander({ photos = [], title }: {
         previewRef.current.play().catch(() => {});
       }
 
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : "video/webm";
-      const rec = new MediaRecorder(stream, { mimeType });
+      const mimeType = pickRecordingMimeType();
+      const rec = new MediaRecorder(stream, {
+        // Omitted rather than forced: a browser that supports none of the
+        // candidates will pick its own, and naming an unsupported type here
+        // throws before recording ever starts.
+        ...(mimeType ? { mimeType } : {}),
+      });
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        const blob = new Blob(chunksRef.current, { type: recordedType(rec, mimeType) });
         composite.destroy();
         compositeRef.current = null;
         try {
