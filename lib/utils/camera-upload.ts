@@ -1,6 +1,30 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
+ * The video_type that matches a recording's actual shape.
+ *
+ * save-camera-recording defaults to "reel_9x16" when the caller says nothing,
+ * which is right for a phone and wrong for everything else: a 1920x1080 webcam
+ * take, or a landscape clip run through the brander, was filed as a vertical
+ * reel and then played back letterboxed inside a portrait frame. Nobody chose
+ * that shape — it was the absence of a choice.
+ *
+ * Returns null when the dimensions aren't known, so the caller passes nothing
+ * and the old default still applies rather than a guess.
+ */
+export function videoTypeForSize(
+  size: { width: number; height: number } | null | undefined,
+): "youtube_16x9" | "reel_9x16" | "short_1x1" | undefined {
+  if (!size || !size.width || !size.height) return undefined;
+  const ratio = size.width / size.height;
+  // A little slack either side of square: 1080x1088 is a square video with
+  // rounding on it, not a landscape one.
+  if (ratio > 1.02) return "youtube_16x9";
+  if (ratio < 0.98) return "reel_9x16";
+  return "short_1x1";
+}
+
+/**
  * Uploads a camera/teleprompter recording directly from the browser to
  * Supabase Storage via a signed URL, then registers it as a completed video.
  * Long recordings (10+ min ≈ 100–200 MB) far exceed the serverless

@@ -23,7 +23,7 @@ import toast from "react-hot-toast";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
-import { uploadCameraRecording } from "@/lib/utils/camera-upload";
+import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-upload";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
@@ -128,6 +128,16 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
   const [musicId, setMusicId] = useState("none");
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
+  /**
+   * The take's real pixel shape, captured while the camera is still open.
+   *
+   * The upload runs from an effect on the finished blob, by which point
+   * onstop has already called closeCamera() — the composite is destroyed and
+   * the camera track has ended, so neither can be asked any more. Without a
+   * shape the save route falls back to a 9:16 reel, which is how a 1920x1080
+   * webcam take ended up playing letterboxed inside a portrait frame.
+   */
+  const recordedSizeRef = useRef<{ width: number; height: number } | null>(null);
   const transcriberRef = useRef<LiveTranscriber | null>(null);
   const stoppingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -464,6 +474,12 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
         setViewingTake(next.length - 1);
         return next;
       });
+      // Last moment either source can answer: closeCamera() destroys the
+      // composite and ends the camera track on the next line.
+      recordedSizeRef.current = compositeRef.current?.dimensions ?? (() => {
+        const s = streamRef.current?.getVideoTracks()[0]?.getSettings();
+        return s?.width && s?.height ? { width: s.width, height: s.height } : null;
+      })();
       closeCamera();
       setStep("done");
     };
@@ -670,7 +686,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
     setSaving(true);
     try {
       const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
-      const { videoId, title: savedName } = await uploadCameraRecording(blob, { title, script });
+      const { videoId, title: savedName } = await uploadCameraRecording(blob, {
+        title, script, videoType: videoTypeForSize(recordedSizeRef.current),
+      });
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
       if (openShare) setShowPublish(true);

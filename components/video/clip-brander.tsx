@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2, AlertCircle, Film, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
-import { uploadCameraRecording } from "@/lib/utils/camera-upload";
+import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-upload";
 import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
@@ -25,7 +25,15 @@ const MAX_MB = 500;
 /** The formats a browser can be relied on to decode. */
 const ACCEPTED = ["video/mp4", "video/webm", "video/quicktime"];
 
-type Phase = "pick" | "checking" | "ready" | "rendering" | "done";
+/**
+ * "saving" is separate from "rendering" on purpose.
+ *
+ * The two are wildly different waits and used to look identical: the bar hit
+ * 100%, the clip had finished playing, and then the upload ran for another
+ * minute with the same frozen progress bar and the same "keep this tab in
+ * front" line under it. It read as a hang.
+ */
+type Phase = "pick" | "checking" | "ready" | "rendering" | "saving" | "done";
 
 export function ClipBrander({ photos = [], title }: {
   /** CORS-clean URLs — see /api/photos/rehost. */
@@ -78,6 +86,24 @@ export function ClipBrander({ photos = [], title }: {
    * composite off.
    */
   const [unbranded, setUnbranded] = useState(false);
+
+  /**
+   * Start fetching the track the moment it is picked, not when Render is
+   * pressed.
+   *
+   * Resolving a preset against HeyGen's catalog and proxying the audio is slow
+   * on a cold request, and it otherwise happens inside the render, where the
+   * whole thing is waiting on it. The route sends Cache-Control, so by the time
+   * the button is pressed the browser usually has the bytes already.
+   */
+  useEffect(() => {
+    if (!musicUrl) return;
+    const warm = new Audio();
+    warm.preload = "auto";
+    warm.src = musicUrl;
+    warm.load();
+    return () => { warm.src = ""; };
+  }, [musicUrl]);
 
   const [phase, setPhase] = useState<Phase>("pick");
   const [error, setError] = useState<string | null>(null);
@@ -173,13 +199,22 @@ export function ClipBrander({ photos = [], title }: {
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: recordedType(rec, mimeType) });
+        // Read before destroy() drops the canvas — it is the only record of
+        // what shape this recording actually came out.
+        const size = composite.dimensions;
         composite.destroy();
         compositeRef.current = null;
+        setPhase("saving");
         try {
           const { videoId } = await uploadCameraRecording(blob, {
             // The suffix is how the two cuts of the same clip are told apart in
             // My Videos, where they are otherwise the same title twice.
             title: `${title || fileName} — ${unbranded ? "unbranded" : "branded"}`,
+            // Without this every branded clip was filed under the save route's
+            // "reel_9x16" default, so a landscape walkthrough came back playing
+            // letterboxed inside a portrait frame. The file was always correct;
+            // only the label was wrong.
+            videoType: videoTypeForSize(size),
             script: "",
           });
           setSavedId(videoId);
@@ -190,6 +225,16 @@ export function ClipBrander({ photos = [], title }: {
           setPhase("ready");
         }
       };
+
+      // Said out loud, as the camera tab already does. A track that fails to
+      // load leaves the composite recording in silence, and this panel used to
+      // let that pass without a word — indistinguishable from never having
+      // picked one.
+      if (composite.musicUnavailable) {
+        toast("That music track wouldn't load — branding this clip without a music bed.", {
+          icon: "🎵", duration: 6000,
+        });
+      }
 
       rec.start(500);
       recorderRef.current = rec;
@@ -331,7 +376,7 @@ export function ClipBrander({ photos = [], title }: {
         </div>
       )}
 
-      {(phase === "rendering" || phase === "done") && (
+      {(phase === "rendering" || phase === "saving" || phase === "done") && (
         <div className="flex flex-col gap-2">
           <video
             ref={previewRef}
@@ -353,6 +398,17 @@ export function ClipBrander({ photos = [], title }: {
                 drops frames from the recording.
               </p>
             </>
+          ) : phase === "saving" ? (
+            /* Its own state, because it is its own wait. A finished bar sitting
+               at 100% for a minute with "keep this tab in front" under it reads
+               as a hang, and the tab no longer needs to be in front at all. */
+            <div className="flex items-center gap-2">
+              <Loader2 size={14} className="shrink-0 animate-spin text-spark-amber" />
+              <p className="text-[12px] text-spark-ink-muted">
+                Rendered. Uploading to My Videos — this can take a minute on a long clip, and you
+                can switch tabs now.
+              </p>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>

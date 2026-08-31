@@ -122,6 +122,21 @@ export class BrandedComposite {
    */
   get showsEndCard(): boolean { return !this.unbranded; }
 
+  /**
+   * The recording's real pixel dimensions, once init() has run.
+   *
+   * The canvas takes its shape from the source — a landscape clip records
+   * landscape, a phone held upright records portrait — and nothing else in the
+   * app knows that. Callers file the video under a video_type, and the default
+   * is a 9:16 reel, so a landscape take was being labelled vertical and played
+   * back letterboxed inside a portrait frame. This is how they label it
+   * honestly instead.
+   */
+  get dimensions(): { width: number; height: number } | null {
+    if (!this.canvas) return null;
+    return { width: this.canvas.width, height: this.canvas.height };
+  }
+
   static isSupported(): boolean {
     return (
       typeof HTMLCanvasElement !== "undefined" &&
@@ -292,8 +307,23 @@ export class BrandedComposite {
         musicEl.src = this.musicUrl;
         const el = musicEl;
         musicReady = await new Promise<boolean>((resolve) => {
-          const timer = setTimeout(() => resolve(false), 5000);
-          el.addEventListener("canplay", () => { clearTimeout(timer); resolve(true); }, { once: true });
+          /**
+           * Twenty seconds, not five.
+           *
+           * /api/music/track resolves the preset against HeyGen's catalog and
+           * then proxies the audio through our own origin, and a cold request
+           * routinely takes longer than five seconds — the route itself is
+           * allowed sixty. So a perfectly good track was being written off as
+           * unavailable and the video recorded in silence, while the request
+           * that would have delivered it was still in flight.
+           */
+          const timer = setTimeout(() => resolve(false), 20000);
+          const ready = () => { clearTimeout(timer); resolve(true); };
+          // Whichever arrives first. A streamed response with no Content-Length
+          // can sit a long way short of `canplay` while already holding plenty
+          // of audio to start on.
+          el.addEventListener("canplay", ready, { once: true });
+          el.addEventListener("loadeddata", ready, { once: true });
           el.addEventListener("error", () => { clearTimeout(timer); resolve(false); }, { once: true });
           el.load();
         });
