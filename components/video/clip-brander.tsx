@@ -36,6 +36,14 @@ const ACCEPTED = ["video/mp4", "video/webm", "video/quicktime"];
  */
 type Phase = "pick" | "checking" | "ready" | "rendering" | "saving" | "done";
 
+/** What came back from reading the clip's own audio. */
+type TranscriptState =
+  | { status: "off" }
+  | { status: "running" }
+  | { status: "done"; words: number }
+  | { status: "silent" }
+  | { status: "failed" };
+
 export function ClipBrander({ photos = [], title }: {
   /** CORS-clean URLs — see /api/photos/rehost. */
   photos?: string[];
@@ -160,6 +168,34 @@ export function ClipBrander({ photos = [], title }: {
   const [duration, setDuration] = useState(0);
   const [progress, setProgress] = useState(0);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<TranscriptState>({ status: "off" });
+
+  /**
+   * Read the clip's own audio, once it is saved and reachable by URL.
+   *
+   * Deliberately after the save rather than at the point the file is picked:
+   * the recording is already in storage by then, so the server transcribes it
+   * from there instead of a 500 MB walkthrough having to fit through a request
+   * body. It runs on its own and never blocks the save — the video is in My
+   * Videos and playable whatever happens here.
+   */
+  async function readClipAudio(videoId: string) {
+    setTranscript({ status: "running" });
+    try {
+      const res = await fetch("/api/video/transcribe-clip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
+      });
+      const data = await res.json();
+      // A silent walkthrough is a normal thing to have shot, not a failure.
+      if (data?.silent) return setTranscript({ status: "silent" });
+      if (!res.ok) throw new Error(data?.error || "Transcription failed");
+      setTranscript({ status: "done", words: Number(data.words) || 0 });
+    } catch {
+      setTranscript({ status: "failed" });
+    }
+  }
 
   const urlRef = useRef<string | null>(null);
   const compositeRef = useRef<BrandedComposite | null>(null);
@@ -285,6 +321,9 @@ export function ClipBrander({ photos = [], title }: {
           setSavedId(videoId);
           setPhase("done");
           toast.success("Saved to My Videos.");
+          // Not awaited: the save is complete and the video is watchable. This
+          // fills in the captions and the description behind it.
+          void readClipAudio(videoId);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Upload failed");
           setPhase("ready");
@@ -472,13 +511,14 @@ export function ClipBrander({ photos = [], title }: {
             )}
           </div>
 
-          {/* Said plainly rather than left as a gap someone has to notice.
-              Live captions come from listening to a microphone as you speak;
-              a file that already exists has no microphone to listen to, and
-              transcribing its audio is a separate job this does not do yet. */}
+          {/* The distinction that still holds: captions can be BURNED IN only
+              while a microphone is being listened to live. An uploaded clip's
+              audio is read after the fact instead, which produces captions you
+              can attach and correct, but not ones baked into the picture. */}
           <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-            No captions on an uploaded clip — those are transcribed live while you speak, so they
-            only work when you record here.
+            The audio gets read once this is saved, which writes the captions, description and
+            hashtags. They come as a caption file to attach rather than burned into the picture —
+            that only works when a microphone is being listened to live.
           </p>
 
           {/* Collected before the render, because two of these four are baked
@@ -610,14 +650,44 @@ export function ClipBrander({ photos = [], title }: {
               </p>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
-              {savedId && (
-                <a href={`/videos?highlight=${savedId}`}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Download size={13} /> View it
-                  </Button>
-                </a>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
+                {savedId && (
+                  <a href={`/videos?highlight=${savedId}`}>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Download size={13} /> View it
+                    </Button>
+                  </a>
+                )}
+              </div>
+              {/* Reported rather than run silently: it costs a transcription,
+                  it takes a moment, and its result is the difference between a
+                  video you can publish and one you have to write copy for. */}
+              {transcript.status !== "off" && (
+                <div className="flex items-start gap-1.5 text-[11px] leading-[1.45] text-spark-ink-muted">
+                  {transcript.status === "running" && (
+                    <>
+                      <Loader2 size={12} className="mt-0.5 shrink-0 animate-spin text-spark-amber" />
+                      <span>Reading the audio — this writes the captions and the description.</span>
+                    </>
+                  )}
+                  {transcript.status === "done" && (
+                    <span>
+                      Audio read — {transcript.words} words. Captions, description and hashtags are
+                      ready, and you can correct the words under <strong>Edit transcript</strong>.
+                    </span>
+                  )}
+                  {transcript.status === "silent" && (
+                    <span>No speech in this clip, so there is nothing to caption or describe.</span>
+                  )}
+                  {transcript.status === "failed" && (
+                    <span>
+                      Couldn&rsquo;t read the audio this time — the video is saved. Try{" "}
+                      <strong>Edit transcript</strong> on it in My Videos.
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
