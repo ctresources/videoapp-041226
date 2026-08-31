@@ -9,7 +9,7 @@ import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { TranslateModal } from "@/components/videos/TranslateModal";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { isHeygenUrl } from "@/lib/utils/video-url";
+import { isHeygenUrl, posterFrameUrl } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera,
@@ -490,10 +490,11 @@ function VideosContent() {
                   {video.render_status === "completed" && video.video_url ? (
                     <>
                       <video
-                        src={video.video_url}
+                        src={posterFrameUrl(video.video_url)}
                         className="w-full h-full object-cover"
                         preload="metadata"
                         muted
+                        playsInline
                       />
                       {/* Play overlay on hover */}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-all">

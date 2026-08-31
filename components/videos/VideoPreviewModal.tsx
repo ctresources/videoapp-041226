@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { videoMimeType } from "@/lib/utils/video-url";
 
 interface VideoPreviewModalProps {
   videoUrl: string;
@@ -142,7 +143,7 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
             playsInline
             crossOrigin="anonymous"
           >
-            <source src={videoUrl} type="video/mp4" />
+            <source src={videoUrl} type={videoMimeType(videoUrl)} />
           </video>
 
           {/* Overlay controls */}

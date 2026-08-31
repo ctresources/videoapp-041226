@@ -17,3 +17,37 @@ export function isExpiredHeygenUrl(url: string): boolean {
 export function isHeygenUrl(url: string): boolean {
   return url.includes("heygen.ai") || url.includes("heygen.com/aws");
 }
+
+/** The file extension, lowercased, ignoring any query string or fragment. */
+function extensionOf(url: string): string {
+  return url.split(/[?#]/)[0].split(".").pop()?.toLowerCase() ?? "";
+}
+
+/**
+ * The container a stored video is actually in.
+ *
+ * Every player used to declare `type="video/mp4"` for everything, which is a
+ * lie for the camera recordings — those are WebM. A browser is entitled to
+ * believe the declared type and refuse the file when it doesn't match.
+ */
+export function videoMimeType(url: string): string {
+  switch (extensionOf(url)) {
+    case "webm": return "video/webm";
+    case "mov":  return "video/quicktime";
+    default:     return "video/mp4";
+  }
+}
+
+/**
+ * A tile source that iOS will actually paint a frame from.
+ *
+ * `preload="metadata"` is a request desktop browsers honour and iOS ignores
+ * outright — it downloads nothing until a tap, so every thumbnail rendered as
+ * a black rectangle with no duration. A media fragment is not a preload hint
+ * but a seek instruction, and iOS does honour that: it fetches enough to land
+ * on the frame and leaves it on screen. A tenth of a second in, rather than
+ * zero, because the very first frame of a fade-in is often black anyway.
+ */
+export function posterFrameUrl(url: string): string {
+  return url.includes("#") ? url : `${url}#t=0.1`;
+}
