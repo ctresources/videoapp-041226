@@ -28,6 +28,21 @@ export interface BrandInfo {
   headshotUrl?: string | null;
 }
 
+/**
+ * How loud the music bed sits under the voice, which is held at 1.0.
+ *
+ * "quiet" is what every video used to get, and it was too far down to hear on
+ * phone speakers — present in the file, absent in the room. Medium is the
+ * default now. Loud is for footage with little or no speech in it, where the
+ * bed is carrying the video rather than sitting under it.
+ */
+export type MusicLevel = "quiet" | "medium" | "loud";
+const MUSIC_GAIN: Record<MusicLevel, number> = {
+  quiet: 0.1,
+  medium: 0.25,
+  loud: 0.45,
+};
+
 function loadImage(url: string, timeoutMs = 3000): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -111,6 +126,8 @@ export class BrandedComposite {
      * shapes of the same object.
      */
     private unbranded = false,
+    /** How loud the music bed sits under the voice. Ignored without music. */
+    private musicLevel: MusicLevel = "medium",
   ) {}
 
   /**
@@ -355,7 +372,7 @@ export class BrandedComposite {
         if (musicReady && musicEl) {
           const musicSrc = audioCtx.createMediaElementSource(musicEl);
           const musicGain = audioCtx.createGain();
-          musicGain.gain.value = 0.1; // ducked well under the voice
+          musicGain.gain.value = MUSIC_GAIN[this.musicLevel] ?? MUSIC_GAIN.medium;
           musicSrc.connect(musicGain).connect(dest);
           this.musicEl = musicEl;
         }

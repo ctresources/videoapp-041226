@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, AlertCircle, Film, Download } from "lucide-react";
 import toast from "react-hot-toast";
-import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
+import { BrandedComposite, type BrandInfo, type MusicLevel } from "@/lib/utils/branded-recorder";
 import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-upload";
 import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
@@ -74,6 +74,12 @@ export function ClipBrander({ photos = [], title }: {
    * rather than merely off.
    */
   const [musicId, setMusicId] = useState("none");
+  /**
+   * Chosen before the render rather than discovered after it: the only way to
+   * hear the mix is to sit through a real-time playback of the whole clip, so
+   * "a bit louder" should not cost another two minutes to find out.
+   */
+  const [musicLevel, setMusicLevel] = useState<MusicLevel>("medium");
   const musicUrl = (() => {
     const q = MUSIC_PRESETS.find((m) => m.id === musicId)?.query;
     return q ? `/api/music/track?q=${encodeURIComponent(q)}` : null;
@@ -178,7 +184,7 @@ export function ClipBrander({ photos = [], title }: {
     chunksRef.current = [];
 
     try {
-      const composite = new BrandedComposite(brand, musicUrl, photos, unbranded);
+      const composite = new BrandedComposite(brand, musicUrl, photos, unbranded, musicLevel);
       const stream = await composite.init(url);
       compositeRef.current = composite;
 
@@ -359,6 +365,39 @@ export function ClipBrander({ photos = [], title }: {
                 </button>
               ))}
             </div>
+
+            {/* Only worth showing once there is a bed to set the level of. */}
+            {musicUrl && (
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-[11px] font-semibold text-spark-ink-muted">Level</p>
+                <div className="flex gap-1.5">
+                  {([
+                    { id: "quiet", label: "Quiet" },
+                    { id: "medium", label: "Medium" },
+                    { id: "loud", label: "Loud" },
+                  ] as const).map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setMusicLevel(l.id)}
+                      aria-pressed={musicLevel === l.id}
+                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        musicLevel === l.id
+                          ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                          : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-spark-ink-faint">
+                  {musicLevel === "loud"
+                    ? "For footage with little or no talking."
+                    : "Sits under the clip's own sound."}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Said plainly rather than left as a gap someone has to notice.
