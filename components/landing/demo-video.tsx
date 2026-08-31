@@ -39,7 +39,11 @@ export function DemoVideo() {
       <div className="relative bg-black aspect-video">
         <video
           ref={videoRef}
-          src="/demo.mp4"
+          // #t=0.1 seeks to a frame rather than merely asking for one. iOS
+          // ignores preload="metadata" to save cellular data, so the comment
+          // below was wrong on exactly the devices most likely to see this —
+          // the hero video was a black rectangle to every iPhone visitor.
+          src="/demo.mp4#t=0.1"
           muted
           loop
           playsInline
