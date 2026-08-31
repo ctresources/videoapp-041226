@@ -1399,7 +1399,12 @@ function CreatePageInner() {
       {inputMode === "camera" && step === "input" && (
         <StepFooter
           hint={
-            cameraScriptGenerating
+            // Uploading footage is the one route with no script and no Open
+            // Camera, so every hint below it was wrong there — the bar told
+            // you to type a script and press a button that isn't on screen.
+            cameraMode === "brand" && canBrandClips
+              ? "Pick a clip above, choose what gets burned in, then render it."
+              : cameraScriptGenerating
               ? "Writing your teleprompter script…"
               : readyToContinue
                 ? "We'll transcribe your recording, then you can edit it."
@@ -1410,7 +1415,7 @@ function CreatePageInner() {
                     : cameraSource === "uploads"
                       ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"
-                        ? "Drop an audio file and we'll transcribe it into a script."
+                        ? "Drop a recording of yourself talking — audio or video — and we'll turn what you said into a script."
                         : "Type your script below, then press Open Camera."
           }
         >
@@ -1420,7 +1425,10 @@ function CreatePageInner() {
               beside a hint telling you to look elsewhere. It now carries an
               action only when it has one, and Open Camera in the card below is
               left to be the next step it already is. */}
-          {readyToContinue ? (
+          {/* Nothing for this bar to do on the upload route either: the render
+              button lives in the card, and Spark script was appearing beside a
+              clip brander with no topic to spark from. */}
+          {cameraMode === "brand" && canBrandClips ? null : readyToContinue ? (
             <Button onClick={handleContinue} size="lg" className="gap-2">
               Transcribe<span className="hidden sm:inline"> &amp; continue</span>{" "}
               <ArrowRight size={18} />
@@ -1829,8 +1837,17 @@ function CreatePageInner() {
                 <Video size={17} className="text-white" />
               </div>
               <div>
-                <p className="text-base font-bold text-brand-text">Your script</p>
-                <p className="text-sm text-spark-ink-muted">However it gets written, the teleprompter scrolls as you record</p>
+                {/* The card used to be headed "Your script" whatever was in
+                    it — including the clip brander, which has no teleprompter
+                    and, on the keep-the-audio route, no script at all. */}
+                <p className="text-base font-bold text-brand-text">
+                  {cameraMode === "brand" && canBrandClips ? "Your footage" : "Your script"}
+                </p>
+                <p className="text-sm text-spark-ink-muted">
+                  {cameraMode === "brand" && canBrandClips
+                    ? "Add your branding to a clip you already shot"
+                    : "However it gets written, the teleprompter scrolls as you record"}
+                </p>
               </div>
             </div>
 
@@ -1843,10 +1860,19 @@ function CreatePageInner() {
             {/* Record here, or brand something already shot. Only offered on
                 a desktop — see canBrandClips. */}
             {canBrandClips && cameraPhase === "script" && (
-              <div className="mb-4 grid grid-cols-2 gap-1.5">
+              <div className="mb-4">
+                {/* Labelled, because this row sits directly under a heading
+                    about the script and is not about the script at all. */}
+                <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">
+                  Where the picture comes from
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
                 {([
-                  { key: "record" as const, label: "Record it here", sub: "branding burned in live" },
-                  { key: "brand" as const,  label: "Upload my footage", sub: "up to 2 min · desktop" },
+                  // Both subs now answer the same question — what you end up
+                  // filming. One described a feature and the other a size
+                  // limit, which made them look like different kinds of thing.
+                  { key: "record" as const, label: "Record it here", sub: "you, on camera, now" },
+                  { key: "brand" as const,  label: "Upload my footage", sub: "a clip you already shot · up to 2 min" },
                 ]).map(({ key, label, sub }) => (
                   <button
                     key={key}
@@ -1863,6 +1889,7 @@ function CreatePageInner() {
                     <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
                   </button>
                 ))}
+                </div>
               </div>
             )}
 
@@ -1879,8 +1906,13 @@ function CreatePageInner() {
               <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
                 {([
                   { key: "speak" as const,   label: "Speak a topic",  sub: "we write it" },
-                  { key: "uploads" as const, label: "From a PDF/URL", sub: "we read it first" },
-                  { key: "audio" as const,   label: "Upload audio",   sub: "we transcribe it" },
+                  { key: "uploads" as const, label: "From a PDF or link", sub: "we read it first" },
+                  // Two uploads live on this screen and they do opposite
+                  // things: the one above keeps your footage and publishes it,
+                  // this one throws the file away and keeps only the words.
+                  // "Upload audio" said neither, and stopped being true when
+                  // this slot started accepting video as well.
+                  { key: "audio" as const,   label: "A recording of me talking", sub: "we keep the words, not the file" },
                   { key: "own" as const,     label: "I'll write it",  sub: "type it below" },
                 ]).map(({ key, label, sub }) => (
                   <button
@@ -1968,7 +2000,11 @@ function CreatePageInner() {
                 onRemovePhoto={removeCameraPhoto}
                 onReorderPhotos={(from, to) => setCameraPhotos((p) => reorder(p, from, to))}
                 photosUploading={cameraPhotoUploading}
-                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner."
+                // Photos are no longer the only thing that can fill the frame
+                // behind you, and the video option lives in a different panel
+                // — so this says where to find it rather than leaving someone
+                // to conclude it does not exist.
+                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner. To play a video behind you instead, use Branded Look further down."
                 // Only on the doc route. Photos are b-roll on every route, but
                 // an attachment is a script source, and offering one beside a
                 // script you are about to type yourself is the clutter the
