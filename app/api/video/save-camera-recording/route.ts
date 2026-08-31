@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
   let videoType: string;
   let title: string;
   let spokenScript: string;
+  let hook: string;
+  let city: string;
+  let state: string;
+  let cta: string;
   let uploadedInline = false;
 
   const contentType = req.headers.get("content-type") || "";
@@ -42,6 +46,10 @@ export async function POST(req: NextRequest) {
       videoType?: string;
       title?: string;
       script?: string;
+      hook?: string;
+      city?: string;
+      state?: string;
+      cta?: string;
     };
 
     if (!body.storagePath) {
@@ -57,6 +65,10 @@ export async function POST(req: NextRequest) {
     videoType = body.videoType || "reel_9x16";
     title = (body.title || "Camera Recording").slice(0, 120);
     spokenScript = (body.script || "").trim();
+    hook = (body.hook || "").trim().slice(0, 400);
+    city = (body.city || "").trim().slice(0, 100);
+    state = (body.state || "").trim().slice(0, 50);
+    cta = (body.cta || "").trim().slice(0, 2000);
   } else {
     const formData = await req.formData();
     const file = formData.get("video") as File | null;
@@ -64,6 +76,12 @@ export async function POST(req: NextRequest) {
     videoType = (formData.get("videoType") as string) || "reel_9x16";
     title = ((formData.get("title") as string) || "Camera Recording").slice(0, 120);
     spokenScript = ((formData.get("script") as string) || "").trim();
+    // The legacy inline path is only used by small fallback uploads, which have
+    // no form to collect any of this.
+    hook = "";
+    city = "";
+    state = "";
+    cta = "";
 
     if (!file) return NextResponse.json({ error: "No video file provided" }, { status: 400 });
 
@@ -98,7 +116,14 @@ export async function POST(req: NextRequest) {
   } else {
     const { data: newProject, error: projectErr } = await admin
       .from("projects")
-      .insert({ user_id: user.id, title, project_type: "location_script", status: "ready" })
+      // The market belongs on the project, not just in the copy: it is what
+      // the editor and Publish read back, and for an uploaded clip it is
+      // often a listing's town rather than the agent's own.
+      .insert({
+        user_id: user.id, title, project_type: "location_script", status: "ready",
+        ...(city && { location_city: city }),
+        ...(state && { location_state: state }),
+      })
       .select("id")
       .single();
 
@@ -200,7 +225,8 @@ export async function POST(req: NextRequest) {
   // Skipped when the project already has SEO — the teleprompter path comes
   // from a scripted project that wrote its own, and regenerating would
   // overwrite wording the user may have edited.
-  if (spokenScript.length > 40) {
+  const canSummarise = spokenScript.length > 40;
+  if (canSummarise || hook || cta) {
     try {
       const { data: existing } = await admin
         .from("projects")
@@ -210,27 +236,42 @@ export async function POST(req: NextRequest) {
 
       const already = (existing as { seo_data: unknown } | null)?.seo_data;
       if (!already) {
+        // Only worth an AI call when there are spoken words to summarise. An
+        // uploaded clip has none — its words are still locked inside its audio
+        // — so its post copy is built from what the form collected instead of
+        // it arriving in My Videos with nothing to publish it with.
+        //
         // Bounded: the recording is already saved and playable, so this must
         // never be what makes the request time out. Losing the metadata is
         // recoverable; reporting a failed save for a video that exists is not.
-        const seo = await Promise.race([
-          generateSeoData(title, spokenScript, []),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
-        ]);
-        if (!seo) throw new Error("SEO generation timed out");
+        const seo = canSummarise
+          ? await Promise.race([
+              generateSeoData(title, spokenScript, []),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
+            ])
+          : null;
+
+        // The sign-off is appended rather than handed to the model. It is the
+        // agent's own wording, and a summariser would paraphrase it.
+        const body = seo?.youtube_description || hook || spokenScript;
+        const description = [body, cta].filter(Boolean).join("\n\n").slice(0, 4900);
+
         await admin
           .from("projects")
           .update({
-            seo_data: seo as unknown as Record<string, unknown>,
+            seo_data: {
+              ...(seo ?? {}),
+              ...(description && { youtube_description: description }),
+            } as unknown as Record<string, unknown>,
             // Keeps the script with the project so the editor and Publish
             // window have something to show for a camera video.
             ai_script: (existing as { ai_script: unknown } | null)?.ai_script
-              ?? { title, script: spokenScript, hook: "", keywords: [] },
+              ?? { title, script: spokenScript, hook, cta, keywords: [] },
           })
           .eq("id", resolvedProjectId);
       }
     } catch (err) {
-      console.error("[save-camera-recording] SEO generation failed (non-fatal):", err);
+      console.error("[save-camera-recording] metadata write failed (non-fatal):", err);
     }
   }
 

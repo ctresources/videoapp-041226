@@ -9,6 +9,7 @@ import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-uplo
 import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
+import { resolveCta } from "@/lib/utils/default-cta";
 
 /**
  * Two minutes.
@@ -52,7 +53,7 @@ export function ClipBrander({ photos = [], title }: {
         if (!user) return;
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, company_name, license_number, phone, location_city, location_state, logo_url, avatar_url")
+          .select("full_name, company_name, license_number, phone, location_city, location_state, logo_url, avatar_url, default_cta, market_years")
           .eq("id", user.id)
           .single();
         if (!data) return;
@@ -62,6 +63,15 @@ export function ClipBrander({ photos = [], title }: {
           phone: p.phone, city: p.location_city, state: p.location_state,
           logoUrl: p.logo_url, headshotUrl: p.avatar_url,
         });
+        setCtaSource({
+          template: p.default_cta, name: p.full_name,
+          company: p.company_name, years: p.market_years,
+        });
+        // Seeds the market fields, which stay editable: this clip is often a
+        // listing in a town the agent does not live in, and the market is not
+        // only a label — it is the town the end card offers more videos about.
+        setCity((c) => c || p.location_city || "");
+        setState((s) => s || p.location_state || "");
       } catch { /* brand overlays simply stay empty */ }
     })();
   }, []);
@@ -80,6 +90,39 @@ export function ClipBrander({ photos = [], title }: {
    * "a bit louder" should not cost another two minutes to find out.
    */
   const [musicLevel, setMusicLevel] = useState<MusicLevel>("medium");
+
+  // ── What the video is, collected before it renders ───────────────────────
+  //
+  // An uploaded clip is the one video the app cannot describe for itself: the
+  // camera tab has the script that was read, and every rendered video has the
+  // script it was written from, but this clip's words are still inside its
+  // audio. Without these it reached My Videos as a filename with nothing to
+  // post it with, and with the agent's home town on the end card whatever the
+  // footage was of.
+  const [videoTitle, setVideoTitle] = useState("");
+  const [hook, setHook] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [addCta, setAddCta] = useState(true);
+  const [ctaSource, setCtaSource] = useState<{
+    template: string | null; name: string | null;
+    company: string | null; years: string | null;
+  } | null>(null);
+
+  /**
+   * The sign-off as it will appear in the description.
+   *
+   * Post copy only, deliberately. On screen it would repeat the end card
+   * almost line for line — both ask for a follow, both give the name — and it
+   * is four paragraphs of prose, which is not a caption. The end card is the
+   * on-screen ask; this fills the description it points at.
+   */
+  const resolvedCta = ctaSource
+    ? resolveCta(ctaSource.template, {
+        city: city || null, state: state || null,
+        name: ctaSource.name, company: ctaSource.company, years: ctaSource.years,
+      })
+    : "";
   const musicUrl = (() => {
     const q = MUSIC_PRESETS.find((m) => m.id === musicId)?.query;
     return q ? `/api/music/track?q=${encodeURIComponent(q)}` : null;
@@ -143,6 +186,10 @@ export function ClipBrander({ photos = [], title }: {
 
     setPhase("checking");
     setFileName(file.name);
+    // A filename is a starting point, not a title — "24 Shagbark Ct E.mp4" is
+    // closer to useful than "Camera Recording", and it is there to be typed
+    // over rather than accepted.
+    setVideoTitle((t) => t || title || file.name.replace(/\.[^./\\]+$/, ""));
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     const url = URL.createObjectURL(file);
     urlRef.current = url;
@@ -184,7 +231,13 @@ export function ClipBrander({ photos = [], title }: {
     chunksRef.current = [];
 
     try {
-      const composite = new BrandedComposite(brand, musicUrl, photos, unbranded, musicLevel);
+      // The market fields override the profile's, because the end card offers
+      // "more real estate in {city}" and that should be the town this footage
+      // is of, not the town the agent happens to work from.
+      const composite = new BrandedComposite(
+        { ...brand, city: city || brand.city, state: state || brand.state },
+        musicUrl, photos, unbranded, musicLevel,
+      );
       const stream = await composite.init(url);
       compositeRef.current = composite;
 
@@ -215,7 +268,13 @@ export function ClipBrander({ photos = [], title }: {
           const { videoId } = await uploadCameraRecording(blob, {
             // The suffix is how the two cuts of the same clip are told apart in
             // My Videos, where they are otherwise the same title twice.
-            title: `${title || fileName} — ${unbranded ? "unbranded" : "branded"}`,
+            title: `${videoTitle.trim() || title || fileName} — ${unbranded ? "unbranded" : "branded"}`,
+            hook: hook.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            // An unbranded cut may not carry the ask anywhere, including the
+            // caption it gets published with.
+            cta: addCta && !unbranded ? resolvedCta : "",
             // Without this every branded clip was filed under the save route's
             // "reel_9x16" default, so a landscape walkthrough came back playing
             // letterboxed inside a portrait frame. The file was always correct;
@@ -315,14 +374,27 @@ export function ClipBrander({ photos = [], title }: {
             <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-spark-ink">{fileName}</p>
             <span className="text-[11px] text-spark-ink-faint">{Math.round(duration)}s</span>
           </div>
+          {/* Names only what this particular clip will actually get. It used
+              to promise "photos as b-roll" to everyone, including the many
+              people branding a clip with no photos attached at all — who then
+              watched for something that was never going to appear. */}
           <p className="text-[11px] leading-[1.45] text-spark-ink-muted">
-            {unbranded
-              ? <>Your photos as b-roll and any music get burned in — no logo, name bar, licence or
-                  end card. It plays through once in real time</>
-              : <>Your logo, name bar, photos as b-roll and the end card get burned in. It plays
-                  through once in real time</>
-            } — about {Math.round(duration)} seconds — so leave this tab open and in front until it
-            finishes.
+            {(() => {
+              const layers = [
+                ...(unbranded ? [] : ["your logo", "name bar"]),
+                ...(photos.length > 0 ? [`your ${photos.length} photos as b-roll`] : []),
+                ...(musicUrl ? ["the music bed"] : []),
+                ...(unbranded ? [] : ["the end card"]),
+              ];
+              const list = layers.length > 1
+                ? `${layers.slice(0, -1).join(", ")} and ${layers[layers.length - 1]}`
+                : layers[0];
+              return layers.length === 0
+                ? "Nothing is being added — this will re-record the clip as it is."
+                : `${list.charAt(0).toUpperCase()}${list.slice(1)} get burned in.`;
+            })()}{" "}
+            It plays through once in real time — about {Math.round(duration)} seconds — so leave
+            this tab open and in front until it finishes.
           </p>
 
           {/* MLS listing media generally may not identify the agent. The toggle
@@ -408,6 +480,95 @@ export function ClipBrander({ photos = [], title }: {
             No captions on an uploaded clip — those are transcribed live while you speak, so they
             only work when you record here.
           </p>
+
+          {/* Collected before the render, because two of these four are baked
+              into the picture: the market is the town the end card offers more
+              videos about, and none of it can be added afterwards without
+              playing the whole clip through again. */}
+          <div className="mt-1 flex flex-col gap-2 border-t border-spark-rule pt-2.5">
+            <p className="text-[11px] font-semibold text-spark-ink-muted">About this video</p>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-spark-ink-faint">Title</span>
+              <input
+                value={videoTitle}
+                onChange={(e) => setVideoTitle(e.target.value)}
+                placeholder="24 Shagbark Court — kitchen and main floor"
+                maxLength={120}
+                className="rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-spark-ink-faint">
+                Hook <span className="text-spark-ink-faint">— the opening line of the caption</span>
+              </span>
+              <textarea
+                value={hook}
+                onChange={(e) => setHook(e.target.value)}
+                rows={2}
+                placeholder="Just listed in Blue Bell — wait until you see this kitchen."
+                maxLength={400}
+                className="resize-y rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] leading-[1.45] text-spark-ink outline-none focus:border-spark-amber"
+              />
+            </label>
+
+            <div className="flex gap-2">
+              <label className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="text-[11px] text-spark-ink-faint">City</span>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Blue Bell"
+                  maxLength={100}
+                  className="w-full rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
+                />
+              </label>
+              <label className="flex w-24 shrink-0 flex-col gap-1">
+                <span className="text-[11px] text-spark-ink-faint">State</span>
+                <input
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="PA"
+                  maxLength={50}
+                  className="w-full rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
+                />
+              </label>
+            </div>
+            <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
+              {unbranded
+                ? "Used for the caption. Your usual sign-off is off on an unbranded cut."
+                : <>The end card offers more videos about this town, so set it to the property&rsquo;s
+                    market rather than your own if they differ.</>}
+            </p>
+
+            {/* Post copy only. On screen it would repeat the end card almost
+                line for line, and it is four paragraphs — not a caption. */}
+            {!unbranded && resolvedCta && (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-spark-rule px-2.5 py-2">
+                <input
+                  type="checkbox"
+                  checked={addCta}
+                  onChange={(e) => setAddCta(e.target.checked)}
+                  className="mt-0.5 size-3.5 shrink-0 accent-spark-amber"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[12px] font-semibold text-spark-ink">
+                    Add my usual sign-off to the caption
+                  </span>
+                  <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+                    Goes in the description you publish with, not on screen — the end card already
+                    carries the ask there.
+                  </span>
+                  {addCta && (
+                    <span className="mt-1.5 block max-h-24 overflow-y-auto whitespace-pre-wrap rounded-md bg-spark-amber-tint px-2 py-1.5 text-[11px] leading-[1.5] text-spark-ink-soft">
+                      {resolvedCta}
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
+          </div>
 
           <Button onClick={render} size="lg" className="gap-2">
             {unbranded ? "Render unbranded cut" : "Brand this clip"}

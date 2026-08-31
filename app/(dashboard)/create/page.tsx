@@ -1810,7 +1810,7 @@ function CreatePageInner() {
               <div className="mb-4 grid grid-cols-2 gap-1.5">
                 {([
                   { key: "record" as const, label: "Record it here", sub: "branding burned in live" },
-                  { key: "brand" as const,  label: "Brand a clip I shot", sub: "up to 2 min · desktop" },
+                  { key: "brand" as const,  label: "Upload my footage", sub: "up to 2 min · desktop" },
                 ]).map(({ key, label, sub }) => (
                   <button
                     key={key}

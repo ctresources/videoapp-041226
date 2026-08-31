@@ -39,6 +39,15 @@ export async function uploadCameraRecording(
     /** What was read on camera. Used to write the description and hashtags —
      *  without it a camera video reaches My Videos with nothing to post it. */
     script?: string;
+    /** Opening line. Stands in for the description on an uploaded clip, which
+     *  has no script to summarise — its words are still inside its audio. */
+    hook?: string;
+    /** The market this video is about, which is not always the agent's own. */
+    city?: string;
+    state?: string;
+    /** The agent's sign-off, appended to the post copy verbatim. Not spoken —
+     *  the end card is what carries the ask on screen. */
+    cta?: string;
   } = {},
 ): Promise<{ videoId: string; title: string }> {
   const ext = blob.type.includes("mp4") ? "mp4" : "webm";
