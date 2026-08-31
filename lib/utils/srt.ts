@@ -53,6 +53,59 @@ export function buildSrt(words: SttWord[]): string {
     .join("\n");
 }
 
+export interface SrtCue {
+  /** Kept as the original "00:00:03,500" strings rather than parsed to
+   *  seconds: an edit only ever changes the words, and a round trip through
+   *  floating point would nudge every timestamp in the file for no reason. */
+  start: string;
+  end: string;
+  text: string;
+}
+
+const SRT_TIME_LINE = /^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/;
+
+/**
+ * Read an SRT back into cues, so a transcript can be shown and corrected.
+ *
+ * Tolerant on purpose — it finds the timing line rather than assuming the
+ * counter above it is present or correct, and folds a cue's wrapped lines into
+ * one string. Blocks it cannot make sense of are skipped rather than throwing:
+ * a single malformed cue should cost that cue, not the whole transcript.
+ */
+export function parseSrt(srt: string): SrtCue[] {
+  const cues: SrtCue[] = [];
+  for (const block of srt.replace(/\r\n/g, "\n").trim().split(/\n{2,}/)) {
+    const lines = block.split("\n");
+    const at = lines.findIndex((l) => SRT_TIME_LINE.test(l));
+    if (at === -1) continue;
+    const [, start, end] = lines[at].match(SRT_TIME_LINE)!;
+    const text = lines.slice(at + 1).join(" ").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    cues.push({ start, end, text });
+  }
+  return cues;
+}
+
+/**
+ * Cues back to an SRT file.
+ *
+ * Emptied cues are dropped and the counter is rebuilt from scratch, which is
+ * what makes clearing a line a way to delete it — the alternative is a file
+ * with gaps in its numbering that some players refuse outright.
+ */
+export function serializeSrt(cues: SrtCue[]): string {
+  return cues
+    .filter((c) => c.text.trim())
+    .map((c, i) => `${i + 1}\n${c.start} --> ${c.end}\n${c.text.trim()}\n`)
+    .join("\n");
+}
+
+/** The words on their own, for the places that want prose rather than timing —
+ *  the description, and the script stored with the project. */
+export function srtToPlainText(cues: SrtCue[]): string {
+  return cues.map((c) => c.text.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+}
+
 /**
  * Transcribe a video's audio to an SRT with ElevenLabs STT (word-level
  * timestamps). Returns null when the clip has no speech; throws if the API

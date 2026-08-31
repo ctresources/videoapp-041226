@@ -1,10 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2 } from "lucide-react";
+import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { videoMimeType } from "@/lib/utils/video-url";
+import { TranscriptEditor } from "@/components/videos/TranscriptEditor";
 
 interface VideoPreviewModalProps {
   videoUrl: string;
@@ -29,6 +30,7 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
   const [fullscreen, setFullscreen] = useState(false);
   const [srtLoading, setSrtLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   // Cross-origin URLs ignore <a download> — fetch as a blob and save instead.
   async function handleDownloadVideo() {
@@ -165,8 +167,11 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="px-5 py-4 flex gap-3 shrink-0 border-t border-slate-100">
+        {/* Action buttons.
+            Two rows: publishing and downloading the file are what most visits
+            are for, and the two transcript actions read as a pair rather than
+            competing with them for the same row. */}
+        <div className="px-5 pt-4 flex gap-3 shrink-0 border-t border-slate-100">
           <Button className="flex-1 gap-2" onClick={onPublish}>
             <Send size={14} /> Publish to Social
           </Button>
@@ -179,20 +184,39 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
             {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             {downloading ? "Downloading…" : "Download"}
           </Button>
-          {videoId && (
+        </div>
+
+        {videoId && (
+          <div className="px-5 pb-4 pt-3 flex gap-3 shrink-0">
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => setShowTranscript(true)}
+              title="Read back what this video says and correct any mistakes in the captions"
+            >
+              <FileText size={14} /> Edit transcript
+            </Button>
             <Button
               variant="outline"
               className="flex-1 gap-2"
               onClick={handleDownloadSrt}
               disabled={srtLoading}
-              title="Transcribe this video and download an .srt caption file for YouTube Studio"
+              title="Download an .srt caption file for YouTube Studio"
             >
               {srtLoading ? <Loader2 size={14} className="animate-spin" /> : <Captions size={14} />}
               {srtLoading ? "Transcribing…" : "Captions (SRT)"}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {showTranscript && videoId && (
+        <TranscriptEditor
+          videoId={videoId}
+          title={title}
+          onClose={() => setShowTranscript(false)}
+        />
+      )}
     </div>
   );
 }
