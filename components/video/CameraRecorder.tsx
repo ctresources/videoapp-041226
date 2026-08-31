@@ -1222,7 +1222,7 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
             <span className="text-[11px] text-spark-ink-faint">all saved</span>
           </div>
         )}
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between gap-3 px-1">
           <p className="text-sm font-semibold text-brand-text">
             {savedVideoId
               ? "Saved to My Videos"
@@ -1230,7 +1230,21 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
                 ? "Saving to My Videos…"
                 : "Recording complete"}
           </p>
-          <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
+          <div className="flex items-center gap-3">
+            {/* It said the video was in My Videos and then offered no way to
+                get there — Download, Share and Re-record, all of which keep
+                you here. The one thing the sentence promises has to be
+                reachable from the sentence. */}
+            {savedVideoId && (
+              <a
+                href={`/videos?highlight=${savedVideoId}`}
+                className="text-xs font-semibold text-spark-amber hover:text-spark-blue whitespace-nowrap"
+              >
+                View it →
+              </a>
+            )}
+            <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -1244,12 +1258,9 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
             size="lg"
             className="gap-2"
           >
-            {/* "Upload to Social" read as "publish this to Instagram", which
-                is a thing to decide later — so a recording someone only wanted
-                to KEEP was left unsaved, and it lives in a Blob in this tab
-                until the page goes away. This button is the only thing that
-                puts the take in My Videos, and it has to say so. Publishing
-                still follows: the share sheet opens once it is saved. */}
+            {/* No longer the only route into My Videos — takes save
+                themselves the moment they finish — so it is the share sheet
+                once that has happened, and the retry if it has not. */}
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
