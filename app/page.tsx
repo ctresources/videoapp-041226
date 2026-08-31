@@ -171,6 +171,16 @@ const marqueeRow2 = [
 // While `src` is empty the card is HIDDEN from real visitors — the section only
 // appears once at least one sample is filled in. Running `npm run dev` shows a
 // labeled placeholder in its place so you can see where each one lands.
+//
+// Use a video rendered AFTER 2026-08-30, and check it on an actual iPhone.
+// Renders stored before that date have their MP4 index (the `moov` atom) at
+// the END of the file, and iOS will not begin playback on those — it shows a
+// frame and the play button does nothing, which looks exactly like a broken
+// product to a visitor deciding whether to sign up. lib/utils/faststart.ts now
+// fixes this on the way into storage, but only for videos stored since; the
+// older ones in the bucket were never backfilled. If you must use an older
+// render, remux it first:
+//   ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4
 const SAMPLE_VIDEOS = [
   {
     label: "Short reel",
