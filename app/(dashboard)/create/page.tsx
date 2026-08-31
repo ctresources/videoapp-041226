@@ -1031,6 +1031,22 @@ function CreatePageInner() {
         </div>
       )}
 
+      {/* Says out loud what the row is doing, because the row is doing two
+          things: the first three choose where the words come from, and the
+          fourth chooses who is on screen. Until this row becomes one question
+          — a separate piece of work — naming the split is the honest fix.
+
+          It also puts the price beside the choice that sets it. A rendered
+          video spends a credit and the camera does not, and today that only
+          surfaces three steps later, after a script has been written. */}
+      {step === "input" && (
+        <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
+          The first three write the script and render the video for you — one credit each.{" "}
+          <strong className="font-semibold text-spark-ink">My camera</strong> is you on screen,
+          reading it yourself, and doesn&rsquo;t spend one.
+        </p>
+      )}
+
       {/* ── Your topic ──
           One card, per the v2 composer. The speak-or-type choice used to be
           two large tiles in a section of their own, above a second section
@@ -1905,7 +1921,12 @@ function CreatePageInner() {
               <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Where your script comes from</p>
               <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
                 {([
-                  { key: "speak" as const,   label: "Speak a topic",  sub: "we write it" },
+                  // Named the same as the top row's tab, because it is the
+                  // same thing. Calling it "Speak a topic" here and "AI writes
+                  // it" up there made one option look like two, which is most
+                  // of why this row reads as a repeat of a question already
+                  // answered rather than the finer version of it.
+                  { key: "speak" as const,   label: "AI writes it",   sub: "say a topic" },
                   { key: "uploads" as const, label: "From a PDF or link", sub: "we read it first" },
                   // Two uploads live on this screen and they do opposite
                   // things: the one above keeps your footage and publishes it,
