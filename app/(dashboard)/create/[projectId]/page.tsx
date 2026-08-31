@@ -368,6 +368,15 @@ export default function ProjectEditorPage() {
    * Photos and music still play: neither identifies anyone.
    */
   const [tpUnbranded, setTpUnbranded] = useState(false);
+  /**
+   * The closing ask, as the teleprompter will actually read it.
+   *
+   * The CTA field is filled from the agent's profile default — their name, and
+   * an invitation to call them — so on an unbranded cut it is the single most
+   * likely way branding reaches the audio. Derived rather than cleared:
+   * unticking the box brings their own wording back exactly as they left it.
+   */
+  const spokenCta = tpUnbranded ? "" : editedCta;
   const recordedChunksRef = useRef<Blob[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
@@ -433,7 +442,7 @@ export default function ProjectEditorPage() {
     if (!showTeleprompter || !tpFlowMode || !tpFlowSupported) return;
     setTpAutoScroll(false);
     const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
-    const flowText = [tpHook, editedScript, editedCta].filter(Boolean).join(" ");
+    const flowText = [tpHook, editedScript, spokenCta].filter(Boolean).join(" ");
     const flowWords = tokenizeScript(flowText).length;
     const follower = new VoiceFollower(
       flowText,
@@ -922,7 +931,14 @@ export default function ProjectEditorPage() {
       const res = await fetch("/api/ai/generate-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordingId: project.voice_recording_id, projectType: project.project_type }),
+        // Regenerating is the one moment the script can be rewritten for an
+        // unbranded cut — the first pass ran before this project had a camera
+        // setting to read.
+        body: JSON.stringify({
+          recordingId: project.voice_recording_id,
+          projectType: project.project_type,
+          unbranded: tpUnbranded,
+        }),
       });
       if (!res.ok) {
         const err = await safeJson(res);
@@ -1549,8 +1565,11 @@ export default function ProjectEditorPage() {
       const { videoId } = await uploadCameraRecording(blob, {
         projectId,
         videoType: selectedVideoType === "youtube_long" ? "youtube_16x9" : selectedVideoType,
-        title: `Teleprompter: ${project?.title ?? "Recording"}`,
-        script: [selectedHook || script?.hook, editedScript, editedCta].filter(Boolean).join("\n\n"),
+        title: `Teleprompter: ${project?.title ?? "Recording"}${tpUnbranded ? " (unbranded)" : ""}`,
+        // The words that were actually read, which on an unbranded cut is the
+        // script without its closing ask. Saving the branded CTA here would
+        // caption and describe the video with a line nobody said.
+        script: [selectedHook || script?.hook, editedScript, spokenCta].filter(Boolean).join("\n\n"),
       });
       closeTeleprompter();
       toast.success("Recording saved! No AI charges — your video is ready.");
@@ -2198,9 +2217,11 @@ export default function ProjectEditorPage() {
                   </span>
                   <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
                     Records without your logo, name bar, licence or contact end card — photos and
-                    music still play. Your script is not rewritten, so read it through first: a
-                    spoken &ldquo;give me a call&rdquo; breaks unbranded rules as surely as a logo
-                    does. Check what your board requires; the rules vary.
+                    music still play. The teleprompter drops your closing ask and contact line too,
+                    since a spoken &ldquo;give me a call&rdquo; breaks unbranded rules as surely as
+                    a logo does. The script body was written before you ticked this, so read it
+                    through — or regenerate it and it will be written unbranded. Check what your
+                    board requires; the rules vary.
                   </span>
                 </span>
               </label>
@@ -2759,17 +2780,29 @@ export default function ProjectEditorPage() {
                   <FlowWords text={editedScript} offset={tpHookLen} />
                 </p>
               </div>
-              <div>
-                <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
-                <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
-                  <FlowWords text={editedCta} offset={tpHookLen + tpScriptLen} />
-                </p>
-                {buildContactLine() && (
-                  <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
-                    {buildContactLine()}
+              {/* Both the CTA and the contact line name the agent, so an
+                  unbranded cut shows neither — a prompter that puts the words
+                  in front of someone is a prompter that gets them read. */}
+              {tpUnbranded ? (
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Unbranded cut</p>
+                  <p className="text-white/50 text-xl leading-relaxed text-center">
+                    No closing ask and no contact details — end on the property.
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
+                  <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
+                    <FlowWords text={editedCta} offset={tpHookLen + tpScriptLen} />
+                  </p>
+                  {buildContactLine() && (
+                    <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
+                      {buildContactLine()}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="text-center pt-8">
                 <p className="text-white/20 text-xl">— End of Script —</p>
               </div>

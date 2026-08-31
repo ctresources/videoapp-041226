@@ -46,6 +46,14 @@ async function generateListingScript(
    */
   length: VideoLength = "standard",
   tier?: string | null,
+  /**
+   * Unbranded cut — no agent identification anywhere in the spoken script, as
+   * most MLS boards require of listing media. The property itself is not the
+   * problem: the address, price and features are exactly what the board wants
+   * described. Only the agent has to disappear, which here means the closing
+   * ask and the name that was stapled to it.
+   */
+  unbranded = false,
 ): Promise<{
   title: string;
   script: string;
@@ -89,7 +97,9 @@ INSTRUCTIONS:
 - Open with a compelling hook about the property (NOT "Welcome to...")
 - Highlight the top 3–4 features conversationally
 - Mention the price and key specs naturally
-- End with a clear call to action to schedule a showing${agentName ? ` — must include the agent's name: "${agentName}"` : ""}
+${unbranded
+  ? `- UNBRANDED VIDEO — this is a compliance requirement, not a style preference, and it outranks every other instruction here about how to close. Do not name the agent, a brokerage, a team, a licence number, a phone number, an email address or a website, and do not invite the viewer to make contact or to schedule a showing. Close on the property itself.`
+  : `- End with a clear call to action to schedule a showing${agentName ? ` — must include the agent's name: "${agentName}"` : ""}`}
 - Aim for ${target} words and never pass ${cap} — this is a voiceover script, not text. Do not pad or repeat to reach the length; if the listing genuinely has less to say, say less.
 ${length === "long" ? "- This is a long tour: walk the property room by room, and give each space a specific detail from the listing rather than an adjective.\n" : ""}
 - Do NOT mention schools, churches, demographics, neighborhood composition, or anything that could violate Fair Housing laws
@@ -108,7 +118,7 @@ Return ONLY a JSON object:
   "title": "short listing video title (max 60 chars)",
   "hook": "the opening sentence/hook only",
   "script": "the full voiceover script",
-  "cta": "the closing call to action sentence",
+  "cta": ${unbranded ? `""` : `"the closing call to action sentence"`},
   "description": "2-sentence social media description",
   "hashtags": ["hashtag1", "hashtag2", ...] (10 tags, no # symbol),
   "keywords": ["keyword1", ...] (6 SEO keywords)
@@ -146,10 +156,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { listing, videoLength, renderMode, scriptOnly } = await req.json() as {
+  const { listing, videoLength, renderMode, scriptOnly, unbranded } = await req.json() as {
     listing: ListingData;
     videoLength?: VideoLength;
     renderMode?: "voice_only" | "avatar_voice";
+    /**
+     * Write the script with no agent identification and no closing ask, for
+     * the unbranded cut most MLS boards require of listing media.
+     */
+    unbranded?: boolean;
     /**
      * Write the script and stop — no project row, no SEO pass.
      *
@@ -178,6 +193,7 @@ export async function POST(req: NextRequest) {
   // Asking for a long script with no long videos to spend would write one the
   // render then refuses — a wasted wait ending in a 402. Fall back to standard
   // instead of failing: the script is still the one they can actually make.
+  const isUnbranded = unbranded === true;
   const isAdmin = (profile as { role?: string | null }).role === "admin";
   const canGoLong = isAdmin || availableFor(profile as never, "long") > 0;
   const length: VideoLength = videoLength === "long" && canGoLong ? "long" : "standard";
@@ -187,7 +203,7 @@ export async function POST(req: NextRequest) {
   let scriptData: Awaited<ReturnType<typeof generateListingScript>>;
   try {
     const agentName = (profile as { full_name?: string | null }).full_name || undefined;
-    scriptData = await generateListingScript(listing, agentName, length, tier);
+    scriptData = await generateListingScript(listing, agentName, length, tier, isUnbranded);
   } catch (err) {
     console.error("Listing script error:", err);
     return NextResponse.json({ error: "Failed to generate script. Please try again." }, { status: 500 });
@@ -197,7 +213,10 @@ export async function POST(req: NextRequest) {
   // hypothetical — the same clamp runs after every other script in the app for
   // that reason. Doing it here means the word count the editor shows is the
   // word count that gets spoken, rather than one the render silently trims.
-  const ctaClamped = clampScript(scriptData.cta ?? "", 200);
+  // Emptied here rather than trusted to the prompt: the CTA is joined onto the
+  // spoken script downstream, so a model that writes one anyway would put an
+  // invitation to call the agent into the very video that may not carry one.
+  const ctaClamped = isUnbranded ? "" : clampScript(scriptData.cta ?? "", 200);
   const ctaWords = ctaClamped.trim().split(/\s+/).filter(Boolean).length;
   scriptData.cta = ctaClamped;
   scriptData.script = clampScript(

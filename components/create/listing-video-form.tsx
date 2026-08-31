@@ -85,6 +85,13 @@ export function ListingVideoForm({ onRecordYourself }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [videoLength, setVideoLength] = useState<VideoLength>("standard");
+  /**
+   * Unbranded script — no agent name and no closing ask, for the cut most MLS
+   * boards require of listing media. Set here rather than after the fact
+   * because it changes how the script is written, not just what is drawn over
+   * it: an unbranded overlay on a script that says "call me" is not compliant.
+   */
+  const [unbranded, setUnbranded] = useState(false);
   // Defaults to the avatar, which is what the editor has always defaulted to —
   // this only makes the other choice reachable before the script is written,
   // rather than two screens later.
@@ -285,7 +292,10 @@ export function ListingVideoForm({ onRecordYourself }: {
       const res = await fetch("/api/ai/listing-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing, videoLength, renderMode, ...(record && { scriptOnly: true }) }),
+        body: JSON.stringify({
+          listing, videoLength, renderMode, unbranded,
+          ...(record && { scriptOnly: true }),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -850,6 +860,28 @@ export function ListingVideoForm({ onRecordYourself }: {
           })}
         </div>
       </div>
+
+      {/* Sits with the script settings, not with the recorder: this changes
+          the words that get written, and by the time there is a video to put
+          overlays on it is too late to un-say "call me". */}
+      <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-spark-rule px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={unbranded}
+          onChange={(e) => setUnbranded(e.target.checked)}
+          className="mt-0.5 size-4 shrink-0 accent-spark-amber"
+        />
+        <span className="min-w-0">
+          <span className="block text-[12px] font-semibold text-spark-ink">
+            Unbranded script for the MLS
+          </span>
+          <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+            Writes the tour with no name, brokerage or closing ask — the property still gets its
+            address, price and features. Tick the matching box on the recorder to leave the
+            overlays off too. Check what your board requires; the rules vary.
+          </span>
+        </span>
+      </label>
 
       {/* Generate button */}
       <Button

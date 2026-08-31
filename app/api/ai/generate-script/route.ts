@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { recordingId, projectType = "blog_video", videoLength } = await req.json();
+  const { recordingId, projectType = "blog_video", videoLength, unbranded } = await req.json();
+  const isUnbranded = unbranded === true;
   if (!recordingId) return NextResponse.json({ error: "recordingId required" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -64,7 +65,13 @@ export async function POST(req: NextRequest) {
 
   try {
     // Script generation is required — uses sonar-pro with web search (~30-50s)
-    const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType, words);
+    const aiScript = await generateVideoScript(enrichedTranscript, agentName, projectType, words, isUnbranded);
+
+    // The prompt asks for an empty CTA on an unbranded cut; this is what makes
+    // it true. The CTA is joined onto the spoken script downstream, so a model
+    // that writes one anyway would put "give me a call" into the very video
+    // that may not carry it — and nothing later in the flow would catch it.
+    if (isUnbranded) aiScript.cta = "";
 
     const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
 

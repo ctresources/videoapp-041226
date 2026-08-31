@@ -97,14 +97,32 @@ export async function generateVideoScript(
    * a "long" video came out a couple of minutes.
    */
   targetWords?: number,
+  /**
+   * Unbranded cut — the video carries no agent identification, as most MLS
+   * boards require of listing media.
+   *
+   * Only the SPOKEN fields are affected: the script loses its closing ask and
+   * the `cta` comes back empty, because both are read aloud. The blog copy,
+   * description and hashtags are still written branded — they are published
+   * to the agent's own channels, not filed with a board, and stripping the
+   * agent out of their own blog post would be a different (wrong) feature.
+   */
+  unbranded = false,
 ): Promise<ScriptOutput> {
+  // The closing beat of the script, and the single place the agent's name is
+  // invited into the narration. Everything else about the script is unchanged
+  // between the two cuts.
+  const voice = unbranded ? "the agent's voice, without ever naming them" : `${agentName}'s voice`;
+  const closing = unbranded
+    ? "close on what the data means for the viewer — no call to action, no names, no contact details"
+    : "CTA";
   const scriptSpec = targetWords && targetWords > 0
-    ? `complete ${Math.round(targetWords * 0.92)}-${Math.round(targetWords * 1.08)} word video script (about ${Math.round((targetWords / 145) * 10) / 10} minutes spoken) in ${agentName}'s voice. ${
+    ? `complete ${Math.round(targetWords * 0.92)}-${Math.round(targetWords * 1.08)} word video script (about ${Math.round((targetWords / 145) * 10) / 10} minutes spoken) in ${voice}. ${
         targetWords >= 900
           ? "This is a LONG-FORM video — cover 6-9 distinct points, each developed with its own data, example, or short story, moving between them with natural spoken transitions. Do not pad or repeat to reach the length."
           : "Include specific market stats you found (prices, DOM, inventory)."
-      } Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → CTA. Write as natural spoken words.`
-    : `complete 2-4 minute video script in ${agentName}'s voice. Include specific market stats you found (prices, DOM, inventory). Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → CTA. Write as natural spoken words.`;
+      } Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → ${closing}. Write as natural spoken words.`
+    : `complete 2-4 minute video script in ${voice}. Include specific market stats you found (prices, DOM, inventory). Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → ${closing}. Write as natural spoken words.`;
   const systemPrompt = `You are an expert real estate video content strategist AND a real-time market data researcher. You create compelling, data-driven video scripts for real estate agents.
 
 YOUR PROCESS:
@@ -118,7 +136,13 @@ ABSOLUTE RULES:
 - If you cannot find specific stats, use the best available recent data and note it as approximate
 - Never fabricate numbers — use real searched data or write around stats naturally
 - Return ONLY valid JSON, no markdown fences, no explanations outside the JSON
-
+${unbranded ? `
+UNBRANDED VIDEO — COMPLIANCE RULE, NOT A STYLE PREFERENCE:
+- The "hook" and "script" fields are spoken aloud in a video that must carry no agent identification. They must not contain the agent's name, a brokerage, a team, a licence number, a phone number, an email address or a website, and must not invite the viewer to make contact in any way.
+- Return "cta" as an empty string. Do not close the script with an ask of any kind.
+- This outranks any other instruction about how to close the script.
+- The blog fields and description are published to the agent's own channels and stay written as normal.
+` : ""}
 ${FAIR_HOUSING_GUARDRAIL}`;
 
   const userPrompt = `Real estate agent "${agentName}" recorded this voice note:
@@ -137,7 +161,9 @@ STEP 2: Generate the complete content package below, incorporating the real data
   "hook": "powerful 1-2 sentence hook that opens with a surprising stat or bold insight from the market data",
   "hooks": ["hook option 1 — data-driven", "hook option 2 — question format", "hook option 3 — bold statement"],
   "script": "${scriptSpec}",
-  "cta": "call-to-action that uses '${agentName}' by name — specific and action-oriented",
+  "cta": ${unbranded
+    ? `""`
+    : `"call-to-action that uses '${agentName}' by name — specific and action-oriented"`},
   "description": "YouTube description 150-200 words including the real market stats and keywords",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3", "hashtag4", "hashtag5", "hashtag6", "hashtag7", "hashtag8", "hashtag9", "hashtag10"],
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
