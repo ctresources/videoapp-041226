@@ -1,6 +1,7 @@
 "use client";
 
-import { VoiceUploader } from "@/components/voice/voice-uploader";
+import { VoiceUploader, isVideoFile } from "@/components/voice/voice-uploader";
+import { extractSpeechWav, ClipAudioUnavailable } from "@/lib/utils/clip-audio";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -328,7 +329,15 @@ function CreatePageInner() {
     setStep("uploading");
     try {
       const formData = new FormData();
-      formData.append("audio", blob, `recording.${blob.type.includes("mp4") ? "mp4" : "webm"}`);
+      // The extension decides how the file is stored and what it is served
+      // back as, so it has to match what the blob actually is. WAV arriving
+      // here named .webm was stored as a WebM and handed to transcription as
+      // one — it worked only because the decoder sniffs the bytes anyway.
+      const ext = blob.type.includes("wav") ? "wav"
+        : blob.type.includes("mpeg") || blob.type.includes("mp3") ? "mp3"
+        : blob.type.includes("mp4") ? "mp4"
+        : "webm";
+      formData.append("audio", blob, `recording.${ext}`);
       formData.append("title", title);
       formData.append("duration", String(durationSeconds));
 
@@ -358,7 +367,34 @@ function CreatePageInner() {
   function handleFileSelected(file: File) { setUploadedFile(file); }
 
   async function handleContinue() {
-    if (uploadedFile) await processAudio(uploadedFile, 0, uploadedFile.name.replace(/\.[^/.]+$/, ""));
+    if (!uploadedFile) return;
+    const title = uploadedFile.name.replace(/\.[^/.]+$/, "");
+
+    // A video is reduced to its speech before it goes anywhere.
+    //
+    // Only the words are wanted here — the footage is discarded either way —
+    // so uploading the video itself would be sending hundreds of megabytes to
+    // have a couple of minutes of talking read out of it. Decoding in the
+    // browser turns that into a few megabytes of 16 kHz mono, which is why
+    // video can be allowed at all: the request body limit that caps audio at
+    // 50 MB never comes near it.
+    if (isVideoFile(uploadedFile)) {
+      setStep("uploading");
+      try {
+        const speech = await extractSpeechWav(uploadedFile);
+        await processAudio(speech, 0, title);
+      } catch (err) {
+        toast.error(
+          err instanceof ClipAudioUnavailable
+            ? `${err.message} Try exporting it as an audio file instead.`
+            : err instanceof Error ? err.message : "Could not read that video's audio",
+        );
+        setStep("input");
+      }
+      return;
+    }
+
+    await processAudio(uploadedFile, 0, title);
   }
 
   async function handleCameraPhotosUpload(files: FileList) {
@@ -2021,8 +2057,19 @@ function CreatePageInner() {
                 <Loader2 className="w-7 h-7 text-spark-blue animate-spin" />
               </div>
               <div>
-                <p className="font-semibold text-brand-text">Uploading Your Recording…</p>
-                <p className="text-sm text-spark-ink-faint mt-1">Securely Storing Your Audio</p>
+                {/* A video spends this step being decoded in the browser, not
+                    uploaded — saying "uploading" over a file that has not left
+                    the machine reads as a stalled upload. */}
+                <p className="font-semibold text-brand-text">
+                  {uploadedFile && isVideoFile(uploadedFile)
+                    ? "Reading The Speech From Your Video…"
+                    : "Uploading Your Recording…"}
+                </p>
+                <p className="text-sm text-spark-ink-faint mt-1">
+                  {uploadedFile && isVideoFile(uploadedFile)
+                    ? "The footage stays on your machine — only the words are sent"
+                    : "Securely Storing Your Audio"}
+                </p>
               </div>
               <Skeleton className="h-1.5 w-48" />
             </Card>

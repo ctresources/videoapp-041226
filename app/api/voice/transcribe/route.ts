@@ -28,11 +28,22 @@ export async function POST(req: NextRequest) {
     const audioBuffer = await audioResponse.arrayBuffer();
 
     // Prepare form data for ElevenLabs STT — field must be "file" not "audio"
+    //
+    // Labelled with what the file actually is rather than "audio/webm" for
+    // everything. That relabel was harmless only for as long as WebM was the
+    // one thing anyone could upload here; a WAV or an MP4 declared as WebM is
+    // a decoder being lied to and left to work it out from the bytes.
+    const contentType = audioResponse.headers.get("content-type") || "audio/webm";
+    const ext = contentType.includes("wav") ? "wav"
+      : contentType.includes("mpeg") || contentType.includes("mp3") ? "mp3"
+      : contentType.includes("mp4") ? "mp4"
+      : contentType.startsWith("video/") ? "mp4"
+      : "webm";
     const formData = new FormData();
     formData.append(
       "file",
-      new Blob([audioBuffer], { type: "audio/webm" }),
-      "recording.webm"
+      new Blob([audioBuffer], { type: contentType }),
+      `recording.${ext}`
     );
     formData.append("model_id", "scribe_v1");
     formData.append("language_code", "en");

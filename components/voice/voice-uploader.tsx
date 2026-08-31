@@ -4,8 +4,28 @@ import { cn } from "@/lib/utils/cn";
 import { Upload, FileAudio, X, CheckCircle } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
-const ACCEPTED = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/webm", "audio/mp4", "audio/m4a", "audio/ogg"];
-const MAX_MB = 50;
+const ACCEPTED_AUDIO = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/webm", "audio/mp4", "audio/m4a", "audio/ogg"];
+/**
+ * Video is accepted here too, and only its speech is used.
+ *
+ * A phone films rather than voice-memos by default, so the recording someone
+ * already has of themselves talking through a topic is usually an .mp4 — and
+ * this slot used to reject it for being the wrong container while the words
+ * inside it were exactly what was wanted. The footage is not kept: this is the
+ * entry point that mines a file for words, not the one that brands it.
+ */
+const ACCEPTED_VIDEO = ["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"];
+const ACCEPTED = [...ACCEPTED_AUDIO, ...ACCEPTED_VIDEO];
+
+/** Audio goes up as it is, so it stays bound by what a request body will
+ *  carry. A video never does — its speech is decoded out first, and two
+ *  minutes of that is a few megabytes whatever the video weighed. */
+const MAX_AUDIO_MB = 50;
+const MAX_VIDEO_MB = 300;
+
+export function isVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v)$/i.test(file.name);
+}
 
 interface VoiceUploaderProps {
   onFileSelected: (file: File) => void;
@@ -18,11 +38,13 @@ export function VoiceUploader({ onFileSelected }: VoiceUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function validate(file: File): string | null {
-    if (!ACCEPTED.some((t) => file.type === t || file.name.endsWith(t.split("/")[1]))) {
-      return "Unsupported format. Please upload MP3, WAV, M4A, or WebM.";
+    const isVideo = isVideoFile(file);
+    if (!isVideo && !ACCEPTED.some((t) => file.type === t || file.name.endsWith(t.split("/")[1]))) {
+      return "Unsupported format. Please upload MP3, WAV, M4A, WebM, MP4 or MOV.";
     }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      return `File too large. Max ${MAX_MB}MB.`;
+    const cap = isVideo ? MAX_VIDEO_MB : MAX_AUDIO_MB;
+    if (file.size > cap * 1024 * 1024) {
+      return `That file is ${Math.round(file.size / 1024 / 1024)} MB. The limit is ${cap} MB for ${isVideo ? "video" : "audio"}.`;
     }
     return null;
   }
@@ -67,9 +89,17 @@ export function VoiceUploader({ onFileSelected }: VoiceUploaderProps) {
             <Upload className="w-7 h-7 text-primary-500" />
           </div>
           <div className="text-center">
-            <p className="font-medium text-brand-text">Drop your audio file here</p>
+            <p className="font-medium text-brand-text">Drop a recording of yourself talking</p>
             <p className="text-sm text-slate-400 mt-1">or click to browse</p>
-            <p className="text-xs text-slate-300 mt-2">MP3, WAV, M4A, WebM · Max {MAX_MB}MB</p>
+            {/* Says what happens to the file, because the other upload on this
+                page keeps the footage and this one throws it away. Someone who
+                mixes those up loses a video they meant to publish. */}
+            <p className="text-xs text-slate-400 mt-2">
+              Audio or video — only the words are used, and the footage isn&apos;t kept
+            </p>
+            <p className="text-xs text-slate-300 mt-1">
+              MP3, WAV, M4A, WebM up to {MAX_AUDIO_MB}MB · MP4, MOV up to {MAX_VIDEO_MB}MB
+            </p>
           </div>
           <input
             ref={inputRef}
