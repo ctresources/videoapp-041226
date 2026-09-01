@@ -20,7 +20,14 @@ const nextConfig = {
       // Archivo files in ./fonts, and the renderer uses the Montserrat ones in
       // ./public/fonts. Naming the wrong directory shipped the binary and left
       // the typeface behind, and drawtext then failed the whole render.
-      "/api/video/photo-reel": ["./node_modules/@ffmpeg-installer/**", "./public/fonts/**"],
+      // Both font directories: the Montserrat weights in public/fonts are the
+      // preference, and ./fonts holds the Archivo and Anton files the renderer
+      // falls back to when one of those turns out not to be a font.
+      "/api/video/photo-reel": [
+        "./node_modules/@ffmpeg-installer/**",
+        "./public/fonts/**",
+        "./fonts/**",
+      ],
     },
   },
   images: {

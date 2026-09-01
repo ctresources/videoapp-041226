@@ -148,3 +148,44 @@ export async function transcribeToSrt(
   if (words.length === 0) return null;
   return buildSrt(words);
 }
+
+/**
+ * Word timings for audio someone recorded, rather than audio we synthesised.
+ *
+ * Text-to-speech hands back timings with the audio, because it decided when
+ * every word happened. A recording of a person has no such record, so the only
+ * way to caption one is to listen to it — the same ElevenLabs pass that builds
+ * a .srt, stopping one step earlier at the words themselves.
+ *
+ * Returns an empty array rather than throwing when there is no speech: a
+ * silent take is a normal thing to have recorded, and it should cost the
+ * captions rather than the video.
+ */
+export async function transcribeToWords(
+  media: Buffer | ArrayBuffer,
+  contentType = "audio/webm",
+): Promise<{ word: string; start: number; end: number }[]> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) throw new Error("ELEVENLABS_API_KEY is not set");
+
+  const bytes = media instanceof Buffer ? new Uint8Array(media) : new Uint8Array(media);
+  const formData = new FormData();
+  formData.append("file", new Blob([bytes], { type: contentType }), "voiceover.webm");
+  formData.append("model_id", "scribe_v1");
+  formData.append("language_code", "en");
+  formData.append("timestamps_granularity", "word");
+
+  const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    method: "POST",
+    headers: { "xi-api-key": apiKey },
+    body: formData,
+  });
+  if (!res.ok) {
+    throw new Error(`Transcription failed (${res.status}): ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  }
+
+  const result = await res.json();
+  return ((result.words || []) as SttWord[])
+    .filter((w) => (w.type ?? "word") === "word" && typeof w.start === "number")
+    .map((w) => ({ word: w.text, start: w.start, end: w.end }));
+}

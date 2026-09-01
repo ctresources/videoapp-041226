@@ -207,21 +207,70 @@ async function fontAttr(weight: string): Promise<string | null> {
  * Null when the font genuinely is not there, and the caller then draws no
  * text — see fontAttr for why an empty fontfile is worse than no text at all.
  */
+/**
+ * Is this actually a font, or something that merely ends in .ttf?
+ *
+ * Not a paranoid check — it is the bug. Three of the four Montserrat files in
+ * this repo are HTML pages saved with a .ttf extension: 302 KB beginning
+ * "\n\n\n\n<!DOCTYPE html>" rather than the four bytes every TrueType file
+ * starts with. Someone saved a download page instead of the download.
+ *
+ * FreeType rejects them, drawtext falls back to asking fontconfig for the
+ * family "Sans", and a serverless container has no fontconfig and no fonts —
+ * so the filter fails to initialise and the whole render dies. A developer
+ * machine hides this completely: it has system fonts, the fallback succeeds,
+ * and the render passes locally while failing in production every time.
+ */
+function looksLikeFont(bytes: Buffer): boolean {
+  if (bytes.length < 4) return false;
+  const magic = bytes.subarray(0, 4).toString("hex");
+  return (
+    magic === "00010000" || // TrueType
+    magic === "74727565" || // 'true'
+    magic === "74746366" || // 'ttcf' — TrueType Collection
+    magic === "4f54544f"    // 'OTTO' — OpenType/CFF
+  );
+}
+
+/**
+ * Copy a usable font into the render's own temp directory, and point FFmpeg
+ * there.
+ *
+ * Two problems, one function. FFmpeg cannot open files under the deployment
+ * root that Node reads happily — fs.access resolves
+ * /var/task/public/fonts/..., the spawned process gets ENOENT — so the bytes
+ * are staged into /tmp beside the photos and audio, which both processes agree
+ * exists. And the file is checked for being a font at all before it is used.
+ *
+ * The weight is a preference rather than a requirement. A title set in
+ * Montserrat Variable instead of Montserrat ExtraBold is a slightly lighter
+ * title; a title in a font that will not load is no video.
+ */
 async function stageFont(weight: string, dir: string): Promise<string | null> {
-  const src = join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`);
-  const dest = join(dir, `font-${weight}.ttf`);
-  try {
-    const bytes = await fs.readFile(src);
-    if (bytes.length === 0) throw new Error("font file is empty");
-    await fs.writeFile(dest, bytes);
-    return `fontfile='${toFFmpegPath(dest)}':`;
-  } catch (err) {
-    console.warn(
-      `[ffmpeg-render] Could not stage Montserrat-${weight}.ttf ` +
-      `(${err instanceof Error ? err.message : String(err)}) — that text will be skipped.`,
-    );
-    return null;
+  const candidates = [
+    join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`),
+    join(process.cwd(), "public", "fonts", "Montserrat-Variable.ttf"),
+    join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"),
+    join(process.cwd(), "fonts", "Anton-Regular.ttf"),
+  ];
+
+  for (const src of candidates) {
+    try {
+      const bytes = await fs.readFile(src);
+      if (!looksLikeFont(bytes)) {
+        console.warn(`[ffmpeg-render] ${src} is not a font file — skipping it.`);
+        continue;
+      }
+      const dest = join(dir, `font-${weight}.ttf`);
+      await fs.writeFile(dest, bytes);
+      return `fontfile='${toFFmpegPath(dest)}':`;
+    } catch {
+      // Missing is ordinary — try the next one.
+    }
   }
+
+  console.warn(`[ffmpeg-render] No usable font for ${weight} — that text will be skipped.`);
+  return null;
 }
 
 // ─── Main render function ─────────────────────────────────────────────────────

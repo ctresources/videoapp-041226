@@ -18,6 +18,7 @@ import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
 import { searchBackgroundMusic } from "@/lib/api/heygen";
 import { renderPhotoSlideshow, generateSilentAudio, type VideoType } from "@/lib/api/ffmpeg-render";
 import type { WordTimestamp } from "@/lib/api/whisper";
+import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
 
 // A minute of 1080x1920 with twelve photos measured near three minutes on this
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
     voiceoverPath?: string;
     /** Music preset search query, or null for none. */
     musicQuery?: string | null;
+    /** Burn the spoken words into the picture. Ignored with nothing spoken. */
+    captions?: boolean;
     city?: string;
     state?: string;
   };
@@ -86,13 +89,35 @@ export async function POST(req: NextRequest) {
       const { data, error } = await admin.storage.from("assets").download(body.voiceoverPath);
       if (error || !data) throw new Error("Could not read that voiceover recording.");
       audioBuffer = Buffer.from(await data.arrayBuffer());
+
+      /**
+       * A recording carries no timings, so captioning one means listening to it.
+       *
+       * Synthesised speech comes back with word timings attached, because the
+       * model decided when every word happened. A person talking into a
+       * microphone leaves no such record — the only way to know when they said
+       * "kitchen" is to transcribe it. That costs a second API call and a few
+       * seconds, which is why it happens only when captions were asked for.
+       *
+       * Non-fatal: losing the captions is a worse video, losing the render is
+       * no video.
+       */
+      if (body.captions) {
+        try {
+          wordTimestamps = await transcribeToWords(audioBuffer, "audio/webm");
+        } catch (e) {
+          console.warn("[photo-reel] could not transcribe the voiceover for captions:", e);
+        }
+      }
     } else if (body.script?.trim()) {
       // Their cloned voice if they have one, ElevenLabs' default if not. The
       // clone is the ElevenLabs one — the HeyGen clone only speaks inside a
       // HeyGen render, which is the credit this whole route exists to avoid.
       const speech = await generateSpeechWithTimestamps(body.script.trim(), p.voice_clone_id);
       audioBuffer = speech.audioBuffer;
-      wordTimestamps = speech.wordTimestamps;
+      // Free and exact here: the timings arrive with the audio, so captions on
+      // a written script cost nothing and never mishear a street name.
+      wordTimestamps = body.captions ? speech.wordTimestamps : [];
       spokenScript = body.script.trim();
     } else {
       // Music only. Silence sets the length precisely, which nothing else here

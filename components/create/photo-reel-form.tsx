@@ -46,6 +46,15 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
   const [voice, setVoice] = useState<Voice>("music");
   const [script, setScript] = useState("");
   const [musicId, setMusicId] = useState("inspiring");
+  /**
+   * On by default wherever there is speech, and impossible where there isn't.
+   *
+   * Most of these are watched on a phone with the sound off, so captions are
+   * closer to required than optional — but they are burned into the picture and
+   * cannot be taken out afterwards, which is exactly why it is a switch rather
+   * than an assumption.
+   */
+  const [captions, setCaptions] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -167,6 +176,7 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
           script: voice === "script" ? script.trim() : undefined,
           voiceoverPath: voice === "record" ? voiceoverPath : undefined,
           musicQuery,
+          captions: voice !== "music" && captions,
           city,
           state,
         }),
@@ -334,6 +344,29 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
                 : "Speak over the photos in your own voice."}
           </span>
         </div>
+      )}
+
+      {/* Only where there are words to caption. On the music-only route there
+          is nothing being said, so the control would be a switch with nothing
+          on the other end of it. */}
+      {voice !== "music" && (
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-spark-rule px-2.5 py-2">
+          <input
+            type="checkbox"
+            checked={captions}
+            onChange={(e) => setCaptions(e.target.checked)}
+            className="mt-0.5 size-3.5 shrink-0 accent-spark-amber"
+          />
+          <span className="min-w-0">
+            <span className="block text-[12px] font-semibold text-spark-ink">Burn in captions</span>
+            <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+              {voice === "script"
+                ? "Taken from your script, so every word is spelled the way you wrote it."
+                : "Transcribed from your recording, which adds a few seconds and can mishear a street name."}
+              {" "}They cannot be removed afterwards.
+            </span>
+          </span>
+        </label>
       )}
 
       {/* Length is only a choice when nothing is being said over the top. */}
