@@ -9,7 +9,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import { promises as fs } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 import { generateASS, type WordTimestamp } from "./whisper";
@@ -187,6 +187,41 @@ async function fontAttr(weight: string): Promise<string | null> {
   if (!_fontExists[key]) return null;
   const p = join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`);
   return `fontfile='${toFFmpegPath(p)}':`;
+}
+
+/**
+ * Copy a font into the render's own temp directory and point FFmpeg at that.
+ *
+ * Because handing FFmpeg the path under the deployment root does not work, and
+ * the logs are emphatic about it: Node's fs.access resolves
+ * /var/task/public/fonts/Montserrat-ExtraBold.ttf happily, drawtext is handed
+ * the identical string, and FFmpeg comes back with ENOENT. Whatever the
+ * deployment does to that directory — an overlay, a lazily materialised
+ * asset — a separate process spawned from ours cannot open what we can read.
+ *
+ * /tmp has no such argument about it. Photos, audio and the output all already
+ * live there, so a font copied alongside them is a path both processes agree
+ * exists. Reading it through Node is also the honest test of availability: an
+ * access check that passes and a read that fails is exactly the trap above.
+ *
+ * Null when the font genuinely is not there, and the caller then draws no
+ * text — see fontAttr for why an empty fontfile is worse than no text at all.
+ */
+async function stageFont(weight: string, dir: string): Promise<string | null> {
+  const src = join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`);
+  const dest = join(dir, `font-${weight}.ttf`);
+  try {
+    const bytes = await fs.readFile(src);
+    if (bytes.length === 0) throw new Error("font file is empty");
+    await fs.writeFile(dest, bytes);
+    return `fontfile='${toFFmpegPath(dest)}':`;
+  } catch (err) {
+    console.warn(
+      `[ffmpeg-render] Could not stage Montserrat-${weight}.ttf ` +
+      `(${err instanceof Error ? err.message : String(err)}) — that text will be skipped.`,
+    );
+    return null;
+  }
 }
 
 // ─── Main render function ─────────────────────────────────────────────────────
@@ -786,9 +821,14 @@ async function buildSlideshowAndRun(
   );
 
   // ── Font attributes ───────────────────────────────────────────────────────
+  // Staged into the render's temp directory rather than referenced where they
+  // live — see stageFont. Every other input to this graph is already a file in
+  // that directory; the fonts were the one exception and the one thing FFmpeg
+  // could not open.
+  const stageDir = dirname(outputPath);
   const [titleFontAttr, nameFontAttr] = await Promise.all([
-    fontAttr("ExtraBold"),
-    fontAttr("SemiBold"),
+    stageFont("ExtraBold", stageDir),
+    stageFont("SemiBold", stageDir),
   ]);
 
   // ── Title card (first 4 seconds) ─────────────────────────────────────────
