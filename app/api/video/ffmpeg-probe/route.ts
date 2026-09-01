@@ -111,48 +111,103 @@ export async function GET() {
       ? `✅ OK — ${r1.detail}`
       : `❌ FAILED: ${r1.detail}`;
 
-    // ── 5. The filters the slideshow actually needs ─────────────────────────
-    // zoompan is the Ken Burns move and xfade is the crossfade between photos.
-    // Both are optional at FFmpeg build time, so a binary that encodes fine can
-    // still be unable to produce the one thing this feature exists for.
-    const kb = join(dir, "kenburns.mp4");
-    const r2 = await run(
+    /**
+     * ── 5–7. The filters the slideshow actually needs ─────────────────────
+     *
+     * Split three ways because the first attempt failed with "Error
+     * initializing complex filters. Invalid argument", and that is a syntax
+     * complaint rather than a missing filter — FFmpeg says "No such filter"
+     * when a filter is genuinely absent. So the question is no longer whether
+     * zoompan and xfade exist, it is which part of the argument they refused.
+     *
+     * The prime suspect is quoting. In a shell you write
+     * z='min(zoom+0.0015,1.2)' so the shell strips the quotes and the comma
+     * survives. fluent-ffmpeg spawns the binary directly, with no shell, so
+     * those quotes arrive as literal characters inside the expression and the
+     * comma still reads as a filter separator. A comma escaped with a
+     * backslash and no quotes at all is the form that works unshelled.
+     *
+     * That matters well beyond this probe: ffmpeg-render.ts writes its zoompan
+     * expressions in exactly the quoted shell form, which would make this the
+     * reason a finished renderer has never had a caller.
+     */
+    const zpPlain = join(dir, "zp-plain.mp4");
+    const r5 = await run(
+      (cmd) => cmd
+        .input("color=c=blue:s=640x360:d=2")
+        .inputFormat("lavfi")
+        // Constant zoom: no expression, no comma, nothing to quote. If this
+        // fails the filter itself is missing from the build.
+        .complexFilter(["[0:v]zoompan=z=1.1:d=50:s=640x360[out]"], "out")
+        .outputOptions(["-pix_fmt yuv420p", "-t 2"]),
+      zpPlain,
+    );
+    results["step5_zoompan_exists"] = r5.ok ? `✅ OK — ${r5.detail}` : `❌ FAILED: ${r5.detail}`;
+
+    const zpExpr = join(dir, "zp-expr.mp4");
+    const r6 = await run(
+      (cmd) => cmd
+        .input("color=c=blue:s=640x360:d=2")
+        .inputFormat("lavfi")
+        // The real Ken Burns move: an expression with a comma in it, escaped
+        // rather than quoted. This is the line that decides whether
+        // ffmpeg-render.ts needs rewriting or merely wiring up.
+        .complexFilter(
+          ["[0:v]zoompan=z=min(zoom+0.0015\\,1.2):d=50:s=640x360[out]"],
+          "out",
+        )
+        .outputOptions(["-pix_fmt yuv420p", "-t 2"]),
+      zpExpr,
+    );
+    results["step6_zoompan_expression"] = r6.ok ? `✅ OK — ${r6.detail}` : `❌ FAILED: ${r6.detail}`;
+
+    const xf = join(dir, "xfade.mp4");
+    const r7 = await run(
       (cmd) => cmd
         .input("color=c=blue:s=640x360:d=2")
         .inputFormat("lavfi")
         .input("color=c=red:s=640x360:d=2")
         .inputFormat("lavfi")
-        .complexFilter([
-          "[0:v]zoompan=z='min(zoom+0.0015,1.2)':d=50:s=640x360[a]",
-          "[1:v]zoompan=z='min(zoom+0.0015,1.2)':d=50:s=640x360[b]",
-          "[a][b]xfade=transition=fade:duration=0.5:offset=1.5[out]",
-        ], "out")
+        .complexFilter(
+          ["[0:v][1:v]xfade=transition=fade:duration=0.5:offset=1.5[out]"],
+          "out",
+        )
         .outputOptions(["-pix_fmt yuv420p", "-t 3"]),
-      kb,
+      xf,
     );
-    results["step5_kenburns_and_crossfade"] = r2.ok
-      ? `✅ OK — ${r2.detail}`
-      : `❌ FAILED: ${r2.detail}`;
+    results["step7_xfade"] = r7.ok ? `✅ OK — ${r7.detail}` : `❌ FAILED: ${r7.detail}`;
 
-    if (r2.ok) {
+    if (r7.ok) {
       try {
-        const stat = await fs.stat(kb);
-        results["step5_output_size"] = `${(stat.size / 1024).toFixed(0)} KB for 3s at 640x360`;
+        const stat = await fs.stat(xf);
+        results["step7_output_size"] = `${(stat.size / 1024).toFixed(0)} KB for 3s at 640x360`;
       } catch { /* size is a nicety, not the finding */ }
     }
   } else {
     results["step3_executes"] = "⏭ Skipped — no binary to run";
     results["step4_basic_encode"] = "⏭ Skipped";
-    results["step5_kenburns_and_crossfade"] = "⏭ Skipped";
+    results["step5_zoompan_exists"] = "⏭ Skipped";
+    results["step6_zoompan_expression"] = "⏭ Skipped";
+    results["step7_xfade"] = "⏭ Skipped";
   }
 
   await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
 
-  const usable =
-    results["step5_kenburns_and_crossfade"]?.startsWith("✅") ?? false;
-  results["verdict"] = usable
-    ? "✅ FFmpeg works here. renderPhotoSlideshow is worth wiring up — the dead code is salvageable."
-    : "❌ Not usable as-is. Build the slideshow on the browser canvas instead, or fix the step that failed above.";
+  const zoompan = results["step5_zoompan_exists"]?.startsWith("✅") ?? false;
+  const expression = results["step6_zoompan_expression"]?.startsWith("✅") ?? false;
+  const xfade = results["step7_xfade"]?.startsWith("✅") ?? false;
+
+  results["verdict"] =
+    zoompan && expression && xfade
+      ? "✅ FFmpeg can do everything the slideshow needs. Wire up renderPhotoSlideshow — " +
+        "but rewrite its filter strings in this escaped, unquoted form first."
+      : zoompan && xfade && !expression
+        ? "⚠️ The filters work; the expression syntax is the problem. The escaping needs " +
+          "another pass — the engine itself is fine."
+        : !zoompan || !xfade
+          ? "❌ A filter this feature depends on is missing from the build. Build the " +
+            "slideshow on the browser canvas instead."
+          : "❌ Not usable as-is — see the failing step above.";
 
   return NextResponse.json(results, { status: 200 });
 }

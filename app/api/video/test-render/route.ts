@@ -1,7 +1,14 @@
 /**
  * GET /api/video/test-render
  * Diagnostic endpoint — tests each step of the HeyGen video pipeline.
+ *
+ * Admin only, and it has to be: every call spends real money. It synthesises
+ * speech through ElevenLabs, searches Pixabay and writes to storage, so while
+ * this was open anyone who knew the URL could run down the account by holding
+ * refresh. A diagnostic that costs a fraction of a cent per hit is still a
+ * diagnostic someone can bill you for.
  */
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSpeech } from "@/lib/api/elevenlabs";
 import { searchStockVideos } from "@/lib/api/stock-video";
@@ -12,6 +19,22 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: profile } = await createAdminClient()
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  // 404 rather than 403: a signed-in non-admin learning that an endpoint exists
+  // and is merely forbidden is more than they need to know about it.
+  if ((profile as { role?: string | null } | null)?.role !== "admin") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const results: Record<string, string> = {};
 
   // ── 1. Check env vars ──────────────────────────────────────────────────────
