@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus, getRemainingQuota } from "@/lib/api/heygen";
+import { getVideoStatus, getRemainingQuota, creditsToUsd } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
@@ -267,13 +267,21 @@ export async function downloadAndStoreVideo(
       const { value: after } = await getRemainingQuota();
       if (after !== null) {
         const used = before - after;
+        const credits = used >= 0 ? used : null;
         await mergeMetadata(admin, videoId, {
           quota_after: after,
           // Negative means the balance went UP mid-render — a top-up landed —
           // so the figure is meaningless rather than zero. Left null to say so.
-          heygen_quota_used: used >= 0 ? used : null,
+          heygen_quota_used: credits,
+          // Named an estimate because it is one: a conversion derived from a
+          // single confirmed render, applied to a wallet that is charged at
+          // different rates per engine. The credit count above is the fact.
+          heygen_cost_usd_est: creditsToUsd(credits),
         });
-        console.log(`[store-video] ${videoId}: HeyGen balance ${before} → ${after} (used ${used})`);
+        console.log(
+          `[store-video] ${videoId}: HeyGen balance ${before} → ${after} ` +
+          `(used ${used}${credits === null ? "" : `, ~$${creditsToUsd(credits)?.toFixed(2)}`})`,
+        );
       }
     }
   } catch (err) {

@@ -194,6 +194,29 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
  * turns out to be seconds rather than credits is still useful as long as
  * nobody has quietly labelled it "credits" on the way past.
  */
+/**
+ * Dollars per API usage credit — an estimate, and labelled one everywhere it
+ * lands.
+ *
+ * Derived from a single confirmed data point: HeyGen support put a 2.2-minute
+ * Video Agent render at 893 credits and "approximately $4.40", which is the
+ * $2.00/minute Video Agent rate expressed in the wallet's own unit. 4.40 / 893
+ * is what follows.
+ *
+ * Overridable without a deploy because a rate card is not ours to control, and
+ * because this same wallet is charged at different per-minute rates for
+ * different engines — Avatar IV at $4.00/min against Video Agent's $2.00 —
+ * so a single constant cannot be right for every render. The credit figure
+ * beside it is the measurement; this is the reading of it.
+ */
+const USD_PER_CREDIT = Number(process.env.HEYGEN_USD_PER_CREDIT || "") || 4.4 / 893;
+
+/** An estimate in dollars for a credit figure, or null when there isn't one. */
+export function creditsToUsd(credits: number | null | undefined): number | null {
+  if (typeof credits !== "number" || !Number.isFinite(credits) || credits < 0) return null;
+  return Math.round(credits * USD_PER_CREDIT * 10000) / 10000;
+}
+
 export async function getRemainingQuota(): Promise<{ value: number | null; raw: unknown }> {
   for (const path of ["/v2/user/remaining_quota", "/v1/user/remaining_quota"]) {
     try {
