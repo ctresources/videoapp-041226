@@ -864,9 +864,22 @@ async function buildSlideshowAndRun(
   filterParts.push(`[slideshow]format=yuv420p[slideshowflat]`);
   const slideshowLabel = "slideshowflat";
 
-  // ── Dark overlay ─────────────────────────────────────────────────────────
+  /**
+   * ── Dark wash, only under the title ────────────────────────────────────
+   *
+   * This used to cover the whole reel for its whole length: 40% black over
+   * every frame, which is right for stock footage carrying captions and
+   * ruinous for somebody's listing photos. A grey wash over a white kitchen
+   * reads as a black-and-white video, and the photos are the entire point of
+   * this format.
+   *
+   * The title still needs something to sit on, so the wash is kept and
+   * confined to the four seconds the title is up. Everything after that is the
+   * photograph as it was taken.
+   */
   filterParts.push(
-    `[${slideshowLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.40:t=fill[bgdark]`,
+    `[${slideshowLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.35:t=fill:` +
+    `enable=between(t\\,0\\,4)[bgdark]`,
   );
 
   // ── Font attributes ───────────────────────────────────────────────────────
@@ -916,41 +929,54 @@ async function buildSlideshowAndRun(
     currentLabel = "logoed";
   }
 
-  // ── Avatar PiP (static circular headshot) ────────────────────────────────
+  /**
+   * ── Headshot badge, bottom left ────────────────────────────────────────
+   *
+   * Not cfg.avatarX/avatarY. Those put it at 540 across a 1080-wide reel —
+   * dead centre — because they were laid out for the avatar video, where the
+   * presenter IS the picture. On a photo reel the presenter is a credit, and a
+   * two-hundred-pixel square of somebody's face in the middle of the frame
+   * covers the kitchen the video is about.
+   *
+   * Sized and placed off the short edge so all three shapes agree, and low
+   * enough to stay clear of the captions above it.
+   */
   if (avatarPath && avatarInputIdx >= 0) {
-    const aSize = cfg.avatarSize;
+    const S = Math.min(width, height);
+    const aSize = Math.round(S * 0.11);
     const aRadius = Math.floor(aSize / 2);
-    const avX = cfg.avatarX - aRadius;
-    const avY = cfg.avatarY - aRadius;
-    const borderSize = aSize + 8;
-    const borderX = cfg.avatarX - Math.floor(borderSize / 2);
-    const borderY = cfg.avatarY - Math.floor(borderSize / 2);
+    const margin = Math.round(S * 0.05);
+    const avX = margin;
+    const avY = height - margin - aSize;
+    // The ring is drawn inside the same pass that crops the circle: a filled
+    // white square behind it used to stand in for a border, and on a photo it
+    // read as exactly that — a white square with a face in it.
+    const ring = aRadius - Math.max(2, Math.round(aSize * 0.03));
+    const dist = `pow(X-${aRadius}\\,2)+pow(Y-${aRadius}\\,2)`;
+    const white = `if(gte(${dist}\\,pow(${ring}\\,2))\\,255\\,`;
     filterParts.push(
       `[${avatarInputIdx}:v]scale=${aSize}:${aSize},format=rgba,` +
-      `geq=r='r(X\\,Y)':g='g(X\\,Y)':b='b(X\\,Y)':` +
-      `a='if(lte(pow(X-${aRadius}\\,2)+pow(Y-${aRadius}\\,2)\\,pow(${aRadius - 2}\\,2))\\,255\\,0)'` +
+      `geq=r='${white}r(X\\,Y))':g='${white}g(X\\,Y))':b='${white}b(X\\,Y))':` +
+      `a='if(lte(${dist}\\,pow(${aRadius - 1}\\,2))\\,255\\,0)'` +
       `[avatarcirc]`,
     );
-    filterParts.push(
-      `[${currentLabel}]drawbox=x=${borderX}:y=${borderY}:w=${borderSize}:h=${borderSize}:color=white@1:t=fill[bordered]`,
-    );
-    filterParts.push(`[bordered][avatarcirc]overlay=x=${avX}:y=${avY}:format=auto[avatared]`);
+    filterParts.push(`[${currentLabel}][avatarcirc]overlay=x=${avX}:y=${avY}:format=auto[avatared]`);
     currentLabel = "avatared";
-  }
 
-  // ── Agent name badge ──────────────────────────────────────────────────────
-  // Same rule as the title: no font, no text. The headshot above it still
-  // draws, so the frame keeps the part that does not need one.
-  if (params.agentName && avatarPath && nameFontAttr) {
-    const escapedName = escapeDrawtext(params.agentName);
-    filterParts.push(
-      `[${currentLabel}]drawtext=text='${escapedName}':` +
-      `${nameFontAttr}fontsize=20:fontcolor=white:` +
-      `borderw=1:bordercolor=black@0.6:` +
-      `box=1:boxcolor=black@0.45:boxborderw=6:` +
-      `x=${cfg.avatarX}-text_w/2:y=${cfg.nameY}[named]`,
-    );
-    currentLabel = "named";
+    // ── Agent name, beside the badge ────────────────────────────────────────
+    // To the right of the circle rather than under it: under it would sit
+    // below the frame edge now the badge is in the corner.
+    if (params.agentName && nameFontAttr) {
+      const escapedName = escapeDrawtext(params.agentName);
+      filterParts.push(
+        `[${currentLabel}]drawtext=text='${escapedName}':` +
+        `${nameFontAttr}fontsize=${Math.round(S * 0.026)}:fontcolor=white:` +
+        `borderw=1:bordercolor=black@0.6:` +
+        `box=1:boxcolor=black@0.45:boxborderw=8:` +
+        `x=${avX + aSize + Math.round(S * 0.015)}:y=${avY + aRadius}-text_h/2[named]`,
+      );
+      currentLabel = "named";
+    }
   }
 
   // ── Background music mix ─────────────────────────────────────────────────

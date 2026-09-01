@@ -245,8 +245,15 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
         )}
       </div>
 
+      {/* Said plainly because it is two things at once, and the on-screen half
+          is the surprising one: left blank it is not merely untitled, it puts
+          the words "Photo Reel" across the opening of your video. */}
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold text-spark-ink-muted">Title</span>
+        <span className="text-[11px] font-semibold text-spark-ink-muted">
+          Title <span className="font-normal text-spark-ink-faint">
+            · shown on screen for the first 4 seconds, and names the video in My Videos
+          </span>
+        </span>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -254,6 +261,11 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
           maxLength={120}
           className="rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
         />
+        {!title.trim() && (
+          <span className="text-[11px] text-spark-ink-faint">
+            Leave it empty and the reel opens with &ldquo;Photo Reel&rdquo; written across it.
+          </span>
+        )}
       </label>
 
       {/* ── Shape ── */}
