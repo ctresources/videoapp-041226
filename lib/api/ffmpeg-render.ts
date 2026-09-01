@@ -642,6 +642,14 @@ export interface SlideshowParams {
   captionHighlightColor?: string;
   musicUrl?: string | null;  // background music (looped, mixed under voiceover)
   musicVolume?: number;      // 0–1, default 0.15
+  /**
+   * A line of text per photo, shown while that photo is on screen.
+   *
+   * Aligned to photoUrls by index, and sparse — most reels caption some photos
+   * and not others, so an empty entry means "no card on this one" rather than
+   * an empty card.
+   */
+  photoCaptions?: (string | null | undefined)[];
 }
 
 /**
@@ -775,6 +783,18 @@ async function buildSlideshowAndRun(
 
   const filterParts: string[] = [];
 
+  // ── Fonts, staged first ───────────────────────────────────────────────────
+  // Copied into the render's temp directory rather than referenced where they
+  // live — see stageFont. Every other input to this graph is already a file in
+  // that directory; the fonts were the one exception and the one thing FFmpeg
+  // could not open. Done up here because the caption cards below need to know
+  // whether there is a font before deciding to exist.
+  const stageDir = dirname(outputPath);
+  const [titleFontAttr, nameFontAttr] = await Promise.all([
+    stageFont("ExtraBold", stageDir),
+    stageFont("SemiBold", stageDir),
+  ]);
+
   // ── Input index bookkeeping ───────────────────────────────────────────────
   // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar, music, and
   // last the generated black ground the dissolves are built on. Declared up
@@ -786,6 +806,40 @@ async function buildSlideshowAndRun(
   const avatarInputIdx = avatarPath ? nextInputIdx++ : -1;
   const musicInputIdx = musicPath ? nextInputIdx++ : -1;
   const bgInputIdx = nextInputIdx++;
+
+  /**
+   * Per-photo caption cards.
+   *
+   * Each photo can carry a line that shows only while it is on screen — the
+   * "AFTER · Kitchen" card that turns a slideshow into a before-and-after.
+   * Timed off the same segment arithmetic the dissolves use, so a card appears
+   * with its photo and leaves with it rather than drifting a half-second out.
+   */
+  const captions = (params.photoCaptions ?? []).slice(0, N).map((c) => (c ?? "").trim());
+  const captionWindows = captions
+    .map((text, i) => {
+      if (!text) return null;
+      // Held from the moment this photo starts arriving to the moment the next
+      // one has finished covering it, matching the overlay windows exactly.
+      const from = i * (segDur - FADE_DUR);
+      const to = i === N - 1 ? audioDuration : (i + 1) * (segDur - FADE_DUR) + FADE_DUR;
+      return { text, from, to };
+    })
+    .filter((c): c is { text: string; from: number; to: number } => c !== null);
+
+  const panelW = Math.round(width * 0.86);
+  const panelH = Math.round(Math.min(width, height) * 0.115);
+  const panelX = Math.round((width - panelW) / 2);
+  const panelY = Math.round(height * 0.055);
+  const capFontSize = Math.round(Math.min(width, height) * 0.05);
+
+  // One panel for all of them, shown across the union of their windows —
+  // FFmpeg's expression parser treats a sum of between() as "any of these".
+  const panelPath = join(dirname(outputPath), "caption-panel.png");
+  const hasPanel = captionWindows.length > 0 && titleFontAttr
+    ? await captionPanel(panelW, panelH, panelPath)
+    : false;
+  const panelInputIdx = hasPanel ? nextInputIdx++ : -1;
 
   // ── Ken Burns (zoompan) per photo ────────────────────────────────────────
   // Scale each photo to 2× target first so zoompan has room to crop
@@ -882,17 +936,6 @@ async function buildSlideshowAndRun(
     `enable=between(t\\,0\\,4)[bgdark]`,
   );
 
-  // ── Font attributes ───────────────────────────────────────────────────────
-  // Staged into the render's temp directory rather than referenced where they
-  // live — see stageFont. Every other input to this graph is already a file in
-  // that directory; the fonts were the one exception and the one thing FFmpeg
-  // could not open.
-  const stageDir = dirname(outputPath);
-  const [titleFontAttr, nameFontAttr] = await Promise.all([
-    stageFont("ExtraBold", stageDir),
-    stageFont("SemiBold", stageDir),
-  ]);
-
   // ── Title card (first 4 seconds) ─────────────────────────────────────────
   // Skipped outright without a font, rather than drawn in one the container
   // does not have. A reel with no title over the opening shot is a small loss;
@@ -914,11 +957,45 @@ async function buildSlideshowAndRun(
     filterParts.push(`[bgdark]copy[titled]`);
   }
 
+  /**
+   * ── Per-photo caption cards ────────────────────────────────────────────
+   *
+   * The panel first, then a line of text per captioned photo. Each is switched
+   * on for its own photo's window, so a card belongs to a picture rather than
+   * to a moment in the reel — reorder the photos and the words follow them.
+   *
+   * The panel is a single overlay across the union of those windows. FFmpeg's
+   * expression parser reads a sum of between() as "any of these", which keeps
+   * twelve possible cards down to one overlay rather than twelve.
+   */
+  let cardLabel = "titled";
+  if (hasPanel && panelInputIdx >= 0) {
+    const anyWindow = captionWindows
+      .map((c) => `between(t\\,${c.from.toFixed(3)}\\,${c.to.toFixed(3)})`)
+      .join("+");
+    filterParts.push(
+      `[titled][${panelInputIdx}:v]overlay=x=${panelX}:y=${panelY}:format=auto:` +
+      `enable='${anyWindow}'[panelled]`,
+    );
+    cardLabel = "panelled";
+
+    captionWindows.forEach((c, i) => {
+      const out = i === captionWindows.length - 1 ? "carded" : `card${i}`;
+      filterParts.push(
+        `[${cardLabel}]drawtext=text='${escapeDrawtext(c.text)}':` +
+        `${titleFontAttr}fontsize=${capFontSize}:fontcolor=white:` +
+        `x=(w-text_w)/2:y=${panelY}+${Math.round(panelH / 2)}-text_h/2:` +
+        `enable='between(t\\,${c.from.toFixed(3)}\\,${c.to.toFixed(3)})'[${out}]`,
+      );
+      cardLabel = out;
+    });
+  }
+
   // ── Captions ─────────────────────────────────────────────────────────────
   if (withCaptions && params.wordTimestamps.length > 0) {
-    filterParts.push(`[titled]ass='${toFFmpegPath(assPath)}'[captioned]`);
+    filterParts.push(`[${cardLabel}]ass='${toFFmpegPath(assPath)}'[captioned]`);
   } else {
-    filterParts.push(`[titled]copy[captioned]`);
+    filterParts.push(`[${cardLabel}]copy[captioned]`);
   }
 
   // ── Logo ──────────────────────────────────────────────────────────────────
@@ -1011,6 +1088,9 @@ async function buildSlideshowAndRun(
     cmd
       .input(`color=c=black:s=${width}x${height}:d=${audioDuration.toFixed(3)}:r=30`)
       .inputFormat("lavfi");
+    // Last of all, matching panelInputIdx above. A still image looped for the
+    // whole reel, shown only where its enable expression says so.
+    if (hasPanel) cmd.input(panelPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(audioDuration) + 1}`]);
 
     cmd
       .complexFilter(filterGraph)
@@ -1054,6 +1134,37 @@ async function buildSlideshowAndRun(
  * chosen length is how a music-only reel gets to be thirty seconds rather than
  * however long the bed happens to run.
  */
+/**
+ * The rounded panel a caption sits on.
+ *
+ * Shape only — no text in the SVG. Sharp renders text through the system's
+ * font stack, which is the fontconfig dependency that has already cost this
+ * feature an afternoon; a rectangle with rounded corners needs none of it, and
+ * FFmpeg draws the words on top afterwards.
+ *
+ * One panel serves every caption. It is a fixed size rather than fitted to
+ * each line, which is what makes that possible: measuring text to size a box
+ * would mean predicting what FFmpeg is about to do, and a consistent card in
+ * the same place every time reads better anyway.
+ */
+async function captionPanel(width: number, height: number, dest: string): Promise<boolean> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const r = Math.round(height * 0.22);
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+      `<rect x="0" y="0" width="${width}" height="${height}" rx="${r}" ry="${r}" ` +
+      `fill="rgb(18,22,30)" fill-opacity="0.72"/></svg>`;
+    await sharp(Buffer.from(svg)).png().toFile(dest);
+    return true;
+  } catch (err) {
+    // Captions fall back to FFmpeg's own square box below, which is the same
+    // information in a plainer frame.
+    console.warn(`[ffmpeg-render] Caption panel unavailable: ${err instanceof Error ? err.message : err}`);
+    return false;
+  }
+}
+
 export async function generateSilentAudio(seconds: number): Promise<Buffer> {
   const dir = join(tmpdir(), `silence-${randomUUID()}`);
   await fs.mkdir(dir, { recursive: true });

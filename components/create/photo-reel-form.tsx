@@ -38,7 +38,8 @@ const LENGTHS = [7, 12, 30, 60] as const;
 type Voice = "music" | "script" | "record";
 
 export function PhotoReelForm({ city, state }: { city?: string; state?: string }) {
-  const [photos, setPhotos] = useState<{ url: string; name: string }[]>([]);
+  /** Each photo carries its own optional line of on-screen text. */
+  const [photos, setPhotos] = useState<{ url: string; name: string; caption: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<string>("reel_9x16");
@@ -82,7 +83,7 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
       const added = await Promise.all(
         Array.from(files).slice(0, room).map(async (f) => {
           const { url, name } = await uploadVideoPhoto(f);
-          return { url, name };
+          return { url, name, caption: "" };
         }),
       );
       setPhotos((prev) => [...prev, ...added].slice(0, MAX_PHOTOS));
@@ -170,6 +171,7 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           photoUrls: photos.map((p) => p.url),
+          photoCaptions: photos.map((p) => p.caption),
           title: title.trim() || "Photo Reel",
           format,
           seconds,
@@ -206,22 +208,40 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
         <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">
           Photos <span className="font-normal text-spark-ink-faint">· up to {MAX_PHOTOS}, in this order</span>
         </p>
+        {/* A row per photo rather than a grid of thumbnails, because each one
+            now carries a line of text and a caption needs to sit beside the
+            picture it labels — a caption under a grid is a guessing game. */}
         {photos.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          <div className="mb-2 flex flex-col gap-1.5">
             {photos.map((p, i) => (
-              <div key={p.url} className="relative">
+              <div key={p.url} className="flex items-center gap-2">
+                <span className="w-4 shrink-0 text-[11px] tabular-nums text-spark-ink-faint">{i + 1}</span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt={p.name} className="h-14 w-14 rounded-lg border border-spark-rule object-cover" />
+                <img src={p.url} alt={p.name} className="h-12 w-12 shrink-0 rounded-lg border border-spark-rule object-cover" />
+                <input
+                  value={p.caption}
+                  onChange={(e) => {
+                    const caption = e.target.value;
+                    setPhotos((prev) => prev.map((q, j) => (j === i ? { ...q, caption } : q)));
+                  }}
+                  placeholder={i === 0 ? "Text on this photo — e.g. BEFORE · Kitchen" : "Optional text"}
+                  maxLength={80}
+                  className="min-w-0 flex-1 rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
+                />
                 <button
                   type="button"
                   onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
-                  className="absolute -right-1.5 -top-1.5 rounded-full bg-spark-ink p-0.5 text-white"
+                  className="shrink-0 rounded-full bg-spark-ink p-1 text-white"
                   aria-label={`Remove photo ${i + 1}`}
                 >
                   <X size={11} />
                 </button>
               </div>
             ))}
+            <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
+              Text appears on a card at the top while that photo is up, and only on the photos you
+              write one for. Leave them all blank for a reel with no labels.
+            </p>
           </div>
         )}
         {photos.length < MAX_PHOTOS && (

@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as {
     photoUrls?: string[];
+    /** A line per photo, by index — "AFTER · Kitchen" and the like. Sparse. */
+    photoCaptions?: (string | null)[];
     title?: string;
     format?: string;
     seconds?: number;
@@ -147,6 +149,11 @@ export async function POST(req: NextRequest) {
         audioBuffer,
         photoUrls,
         wordTimestamps,
+        // Trimmed to the photos that survived the cap, so a caption cannot end
+        // up on the photo after the one it was written for.
+        photoCaptions: (body.photoCaptions ?? [])
+          .slice(0, photoUrls.length)
+          .map((c) => (typeof c === "string" ? c.trim().slice(0, 80) : "")),
         logoUrl: p.logo_url ?? undefined,
         avatarUrl: p.avatar_url ?? undefined,
         agentName: p.full_name ?? undefined,
