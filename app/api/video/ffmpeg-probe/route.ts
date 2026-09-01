@@ -33,15 +33,33 @@ export const maxDuration = 60;
 
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
-/** Runs ffmpeg and resolves either way, so one failed step still reports. */
+/**
+ * Runs ffmpeg and resolves either way, so one failed step still reports.
+ *
+ * The whole of stderr is kept, and the useful line picked out of it. The first
+ * version of this returned the last three lines, which is exactly where the
+ * information isn't: "Error initializing complex filters. Invalid argument" is
+ * the summary FFmpeg prints last, and the sentence naming the actual problem
+ * sits above it. That truncation cost a round trip.
+ */
 function run(build: (cmd: ffmpeg.FfmpegCommand) => ffmpeg.FfmpegCommand, out: string) {
   return new Promise<{ ok: boolean; detail: string }>((resolve) => {
     const started = Date.now();
+    const stderr: string[] = [];
     build(ffmpeg())
+      .on("stderr", (line: string) => stderr.push(line))
       .on("end", () => resolve({ ok: true, detail: `${Date.now() - started} ms` }))
-      .on("error", (err: Error) =>
-        resolve({ ok: false, detail: `${err.message.split("\n").slice(-3).join(" ").slice(0, 300)}` }),
-      )
+      .on("error", (err: Error) => {
+        // Lines that name a cause, preferred over the generic summary.
+        const telling = stderr.filter((l) =>
+          /no such filter|invalid|cannot|unable|error|unrecognized|does not|mismatch/i.test(l),
+        );
+        const chosen = (telling.length ? telling : stderr).slice(-4).join(" | ");
+        resolve({
+          ok: false,
+          detail: (chosen || err.message).replace(/\s+/g, " ").slice(0, 400),
+        });
+      })
       .save(out);
   });
 }
@@ -161,8 +179,23 @@ export async function GET() {
     );
     results["step6_zoompan_expression"] = r6.ok ? `✅ OK — ${r6.detail}` : `❌ FAILED: ${r6.detail}`;
 
+    // Ask the binary outright, rather than inferring absence from a failed
+    // render. "Is the filter here" and "did I call it correctly" were being
+    // answered by the same test, and they are not the same question.
+    const filters = await new Promise<string[]>((resolve) => {
+      ffmpeg.getAvailableFilters((err, list) =>
+        resolve(err ? [] : Object.keys(list ?? {})),
+      );
+    });
+    results["step7_filters_present"] =
+      `xfade=${filters.includes("xfade") ? "✅" : "❌"} · ` +
+      `zoompan=${filters.includes("zoompan") ? "✅" : "❌"} · ` +
+      `overlay=${filters.includes("overlay") ? "✅" : "❌"} · ` +
+      `blend=${filters.includes("blend") ? "✅" : "❌"} · ` +
+      `${filters.length} filters total`;
+
     const xf = join(dir, "xfade.mp4");
-    const r7 = await run(
+    const r8 = await run(
       (cmd) => cmd
         .input("color=c=blue:s=640x360:d=2")
         .inputFormat("lavfi")
@@ -175,39 +208,83 @@ export async function GET() {
         .outputOptions(["-pix_fmt yuv420p", "-t 3"]),
       xf,
     );
-    results["step7_xfade"] = r7.ok ? `✅ OK — ${r7.detail}` : `❌ FAILED: ${r7.detail}`;
+    results["step8_xfade_plain"] = r8.ok ? `✅ OK — ${r8.detail}` : `❌ FAILED: ${r8.detail}`;
 
-    if (r7.ok) {
+    // xfade is famously fussy about its two inputs agreeing: same pixel
+    // format, same frame rate, same timebase. lavfi sources look identical and
+    // are not, so this is the standard recipe rather than a workaround — and
+    // if this passes where the plain attempt failed, the engine is fine and
+    // only the input handling needed saying out loud.
+    const xfNorm = join(dir, "xfade-norm.mp4");
+    const r9 = await run(
+      (cmd) => cmd
+        .input("color=c=blue:s=640x360:d=2")
+        .inputFormat("lavfi")
+        .input("color=c=red:s=640x360:d=2")
+        .inputFormat("lavfi")
+        .complexFilter(
+          [
+            "[0:v]format=yuv420p,fps=25,settb=AVTB[a]",
+            "[1:v]format=yuv420p,fps=25,settb=AVTB[b]",
+            "[a][b]xfade=transition=fade:duration=0.5:offset=1.5[out]",
+          ],
+          "out",
+        )
+        .outputOptions(["-pix_fmt yuv420p", "-t 3"]),
+      xfNorm,
+    );
+    results["step9_xfade_normalized"] = r9.ok ? `✅ OK — ${r9.detail}` : `❌ FAILED: ${r9.detail}`;
+
+    // The fallback if xfade is truly out: fade each photo to black and back.
+    // A different look rather than a lesser one — plenty of property films cut
+    // through black on purpose — so it is worth knowing it works.
+    const fadeBlack = join(dir, "fade-black.mp4");
+    const r10 = await run(
+      (cmd) => cmd
+        .input("color=c=blue:s=640x360:d=2")
+        .inputFormat("lavfi")
+        .complexFilter(["[0:v]fade=t=in:st=0:d=0.5,fade=t=out:st=1.5:d=0.5[out]"], "out")
+        .outputOptions(["-pix_fmt yuv420p", "-t 2"]),
+      fadeBlack,
+    );
+    results["step10_fade_through_black"] = r10.ok ? `✅ OK — ${r10.detail}` : `❌ FAILED: ${r10.detail}`;
+
+    const best = r9.ok ? xfNorm : r8.ok ? xf : null;
+    if (best) {
       try {
-        const stat = await fs.stat(xf);
-        results["step7_output_size"] = `${(stat.size / 1024).toFixed(0)} KB for 3s at 640x360`;
+        const stat = await fs.stat(best);
+        results["output_size"] = `${(stat.size / 1024).toFixed(0)} KB for 3s at 640x360`;
       } catch { /* size is a nicety, not the finding */ }
     }
   } else {
     results["step3_executes"] = "⏭ Skipped — no binary to run";
     results["step4_basic_encode"] = "⏭ Skipped";
-    results["step5_zoompan_exists"] = "⏭ Skipped";
-    results["step6_zoompan_expression"] = "⏭ Skipped";
-    results["step7_xfade"] = "⏭ Skipped";
+    for (const k of [
+      "step5_zoompan_exists", "step6_zoompan_expression", "step7_filters_present",
+      "step8_xfade_plain", "step9_xfade_normalized", "step10_fade_through_black",
+    ]) results[k] = "⏭ Skipped";
   }
 
   await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
 
-  const zoompan = results["step5_zoompan_exists"]?.startsWith("✅") ?? false;
-  const expression = results["step6_zoompan_expression"]?.startsWith("✅") ?? false;
-  const xfade = results["step7_xfade"]?.startsWith("✅") ?? false;
+  const kenBurns =
+    (results["step5_zoompan_exists"]?.startsWith("✅") ?? false) &&
+    (results["step6_zoompan_expression"]?.startsWith("✅") ?? false);
+  const crossfade =
+    (results["step8_xfade_plain"]?.startsWith("✅") ?? false) ||
+    (results["step9_xfade_normalized"]?.startsWith("✅") ?? false);
+  const throughBlack = results["step10_fade_through_black"]?.startsWith("✅") ?? false;
 
-  results["verdict"] =
-    zoompan && expression && xfade
-      ? "✅ FFmpeg can do everything the slideshow needs. Wire up renderPhotoSlideshow — " +
-        "but rewrite its filter strings in this escaped, unquoted form first."
-      : zoompan && xfade && !expression
-        ? "⚠️ The filters work; the expression syntax is the problem. The escaping needs " +
-          "another pass — the engine itself is fine."
-        : !zoompan || !xfade
-          ? "❌ A filter this feature depends on is missing from the build. Build the " +
-            "slideshow on the browser canvas instead."
-          : "❌ Not usable as-is — see the failing step above.";
+  results["verdict"] = !kenBurns
+    ? "❌ Ken Burns itself won't run here. Build the slideshow on the browser canvas."
+    : crossfade
+      ? "✅ Everything the slideshow needs works. Wire up renderPhotoSlideshow — rewriting " +
+        "its filter strings in the escaped, unquoted form this probe proved, and normalising " +
+        "inputs before xfade if only step 9 passed."
+      : throughBlack
+        ? "✅ Ken Burns works; crossfades don't. Build it with fades through black between " +
+          "photos — a different look, not a lesser one, and plenty of property films cut that way."
+        : "⚠️ Ken Burns works but no transition does. Hard cuts, or the browser canvas.";
 
   return NextResponse.json(results, { status: 200 });
 }
