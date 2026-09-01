@@ -99,13 +99,41 @@ async function downloadFile(url: string, dest: string): Promise<boolean> {
   }
 }
 
+/**
+ * How long the audio is, without ffprobe.
+ *
+ * @ffmpeg-installer ships one binary — ffmpeg — and nothing in this project
+ * installs ffprobe, so `ffmpeg.ffprobe()` fails with "Cannot find ffprobe" on
+ * the first call. Every render here begins by measuring its audio, so that
+ * alone was enough to stop this module ever producing a video, quite apart
+ * from the missing xfade filter.
+ *
+ * FFmpeg reports the duration itself when asked to open a file with no output.
+ * It exits non-zero doing so, which is expected rather than a failure — the
+ * line we want is on stderr either way.
+ */
 async function probeAudioDuration(filePath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, metadata) => {
-      if (err) return reject(err);
-      resolve(metadata.format.duration || 60);
-    });
+  const stderr = await new Promise<string>((resolve) => {
+    let buf = "";
+    ffmpeg(filePath)
+      .on("stderr", (line: string) => { buf += line + "\n"; })
+      .on("error", () => resolve(buf))
+      .on("end", () => resolve(buf))
+      // No output file: FFmpeg prints what it found and stops.
+      .addOption("-f", "null")
+      .save(process.platform === "win32" ? "NUL" : "/dev/null");
   });
+
+  const m = stderr.match(/Duration:\s*(\d+):(\d{2}):(\d{2}(?:\.\d+)?)/);
+  if (m) {
+    const seconds = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+    if (Number.isFinite(seconds) && seconds > 0) return seconds;
+  }
+
+  // Better a usable default than a failed render: the caller's own -t bounds
+  // the output, so an over-long guess costs a trim rather than a broken video.
+  console.warn("[ffmpeg-render] Could not read audio duration; assuming 60s.");
+  return 60;
 }
 
 /** Escape text for FFmpeg drawtext filter (colons, backslashes, single quotes). */
@@ -622,12 +650,36 @@ async function buildSlideshowAndRun(
 ): Promise<void> {
   const { width, height } = cfg;
   const N = photoPaths.length;
-  const FADE_DUR = 0.5;
+
+  /**
+   * The dissolve is a fraction of the hold, not a fixed half-second.
+   *
+   * Twelve photos in twelve seconds gives each one a second on screen, and a
+   * half-second dissolve would then be half of every photo's life spent
+   * half-transparent — the reel reads as permanently mid-transition. A quarter
+   * of the hold keeps the same feel whether a photo holds for five seconds or
+   * for one, and the half-second ceiling stops a long hold drifting into a
+   * languid dissolve nobody asked for.
+   */
+  const roughSeg = audioDuration / Math.max(1, N);
+  const FADE_DUR = Math.max(0.12, Math.min(0.5, roughSeg * 0.25));
   // Per-photo duration accounting for crossfade overlap
   const segDur = N > 1 ? (audioDuration + (N - 1) * FADE_DUR) / N : audioDuration;
   const frames = Math.ceil(segDur * 30);
 
   const filterParts: string[] = [];
+
+  // ── Input index bookkeeping ───────────────────────────────────────────────
+  // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar, music, and
+  // last the generated black ground the dissolves are built on. Declared up
+  // here because the dissolve chain below needs the ground's index, and the
+  // order these are added to the command has to match this exactly.
+  const audioInputIdx = N;
+  let nextInputIdx = N + 1;
+  const logoInputIdx = logoPath ? nextInputIdx++ : -1;
+  const avatarInputIdx = avatarPath ? nextInputIdx++ : -1;
+  const musicInputIdx = musicPath ? nextInputIdx++ : -1;
+  const bgInputIdx = nextInputIdx++;
 
   // ── Ken Burns (zoompan) per photo ────────────────────────────────────────
   // Scale each photo to 2× target first so zoompan has room to crop
@@ -643,25 +695,68 @@ async function buildSlideshowAndRun(
     );
   }
 
-  // ── Crossfade transitions ────────────────────────────────────────────────
-  let slideshowLabel: string;
-  if (N === 1) {
-    filterParts.push(`[photo0]trim=duration=${audioDuration},setpts=PTS-STARTPTS[slideshow]`);
-    slideshowLabel = "slideshow";
-  } else {
-    let prevLabel = "photo0";
-    for (let i = 1; i < N; i++) {
-      const offset = (i * (segDur - FADE_DUR)).toFixed(3);
-      const outLabel = i < N - 1 ? `xf${i}` : "slidexf";
-      filterParts.push(
-        `[${prevLabel}][photo${i}]xfade=transition=fade:duration=${FADE_DUR}:offset=${offset}[${outLabel}]`,
-      );
-      prevLabel = outLabel;
-    }
-    // Trim to exact audio duration (xfade can produce a tiny overshoot)
-    filterParts.push(`[slidexf]trim=duration=${audioDuration},setpts=PTS-STARTPTS[slideshow]`);
-    slideshowLabel = "slideshow";
+  /**
+   * ── Dissolves, without xfade ───────────────────────────────────────────
+   *
+   * This is the reason a finished renderer has never had a caller: the
+   * bundled FFmpeg is 4.2, xfade arrived in 4.3, and a probe against
+   * production confirms it — `No such filter: 'xfade'`, and the filter list
+   * comes back with 340 entries and none of them that one. Any multi-photo
+   * render would have failed on the first transition.
+   *
+   * So the dissolve is built the way everyone built them before 4.3: give
+   * each photo an alpha channel, fade that alpha up, shift it to start where
+   * the one before it is ending, and overlay them.
+   *
+   * The base is a black canvas spanning the whole reel rather than the first
+   * photo. Overlay takes its output length from its base, so chaining onto
+   * photo 0 would end the video when photo 0 ended — the alternative is
+   * making photo 0 run the full duration, which means its Ken Burns move
+   * renders for thirty seconds to be visible for five. A solid colour costs
+   * almost nothing to generate and every photo then renders only its own
+   * segment.
+   */
+  const dissolveBase = `[${bgInputIdx}:v]`;
+  let overlayChain = dissolveBase;
+  for (let i = 0; i < N; i++) {
+    const start = i * (segDur - FADE_DUR);
+    // Photo 0 is already on the black ground, so it needs no fade — the reel
+    // opens on the picture rather than dissolving up out of nothing.
+    const alphaFade = i === 0 ? "" : `fade=t=in:st=0:d=${FADE_DUR}:alpha=1,`;
+    filterParts.push(
+      `[photo${i}]format=yuva420p,${alphaFade}setpts=PTS-STARTPTS+${start.toFixed(3)}/TB[ph${i}]`,
+    );
+
+    /**
+     * Each layer is switched off once the next one has finished covering it.
+     *
+     * Without this the graph is quadratic and it shows: twelve photos over a
+     * minute took more than ten minutes to render locally, because every one
+     * of 1,800 output frames was dragged through all twelve overlay stages
+     * whether or not anything was visible in them. FFmpeg's timeline support
+     * makes a disabled filter pass its input straight through, so bounding
+     * each overlay to its own span turns that back into linear work — every
+     * frame now passes through the one or two layers actually on screen.
+     *
+     * The window runs to the end of the NEXT photo's dissolve, not to the end
+     * of this photo's slot: until that dissolve completes, this photo is still
+     * partly what you are looking at.
+     */
+    const end = i === N - 1
+      ? audioDuration
+      : (i + 1) * (segDur - FADE_DUR) + FADE_DUR;
+    const window = `:enable=between(t\\,${start.toFixed(3)}\\,${end.toFixed(3)})`;
+
+    const outLabel = i === N - 1 ? "slideshow" : `ov${i}`;
+    filterParts.push(
+      `${overlayChain}[ph${i}]overlay=format=auto:eof_action=repeat${window}[${outLabel}]`,
+    );
+    overlayChain = `[${outLabel}]`;
   }
+  // Back to a plain plane before anything is drawn on top: the overlays leave
+  // an alpha channel behind, and drawbox/drawtext on yuva reads differently.
+  filterParts.push(`[slideshow]format=yuv420p[slideshowflat]`);
+  const slideshowLabel = "slideshowflat";
 
   // ── Dark overlay ─────────────────────────────────────────────────────────
   filterParts.push(
@@ -693,14 +788,6 @@ async function buildSlideshowAndRun(
   } else {
     filterParts.push(`[titled]copy[captioned]`);
   }
-
-  // ── Input index bookkeeping ───────────────────────────────────────────────
-  // Inputs: 0..N-1 = photos, N = audio, then optional logo, avatar, music
-  const audioInputIdx = N;
-  let nextInputIdx = N + 1;
-  const logoInputIdx = logoPath ? nextInputIdx++ : -1;
-  const avatarInputIdx = avatarPath ? nextInputIdx++ : -1;
-  const musicInputIdx = musicPath ? nextInputIdx++ : -1;
 
   // ── Logo ──────────────────────────────────────────────────────────────────
   let currentLabel = "captioned";
@@ -772,6 +859,11 @@ async function buildSlideshowAndRun(
     if (logoPath) cmd.input(logoPath);
     if (avatarPath) cmd.input(avatarPath);
     if (musicPath) cmd.input(musicPath);
+    // The ground the dissolves sit on. Added last so the indices above stay
+    // put, and generated rather than loaded — a solid colour costs nothing.
+    cmd
+      .input(`color=c=black:s=${width}x${height}:d=${audioDuration.toFixed(3)}:r=30`)
+      .inputFormat("lavfi");
 
     cmd
       .complexFilter(filterGraph)
