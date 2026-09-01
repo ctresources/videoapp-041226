@@ -82,6 +82,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // misheard word can be fixed by hand instead of by saying the whole thing
   // again — "Ambler" coming back as "Amber" should cost one keystroke.
   const [draft, setDraft] = useState("");
+  /** True between the mic stopping and the turn being sent, so the status line
+   *  can say the words landed rather than leaving silence to speak for itself. */
+  const [justHeard, setJustHeard] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   // Guards against a second submit while a turn is in flight, without waiting
@@ -200,20 +203,40 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       // pressed it and only the spoken half was ever sent.
       const base = draft.trim();
       const text = [base, spoken].filter(Boolean).join(" ");
-      setDraft("");
+
       // The wake word, once the brief is genuinely complete: go now rather than
       // spend a model round trip being told what a regex already knows. The
       // turn is still recorded, so the transcript reads the way it was said.
       //
       // Only when the wake word is the whole of what was said — with unsent
       // text still in the box, that text has to reach the brief first, so it
-      // goes as a turn and the server decides `ready` the usual way.
+      // goes as a turn and the server decides `ready` the usual way. A command
+      // is the one thing that does not wait to be checked: you already said it
+      // on purpose, and reading it back would be asking twice.
       if (!base && briefReady && saidGoAhead(spoken)) {
+        setDraft("");
         setTurns((t) => [...t, { role: "user", content: spoken }]);
         sparkNow();
         return;
       }
-      send(text);
+
+      /**
+       * The words stay in the box.
+       *
+       * Falling silent used to send the turn and empty the box, so what you had
+       * just said appeared only on a "You said" line above it — read-only, and
+       * one of three places the same brief was being shown at once. Speech
+       * recognition mishears towns and street names constantly, and this is a
+       * script about a specific address: seeing "Shagbark" come back as
+       * "Shanbar" matters, and it has to be somewhere you can fix it.
+       *
+       * So the transcript lands where typed text lands, and goes when you send
+       * it. The cost is a second action after speaking; the status line below
+       * carries that, because silence followed by nothing visibly happening is
+       * the failure this behaviour was introduced to avoid.
+       */
+      setDraft(text);
+      setJustHeard(true);
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
@@ -237,7 +260,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   }, [turns, thinking, showTranscript]);
 
   const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
-  const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
   const live = [transcript, interim].filter(Boolean).join(" ");
 
   // One box for both ways in. Speech fills it, typing corrects it, and a
@@ -263,6 +285,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     const text = draft.trim();
     if (!text || thinking || disabled) return;
     setDraft("");
+    setJustHeard(false);
     // Typed or spoken, the wake word does the same thing.
     if (briefReady && saidGoAhead(text)) {
       setTurns((t) => [...t, { role: "user", content: text }]);
@@ -285,8 +308,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   ].filter(Boolean).join(" · ");
 
   // Only while it is doing something. Idle instructions sat here permanently
-  // restating what the mic button and the box already show.
-  const status = thinking ? "Thinking…" : listening ? "Listening — click to stop" : "";
+  // restating what the mic button and the box already show — except after a
+  // spoken turn, where the box now holds words that have not gone anywhere
+  // yet, and saying nothing would read as the mic having failed.
+  const status = thinking
+    ? "Thinking…"
+    : listening
+      ? "Listening — click to stop"
+      : justHeard && draft.trim()
+        ? "Got that — check the words below, then Send"
+        : "";
 
   return (
     <div className="flex flex-col gap-2">
@@ -330,14 +361,10 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         </div>
       )}
 
-      {/* What you last said, so a spoken turn does not disappear the moment
-          the box clears to take the next one. Redundant once the full
-          transcript is open, which ends on the same line. */}
-      {lastUser && !listening && !showTranscript && (
-        <p className="pl-8.5 text-[13px] leading-[1.45] text-spark-ink-muted">
-          <span className="text-spark-ink-faint">You said:</span> {lastUser}
-        </p>
-      )}
+      {/* The "You said" line is gone: what you said now sits in the box, where
+          it can be corrected instead of only read. Three copies of the same
+          brief on one screen — above the box, in it, and summarised below —
+          was the confusion, not the absence of a fourth. */}
 
       {/* Mic above the box, not beside it — you either press it or start
           talking, so it is the first move rather than a control attached to
@@ -373,7 +400,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       <textarea
         ref={boxRef}
         value={boxValue}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); setJustHeard(false); }}
         // Locked only while the mic is running, where the recogniser owns the
         // value and a keystroke would be overwritten on the next result.
         readOnly={listening}
@@ -386,15 +413,26 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
             submitDraft();
           }
         }}
-        className="w-full resize-none rounded-[12px] border border-spark-rule bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60"
+        // Ringed while it holds words that have just been heard and not yet
+        // sent, so the thing needing a look is the thing that looks different.
+        className={`w-full resize-none rounded-[12px] border bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
+          justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
+        }`}
       />
 
       <div className="flex items-center gap-2.5">
-        {/* The running brief, so what has actually been captured is visible
-            without opening the full transcript. */}
-        <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
-          {summary}
-        </p>
+        {/* What the session has actually understood — the town, the subject,
+            the audience — accumulated across every turn. Labelled now, because
+            unlabelled it read as a third copy of the sentence in the box
+            rather than the different thing it is: the box is what you are
+            about to say, this is what has been taken from everything you have
+            said so far. */}
+        {summary && (
+          <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
+            <span className="font-semibold text-spark-ink-faint">Brief so far:</span> {summary}
+          </p>
+        )}
+        {!summary && <span className="flex-1" />}
 
         {/* Only when it has something to send.
             Speaking commits on its own — you stop talking and the turn goes —
