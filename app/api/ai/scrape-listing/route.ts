@@ -467,9 +467,19 @@ export async function POST(req: NextRequest) {
 
     // Our own limit, not the listing site's — saying "that page blocked us"
     // would send the user off to re-check a link that is perfectly fine.
+    //
+    // And explicitly not THEIR limit. "Listing import has hit its usage limit"
+    // was read as "you have used up your allowance", which is alarming, wrong,
+    // and points at the billing page instead of the manual form. Whose limit it
+    // is turns out to be the only part of this message that matters.
     if (code === "JINA_QUOTA") {
       return NextResponse.json(
-        { error: "Listing import has hit its usage limit for now. Please enter the details manually, or try again later." },
+        {
+          error:
+            "The service we use to read listing pages has hit its own limit — " +
+            "nothing to do with your account, and no video credits were used. " +
+            "Enter the details manually, or try again later.",
+        },
         { status: 503 },
       );
     }
