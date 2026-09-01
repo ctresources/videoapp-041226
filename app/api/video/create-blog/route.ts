@@ -7,6 +7,7 @@ import {
   resolveVoiceId,
   getAvatarLooks,
   uploadTalkingPhoto,
+  getRemainingQuota,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -568,6 +569,20 @@ export async function POST(req: NextRequest) {
 
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
+  /**
+   * The balance before this render, so its real cost can be worked out later.
+   *
+   * `creditCost` below is the constant 1 — one video off the customer's plan —
+   * and it is the only cost figure this app has ever recorded. It says nothing
+   * about what HeyGen charged, which turned out to be 893 credits for a single
+   * 2.2-minute video. Without a reading either side of the render there is no
+   * way to answer whether a plan covers its own renders except by guessing.
+   *
+   * Best effort and never awaited into the critical path's failure modes: a
+   * balance reading is not worth losing a render over.
+   */
+  const quotaBefore = (await getRemainingQuota().catch(() => ({ value: null }))).value;
+
   try {
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
     const orientation = isShortForm ? "portrait" : "landscape";
@@ -806,7 +821,7 @@ export async function POST(req: NextRequest) {
       await admin
         .from("generated_videos")
         // credit_cost enables an automatic refund if the render later fails
-        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
+        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan", quota_before: quotaBefore } })
         .eq("id", videoRow.id);
 
       // Admins are never charged. Previously only the REFUSAL was skipped for
@@ -923,7 +938,7 @@ export async function POST(req: NextRequest) {
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan", quota_before: quotaBefore } })
       .eq("id", videoRow?.id);
 
     // Admins are never charged. Previously only the REFUSAL was skipped for

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus } from "@/lib/api/heygen";
+import { getVideoStatus, getRemainingQuota } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
@@ -240,6 +240,46 @@ export async function downloadAndStoreVideo(
   // the raw render if it didn't. Until this line the row carries no video_url,
   // so nothing downstream can present a half-made video as ready to watch.
   await publish(publicUrl);
+
+  /**
+   * What the vendor actually charged for this render.
+   *
+   * Recorded here because this is the one place a finished render passes
+   * through exactly once — the claim above makes sure of it, and the webhook,
+   * the status poll and refresh-url all arrive at this same line.
+   *
+   * The delta is only trustworthy when renders do not overlap, so both raw
+   * readings are kept rather than just the subtraction: two videos rendering
+   * at once will attribute some of each other's cost, and that is recoverable
+   * from the readings but not from a single number. Best effort throughout —
+   * the video is published by the line above, and a balance reading is not
+   * worth risking it.
+   */
+  try {
+    const { data: row } = await admin
+      .from("generated_videos")
+      .select("metadata")
+      .eq("id", videoId)
+      .single();
+    const meta = (row?.metadata as Record<string, unknown> | null) ?? {};
+    const before = typeof meta.quota_before === "number" ? meta.quota_before : null;
+    if (before !== null && meta.quota_after === undefined) {
+      const { value: after } = await getRemainingQuota();
+      if (after !== null) {
+        const used = before - after;
+        await mergeMetadata(admin, videoId, {
+          quota_after: after,
+          // Negative means the balance went UP mid-render — a top-up landed —
+          // so the figure is meaningless rather than zero. Left null to say so.
+          heygen_quota_used: used >= 0 ? used : null,
+        });
+        console.log(`[store-video] ${videoId}: HeyGen balance ${before} → ${after} (used ${used})`);
+      }
+    }
+  } catch (err) {
+    console.warn(`[store-video] ${videoId}: quota reading failed:`, err instanceof Error ? err.message : err);
+  }
+
   return publicUrl;
 }
 

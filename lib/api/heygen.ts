@@ -179,6 +179,41 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
  * Replaces the deprecated GET /v1/video_status.get endpoint.
  * Used for both legacy v2-generated videos and v3 direct video jobs.
  */
+/**
+ * HeyGen's remaining credit balance, or null when it cannot be read.
+ *
+ * There is no per-render cost in the status payload, so what a video actually
+ * cost has to be inferred from the balance either side of it. Taking a reading
+ * at submit and another at completion gives that, and it is the only number in
+ * this system that reflects what HeyGen charged rather than what we assumed:
+ * `creditCost` in create-blog is the constant 1, meaning "one video off the
+ * customer's plan", which says nothing about the 893 the vendor billed.
+ *
+ * The raw payload is returned alongside the number because the units are not
+ * something to take on faith — v1 and v2 have differed, and a reading that
+ * turns out to be seconds rather than credits is still useful as long as
+ * nobody has quietly labelled it "credits" on the way past.
+ */
+export async function getRemainingQuota(): Promise<{ value: number | null; raw: unknown }> {
+  for (const path of ["/v2/user/remaining_quota", "/v1/user/remaining_quota"]) {
+    try {
+      const res = await fetch(`${HEYGEN_API}${path}`, {
+        headers: { "x-api-key": getApiKey() },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const d = json?.data ?? {};
+      const value = [d.remaining_quota, d.quota, json?.remaining_quota]
+        .find((v: unknown) => typeof v === "number" && Number.isFinite(v));
+      if (typeof value === "number") return { value, raw: json };
+    } catch {
+      // Try the other shape; a balance reading is never worth failing a render.
+    }
+  }
+  return { value: null, raw: null };
+}
+
 export async function getVideoStatus(videoId: string): Promise<VideoStatus> {
   const res = await fetch(
     `${HEYGEN_API}/v3/videos/${videoId}`,
