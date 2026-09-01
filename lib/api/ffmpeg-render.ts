@@ -898,6 +898,36 @@ async function buildSlideshowAndRun(
   });
 }
 
+/**
+ * A silent MP3 of an exact length.
+ *
+ * The renderer takes the audio's duration as the video's duration, which is
+ * right when someone is talking over the pictures and useless when they are
+ * not: a music track is however long it is, and the reel is not. Silence of a
+ * chosen length is how a music-only reel gets to be thirty seconds rather than
+ * however long the bed happens to run.
+ */
+export async function generateSilentAudio(seconds: number): Promise<Buffer> {
+  const dir = join(tmpdir(), `silence-${randomUUID()}`);
+  await fs.mkdir(dir, { recursive: true });
+  const out = join(dir, "silence.mp3");
+  try {
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input("anullsrc=r=44100:cl=stereo")
+        .inputFormat("lavfi")
+        .outputOptions([`-t ${seconds.toFixed(3)}`, "-c:a libmp3lame", "-b:a 64k", "-y"])
+        .output(out)
+        .on("error", (err) => reject(new Error(`Silent track failed: ${err.message}`)))
+        .on("end", () => resolve())
+        .run();
+    });
+    return await fs.readFile(out);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 /** Generate a solid color video background (used when no stock clips). */
 async function generateColorBackground(
   outputPath: string,

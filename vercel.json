@@ -34,6 +34,9 @@
     "app/api/video/ffmpeg-probe/route.ts": {
       "maxDuration": 60
     },
+    "app/api/video/photo-reel/route.ts": {
+      "maxDuration": 300
+    },
     "app/api/social/post/route.ts": {
       "maxDuration": 60
     },

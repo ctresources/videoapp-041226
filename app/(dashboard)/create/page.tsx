@@ -20,6 +20,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
+import { PhotoReelForm } from "@/components/create/photo-reel-form";
 import { SparkPanel } from "@/components/create/spark-panel";
 import {
   TEMPLATE_COUNT,
@@ -121,6 +122,12 @@ function CreatePageInner() {
   const [hasVoiceClone, setHasVoiceClone] = useState<boolean | null>(null);
 
   // Location
+  /**
+   * The two things this tab makes from the same set of property pictures: a
+   * scripted tour that renders with an avatar or a voice, and a reel built
+   * straight out of the photos. They share a tab because they share an input.
+   */
+  const [listingMode, setListingMode] = useState<"listing" | "reel">("listing");
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
   const [profileHomeState, setProfileHomeState] = useState("");
@@ -884,7 +891,7 @@ function CreatePageInner() {
   const tabLabel =
     inputMode === "camera" ? "My camera"
       : inputMode === "script" ? "AI writes it"
-        : inputMode === "listing" ? "My listing"
+        : inputMode === "listing" ? "My listings/My photos"
           : "My script";
 
   const showActionBar = inputMode === "script" && step === "input";
@@ -992,9 +999,9 @@ function CreatePageInner() {
             },
             {
               mode: "listing" as InputMode,
-              kicker: "Zillow or MLS",
-              label: "My listing",
-              desc: "We write the tour",
+              kicker: "Zillow, MLS or photos",
+              label: "My listings/My photos",
+              desc: "A tour, or a photo reel",
             },
             {
               mode: "camera" as InputMode,
@@ -1792,16 +1799,53 @@ function CreatePageInner() {
                 <Building2 size={17} className="text-white" />
               </div>
               <div>
-                <p className="text-base font-bold text-brand-text">Listing Video</p>
-                <p className="text-sm text-spark-ink-muted">Upload Photos · Import From Zillow · Enter Manually</p>
+                <p className="text-base font-bold text-brand-text">
+                  {listingMode === "reel" ? "Photo Reel" : "Listing Video"}
+                </p>
+                <p className="text-sm text-spark-ink-muted">
+                  {listingMode === "reel"
+                    ? "Your photos, Ken Burns and a music bed · free, no credit"
+                    : "Upload Photos · Import From Zillow · Enter Manually"}
+                </p>
               </div>
             </div>
+
+            {/* Two things you can make from the same listing: a scripted tour
+                that renders with your avatar or voice, and a reel built
+                straight out of the photos. They share this tab because they
+                share their input — a set of property pictures. */}
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              {([
+                { key: "listing" as const, label: "Listing video", sub: "we write the tour · 1 credit" },
+                { key: "reel" as const, label: "Photo reel", sub: "photos into a video · free" },
+              ]).map(({ key, label, sub }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setListingMode(key)}
+                  aria-pressed={listingMode === key}
+                  className={`rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                    listingMode === key
+                      ? "border-spark-amber bg-spark-amber-tint"
+                      : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <span className="block text-[12px] font-bold text-brand-text">{label}</span>
+                  <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
+                </button>
+              ))}
+            </div>
+
+            {listingMode === "reel" && (
+              <PhotoReelForm city={locCity || undefined} state={locState || undefined} />
+            )}
             {/* "Read it myself on camera" crosses to the camera tab rather
                 than the editor's teleprompter. Only this tab's recorder
                 composites photos, and the rehost below is what makes that
                 possible at all: a canvas cannot record a third-party image,
                 so scraped listing photos have to be copied into our storage
                 first or the recording fails outright. */}
+            {listingMode === "listing" && (
             <ListingVideoForm
               onRecordYourself={async (script, photoUrls) => {
                 setCameraGeneratedScript(script);
@@ -1814,6 +1858,7 @@ function CreatePageInner() {
                 );
               }}
             />
+            )}
           </Card>
 
           {/* What you get — keeps the right column balanced */}

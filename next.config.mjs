@@ -13,6 +13,10 @@ const nextConfig = {
       // probe below cannot tell "FFmpeg does not work on this host" from
       // "the binary was never packaged", and those have opposite answers.
       "/api/video/ffmpeg-probe": ["./node_modules/@ffmpeg-installer/**"],
+      // Same reason, for the route that actually renders reels: without the
+      // binary named here it is traced away and every render fails at the
+      // first frame.
+      "/api/video/photo-reel": ["./node_modules/@ffmpeg-installer/**", "./fonts/**"],
     },
   },
   images: {
