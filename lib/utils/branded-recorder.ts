@@ -725,6 +725,9 @@ export class BrandedComposite {
     // background is, alternating.
     const clip = this.brollVideoShot();
     const shot = clip ? null : this.currentBrollShot();
+    // Whether the speaker is already on screen in the corner this frame. The
+    // name bar reads it to decide whether to also carry their headshot.
+    const pipOnScreen = !!clip || !!shot;
     if (clip) {
       this.drawBrollVideo(W, H, clip.fade);
       this.drawCameraPip(W, H);
@@ -769,12 +772,31 @@ export class BrandedComposite {
       const padX = Math.round(S * 0.02);
       const padY = Math.round(S * 0.014);
 
+      /**
+       * The profile photo, riding inside the name bar.
+       *
+       * It was loaded for the end card and drawn nowhere else, so for the whole
+       * length of the video the brand was a name with no face on it. A headshot
+       * beside the name is what a broadcast lower third does, and it is the
+       * thing that makes an agent recognisable rather than merely credited.
+       *
+       * Left out whenever the speaker is already in the corner: on the b-roll
+       * routes that would be the same person twice on screen, once live and
+       * once as a photograph.
+       */
+      const face = !pipOnScreen ? this.headshot : null;
+
       ctx.font = `700 ${nameSize}px Arial, sans-serif`;
       const nameW = ctx.measureText(name).width;
       ctx.font = `400 ${subSize}px Arial, sans-serif`;
       const subW = sub ? ctx.measureText(sub).width : 0;
-      const barW = Math.max(nameW, subW) + padX * 2;
       const barH = nameSize + (sub ? subSize + padY : 0) + padY * 2;
+      // Sized off the bar so it always matches the height of the text beside
+      // it, whatever the sub line does — a fixed size would ride high on a
+      // one-line bar and overflow a two-line one.
+      const faceD = face ? barH - padY : 0;
+      const faceGap = face ? Math.round(S * 0.011) : 0;
+      const barW = faceD + faceGap + Math.max(nameW, subW) + padX * 2;
       const barX = W * 0.02;
       const barY = H - barH - H * 0.03;
 
@@ -783,14 +805,41 @@ export class BrandedComposite {
       ctx.roundRect(barX, barY, barW, barH, 10);
       ctx.fill();
 
+      if (face) {
+        const r = faceD / 2;
+        const cx = barX + padX + r;
+        const cy = barY + barH / 2;
+        // Square crop from the centre, so a portrait headshot is not squashed
+        // into the circle.
+        const side = Math.min(face.width, face.height);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(
+          face,
+          (face.width - side) / 2, (face.height - side) / 2, side, side,
+          cx - r, cy - r, faceD, faceD,
+        );
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 0.5, 0, Math.PI * 2);
+        ctx.lineWidth = Math.max(1.5, S * 0.002);
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.stroke();
+      }
+
+      const textX = barX + padX + faceD + faceGap;
+
       ctx.fillStyle = "#ffffff";
       ctx.font = `700 ${nameSize}px Arial, sans-serif`;
       ctx.textBaseline = "top";
-      ctx.fillText(name, barX + padX, barY + padY);
+      ctx.fillText(name, textX, barY + padY);
       if (sub) {
         ctx.fillStyle = "rgba(255,255,255,0.85)";
         ctx.font = `400 ${subSize}px Arial, sans-serif`;
-        ctx.fillText(sub, barX + padX, barY + padY + nameSize + padY * 0.4);
+        ctx.fillText(sub, textX, barY + padY + nameSize + padY * 0.4);
       }
     }
 

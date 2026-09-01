@@ -550,7 +550,12 @@ export function ClipBrander({ photos = [], title }: {
           <p className="text-[11px] leading-[1.45] text-spark-ink-muted">
             {(() => {
               const layers = [
-                ...(unbranded ? [] : ["your logo", "name bar"]),
+                ...(unbranded
+                  ? []
+                  : [
+                      "your logo",
+                      brand.headshotUrl ? "your photo and name bar" : "name bar",
+                    ]),
                 ...(photos.length > 0 ? [`your ${photos.length} photos as b-roll`] : []),
                 ...(musicUrl ? ["the music bed"] : []),
                 ...(unbranded ? [] : ["the end card"]),
