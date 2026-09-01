@@ -7,6 +7,12 @@ const nextConfig = {
     outputFileTracingIncludes: {
       "/api/tools/thumbnail": ["./fonts/**"],
       "/api/video/webhook": ["./fonts/**"],
+      // The FFmpeg binary is resolved from inside node_modules at runtime,
+      // which is the shape of dependency Next's tracing is worst at following
+      // — so it is named explicitly rather than hoped for. Without this the
+      // probe below cannot tell "FFmpeg does not work on this host" from
+      // "the binary was never packaged", and those have opposite answers.
+      "/api/video/ffmpeg-probe": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {
