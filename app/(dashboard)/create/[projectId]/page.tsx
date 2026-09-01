@@ -27,6 +27,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { joinHookAndScript, dropDuplicateHook } from "@/lib/utils/script-assembly";
 
 /** Safely parse JSON from a fetch Response — returns null if the body is HTML/empty */
 async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
@@ -442,7 +443,7 @@ export default function ProjectEditorPage() {
     if (!showTeleprompter || !tpFlowMode || !tpFlowSupported) return;
     setTpAutoScroll(false);
     const tpHook = selectedHook || (project?.ai_script as AiScript | null)?.hook || "";
-    const flowText = [tpHook, editedScript, spokenCta].filter(Boolean).join(" ");
+    const flowText = [joinHookAndScript(tpHook, editedScript), spokenCta].filter(Boolean).join(" ");
     const flowWords = tokenizeScript(flowText).length;
     const follower = new VoiceFollower(
       flowText,
@@ -1115,7 +1116,11 @@ export default function ProjectEditorPage() {
       const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
       // CTA is sent separately so the server can clamp the body without ever
       // cutting the CTA off the end of the spoken script.
-      const fullScript = [hook, bodyScript].filter(Boolean).join("\n\n");
+      // Drops the body's own opening line when it repeats the hook. The prompt
+      // no longer asks for one, but every script written before that change
+      // still has it, and those projects should not have to be regenerated to
+      // stop the video saying its first sentence twice.
+      const fullScript = joinHookAndScript(hook, bodyScript);
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -1311,8 +1316,9 @@ export default function ProjectEditorPage() {
    * uses for photos/PDFs (see "camera-uploads" in this file's loadProject).
    */
   function handleRecordOnCamera(text?: string) {
-    const combined = (text ?? [selectedHook, editedScript, editedCta]
-      .map((part) => part.trim())
+    // Same de-duplication as the render path: a teleprompter that shows the
+    // opening line twice makes someone read it twice.
+    const combined = (text ?? [joinHookAndScript(selectedHook, editedScript), editedCta.trim()]
       .filter(Boolean)
       .join("\n\n")).trim();
     if (!combined) return;
@@ -1569,7 +1575,10 @@ export default function ProjectEditorPage() {
         // The words that were actually read, which on an unbranded cut is the
         // script without its closing ask. Saving the branded CTA here would
         // caption and describe the video with a line nobody said.
-        script: [selectedHook || script?.hook, editedScript, spokenCta].filter(Boolean).join("\n\n"),
+        script: [
+          joinHookAndScript(selectedHook || script?.hook || "", editedScript),
+          spokenCta,
+        ].filter(Boolean).join("\n\n"),
       });
       closeTeleprompter();
       toast.success("Recording saved! No AI charges — your video is ready.");
@@ -2702,8 +2711,12 @@ export default function ProjectEditorPage() {
       {/* ── Teleprompter full-screen overlay ── */}
       {showTeleprompter && script && (() => {
         const tpHook = selectedHook || script.hook || "";
+        // The body without its own repeat of the hook — the prompter shows the
+        // two in separate blocks, so a duplicate here is a line read twice out
+        // loud rather than merely printed twice.
+        const tpBody = dropDuplicateHook(tpHook, editedScript);
         const tpHookLen = tokenizeScript(tpHook).length;
-        const tpScriptLen = tokenizeScript(editedScript).length;
+        const tpScriptLen = tokenizeScript(tpBody).length;
         return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
           {/* Top bar */}
@@ -2777,7 +2790,7 @@ export default function ProjectEditorPage() {
               <div>
                 <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Script</p>
                 <p className="text-white text-3xl md:text-4xl leading-relaxed whitespace-pre-wrap text-center">
-                  <FlowWords text={editedScript} offset={tpHookLen} />
+                  <FlowWords text={tpBody} offset={tpHookLen} />
                 </p>
               </div>
               {/* Both the CTA and the contact line name the agent, so an

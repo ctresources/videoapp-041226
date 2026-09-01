@@ -87,6 +87,23 @@ export async function perplexityChat(messages: { role: string; content: string }
   return content as string;
 }
 
+/**
+ * The script's shape, minus the hook.
+ *
+ * "hook" used to be the first item here, while `hook` was also a field of its
+ * own that gets spoken immediately before the script. Both were delivered, so
+ * the video opened by saying the same sentence twice — and the hook picker in
+ * the editor made it worse, since choosing a different option changed the
+ * first line and left the old one still sitting at the top of the body.
+ */
+const STRUCTURE_AFTER_HOOK =
+  "market overview with data → what it means for buyers/sellers → agent insight";
+
+const NO_HOOK_RULE =
+  "Do NOT begin with a hook or an attention-grabbing opener: the \"hook\" field is " +
+  "spoken immediately before this text, so an opening line here is the video saying " +
+  "the same sentence twice. Start on the substance.";
+
 export async function generateVideoScript(
   transcript: string,
   agentName: string,
@@ -121,8 +138,8 @@ export async function generateVideoScript(
         targetWords >= 900
           ? "This is a LONG-FORM video — cover 6-9 distinct points, each developed with its own data, example, or short story, moving between them with natural spoken transitions. Do not pad or repeat to reach the length."
           : "Include specific market stats you found (prices, DOM, inventory)."
-      } Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → ${closing}. Write as natural spoken words.`
-    : `complete 2-4 minute video script in ${voice}. Include specific market stats you found (prices, DOM, inventory). Structure: hook → market overview with data → what it means for buyers/sellers → agent insight → ${closing}. Write as natural spoken words.`;
+      } Structure: ${STRUCTURE_AFTER_HOOK} → ${closing}. Write as natural spoken words. ${NO_HOOK_RULE}`
+    : `complete 2-4 minute video script in ${voice}. Include specific market stats you found (prices, DOM, inventory). Structure: ${STRUCTURE_AFTER_HOOK} → ${closing}. Write as natural spoken words. ${NO_HOOK_RULE}`;
   const systemPrompt = `You are an expert real estate video content strategist AND a real-time market data researcher. You create compelling, data-driven video scripts for real estate agents.
 
 YOUR PROCESS:
