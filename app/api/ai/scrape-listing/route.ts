@@ -213,15 +213,45 @@ async function fetchWithJina(url: string): Promise<string> {
     text.slice(0, 4000),
   );
 
-  // A very short 200 is usually Jina talking about itself — a quota or
-  // rate-limit notice — rather than the listing page. That is a different
-  // problem from a hostile site and deserves a different message, so check
-  // before falling through to BLOCKED.
-  const quota = /rate limit|rate-limit|quota|too many requests|insufficient|balance|exceeded|upgrade your plan|billing/i
-    .test(text.slice(0, 1000));
-  if (quota && text.trim().length < 2000) {
-    console.error(`[scrape-listing] Jina refused the request: ${JSON.stringify(text.trim().slice(0, 300))}`);
-    throw new Error("JINA_QUOTA");
+  /**
+   * Jina answers 200 and describes the failure in the body, so what went wrong
+   * has to be read out of the text. Three things live in there and they used to
+   * be collapsed into two wrong answers.
+   *
+   * The header it writes when the SITE refused it, rather than when Jina
+   * itself did. Production logs had realtor.com answering 429 and this route
+   * reporting "our reading service has hit its limit" — the target was rate
+   * limiting us and we blamed our own supplier, which is both wrong and the
+   * one explanation that points at a bill instead of a retry.
+   */
+  const targetStatus = Number(text.match(/Target URL returned error (\d{3})/i)?.[1] ?? 0);
+  const title = (text.match(/^Title:\s*(.+)$/mi)?.[1] ?? "").trim();
+
+  /**
+   * A sign-in page wearing a listing's URL.
+   *
+   * The case that started this: a Bright MLS Matrix link came back titled
+   * "SSO | Bright MLS". Matrix URLs only resolve inside a logged-in session,
+   * so from outside one there is a login form where the listing should be. No
+   * reader can get past that, and no amount of retrying is the fix — pasting
+   * the public link is.
+   *
+   * Read off the title rather than the body: "Sign in" appears in the
+   * navigation of half the listing pages on the internet, and matching that
+   * would reject perfectly good ones.
+   */
+  if (/\b(sso|single sign[- ]?on|sign ?in|log ?in|login|authenticate)\b/i.test(title)) {
+    console.warn(`[scrape-listing] Login wall: ${JSON.stringify(title)} (HTTP ${targetStatus || 200})`);
+    throw new Error("LOGIN_REQUIRED");
+  }
+
+  // Cloudflare's interstitial, which is a block by another name. "Just a
+  // moment..." was in none of the patterns below, so a shortened link landing
+  // on a challenged host fell through to the length test and was reported as
+  // whatever that happened to decide.
+  if (/just a moment|checking your browser|attention required|cf-browser-verification/i.test(title + text.slice(0, 1500))) {
+    console.warn(`[scrape-listing] Challenge page: ${JSON.stringify(title)} (HTTP ${targetStatus || 200})`);
+    throw new Error("BLOCKED");
   }
 
   if (blocked) {
@@ -230,6 +260,33 @@ async function fetchWithJina(url: string): Promise<string> {
       `head=${JSON.stringify(text.trim().slice(0, 300))}`,
     );
     throw new Error("BLOCKED");
+  }
+
+  // The listing site is throttling, not us. Worth a retry in a minute; not
+  // worth a word about quotas or billing.
+  if (targetStatus === 429) {
+    console.warn(`[scrape-listing] Target rate-limited us (429): ${JSON.stringify(title)}`);
+    throw new Error("TARGET_BUSY");
+  }
+
+  /**
+   * Now — and only now — Jina complaining about itself.
+   *
+   * The quota words are generic enough that they match a target's own error
+   * notice, which is exactly how a 429 from realtor.com became "usage limit".
+   * With no Target-URL header in the body, the complaint is Jina's own.
+   */
+  const quota = /rate limit|rate-limit|quota|too many requests|insufficient|balance|exceeded|upgrade your plan|billing/i
+    .test(text.slice(0, 1000));
+  if (quota && !targetStatus && text.trim().length < 2000) {
+    console.error(`[scrape-listing] Jina refused the request: ${JSON.stringify(text.trim().slice(0, 300))}`);
+    throw new Error("JINA_QUOTA");
+  }
+
+  // Any other refusal by the site itself, named so the log says which.
+  if (targetStatus >= 400) {
+    console.warn(`[scrape-listing] Target returned ${targetStatus}: ${JSON.stringify(title)}`);
+    throw new Error(`TARGET_ERROR_${targetStatus}`);
   }
 
   /**
@@ -333,14 +390,20 @@ async function readListingPage(url: string): Promise<string> {
      * fetch gets through where the markdown came up short. So a page that
      * refused Jina is absolutely worth offering to the other one.
      *
-     * NOT_A_LISTING is the exception: the page was read perfectly well and
-     * simply is not a listing. Reading it again, less well, cannot change that.
+     * Two exceptions, for the same reason. NOT_A_LISTING means the page was
+     * read perfectly well and is not a listing; LOGIN_REQUIRED means the
+     * listing is behind a sign-in this server has no credentials for. Neither
+     * is a reading problem, so reading it again cannot help — and on a login
+     * wall a second fetch is a second chance to look like a scraper for
+     * nothing.
      */
     const worthRetrying =
       code === "JINA_QUOTA" ||
       code === "NO_JINA_KEY" ||
       code === "BLOCKED" ||
       code === "THIN" ||
+      code === "TARGET_BUSY" ||
+      code.startsWith("TARGET_ERROR_") ||
       code.startsWith("Jina fetch failed");
     if (!worthRetrying) throw err;
 
@@ -609,6 +672,51 @@ export async function POST(req: NextRequest) {
             "Enter the details manually, or try again later.",
         },
         { status: 503 },
+      );
+    }
+
+    /**
+     * The MLS link that only works while you are logged in.
+     *
+     * The most useful message this route can produce, because the fix is
+     * entirely in the user's hands and is not "try again": a Matrix or
+     * portal-session URL shows a sign-in page to anyone who isn't the person
+     * who copied it. It used to be reported as the site blocking us, which
+     * describes neither what happened nor what to do about it.
+     */
+    if (code === "LOGIN_REQUIRED") {
+      return NextResponse.json(
+        {
+          error:
+            "That link opens your MLS sign-in page, not a listing — links from inside " +
+            "Matrix or a portal session only work while you're logged in. Paste the " +
+            "public listing link (the one you'd send a client), or enter the details manually.",
+        },
+        { status: 422 },
+      );
+    }
+
+    // The listing site throttled us, not the other way round. A minute is the
+    // fix, so say so instead of talking about limits and plans.
+    if (code === "TARGET_BUSY") {
+      return NextResponse.json(
+        {
+          error:
+            "The listing site is asking us to slow down. Wait a minute and try again, " +
+            "or enter the details manually — nothing is wrong with your account.",
+        },
+        { status: 503 },
+      );
+    }
+
+    if (code.startsWith("TARGET_ERROR_")) {
+      return NextResponse.json(
+        {
+          error:
+            `The listing site returned an error (${code.replace("TARGET_ERROR_", "")}) instead of the page. ` +
+            "Check the link is still live, or enter the details manually.",
+        },
+        { status: 502 },
       );
     }
 
