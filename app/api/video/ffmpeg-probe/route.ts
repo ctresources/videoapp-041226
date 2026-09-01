@@ -249,6 +249,88 @@ export async function GET() {
     );
     results["step10_fade_through_black"] = r10.ok ? `✅ OK — ${r10.detail}` : `❌ FAILED: ${r10.detail}`;
 
+    /**
+     * A crossfade without xfade.
+     *
+     * How everyone did dissolves before xfade landed in FFmpeg 4.3, and this
+     * binary predates it: give the incoming clip an alpha channel, fade that
+     * alpha up, shift it to start where the outgoing clip is ending, and
+     * overlay the two. Every filter involved — format, fade, setpts, overlay —
+     * is present here.
+     *
+     * Worth the extra round trip because the alternative is dipping to black
+     * between every photo, and at six photos in thirty seconds that is five
+     * blackouts: it reads like the video keeps ending rather than flowing.
+     */
+    const dissolve = join(dir, "dissolve.mp4");
+    const r11 = await run(
+      (cmd) => cmd
+        .input("testsrc2=s=640x360:d=2:r=25")
+        .inputFormat("lavfi")
+        .input("testsrc2=s=640x360:d=2:r=25")
+        .inputFormat("lavfi")
+        .complexFilter(
+          [
+            "[0:v]format=yuva420p,setpts=PTS-STARTPTS[base]",
+            "[1:v]format=yuva420p,fade=t=in:st=0:d=0.75:alpha=1,setpts=PTS-STARTPTS+1.25/TB[top]",
+            "[base][top]overlay=format=auto,format=yuv420p[out]",
+          ],
+          "out",
+        )
+        .outputOptions(["-t 3.25"]),
+      dissolve,
+    );
+    results["step11_dissolve_via_overlay"] = r11.ok ? `✅ OK — ${r11.detail}` : `❌ FAILED: ${r11.detail}`;
+
+    /**
+     * A dress rehearsal, at the size and shape a real reel is.
+     *
+     * Everything above proves filters exist. This proves the thing can finish
+     * inside a serverless function: three stills, Ken Burns on each, dissolves
+     * between them, encoded at 1080x1920. Multiply the time by the number of
+     * photos to see whether thirty seconds fits in the sixty this route gets.
+     */
+    if (r11.ok) {
+      const reel = join(dir, "reel.mp4");
+      const started = Date.now();
+      const r12 = await run(
+        (cmd) => {
+          const c = cmd;
+          for (let i = 0; i < 3; i++) c.input("testsrc2=s=1080x1920:d=5:r=30").inputFormat("lavfi");
+          return c
+            .complexFilter(
+              [
+                // Ken Burns on each still, alternating push-in and pull-out so
+                // three photos in a row do not all drift the same way.
+                "[0:v]zoompan=z=min(zoom+0.0008\\,1.15):d=150:s=1080x1920:fps=30,format=yuva420p,setpts=PTS-STARTPTS[p0]",
+                "[1:v]zoompan=z=if(eq(on\\,1)\\,1.15\\,max(zoom-0.0008\\,1.0)):d=150:s=1080x1920:fps=30,format=yuva420p,fade=t=in:st=0:d=0.75:alpha=1,setpts=PTS-STARTPTS+4.25/TB[p1]",
+                "[2:v]zoompan=z=min(zoom+0.0008\\,1.15):d=150:s=1080x1920:fps=30,format=yuva420p,fade=t=in:st=0:d=0.75:alpha=1,setpts=PTS-STARTPTS+8.5/TB[p2]",
+                "[p0][p1]overlay=format=auto[o1]",
+                "[o1][p2]overlay=format=auto,format=yuv420p[out]",
+              ],
+              "out",
+            )
+            .outputOptions(["-t 13.5", "-r 30", "-preset veryfast", "-crf 23"]);
+        },
+        reel,
+      );
+      const secs = ((Date.now() - started) / 1000).toFixed(1);
+      if (r12.ok) {
+        let size = "";
+        try {
+          const stat = await fs.stat(reel);
+          size = `, ${(stat.size / 1024 / 1024).toFixed(1)} MB`;
+        } catch { /* size is a nicety */ }
+        results["step12_full_reel_rehearsal"] =
+          `✅ OK — 3 photos, 13.5s at 1080x1920 in ${secs}s${size}. ` +
+          `A 30s six-photo reel should land near ${(Number(secs) * 2.2).toFixed(0)}s of the 60s budget.`;
+      } else {
+        results["step12_full_reel_rehearsal"] = `❌ FAILED after ${secs}s: ${r12.detail}`;
+      }
+    } else {
+      results["step12_full_reel_rehearsal"] = "⏭ Skipped — no working transition to rehearse with";
+    }
+
     const best = r9.ok ? xfNorm : r8.ok ? xf : null;
     if (best) {
       try {
@@ -274,17 +356,21 @@ export async function GET() {
     (results["step8_xfade_plain"]?.startsWith("✅") ?? false) ||
     (results["step9_xfade_normalized"]?.startsWith("✅") ?? false);
   const throughBlack = results["step10_fade_through_black"]?.startsWith("✅") ?? false;
+  const dissolve = results["step11_dissolve_via_overlay"]?.startsWith("✅") ?? false;
+  const rehearsed = results["step12_full_reel_rehearsal"]?.startsWith("✅") ?? false;
 
   results["verdict"] = !kenBurns
     ? "❌ Ken Burns itself won't run here. Build the slideshow on the browser canvas."
-    : crossfade
-      ? "✅ Everything the slideshow needs works. Wire up renderPhotoSlideshow — rewriting " +
-        "its filter strings in the escaped, unquoted form this probe proved, and normalising " +
-        "inputs before xfade if only step 9 passed."
-      : throughBlack
-        ? "✅ Ken Burns works; crossfades don't. Build it with fades through black between " +
-          "photos — a different look, not a lesser one, and plenty of property films cut that way."
-        : "⚠️ Ken Burns works but no transition does. Hard cuts, or the browser canvas.";
+    : dissolve && rehearsed
+      ? "✅ Build it server-side. Ken Burns and true dissolves both work, and the rehearsal " +
+        "finished inside the function budget. xfade is absent from this binary, so the " +
+        "dissolve is done with overlay and an alpha fade — and every filter string needs the " +
+        "escaped, unquoted form, which is what ffmpeg-render.ts gets wrong today."
+      : dissolve
+        ? "⚠️ Dissolves work but the full rehearsal didn't finish — see step 12 before committing."
+        : crossfade || throughBlack
+          ? "✅ Ken Burns works, dissolves don't. Fall back to fades through black between photos."
+          : "⚠️ Ken Burns works but no transition does. Hard cuts, or the browser canvas.";
 
   return NextResponse.json(results, { status: 200 });
 }
