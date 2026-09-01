@@ -224,16 +224,56 @@ async function fetchWithJina(url: string): Promise<string> {
     throw new Error("JINA_QUOTA");
   }
 
-  if (blocked || text.trim().length < 500) {
-    // Log the response head. Without it a 221-character reply is
-    // indistinguishable from a JS-rendered page, a quota notice, and an outage.
+  if (blocked) {
     console.warn(
-      `[scrape-listing] Unusable page (${text.trim().length} chars, blocked=${blocked}) ` +
+      `[scrape-listing] Page refused the read (${text.trim().length} chars) ` +
       `head=${JSON.stringify(text.trim().slice(0, 300))}`,
     );
     throw new Error("BLOCKED");
   }
+
+  /**
+   * Read, but nothing in it.
+   *
+   * This used to be folded into BLOCKED by a `length < 500` test, which told
+   * people a site had refused the import when it had done no such thing — a
+   * lean MLS listing reads out to roughly 450 characters, and was called
+   * blocked for being brief. That is the wrong thing to measure and, worse,
+   * the wrong fix to suggest: "the page blocked us" sends someone off to check
+   * a link that was fine.
+   *
+   * Kept separate so the fallback can try it and the message can be honest.
+   */
+  if (!hasListingFacts(text)) {
+    console.warn(
+      `[scrape-listing] Read but thin (${text.trim().length} chars, no listing facts) ` +
+      `head=${JSON.stringify(text.trim().slice(0, 300))}`,
+    );
+    throw new Error("THIN");
+  }
   return text;
+}
+
+/**
+ * Is there a listing in here, or just page furniture?
+ *
+ * Length is the wrong measure and measurably so: a lean but complete listing
+ * — address, price, four beds, two and a half baths, 2,840 sqft and two
+ * paragraphs of description — comes out around 450 characters, while a
+ * JavaScript-rendered shell of cookie notices and "please enable JavaScript"
+ * runs longer than that and holds no listing at all.
+ *
+ * A price or a bed/bath/sqft figure is what a listing cannot be without. It
+ * matters more than it looks: text with no facts does not fail loudly
+ * downstream — the parser invents a listing to fit, which is the one outcome
+ * worse than an error message.
+ */
+function hasListingFacts(text: string): boolean {
+  return (
+    /\$\s?[\d,]{3,}/.test(text) ||
+    /\b\d+(\.\d+)?\s*(bed|bd|bath|ba)\b/i.test(text) ||
+    /\bsq\.?\s?(ft|feet)\b/i.test(text)
+  );
 }
 
 /**
@@ -283,43 +323,38 @@ async function readListingPage(url: string): Promise<string> {
     return await fetchWithJina(url);
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
-    // BLOCKED and NOT_A_LISTING are answers about the page itself, and a
-    // weaker reader will not do better on a page that actively refused a
-    // stronger one. Only the failures that are about OUR reader are worth a
-    // second attempt.
-    const readerFailed =
-      code === "JINA_QUOTA" || code === "NO_JINA_KEY" || code.startsWith("Jina fetch failed");
-    if (!readerFailed) throw err;
+    /**
+     * Worth a second reader, or not?
+     *
+     * The plain fetch is not a weaker version of Jina — it is a different
+     * client with different failure modes, which is the whole reason it is
+     * worth having. Jina is a known scraping service and hosts block it by
+     * name; this route's own gallery second-look is the proof that the plain
+     * fetch gets through where the markdown came up short. So a page that
+     * refused Jina is absolutely worth offering to the other one.
+     *
+     * NOT_A_LISTING is the exception: the page was read perfectly well and
+     * simply is not a listing. Reading it again, less well, cannot change that.
+     */
+    const worthRetrying =
+      code === "JINA_QUOTA" ||
+      code === "NO_JINA_KEY" ||
+      code === "BLOCKED" ||
+      code === "THIN" ||
+      code.startsWith("Jina fetch failed");
+    if (!worthRetrying) throw err;
 
     console.warn(`[scrape-listing] Jina unavailable (${code}) — falling back to a direct fetch.`);
     const html = await fetchRawHtml(url);
     const text = html ? htmlToText(html) : "";
 
-    /**
-     * Is there a listing in here, or just page furniture?
-     *
-     * Length alone is the wrong test, and measurably so: a lean but complete
-     * listing — address, price, four beds, two and a half baths, 2,840 sqft
-     * and two paragraphs of description — strips to about 450 characters,
-     * which a 500-character gate throws away. Meanwhile a JavaScript-rendered
-     * shell can carry more boilerplate than that and contain no listing at all.
-     *
-     * A price or a bed/bath/sqft figure is what a listing cannot be without,
-     * so that is what gets checked. It matters more than it looks: text with
-     * no facts in it does not fail loudly downstream — the parser invents a
-     * listing to fit, which is the one outcome worse than an error message.
-     */
-    const hasFacts =
-      /\$\s?[\d,]{3,}/.test(text) ||
-      /\b\d+(\.\d+)?\s*(bed|bd|bath|ba)\b/i.test(text) ||
-      /\bsq\.?\s?(ft|feet)\b/i.test(text);
-
-    // Rethrow the original either way: the fallback also failing does not
-    // change what went wrong first, and that is what the user needs told.
-    if (text.length < 200 || !hasFacts) {
+    // Same bar the first reader is held to — see hasListingFacts. Rethrow the
+    // original either way: the fallback also failing does not change what went
+    // wrong first, and that is what the user needs told.
+    if (text.length < 200 || !hasListingFacts(text)) {
       console.warn(
-        `[scrape-listing] fallback unusable (${text.length} chars, facts=${hasFacts}) — ` +
-        `reporting the original failure.`,
+        `[scrape-listing] fallback unusable (${text.length} chars, ` +
+        `facts=${hasListingFacts(text)}) — reporting the original failure.`,
       );
       throw err;
     }
@@ -574,6 +609,22 @@ export async function POST(req: NextRequest) {
             "Enter the details manually, or try again later.",
         },
         { status: 503 },
+      );
+    }
+
+    // Read, but nothing usable in it — most often a page that builds itself in
+    // the browser, so both readers saw the shell around the listing rather than
+    // the listing. Not the same as being blocked, and it used to be reported as
+    // if it were, which sent people off to re-check a link that was fine.
+    if (code === "THIN") {
+      return NextResponse.json(
+        {
+          error:
+            "That page loaded, but no listing details came through — some MLS sites " +
+            "build the page in your browser, so there is nothing to read from outside it. " +
+            "Enter the details manually, or try the public listing page if you have one.",
+        },
+        { status: 422 },
       );
     }
 
