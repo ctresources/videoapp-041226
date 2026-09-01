@@ -195,46 +195,111 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
  * nobody has quietly labelled it "credits" on the way past.
  */
 /**
- * Dollars per API usage credit — an estimate, and labelled one everywhere it
- * lands.
+ * Dollars per credit, for the case where the balance is not already money.
  *
- * Derived from a single confirmed data point: HeyGen support put a 2.2-minute
- * Video Agent render at 893 credits and "approximately $4.40", which is the
- * $2.00/minute Video Agent rate expressed in the wallet's own unit. 4.40 / 893
- * is what follows.
+ * A wallet reports in USD and needs no conversion — the movement across a
+ * render IS the cost. A subscription reports credits, and those need a rate.
+ * Derived from the one confirmed pairing: 893 usage credits against
+ * "approximately $4.40" for the same 2.2-minute Video Agent render.
  *
- * Overridable without a deploy because a rate card is not ours to control, and
- * because this same wallet is charged at different per-minute rates for
- * different engines — Avatar IV at $4.00/min against Video Agent's $2.00 —
- * so a single constant cannot be right for every render. The credit figure
- * beside it is the measurement; this is the reading of it.
+ * Overridable, because a rate card is not ours to control and a redeploy is a
+ * poor way to track somebody else's pricing.
  */
 const USD_PER_CREDIT = Number(process.env.HEYGEN_USD_PER_CREDIT || "") || 4.4 / 893;
 
-/** An estimate in dollars for a credit figure, or null when there isn't one. */
-export function creditsToUsd(credits: number | null | undefined): number | null {
-  if (typeof credits !== "number" || !Number.isFinite(credits) || credits < 0) return null;
-  return Math.round(credits * USD_PER_CREDIT * 10000) / 10000;
+/**
+ * A spend in dollars, given what the account reports in.
+ *
+ * Returns the figure untouched when the API says "usd" — the mistake worth
+ * avoiding here is converting money into money, which turns a $4.40 render
+ * into two pence and looks entirely plausible in a database column.
+ */
+export function balanceToUsd(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+): number | null {
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) return null;
+  const usd = currency === "usd" ? amount : amount * USD_PER_CREDIT;
+  return Math.round(usd * 10000) / 10000;
 }
 
-export async function getRemainingQuota(): Promise<{ value: number | null; raw: unknown }> {
-  for (const path of ["/v2/user/remaining_quota", "/v1/user/remaining_quota"]) {
-    try {
-      const res = await fetch(`${HEYGEN_API}${path}`, {
-        headers: { "x-api-key": getApiKey() },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const d = json?.data ?? {};
-      const value = [d.remaining_quota, d.quota, json?.remaining_quota]
-        .find((v: unknown) => typeof v === "number" && Number.isFinite(v));
-      if (typeof value === "number") return { value, raw: json };
-    } catch {
-      // Try the other shape; a balance reading is never worth failing a render.
+export interface AccountBalance {
+  /** Which billing object HeyGen populated: wallet, subscription, usage_based. */
+  billingType: string | null;
+  /** The figure that moves when a render is charged. */
+  balance: number | null;
+  /** "usd" or "credits", stated by the API rather than inferred by us. */
+  currency: string | null;
+  /**
+   * Which way it moves. A wallet and a credit pool count DOWN as they are
+   * spent; metered billing counts UP. Subtracting in the wrong direction turns
+   * a $4.40 render into minus $4.40, which is the kind of number that looks
+   * like a bug in the subtraction rather than in the assumption.
+   */
+  direction: "down" | "up";
+  raw: unknown;
+}
+
+/**
+ * The account's current balance, and — crucially — what it is denominated in.
+ *
+ * GET /v3/users/me answers the question this code previously had to guess at.
+ * There is no per-render cost anywhere in the API, so a video's cost is the
+ * movement in this figure across it; the whole difficulty was that "893" on
+ * the usage page and "19.3" on the billing page are different units of the
+ * same spend. `wallet.currency` settles it, so nothing here has to infer.
+ *
+ * Returns nulls rather than throwing. A balance reading is diagnostic, and
+ * losing it should never cost a render.
+ */
+export async function getAccountBalance(): Promise<AccountBalance> {
+  const empty: AccountBalance = {
+    billingType: null, balance: null, currency: null, direction: "down", raw: null,
+  };
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/users/me`, {
+      headers: { "x-api-key": getApiKey() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return empty;
+    const json = await res.json();
+    const d = json?.data ?? {};
+    const type: string | null = d.billing_type ?? null;
+
+    if (type === "wallet" && d.wallet) {
+      return {
+        billingType: type,
+        balance: typeof d.wallet.remaining_balance === "number" ? d.wallet.remaining_balance : null,
+        currency: d.wallet.currency ?? null,
+        direction: "down",
+        raw: json,
+      };
     }
+    if (type === "subscription" && d.subscription) {
+      const remaining = d.subscription.credits?.premium_credits?.remaining;
+      return {
+        billingType: type,
+        balance: typeof remaining === "number" ? remaining : null,
+        currency: "credits",
+        direction: "down",
+        raw: json,
+      };
+    }
+    if (type === "usage_based" && d.usage_based) {
+      const spent = d.usage_based.spending_current_usd;
+      return {
+        billingType: type,
+        balance: typeof spent === "number" ? spent : null,
+        currency: "usd",
+        // Spend accumulates, so this one grows across a render.
+        direction: "up",
+        raw: json,
+      };
+    }
+    return { ...empty, billingType: type, raw: json };
+  } catch {
+    return empty;
   }
-  return { value: null, raw: null };
 }
 
 export async function getVideoStatus(videoId: string): Promise<VideoStatus> {

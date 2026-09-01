@@ -7,7 +7,7 @@ import {
   resolveVoiceId,
   getAvatarLooks,
   uploadTalkingPhoto,
-  getRemainingQuota,
+  getAccountBalance,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -581,7 +581,7 @@ export async function POST(req: NextRequest) {
    * Best effort and never awaited into the critical path's failure modes: a
    * balance reading is not worth losing a render over.
    */
-  const quotaBefore = (await getRemainingQuota().catch(() => ({ value: null }))).value;
+  const quotaBefore = (await getAccountBalance()).balance;
 
   try {
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
