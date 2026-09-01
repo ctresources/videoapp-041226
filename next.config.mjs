@@ -16,7 +16,11 @@ const nextConfig = {
       // Same reason, for the route that actually renders reels: without the
       // binary named here it is traced away and every render fails at the
       // first frame.
-      "/api/video/photo-reel": ["./node_modules/@ffmpeg-installer/**", "./fonts/**"],
+      // public/fonts, not fonts: the thumbnail routes above use the Anton and
+      // Archivo files in ./fonts, and the renderer uses the Montserrat ones in
+      // ./public/fonts. Naming the wrong directory shipped the binary and left
+      // the typeface behind, and drawtext then failed the whole render.
+      "/api/video/photo-reel": ["./node_modules/@ffmpeg-installer/**", "./public/fonts/**"],
     },
   },
   images: {

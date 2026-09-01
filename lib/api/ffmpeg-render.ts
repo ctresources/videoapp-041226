@@ -160,7 +160,19 @@ function toFFmpegPath(p: string): string {
 const _fontExists: Record<string, boolean> = {};
 
 /** Get FFmpeg fontfile attribute — returns empty string if file is missing. */
-async function fontAttr(weight: string): Promise<string> {
+/**
+ * The `fontfile=` fragment for drawtext, or null when the font did not ship.
+ *
+ * Null rather than an empty string, and the difference is the whole bug: with
+ * no fontfile, drawtext falls back to the font family "Sans" and asks
+ * fontconfig to resolve it. A serverless container has no fonts and no
+ * fontconfig — "Cannot load default config file", "Cannot find a valid font
+ * for the family Sans" — so the filter fails to initialise and takes the
+ * entire render with it. An empty string was never a fallback here; it was a
+ * guaranteed crash wearing the shape of one. Callers must now skip the text
+ * rather than draw it in a font that cannot exist.
+ */
+async function fontAttr(weight: string): Promise<string | null> {
   const key = weight;
   if (_fontExists[key] === undefined) {
     const p = join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`);
@@ -172,7 +184,7 @@ async function fontAttr(weight: string): Promise<string> {
       console.warn(`[ffmpeg-render] Font not found: Montserrat-${weight}.ttf — using default font`);
     }
   }
-  if (!_fontExists[key]) return "";
+  if (!_fontExists[key]) return null;
   const p = join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`);
   return `fontfile='${toFFmpegPath(p)}':`;
 }
@@ -368,11 +380,21 @@ async function buildAndRun(
   );
 
   // ── Preload font attributes (async) ──────────────────────────────────────
-  const [titleFontAttr, nameFontAttr, ctaFontAttr] = await Promise.all([
+  //
+  // Coerced to empty strings here, which keeps this function exactly as it was.
+  // renderVideo has no callers, and the slideshow path is the one being brought
+  // into use — but if this one ever is, its drawtext sites need the same
+  // treatment as the slideshow's: skip the text when there is no font, because
+  // falling back to the family "Sans" fails outright in a container that has no
+  // fontconfig, and takes the render with it.
+  const [titleFontRaw, nameFontRaw, ctaFontRaw] = await Promise.all([
     fontAttr("ExtraBold"),
     fontAttr("SemiBold"),
     fontAttr("Bold"),
   ]);
+  const titleFontAttr = titleFontRaw ?? "";
+  const nameFontAttr = nameFontRaw ?? "";
+  const ctaFontAttr = ctaFontRaw ?? "";
 
   // ── Title card ────────────────────────────────────────────────────────────
   const escapedTitle = escapeDrawtext(params.title);
@@ -770,17 +792,25 @@ async function buildSlideshowAndRun(
   ]);
 
   // ── Title card (first 4 seconds) ─────────────────────────────────────────
-  const escapedTitle = escapeDrawtext(params.title);
-  const titleX = `(w-text_w)/2`;
-  const titleY = videoType === "reel_9x16"
-    ? `${Math.round(height * 0.12)}`
-    : `(h-text_h)/2-40`;
-  filterParts.push(
-    `[bgdark]drawtext=text='${escapedTitle}':` +
-    `${titleFontAttr}fontsize=${cfg.titleFontSize}:fontcolor=white:` +
-    `borderw=2:bordercolor=black:x=${titleX}:y=${titleY}:` +
-    `enable='between(t\\,0\\,4)'[titled]`,
-  );
+  // Skipped outright without a font, rather than drawn in one the container
+  // does not have. A reel with no title over the opening shot is a small loss;
+  // a filter graph that will not initialise is the whole video.
+  if (titleFontAttr && params.title.trim()) {
+    const escapedTitle = escapeDrawtext(params.title);
+    const titleX = `(w-text_w)/2`;
+    const titleY = videoType === "reel_9x16"
+      ? `${Math.round(height * 0.12)}`
+      : `(h-text_h)/2-40`;
+    filterParts.push(
+      `[bgdark]drawtext=text='${escapedTitle}':` +
+      `${titleFontAttr}fontsize=${cfg.titleFontSize}:fontcolor=white:` +
+      `borderw=2:bordercolor=black:x=${titleX}:y=${titleY}:` +
+      `enable='between(t\\,0\\,4)'[titled]`,
+    );
+  } else {
+    if (!titleFontAttr) console.warn("[ffmpeg-slideshow] No title font available — rendering without a title card.");
+    filterParts.push(`[bgdark]copy[titled]`);
+  }
 
   // ── Captions ─────────────────────────────────────────────────────────────
   if (withCaptions && params.wordTimestamps.length > 0) {
@@ -820,7 +850,9 @@ async function buildSlideshowAndRun(
   }
 
   // ── Agent name badge ──────────────────────────────────────────────────────
-  if (params.agentName && avatarPath) {
+  // Same rule as the title: no font, no text. The headshot above it still
+  // draws, so the frame keeps the part that does not need one.
+  if (params.agentName && avatarPath && nameFontAttr) {
     const escapedName = escapeDrawtext(params.agentName);
     filterParts.push(
       `[${currentLabel}]drawtext=text='${escapedName}':` +
