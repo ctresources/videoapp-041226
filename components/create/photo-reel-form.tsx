@@ -56,6 +56,10 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
    * than an assumption.
    */
   const [captions, setCaptions] = useState(true);
+  /** The ask, held over the last few seconds once the photos have done their work. */
+  const [endCard, setEndCard] = useState(true);
+  const [endCardHeadline, setEndCardHeadline] = useState("See it in person");
+  const [address, setAddress] = useState("");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -179,6 +183,9 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
           voiceoverPath: voice === "record" ? voiceoverPath : undefined,
           musicQuery,
           captions: voice !== "music" && captions,
+          endCard,
+          endCardHeadline,
+          address,
           city,
           state,
         }),
@@ -424,6 +431,49 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
           </div>
         </div>
       )}
+
+      {/* ── Closing card ── */}
+      {/* The phone comes from your profile and the town from the market above,
+          so the only thing asked for here is the wording of the ask itself. */}
+      <div className="flex flex-col gap-1.5 rounded-lg border border-spark-rule px-2.5 py-2">
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={endCard}
+            onChange={(e) => setEndCard(e.target.checked)}
+            className="mt-0.5 size-3.5 shrink-0 accent-spark-amber"
+          />
+          <span className="min-w-0">
+            <span className="block text-[12px] font-semibold text-spark-ink">Closing card</span>
+            <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
+              Dims the last few seconds and shows the ask, the property and your phone number.
+            </span>
+          </span>
+        </label>
+        {endCard && (
+          <div className="flex flex-col gap-1.5 pl-5.5">
+            <input
+              value={endCardHeadline}
+              onChange={(e) => setEndCardHeadline(e.target.value)}
+              placeholder="See it in person"
+              maxLength={60}
+              className="rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
+            />
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="24 Shagbark Ct E (optional)"
+              maxLength={80}
+              className="rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
+            />
+            <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
+              {city || state
+                ? <>Followed by {[city, state].filter(Boolean).join(", ")} and your phone number from Settings.</>
+                : <>Followed by your phone number from Settings. Set the market above to name the town too.</>}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* ── Music ── */}
       <div>

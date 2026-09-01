@@ -650,6 +650,16 @@ export interface SlideshowParams {
    * an empty card.
    */
   photoCaptions?: (string | null | undefined)[];
+  /**
+   * A closing card over the last few seconds — the ask, once the pictures have
+   * done their work. Omitted entirely when absent, rather than drawn empty.
+   */
+  endCard?: {
+    headline?: string;
+    address?: string;
+    market?: string;
+    phone?: string;
+  } | null;
 }
 
 /**
@@ -998,8 +1008,60 @@ async function buildSlideshowAndRun(
     filterParts.push(`[${cardLabel}]copy[captioned]`);
   }
 
-  // ── Logo ──────────────────────────────────────────────────────────────────
+  /**
+   * ── Closing card ───────────────────────────────────────────────────────
+   *
+   * The ask, held over the last few seconds once the photographs have done
+   * their work. It dims the final shot rather than cutting to a colour: the
+   * picture is what earned the attention, and throwing it away to show a phone
+   * number is how a reel loses people in its last second.
+   *
+   * Drawn after the burned-in captions so the wash covers those too — a
+   * caption still legible under the closing card reads as two videos at once —
+   * and before the logo and badge, which stay on top where the branding
+   * belongs.
+   */
   let currentLabel = "captioned";
+  const end = params.endCard;
+  const endLines = end
+    ? [end.headline, end.address, end.market, end.phone].filter((l): l is string => !!l?.trim())
+    : [];
+  if (endLines.length > 0 && titleFontAttr) {
+    // Long enough to read a phone number aloud, short enough not to be the
+    // video — and never more than a third of a very short reel.
+    const ctaDur = Math.min(4, Math.max(2.5, audioDuration * 0.3));
+    const from = Math.max(0, audioDuration - ctaDur).toFixed(3);
+    const to = audioDuration.toFixed(3);
+    const when = `enable='between(t\\,${from}\\,${to})'`;
+
+    filterParts.push(
+      `[captioned]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.68:t=fill:` +
+      `enable=between(t\\,${from}\\,${to})[ctabg]`,
+    );
+
+    // Stacked from a third of the way down, with the headline given twice the
+    // room of the lines under it.
+    const S = Math.min(width, height);
+    const headSize = Math.round(S * 0.062);
+    const bodySize = Math.round(S * 0.042);
+    let y = Math.round(height * 0.34);
+    let label = "ctabg";
+
+    endLines.forEach((line, i) => {
+      const isHead = i === 0 && !!end?.headline?.trim();
+      const size = isHead ? headSize : bodySize;
+      const out = i === endLines.length - 1 ? "ctad" : `cta${i}`;
+      filterParts.push(
+        `[${label}]drawtext=text='${escapeDrawtext(line)}':` +
+        `${isHead ? titleFontAttr : nameFontAttr ?? titleFontAttr}fontsize=${size}:` +
+        `fontcolor=white:borderw=2:bordercolor=black@0.5:` +
+        `x=(w-text_w)/2:y=${y}:${when}[${out}]`,
+      );
+      label = out;
+      y += Math.round(size * (isHead ? 1.9 : 1.55));
+    });
+    currentLabel = label;
+  }
   if (logoPath && logoInputIdx >= 0) {
     filterParts.push(`[${logoInputIdx}:v]scale=${cfg.logoSize}:-1[logosc]`);
     filterParts.push(`[captioned][logosc]overlay=x=20:y=20:format=auto[logoed]`);

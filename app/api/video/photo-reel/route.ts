@@ -56,6 +56,12 @@ export async function POST(req: NextRequest) {
     musicQuery?: string | null;
     /** Burn the spoken words into the picture. Ignored with nothing spoken. */
     captions?: boolean;
+    /** Closing card over the last few seconds. Off when false or absent. */
+    endCard?: boolean;
+    /** Its opening line — the ask itself. */
+    endCardHeadline?: string;
+    /** The property, if this reel is about one. */
+    address?: string;
     city?: string;
     state?: string;
   };
@@ -71,7 +77,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, company_name, logo_url, avatar_url, voice_clone_id, location_city, location_state")
+    .select("full_name, company_name, logo_url, avatar_url, voice_clone_id, location_city, location_state, phone, company_phone")
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
@@ -159,6 +165,28 @@ export async function POST(req: NextRequest) {
         agentName: p.full_name ?? undefined,
         musicUrl,
         musicVolume,
+        /**
+         * Built from what is already known rather than asked for again: the
+         * market came from the form, the phone from the profile. Only the
+         * headline is theirs to write, because it is the only line whose
+         * wording is a decision.
+         *
+         * Null when they turned it off, and null again when nothing survived —
+         * a closing card carrying only a headline and no way to act on it is
+         * worse than ending on the last photograph.
+         */
+        endCard: body.endCard === false ? null : (() => {
+          const market = [body.city, body.state].filter(Boolean).join(", ");
+          const phone = (p.phone || p.company_phone || "").trim();
+          const address = (body.address || "").trim();
+          if (!phone && !address && !market) return null;
+          return {
+            headline: (body.endCardHeadline || "See it in person").trim().slice(0, 60),
+            address: address.slice(0, 80),
+            market: market.slice(0, 80),
+            phone,
+          };
+        })(),
       },
       videoType,
     );
