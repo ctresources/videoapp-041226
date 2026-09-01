@@ -32,11 +32,14 @@ const nextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "gfawbvsokbgrlbcfqrkh.supabase.co",
-        pathname: "/storage/v1/object/public/**",
-      },
+      // One entry, not two. The first used to name gfawbvsokbgrlbcfqrkh —
+      // a project this app no longer uses; its storage is on
+      // fifryrqhrfnzbwpvvvkz. It had been dead for a while and nobody could
+      // tell, because the wildcard below it was quietly matching everything
+      // the named host was supposed to. Two rules where one has stopped
+      // working is worse than one rule: it reads as deliberate, so the day
+      // the wildcard is narrowed for a good reason, images break and the
+      // stale line is the last place anyone looks.
       {
         protocol: "https",
         hostname: "*.supabase.co",
