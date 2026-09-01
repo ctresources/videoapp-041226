@@ -236,6 +236,99 @@ async function fetchWithJina(url: string): Promise<string> {
   return text;
 }
 
+/**
+ * Strip a raw HTML page down to the readable text the parser wants.
+ *
+ * The same treatment /api/ai/extract-url gives a page, kept simple on purpose:
+ * this is the fallback, and a fallback that needs its own parser is a second
+ * thing to go wrong.
+ */
+function htmlToText(html: string): string {
+  let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ");
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ");
+  text = text.replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, " ");
+  text = text.replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, " ");
+  text = text.replace(/<header[^>]*>[\s\S]*?<\/header>/gi, " ");
+  text = text.replace(/<[^>]+>/g, " ");
+  text = text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  return text.replace(/\s{3,}/g, "  ").trim();
+}
+
+/**
+ * The listing page as text, from whichever reader can get it.
+ *
+ * Jina first: it renders JavaScript and distils the page to markdown, which is
+ * both what the fact parser reads best and the only thing that works on a
+ * portal that builds its content in the browser.
+ *
+ * A plain fetch second. It cannot render JavaScript and scraper-hostile hosts
+ * refuse it outright, so it will never rescue a Zillow link — but it costs
+ * nothing, needs no key, and this route already proved it works: the gallery
+ * second-look below pulls photos out of exactly this fetch, twelve from a
+ * listing whose Jina markdown held five. An agent's own site, a brokerage
+ * page or a plain MLS page reads fine this way.
+ *
+ * The point is that Jina running out of quota stops being total. It was the
+ * only reader, so its limit took every listing URL down with it regardless of
+ * which site the link pointed at.
+ */
+async function readListingPage(url: string): Promise<string> {
+  try {
+    return await fetchWithJina(url);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    // BLOCKED and NOT_A_LISTING are answers about the page itself, and a
+    // weaker reader will not do better on a page that actively refused a
+    // stronger one. Only the failures that are about OUR reader are worth a
+    // second attempt.
+    const readerFailed =
+      code === "JINA_QUOTA" || code === "NO_JINA_KEY" || code.startsWith("Jina fetch failed");
+    if (!readerFailed) throw err;
+
+    console.warn(`[scrape-listing] Jina unavailable (${code}) — falling back to a direct fetch.`);
+    const html = await fetchRawHtml(url);
+    const text = html ? htmlToText(html) : "";
+
+    /**
+     * Is there a listing in here, or just page furniture?
+     *
+     * Length alone is the wrong test, and measurably so: a lean but complete
+     * listing — address, price, four beds, two and a half baths, 2,840 sqft
+     * and two paragraphs of description — strips to about 450 characters,
+     * which a 500-character gate throws away. Meanwhile a JavaScript-rendered
+     * shell can carry more boilerplate than that and contain no listing at all.
+     *
+     * A price or a bed/bath/sqft figure is what a listing cannot be without,
+     * so that is what gets checked. It matters more than it looks: text with
+     * no facts in it does not fail loudly downstream — the parser invents a
+     * listing to fit, which is the one outcome worse than an error message.
+     */
+    const hasFacts =
+      /\$\s?[\d,]{3,}/.test(text) ||
+      /\b\d+(\.\d+)?\s*(bed|bd|bath|ba)\b/i.test(text) ||
+      /\bsq\.?\s?(ft|feet)\b/i.test(text);
+
+    // Rethrow the original either way: the fallback also failing does not
+    // change what went wrong first, and that is what the user needs told.
+    if (text.length < 200 || !hasFacts) {
+      console.warn(
+        `[scrape-listing] fallback unusable (${text.length} chars, facts=${hasFacts}) — ` +
+        `reporting the original failure.`,
+      );
+      throw err;
+    }
+
+    console.log(`[scrape-listing] fallback fetch succeeded: ${text.length} chars.`);
+    return text;
+  }
+}
+
 async function parseListingWithPerplexity(markdown: string): Promise<ListingData> {
   // Listing pages are large and the beds/baths/sqft facts often sit well past
   // the first few thousand characters — truncating at 8k hid them and the
@@ -389,7 +482,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const markdown = await fetchWithJina(url);
+    const markdown = await readListingPage(url);
     const listing = await parseListingWithPerplexity(markdown);
     // Photos come from the markdown, not the model — see extractImageUrls.
     // Resolved against the final URL so relative paths work after a redirect.
