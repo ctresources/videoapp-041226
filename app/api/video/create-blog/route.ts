@@ -245,17 +245,31 @@ function buildVideoAgentPrompt(params: {
   // never told to "fill the 16:9 canvas".
   const canvasLabel = params.isSquare ? "1:1 square" : params.isShortForm ? "9:16 vertical" : "16:9 widescreen";
 
+  /**
+   * How the canvas gets filled when the source footage is the wrong shape.
+   *
+   * Background first, zoom never. This used to read "zoom and crop the
+   * presenter to fill it; if that can't fill the frame, place them over a
+   * blurred enlarged copy" — and the fallback was unreachable, because zooming
+   * CAN always fill a frame. So a squarish avatar source stretched to
+   * 1080x1920 arrived as a face filling the screen, which is exactly what the
+   * instruction asked for. Nothing anywhere bounded how large the head could
+   * get; PRESENTER FRAMING below now does.
+   */
+  const fillRule = "Fill leftover space with a background (blurred enlarged footage, b-roll, or a branded backdrop)"
+    + (params.hasAvatar ? " — never by zooming into the presenter." : ".");
+
   const orientationBlock = params.isSquare
     ? `OUTPUT FORMAT — 1:1 SQUARE (NON-NEGOTIABLE)
 CANVAS: 1080 × 1080, perfectly square. NOT vertical, NOT widescreen.
-Fill the square edge-to-edge — no black bars. Zoom and crop the presenter to fill it (cropping edges is fine); if cropping alone can't fill the frame, place the presenter over a blurred enlarged copy of the same footage.`
+Fill the square edge-to-edge — no black bars. ${fillRule}`
     : params.isShortForm
     ? `OUTPUT FORMAT — 9:16 VERTICAL (NON-NEGOTIABLE)
 CANVAS: 1080 wide × 1920 tall, portrait — like a Reel/TikTok. NOT landscape.
-Fill the vertical frame edge-to-edge — no black bars. Zoom and crop the presenter (crop the sides) to fill it; if that can't fill the frame, place the presenter over a blurred enlarged copy of the same footage.`
+Fill the vertical frame edge-to-edge — no black bars. ${fillRule}`
     : `OUTPUT FORMAT — 16:9 WIDESCREEN (NON-NEGOTIABLE)
 CANVAS: 1920 wide × 1080 tall, landscape. NEVER render vertical/portrait.
-Fill the frame edge-to-edge — no black bars. The presenter's footage is portrait, so on every scene either zoom and crop it to fill the width (cropping top/bottom is fine), or put a full-frame background behind it (blurred enlarged footage, b-roll, or a branded backdrop). Black side panels are a failed render.`;
+Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head to gain width. Black side panels are a failed render.`;
 
   const listingCount = params.listingPhotoCount ?? 0;
   const extraCount = params.extraPhotoCount ?? 0;
@@ -305,8 +319,12 @@ ${params.hasAvatar ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE 
 - A graphic too large for the bottom band must be SHRUNK to fit, or shown on a b-roll-only scene where the presenter is off camera. Never enlarge it into the face zone.
 - When in doubt, move it DOWN. Bottom edge is always correct; middle of frame is always wrong.
 
+PRESENTER FRAMING (RULE #2)
+- Head-and-shoulders to mid-chest, as a news anchor is framed: the head fills a QUARTER to a THIRD of the frame height, never more, with headroom above the hair.
+- NEVER a face-only close-up, and never crop the head, chin or ears. If the source footage is framed tighter, pull back and fill around them with a background rather than matching its crop.
+
 AVATAR + B-ROLL INTERCUT (MANDATORY)
-- When on camera the presenter is FULL SCREEN, filling the entire ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop. Always the animated, lip-synced avatar; never a static image.
+- When on camera the presenter is alone on a filled ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop, no black bars — framed per RULE #2. Always the animated, lip-synced avatar; never a static image.
 - Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.` : `NO PRESENTER — VOICEOVER ONLY (RULE #1)
 - This video has NO on-screen presenter. Do NOT place any person, avatar, host, narrator, spokesperson or talking head in any scene — not full screen, not in a corner, not in an inset, not for one frame. No avatar was supplied and none may be substituted.
 - The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
@@ -327,7 +345,7 @@ FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 
 SCENE 1 — TITLE CARD (this frame is also the thumbnail)
 ${params.hasAvatar
-  ? `- Full-screen talking presenter filling the entire ${canvasLabel} canvas — the avatar IS the thumbnail; no separate background photo.`
+  ? `- The talking presenter alone on a filled ${canvasLabel} canvas, framed per RULE #2 — the avatar IS the thumbnail; no separate background photo.`
   : `- The strongest available visual, full-screen and filling the entire ${canvasLabel} canvas. No presenter, no person, no talking head.`}
 - MANDATORY OVERLAY: a full-width dark semi-transparent bar across the bottom 20% containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
 - No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
@@ -338,7 +356,7 @@ FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
 - Show phone numbers exactly as provided — no leading "1", no country code.
 - Bold CTA headline: "${ctaText}"
 ${params.hasAvatar
-  ? "- Presenter full-screen or beside the card; fill the whole canvas (blurred enlarged footage or b-roll behind if needed) — never black bars."
+  ? "- Presenter framed per RULE #2, or beside the card; fill the canvas with a background (blurred footage or b-roll) — never black bars."
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
 DURATION (CRITICAL)
