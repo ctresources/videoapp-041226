@@ -8,6 +8,7 @@ import {
   getAvatarLooks,
   uploadTalkingPhoto,
   getAccountBalance,
+  getLookInfo,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -821,11 +822,41 @@ export async function POST(req: NextRequest) {
       // the screen with the user's photos rather than carrying it alone.
       // SHORT Direct Video renders are 1-4 min, where the delta is a few dollars
       // and the face fills the frame — so those keep the best engine available.
-      const directEngine = isLongForm
+      const preferredEngine = isLongForm
         ? ("avatar_iii" as const)
         : isDigitalTwin
           ? ("avatar_v" as const)
           : undefined; // photo avatars use HeyGen's default (avatar_iv)
+
+      /**
+       * Ask the look what it supports before asking it for anything.
+       *
+       * Not every look does every engine — Avatar V is twin-only — and an
+       * unsupported request fails the render, which someone finds out fifteen
+       * minutes after pressing the button. The look also reports how HeyGen
+       * classifies it, and that is what the bill follows: this account's
+       * "digital twin" comes back typed photo_avatar, so our own idea of which
+       * it is would have priced it wrong.
+       *
+       * A lookup that fails changes nothing — the preference is used as before.
+       * A render is not worth blocking on a question about a render.
+       */
+      const look = await getLookInfo(directAvatarId);
+      let directEngine = preferredEngine;
+      if (preferredEngine && look.engines && !look.engines.includes(preferredEngine)) {
+        // Cheapest supported first for long form, where minutes multiply;
+        // best supported first for shorts, where the face carries the frame
+        // and IV and V cost the same anyway.
+        const order = isLongForm
+          ? ["avatar_iii", "avatar_iv", "avatar_v"]
+          : ["avatar_v", "avatar_iv", "avatar_iii"];
+        const fallback = order.find((e) => look.engines!.includes(e));
+        console.warn(
+          `[create-blog] Look ${directAvatarId} does not support ${preferredEngine} ` +
+          `(supports ${look.engines.join(", ")}) — using ${fallback ?? "HeyGen's default"}.`,
+        );
+        directEngine = fallback as typeof preferredEngine;
+      }
 
       const directVideoId = await generateVideoV3({
         avatarId: directAvatarId,
@@ -844,7 +875,23 @@ export async function POST(req: NextRequest) {
       await admin
         .from("generated_videos")
         // credit_cost enables an automatic refund if the render later fails
-        .update({ render_job_id: directVideoId, metadata: { ...(videoRow.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan", quota_before: quotaBefore } })
+        .update({
+          render_job_id: directVideoId,
+          metadata: {
+            ...(videoRow.metadata ?? {}),
+            credit_cost: creditCost,
+            credit_kind: videoKind,
+            credit_source: charge?.source ?? "plan",
+            quota_before: quotaBefore,
+            // What it was actually rendered with. Both are needed to price it:
+            // the engine and the avatar type each move the rate, by up to four
+            // times between them. Recorded here because this is the only place
+            // that knows, and store-video is where the cost gets worked out.
+            heygen_engine: directEngine ?? "avatar_iv",
+            heygen_avatar_type: look.avatarType,
+            is_digital_twin: isDigitalTwin,
+          },
+        })
         .eq("id", videoRow.id);
 
       // Admins are never charged. Previously only the REFUSAL was skipped for

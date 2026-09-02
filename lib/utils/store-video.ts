@@ -280,7 +280,14 @@ export async function downloadAndStoreVideo(
       try {
         const { duration } = await getVideoStatus(opts.heygenVideoId);
         const provider = (row as { render_provider?: string | null } | null)?.render_provider ?? null;
-        const cost = estimateRenderCostUsd(provider, duration);
+        const cost = estimateRenderCostUsd({
+          renderProvider: provider,
+          // Recorded at submit — see create-blog. Absent on anything rendered
+          // before that shipped, which yields null rather than a wrong figure.
+          engine: typeof meta.heygen_engine === "string" ? meta.heygen_engine : null,
+          avatarType: typeof meta.heygen_avatar_type === "string" ? meta.heygen_avatar_type : null,
+          durationSeconds: duration,
+        });
         if (duration !== null) {
           await mergeMetadata(admin, videoId, {
             heygen_duration_seconds: duration,

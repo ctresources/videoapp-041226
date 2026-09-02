@@ -222,33 +222,99 @@ const USD_PER_CREDIT = Number(process.env.HEYGEN_USD_PER_CREDIT || "") || 4.4 / 
  * pricing. render_provider is what the row already records, so no new column
  * is needed to choose between them.
  */
-const RATE_PER_MINUTE_USD: Record<string, number> = {
-  heygen_agent: Number(process.env.HEYGEN_RATE_AGENT || "") || 2.0,
-  // Direct Video renders a photo avatar or a digital twin look. The photo
-  // avatar rate is the lower of the two and the one most accounts hit; a twin
-  // on Avatar IV is $4.00, so this under-reads rather than over-reads for
-  // those. Set HEYGEN_RATE_DIRECT to correct it once the readings say which.
-  heygen_v3_direct: Number(process.env.HEYGEN_RATE_DIRECT || "") || 3.0,
-  heygen_v3_translate: Number(process.env.HEYGEN_RATE_TRANSLATE || "") || 2.0,
+/**
+ * Per SECOND, as HeyGen's card states it. A per-minute table rounds $0.0333 to
+ * $2.00 and drifts; these are the numbers on the invoice.
+ *
+ * Keyed engine → avatar type, because both move the price and by a lot: the
+ * same digital twin is $0.0167/sec on Avatar III and $0.0667/sec on Avatar IV,
+ * four times over. A single Direct Video rate is right for exactly one of the
+ * routes this app takes and badly wrong for the others.
+ */
+const RATE_PER_SECOND_USD: Record<string, Record<string, number>> = {
+  avatar_iii: { photo_avatar: 0.0433, digital_twin: 0.0167, studio: 0.0167 },
+  avatar_iv:  { photo_avatar: 0.05,   digital_twin: 0.0667, studio: 0.0667 },
+  // Avatar V is twin-only per the card; the photo entry mirrors it so an
+  // unexpected pairing costs something rather than silently costing nothing.
+  avatar_v:   { photo_avatar: 0.0667, digital_twin: 0.0667, studio: 0.0667 },
 };
 
+const AGENT_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_AGENT || "") || 0.0333;
+const TRANSLATE_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_TRANSLATE || "") || 0.0333;
+
 /**
- * What a render cost, from its duration and the engine that made it.
+ * What a render cost, from its duration and what actually made it.
  *
- * Null when either is unknown, rather than a zero — a cost of nothing is a
- * claim, and "we do not know" is the truth. Callers store it beside the raw
- * duration so a corrected rate can be reapplied later without re-rendering.
+ * Null rather than zero whenever the inputs are not there — which includes
+ * every render made before these fields were recorded. A missing cost is
+ * honest; a plausible-looking one that is three times out is worse than
+ * nothing, because it will be believed.
+ *
+ * Duration is stored beside the result by the caller, so a rate corrected
+ * later can be reapplied to old rows without re-rendering anything.
  */
-export function estimateRenderCostUsd(
-  renderProvider: string | null | undefined,
-  durationSeconds: number | null | undefined,
-): number | null {
-  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return null;
+export function estimateRenderCostUsd(params: {
+  renderProvider: string | null | undefined;
+  /** avatar_iii | avatar_iv | avatar_v — absent means HeyGen's default, avatar_iv. */
+  engine?: string | null;
+  /** HeyGen's own classification of the look, which is what it bills on. */
+  avatarType?: string | null;
+  durationSeconds: number | null | undefined;
+}): number | null {
+  const { renderProvider, engine, avatarType, durationSeconds: secs } = params;
+  if (typeof secs !== "number" || !Number.isFinite(secs) || secs <= 0) return null;
+
+  if (renderProvider === "heygen_agent") return round2(secs * AGENT_RATE_PER_SECOND);
+  if (renderProvider === "heygen_v3_translate") return round2(secs * TRANSLATE_RATE_PER_SECOND);
+
+  if (renderProvider === "heygen_v3_direct") {
+    // Omitting the engine means HeyGen's default, which the card names as
+    // Avatar IV — so an absent value is a known engine, not an unknown one.
+    const table = RATE_PER_SECOND_USD[engine || "avatar_iv"];
+    if (!table) return null;
+    // Trust HeyGen's classification of the look over our own idea of it: their
+    // "digital twin" look came back typed photo_avatar, and the bill follows
+    // their word, not ours.
+    const rate = table[avatarType || "photo_avatar"];
+    return rate ? round2(secs * rate) : null;
   }
-  const rate = renderProvider ? RATE_PER_MINUTE_USD[renderProvider] : undefined;
-  if (!rate) return null;
-  return Math.round((durationSeconds / 60) * rate * 100) / 100;
+
+  return null;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Which render engines a look actually supports.
+ *
+ * Asked before requesting one, because the request is not always honourable:
+ * Avatar V is twin-only, and a look that cannot do it would fail the render —
+ * fifteen minutes after someone pressed the button. Returns null when the
+ * question cannot be answered, and the caller then proceeds as before rather
+ * than blocking a render on a lookup.
+ */
+export async function getLookInfo(
+  lookId: string,
+): Promise<{ engines: string[] | null; avatarType: string | null }> {
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/looks/${lookId}`, {
+      headers: { "x-api-key": getApiKey() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { engines: null, avatarType: null };
+    const json = await res.json();
+    const list = json?.data?.supported_api_engines;
+    return {
+      engines: Array.isArray(list) && list.length ? list : null,
+      // Both answers come from one call: the engines decide what can be asked
+      // for, the type decides what it costs, and they are the same lookup.
+      avatarType: typeof json?.data?.avatar_type === "string" ? json.data.avatar_type : null,
+    };
+  } catch {
+    return { engines: null, avatarType: null };
+  }
 }
 
 /**
