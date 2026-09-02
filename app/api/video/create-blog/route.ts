@@ -35,6 +35,27 @@ export const maxDuration = 300;
 // copy here that can silently drift out of step.
 const MAX_SHORT_WORDS = standardMaxWords();
 
+/**
+ * The longest a short may run, stated to the Video Agent in its prompt.
+ *
+ * The Agent's API takes no duration parameter — prompt, avatar, voice,
+ * orientation, files, callbacks and nothing else — so the only place a ceiling
+ * can be set is in the words we send it. That makes this an instruction rather
+ * than a limit, and the credit reading recorded on every render is how we find
+ * out whether it is being honoured.
+ *
+ * It matters because the Agent bills on the FINISHED VIDEO'S DURATION, $2.00 a
+ * minute to the second. Anything it adds to fill time is charged at the same
+ * rate as the part anyone asked for — and what it adds, left to itself, is
+ * stock footage of towns that are not the one in the script.
+ *
+ * Three fits what the script budget already produces: MAX_SHORT_WORDS is about
+ * 400 words, roughly 2 minutes 45 at a natural 145 wpm, leaving something like
+ * fifteen seconds for the contact card. So it caps the padding without ever
+ * contradicting the instruction one line below it to speak every word.
+ */
+const MAX_SHORT_MINUTES = 3;
+
 // LONG videos render on Direct Video (script is a separate field, no prompt
 // limit), so this is a pure product/cost choice: 8 min at $1/min (Avatar III
 // digital twin) or $2.60/min (Avatar III photo avatar).
@@ -317,7 +338,9 @@ ${params.hasAvatar
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
 DURATION (CRITICAL)
-- Maximum ${params.isLongForm ? "40 scenes; vary the visuals every 20–30 seconds to hold attention" : "10 scenes"}.
+- Maximum ${params.isLongForm ? "40 scenes; vary the visuals every 20–30 seconds to hold attention" : "10 scenes"}.${params.isLongForm ? "" : `
+- HARD CEILING: the finished video must run no longer than ${MAX_SHORT_MINUTES} minutes. The narration below is written to fit inside that with room to spare for the contact card.
+- Do NOT pad to reach a length. No extra scenes, no stock footage of places not named in the script, no repeated or held shots, no stretched pauses. If the narration ends at ninety seconds, the video ends at ninety seconds.`}
 - The voiceover must contain 100% of the narration script below, word for word, first word to last, at a natural unhurried ~145 wpm. Never summarize, paraphrase, shorten, trim or speed-read it. The video ends only after the FINAL word is spoken — ending before the script is finished is WRONG.
 - No intro music, countdown or silent title scene. No filler or silent gaps.
 
