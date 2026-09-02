@@ -215,6 +215,18 @@ function buildVideoAgentPrompt(params: {
    * propertyPhotos below.
    */
   isListing?: boolean;
+  /**
+   * Photo-led layout: photos full-frame for the whole runtime with the
+   * presenter as a corner inset, instead of cutting between the two.
+   *
+   * OFF by default and deliberately untested — it is a request, and the Video
+   * Agent has a record of declining requests (it ignores the caption block
+   * every time, and used 5 of 8 photos when told to use all of them). Worth one
+   * render to find out: at an even cut a 90-second video has room for about
+   * five photos, and with the photos on screen throughout it has room for
+   * twelve.
+   */
+  pipLayout?: boolean;
   pdfContent?: string;
   /**
    * Whether an avatar is actually being placed on screen.
@@ -299,6 +311,12 @@ Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head t
    */
   const propertyPhotos = totalPhotos > 0 && params.isListing;
 
+  /**
+   * Photo-led layout only makes sense with a presenter to inset and photos to
+   * put behind them, so it is gated on both rather than trusted to the caller.
+   */
+  const pipMode = !!params.pipLayout && params.hasAvatar && totalPhotos > 0;
+
   const photoBlock = totalPhotos > 0
     ? `
 ATTACHED PHOTOS — PRIMARY B-ROLL
@@ -336,7 +354,14 @@ ${propertyPhotos
 
 ${orientationBlock}
 
-${params.hasAvatar ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
+${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
+- The attached photos are the picture. Each one fills the whole ${canvasLabel} canvas edge to edge, with gentle Ken Burns motion, for the entire runtime.
+- The presenter is a PICTURE-IN-PICTURE inset: a small rounded rectangle in a BOTTOM CORNER, about 25% of the frame width, over the photo. Animated and lip-synced, never a static image, and never full screen.
+- The inset stays in the same corner for the whole video. Do not move it, do not cut to a full-screen presenter, do not remove it between photos.
+- Because the presenter is small and low, overlays may use the upper two thirds freely. Keep captions in the bottom band and clear of the inset's corner.
+- All ${totalPhotos} photos appear. With the photos on screen the whole time there is room for every one of them.
+
+` : ""}${params.hasAvatar && !pipMode ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
 - EVERY text or graphic element — captions, headlines, hooks, lower-thirds, stats, numbers, charts, infographics, logos, badges, arrows — must sit ENTIRELY inside the BOTTOM 20% of the canvas (on a 1080-tall frame that is the bottom ~216px; on a 1920-tall frame ~384px).
 - The TOP 80% is a NO-OVERLAY ZONE. The presenter's head and face are there. Never center an overlay, never place text beside the head, never over the chest or shoulders. This applies even when the presenter is only partly visible.
 - Standard treatment: a full-width semi-transparent dark bar pinned to the bottom edge, white or soft-gold text inside.
@@ -349,10 +374,13 @@ PRESENTER FRAMING (RULE #2)
 
 AVATAR + B-ROLL INTERCUT (MANDATORY)
 - When on camera the presenter is alone on a filled ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop, no black bars — framed per RULE #2. Always the animated, lip-synced avatar; never a static image.
-- Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Target roughly 50/50 presenter/b-roll — never hold the presenter for the entire video.` : `NO PRESENTER — VOICEOVER ONLY (RULE #1)
+- Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Never hold the presenter for the entire video.
+${propertyPhotos
+  ? `- SPLIT: roughly 30% presenter, 70% the attached photos. The property is the subject here and the presenter is the frame around it. All ${totalPhotos} photos must appear, and at an even split there is not enough screen time left to show them — half a short runtime divided by ${totalPhotos} photos is a fraction of a second each.`
+  : "- SPLIT: roughly 50/50 presenter and b-roll."}` : ""}${!params.hasAvatar ? `NO PRESENTER — VOICEOVER ONLY (RULE #1)
 - This video has NO on-screen presenter. Do NOT place any person, avatar, host, narrator, spokesperson or talking head in any scene — not full screen, not in a corner, not in an inset, not for one frame. No avatar was supplied and none may be substituted.
 - The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
-- With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.`}
+- With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.` : ""}
 
 LOCATION ACCURACY — ${locationOr}, ${monthName}
 - Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
@@ -368,7 +396,9 @@ FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 - Render the script as written, but add no non-compliant visuals or overlays of your own.
 
 SCENE 1 — TITLE CARD (this frame is also the thumbnail)
-${params.hasAvatar
+${pipMode
+  ? `- The best exterior shot among the attached photos, full-screen, with the presenter already in their corner inset. The HOUSE is the thumbnail, not the presenter.`
+  : params.hasAvatar
   ? `- The talking presenter alone on a filled ${canvasLabel} canvas, framed per RULE #2 — the avatar IS the thumbnail; no separate background photo.`
   : `- The strongest available visual, full-screen and filling the entire ${canvasLabel} canvas. No presenter, no person, no talking head.`}
 - MANDATORY OVERLAY: a full-width dark semi-transparent bar across the bottom 20% containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
@@ -379,7 +409,9 @@ FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
 - On-screen only, never narrated: ${contactLine}
 - Show phone numbers exactly as provided — no leading "1", no country code.
 - Bold CTA headline: "${ctaText}"
-${params.hasAvatar
+${pipMode
+  ? "- A photo of the property fills the frame behind the card, presenter still in their corner inset. Never black bars."
+  : params.hasAvatar
   ? "- Presenter framed per RULE #2, or beside the card; fill the canvas with a background (blurred footage or b-roll) — never black bars."
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
@@ -445,7 +477,7 @@ STYLE
 - B-roll: slight warm filter — inviting, not cool/blue.${toneVisual ? `
 - Tone (${params.tone}): ${toneVisual}` : ""}
 - ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
-- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey the TEXT SAFE ZONE.
+- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey RULE #1 above, whichever layout it describes.
 - Text: white or soft gold, gold/navy accents, bold and readable — no clutter.
 
 Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.${params.pdfContent ? `
@@ -461,7 +493,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true } = await req.json();
+  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout } = await req.json();
   // Long videos (up to 8 min) are landscape-only and draw 3x from the allowance.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // engine "direct" routes to HeyGen's v3 Direct Video API (single talking-head)
@@ -483,11 +515,22 @@ export async function POST(req: NextRequest) {
     `[create-blog] project=${projectId} videoType=${videoType} engine=${engine ?? "(none)"} ` +
     `longForm=${longForm ?? "(none)"} isLongForm=${isLongForm} → ${useDirectVideo ? "Direct Video" : "Video Agent"}`,
   );
+  /**
+   * The Video Agent's photo budget, which is about render time rather than
+   * screen time — more files means more scene planning, and the job auto-fails
+   * at 30 minutes.
+   *
+   * The photo-led experiment raises it to the full 12, because fitting twelve
+   * is the entire question it is asking. That is also the part of the
+   * experiment with a cost: if a twelve-photo job is what pushes a render past
+   * the half-hour mark, this is where it happens.
+   */
+  const agentPhotoCap = pipLayout === true ? DIRECT_PHOTO_LIMIT : AGENT_PHOTO_LIMIT;
   // Capped at the same figure the Video Agent is allowed below, so a user who
   // uploads that many gets all of them. The old cap of 3 silently dropped the
   // rest with nothing in the UI saying so.
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
-    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, AGENT_PHOTO_LIMIT)
+    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, agentPhotoCap)
     : [];
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
@@ -766,6 +809,7 @@ export async function POST(req: NextRequest) {
       extraPhotoCount: safeExtraPhotos.length,
       // The project itself, not a count that the editor's own photo grid zeroes.
       isListing: project.project_type === "listing_video" || !!listingData?.address,
+      pipLayout: pipLayout === true,
     };
 
     const fullPdf = pdfText ? String(pdfText) : undefined;
@@ -1043,7 +1087,7 @@ export async function POST(req: NextRequest) {
     // Video path doesn't need this — it composites through composite-photos.ts,
     // which already fills the frame. Failures return the original URL.
     const combinedPhotos = await cropPhotosToAspect(
-      [...safeExtraPhotos, ...listingPhotos].slice(0, AGENT_PHOTO_LIMIT),
+      [...safeExtraPhotos, ...listingPhotos].slice(0, agentPhotoCap),
       dimension.width,
       dimension.height,
       user.id,

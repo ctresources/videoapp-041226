@@ -402,6 +402,18 @@ export default function ProjectEditorPage() {
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
   /**
+   * Photo-led layout, as a one-render experiment: add ?pip=1 to this page's URL.
+   *
+   * A URL flag rather than a control, because it is not a feature yet. The
+   * Video Agent is being ASKED to inset the presenter and hold the photos
+   * full-frame, and it has form for ignoring instructions — it drops the
+   * caption request every time, and used five photos of eight when told to use
+   * all of them. Until a render proves it complies there is nothing here worth
+   * putting in front of a customer, and a toggle that may do nothing is worse
+   * than no toggle.
+   */
+  const pipLayout = searchParams.get("pip") === "1";
+  /**
    * How many of the uploaded photos this render will actually use.
    *
    * The same condition the warning by the grid uses: everything except a
@@ -410,7 +422,7 @@ export default function ProjectEditorPage() {
    * grid numbers each photo and dims the ones past the line.
    */
   const photoLimit =
-    source !== "paste" && selectedVideoType !== "youtube_long"
+    source !== "paste" && selectedVideoType !== "youtube_long" && !pipLayout
       ? AGENT_PHOTO_LIMIT
       : DIRECT_PHOTO_LIMIT;
   /**
@@ -1171,6 +1183,8 @@ export default function ProjectEditorPage() {
           // For paste with no explicit pick, the server resolves the default avatar.
           ...((renderMode === "avatar_voice" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
+          // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
+          ...(pipLayout && { pipLayout: true }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
         }),
@@ -2218,10 +2232,10 @@ export default function ProjectEditorPage() {
 
                 Both numbers come from render-limits.ts. Hardcoding them here is
                 what let the UI offer twelve while the render quietly took five. */}
-            {source !== "paste" && selectedVideoType !== "youtube_long" && uploadedPhotos.length > AGENT_PHOTO_LIMIT && (
+            {uploadedPhotos.length > photoLimit && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
-                Only your first <strong>{AGENT_PHOTO_LIMIT}</strong> photos will be used — the other{" "}
-                {uploadedPhotos.length - AGENT_PHOTO_LIMIT} won&apos;t appear. This video renders on
+                Only your first <strong>{photoLimit}</strong> photos will be used — the other{" "}
+                {uploadedPhotos.length - photoLimit} won&apos;t appear. This video renders on
                 the Video Agent, which takes {AGENT_PHOTO_LIMIT}. Pasted scripts and long-form videos
                 use up to {DIRECT_PHOTO_LIMIT}.
               </p>
