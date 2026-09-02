@@ -321,7 +321,7 @@ ${params.hasAvatar ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE 
 
 PRESENTER FRAMING (RULE #2)
 - Head-and-shoulders to mid-chest, as a news anchor is framed: the head fills a QUARTER to a THIRD of the frame height, never more, with headroom above the hair.
-- NEVER a face-only close-up, and never crop the head, chin or ears. If the source footage is framed tighter, pull back and fill around them with a background rather than matching its crop.
+- NEVER a face-only close-up; never crop the head, chin or ears. If the source is tighter, pull back and fill around them with a background.
 
 AVATAR + B-ROLL INTERCUT (MANDATORY)
 - When on camera the presenter is alone on a filled ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop, no black bars — framed per RULE #2. Always the animated, lip-synced avatar; never a static image.
@@ -377,18 +377,40 @@ Do not repeat the opening line. Never speak any headline, title-card, overlay or
 ${params.script}
 `;
 
-  // ── TAIL: refinement. Trimmed first if the prompt ever exceeds the cap. ──
-  const tail = `${params.pdfContent ? `
-PDF REFERENCE (supplemental context for b-roll, on-screen stats and talking points)
-${params.pdfContent}
-` : ""}
-VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
-- Room mentioned → show that room. Neighborhood/street → that street type. Statistic or price → a data overlay of that exact number (in the bottom band). Lifestyle benefit → show it. Address → a matching home exterior.
-- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.${photoBlock}
+  /**
+   * TAIL: sliced to whatever the head leaves, and sliced from the FRONT — so
+   * this is ordered by how much each block matters, not by how a video is made.
+   *
+   * That ordering is the whole point. Head and tail share one 9,800-character
+   * cap, and a realistic avatar short leaves a few hundred characters for a
+   * ~3,100-character tail. Whatever sits at the bottom is not "trimmed on long
+   * prompts" — it is absent from every render. Under the old order that was the
+   * photo rules, the pronunciation rules and the caption request, which is why
+   * HeyGen was never actually told not to invent property imagery.
+   *
+   * So: photos first (a house that is not this house misrepresents the
+   * listing), then the rules that keep phone numbers out of the voiceover, then
+   * the caption request — which was the last bullet of STYLE and so had been
+   * falling off every render, which is why captions have to be burned in
+   * afterwards. Style and the closing flourish last, where losing them costs
+   * nothing.
+   *
+   * The PDF block is dead last for exactly the reason it must not be first: it
+   * runs to 2,000 characters, so at the front it consumed the entire slice and
+   * took every rule below it down with it.
+   */
+  const tail = `${photoBlock}
 
 PRONUNCIATION
 - The script is already normalized (abbreviations expanded) — read every word exactly as written, never spelling out letters.
-- NEVER speak phone numbers, emails or URLs — they are display-only. Omit any from the voiceover and show them on screen instead. Add no contact info that isn't in the script.
+- NEVER speak phone numbers, emails or URLs — they are display-only. Omit any from the voiceover and show them on screen instead. Add no contact info that isn't in the script.${params.burnCaptions ? `
+
+BURNED CAPTIONS (REQUIRED)
+- Synchronized captions for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band — above the hook bar on Scene 1, above the contact card on the final scene. Never over the face.` : ""}
+
+VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
+- Room mentioned → show that room. Neighborhood/street → that street type. Statistic or price → a data overlay of that exact number (in the bottom band). Lifestyle benefit → show it. Address → a matching home exterior.
+- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.
 
 B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets and curb appeal, interiors (kitchens, living spaces, open plans), lifestyle scenes (cafes, parks, people).
 - MEDIUM: real places → stock footage; numbers and trends → motion graphics; abstract ideas → AI-generated.${audienceVisual ? `
@@ -399,11 +421,13 @@ STYLE
 - B-roll: slight warm filter — inviting, not cool/blue.${toneVisual ? `
 - Tone (${params.tone}): ${toneVisual}` : ""}
 - ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
-- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey the TEXT SAFE ZONE.${params.burnCaptions ? `
-- BURNED CAPTIONS (required): synchronized captions for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band — above the hook bar on Scene 1, above the contact card on the final scene. Never over the face.` : ""}
+- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey the TEXT SAFE ZONE.
 - Text: white or soft gold, gold/navy accents, bold and readable — no clutter.
 
-Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.`;
+Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.${params.pdfContent ? `
+
+PDF REFERENCE (supplemental context for b-roll, on-screen stats and talking points)
+${params.pdfContent}` : ""}`;
 
   return { head, tail };
 }
