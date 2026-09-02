@@ -774,8 +774,15 @@ function VideosContent() {
           title: string;
           thumbnail_url?: string | null;
           ai_script?: { hook?: string; script?: string; description?: string; hashtags?: string[] } | null;
-          seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string } | null;
+          seo_data?: { youtube_title?: string; youtube_description?: string; thumbnail_url?: string; hashtags?: string[] } | null;
         } | null;
+        // The hashtags the share kit shows. They were generated with the
+        // script, written to the project, displayed on step 5 as chips — and
+        // then never reached the post, because Publish was the one screen that
+        // didn't read them. seo_data first: the Tools page rewrites them there.
+        const tags = proj?.seo_data?.hashtags?.length
+          ? proj.seo_data.hashtags
+          : proj?.ai_script?.hashtags ?? [];
         // The SEO step can time out during script generation, leaving
         // youtube_description empty — fall back to the script's own
         // description, then hook + script, so publish never starts blank.
@@ -789,6 +796,13 @@ function VideosContent() {
             videoId={publishingVideo.id}
             videoTitle={proj?.seo_data?.youtube_title || proj?.title || "Untitled Video"}
             defaultDescription={fallbackDescription}
+            // The short social blurb, which is what ai_script.description is
+            // written to be ("2-sentence social media description"). The long
+            // youtube_description above is right for YouTube and far too long
+            // for an Instagram caption, so the two fields get the two texts
+            // rather than one text twice.
+            defaultCaption={proj?.ai_script?.description || ""}
+            defaultTags={tags}
             thumbnailUrl={proj?.thumbnail_url || proj?.seo_data?.thumbnail_url || undefined}
             onClose={() => setPublishingVideo(null)}
             onPublished={loadVideos}

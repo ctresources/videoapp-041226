@@ -14,6 +14,7 @@ import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
+import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { StepFooter } from "@/components/create/step-footer";
@@ -1020,11 +1021,12 @@ export default function ProjectEditorPage() {
   }
 
   async function handlePhotosUpload(files: FileList) {
-    // 12, matching what the renderers actually take: Direct Video and
-    // long-form use 12 (create-blog slices there), and the Video Agent uses 5
-    // with a warning below saying so. 8 was neither, so a listing handing over
-    // its twelve photos produced a counter reading 12/8.
-    const remaining = 12 - uploadedPhotos.length;
+    // The larger of the two render caps, so the UI never blocks a path that
+    // would have used the photo: Direct Video and long-form take
+    // DIRECT_PHOTO_LIMIT, the Video Agent takes AGENT_PHOTO_LIMIT with a
+    // warning below saying so. A third number here is what produced a counter
+    // reading 12/8.
+    const remaining = UPLOAD_PHOTO_LIMIT - uploadedPhotos.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     setPhotoUploading(true);
@@ -1036,7 +1038,7 @@ export default function ProjectEditorPage() {
           return { url, name, preview };
         })
       );
-      setUploadedPhotos((prev) => [...prev, ...results].slice(0, 12));
+      setUploadedPhotos((prev) => [...prev, ...results].slice(0, UPLOAD_PHOTO_LIMIT));
       toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Photo upload failed");
@@ -2119,22 +2121,26 @@ export default function ProjectEditorPage() {
 
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to 12)</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/12</span>}
+              <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to {UPLOAD_PHOTO_LIMIT})</span></p>
+              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/{UPLOAD_PHOTO_LIMIT}</span>}
             </div>
-            {/* The 5-file cap belongs to the Video Agent, which renders everything
+            {/* The lower cap belongs to the Video Agent, which renders everything
                 EXCEPT pasted scripts and long-form (see useDirectVideo in
                 app/api/video/create-blog/route.ts). It is not tied to the avatar
                 toggle: Voice Only and Avatar + Voice both run on the agent for an
                 AI-written script, and only decide whether a face is on screen.
                 This used to key off renderMode and tell the user to switch to
                 Avatar + Voice — which changed nothing, and hid this warning while
-                the extra photos were still being dropped. */}
-            {source !== "paste" && selectedVideoType !== "youtube_long" && uploadedPhotos.length > 5 && (
+                the extra photos were still being dropped.
+
+                Both numbers come from render-limits.ts. Hardcoding them here is
+                what let the UI offer twelve while the render quietly took five. */}
+            {source !== "paste" && selectedVideoType !== "youtube_long" && uploadedPhotos.length > AGENT_PHOTO_LIMIT && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
-                Only your first <strong>5</strong> photos will be used — the other{" "}
-                {uploadedPhotos.length - 5} won&apos;t appear. This video renders on the Video Agent,
-                which takes 5. Pasted scripts and long-form videos use up to 12.
+                Only your first <strong>{AGENT_PHOTO_LIMIT}</strong> photos will be used — the other{" "}
+                {uploadedPhotos.length - AGENT_PHOTO_LIMIT} won&apos;t appear. This video renders on
+                the Video Agent, which takes {AGENT_PHOTO_LIMIT}. Pasted scripts and long-form videos
+                use up to {DIRECT_PHOTO_LIMIT}.
               </p>
             )}
             <div className="flex flex-wrap gap-2 mb-5">
@@ -2146,7 +2152,7 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               ))}
-              {uploadedPhotos.length < 12 && (
+              {uploadedPhotos.length < UPLOAD_PHOTO_LIMIT && (
                 <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
                   {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
                   <input type="file" accept="image/*" multiple className="sr-only" disabled={photoUploading} onChange={(e) => { if (e.target.files?.length) handlePhotosUpload(e.target.files); }} />
@@ -2422,10 +2428,16 @@ export default function ProjectEditorPage() {
                         </button>
                       </div>
                     </div>
+                    {/* Saved on blur as well as on Done. This card is step 5
+                        only, which is past every other thing that writes these
+                        fields — so without a save of its own, leaving the page
+                        by any route other than the Done button discards the
+                        edit. saveContentEdits no-ops when nothing changed. */}
                     <input
                       type="text"
                       value={editedTitle}
                       onChange={(e) => setEditedTitle(e.target.value)}
+                      onBlur={() => { if (project) void saveContentEdits(project); }}
                       placeholder="Video title"
                       className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
                     />
@@ -2448,11 +2460,12 @@ export default function ProjectEditorPage() {
                     <textarea
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
+                      onBlur={() => { if (project) void saveContentEdits(project); }}
                       rows={4}
                       placeholder="Video description"
                       className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">Your edits are saved when you generate the video or save a draft.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Saved as you go — these are what Publish fills in for you.</p>
                   </div>
                   {[
                     { label: "Instagram Caption", value: seo.instagram_caption },
@@ -2698,9 +2711,21 @@ export default function ProjectEditorPage() {
                   : <>Titles &amp; captions <ArrowRight size={17} /></>}
               </Button>
             )}
+            {/* Done SAVES, then leaves.
+                Step 5's title and description are editable, but the only two
+                things that ever wrote them — Save Draft and Spark Video — are
+                both back on step 3, and by the time you are here the render has
+                already happened. So an edit made on this screen went nowhere:
+                you would retype the title, press Done, open Publish, and find
+                the old one waiting, with nothing saying why.
+                Publish reads seo_data off the project (see videos/page.tsx), so
+                writing it here is what makes the edit reach the post. */}
             {editorStep === 5 && (
               <Button
-                onClick={() => router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos")}
+                onClick={async () => {
+                  if (project) await saveContentEdits(project);
+                  router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
+                }}
                 size="lg"
                 className="gap-2"
               >

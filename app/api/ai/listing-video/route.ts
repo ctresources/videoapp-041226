@@ -8,31 +8,112 @@ import {
   targetWords, maxWords, minutesFor, clampScript, type VideoLength,
 } from "@/lib/utils/video-length";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
+import { parseCityState } from "@/lib/utils/parse-address";
 
 /**
- * Pull the city and state out of a listing address.
+ * The SEO/AEO/GEO blog article that goes with a listing video.
  *
- * The listing's own city is the only correct one for a listing video. It used
- * to be read as `listing.city`, a field ListingData does not have — so it was
- * always undefined and every listing fell back to the agent's profile city.
- * A Willow Grove property came out titled "Blue Bell, PA" because Blue Bell is
- * where the agent works.
+ * A separate call rather than more fields on the script's JSON, deliberately:
+ * that response already has to hold a 1,160-word script plus a title, hook,
+ * CTA, description, ten hashtags and six keywords, and a JSON object cut off
+ * mid-string reads as a total failure. A blog on the end of it would push a
+ * long listing past its token budget and lose the script as well.
  *
- * Handles "123 Oak Road, Willow Grove, PA 19090", "…, Willow Grove, PA" and
- * "Willow Grove, PA". Returns nothing rather than guessing when the address has
- * no recognisable trailing state, so the caller can fall back deliberately.
+ * Same plain-text shape the market videos use — headings marked "H2: ",
+ * paragraphs separated by blank lines — because the editor's "Copy as HTML"
+ * parses exactly that (see blogAsHtml in the create page). Anything else
+ * arrives as one undifferentiated paragraph.
+ *
+ * Returns nulls on any failure. The blog is a bonus attached to a video that
+ * has already been written; it is never worth failing the request over.
  */
-function parseCityState(address: string): { city?: string; state?: string } {
-  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
-  if (parts.length < 2) return {};
+async function generateListingBlog(
+  listing: ListingData,
+  city: string | undefined,
+  state: string | undefined,
+  agentName: string | undefined,
+  unbranded: boolean,
+): Promise<{ intro: string; body: string; conclusion: string } | null> {
+  const where = [city, state].filter(Boolean).join(", ") || "the local area";
+  const details = [
+    listing.beds ? `${listing.beds} bed` : "",
+    listing.baths ? `${listing.baths} bath` : "",
+    listing.sqft ? `${listing.sqft.toLocaleString()} sqft` : "",
+    listing.yearBuilt ? `built ${listing.yearBuilt}` : "",
+  ].filter(Boolean).join(" · ");
 
-  const tail = parts[parts.length - 1];
-  const stateMatch = tail.match(/^([A-Za-z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/);
-  if (stateMatch) {
-    return { city: parts[parts.length - 2], state: stateMatch[1].toUpperCase() };
+  const prompt = `${FAIR_HOUSING_GUARDRAIL}
+
+---
+
+Write a property blog post for this listing — around 1,000 words total, for the agent's own website. It accompanies a video tour, so it must stand on its own rather than describe the video.
+
+LISTING:
+Address: ${listing.address}
+Location: ${where}
+Price: ${listing.price}
+Details: ${details}
+Property Type: ${listing.propertyType}
+Neighborhood: ${listing.neighborhood || "N/A"}
+Description: ${listing.description}
+Key Features: ${listing.features.slice(0, 8).join(", ")}
+
+SEARCH + ANSWER-ENGINE OPTIMISATION (this is the point of the article):
+- Lead the intro with the property's specifics — city, price, beds, baths, square footage — in the first two sentences, in plain declarative language an AI assistant can quote back as an answer.
+- Give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a buyer would actually type or ask aloud (e.g. "H2: What does the kitchen offer?", "H2: How much is ${listing.price} getting you here?").
+- Answer each heading in its first sentence, then support it. Never open a section with a rhetorical question or a scene-setter.
+- Name ${where} naturally through the article — this is a local search page.
+- Use real numbers from the listing wherever one exists. Round nothing, invent nothing, and never state a fact the listing above does not contain.
+
+FAIR HOUSING (overrides everything else here):
+- Never mention schools, churches, demographics, neighborhood composition, safety, or who the home would "suit".
+- Describe the property and its features. Never describe the people who might live there.
+${unbranded
+  ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact. Close on the property."
+  : `- Close with an invitation to arrange a showing${agentName ? `, naming ${agentName}` : ""}.`}
+
+FORMAT — plain text, no markdown, no asterisks, no numbered lists:
+- Headings are their own line, starting with "H2: ".
+- Paragraphs are separated by a blank line.
+
+Return ONLY a JSON object:
+{
+  "intro": "opening ~150 words, no heading",
+  "body": "the H2 sections, ~700 words",
+  "conclusion": "closing ~150 words, no heading"
+}`;
+
+  try {
+    const res = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        // ~1,000 words of prose across three JSON strings, with the escaped
+        // newlines between paragraphs counting too.
+        max_tokens: 2600,
+      }),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const text: string = data.choices?.[0]?.message?.content ?? "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("no JSON in response");
+    const parsed = JSON.parse(jsonMatch[0]) as { intro?: string; body?: string; conclusion?: string };
+    return {
+      intro: parsed.intro ?? "",
+      body: parsed.body ?? "",
+      conclusion: parsed.conclusion ?? "",
+    };
+  } catch (err) {
+    console.error("[listing-video] Blog generation failed:", err instanceof Error ? err.message : err);
+    return null;
   }
-  // No trailing state — the last segment is the best city candidate.
-  return { city: tail };
 }
 
 async function generateListingScript(
@@ -277,22 +358,36 @@ export async function POST(req: NextRequest) {
   const parsedLocation = parseCityState(listing.address);
   const listingCity = parsedLocation.city || prof.location_city || undefined;
   const listingState = parsedLocation.state || prof.location_state || undefined;
-  const ytMeta = await generateYoutubeMetadata({
-    title: scriptData.title,
-    script: scriptData.script,
-    city: listingCity,
-    state: listingState,
-    agentName: prof.full_name || undefined,
-    brokerage: prof.company_name || undefined,
-    keywords: scriptData.keywords,
-    website: prof.website || undefined,
-    phone: prof.phone || prof.company_phone || undefined,
-  }).catch((err) => {
-    console.error("[listing-video] YouTube metadata failed:", err);
-    return null;
-  });
+  // Both are independent of each other and each takes several seconds, so they
+  // run together. Neither can reject — the metadata call catches, the blog
+  // returns null — so one failing never costs the other or the script.
+  const [ytMeta, blog] = await Promise.all([
+    generateYoutubeMetadata({
+      title: scriptData.title,
+      script: scriptData.script,
+      city: listingCity,
+      state: listingState,
+      agentName: prof.full_name || undefined,
+      brokerage: prof.company_name || undefined,
+      keywords: scriptData.keywords,
+      website: prof.website || undefined,
+      phone: prof.phone || prof.company_phone || undefined,
+    }).catch((err) => {
+      console.error("[listing-video] YouTube metadata failed:", err);
+      return null;
+    }),
+    generateListingBlog(listing, listingCity, listingState, prof.full_name || undefined, isUnbranded),
+  ]);
 
   const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((scriptData.hook || scriptData.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
+
+  // Attached after the fact because aiScript is built before this point — the
+  // scriptOnly path returns from up there and wants no blog at all.
+  if (blog) {
+    aiScript.blog_intro = blog.intro;
+    aiScript.blog_body = blog.body;
+    aiScript.blog_conclusion = blog.conclusion;
+  }
 
   const seoData = {
     meta_title: scriptData.title,

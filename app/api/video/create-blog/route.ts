@@ -7,7 +7,6 @@ import {
   resolveVoiceId,
   getAvatarLooks,
   uploadTalkingPhoto,
-  getAccountBalance,
   getLookInfo,
   isCapacityError,
   capacityRetryAfterSeconds,
@@ -22,6 +21,8 @@ import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
+import { parseScriptLocation } from "@/lib/utils/parse-address";
+import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
 import { standardMaxWords, clampScript } from "@/lib/utils/video-length";
 
@@ -416,11 +417,11 @@ export async function POST(req: NextRequest) {
     `[create-blog] project=${projectId} videoType=${videoType} engine=${engine ?? "(none)"} ` +
     `longForm=${longForm ?? "(none)"} isLongForm=${isLongForm} → ${useDirectVideo ? "Direct Video" : "Video Agent"}`,
   );
-  // Capped at the same 5 the Video Agent is allowed below, so a user who
-  // uploads five photos gets all five. The old cap of 3 silently dropped the
+  // Capped at the same figure the Video Agent is allowed below, so a user who
+  // uploads that many gets all of them. The old cap of 3 silently dropped the
   // rest with nothing in the UI saying so.
   const safeExtraPhotos: string[] = Array.isArray(extraPhotoUrls)
-    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, 5)
+    ? extraPhotoUrls.filter((u) => typeof u === "string").slice(0, AGENT_PHOTO_LIMIT)
     : [];
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
@@ -442,6 +443,10 @@ export async function POST(req: NextRequest) {
     ai_script: Record<string, unknown> | null;
     seo_data: Record<string, unknown> | null;
     listing_data: Record<string, unknown> | null;
+    // Parsed at creation from the listing address or the typed market. The
+    // authority on where the video is — see the location note further down.
+    location_city: string | null;
+    location_state: string | null;
   };
 
   const aiScript = project.ai_script as Record<string, unknown> | null;
@@ -596,27 +601,48 @@ export async function POST(req: NextRequest) {
   await admin.from("projects").update({ status: "generating" }).eq("id", projectId);
 
   /**
-   * The balance before this render, so its real cost can be worked out later.
+   * No balance reading here any more, and none in store-video either.
    *
-   * `creditCost` below is the constant 1 — one video off the customer's plan —
-   * and it is the only cost figure this app has ever recorded. It says nothing
-   * about what HeyGen charged, which turned out to be 893 credits for a single
-   * 2.2-minute video. Without a reading either side of the render there is no
-   * way to answer whether a plan covers its own renders except by guessing.
+   * The idea was a before-and-after on the HeyGen wallet as a cross-check on
+   * the rate table. Measured on a real render it does not work: a 2:14 video
+   * that cost $4.45 by duration read 19.97 before and 21.98 after — the
+   * balance went UP $2.01 mid-render. Concurrency, trial top-ups and whatever
+   * else moves that number all land in the same subtraction, so the answer was
+   * discarded as meaningless (correctly) every time.
    *
-   * Best effort and never awaited into the critical path's failure modes: a
-   * balance reading is not worth losing a render over.
+   * What it did cost was a HeyGen round-trip on the critical path of every
+   * render, before anything had been submitted, for a figure never once used.
+   *
+   * The cost that IS recorded is duration × the engine's rate, in store-video.
+   * That one is confirmed against a real invoice: 133.8s × $0.0333 = $4.45.
    */
-  const quotaBefore = (await getAccountBalance()).balance;
-
   try {
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
     const orientation = isShortForm ? "portrait" : "landscape";
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
+    /**
+     * Where the video is, which the prompt below asks HeyGen for b-roll of.
+     *
+     * The project's own columns come first. For a listing they are the only
+     * correct answer: ai_script.location is the FULL STREET ADDRESS, and this
+     * used to read part [0] of it as the city — so "24 Shagbark Ct E,
+     * Harleysville, PA 19438" became city "24 Shagbark Ct E", state
+     * "Harleysville", and PA vanished. That pair is `locationOr`, which the
+     * prompt hands over four times as the place to find establishing shots
+     * for. A street address is not somewhere footage exists of, which is how a
+     * Harleysville tour came back with b-roll of nowhere in particular.
+     *
+     * The listing route already parses the address properly into these
+     * columns. Parsing the script's location is the fallback, for older rows
+     * and for market scripts whose location genuinely is "City, ST"; the
+     * profile is the last resort, being where the agent works rather than
+     * where the video is.
+     */
     const scriptLocation = aiScript?.location as string | undefined;
-    const city = scriptLocation?.split(",")[0]?.trim() || profile.location_city || "";
-    const state = scriptLocation?.split(",")[1]?.trim() || profile.location_state || "";
+    const parsedLoc = parseScriptLocation(scriptLocation);
+    const city = project.location_city?.trim() || parsedLoc.city || profile.location_city || "";
+    const state = project.location_state?.trim() || parsedLoc.state || profile.location_state || "";
     const aiKeywords = (aiScript?.keywords as string[]) || [];
 
     const hookText = requestHook || (aiScript?.hook as string) || undefined;
@@ -758,7 +784,7 @@ export async function POST(req: NextRequest) {
       const directPhotos = [
         ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),
         ...listingPhotos,
-      ].slice(0, 12);
+      ].slice(0, DIRECT_PHOTO_LIMIT);
 
       // Direct Video renders a bare talking head and HeyGen adds no b-roll of
       // its own, so a pasted script with no photos was just a face for the
@@ -884,7 +910,6 @@ export async function POST(req: NextRequest) {
             credit_cost: creditCost,
             credit_kind: videoKind,
             credit_source: charge?.source ?? "plan",
-            quota_before: quotaBefore,
             // What it was actually rendered with. Both are needed to price it:
             // the engine and the avatar type each move the rate, by up to four
             // times between them. Recorded here because this is the only place
@@ -929,8 +954,10 @@ export async function POST(req: NextRequest) {
     if (profile.logo_url) {
       files.push({ type: "url", url: profile.logo_url });
     }
-    // Attach user-uploaded photos + listing photos, capped at 5 total.
-    // Fewer files = faster Video Agent processing time.
+    // Attach user-uploaded photos + listing photos, capped at AGENT_PHOTO_LIMIT
+    // total. Fewer files = faster Video Agent processing time, and the job
+    // auto-fails at 30 minutes — so this is a render-time budget, not a cost
+    // one. HeyGen bills on the finished video's length; the photos are free.
     //
     // Uploads come first because scraped listing photos used to fill the cap
     // and push every one of the user's own out — the Direct Video path already
@@ -942,7 +969,7 @@ export async function POST(req: NextRequest) {
     // Video path doesn't need this — it composites through composite-photos.ts,
     // which already fills the frame. Failures return the original URL.
     const combinedPhotos = await cropPhotosToAspect(
-      [...safeExtraPhotos, ...listingPhotos].slice(0, 5),
+      [...safeExtraPhotos, ...listingPhotos].slice(0, AGENT_PHOTO_LIMIT),
       dimension.width,
       dimension.height,
       user.id,
@@ -1010,7 +1037,7 @@ export async function POST(req: NextRequest) {
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan", quota_before: quotaBefore } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
       .eq("id", videoRow?.id);
 
     // Admins are never charged. Previously only the REFUSAL was skipped for

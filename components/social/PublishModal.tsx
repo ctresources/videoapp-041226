@@ -47,9 +47,30 @@ export function PublishModal({
 }: PublishModalProps) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [caption, setCaption] = useState(defaultCaption);
+  /**
+   * The hashtags, appended once to whatever text they belong under.
+   *
+   * `defaultTags` has been on this component's props all along and was never
+   * read, so the tags generated with the script — shown as chips on the share
+   * kit, stored on the project — stopped at the one screen that posts. They go
+   * on their own line at the end, which is where every platform expects them,
+   * and are skipped entirely if the text already carries them (a caption the
+   * user pasted in, or a re-open of this modal).
+   */
+  const withTags = (text: string) => {
+    const tags = defaultTags
+      .map((t) => t.trim().replace(/^#+/, ""))
+      .filter(Boolean)
+      .map((t) => `#${t}`);
+    if (!tags.length) return text;
+    const body = text.trim();
+    if (tags.every((t) => body.includes(t))) return body;
+    return body ? `${body}\n\n${tags.join(" ")}` : tags.join(" ");
+  };
+
+  const [caption, setCaption] = useState(() => withTags(defaultCaption));
   const [title, setTitle] = useState(videoTitle);
-  const [description, setDescription] = useState(defaultDescription);
+  const [description, setDescription] = useState(() => withTags(defaultDescription));
   const [privacy, setPrivacy] = useState<"public" | "unlisted" | "private">("public");
   const [tab, setTab] = useState<Tab>("now");
   const [scheduleDate, setScheduleDate] = useState("");

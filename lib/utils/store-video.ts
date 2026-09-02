@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus, getAccountBalance, balanceToUsd, estimateRenderCostUsd } from "@/lib/api/heygen";
+import { getVideoStatus, estimateRenderCostUsd } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
@@ -268,13 +268,11 @@ export async function downloadAndStoreVideo(
      *
      * HeyGen bills on the finished video's length, so duration times the
      * engine's rate is the charge — and it is unaffected by whatever else is
-     * rendering. The balance readings below cannot say that: the account runs
-     * up to ten concurrent jobs, and two overlapping renders each absorb part
-     * of the other's spend.
+     * rendering. Confirmed on a live render: 133.8s on the Video Agent at
+     * $0.0333/sec came to $4.45.
      *
-     * Both are kept. Rendered alone they should agree, and that agreement is
-     * what proves the rate table right; when they diverge, concurrency is the
-     * likely reason and this is the one to believe.
+     * This is now the only cost recorded. The wallet cross-check that used to
+     * sit below it is gone; see the note after this block for why.
      */
     if (opts.heygenVideoId && meta.heygen_duration_seconds === undefined) {
       try {
@@ -296,6 +294,14 @@ export async function downloadAndStoreVideo(
             heygen_cost_usd: cost,
             heygen_rate_provider: provider,
           });
+          // The column as well as the metadata. Every row had a duration in
+          // metadata and a NULL in the column it belongs in, so anything
+          // querying generated_videos.duration_seconds — which is the obvious
+          // place to look — saw nothing at all.
+          await admin
+            .from("generated_videos")
+            .update({ duration_seconds: Math.round(duration) })
+            .eq("id", videoId);
           console.log(
             `[store-video] ${videoId}: ${duration}s on ${provider ?? "unknown engine"}` +
             `${cost === null ? "" : ` → ~$${cost.toFixed(2)}`}`,
@@ -306,37 +312,20 @@ export async function downloadAndStoreVideo(
       }
     }
 
-    const before = typeof meta.quota_before === "number" ? meta.quota_before : null;
-    if (before !== null && meta.quota_after === undefined) {
-      const acct = await getAccountBalance();
-      if (acct.balance !== null) {
-        // Metered billing counts up as it is spent; a wallet and a credit pool
-        // count down. Subtracting the wrong way round turns a $4.40 render
-        // into minus $4.40 and looks like an arithmetic slip rather than the
-        // wrong assumption it would be.
-        const used = acct.direction === "up"
-          ? acct.balance - before
-          : before - acct.balance;
-        // Negative means the balance moved the other way mid-render — a
-        // top-up landed — so the figure is meaningless rather than zero.
-        const spend = used >= 0 ? used : null;
-        await mergeMetadata(admin, videoId, {
-          quota_after: acct.balance,
-          quota_currency: acct.currency,
-          quota_billing_type: acct.billingType,
-          heygen_quota_used: spend,
-          // Only an estimate when a conversion was involved. On a USD wallet
-          // this is the movement itself, which is the actual charge.
-          heygen_cost_usd_est: balanceToUsd(spend, acct.currency),
-        });
-        console.log(
-          `[store-video] ${videoId}: HeyGen ${acct.billingType ?? "balance"} ` +
-          `${before} → ${acct.balance} ${acct.currency ?? ""} (used ${used})`,
-        );
-      }
-    }
+    /**
+     * The wallet before-and-after used to be read here as a cross-check.
+     * Removed, because measured against a real render it does not measure
+     * anything: a 2:14 video costing $4.45 by duration read 19.97 before and
+     * 21.98 after — the balance rose $2.01 across its own render. Ten
+     * concurrent jobs, trial top-ups and refunds all land in that one
+     * subtraction, so the guard below it discarded the answer as meaningless
+     * every time it ran, which was correct and also the whole outcome.
+     *
+     * Duration × rate above is the figure, and it is the one confirmed against
+     * an invoice. Nothing here needs a second opinion that cannot form one.
+     */
   } catch (err) {
-    console.warn(`[store-video] ${videoId}: quota reading failed:`, err instanceof Error ? err.message : err);
+    console.warn(`[store-video] ${videoId}: cost reading failed:`, err instanceof Error ? err.message : err);
   }
 
   return publicUrl;

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { generateThumbnailBackground } from "@/lib/api/openai-image";
 import { removeImageBackground } from "@/lib/utils/remove-background";
+import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
@@ -261,11 +262,15 @@ export async function renderAndSaveThumbnail(
     }
     projectTitle = pr.title || "";
     projectSeoData = pr.seo_data;
-    // Older projects stored the typed market only inside ai_script.location
-    // ("City, ST") — use it before falling back to the profile's home market.
-    const scriptLoc = ((pr.ai_script?.location as string | undefined) || "").split(",");
-    projCity = pr.location_city || scriptLoc[0]?.trim() || null;
-    projState = pr.location_state || scriptLoc[1]?.trim() || null;
+    // Older projects stored the typed market only inside ai_script.location —
+    // use it before falling back to the profile's home market.
+    //
+    // Parsed rather than split on the first comma: a listing's location is its
+    // full street address, so part [0] is the street and part [1] is the city.
+    // A thumbnail for a Harleysville listing was captioned "24 Shagbark Ct E".
+    const scriptLoc = parseScriptLocation(pr.ai_script?.location as string | undefined);
+    projCity = pr.location_city || scriptLoc.city || null;
+    projState = pr.location_state || scriptLoc.state || null;
   }
 
   const sourceTitle = (opts.topic || projectTitle || "").trim();
