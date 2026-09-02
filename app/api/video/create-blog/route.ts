@@ -9,6 +9,8 @@ import {
   uploadTalkingPhoto,
   getAccountBalance,
   getLookInfo,
+  isCapacityError,
+  capacityRetryAfterSeconds,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -1043,6 +1045,38 @@ export async function POST(req: NextRequest) {
 
     const msg = err instanceof Error ? err.message : "Video generation failed";
     console.error("[create-blog] error:", msg);
+
+    /**
+     * The account being busy is not the user's video being broken.
+     *
+     * HeyGen runs ten jobs at once across every kind of render, and an
+     * eleventh gets a 429 telling us how long to wait. That is a queue
+     * position. Passed through as a raw vendor error it reads to someone who
+     * has just paid as a fault with their video — and sends them to support
+     * rather than back in five minutes.
+     *
+     * Their allowance is genuinely untouched: it is charged only after HeyGen
+     * accepts a render, so this path never reaches it. Saying so is the part
+     * that stops the message being alarming.
+     */
+    if (isCapacityError(err)) {
+      const secs = capacityRetryAfterSeconds(err);
+      const wait = secs
+        ? secs < 90
+          ? `about ${Math.ceil(secs)} seconds`
+          : `about ${Math.ceil(secs / 60)} minutes`
+        : "a few minutes";
+      return NextResponse.json(
+        {
+          error:
+            `We're at capacity right now — too many videos rendering at once. ` +
+            `Try again in ${wait}. Nothing has been charged and your video allowance is untouched.`,
+          retryAfterSeconds: secs,
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

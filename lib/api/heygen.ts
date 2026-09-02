@@ -295,6 +295,42 @@ function round2(n: number): number {
  * question cannot be answered, and the caller then proceeds as before rather
  * than blocking a render on a lookup.
  */
+/**
+ * Marker for "the account is at its concurrency limit", carried on the error
+ * message because that is what survives being thrown through three layers.
+ *
+ * HeyGen allows ten jobs at once — Video Agent sessions, avatar renders and
+ * translations share the same ten — and an eleventh gets HTTP 429 with a
+ * Retry-After header saying how long to wait. That is a queue position, not a
+ * fault: nothing is wrong with the request and nothing has been charged.
+ * Reported as a generic failure it reads to a paying customer as their video
+ * being broken.
+ */
+const CAPACITY_MARKER = "HEYGEN_AT_CAPACITY";
+
+/** Prefixes a thrown message when the response was a concurrency refusal. */
+function capacityPrefix(status: number, retryAfter: string | null): string {
+  if (status !== 429) return "";
+  const secs = Number(retryAfter);
+  return `${CAPACITY_MARKER}:${Number.isFinite(secs) && secs > 0 ? Math.ceil(secs) : ""}|`;
+}
+
+/** Whether a caught error is the concurrency limit rather than a real failure. */
+export function isCapacityError(err: unknown): boolean {
+  return err instanceof Error && err.message.startsWith(CAPACITY_MARKER);
+}
+
+/**
+ * How long HeyGen asked us to wait, in seconds, or null if it did not say.
+ * Callers phrase their own message from it rather than repeating the header.
+ */
+export function capacityRetryAfterSeconds(err: unknown): number | null {
+  if (!isCapacityError(err)) return null;
+  const raw = (err as Error).message.slice(CAPACITY_MARKER.length + 1).split("|")[0];
+  const secs = Number(raw);
+  return Number.isFinite(secs) && secs > 0 ? secs : null;
+}
+
 export async function getLookInfo(
   lookId: string,
 ): Promise<{ engines: string[] | null; avatarType: string | null }> {
@@ -661,7 +697,10 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
   console.log(`[heygen] v3 videos response (${res.status}):`, rawText.slice(0, 400));
 
   if (!res.ok) {
-    throw new Error(`HeyGen v3 Videos failed (${res.status}): ${rawText.slice(0, 400)}`);
+    throw new Error(
+      `${capacityPrefix(res.status, res.headers.get("retry-after"))}` +
+      `HeyGen v3 Videos failed (${res.status}): ${rawText.slice(0, 400)}`,
+    );
   }
 
   const data = JSON.parse(rawText);
@@ -1078,7 +1117,10 @@ export async function generateVideoAgent(
   console.log(`[heygen] Video Agent response (${res.status}):`, rawText.slice(0, 400));
 
   if (!res.ok) {
-    throw new Error(`HeyGen Video Agent v3 failed (${res.status}): ${rawText.slice(0, 400)}`);
+    throw new Error(
+      `${capacityPrefix(res.status, res.headers.get("retry-after"))}` +
+      `HeyGen Video Agent v3 failed (${res.status}): ${rawText.slice(0, 400)}`,
+    );
   }
 
   const data = JSON.parse(rawText);
