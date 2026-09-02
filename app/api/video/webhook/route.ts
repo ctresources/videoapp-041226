@@ -58,16 +58,44 @@ function verifyHeygenSignature(rawBody: string, req: NextRequest): { ok: boolean
   const secret = process.env.HEYGEN_WEBHOOK_SECRET;
   if (!secret) return { ok: false, reason: "no secret configured" };
 
-  const provided = req.headers.get("heygen-signature") || "";
-  if (!provided) return { ok: false, reason: "Heygen-Signature header absent" };
+  /**
+   * HeyGen names this header `signature`, not `heygen-signature`.
+   *
+   * Only the plain name was checked, so every signed delivery was reported as
+   * "Heygen-Signature header absent" and rejected — while the unsigned
+   * per-request callback beside it succeeded, which is why nothing looked
+   * broken. Production headers on a real delivery settled it: the list carries
+   * `signature` and no `heygen-` prefixed header at all.
+   *
+   * Both names are accepted. If HeyGen ever moves to the prefixed form, this
+   * keeps working rather than failing the same silent way in reverse.
+   */
+  const rawSig = req.headers.get("signature")
+    || req.headers.get("heygen-signature")
+    || "";
+  if (!rawSig) return { ok: false, reason: "signature header absent (checked: signature, heygen-signature)" };
+
+  /**
+   * Tolerant of how the digest is wrapped.
+   *
+   * Providers variously send bare hex, `sha256=<hex>`, or a comma-separated
+   * `t=…,v1=<hex>`. Pulling the longest hex run out of the value handles all
+   * three, and a signature that is genuinely wrong still fails the compare
+   * below — this only avoids rejecting a correct one for its packaging.
+   */
+  const provided = (rawSig.match(/[a-f0-9]{64}/i) ?? [rawSig.trim()])[0];
 
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
-  if (!safeEqual(provided, expected)) return { ok: false, reason: "signature mismatch" };
+  if (!safeEqual(provided.toLowerCase(), expected)) {
+    return { ok: false, reason: `signature mismatch (header '${rawSig.slice(0, 24)}…')` };
+  }
 
   // Signature is valid — now bound how old the delivery may be. Absent header
   // is tolerated rather than fatal: the body is already proven authentic, and
   // rejecting on a header HeyGen might omit would break delivery outright.
-  const ts = req.headers.get("heygen-timestamp");
+  // Same naming lesson as the signature above — and the real delivery carried
+  // neither name, so this stays tolerant of absence rather than fatal.
+  const ts = req.headers.get("timestamp") || req.headers.get("heygen-timestamp");
   if (ts) {
     const age = Math.floor(Date.now() / 1000) - Number(ts);
     if (!Number.isFinite(age)) return { ok: false, reason: `unparseable timestamp '${ts}'` };
