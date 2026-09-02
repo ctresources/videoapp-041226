@@ -2617,7 +2617,10 @@ export default function ProjectEditorPage() {
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"
                         : renderComplete ? "Your video is ready"
-                          : "Rendering — you can close this page"
+                          // Says what the button beside it is for. A hint that
+                          // only tells you to leave, next to a button that
+                          // takes you somewhere, leaves the button unexplained.
+                          : "Rendering — close this page if you like, or write your titles and captions while it works"
                     )
                     : "Copy these into your post when you publish"
             }
@@ -2683,9 +2686,16 @@ export default function ProjectEditorPage() {
                     the video were being published. "Kit" cannot be read as
                     something in progress, and "Share" is the product's own
                     third verb: speak, spark, share. */}
+                {/* Named for what is on the other side of it, not for the
+                    thing it belongs to. "Share kit" is the product's word for
+                    step 5 and reads correctly once the video exists — but on a
+                    screen that says "Rendering", a primary button offering to
+                    share reads as sharing a video that has not been made yet.
+                    While it renders, the honest offer is the writing you can
+                    get on with meanwhile. */}
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Share kit <ArrowRight size={17} /></>}
+                  : <>Titles &amp; captions <ArrowRight size={17} /></>}
               </Button>
             )}
             {editorStep === 5 && (
