@@ -208,6 +208,50 @@ export async function uploadVideoAsset(videoBuffer: Buffer): Promise<string> {
 const USD_PER_CREDIT = Number(process.env.HEYGEN_USD_PER_CREDIT || "") || 4.4 / 893;
 
 /**
+ * Dollars per minute, by the engine that rendered the video.
+ *
+ * HeyGen bills on the finished video's duration, so length times rate is the
+ * charge — and unlike a balance reading it is arithmetic on one render's own
+ * facts. That matters because the account allows ten concurrent jobs: the
+ * moment two customers render at once, a before-and-after balance reading
+ * attributes part of each to the other, and produces a wrong number that looks
+ * entirely reasonable sitting in a column.
+ *
+ * Rates from HeyGen's card as of September 2026. Env-overridable because they
+ * are HeyGen's to change and a redeploy is a poor way to track someone else's
+ * pricing. render_provider is what the row already records, so no new column
+ * is needed to choose between them.
+ */
+const RATE_PER_MINUTE_USD: Record<string, number> = {
+  heygen_agent: Number(process.env.HEYGEN_RATE_AGENT || "") || 2.0,
+  // Direct Video renders a photo avatar or a digital twin look. The photo
+  // avatar rate is the lower of the two and the one most accounts hit; a twin
+  // on Avatar IV is $4.00, so this under-reads rather than over-reads for
+  // those. Set HEYGEN_RATE_DIRECT to correct it once the readings say which.
+  heygen_v3_direct: Number(process.env.HEYGEN_RATE_DIRECT || "") || 3.0,
+  heygen_v3_translate: Number(process.env.HEYGEN_RATE_TRANSLATE || "") || 2.0,
+};
+
+/**
+ * What a render cost, from its duration and the engine that made it.
+ *
+ * Null when either is unknown, rather than a zero — a cost of nothing is a
+ * claim, and "we do not know" is the truth. Callers store it beside the raw
+ * duration so a corrected rate can be reapplied later without re-rendering.
+ */
+export function estimateRenderCostUsd(
+  renderProvider: string | null | undefined,
+  durationSeconds: number | null | undefined,
+): number | null {
+  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return null;
+  }
+  const rate = renderProvider ? RATE_PER_MINUTE_USD[renderProvider] : undefined;
+  if (!rate) return null;
+  return Math.round((durationSeconds / 60) * rate * 100) / 100;
+}
+
+/**
  * A spend in dollars, given what the account reports in.
  *
  * Returns the figure untouched when the API says "usd" — the mistake worth

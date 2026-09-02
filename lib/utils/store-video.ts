@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus, getAccountBalance, balanceToUsd } from "@/lib/api/heygen";
+import { getVideoStatus, getAccountBalance, balanceToUsd, estimateRenderCostUsd } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
@@ -258,10 +258,47 @@ export async function downloadAndStoreVideo(
   try {
     const { data: row } = await admin
       .from("generated_videos")
-      .select("metadata")
+      .select("metadata, render_provider")
       .eq("id", videoId)
       .single();
     const meta = (row?.metadata as Record<string, unknown> | null) ?? {};
+
+    /**
+     * The render's cost from its own duration, which is the figure to trust.
+     *
+     * HeyGen bills on the finished video's length, so duration times the
+     * engine's rate is the charge — and it is unaffected by whatever else is
+     * rendering. The balance readings below cannot say that: the account runs
+     * up to ten concurrent jobs, and two overlapping renders each absorb part
+     * of the other's spend.
+     *
+     * Both are kept. Rendered alone they should agree, and that agreement is
+     * what proves the rate table right; when they diverge, concurrency is the
+     * likely reason and this is the one to believe.
+     */
+    if (opts.heygenVideoId && meta.heygen_duration_seconds === undefined) {
+      try {
+        const { duration } = await getVideoStatus(opts.heygenVideoId);
+        const provider = (row as { render_provider?: string | null } | null)?.render_provider ?? null;
+        const cost = estimateRenderCostUsd(provider, duration);
+        if (duration !== null) {
+          await mergeMetadata(admin, videoId, {
+            heygen_duration_seconds: duration,
+            // Stored beside the duration rather than instead of it, so a
+            // corrected rate can be reapplied later without re-rendering.
+            heygen_cost_usd: cost,
+            heygen_rate_provider: provider,
+          });
+          console.log(
+            `[store-video] ${videoId}: ${duration}s on ${provider ?? "unknown engine"}` +
+            `${cost === null ? "" : ` → ~$${cost.toFixed(2)}`}`,
+          );
+        }
+      } catch (err) {
+        console.warn(`[store-video] ${videoId}: duration lookup failed:`, err instanceof Error ? err.message : err);
+      }
+    }
+
     const before = typeof meta.quota_before === "number" ? meta.quota_before : null;
     if (before !== null && meta.quota_after === undefined) {
       const acct = await getAccountBalance();
