@@ -1294,6 +1294,60 @@ export default function ProjectEditorPage() {
     );
   }
 
+  /**
+   * Vertical or horizontal — the question the app never asked.
+   *
+   * videoTypes has carried both short shapes since it was written, and the only
+   * thing that ever read it was the summary line above the render button, which
+   * PRINTED the format without offering it. The shape was settled server-side
+   * from the script's length instead — listing-video sets video_platform to
+   * "reel" for a standard script and "youtube" for a long one — so every
+   * listing short came out 9:16 and there was no screen on which to say
+   * otherwise.
+   *
+   * Only the two short shapes are offered here. Longform is landscape-only in
+   * create-blog (isLongForm explicitly excludes the vertical types) and spends
+   * a different allowance, so putting it in this row would quietly turn a shape
+   * picker into a length-and-price one.
+   */
+  function renderFormatSelector() {
+    const shapes = [
+      { value: "reel_9x16" as const, label: "Vertical 9:16", desc: "Reels, TikTok, Shorts" },
+      { value: "youtube_16x9" as const, label: "Horizontal 16:9", desc: "YouTube, your website" },
+    ];
+    return (
+      <div className="mb-5 flex flex-col gap-[7px]">
+        <p className="spark-eyebrow text-[9px] tracking-[0.12em]">VIDEO SHAPE</p>
+        {selectedVideoType === "youtube_long" ? (
+          // Said rather than silently offering one button: a picker that cannot
+          // be changed reads as broken, where a sentence reads as a rule.
+          <p className="text-[10.5px] leading-[1.4] text-spark-ink-muted">
+            Longform is horizontal (16:9). Vertical is for Shorts.
+          </p>
+        ) : (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {shapes.map(({ value, label, desc }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSelectedVideoType(value)}
+                aria-pressed={selectedVideoType === value}
+                className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
+                  selectedVideoType === value
+                    ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                    : "border border-spark-rule bg-white hover:border-spark-rule-dim"
+                }`}
+              >
+                <span className="text-[11.5px] font-medium text-spark-ink">{label}</span>
+                <span className="text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function buildContactLine(): string {
     if (!contactInfo) return "";
     const parts: string[] = [];
@@ -2118,6 +2172,10 @@ export default function ProjectEditorPage() {
                 {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
               </>
             )}
+
+            {/* Between the look and the photos, which is the order the note on
+                the wrapper above already describes. */}
+            {renderFormatSelector()}
 
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
