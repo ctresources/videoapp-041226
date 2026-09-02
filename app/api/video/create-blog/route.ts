@@ -1055,7 +1055,7 @@ export async function POST(req: NextRequest) {
     // called, so every render has been going out unstyled.
     //
     // Free, in the sense that matters: style_id is a parameter on the Video
-    // Agent job already being paid for at $0.097/sec — not HeyGen's
+    // Agent job already being paid for at $0.0333/sec — not HeyGen's
     // separately-priced Cinematic Avatar product, which this app never calls.
     // Cached after the first success, and null on failure, in which case the
     // render is exactly what it was before.

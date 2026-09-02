@@ -11,26 +11,40 @@ export const WPM = 145;
 export type VideoLength = "standard" | "long";
 
 /**
- * Maximum words for a STANDARD video — 500 on every plan.
+ * Maximum words for a STANDARD video — 400 on every plan, ~2.8 minutes.
  *
- * Was 580 for agent/pro and 435 for everyone else. Two reasons it is now one
- * number: a 580-word script renders as a 4-minute video, and HeyGen takes
- * 5-10x the finished length, so that was a 20-40 minute render; and a plan
- * split here bought ~25 seconds of extra video while doubling the number of
- * length rules to keep straight.
+ * Was 580 for agent/pro and 435 for everyone else. It is one number because a
+ * plan split here bought ~25 seconds of extra video while doubling the number
+ * of length rules to keep straight.
  *
  * The tier argument is kept so callers don't all have to change if plan-aware
  * lengths ever come back.
  */
 export function standardMaxWords(_tier?: string | null): number {
-  // 400, down from 500, on cost. Short videos render through HeyGen's Video
-  // Agent at $0.097/sec, so every 100 words is 41 seconds and about $4 — the
-  // single largest dial on a standard video's cost, and the one nobody sees.
+  // NOT a cost cap, though it used to say it was.
   //
-  // 400 words is ~2.8 minutes, which is still inside the "up to 3 minutes"
-  // every plan page already advertises. 500 was ~3.4 minutes: longer than
-  // what was sold, and it was the difference between Creator covering its
-  // renders and not.
+  // The old note here put the Video Agent at $0.097/sec and every 100 words at
+  // "about $4". The real rate is $0.0333/sec — $2.00 a minute — confirmed
+  // against an invoice: a 133.8-second render billed $4.45. So 100 words is
+  // ~41 seconds and ~$1.37, and the whole 400-word video costs ~$5.50. Cutting
+  // 500 to 400 was believed to save $4 a video; it saved about $1.38.
+  //
+  // Two real constraints replaced it, and neither cares what HeyGen charges:
+  //
+  // 1. THE PROMPT BUDGET. The Video Agent carries the script inside its own
+  //    9,800-character prompt (HEYGEN_PROMPT_LIMIT in create-blog), so every
+  //    100 words takes ~590 characters away from the instructions. Measured
+  //    with real prose on a listing short: at 400 words 4 of 6 instruction
+  //    blocks survive, at 500 only 1 does, and past ~700 the script itself is
+  //    trimmed. A longer video is not more expensive — it is less instructed.
+  //
+  // 2. RENDER TIME. HeyGen auto-fails a job at 30 minutes. A 2:14 render took
+  //    8m42s (3.9x) and a ~4:00 one took ~18 minutes, so 4 minutes is close to
+  //    the edge of what finishes at all.
+  //
+  // Raising this is therefore a prompt-size question, not a pricing one: trim
+  // the prompt head and the cap can move. See the tail-ordering note in
+  // create-blog for where the budget actually goes.
   return 400; // ~2.8 min at 145 wpm
 }
 
