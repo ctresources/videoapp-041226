@@ -486,23 +486,19 @@ function DigitalTwinCreator({
       <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
         <ShieldCheck size={18} className="text-amber-600 shrink-0 mt-0.5" />
         <div className="flex-1">
+          {/* No plan unlocks this any more, so nothing here points at Billing.
+              Creating a twin per customer needs HeyGen's Enterprise API; on
+              the current plan the account holds one identity and it is not
+              theirs to have. Sending someone to spend more on a feature they
+              still would not get is the worse outcome by far. */}
           <p className="text-sm font-bold text-amber-900">
-            {hasTwin ? "Digital Twin paused on your plan" : "Digital Twin is an Agent & Pro feature"}
+            {hasTwin ? "Digital Twin paused" : "Digital Twin isn't available"}
           </p>
           <p className="text-xs text-amber-800 mt-1 leading-relaxed">
             {hasTwin
-              // "Agent" and "Pro" are internal tier keys, not plan names —
-              // PLANS in lib/stripe.ts calls these Producer and Influencer,
-              // which is what Billing and the sidebar show.
-              ? "Your trained twin is kept — videos will use your photo avatar until you move back to Producer or Influencer, then it works again with no retraining."
-              : "Train a photorealistic twin of yourself from a short video. Your photo avatar works on every plan and needs just one photo."}
+              ? "Your trained twin is kept and nothing is lost — videos are made with your photo avatar in the meantime."
+              : "Your videos are made with your photo avatar, which works on every plan and needs only the headshot in your profile."}
           </p>
-          <Link
-            href="/billing"
-            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-3 py-1.5 transition-colors"
-          >
-            {hasTwin ? "Restore with Producer or Influencer" : "Upgrade to unlock"}
-          </Link>
         </div>
       </div>
     );

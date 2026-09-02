@@ -81,16 +81,16 @@ export default function HelpPage() {
               In <strong>Settings → AI Voice Clone</strong>, record or upload 1–2 minutes of your voice.
               Your AI videos will speak in <em>your</em> voice.
             </Step>
-            <Step n={4} title="Train Your Digital Twin (Optional, Recommended)" icon={Video}>
-              Record a short video of yourself following the prompts and approve the consent step. Your
-              Digital Twin is a photorealistic moving avatar of you — the most natural-looking presenter option.
-            </Step>
-            <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
+            {/* The Digital Twin step is gone rather than reworded: training one
+                per customer needs HeyGen's Enterprise API, so a setup guide
+                recommending it was walking people towards a door that does not
+                open. The photo avatar it falls back to is set up in step 1. */}
+            <Step n={4} title="Set Your Default Video CTA" icon={Megaphone}>
               In <strong>Settings → Default Video CTA</strong>, add your years in real estate and review the
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
               edit it once and every video ends with a proven subscribe-and-contact close.
             </Step>
-            <Step n={6} title="Connect YouTube" icon={MonitorPlay}>
+            <Step n={5} title="Connect YouTube" icon={MonitorPlay}>
               In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → Social Accounts</Link>,
               connect the Google account that owns your channel. One-time tip: verify your account by phone at
               youtube.com/verify so videos up to 15 minutes always upload smoothly.
@@ -142,7 +142,7 @@ export default function HelpPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Step n={7} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
+            <Step n={6} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
               On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
               pick <strong>Speak It</strong> or <strong>Type It</strong> at the top — everything below works
               either way. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
@@ -156,7 +156,7 @@ export default function HelpPage() {
               <strong>Generate My Script</strong>. Either way, AI researches live market data for your city and
               writes a broadcast-quality script with real stats.
             </Step>
-            <Step n={8} title="Review & Edit The Script" icon={Wand2}>
+            <Step n={7} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
               disagree. Edit the script freely; a live word counter keeps you inside the cap (500 words
               standard, 1,160 for Long). Set your <strong>Call To Action</strong> (pre-filled with your default
@@ -165,7 +165,7 @@ export default function HelpPage() {
               below the script. Didn&apos;t land right? <strong>Regenerate</strong> redoes the script from the
               same topic and market — it asks first, since it discards any edits you&apos;ve made.
             </Step>
-            <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
+            <Step n={8} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 4 minutes with
               automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
               visuals; long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own). Pick a{" "}
@@ -175,7 +175,7 @@ export default function HelpPage() {
               you picked, typically <strong>5–20 minutes</strong>. Either way you can close the page and watch
               for it in My Videos. If a render ever fails, your allowance is refunded automatically.
             </Step>
-            <Step n={10} title="Use Camera — The Free Option" icon={Camera}>
+            <Step n={9} title="Use Camera — The Free Option" icon={Camera}>
               Write or Spark a script, tap <strong>Add Channel CTA</strong> to append your closing pitch, then
               open the camera — or skip straight there with <strong>Record on Camera</strong>, a one-click button
               on any script or blog post that hands your hook, script and CTA to the teleprompter for you. The{" "}
@@ -192,12 +192,12 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={11} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={10} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Videos</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
             </Step>
-            <Step n={12} title="Everywhere Else" icon={Upload}>
+            <Step n={11} title="Everywhere Else" icon={Upload}>
               Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
               <strong> Instagram caption, LinkedIn post, and email blurb</strong> from the project&apos;s
               Title, Description &amp; Hashtags card.
@@ -211,7 +211,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={13} title="The Everyday Tools" icon={Wand2}>
+            <Step n={12} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">AI Tools</Link> to
               make a video — Create Video generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
@@ -220,7 +220,7 @@ export default function HelpPage() {
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.
             </Step>
-            <Step n={14} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            <Step n={13} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
               <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
