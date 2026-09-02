@@ -9,6 +9,8 @@ import {
 } from "@/lib/utils/video-length";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { parseCityState } from "@/lib/utils/parse-address";
+import { PLAIN_COPY_RULES, plainCopy, plainCopyAll } from "@/lib/utils/copy-style";
+import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 
 /**
  * The SEO/AEO/GEO blog article that goes with a listing video.
@@ -72,9 +74,11 @@ ${unbranded
   ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact. Close on the property."
   : `- Close with an invitation to arrange a showing${agentName ? `, naming ${agentName}` : ""}.`}
 
-FORMAT — plain text, no markdown, no asterisks, no numbered lists:
+FORMAT, plain text, no markdown, no asterisks, no numbered lists:
 - Headings are their own line, starting with "H2: ".
 - Paragraphs are separated by a blank line.
+
+${PLAIN_COPY_RULES}
 
 Return ONLY a JSON object:
 {
@@ -84,22 +88,32 @@ Return ONLY a JSON object:
 }`;
 
   try {
-    const res = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        // ~1,000 words of prose across three JSON strings, with the escaped
-        // newlines between paragraphs counting too.
-        max_tokens: 2600,
-      }),
-    });
-    if (!res.ok) throw new Error(`status ${res.status}`);
+    // One retry on 429, honouring Retry-After. Even run sequentially, this is
+    // the third Perplexity call in one request and the account's limit is
+    // shared with whatever else is generating at the time.
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      res = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          // ~1,000 words of prose across three JSON strings, with the escaped
+          // newlines between paragraphs counting too.
+          max_tokens: 2600,
+        }),
+      });
+      if (res.status !== 429 || attempt === 1) break;
+      const retryAfter = Number(res.headers.get("retry-after")) || 3;
+      console.warn(`[listing-video] Blog rate-limited, retrying in ${retryAfter}s`);
+      await new Promise((r) => setTimeout(r, Math.min(retryAfter, 8) * 1000));
+    }
+    if (!res || !res.ok) throw new Error(`status ${res?.status ?? "no response"}`);
     const data = await res.json();
     const text: string = data.choices?.[0]?.message?.content ?? "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -180,7 +194,8 @@ INSTRUCTIONS:
 - Mention the price and key specs naturally
 ${unbranded
   ? `- UNBRANDED VIDEO — this is a compliance requirement, not a style preference, and it outranks every other instruction here about how to close. Do not name the agent, a brokerage, a team, a licence number, a phone number, an email address or a website, and do not invite the viewer to make contact or to schedule a showing. Close on the property itself.`
-  : `- End with a clear call to action to schedule a showing${agentName ? ` — must include the agent's name: "${agentName}"` : ""}`}
+  : `- Do NOT write a closing call to action inside "script". It goes in the separate "cta" field below and is appended to the end of the narration at render time. A script that closes with its own ask makes the avatar say the whole thing twice, which is what used to happen.
+- End "script" on the property itself — the last thing it describes, not an invitation.`}
 - Aim for ${target} words and never pass ${cap} — this is a voiceover script, not text. Do not pad or repeat to reach the length; if the listing genuinely has less to say, say less.
 ${length === "long" ? "- This is a long tour: walk the property room by room, and give each space a specific detail from the listing rather than an adjective.\n" : ""}
 - Do NOT mention schools, churches, demographics, neighborhood composition, or anything that could violate Fair Housing laws
@@ -193,6 +208,8 @@ PRONUNCIATION RULES (CRITICAL — this is a voiceover, every word will be SPOKEN
 - Do NOT include any phone numbers in the script. Do NOT prepend "1" to any number. Phone numbers appear on-screen via overlays — never spoken in the narration.
 - If you mention an address, write it the way a human would say it out loud (e.g. "123 Oak Lane" not "123 Oak Ln")
 - Name the CITY only — never follow it with the state. Say "in Willow Grove", not "in Willow Grove, Pennsylvania" or "in Willow Grove, PA". Nobody says the state aloud about a home in their own area, and it makes the narration sound like an address label being read out. The state belongs in the title and the hook, not in the body of the script.
+
+${PLAIN_COPY_RULES}
 
 Return ONLY a JSON object:
 {
@@ -301,9 +318,22 @@ export async function POST(req: NextRequest) {
   const ctaWords = ctaClamped.trim().split(/\s+/).filter(Boolean).length;
   scriptData.cta = ctaClamped;
   scriptData.script = clampScript(
-    scriptData.script ?? "",
+    // The script's own closing ask removed when it repeats the CTA. The prompt
+    // now tells it not to write one, but a model told not to do a thing does it
+    // anyway often enough that the render would still stutter.
+    dropDuplicateCta(ctaClamped, scriptData.script ?? ""),
     Math.max(50, maxWords(length, tier) - ctaWords),
   );
+
+  // House style, enforced on the way out rather than only asked for in the
+  // prompt. Emoji and dashes come back about one time in five however plainly
+  // the instruction is written, and the one in five is the one that ships.
+  scriptData.title = plainCopy(scriptData.title ?? "");
+  scriptData.hook = plainCopy(scriptData.hook ?? "");
+  scriptData.script = plainCopy(scriptData.script);
+  scriptData.cta = plainCopy(scriptData.cta);
+  scriptData.description = plainCopy(scriptData.description ?? "");
+  scriptData.hashtags = plainCopyAll(scriptData.hashtags);
 
   const aiScript = {
     title: scriptData.title,
@@ -358,44 +388,53 @@ export async function POST(req: NextRequest) {
   const parsedLocation = parseCityState(listing.address);
   const listingCity = parsedLocation.city || prof.location_city || undefined;
   const listingState = parsedLocation.state || prof.location_state || undefined;
-  // Both are independent of each other and each takes several seconds, so they
-  // run together. Neither can reject — the metadata call catches, the blog
-  // returns null — so one failing never costs the other or the script.
-  const [ytMeta, blog] = await Promise.all([
-    generateYoutubeMetadata({
-      title: scriptData.title,
-      script: scriptData.script,
-      city: listingCity,
-      state: listingState,
-      agentName: prof.full_name || undefined,
-      brokerage: prof.company_name || undefined,
-      keywords: scriptData.keywords,
-      website: prof.website || undefined,
-      phone: prof.phone || prof.company_phone || undefined,
-    }).catch((err) => {
-      console.error("[listing-video] YouTube metadata failed:", err);
-      return null;
-    }),
-    generateListingBlog(listing, listingCity, listingState, prof.full_name || undefined, isUnbranded),
-  ]);
+  // Sequential, not Promise.all.
+  //
+  // Running the two together is what killed the blog on its first day live:
+  // both hit Perplexity in the same instant and the second came back 429. The
+  // runtime log said exactly that, "[listing-video] Blog generation failed:
+  // status 429", on the render that arrived with no blog card.
+  //
+  // Neither can reject, so a failure of one never costs the other or the
+  // script: the metadata call catches, and the blog returns null.
+  const ytMeta = await generateYoutubeMetadata({
+    title: scriptData.title,
+    script: scriptData.script,
+    city: listingCity,
+    state: listingState,
+    agentName: prof.full_name || undefined,
+    brokerage: prof.company_name || undefined,
+    keywords: scriptData.keywords,
+    website: prof.website || undefined,
+    phone: prof.phone || prof.company_phone || undefined,
+  }).catch((err) => {
+    console.error("[listing-video] YouTube metadata failed:", err);
+    return null;
+  });
+
+  const blog = await generateListingBlog(
+    listing, listingCity, listingState, prof.full_name || undefined, isUnbranded,
+  );
 
   const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((scriptData.hook || scriptData.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
 
   // Attached after the fact because aiScript is built before this point — the
   // scriptOnly path returns from up there and wants no blog at all.
   if (blog) {
-    aiScript.blog_intro = blog.intro;
-    aiScript.blog_body = blog.body;
-    aiScript.blog_conclusion = blog.conclusion;
+    aiScript.blog_intro = plainCopy(blog.intro);
+    aiScript.blog_body = plainCopy(blog.body);
+    aiScript.blog_conclusion = plainCopy(blog.conclusion);
   }
 
   const seoData = {
     meta_title: scriptData.title,
     meta_description: scriptData.description,
     keywords: scriptData.keywords,
-    hashtags: ytMeta?.hashtags?.length ? ytMeta.hashtags : scriptData.hashtags,
-    youtube_title: ytMeta?.youtube_title || scriptData.title,
-    youtube_description: ytMeta?.youtube_description || scriptData.description,
+    // Same pass over the SEO copy — this is the description with the pin and
+    // waving-hand emoji in it, which is what the reader actually sees.
+    hashtags: plainCopyAll(ytMeta?.hashtags?.length ? ytMeta.hashtags : scriptData.hashtags),
+    youtube_title: plainCopy(ytMeta?.youtube_title || scriptData.title),
+    youtube_description: plainCopy(ytMeta?.youtube_description || scriptData.description),
     thumbnail_url: thumbnailUrl,
   };
 

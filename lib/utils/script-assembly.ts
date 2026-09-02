@@ -76,3 +76,56 @@ export function joinHookAndScript(hook: string, script: string): string {
   const body = dropDuplicateHook(h, script ?? "");
   return [h, body].filter(Boolean).join("\n\n");
 }
+
+/** Last sentence, by terminal punctuation — falling back to the whole thing. */
+function lastSentence(text: string): string {
+  const t = text.trim();
+  const m = t.match(/[^.!?]*[.!?]\s*$/);
+  return (m ? m[0] : t).trim();
+}
+
+/**
+ * The script with its closing line removed if that line is the CTA.
+ *
+ * The same bug as the hook, at the other end, and it was live on every listing
+ * video. The script prompt asked for a closing call to action AND the JSON
+ * asked for a separate "cta" field, so the model wrote it twice; create-blog
+ * then appends the cta field to the body, and the avatar says the whole thing
+ * through a second time.
+ *
+ * Verified against the database rather than reasoned about: the newest listing
+ * ended "...this one is ready for you. Schedule your private showing today with
+ * Carmella Thompson." and its cta field was, exactly, "Schedule your private
+ * showing today with Carmella Thompson."
+ *
+ * Exact matches only, like the hook version. A close is often a rephrasing of
+ * the same idea, and deleting a real final sentence because it rhymes with the
+ * CTA is a worse failure than leaving a repetitive one in.
+ *
+ * The Fair Housing line is exempted: "Equal Housing Opportunity" is required
+ * wording and both fields may legitimately carry it, so it is stripped before
+ * comparing and left wherever it already sits.
+ */
+export function dropDuplicateCta(cta: string, script: string): string {
+  const withoutFairHousing = (t: string) =>
+    normalise(t).replace(/\bequal housing opportunity\b/g, "").replace(/\s+/g, " ").trim();
+
+  const c = withoutFairHousing(cta ?? "");
+  const s = (script ?? "").trim();
+  if (!c || !s) return s;
+
+  const last = lastSentence(s);
+  if (withoutFairHousing(last) === c) {
+    return s.slice(0, s.length - last.length).trim();
+  }
+
+  // Two sentences, for a CTA that carries its own Fair Housing sentence after
+  // the ask — "Schedule a showing today. Equal Housing Opportunity."
+  const head = s.slice(0, s.length - last.length).trim();
+  const penultimate = lastSentence(head);
+  if (penultimate && withoutFairHousing(`${penultimate} ${last}`) === c) {
+    return head.slice(0, head.length - penultimate.length).trim();
+  }
+
+  return s;
+}

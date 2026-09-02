@@ -491,7 +491,8 @@ export function ListingVideoForm({ onRecordYourself }: {
             <strong>What happens next:</strong> We import the listing details, then use AI to write
             a Fair Housing-compliant property tour voiceover script — up to{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
-            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform. Takes ~15 seconds.
+            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
+            titles, hashtags and blog post that go with it. Takes about a minute.
           </p>
         </div>
       </div>

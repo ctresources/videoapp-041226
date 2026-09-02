@@ -17,7 +17,7 @@
       "maxDuration": 60
     },
     "app/api/ai/listing-video/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 180
     },
     "app/api/ai/scrape-listing/route.ts": {
       "maxDuration": 60

@@ -22,6 +22,7 @@ import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
+import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
 import { standardMaxWords, clampScript } from "@/lib/utils/video-length";
@@ -208,6 +209,12 @@ function buildVideoAgentPrompt(params: {
   listingAddress?: string;
   listingPhotoCount?: number;
   extraPhotoCount?: number;
+  /**
+   * Whether the attached photos are of a property. Asked of the project rather
+   * than counted, because the count is zero on every listing — see the note by
+   * propertyPhotos below.
+   */
+  isListing?: boolean;
   pdfContent?: string;
   /**
    * Whether an avatar is actually being placed on screen.
@@ -275,16 +282,33 @@ Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head t
   const extraCount = params.extraPhotoCount ?? 0;
   const totalPhotos = listingCount + extraCount;
 
+  /**
+   * Whether these photos are OF a property, which decides whether the agent may
+   * source property imagery of its own.
+   *
+   * It used to be `listingPhotoCount > 0`, and that number is zero on every
+   * listing video. The editor loads the listing's photos into its grid so they
+   * can be seen and removed, so they come back in extraPhotoUrls, and
+   * create-blog then subtracts anything the editor already sent to avoid
+   * counting a photo twice — correct for the count, fatal as a gate. Every
+   * listing therefore took the lenient branch, which does not merely omit the
+   * rule: it says stock b-roll is allowed between photos. We told it to invent
+   * the backyard.
+   *
+   * Asked of the project now, not inferred from a residual count.
+   */
+  const propertyPhotos = totalPhotos > 0 && params.isListing;
+
   const photoBlock = totalPhotos > 0
     ? `
 ATTACHED PHOTOS — PRIMARY B-ROLL
-${totalPhotos} photo(s) are attached${listingCount > 0 ? ` (${listingCount} of the property at ${params.listingAddress || "the listing address"}${extraCount > 0 ? `, ${extraCount} user-uploaded` : ""})` : ""}.
-- Use ALL of them as the primary b-roll; cycle so each gets ~5–10s of screen time.
+${totalPhotos} photo(s) are attached${params.isListing ? ` of the property at ${params.listingAddress || "the listing address"}` : ""}.
+- Use ALL ${totalPhotos} as the primary b-roll — every one gets at least one scene. Cycle so each gets ~5–10s of screen time.
 - Crop/scale every photo to FILL the frame edge-to-edge (cover scaling) — never letterbox or pillarbox, even for portrait photos.
 - Gentle Ken Burns motion (slow pan + zoom) on each.
 - Match each photo to the sentence describing it.
-${listingCount > 0
-  ? `- THESE PHOTOS ARE THE ONLY PROPERTY VISUALS PERMITTED. Every shot of a home, room, yard, exterior, street or interior must come from the attached photos. Do NOT add, generate or source ANY other property imagery — no stock houses, no stock interiors, no AI-invented rooms, not even for a transition or a background fill. A house that is not this house misrepresents the listing.
+${propertyPhotos
+  ? `- THESE PHOTOS ARE THE ONLY PROPERTY VISUALS PERMITTED. Every shot of a home, room, yard, exterior, street or interior must come from the attached photos. Do NOT add, generate or source ANY other property imagery — no stock houses, no stock interiors, no AI-invented rooms, no stock yards or gardens, not even for a transition or a background fill. A house that is not this house misrepresents the listing.
 - If the narration outruns the photos, hold, re-use or slowly move across the attached photos, or cut to a plain branded text card. Running out of photos is never a reason to invent one.
 - Non-property b-roll (maps, generic lifestyle, abstract texture) is allowed only where the script is not describing the home itself.`
   : "- Do NOT replace them with stock or generated imagery; stock b-roll only between photos for transitions."}`
@@ -596,7 +620,13 @@ export async function POST(req: NextRequest) {
   const ctaText = typeof cta === "string" && cta.trim() ? clampScript(normalizeScriptForTTS(cta.trim()), 200) : "";
   const ctaWordCount = ctaText ? ctaText.trim().split(/\s+/).length : 0;
   const bodyScript = clampScript(
-    normalizeScriptForTTS(rawScript),
+    // The script's own closing line dropped when it IS the CTA, which on a
+    // listing it reliably was — the script prompt asked for a closing ask and
+    // the JSON asked for a separate cta field, so the model wrote both and the
+    // append below said it twice. dropDuplicateHook has guarded the opening
+    // for a while; this is the same guard at the other end, and it also
+    // repairs drafts written before the prompt was fixed.
+    normalizeScriptForTTS(dropDuplicateCta(ctaText, rawScript)),
     Math.max(50, maxScriptWords - ctaWordCount),
   );
   const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
@@ -734,6 +764,8 @@ export async function POST(req: NextRequest) {
       listingAddress,
       listingPhotoCount: listingPhotos.length,
       extraPhotoCount: safeExtraPhotos.length,
+      // The project itself, not a count that the editor's own photo grid zeroes.
+      isListing: project.project_type === "listing_video" || !!listingData?.address,
     };
 
     const fullPdf = pdfText ? String(pdfText) : undefined;

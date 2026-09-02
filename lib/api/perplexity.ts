@@ -260,24 +260,24 @@ A keyword-rich hook that includes ${location || "the location"} and the primary 
 Paragraph 2 (3-4 sentences):
 Expand on the topic with specific, factual, citation-friendly sentences. Use named entities (city, state, year, neighborhood) so LLM search engines can quote you. Include 1-2 real numbers or data points if the script mentions them.
 
-📋 IN THIS VIDEO:
+IN THIS VIDEO:
 - Bullet list of 4-6 key topics covered (each starts with a verb, includes a keyword)
 
-❓ FREQUENTLY ASKED QUESTIONS:
+FREQUENTLY ASKED QUESTIONS:
 Q: <Common spoken question about the topic in ${location || "the area"}>
 A: <Direct 1-2 sentence answer, factual, includes a keyword>
-(Repeat for 3-4 Q&A pairs — these power voice search and featured snippets)
+(Repeat for 3-4 Q&A pairs, which is what powers voice search and featured snippets)
 
-📍 SERVING:
+SERVING:
 ${location || "the local market"} and surrounding areas
 
-👋 CONNECT WITH ME:
+CONNECT WITH ME:
 ${contactLine || "(agent contact details)"}
 
-#️⃣ TAGS:
+TAGS:
 Inline the 5-8 most relevant hashtags here (mix broad + local).
 
-🔔 Subscribe for weekly ${location || "local"} real estate market updates.
+Subscribe for weekly ${location || "local"} real estate market updates.
 
 Return ONLY valid JSON:
 {

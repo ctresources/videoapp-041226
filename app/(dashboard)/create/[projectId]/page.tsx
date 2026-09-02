@@ -267,6 +267,19 @@ export default function ProjectEditorPage() {
   // line under the chips and the summary above the button. Looked up once so
   // they cannot come to disagree about what was picked.
   const selectedFormat = videoTypes.find((v) => v.value === selectedVideoType);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  /** Move a photo within the grid. The render uses the first `photoLimit`. */
+  function movePhoto(from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return;
+    setUploadedPhotos((prev) => {
+      if (from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
   // Which allowance this render will actually charge. Mirrors the `longForm`
   // flag sent to create-blog, which is what decides it server-side.
   const selectedKind: "short" | "long" = selectedVideoType === "youtube_long" ? "long" : "short";
@@ -388,6 +401,18 @@ export default function ProjectEditorPage() {
 
   // If coming from /create with a recordingId, generate script automatically
   const source = searchParams.get("source");
+  /**
+   * How many of the uploaded photos this render will actually use.
+   *
+   * The same condition the warning by the grid uses: everything except a
+   * pasted script and long-form goes to the Video Agent, which takes fewer.
+   * Order matters because both paths slice from the front, which is why the
+   * grid numbers each photo and dims the ones past the line.
+   */
+  const photoLimit =
+    source !== "paste" && selectedVideoType !== "youtube_long"
+      ? AGENT_PHOTO_LIMIT
+      : DIRECT_PHOTO_LIMIT;
   /**
    * A pasted script skips the script step.
    *
@@ -1931,14 +1956,14 @@ export default function ProjectEditorPage() {
                   <p className="text-[10.5px] text-spark-ink-faint">
                     Edit freely — your changes are saved when you generate the video
                   </p>
+                  {/* No "Record on Camera" here any more. The next screen asks
+                      "Who's on screen" with "I'll record it" as one of its
+                      three answers, so this was the same question put twice,
+                      two screens apart, in two different shapes — a link here
+                      and a choice there. The choice is the better place: it
+                      sits with the settings it makes irrelevant, and the
+                      footer turns into Open Camera when it is picked. */}
                   <div className="flex flex-none items-center gap-3">
-                    <button
-                      onClick={() => handleRecordOnCamera()}
-                      title="Send the hook, script & CTA to the Camera tab's teleprompter"
-                      className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
-                    >
-                      <Camera size={12} /> Record on Camera
-                    </button>
                     <button
                       onClick={() => copyToClipboard(editedScript, "Script")}
                       className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
@@ -2201,15 +2226,71 @@ export default function ProjectEditorPage() {
                 use up to {DIRECT_PHOTO_LIMIT}.
               </p>
             )}
+            {uploadedPhotos.length > 1 && (
+              <p className="text-[10.5px] text-slate-400 mb-1.5">
+                Drag to reorder{uploadedPhotos.length > photoLimit ? ` — the first ${photoLimit} are the ones used` : ""}.
+                Use the arrows if dragging is awkward.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 mb-5">
-              {uploadedPhotos.map((photo, i) => (
-                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group">
-                  <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover" />
-                  <button onClick={() => removePhoto(i)} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X size={14} className="text-white" />
-                  </button>
-                </div>
-              ))}
+              {/* Keyed by url, not index: an index key makes React reuse the
+                  same DOM node for a different photo after a move, so the
+                  images appear not to have swapped at all.
+
+                  The X moved from a full-size overlay to a corner button —
+                  covering the whole tile meant every drag started on the
+                  delete control. */}
+              {uploadedPhotos.map((photo, i) => {
+                const unused = i >= photoLimit;
+                return (
+                  <div
+                    key={photo.url}
+                    draggable
+                    onDragStart={() => setDragIndex(i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragIndex !== null) movePhoto(dragIndex, i);
+                      setDragIndex(null);
+                    }}
+                    onDragEnd={() => setDragIndex(null)}
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden border shrink-0 group cursor-grab active:cursor-grabbing ${
+                      dragIndex === i ? "border-spark-amber opacity-60" : "border-slate-200"
+                    } ${unused ? "opacity-40" : ""}`}
+                    title={unused ? `Position ${i + 1} — past the first ${photoLimit}, so not used` : `Position ${i + 1}`}
+                  >
+                    <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover pointer-events-none" />
+                    <span className="absolute bottom-0 left-0 px-1 text-[9px] font-semibold text-white bg-black/55 rounded-tr">
+                      {i + 1}
+                    </span>
+                    <div className="absolute inset-x-0 top-0 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => movePhoto(i, i - 1)}
+                        disabled={i === 0}
+                        aria-label={`Move photo ${i + 1} earlier`}
+                        className="px-1 text-[11px] leading-none text-white bg-black/55 rounded-br disabled:opacity-30"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        onClick={() => movePhoto(i, i + 1)}
+                        disabled={i === uploadedPhotos.length - 1}
+                        aria-label={`Move photo ${i + 1} later`}
+                        className="px-1 text-[11px] leading-none text-white bg-black/55 rounded-bl disabled:opacity-30"
+                      >
+                        ›
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => removePhoto(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute bottom-0 right-0 px-1 text-white bg-black/55 rounded-tl opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
               {uploadedPhotos.length < UPLOAD_PHOTO_LIMIT && (
                 <label className={`w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0 ${photoUploading ? "border-primary-300 bg-primary-50" : "border-slate-200 hover:border-primary-300"}`}>
                   {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Plus size={18} className="text-slate-400" />}
@@ -2693,7 +2774,12 @@ export default function ProjectEditorPage() {
                           // takes you somewhere, leaves the button unexplained.
                           : "Rendering — close this page if you like, or write your titles and captions while it works"
                     )
-                    : "Copy these into your post when you publish"
+                    // Was "Copy these into your post when you publish", which
+                    // stopped being true once Publish started reading the
+                    // title, description and hashtags off the project. It
+                    // fills them in for you; the copy buttons are for pasting
+                    // somewhere Publish does not reach.
+                    : "Publish fills these in for you — edit here first"
             }
           >
             {editorStep === 2 && (
