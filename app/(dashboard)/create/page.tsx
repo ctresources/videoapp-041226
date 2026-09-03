@@ -1046,11 +1046,20 @@ function CreatePageInner() {
           It also puts the price beside the choice that sets it. A rendered
           video spends a credit and the camera does not, and today that only
           surfaces three steps later, after a script has been written. */}
+      {/* "The first three write the script and render the video for you, one
+          credit each" was wrong twice. My script does not write the script,
+          you do — that is the whole point of the tab. And My listings holds
+          two things: a listing video, which costs a credit, and a photo reel,
+          which is free. Split by what actually happens, not by tab position. */}
       {step === "input" && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-          The first three write the script and render the video for you — one credit each.{" "}
-          <strong className="font-semibold text-spark-ink">My camera</strong> is you on screen,
-          reading it yourself, and doesn&rsquo;t spend one.
+          <strong className="font-semibold text-spark-ink">AI writes it</strong> and{" "}
+          <strong className="font-semibold text-spark-ink">My listings</strong> write the script and
+          render it for you. <strong className="font-semibold text-spark-ink">My script</strong>{" "}
+          renders the words you give it. Those cost one credit each. Free:{" "}
+          <strong className="font-semibold text-spark-ink">My camera</strong>, which is you on
+          screen reading it yourself, and the <strong className="font-semibold text-spark-ink">photo
+          reel</strong> under My listings.
         </p>
       )}
 

@@ -724,6 +724,13 @@ export default function ProjectEditorPage() {
       const aiS = p.ai_script as AiScript & {
         user_edited?: boolean; video_length?: string; video_platform?: string;
         render_mode?: "voice_only" | "avatar_voice";
+        // Written by save-draft. Prefixed so they read as a saved draft's
+        // state rather than as something the script generator produced.
+        draft_photo_urls?: string[];
+        draft_music_id?: string;
+        draft_music_url?: string | null;
+        draft_captions?: boolean;
+        draft_look_id?: string;
       };
       setEditedScript(aiS.script || "");
       // Honour the format chosen before the script was written, so an ~8-minute
@@ -739,13 +746,27 @@ export default function ProjectEditorPage() {
       if (aiS.render_mode === "voice_only" || aiS.render_mode === "avatar_voice") {
         setRenderMode(aiS.render_mode);
       }
+      // The rest of the setup screen, restored from a saved draft. Everything
+      // above this was already round-tripping; these six were React state only,
+      // so a draft came back with the default shape, the listing's original
+      // photo order, no music and captions reset.
+      if (Array.isArray(aiS.draft_photo_urls) && aiS.draft_photo_urls.length) {
+        setUploadedPhotos(
+          aiS.draft_photo_urls.map((url) => ({ url, name: "", preview: url })),
+        );
+      }
+      if (typeof aiS.draft_music_id === "string") setSelectedMusicId(aiS.draft_music_id);
+      if (typeof aiS.draft_music_url === "string") setMusicUrl(aiS.draft_music_url);
+      if (typeof aiS.draft_captions === "boolean") setBurnCaptions(aiS.draft_captions);
+      if (typeof aiS.draft_look_id === "string" && aiS.draft_look_id) {
+        setSelectedLookId(aiS.draft_look_id);
+      }
       if (aiS.user_edited) {
         // A saved draft — restore the user's own CTA and hook exactly as saved
         setEditedCta(aiS.cta || "");
         setSelectedHook(aiS.hook || (aiS.hooks?.length ? aiS.hooks[0] : "") || "");
       } else {
-        const defaultCta = await loadDefaultCta(p);
-        setEditedCta(defaultCta || aiS.cta || "");
+        setEditedCta(await resolveInitialCta(p, aiS.cta));
         freshDefaultHook = aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "";
         setSelectedHook(freshDefaultHook);
       }
@@ -878,6 +899,16 @@ export default function ProjectEditorPage() {
           script: editedScript,
           cta: editedCta,
           hook: selectedHook,
+          // The setup screen's own choices, which a draft used to drop on the
+          // floor. Photo order is sent as the grid order because that is what
+          // the render slices.
+          videoType: selectedVideoType,
+          photoUrls: uploadedPhotos.map((p) => p.url),
+          musicId: selectedMusicId,
+          musicUrl,
+          captions: burnCaptions,
+          renderMode,
+          lookId: selectedLookId,
         }),
       });
       if (!res.ok) {
@@ -923,6 +954,28 @@ export default function ProjectEditorPage() {
     }
   }
 
+  /**
+   * Which closing ask the editor opens with.
+   *
+   * A LISTING keeps its own. The listing route writes "Schedule your private
+   * showing today with…", and this used to be overwritten by the saved default
+   * CTA — a subscribe-and-follow ask that never mentions the property or a
+   * showing. Right for a market video, where the default IS the point; wrong
+   * for a property tour, which was ending on the wrong invitation entirely.
+   *
+   * An empty CTA on a listing is also kept empty, and this is the reason the
+   * fallback cannot simply be reordered: the unbranded cut deliberately empties
+   * it, so falling through to the default would put the agent's name and a
+   * closing ask into the one video that must carry neither.
+   *
+   * Everything else is unchanged — the default CTA, then the script's own.
+   */
+  async function resolveInitialCta(proj: Project, scriptCta: string | undefined): Promise<string> {
+    if (proj.project_type === "listing_video") return scriptCta ?? "";
+    const defaultCta = await loadDefaultCta(proj);
+    return defaultCta || scriptCta || "";
+  }
+
   async function generateScript(recordingId: string) {
     setGenerating(true);
     try {
@@ -945,8 +998,9 @@ export default function ProjectEditorPage() {
       let freshDefaultHook: string | undefined;
       if (p.ai_script) {
         setEditedScript((p.ai_script as AiScript).script || "");
-        const defaultCta = await loadDefaultCta(p);
-        setEditedCta(defaultCta || (p.ai_script as AiScript).cta || "");
+        // Same rule as the loader — see resolveInitialCta. This copy is why the
+        // listing CTA came back wrong even after regenerating.
+        setEditedCta(await resolveInitialCta(p, (p.ai_script as AiScript).cta));
         const hooks = (p.ai_script as AiScript).hooks;
         freshDefaultHook = hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "";
         setSelectedHook(freshDefaultHook);
