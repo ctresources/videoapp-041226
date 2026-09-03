@@ -128,6 +128,14 @@ function CreatePageInner() {
    * straight out of the photos. They share a tab because they share an input.
    */
   const [listingMode, setListingMode] = useState<"listing" | "reel">("listing");
+  /**
+   * The listing's photos and address, lifted out of ListingVideoForm so the
+   * Photo reel under the same tab can start from them. Held here rather than
+   * in either form because the two are siblings and only one is mounted at a
+   * time — the state has to outlive the switch between them.
+   */
+  const [listingPhotos, setListingPhotos] = useState<string[]>([]);
+  const [listingAddress, setListingAddress] = useState("");
   const [locCity, setLocCity] = useState("");
   const [locState, setLocState] = useState("");
   const [profileHomeState, setProfileHomeState] = useState("");
@@ -1845,8 +1853,20 @@ function CreatePageInner() {
               ))}
             </div>
 
+            {/* The reel starts from whatever the Listing form has gathered.
+                Both live under this one tab and read as two ways to use the
+                same listing, but the reel could only see photos uploaded into
+                its own grid — so importing a Zillow URL left the one feature
+                built to turn photos into a video unable to see them.
+                Kept mounted only while selected, so each switch is a fresh
+                mount that re-reads the listing's current photos. */}
             {listingMode === "reel" && (
-              <PhotoReelForm city={locCity || undefined} state={locState || undefined} />
+              <PhotoReelForm
+                city={locCity || undefined}
+                state={locState || undefined}
+                initialPhotos={listingPhotos}
+                initialAddress={listingAddress}
+              />
             )}
             {/* "Read it myself on camera" crosses to the camera tab rather
                 than the editor's teleprompter. Only this tab's recorder
@@ -1856,6 +1876,10 @@ function CreatePageInner() {
                 first or the recording fails outright. */}
             {listingMode === "listing" && (
             <ListingVideoForm
+              onListingPhotos={(photoUrls, address) => {
+                setListingPhotos(photoUrls);
+                setListingAddress(address);
+              }}
               onRecordYourself={async (script, photoUrls) => {
                 setCameraGeneratedScript(script);
                 setInputMode("camera");

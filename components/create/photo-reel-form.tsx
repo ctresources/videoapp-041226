@@ -37,9 +37,34 @@ const LENGTHS = [7, 12, 30, 60] as const;
 
 type Voice = "music" | "script" | "record";
 
-export function PhotoReelForm({ city, state }: { city?: string; state?: string }) {
+export function PhotoReelForm({
+  city,
+  state,
+  /**
+   * Photos already gathered on the Listing video tab, so a Zillow import does
+   * not have to be re-uploaded by hand to make a reel of the same house.
+   *
+   * They arrive as bare URLs; the reel's own photos carry a name and a caption
+   * too, so they seed with an empty caption and a positional name. Read once,
+   * on mount: this component unmounts when the tab switches, so switching to
+   * the reel is always a fresh mount and there is no half-edited state to
+   * overwrite.
+   */
+  initialPhotos,
+  initialAddress,
+}: {
+  city?: string;
+  state?: string;
+  initialPhotos?: string[];
+  initialAddress?: string;
+}) {
   /** Each photo carries its own optional line of on-screen text. */
-  const [photos, setPhotos] = useState<{ url: string; name: string; caption: string }[]>([]);
+  const [photos, setPhotos] = useState<{ url: string; name: string; caption: string }[]>(
+    () => (initialPhotos ?? [])
+      .filter((u) => typeof u === "string" && u.startsWith("http"))
+      .slice(0, MAX_PHOTOS)
+      .map((url, i) => ({ url, name: `Listing photo ${i + 1}`, caption: "" })),
+  );
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<string>("reel_9x16");
@@ -59,7 +84,7 @@ export function PhotoReelForm({ city, state }: { city?: string; state?: string }
   /** The ask, held over the last few seconds once the photos have done their work. */
   const [endCard, setEndCard] = useState(true);
   const [endCardHeadline, setEndCardHeadline] = useState("See it in person");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(initialAddress ?? "");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);

@@ -62,7 +62,7 @@ const EMPTY_LISTING: ListingData = {
 
 const PROPERTY_TYPES = ["Single Family", "Condo", "Townhouse", "Multi-Family", "Land", "Other"];
 
-export function ListingVideoForm({ onRecordYourself }: {
+export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
   /**
    * Hand the finished script and the listing's photos to the camera tab.
    *
@@ -73,11 +73,32 @@ export function ListingVideoForm({ onRecordYourself }: {
    * this crosses to the recorder that works instead of building a second one.
    */
   onRecordYourself?: (script: string, photoUrls: string[]) => void;
+  /**
+   * Report the listing's photos and address up to the tab, so the Photo reel
+   * beside this form can start from them.
+   *
+   * The two sit under one tab and looked like two ways to use the same
+   * listing, but the reel could only ever see photos uploaded into its own
+   * grid — import a Zillow URL and the one feature built to turn photos into a
+   * video was the one thing that could not see them.
+   */
+  onListingPhotos?: (photoUrls: string[], address: string) => void;
 } = {}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("url");
   const [url, setUrl] = useState("");
   const [listing, setListing] = useState<ListingData>(EMPTY_LISTING);
+  /**
+   * Keep the tab told about the photos, so switching to the Photo reel starts
+   * from this listing rather than an empty grid. Fires on every change so a
+   * scrape, an upload and a removal all reach it.
+   */
+  useEffect(() => {
+    onListingPhotos?.(listing.photoUrls ?? [], listing.address ?? "");
+    // onListingPhotos is an inline arrow in the parent and would re-run this
+    // every render if it were a dependency; the photos are what it is watching.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing.photoUrls, listing.address]);
   const [newFeature, setNewFeature] = useState("");
   const [manualMode, setManualMode] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
