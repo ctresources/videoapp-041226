@@ -5,7 +5,7 @@ import { extractSpeechWav, ClipAudioUnavailable } from "@/lib/utils/clip-audio";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FieldMic } from "@/components/ui/field-mic";
+import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
@@ -1742,6 +1742,9 @@ function CreatePageInner() {
                     to survive the script being spoken rather than typed. */}
                 <FieldMic
                   title="Dictate — adds to the end of your script"
+                  // A whole script, dictated. The short window would end the
+                  // turn every time you drew breath.
+                  silenceMs={PROSE_SILENCE_MS}
                   onTranscript={(t) =>
                     setPasteScript((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
                   }

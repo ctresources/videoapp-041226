@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EditorVoiceSession } from "@/components/create/editor-voice-session";
-import { FieldMic } from "@/components/ui/field-mic";
+import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
@@ -2655,6 +2655,9 @@ export default function ProjectEditorPage() {
                       <div className="flex items-center gap-0.5">
                         <FieldMic
                           title="Dictate — adds to the end of the description"
+                          // Sentences, not a field value — a pause to think
+                          // should not end the turn here.
+                          silenceMs={PROSE_SILENCE_MS}
                           onTranscript={(t) =>
                             setEditedDescription((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
                           }

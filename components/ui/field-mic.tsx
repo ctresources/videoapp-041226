@@ -1,82 +1,72 @@
 "use client";
 
-import { useState, useRef } from "react";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
 
 interface FieldMicProps {
   onTranscript: (text: string) => void;
   title?: string;
   size?: "sm" | "md" | "lg";
+  /**
+   * How long a pause ends the turn.
+   *
+   * Defaults to the short window, because most fields with a mic beside them
+   * hold a few words — a city, a state, a title — and waiting three seconds
+   * after saying "Harleysville" is its own kind of broken. Pass
+   * PROSE_SILENCE_MS on a field where whole sentences get dictated and a pause
+   * to think should not end the turn.
+   */
+  silenceMs?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRecognition = any;
+/** For fields that take sentences rather than a few words. */
+export const PROSE_SILENCE_MS = 3000;
 
-const TIMEOUT_MS = 12000;
+/**
+ * Dictation into a single field.
+ *
+ * This used to run its own recogniser, and it was the crude one: no interim
+ * results, `continuous` left at its default of false, and a flat 12-second
+ * cutoff. The consequences were all felt rather than seen — it ended at the
+ * first pause, so a two-sentence description took two taps; there was nothing
+ * on screen while you spoke, so you could not tell it was working; and it cut
+ * you off mid-sentence at twelve seconds whether or not you were still
+ * talking. It also only ever read `results[0][0]`, so anything after the first
+ * phrase would have been dropped even if continuous had been switched on.
+ *
+ * useSpeechRecognition already solved every one of those for the voice
+ * sessions — continuous capture, live interim text, ending on a real pause
+ * rather than a stopwatch, and the guard for iOS Safari hanging without firing
+ * onend. Two recognisers in one app was always going to mean one of them
+ * lagging, and this was the one lagging.
+ */
+export function FieldMic({
+  onTranscript,
+  title = "Speak",
+  size = "sm",
+  silenceMs = COMMAND_SILENCE_MS,
+}: FieldMicProps) {
+  const { listening, toggle } = useSpeechRecognition({
+    silenceMs,
+    // Fires once when the turn ends, with everything settled during it — so a
+    // pause mid-thought no longer splits one description into two.
+    onSessionEnd: (text) => {
+      const said = text.trim();
+      if (said) onTranscript(said);
+      else toast("No speech detected — tap the mic and try again.", { icon: "🎙️" });
+    },
+    onUnsupported: () =>
+      toast.error("Speech recognition is not supported in this browser. Try Chrome or Safari."),
+    // Space belongs to whatever field has focus here; this mic sits beside
+    // inputs the user is typing into.
+    holdSpace: false,
+  });
 
-export function FieldMic({ onTranscript, title = "Speak", size = "sm" }: FieldMicProps) {
-  const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<AnyRecognition>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const gotResultRef = useRef(false);
-
-  function stop(showHint = false) {
-    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    gotResultRef.current = false;
-    setListening(false);
-    if (showHint) toast("No speech detected — tap the mic and try again.", { icon: "🎙️" });
-  }
-
-  function toggle() {
-    if (listening) { stop(); return; }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-
-    if (!SR) {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Safari.");
-      return;
-    }
-
-    const recognition = new SR() as AnyRecognition;
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
-      gotResultRef.current = true;
-      onTranscript(e.results[0][0].transcript);
-    };
-
-    recognition.onend = () => {
-      const got = gotResultRef.current;
-      stop(/* showHint= */ !got);
-    };
-
-    recognition.onerror = (e: { error: string }) => {
-      const msg =
-        e.error === "not-allowed" ? "Microphone access denied. Please allow mic access and try again." :
-        e.error === "network"     ? "Network error during speech recognition. Check your connection." :
-        e.error === "no-speech"   ? "No speech detected — tap the mic and try again." :
-        "Speech recognition failed. Try again.";
-      toast.error(msg);
-      stop();
-    };
-
-    recognitionRef.current = recognition;
-    gotResultRef.current = false;
-    recognition.start();
-    setListening(true);
-
-    // Safety timeout — iOS Safari sometimes hangs without firing onend/onerror
-    timeoutRef.current = setTimeout(() => {
-      stop(/* showHint= */ !gotResultRef.current);
-    }, TIMEOUT_MS);
-  }
+  // No live transcript shown here on purpose: this is an icon beside an input,
+  // with nowhere to put one. The hook still uses interim results internally —
+  // that is what tracks the voice rather than the recogniser's slower
+  // decisions, and so what makes the pause detection responsive.
 
   if (size === "lg") {
     return (

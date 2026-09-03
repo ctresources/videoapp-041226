@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Mic } from "lucide-react";
-import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
+import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 /** Same words the rail's own chips and summary use, so a setting reads the
@@ -142,6 +142,11 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
     // No global Space here: the editor has a script textarea, and the Create
     // page's shortcut exists because that screen is the mic.
     holdSpace: false,
+    // These are commands, not composition. "Make the opening punchier" is over
+    // in about a second and a half, and the default three-second pause meant
+    // sitting through twice the length of the instruction before anything
+    // began — which is where most of the perceived slowness lived.
+    silenceMs: COMMAND_SILENCE_MS,
   });
 
   const live = [transcript, interim].filter(Boolean).join(" ");

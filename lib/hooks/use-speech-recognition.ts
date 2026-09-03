@@ -23,6 +23,17 @@ const TIMEOUT_MS = 30000;
  */
 const SILENCE_MS = 3000;
 
+/**
+ * Shorter, for a spoken COMMAND rather than spoken prose.
+ *
+ * Three seconds is right when you are composing a sentence and may pause to
+ * think. "Make the opening punchier" is over in a second and a half, and then
+ * you sit watching nothing happen for twice as long as it took to say — which
+ * is most of what makes the editor's voice rewrites feel slow. Nothing about
+ * the round-trip changed; the wait before it starts did.
+ */
+export const COMMAND_SILENCE_MS = 1500;
+
 export interface UseSpeechRecognitionOptions {
   /**
    * Fired once when a listening session ends, with everything settled during
@@ -37,6 +48,12 @@ export interface UseSpeechRecognitionOptions {
   disabled?: boolean;
   /** Hold Space anywhere on the page to talk. */
   holdSpace?: boolean;
+  /**
+   * How long a pause ends the turn. Defaults to SILENCE_MS, which suits
+   * dictating prose; pass COMMAND_SILENCE_MS where the user is giving a short
+   * instruction and the wait is the thing they notice.
+   */
+  silenceMs?: number;
 }
 
 /**
@@ -53,6 +70,7 @@ export function useSpeechRecognition({
   onUnsupported,
   disabled = false,
   holdSpace = false,
+  silenceMs = SILENCE_MS,
 }: UseSpeechRecognitionOptions) {
   const [listening, setListening] = useState(false);
   /** Words the recogniser has not committed yet — shown greyed. */
@@ -80,6 +98,11 @@ export function useSpeechRecognition({
   onSessionEndRef.current = onSessionEnd;
   const onUnsupportedRef = useRef(onUnsupported);
   onUnsupportedRef.current = onUnsupported;
+  // In a ref for the same reason the handlers are: the onresult closure is
+  // created once when the session opens, and reading the prop directly there
+  // would pin the value from that render.
+  const silenceMsRef = useRef(silenceMs);
+  silenceMsRef.current = silenceMs;
 
   /** `deliver: false` tears the session down without handing its words over —
    *  used on unmount, where there is no longer anyone to hand them to. */
@@ -166,7 +189,7 @@ export function useSpeechRecognition({
       // ends it. Interim results count, so this tracks the voice rather than
       // the recogniser's slower decisions about what it heard.
       if (silenceRef.current) clearTimeout(silenceRef.current);
-      silenceRef.current = setTimeout(() => stop(), SILENCE_MS);
+      silenceRef.current = setTimeout(() => stop(), silenceMsRef.current);
     };
 
     // The session ending on its own — silence, or the browser giving up.
