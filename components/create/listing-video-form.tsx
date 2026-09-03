@@ -95,7 +95,12 @@ export function ListingVideoForm({ onRecordYourself }: {
   // Defaults to the avatar, which is what the editor has always defaulted to —
   // this only makes the other choice reachable before the script is written,
   // rather than two screens later.
-  const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
+  /**
+   * Still sent, no longer asked here — see the note where the picker used to
+   * be. This is the setup screen's own default, so ai_script.render_mode
+   * exists for it to read back and the editor opens exactly as it did before.
+   */
+  const renderMode: "voice_only" | "avatar_voice" = "avatar_voice";
   // Long videos are a separate allowance. Offering the option to someone with
   // none would write an eight-minute script the render then refuses — so the
   // choice only appears once there is one to spend. The server checks too;
@@ -797,35 +802,19 @@ export function ListingVideoForm({ onRecordYourself }: {
         </p>
       </div>
 
-      {/* Who's on screen. The same choice the editor offers on its setup step,
-          brought forward because on a listing it is the one that matters most:
-          the photos ARE the video, and an avatar shares the frame with them.
-          Same wording as the editor, so it reads as the same decision rather
-          than a second one. */}
-      <div>
-        <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Who&rsquo;s On Screen</p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {([
-            { mode: "avatar_voice" as const, label: "Avatar + voice", desc: "you present it" },
-            { mode: "voice_only" as const, label: "Voice only", desc: "photos fill the frame" },
-          ]).map(({ mode, label, desc }) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setRenderMode(mode)}
-              aria-pressed={renderMode === mode}
-              className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
-                renderMode === mode
-                  ? "border-spark-amber bg-spark-amber-tint"
-                  : "border-spark-rule bg-white hover:border-spark-rule-dim"
-              }`}
-            >
-              <span className="block text-[11px] font-bold text-brand-text">{label}</span>
-              <span className="block text-[10px] text-spark-ink-muted">{desc}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Who's on screen is deliberately NOT asked here.
+          It was, and the setup screen asks it again — with three options there
+          rather than two, because "I'll record it" is the third answer.
+          Traced end to end, this copy earned nothing: renderMode only becomes
+          ai_script.render_mode, the setup screen reads that back as its own
+          default, and the setup screen's value is what create-blog renders
+          from. It never reaches the script prompt. So it was a render setting
+          asked before the script existed, and then asked again in the place
+          that decides it.
+
+          Script Length below stays for the opposite reason: it changes the
+          script that gets WRITTEN, via targetWords and maxWords, and the setup
+          screen has no length control. It is not a duplicate. */}
 
       {/* Script length. Same two the renderer supports and the same budgets
           the clamp enforces, so the tour is written to the length it will
