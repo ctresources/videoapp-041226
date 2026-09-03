@@ -22,6 +22,7 @@ import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
+import { formatPhones } from "@/lib/utils/format-phone";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
@@ -772,7 +773,14 @@ export async function POST(req: NextRequest) {
     const audience = (aiScript?.audience as string) || undefined;
     const tone = (aiScript?.tone as string) || undefined;
     const ctaPreference = (aiScript?.cta_preference as string) || undefined;
-    const phones = Array.from(new Set([profile.phone, profile.company_phone].filter(Boolean))) as string[];
+    // Formatted here, at the last point before the prompt, because this is the
+    // contact card a viewer reads in a few seconds. Profiles hold whatever was
+    // typed, which is usually ten bare digits, and "6104578698" went onto the
+    // card exactly like that. De-duplicated after formatting so the same
+    // number entered two different ways collapses to one line.
+    const phones = Array.from(
+      new Set(formatPhones([profile.phone, profile.company_phone])),
+    );
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 

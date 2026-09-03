@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EditorVoiceSession } from "@/components/create/editor-voice-session";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
+import { formatPhones } from "@/lib/utils/format-phone";
 import { createClient } from "@/lib/supabase/client";
 import { uploadCameraRecording } from "@/lib/utils/camera-upload";
 import { resolveCta } from "@/lib/utils/default-cta";
@@ -1448,8 +1449,11 @@ export default function ProjectEditorPage() {
     const parts: string[] = [];
     if (contactInfo.full_name) parts.push(contactInfo.full_name);
     if (contactInfo.company_name) parts.push(contactInfo.company_name);
-    const phones = Array.from(new Set([contactInfo.phone, contactInfo.company_phone].filter(Boolean)));
-    phones.forEach((p) => parts.push(p as string));
+    // Same formatting the render uses, so what you copy from here matches what
+    // ends up on the card. De-duplicated after formatting, so one number
+    // entered two ways collapses to a single line.
+    const phones = Array.from(new Set(formatPhones([contactInfo.phone, contactInfo.company_phone])));
+    phones.forEach((p) => parts.push(p));
     if (contactInfo.company_address) parts.push(contactInfo.company_address);
     return parts.join(" · ");
   }
