@@ -884,14 +884,20 @@ export function ListingVideoForm({ onRecordYourself }: {
         </span>
       </label>
 
-      {/* Generate button */}
+      {/* Named for what it does.
+          It was "Generate My Listing Video", and it does not generate a
+          video: handleGenerate() writes the script, creates the project and
+          pushes to the editor — its own toast says "Listing script ready!".
+          The video is rendered by Spark Video, two screens later, and that is
+          the click that spends a credit. The line under these buttons had
+          been quietly correcting the label from three inches away. */}
       <Button
         onClick={() => handleGenerate()}
         disabled={!listing.address.trim() || !listing.price.trim()}
         size="lg"
         className="w-full gap-2"
       >
-        🎬 Generate My Listing Video <ArrowRight size={16} />
+        Write My Tour Script <ArrowRight size={16} />
       </Button>
 
       {/* Goes to the camera tab, not the editor's teleprompter: only the
@@ -903,15 +909,23 @@ export function ListingVideoForm({ onRecordYourself }: {
         disabled={!listing.address.trim() || !listing.price.trim()}
         className="flex w-full flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2.5 text-[15px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-spark-ink"
       >
-        🎥 Read it myself on camera
+        Read it myself on camera
+        {/* This one goes straight to the camera — handleGenerate(true) sends
+            scriptOnly and hands the script and photos to the recorder. Saying
+            so matters now that the button beside it stops at the script: the
+            two look like a pair and they end in different places. */}
         <span className="mt-0.5 text-[12px] font-normal opacity-70">
-          Teleprompter{listing.photoUrls.length > 0 ? ` · your ${listing.photoUrls.length} photos as b-roll` : ""} · free
+          Straight to the teleprompter{listing.photoUrls.length > 0 ? ` · your ${listing.photoUrls.length} photos as b-roll` : ""} · free
         </span>
       </button>
 
       <p className="text-xs text-slate-400 text-center -mt-2">
-        We write the script first — review it on the next screen, then either render it with your
-        avatar or read it to camera yourself.
+        {/* True of both buttons, which the old wording was not: it said the
+            camera choice came on the next screen, and the camera button goes
+            there now. What the two share is that neither spends a credit. */}
+        Both write the script first, and neither spends a credit. Recording it yourself stays free.
+        Rendering it with your avatar costs one, at Spark Video on the setup screen, where you pick
+        the avatar, shape and music.
       </p>
     </div>
   );
