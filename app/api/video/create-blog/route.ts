@@ -321,7 +321,8 @@ Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head t
     ? `
 ATTACHED PHOTOS — PRIMARY B-ROLL
 ${totalPhotos} photo(s) are attached${params.isListing ? ` of the property at ${params.listingAddress || "the listing address"}` : ""}.
-- Use ALL ${totalPhotos} as the primary b-roll — every one gets at least one scene. Cycle so each gets ~5–10s of screen time.
+- Use ALL ${totalPhotos} as the primary b-roll. Every one gets at least one scene: ${totalPhotos} photos means ${totalPhotos} scenes at minimum.
+- Divide the available b-roll time evenly between them. If that gives each photo less than 5 seconds, SHORTEN THE HOLDS — do not drop a photo to give the others longer. A photo that never appears is the one failure this list exists to prevent.
 - Crop/scale every photo to FILL the frame edge-to-edge (cover scaling) — never letterbox or pillarbox, even for portrait photos.
 - Gentle Ken Burns motion (slow pan + zoom) on each.
 - Match each photo to the sentence describing it.
@@ -416,7 +417,14 @@ ${pipMode
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
 DURATION (CRITICAL)
-- Maximum ${params.isLongForm ? "40 scenes; vary the visuals every 20–30 seconds to hold attention" : "10 scenes"}.${params.isLongForm ? "" : `
+- Maximum ${params.isLongForm
+  ? "40 scenes; vary the visuals every 20–30 seconds to hold attention"
+  // A flat 10 was the real photo cap, and a contradiction: the block above
+  // asks for one scene per photo, so twelve photos against a ten-scene
+  // ceiling meant two photos had nowhere to go — and with the presenter
+  // taking scenes of their own, closer to five did. Room for every photo,
+  // the title card, the contact card and the presenter's cutaways.
+  : `${Math.max(10, totalPhotos + 4)} scenes`}.${params.isLongForm ? "" : `
 - HARD CEILING: the finished video must run no longer than ${MAX_SHORT_MINUTES} minutes. The narration below is written to fit inside that with room to spare for the contact card.
 - Do NOT pad to reach a length. No extra scenes, no stock footage of places not named in the script, no repeated or held shots, no stretched pauses. If the narration ends at ninety seconds, the video ends at ninety seconds.`}
 - The voiceover must contain 100% of the narration script below, word for word, first word to last, at a natural unhurried ~145 wpm. Never summarize, paraphrase, shorten, trim or speed-read it. The video ends only after the FINAL word is spoken — ending before the script is finished is WRONG.
