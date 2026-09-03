@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
@@ -18,6 +19,16 @@ interface FieldMicProps {
    * to think should not end the turn.
    */
   silenceMs?: number;
+  /**
+   * Live text while speaking, so a caller with room can show what is being
+   * heard. Emits "" when the turn ends and the settled text has gone to
+   * onTranscript.
+   *
+   * Reported rather than written into the field: both callers APPEND, and
+   * writing interim text into the value and replacing it later would mangle
+   * what is already there if a session ends unexpectedly.
+   */
+  onInterim?: (text: string) => void;
 }
 
 /** For fields that take sentences rather than a few words. */
@@ -46,8 +57,14 @@ export function FieldMic({
   title = "Speak",
   size = "sm",
   silenceMs = COMMAND_SILENCE_MS,
+  onInterim,
 }: FieldMicProps) {
-  const { listening, toggle } = useSpeechRecognition({
+  // In a ref so the effect below depends on the speech state alone. Callers
+  // pass an inline arrow, which is a new function every render.
+  const onInterimRef = useRef(onInterim);
+  onInterimRef.current = onInterim;
+
+  const { listening, interim, transcript, toggle } = useSpeechRecognition({
     silenceMs,
     // Fires once when the turn ends, with everything settled during it — so a
     // pause mid-thought no longer splits one description into two.
@@ -63,10 +80,19 @@ export function FieldMic({
     holdSpace: false,
   });
 
-  // No live transcript shown here on purpose: this is an icon beside an input,
-  // with nowhere to put one. The hook still uses interim results internally —
-  // that is what tracks the voice rather than the recogniser's slower
-  // decisions, and so what makes the pause detection responsive.
+  /**
+   * Report the live text upward, in an effect rather than during render.
+   *
+   * Calling a parent's setter while rendering is a real bug, not a style
+   * point: React warns, and updating another component mid-render is exactly
+   * the pattern that produces a loop. Settled words plus the uncommitted tail,
+   * which together are what the user has said so far, and "" once the turn is
+   * over so the caller can hide its preview.
+   */
+  useEffect(() => {
+    if (!onInterimRef.current) return;
+    onInterimRef.current(listening ? [transcript, interim].filter(Boolean).join(" ") : "");
+  }, [listening, transcript, interim]);
 
   if (size === "lg") {
     return (

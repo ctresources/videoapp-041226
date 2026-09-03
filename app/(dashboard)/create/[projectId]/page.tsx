@@ -268,6 +268,8 @@ export default function ProjectEditorPage() {
   // they cannot come to disagree about what was picked.
   const selectedFormat = videoTypes.find((v) => v.value === selectedVideoType);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  /** Live dictation text, shown greyed under the description while speaking. */
+  const [descInterim, setDescInterim] = useState("");
 
   /** Move a photo within the grid. The render uses the first `photoLimit`. */
   function movePhoto(from: number, to: number) {
@@ -1473,6 +1475,17 @@ export default function ProjectEditorPage() {
     if (!combined) return;
     try {
       sessionStorage.setItem("camera-record-script", combined);
+      // The photos go too. This crosses to the Camera tab because that is the
+      // only recorder that composites them — the editor's own teleprompter
+      // overlay cannot — and until now the script made the trip alone, so
+      // reading a listing to camera from here silently dropped every photo on
+      // the one flow where the photos are the video.
+      if (uploadedPhotos.length) {
+        sessionStorage.setItem(
+          "camera-record-photos",
+          JSON.stringify(uploadedPhotos.map((p) => p.url)),
+        );
+      }
     } catch { /* sessionStorage unavailable */ }
     router.push("/create?tab=camera");
   }
@@ -2658,6 +2671,7 @@ export default function ProjectEditorPage() {
                           // Sentences, not a field value — a pause to think
                           // should not end the turn here.
                           silenceMs={PROSE_SILENCE_MS}
+                          onInterim={setDescInterim}
                           onTranscript={(t) =>
                             setEditedDescription((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
                           }
@@ -2675,6 +2689,15 @@ export default function ProjectEditorPage() {
                       placeholder="Video description"
                       className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
                     />
+                    {/* Under the field, not inside it: dictation APPENDS here,
+                        so writing the live text into the value and replacing
+                        it afterwards would put what you are still saying into
+                        the description if a session ended oddly. */}
+                    {descInterim && (
+                      <p className="mt-1 text-[12px] italic leading-snug text-slate-400">
+                        {descInterim}
+                      </p>
+                    )}
                     <p className="text-[11px] text-slate-400 mt-1">Saved as you go — these are what Publish fills in for you.</p>
                   </div>
                   {[
@@ -2861,7 +2884,15 @@ export default function ProjectEditorPage() {
             {editorStep === 3 && selfRecord && (
               // No credit, no render — so it is not Spark Video, and saying
               // so on the button is the last chance to be clear about it.
-              <Button onClick={openTeleprompter} size="lg" className="gap-2">
+              //
+              // Goes to the Camera tab, not this page's own teleprompter
+              // overlay. Both existed and only one composites photos, so which
+              // recorder you got depended on which screen you had pressed a
+              // button on: the listing form's "Read it myself on camera"
+              // brought your photos, this one silently dropped them. One
+              // recorder now, the one that can do the whole job, with the
+              // photos carried across beside the script.
+              <Button onClick={() => handleRecordOnCamera()} size="lg" className="gap-2">
                 <Camera size={17} /> Open Camera
               </Button>
             )}

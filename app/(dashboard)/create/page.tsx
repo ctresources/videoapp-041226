@@ -134,6 +134,8 @@ function CreatePageInner() {
    * in either form because the two are siblings and only one is mounted at a
    * time — the state has to outlive the switch between them.
    */
+  /** Live dictation text, shown greyed under the script box while speaking. */
+  const [pasteInterim, setPasteInterim] = useState("");
   const [listingPhotos, setListingPhotos] = useState<string[]>([]);
   const [listingAddress, setListingAddress] = useState("");
   const [locCity, setLocCity] = useState("");
@@ -296,7 +298,34 @@ function CreatePageInner() {
         setCameraGeneratedScript(handoff);
         sessionStorage.removeItem("camera-record-script");
       }
-    } catch { /* sessionStorage unavailable */ }
+      /**
+       * The editor's photos, handed over with the script.
+       *
+       * Without this the editor's "I'll record it" and the listing form's
+       * "Read it myself on camera" landed in the same recorder with different
+       * results: one arrived with your twelve photos as b-roll, the other with
+       * none, and nothing on either screen said so. They read as one choice
+       * and now behave as one.
+       *
+       * Rehosted before use, like every other path into this recorder: a
+       * canvas cannot record a third-party image, so a scraped photo has to be
+       * copied into our storage first or the recording fails outright.
+       */
+      const photoHandoff = sessionStorage.getItem("camera-record-photos");
+      if (photoHandoff) {
+        sessionStorage.removeItem("camera-record-photos");
+        const urls = (JSON.parse(photoHandoff) as unknown[]).filter(
+          (u): u is string => typeof u === "string" && u.startsWith("http"),
+        );
+        if (urls.length) {
+          void rehostPhotos(urls.slice(0, 12)).then((safe) =>
+            setCameraPhotos(
+              safe.map((url, i) => ({ url, name: `Photo ${i + 1}`, preview: url })),
+            ),
+          );
+        }
+      }
+    } catch { /* sessionStorage unavailable or bad JSON */ }
 
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -1745,6 +1774,7 @@ function CreatePageInner() {
                   // A whole script, dictated. The short window would end the
                   // turn every time you drew breath.
                   silenceMs={PROSE_SILENCE_MS}
+                  onInterim={setPasteInterim}
                   onTranscript={(t) =>
                     setPasteScript((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))
                   }
@@ -1770,6 +1800,14 @@ function CreatePageInner() {
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber resize-none leading-relaxed"
               />
+              {/* Under the box rather than in it: dictation appends here, so
+                  live text written into the value would land in the script if
+                  a session ended unexpectedly. */}
+              {pasteInterim && (
+                <p className="mt-1 text-xs italic leading-snug text-spark-ink-faint">
+                  {pasteInterim}
+                </p>
+              )}
 
               {pasteWordCount === 0 ? (
                 <p className="text-xs text-spark-ink-faint mt-1">
