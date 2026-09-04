@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, X, Mic, Square, AlertCircle, Film } from "lucide-react";
+import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
@@ -226,6 +226,18 @@ export function PhotoReelForm({
     }
   }
 
+  /** Swap a photo with its neighbour. Captions travel with their picture —
+   *  they are a property of the photo, not of the slot it sits in. */
+  function movePhoto(from: number, to: number) {
+    if (to < 0 || to >= photos.length) return;
+    setPhotos((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {error && (
@@ -260,6 +272,35 @@ export function PhotoReelForm({
                   maxLength={80}
                   className="min-w-0 flex-1 rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
                 />
+                {/* Reorder. The header has always said "in this order" and
+                    the order has always been whatever order the files came
+                    off the picker in — the one thing the caption rows made
+                    legible was the one thing you could not change.
+
+                    Arrows rather than drag: the row holds a text input, and
+                    making it draggable takes away click-and-drag selection
+                    inside that input. Arrows also work on a phone, which
+                    HTML5 drag does not. */}
+                <div className="flex shrink-0 flex-col">
+                  <button
+                    type="button"
+                    onClick={() => movePhoto(i, i - 1)}
+                    disabled={i === 0}
+                    className="rounded p-0.5 text-spark-ink-faint disabled:opacity-25 enabled:hover:text-spark-amber"
+                    aria-label={`Move photo ${i + 1} earlier`}
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => movePhoto(i, i + 1)}
+                    disabled={i === photos.length - 1}
+                    className="rounded p-0.5 text-spark-ink-faint disabled:opacity-25 enabled:hover:text-spark-amber"
+                    aria-label={`Move photo ${i + 1} later`}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
@@ -271,8 +312,9 @@ export function PhotoReelForm({
               </div>
             ))}
             <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-              Text appears on a card at the top while that photo is up, and only on the photos you
-              write one for. Leave them all blank for a reel with no labels.
+              Arrows reorder — photo 1 opens the reel. Text appears on a card at the top while that
+              photo is up, and only on the photos you write one for. Leave them all blank for a reel
+              with no labels.
             </p>
           </div>
         )}
