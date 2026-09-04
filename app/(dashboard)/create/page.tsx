@@ -1171,13 +1171,18 @@ function CreatePageInner() {
           surfaces three steps later, after a script has been written.
 
           Row 1 is now almost the whole rule: filming it yourself is free,
-          rendering costs a credit. The photo reel is the one exception, and
-          it is named rather than left to be discovered. */}
+          rendering spends from your plan. The photo reel is the one
+          exception, and it is named rather than left to be discovered.
+
+          "Costs one credit" was this screen's own word for it. Billing has
+          never sold credits — plans hold a short-video allowance and a long-
+          video allowance, counted separately — so the only place the word
+          appeared was the one place it would set the wrong expectation. */}
       {step === "input" && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
           Filming it yourself is free. Anything{" "}
-          <strong className="font-semibold text-spark-ink">SparkReels makes</strong> costs one
-          credit — except the{" "}
+          <strong className="font-semibold text-spark-ink">SparkReels makes</strong> uses one of
+          your short or long videos from your plan — except the{" "}
           <strong className="font-semibold text-spark-ink">photo reel</strong> under My listings,
           which is free too.
         </p>
