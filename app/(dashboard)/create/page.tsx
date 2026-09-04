@@ -102,19 +102,24 @@ const TRY_LINES = [
  *  answering the same question — where the words come from — so they are the
  *  same control, not two that happen to look alike. */
 function SourceTile({
-  kicker, label, desc, active, onClick,
+  kicker, label, desc, active, onClick, disabled = false,
 }: {
   kicker: string; label: string; desc: string; active: boolean; onClick: () => void;
+  /** Still readable, no longer changeable — see cameraSourceLocked. */
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
+        disabled ? "cursor-default" : ""
+      } ${
         active
           ? "border-[1.5px] border-spark-amber bg-white"
-          : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
+          : `border-[1.5px] border-spark-rule bg-white/60 ${disabled ? "" : "hover:border-spark-rule-dim"}`
       }`}
     >
       <span
@@ -960,6 +965,16 @@ function CreatePageInner() {
               : 10;
   usePublishCreateProgress(railLabel, railPercent);
 
+  // Row 2 stays on screen once you start recording, or once you switch to
+  // branding a clip you already shot — dimmed rather than unmounted. It used
+  // to disappear, which was fine when it lived mid-card but moves the whole
+  // page now that it sits at the top: everything below jumped up at the exact
+  // moment you reached for Open Camera. Dimming also keeps the answer visible
+  // while you record, where before there was nothing on screen saying where
+  // your script had come from.
+  const cameraSourceLocked =
+    cameraPhase !== "script" || (cameraMode === "brand" && canBrandClips);
+
   // Which of the three ways in you are on. Shown on every tab: they are all
   // step 1 of the same five, and only the AI tab said so.
   const tabLabel =
@@ -1122,28 +1137,42 @@ function CreatePageInner() {
           Filming it yourself. This is the row that used to sit inside the
           camera card, under a heading about the script, one level below the
           tab that had already been chosen — up here it stops reading as the
-          same question asked twice. It keeps that row's visibility rules:
-          nothing to choose once you are recording, or while you are branding
-          a clip you already shot. */}
-      {step === "input" && inputMode === "camera" && cameraPhase === "script"
-        && !(cameraMode === "brand" && canBrandClips) && (
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {([
-            { key: "speak" as const,   kicker: "Fastest",           label: "AI writes it",              desc: "Say a topic" },
-            { key: "uploads" as const, kicker: "PDF or link",       label: "From a document",           desc: "We read it first" },
-            { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We keep the words, not the file" },
-            { key: "own" as const,     kicker: "Word for word",     label: "I'll write it",             desc: "Type it below" },
-          ]).map(({ key, kicker, label, desc }) => (
-            <SourceTile
-              key={key}
-              kicker={kicker}
-              label={label}
-              desc={desc}
-              active={cameraSource === key}
-              onClick={() => setCameraSource(key)}
-            />
-          ))}
-        </div>
+          same question asked twice. Once you are recording it dims instead of
+          disappearing — see cameraSourceLocked. */}
+      {step === "input" && inputMode === "camera" && (
+        <>
+          <div
+            className={`mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 ${
+              cameraSourceLocked ? "opacity-45" : ""
+            }`}
+          >
+            {([
+              { key: "speak" as const,   kicker: "Fastest",           label: "AI writes it",              desc: "Say a topic" },
+              { key: "uploads" as const, kicker: "PDF or link",       label: "From a document",           desc: "We read it first" },
+              { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We keep the words, not the file" },
+              { key: "own" as const,     kicker: "Word for word",     label: "I'll write it",             desc: "Type it below" },
+            ]).map(({ key, kicker, label, desc }) => (
+              <SourceTile
+                key={key}
+                kicker={kicker}
+                label={label}
+                desc={desc}
+                active={cameraSource === key}
+                disabled={cameraSourceLocked}
+                onClick={() => setCameraSource(key)}
+              />
+            ))}
+          </div>
+          {/* Dimmed type on its own says "unavailable" but not why. One line,
+              and only while it is actually locked. */}
+          {cameraSourceLocked && (
+            <p className="mt-1.5 text-[11px] leading-[1.4] text-spark-ink-faint">
+              {cameraMode === "brand" && canBrandClips
+                ? "Not used while you're branding a clip you already shot."
+                : "Set for this take. Start over to change where the script comes from."}
+            </p>
+          )}
+        </>
       )}
 
       {/* The same question on the render-it-for-me side. Three of the four
@@ -1950,7 +1979,7 @@ function CreatePageInner() {
                 </p>
                 <p className="text-sm text-spark-ink-muted">
                   {listingMode === "reel"
-                    ? "Your photos, Ken Burns and a music bed · free, no credit"
+                    ? "Your photos, Ken Burns and a music bed · free, nothing from your plan"
                     : "Upload Photos · Import From Zillow · Enter Manually"}
                 </p>
               </div>
@@ -1962,7 +1991,7 @@ function CreatePageInner() {
                 share their input — a set of property pictures. */}
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {([
-                { key: "listing" as const, label: "Listing video", sub: "we write the tour · 1 credit" },
+                { key: "listing" as const, label: "Listing video", sub: "we write the tour · one from your plan" },
                 { key: "reel" as const, label: "Photo reel", sub: "photos into a video · free" },
               ]).map(({ key, label, sub }) => (
                 <button
