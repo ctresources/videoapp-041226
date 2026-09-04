@@ -389,6 +389,7 @@ PICTURE (RULE #3)
 - Motion is slow and steady: gentle pans and pushes on a locked camera. No handheld shake, no jitter, no whip pans, no rapid zooms.
 
 LOCATION ACCURACY — ${locationOr}, ${monthName}
+- Any establishing shot, aerial or street scene must be OF ${locationOr}, never another town or a generic stand-in.
 - Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
 - Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
 - Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
