@@ -1979,7 +1979,7 @@ function CreatePageInner() {
                 </p>
                 <p className="text-sm text-spark-ink-muted">
                   {listingMode === "reel"
-                    ? "Your photos, Ken Burns and a music bed · free, nothing from your plan"
+                    ? "Your photos, Ken Burns, and music or your voice · free, nothing from your plan"
                     : "Upload Photos · Import From Zillow · Enter Manually"}
                 </p>
               </div>
@@ -2052,20 +2052,40 @@ function CreatePageInner() {
             )}
           </Card>
 
-          {/* What you get — keeps the right column balanced */}
+          {/* What you get — keeps the right column balanced.
+              Two lists, because there are two things under this tab. This was
+              written when there was only the listing video, and the reel was
+              added underneath it without the panel ever learning: with Photo
+              reel selected it promised an AI script, an avatar, a logo and
+              Fair-Housing wording, none of which a reel has, and tipped the
+              Zillow import, which is not even mounted in that mode. */}
           <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-spark-blue">
-            <p className="text-base font-bold text-brand-text mb-3">What Your Listing Video Includes</p>
+            <p className="text-base font-bold text-brand-text mb-3">
+              {listingMode === "reel" ? "What Your Photo Reel Includes" : "What Your Listing Video Includes"}
+            </p>
             <ul className="text-sm text-spark-ink-soft space-y-2.5">
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> AI script highlighting price, beds/baths, and standout features</li>
-              {/* Stated unconditionally until the form grew a Who's On Screen
-                  choice — on Voice only there is no avatar at all, which is
-                  the better option for a tour where the photos carry it. */}
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your cloned voice narrating. With your AI avatar on screen, or the photos full-frame</li>
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your logo, contact card, and Fair-Housing-safe wording built in</li>
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
+              {listingMode === "reel" ? (<>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your photos in the shape you pick, with Ken Burns motion and dissolves between them</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Music only, your cloned voice reading a script you write, or a recording of you</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Text cards on the photos you write one for, and captions burned in if you want them</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A closing card with your ask, the property and your phone number</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
+              </>) : (<>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> AI script highlighting price, beds/baths, and standout features</li>
+                {/* Stated unconditionally until the form grew a Who's On Screen
+                    choice — on Voice only there is no avatar at all, which is
+                    the better option for a tour where the photos carry it. */}
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your cloned voice narrating. With your AI avatar on screen, or the photos full-frame</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your logo, contact card, and Fair-Housing-safe wording built in</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
+              </>)}
             </ul>
-            <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">Tip: Zillow import fills everything in seconds. Just paste the listing URL.</p>
+            <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">
+              {listingMode === "reel"
+                ? "Tip: photo 1 opens the reel. Use the arrows to put your strongest shot first."
+                : "Tip: Zillow import fills everything in seconds. Just paste the listing URL."}
+            </p>
           </Card>
         </div>
       )}

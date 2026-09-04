@@ -15,6 +15,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
+import { generateSeoData } from "@/lib/api/perplexity";
 import { searchBackgroundMusic } from "@/lib/api/heygen";
 import { renderPhotoSlideshow, generateSilentAudio, type VideoType } from "@/lib/api/ffmpeg-render";
 import type { WordTimestamp } from "@/lib/api/whisper";
@@ -149,6 +150,45 @@ export async function POST(req: NextRequest) {
     // where a bed under a voice would be drowned out.
     const musicVolume = spokenScript || body.voiceoverPath ? 0.15 : 0.55;
 
+    /**
+     * Post copy — the title, description and hashtags Publish needs.
+     *
+     * Every scripted route writes these when the script is written. A reel has
+     * no script-writing step, so reels arrived in My Videos with nothing to
+     * post them with: Publish reads seo_data off the project, and this route
+     * never wrote any.
+     *
+     * Started here rather than after the render so it costs no wall clock —
+     * it resolves while FFmpeg works, and a long reel is minutes of that. It
+     * must also never be the thing that pushes this request past its budget,
+     * hence the race: a reel with no post copy is recoverable, a request that
+     * dies after the video is stored orphans a finished video.
+     *
+     * What it summarises depends on what the reel actually has. A written
+     * script is the real thing. A recorded voiceover has one only if captions
+     * were asked for, which is what put a transcript in wordTimestamps. Music
+     * only has no words at all — so its copy comes from what the form
+     * collected: the photo captions, the property, the market.
+     */
+    const seoSource = [
+      spokenScript,
+      !spokenScript && wordTimestamps.length ? wordTimestamps.map((w) => w.word).join(" ") : "",
+      (body.photoCaptions ?? []).filter(Boolean).join(". "),
+      body.address ?? "",
+      [body.city, body.state].filter(Boolean).join(", "),
+    ].filter(Boolean).join("\n").trim();
+
+    const seoPromise: Promise<Awaited<ReturnType<typeof generateSeoData>> | null> =
+      seoSource.length > 20
+        ? Promise.race([
+            generateSeoData(title, seoSource, [body.city, body.state].filter(Boolean) as string[]),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 30_000)),
+          ]).catch((e) => {
+            console.warn("[photo-reel] post copy failed (non-fatal):", e);
+            return null;
+          })
+        : Promise.resolve(null);
+
     const mp4 = await renderPhotoSlideshow(
       {
         title,
@@ -200,6 +240,10 @@ export async function POST(req: NextRequest) {
 
     const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
 
+    // Resolved by now in every real case — it has had the whole render to
+    // finish. Awaited here rather than earlier so it never delays the video.
+    const seo = await seoPromise;
+
     const { data: project, error: projErr } = await admin
       .from("projects")
       .insert({
@@ -211,6 +255,12 @@ export async function POST(req: NextRequest) {
         ...(body.state && { location_state: body.state }),
         ...(spokenScript && {
           ai_script: { title, script: spokenScript, hook: "", cta: "", keywords: [] },
+        }),
+        // The title the agent typed wins over the model's: it is the one
+        // burned into the opening of the video, and a Publish window offering
+        // a different one would be offering to contradict the picture.
+        ...(seo && {
+          seo_data: { ...seo, youtube_title: seo.youtube_title || title } as unknown as Record<string, unknown>,
         }),
       })
       .select("id")
