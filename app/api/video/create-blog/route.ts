@@ -384,6 +384,10 @@ ${propertyPhotos
 - The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
 - With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.` : ""}
 
+PICTURE (RULE #3)
+- Natural, true colour. No desaturated, washed-out, grey, teal-and-orange or filmic grade. Photos must look like the photographs they are.
+- Motion is slow and steady: gentle pans and pushes on a locked camera. No handheld shake, no jitter, no whip pans, no rapid zooms.
+
 LOCATION ACCURACY — ${locationOr}, ${monthName}
 - Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
 - Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
@@ -483,7 +487,7 @@ B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets
 - Emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
 STYLE
-- B-roll: slight warm filter — inviting, not cool/blue.${toneVisual ? `
+- B-roll: a slight warm lean, inviting rather than cool. Colour and motion are settled by RULE #3, which is in the head where it cannot be trimmed — this line used to carry it alone and was cut from the prompt on the very render that came back grey.${toneVisual ? `
 - Tone (${params.tone}): ${toneVisual}` : ""}
 - ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
 - Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey RULE #1 above, whichever layout it describes.
@@ -1142,16 +1146,31 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
     }
 
-    // A house look for what the agent composes, rather than leaving it to
-    // whatever it settles on that run. This was written months ago and never
-    // called, so every render has been going out unstyled.
-    //
-    // Free, in the sense that matters: style_id is a parameter on the Video
-    // Agent job already being paid for at $0.0333/sec — not HeyGen's
-    // separately-priced Cinematic Avatar product, which this app never calls.
-    // Cached after the first success, and null on failure, in which case the
-    // render is exactly what it was before.
-    const styleId = await getCinematicStyleId();
+    /**
+     * NO STYLE PRESET. The Video Agent composes in its own default look.
+     *
+     * We used to pass HeyGen's "cinematic" style here, on the reasoning that a
+     * house look beats whatever the agent settles on that run. It was enabled
+     * on 27 Aug, and the first render with twelve photos came back with the
+     * photos washed grey and the motion shaky. Both are what a cinematic
+     * preset does: a desaturated teal-orange grade, and handheld camera
+     * movement. Our own cropper touches no colour, and the grade arrived with
+     * the style.
+     *
+     * It had already been removed once for the same kind of reason — see
+     * "Speed up video generation by removing cinematic style composition" —
+     * and restored without anyone looking at what it renders. Nobody here has
+     * ever inspected style 349d91e1ad2444eabab2672a9057f298; it was taken on
+     * the strength of the word "cinematic".
+     *
+     * The listing photos are the product on this path, and a grade that greys
+     * them out is worse than no grade at all. The look we do want is stated in
+     * the prompt instead, where it can be read and argued with.
+     *
+     * getCinematicStyleId stays exported for whoever wants to try a style
+     * deliberately, with a render to look at.
+     */
+    const styleId: string | null = null;
 
     const sessionId = await generateVideoAgent({
       prompt,
