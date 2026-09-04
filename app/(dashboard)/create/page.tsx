@@ -90,7 +90,7 @@ const BASE_AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "
 const AUDIENCE_KEY = "spark_custom_audiences";
 
 const TRY_LINES = [
-  "Make a market update for my area — prices are up, homes are moving fast.",
+  "Make a market update for my area. Prices are up, homes are moving fast.",
   "Tell the story of the home I just sold, start to finish.",
   "Show what five hundred thousand actually buys around here.",
   "Three things I'd fix before listing this fall, aimed at sellers.",
@@ -272,7 +272,7 @@ function CreatePageInner() {
     try {
       const saved = JSON.parse(localStorage.getItem(AUDIENCE_KEY) ?? "[]");
       if (Array.isArray(saved)) setCustomAudiences(saved.filter((a) => typeof a === "string"));
-    } catch { /* private mode, or a corrupt entry — the six defaults still work */ }
+    } catch { /* private mode, or a corrupt entry. The six defaults still work */ }
   }, []);
 
   useEffect(() => {
@@ -580,7 +580,7 @@ function CreatePageInner() {
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || `Script generation failed (${res.status})`);
-      toast.success("Sparked — your script is ready to review.");
+      toast.success("Sparked. Your script is ready to review.");
       router.push(`/create/${(data.project as { id: string }).id}?source=location`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -668,7 +668,7 @@ function CreatePageInner() {
           return [...prev, ...add];
         });
       }
-      toast.success(found.length > 0 ? `URL content extracted — ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
+      toast.success(found.length > 0 ? `URL content extracted, ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -704,7 +704,7 @@ function CreatePageInner() {
           return [...prev, ...add];
         });
       }
-      toast.success(found.length > 0 ? `URL content extracted — ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
+      toast.success(found.length > 0 ? `URL content extracted, ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -732,7 +732,7 @@ function CreatePageInner() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
       setPasteScript(data.script as string);
-      toast.success("Script ready — review and edit before generating your video.");
+      toast.success("Script ready. Review and edit before generating your video.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -770,7 +770,7 @@ function CreatePageInner() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
       setCameraGeneratedScript(data.script as string);
-      toast.success("Script ready — it's loaded in your teleprompter.");
+      toast.success("Script ready. It's loaded in your teleprompter.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -795,7 +795,7 @@ function CreatePageInner() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
       setCameraGeneratedScript(data.script as string);
-      toast.success("Script ready — it's now loaded in your teleprompter above.");
+      toast.success("Script ready. It's now loaded in your teleprompter above.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -856,7 +856,7 @@ function CreatePageInner() {
       if (!res.ok) throw new Error((data.error as string) || "Failed");
       setPasteScript(data.script as string);
       if (!pasteTitle) setPasteTitle(pasteAiTopic);
-      toast.success("Script ready — review and edit before generating your video.");
+      toast.success("Script ready. Review and edit before generating your video.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -958,7 +958,7 @@ function CreatePageInner() {
           <span className="text-amber-500 text-lg leading-none mt-0.5">⚡</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-amber-800">Complete your profile to get the most out of your videos</p>
-            <p className="text-xs text-amber-600 mt-0.5">Add your headshot, AI avatar photo, voice, logo, and contact info in Settings — they appear in every video you create.</p>
+            <p className="text-xs text-amber-600 mt-0.5">Add your headshot, AI avatar photo, voice, logo, and contact info in Settings. They appear in every video you create.</p>
           </div>
           <span className="text-amber-500 text-sm font-semibold shrink-0 group-hover:underline">Go to Settings →</span>
         </button>
@@ -1349,7 +1349,7 @@ function CreatePageInner() {
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                       Shorts or longform?
                     </p>
-                    <p className="text-[14px] text-spark-ink-muted">Default — change it anytime</p>
+                    <p className="text-[14px] text-spark-ink-muted">Default, change it anytime</p>
                   </div>
                   <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {([
@@ -1411,7 +1411,7 @@ function CreatePageInner() {
         <StepFooter
           hint={
             locGenerating
-              ? "Researching the area and writing — this takes about a minute."
+              ? "Researching the area and writing. This takes about a minute."
               : !locationSet
                 ? "Add the city and state above to carry on."
                 : !locCustomTopic.trim()
@@ -1444,7 +1444,7 @@ function CreatePageInner() {
               ? "Saving your script…"
               : !pasteScript.trim()
                 ? "Paste or write your script above to carry on."
-                : `${pasteWordCount} words — we'll set the video up next.`
+                : `${pasteWordCount} words. We'll set the video up next.`
           }
         >
           <Button
@@ -1478,13 +1478,13 @@ function CreatePageInner() {
               : readyToContinue
                 ? "We'll transcribe your recording, then you can edit it."
                 : cameraGeneratedScript.trim()
-                  ? "Script ready — press Open Camera to record it."
+                  ? "Script ready. Press Open Camera to record it."
                   : cameraSource === "speak"
                     ? "Say what the video is about, and we'll write the script."
                     : cameraSource === "uploads"
                       ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"
-                        ? "Drop a recording of yourself talking — audio or video — and we'll turn what you said into a script."
+                        ? "Drop a recording of yourself talking, audio or video, and we'll turn what you said into a script."
                         : "Type your script below, then press Open Camera."
           }
         >
@@ -1617,7 +1617,7 @@ function CreatePageInner() {
             <div className="mb-4 pb-4 border-b border-spark-rule-soft">
               <p className="text-sm font-bold text-spark-ink-muted uppercase tracking-wide mb-1">Market For This Video</p>
               <p className="text-xs text-spark-ink-faint mb-2 normal-case font-normal">
-                Spoken in your channel CTA and used for titles and tags — set it to the property&apos;s town, not your office.
+                Spoken in your channel CTA and used for titles and tags. Set it to the property&apos;s town, not your office.
               </p>
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -1715,7 +1715,7 @@ function CreatePageInner() {
               </div>
               {pasteScript && !pasteAiGenerating && (
                 <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <CheckCircle size={11} /> Script Sparked — Review And Edit Below Before Generating.
+                  <CheckCircle size={11} /> Script Sparked. Review And Edit Below Before Generating.
                 </p>
               )}
             </div>
@@ -1728,7 +1728,7 @@ function CreatePageInner() {
                 type="text"
                 value={pasteTitle}
                 onChange={(e) => setPasteTitle(e.target.value)}
-                placeholder="e.g. Austin Market Update — June 2026"
+                placeholder="e.g. Austin Market Update, June 2026"
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
               />
             </div>
@@ -1746,7 +1746,7 @@ function CreatePageInner() {
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
               />
               <p className="text-[11px] text-spark-ink-faint mt-1">
-                Shown as bold text on the video&apos;s first frame — thumbnail-style visual. Your spoken script is unchanged.
+                Shown as bold text on the video&apos;s first frame. Thumbnail-style visual. Your spoken script is unchanged.
               </p>
             </div>
 
@@ -1770,7 +1770,7 @@ function CreatePageInner() {
                     reads the script exactly as written, and that promise has
                     to survive the script being spoken rather than typed. */}
                 <FieldMic
-                  title="Dictate — adds to the end of your script"
+                  title="Dictate. Adds to the end of your script"
                   // A whole script, dictated. The short window would end the
                   // turn every time you drew breath.
                   silenceMs={PROSE_SILENCE_MS}
@@ -1796,7 +1796,7 @@ function CreatePageInner() {
               <textarea
                 value={pasteScript}
                 onChange={(e) => setPasteScript(e.target.value)}
-                placeholder={`Paste or type your script here. The AI avatar speaks it exactly as written — up to ${SHORT_MAX_WORDS} words for a standard video, or ${LONG_MAX_WORDS.toLocaleString()} for a long one.`}
+                placeholder={`Paste or type your script here. The AI avatar speaks it exactly as written. Up to ${SHORT_MAX_WORDS} words for a standard video, or ${LONG_MAX_WORDS.toLocaleString()} for a long one.`}
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber resize-none leading-relaxed"
               />
@@ -1823,7 +1823,7 @@ function CreatePageInner() {
                 <p className="text-xs text-amber-600 mt-1 flex items-start gap-1">
                   <AlertCircle size={12} className="mt-0.5 shrink-0" />
                   <span>
-                    Too long for a standard video — choose <strong>Long video</strong> on the next
+                    Too long for a standard video. Choose <strong>Long video</strong> on the next
                     screen, or cut {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
                   </span>
                 </p>
@@ -1937,18 +1937,18 @@ function CreatePageInner() {
 
           {/* What you get — keeps the right column balanced */}
           <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-spark-blue">
-            <p className="text-base font-bold text-brand-text mb-3">🏡 What Your Listing Video Includes</p>
+            <p className="text-base font-bold text-brand-text mb-3">What Your Listing Video Includes</p>
             <ul className="text-sm text-spark-ink-soft space-y-2.5">
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your listing photos as cinematic b-roll with Ken Burns motion</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> AI script highlighting price, beds/baths, and standout features</li>
               {/* Stated unconditionally until the form grew a Who's On Screen
                   choice — on Voice only there is no avatar at all, which is
                   the better option for a tour where the photos carry it. */}
-              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your cloned voice narrating — with your AI avatar on screen, or the photos full-frame</li>
+              <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your cloned voice narrating. With your AI avatar on screen, or the photos full-frame</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your logo, contact card, and Fair-Housing-safe wording built in</li>
               <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing</li>
             </ul>
-            <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">💡 Tip: Zillow import fills everything in seconds — just paste the listing URL.</p>
+            <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">Tip: Zillow import fills everything in seconds. Just paste the listing URL.</p>
           </Card>
         </div>
       )}
@@ -2127,7 +2127,7 @@ function CreatePageInner() {
                 />
               </div>
               <p className="text-xs text-spark-ink-faint mt-1">
-                Used by your channel CTA and the end card — set it to the property&apos;s town, not your office.
+                Used by your channel CTA and the end card. Set it to the property&apos;s town, not your office.
               </p>
             </div>
 
@@ -2144,7 +2144,7 @@ function CreatePageInner() {
                 // behind you, and the video option lives in a different panel
                 // — so this says where to find it rather than leaving someone
                 // to conclude it does not exist.
-                blurb="Photos fill the screen as b-roll while you record — you stay on camera in the corner. To play a video behind you instead, use Branded Look further down."
+                blurb="Photos fill the screen as b-roll while you record. You stay on camera in the corner. To play a video behind you instead, use Branded Look further down."
                 // Only on the doc route. Photos are b-roll on every route, but
                 // an attachment is a script source, and offering one beside a
                 // script you are about to type yourself is the clutter the
@@ -2243,7 +2243,7 @@ function CreatePageInner() {
                 </p>
                 <p className="text-sm text-spark-ink-faint mt-1">
                   {uploadedFile && isVideoFile(uploadedFile)
-                    ? "The footage stays on your machine — only the words are sent"
+                    ? "The footage stays on your machine. Only the words are sent"
                     : "Securely Storing Your Audio"}
                 </p>
               </div>

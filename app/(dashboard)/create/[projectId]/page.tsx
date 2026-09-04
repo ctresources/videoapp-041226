@@ -162,13 +162,13 @@ function renderEta(opts: { pastedScript: boolean; longForm: boolean }): {
   const usesVideoAgent = !opts.pastedScript && !opts.longForm;
   if (usesVideoAgent) {
     return {
-      range: "15–20 minutes",
+      range: "15-20 minutes",
       why: "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
     };
   }
   return opts.longForm
-    ? { range: "10–20 minutes", why: "Long videos read your full script start to finish." }
-    : { range: "5–10 minutes", why: "" };
+    ? { range: "10-20 minutes", why: "Long videos read your full script start to finish." }
+    : { range: "5-10 minutes", why: "" };
 }
 
 /**
@@ -208,7 +208,7 @@ function ScriptLengthWarning({
         </div>
         <p className="mt-1.5 text-[11px] leading-snug text-spark-ink-soft">
           {words} of {cap} words for a {isLong ? "long" : "standard"} {mins(cap)}-minute
-          video — the tail will be trimmed.
+          video. The tail will be trimmed.
         </p>
       </div>
       {!isLong && onSwitchToLong && (
@@ -497,7 +497,7 @@ export default function ProjectEditorPage() {
       },
       () => {
         tpFollowerRef.current = null;
-        toast("Voice-follow unavailable — use the Auto-scroll toggle instead.", { icon: "🎚️" });
+        toast("Voice-follow unavailable. Use the Auto-scroll toggle instead.", { icon: "🎚️" });
         setTpFlowMode(false);
       },
     );
@@ -561,7 +561,7 @@ export default function ProjectEditorPage() {
         } else if (!hasProcessing && lookPollingRef.current) {
           clearInterval(lookPollingRef.current);
           lookPollingRef.current = null;
-          toast.success("Your new avatar look is ready — select it below!");
+          toast.success("Your new avatar look is ready. Select it below!");
         }
       }
     } catch {
@@ -613,8 +613,8 @@ export default function ProjectEditorPage() {
       const wasFree = data?.freeUsed === true;
       toast.success(
         wasFree
-          ? "Generating your new look — it'll appear below when ready! (Free this month)"
-          : "Generating your new look — 1 credit used",
+          ? "Generating your new look. It'll appear below when ready! (Free this month)"
+          : "Generating your new look, 1 credit used",
       );
       setGenerateLookPrompt("");
       setShowGenerateLook(false);
@@ -918,7 +918,7 @@ export default function ProjectEditorPage() {
         const err = await safeJson(res);
         throw new Error((err?.error as string) || "Failed to save draft");
       }
-      toast.success("Draft saved — find it under Drafts in My Videos.");
+      toast.success("Draft saved. Find it under Drafts in My Videos.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save draft");
     } finally {
@@ -1074,7 +1074,7 @@ export default function ProjectEditorPage() {
     const s = project?.ai_script;
     if (!s?.custom_topic || !project?.location_city || !project?.location_state) return;
     const confirmed = window.confirm(
-      "Regenerate the script? This replaces the current script and call to action — any edits you've made, by hand or by voice, will be lost."
+      "Regenerate the script? This replaces the current script and call to action. Any edits you've made, by hand or by voice, will be lost."
     );
     if (!confirmed) return;
 
@@ -1274,7 +1274,7 @@ export default function ProjectEditorPage() {
       // were written for this video and are needed to post it.
       setRenderedVideoId(video.id);
       if (video.render_status === "completed") {
-        toast.success("Video ready — it's in My Videos.", { duration: 4000 });
+        toast.success("Video ready. It's in My Videos.", { duration: 4000 });
       } else {
         toast.success("Video is rendering. You'll see it in My Videos shortly.", { duration: 5000 });
       }
@@ -1355,12 +1355,12 @@ export default function ProjectEditorPage() {
             {
               mode: "avatar_voice" as const,
               label: "Avatar + voice",
-              desc: "Your look on screen — pick one below",
+              desc: "Your look on screen. Pick one below",
             },
             {
               mode: "self" as const,
               label: "I'll record it",
-              desc: "You on camera, free — no credit used",
+              desc: "You on camera, free. No credit used",
             },
           ].map(({ mode, label, desc }) => (
             <button
@@ -1542,7 +1542,7 @@ export default function ProjectEditorPage() {
       conclusion: script.blog_conclusion || "",
     });
     navigator.clipboard.writeText(html);
-    toast.success("Blog HTML copied — paste into your site's HTML view.");
+    toast.success("Blog HTML copied. Paste into your site's HTML view.");
   }
 
   function toggle(section: string) {
@@ -1725,7 +1725,7 @@ export default function ProjectEditorPage() {
   useEffect(() => {
     if (tpRecording && tpSeconds >= TP_MAX_RECORD_SECONDS) {
       stopTpRecording();
-      toast("15-minute limit reached — your recording is being saved.", { icon: "⏱️" });
+      toast("15-minute limit reached. Your recording is being saved.", { icon: "⏱️" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tpSeconds, tpRecording]);
@@ -1747,7 +1747,7 @@ export default function ProjectEditorPage() {
         ].filter(Boolean).join("\n\n"),
       });
       closeTeleprompter();
-      toast.success("Recording saved! No AI charges — your video is ready.");
+      toast.success("Recording saved! No AI charges. Your video is ready.");
       router.push(`/videos?highlight=${videoId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -1895,7 +1895,7 @@ export default function ProjectEditorPage() {
           <Card padding="sm">
             <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
               <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
-                HOOK — PICK ONE, THEN EDIT
+                HOOK · PICK ONE, THEN EDIT
               </h3>
               <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>
             </div>
@@ -1959,7 +1959,7 @@ export default function ProjectEditorPage() {
             {/* Selected hook is editable — this exact text opens the video */}
             <div className="mt-3 px-1">
               <p className="mb-1 text-[10.5px] font-medium text-spark-ink-muted">
-                Your hook — edit freely
+                Your hook. Edit freely
               </p>
               <textarea
                 value={selectedHook}
@@ -2014,7 +2014,7 @@ export default function ProjectEditorPage() {
                     type="button"
                     onClick={handleRegenerateLocationScript}
                     disabled={generating}
-                    title="Redo the script from the original topic and market — asks first, since this replaces your edits"
+                    title="Redo the script from the original topic and market. Asks first, since this replaces your edits"
                     className="flex flex-none items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
                   >
                     <RefreshCw
@@ -2039,7 +2039,7 @@ export default function ProjectEditorPage() {
                 />
                 <div className="mt-2 flex items-center justify-between gap-3 px-1">
                   <p className="text-[10.5px] text-spark-ink-faint">
-                    Edit freely — your changes are saved when you generate the video
+                    Edit freely. Your changes are saved when you generate the video
                   </p>
                   {/* No "Record on Camera" here any more. The next screen asks
                       "Who's on screen" with "I'll record it" as one of its
@@ -2098,7 +2098,7 @@ export default function ProjectEditorPage() {
               value={editedCta}
               onChange={(e) => setEditedCta(e.target.value)}
               rows={3}
-              placeholder="e.g. Call or text me to get started — I'd love to help!"
+              placeholder="e.g. Call or text me to get started, I'd love to help!"
               className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100"
             />
             {buildContactLine() ? (
@@ -2199,16 +2199,16 @@ export default function ProjectEditorPage() {
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
                 {renderMode === "voice_only" && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mb-2">
-                    Voice Only doesn&apos;t put an avatar on screen — the AI fills it with its own
+                    Voice Only doesn&apos;t put an avatar on screen. The AI fills it with its own
                     b-roll. Pick a look below and we&apos;ll switch you to <strong>Avatar + Voice</strong>.
                   </p>
                 )}
                 <p className="text-xs text-slate-400 mb-1">
-                  📸 <span className="font-medium">Photo Avatar</span> — from your headshot &nbsp;·&nbsp;
-                  🎬 <span className="font-medium">Digital Twin</span> — from your video
+                  <span className="font-medium">Photo Avatar</span>: from your headshot &nbsp;·&nbsp;
+                  <span className="font-medium">Digital Twin</span>: from your video
                 </p>
                 <p className="text-xs text-slate-400 mb-2">
-                  📐 Tip: pick a look from a <span className="font-medium">horizontal photo</span> for YouTube, a <span className="font-medium">vertical photo</span> for Reels — fills the frame, no black bars.
+                  Tip: pick a look from a <span className="font-medium">horizontal photo</span> for YouTube, a <span className="font-medium">vertical photo</span> for Reels. Fills the frame, no black bars.
                 </p>
                 {looksLoading ? (
                   <div className="flex gap-2 mb-5">
@@ -2305,7 +2305,7 @@ export default function ProjectEditorPage() {
                 what let the UI offer twelve while the render quietly took five. */}
             {uploadedPhotos.length > photoLimit && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
-                Only your first <strong>{photoLimit}</strong> photos will be used — the other{" "}
+                Only your first <strong>{photoLimit}</strong> photos will be used. The other{" "}
                 {uploadedPhotos.length - photoLimit} won&apos;t appear. This video renders on
                 the Video Agent, which takes {AGENT_PHOTO_LIMIT}. Pasted scripts and long-form videos
                 use up to {DIRECT_PHOTO_LIMIT}.
@@ -2313,7 +2313,7 @@ export default function ProjectEditorPage() {
             )}
             {uploadedPhotos.length > 1 && (
               <p className="text-[10.5px] text-slate-400 mb-1.5">
-                Drag to reorder{uploadedPhotos.length > photoLimit ? ` — the first ${photoLimit} are the ones used` : ""}.
+                Drag to reorder{uploadedPhotos.length > photoLimit ? `. The first ${photoLimit} are the ones used` : ""}.
                 Use the arrows if dragging is awkward.
               </p>
             )}
@@ -2342,7 +2342,7 @@ export default function ProjectEditorPage() {
                     className={`relative w-16 h-16 rounded-xl overflow-hidden border shrink-0 group cursor-grab active:cursor-grabbing ${
                       dragIndex === i ? "border-spark-amber opacity-60" : "border-slate-200"
                     } ${unused ? "opacity-40" : ""}`}
-                    title={unused ? `Position ${i + 1} — past the first ${photoLimit}, so not used` : `Position ${i + 1}`}
+                    title={unused ? `Position ${i + 1}. Past the first ${photoLimit}, so not used` : `Position ${i + 1}`}
                   >
                     <img src={photo.preview} alt={photo.name} className="w-full h-full object-cover pointer-events-none" />
                     <span className="absolute bottom-0 left-0 px-1 text-[9px] font-semibold text-white bg-black/55 rounded-tr">
@@ -2383,7 +2383,7 @@ export default function ProjectEditorPage() {
                 </label>
               )}
               {uploadedPhotos.length === 0 && !photoUploading && (
-                <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos — they&apos;ll be used as primary b-roll.</p>
+                <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos. They&apos;ll be used as primary b-roll.</p>
               )}
             </div>
 
@@ -2431,7 +2431,7 @@ export default function ProjectEditorPage() {
                 ))}
               </div>
               {selectedMusicId === "custom" && musicUrl && (
-                <p className="mt-1.5 text-[10.5px] text-emerald-700">✓ Custom track uploaded — it will play under the voiceover</p>
+                <p className="mt-1.5 text-[10.5px] text-emerald-700">✓ Custom track uploaded. It will play under the voiceover</p>
               )}
               <input ref={musicInputRef} type="file" accept="audio/*" className="hidden" onChange={handleMusicUpload} />
             </div>
@@ -2455,11 +2455,11 @@ export default function ProjectEditorPage() {
                     Unbranded cut for the MLS
                   </span>
                   <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
-                    Records without your logo, name bar, licence or contact end card — photos and
+                    Records without your logo, name bar, licence or contact end card. Photos and
                     music still play. The teleprompter drops your closing ask and contact line too,
                     since a spoken &ldquo;give me a call&rdquo; breaks unbranded rules as surely as
                     a logo does. The script body was written before you ticked this, so read it
-                    through — or regenerate it and it will be written unbranded. Check what your
+                    through. Or regenerate it and it will be written unbranded. Check what your
                     board requires; the rules vary.
                   </span>
                 </span>
@@ -2480,7 +2480,7 @@ export default function ProjectEditorPage() {
                     <Link href="/billing" className="font-semibold underline">
                       {allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more"}
                     </Link>{" "}
-                    to generate this — or record it yourself on camera below, which is always free.
+                    to generate this. Or record it yourself on camera below, which is always free.
                   </p>
                 </div>
               );
@@ -2511,7 +2511,7 @@ export default function ProjectEditorPage() {
                   count from the other one, would be worse than naming none. */}
               {showVideoCost && (
                 <>
-                  {" — this uses "}
+                  {". This uses "}
                   <span className="text-spark-ink">
                     1 of your {videosLeft} {selectedKind} video
                     {videosLeft === 1 ? "" : "s"}
@@ -2561,7 +2561,7 @@ export default function ProjectEditorPage() {
               return (
                 <p className="text-xs text-slate-400 text-center mt-2">
                   AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
-                  see it in My Videos when ready — you can close this page.
+                  see it in My Videos when ready. You can close this page.
                 </p>
               );
             })()}
@@ -2602,7 +2602,7 @@ export default function ProjectEditorPage() {
                   // enough that nobody is watching the screen when it lands.
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
-                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page — you'll find it in My Videos.`}
+                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Videos.`}
               />
             );
           })()}
@@ -2644,7 +2644,7 @@ export default function ProjectEditorPage() {
                             appends. Neither posts anything: publishing stays
                             a click, for the same reason rendering does. */}
                         <FieldMic
-                          title="Say the title — replaces what's there"
+                          title="Say the title. Replaces what's there"
                           onTranscript={(t) => setEditedTitle(t.replace(/[.]\s*$/, "").trim())}
                         />
                         <button onClick={() => copyToClipboard(editedTitle, "Title")} title="Copy title">
@@ -2671,7 +2671,7 @@ export default function ProjectEditorPage() {
                       <p className="text-xs font-medium text-slate-500">Video Description <span className="font-normal text-slate-400">(editable)</span></p>
                       <div className="flex items-center gap-0.5">
                         <FieldMic
-                          title="Dictate — adds to the end of the description"
+                          title="Dictate. Adds to the end of the description"
                           // Sentences, not a field value — a pause to think
                           // should not end the turn here.
                           silenceMs={PROSE_SILENCE_MS}
@@ -2702,7 +2702,7 @@ export default function ProjectEditorPage() {
                         {descInterim}
                       </p>
                     )}
-                    <p className="text-[11px] text-slate-400 mt-1">Saved as you go — these are what Publish fills in for you.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Saved as you go. These are what Publish fills in for you.</p>
                   </div>
                   {[
                     { label: "Instagram Caption", value: seo.instagram_caption },
@@ -2739,7 +2739,7 @@ export default function ProjectEditorPage() {
                     href={`/tools?tab=description&project=${project.id}`}
                     className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 pt-2 border-t border-slate-100"
                   >
-                    <Wand2 size={12} /> Improve With AI Tools — Regenerate Title, Description &amp; Tags →
+                    <Wand2 size={12} /> Improve With AI Tools: Regenerate Title, Description &amp; Tags →
                   </Link>
                 </div>
               )}
@@ -2798,7 +2798,7 @@ export default function ProjectEditorPage() {
                             .join("\n\n"),
                         )
                       }
-                      title="Send this blog post to the Camera tab's teleprompter — camera recordings run up to 15 minutes"
+                      title="Send this blog post to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
                       className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
                     >
                       <Camera size={12} /> Record on Camera
@@ -2861,7 +2861,7 @@ export default function ProjectEditorPage() {
               editorStep === 2 ? "Happy with it? Set the video up next"
                 : editorStep === 3 ? (
                     selfRecord
-                      ? "Free — your photos play as b-roll while you read"
+                      ? "Free. Your photos play as b-roll while you read"
                       : `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
                   )
                   : editorStep === 4 ? (
@@ -2870,14 +2870,14 @@ export default function ProjectEditorPage() {
                           // Says what the button beside it is for. A hint that
                           // only tells you to leave, next to a button that
                           // takes you somewhere, leaves the button unexplained.
-                          : "Rendering — close this page if you like, or write your titles and captions while it works"
+                          : "Rendering. Close this page if you like, or write your titles and captions while it works"
                     )
                     // Was "Copy these into your post when you publish", which
                     // stopped being true once Publish started reading the
                     // title, description and hashtags off the project. It
                     // fills them in for you; the copy buttons are for pasting
                     // somewhere Publish does not reach.
-                    : "Publish fills these in for you — edit here first"
+                    : "Publish fills these in for you. Edit here first"
             }
           >
             {editorStep === 2 && (
@@ -3085,7 +3085,7 @@ export default function ProjectEditorPage() {
                 <div>
                   <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Unbranded cut</p>
                   <p className="text-white/50 text-xl leading-relaxed text-center">
-                    No closing ask and no contact details — end on the property.
+                    No closing ask and no contact details. End on the property.
                   </p>
                 </div>
               ) : (
@@ -3102,7 +3102,7 @@ export default function ProjectEditorPage() {
                 </div>
               )}
               <div className="text-center pt-8">
-                <p className="text-white/20 text-xl">— End of Script —</p>
+                <p className="text-white/20 text-xl">End of Script</p>
               </div>
             </div>
           </div>
@@ -3153,7 +3153,7 @@ export default function ProjectEditorPage() {
                   >
                     <span className="w-3 h-3 rounded-full bg-white inline-block" /> Record Myself
                   </button>
-                  <span className="text-white/40 text-[10px]">8–15 Min Is YouTube&apos;s Sweet Spot — 8+ Min Unlocks Mid-Roll Ads · 15 Min Max</span>
+                  <span className="text-white/40 text-[10px]">8-15 Min Is YouTube&apos;s Sweet Spot · 8+ Min Unlocks Mid-Roll Ads · 15 Min Max</span>
                 </div>
               )}
             </div>

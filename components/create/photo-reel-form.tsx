@@ -154,7 +154,7 @@ export function PhotoReelForm({
             .uploadToSignedUrl(data.path, data.token, blob, { contentType: "audio/webm" });
           if (upErr) throw new Error(upErr.message);
           setVoiceoverPath(data.path as string);
-          toast.success("Voiceover saved — it sets the length of the reel.");
+          toast.success("Voiceover saved. It sets the length of the reel.");
         } catch (err) {
           setError(err instanceof Error ? err.message : "Could not save that recording");
         }
@@ -218,7 +218,7 @@ export function PhotoReelForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not build that reel");
       setSavedId(data.videoId as string);
-      toast.success("Reel is ready — it's in My Videos.");
+      toast.success("Reel is ready. It's in My Videos.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not build that reel");
     } finally {
@@ -256,7 +256,7 @@ export function PhotoReelForm({
                     const caption = e.target.value;
                     setPhotos((prev) => prev.map((q, j) => (j === i ? { ...q, caption } : q)));
                   }}
-                  placeholder={i === 0 ? "Text on this photo — e.g. BEFORE · Kitchen" : "Optional text"}
+                  placeholder={i === 0 ? "Text on this photo, e.g. BEFORE · Kitchen" : "Optional text"}
                   maxLength={80}
                   className="min-w-0 flex-1 rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
                 />
@@ -309,7 +309,7 @@ export function PhotoReelForm({
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="24 Shagbark Court — just listed"
+          placeholder="24 Shagbark Court, just listed"
           maxLength={120}
           className="rounded-lg border border-spark-rule px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
         />
@@ -402,9 +402,9 @@ export function PhotoReelForm({
           </Button>
           <span className="text-[12px] text-spark-ink-muted">
             {recording
-              ? `Recording — ${recordedSecs}s`
+              ? `Recording ${recordedSecs}s`
               : voiceoverPath
-                ? `Saved — ${recordedSecs}s, and that is how long the reel will be.`
+                ? `Saved · ${recordedSecs}s, and that is how long the reel will be.`
                 : "Speak over the photos in your own voice."}
           </span>
         </div>
@@ -527,12 +527,12 @@ export function PhotoReelForm({
           the difference between a tour and a montage. */}
       {photos.length > 0 && effectiveSecs > 0 && (
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-          {photos.length} photos over {effectiveSecs}s — about{" "}
+          {photos.length} photos over {effectiveSecs}s. About{" "}
           <strong className="font-semibold text-spark-ink-soft">{perPhoto.toFixed(1)}s each</strong>.{" "}
           {perPhoto < 1.4
             ? "A fast montage; the slow zoom won't read at that speed."
             : perPhoto > 6
-              ? "A long hold on each shot — consider more photos or a shorter reel."
+              ? "A long hold on each shot. Consider more photos or a shorter reel."
               : "A comfortable pace for a property tour."}
         </p>
       )}
@@ -544,7 +544,7 @@ export function PhotoReelForm({
 
       {rendering && (
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-          Rendering on our server, so you can leave this page — a 30-second reel takes about a
+          Rendering on our server, so you can leave this page. A 30-second reel takes about a
           minute and a half, a 60-second one around three.
         </p>
       )}

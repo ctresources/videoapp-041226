@@ -240,7 +240,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
       } else if (data.listing?.address) {
         toast.success(`Imported details from ${file.name}`);
       } else {
-        toast(`Uploaded ${file.name} — please fill in any missing fields`, { icon: "ℹ️" });
+        toast(`Uploaded ${file.name}. Please fill in any missing fields`, { icon: "ℹ️" });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not read file");
@@ -327,7 +327,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
       if (!res.ok) throw new Error(data.error || "Generation failed");
 
       if (record) {
-        toast.success("Script ready — set up your shot.");
+        toast.success("Script ready. Set up your shot.");
         // Back to review before handing over: the parent switches tabs, which
         // unmounts this, but if that ever stops being true the form must not
         // be left sitting on a spinner that has nothing left to wait for.
@@ -472,7 +472,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
           <p className="text-xs text-slate-400 mt-1.5">
             Supported: Zillow · Realtor.com · Redfin · Homes.com · Trulia · Compass
             <br />
-            Short links (myre.io, bit.ly) work too — they just take a few seconds longer.
+            Short links (myre.io, bit.ly) work too. They just take a few seconds longer.
           </p>
         </div>
 
@@ -515,7 +515,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
                 in the app. Read from RENDERED_SCRIPT_LENGTHS so it cannot go
                 stale again the next time those change. */}
             <strong>What happens next:</strong> We import the listing details, then use AI to write
-            a Fair Housing-compliant property tour voiceover script — up to{" "}
+            a Fair Housing-compliant property tour voiceover script. Up to{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
             titles, hashtags and blog post that go with it. Takes about a minute.
@@ -796,7 +796,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
           // The render uses twelve. Saying so beats an add button that would
           // only refuse, and points at the way to make room.
           <p className="text-[11px] text-slate-400">
-            All {MAX_LISTING_PHOTOS} slots full — that is what the video uses. Remove one to swap it out.
+            All {MAX_LISTING_PHOTOS} slots full. That is what the video uses. Remove one to swap it out.
           </p>
         )}
 
@@ -818,7 +818,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
       {/* Fair Housing notice */}
       <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed">
-          🏛️ <strong>Fair Housing AI</strong> — Your script will be automatically reviewed to ensure compliance
+          <strong>Fair Housing AI</strong>. Your script will be automatically reviewed to ensure compliance
           with the Fair Housing Act. We never include demographic, school, or community-composition language.
         </p>
       </div>
@@ -855,7 +855,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
                 disabled={locked}
                 onClick={() => setVideoLength(value)}
                 aria-pressed={videoLength === value}
-                title={locked ? "Long videos are a separate allowance — add one in Billing" : undefined}
+                title={locked ? "Long videos are a separate allowance. Add one in Billing" : undefined}
                 className={`px-2 py-1.5 rounded-lg border text-center transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   videoLength === value && !locked
                     ? "border-spark-amber bg-spark-amber-tint"
@@ -887,7 +887,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
             Unbranded script for the MLS
           </span>
           <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
-            Writes the tour with no name, brokerage or closing ask — the property still gets its
+            Writes the tour with no name, brokerage or closing ask. The property still gets its
             address, price and features. Tick the matching box on the recorder to leave the
             overlays off too. Check what your board requires; the rules vary.
           </span>
