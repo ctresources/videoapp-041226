@@ -98,6 +98,38 @@ const TRY_LINES = [
   "Explain what today's rates mean for a real monthly payment.",
 ];
 
+/** One tile in row 2. Both sides of row 1 lead to a row of these and they are
+ *  answering the same question — where the words come from — so they are the
+ *  same control, not two that happen to look alike. */
+function SourceTile({
+  kicker, label, desc, active, onClick,
+}: {
+  kicker: string; label: string; desc: string; active: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
+        active
+          ? "border-[1.5px] border-spark-amber bg-white"
+          : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
+      }`}
+    >
+      <span
+        className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
+          active ? "text-[#A3660F]" : "text-spark-ink-faint"
+        }`}
+      >
+        {kicker}
+      </span>
+      <span className="text-[15.5px] font-semibold leading-[1.15] text-spark-ink">{label}</span>
+      <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>
+    </button>
+  );
+}
+
 function formatTime(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
   const sec = (s % 60).toString().padStart(2, "0");
@@ -111,6 +143,11 @@ function CreatePageInner() {
   const searchParams = useSearchParams();
 
   const [inputMode, setInputMode] = useState<InputMode>("script");
+  // Which of the render-it-for-me tabs you were last on. Row 1 asks whether
+  // you film it or we make it; three of the four tabs live on the "we make
+  // it" side, so that tile has to put you back where you were rather than
+  // always resetting to the first one.
+  const [lastSparkTab, setLastSparkTab] = useState<InputMode>("script");
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -285,9 +322,9 @@ function CreatePageInner() {
     // sub-flow, so a link could land you on the parent and leave you to find
     // the toggle; there is no parent any more.
     if (tab === "camera") setInputMode("camera");
-    else if (tab === "listing") setInputMode("listing");
-    else if (tab === "paste" || tab === "script") setInputMode(tab);
-    if (topic) { setLocCustomTopic(topic); setInputMode("script"); }
+    else if (tab === "listing") { setInputMode("listing"); setLastSparkTab("listing"); }
+    else if (tab === "paste" || tab === "script") { setInputMode(tab); setLastSparkTab(tab); }
+    if (topic) { setLocCustomTopic(topic); setInputMode("script"); setLastSparkTab("script"); }
 
     // Handed off from the editor's "Record on Camera" button — the hook,
     // script and CTA it already generated, pre-filling the teleprompter
@@ -994,14 +1031,19 @@ function CreatePageInner() {
       {/* ── Hero ──
           The one display-type moment on the page. Playfair is opted into here
           rather than inherited by every heading, per the brand guide, and the
-          second half carries the four-stop gradient. */}
+          three tagline verbs carry the four-stop gradient.
+          It asks the question the two rows below it answer. "Hit the Mic. Be
+          Visible." was a slogan sitting above a set of controls it did not
+          introduce — and it named the microphone, which is one route in out
+          of several. */}
       {step === "input" && (
         <div className="pt-2">
           <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
-            Hit the Mic.{" "}
+            How will you{" "}
             <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
-              Be Visible.
-            </span>
+              Speak, Spark, Share
+            </span>{" "}
+            your next video?
           </h1>
           {/* No subline. It was pitching the product to someone who has
               already bought it and is here to make a video — that argument
@@ -1009,94 +1051,135 @@ function CreatePageInner() {
         </div>
       )}
 
-      {/* ── How you're creating ──
-          Four siblings, not three with a toggle inside one of them. My
-          script and My listing were grouped under "From my material" because
-          both start from something you already have — but one is delivered
-          word for word and the other is written for you, which is the sharpest
-          distinction on this screen and was the one buried a level down.
+      {/* ── Row 1 · how it gets made ──
+          One row used to ask two questions: three tiles chose where the words
+          come from and the fourth chose who does the filming. That mix is why
+          the camera tab had to ask about the script a second time once you
+          were inside it. Split in two, each row asks one thing.
 
-          Above the composer, not below it: which you pick decides what the
-          rest of the page even shows, so it cannot come after the thing it
-          changes. */}
+          Not "you" versus "not you" — it is you either way, live or as your
+          avatar speaking in your cloned voice. What differs is whether you
+          press record or we render it. */}
       {step === "input" && (
-        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {[
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {([
             {
-              mode: "script" as InputMode,
-              kicker: "Fastest",
-              label: "AI writes it",
-              desc: "Say it, we script it",
+              key: "film" as const,
+              label: "I'll film it",
+              desc: "Your camera + teleprompter",
+              Icon: Video,
             },
             {
-              mode: "paste" as InputMode,
-              kicker: "Word for word",
-              label: "My script",
-              desc: "Spoken exactly as written",
+              key: "spark" as const,
+              // Covers all three tabs on this side honestly. A photo reel has
+              // no avatar and no voice at all, and a listing video can render
+              // voice-only, so a label naming just the avatar would be wrong
+              // for two routes out of three.
+              label: "SparkReels makes it",
+              desc: "Your avatar, voice or photos",
+              Icon: Sparkles,
             },
-            {
-              mode: "listing" as InputMode,
-              kicker: "Zillow, MLS or photos",
-              label: "My listings/My photos",
-              desc: "A tour, or a photo reel",
-            },
-            {
-              mode: "camera" as InputMode,
-              kicker: "Up to 15 min",
-              label: "My camera",
-              desc: "You on screen",
-            },
-          ].map(({ mode, kicker, label, desc }) => {
-            const active = inputMode === mode;
+          ]).map(({ key, label, desc, Icon }) => {
+            const active = key === "film" ? inputMode === "camera" : inputMode !== "camera";
             return (
               <button
-                key={mode}
+                key={key}
                 type="button"
-                onClick={() => setInputMode(mode)}
+                onClick={() =>
+                  setInputMode(
+                    key === "film" ? "camera" : lastSparkTab === "camera" ? "script" : lastSparkTab
+                  )
+                }
                 aria-pressed={active}
-                className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
+                className={`flex min-h-[86px] items-center gap-3 rounded-[14px] px-4 py-3 text-left transition-colors ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
                 }`}
               >
                 <span
-                  className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
-                    active ? "text-[#A3660F]" : "text-spark-ink-faint"
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    active
+                      ? "bg-spark-amber-tint text-[#A3660F]"
+                      : "bg-spark-rule/40 text-spark-ink-faint"
                   }`}
                 >
-                  {kicker}
+                  <Icon size={19} />
                 </span>
-                <span className="text-[15.5px] font-semibold leading-[1.15] text-spark-ink">{label}</span>
-                <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>
+                <span className="min-w-0">
+                  <span className="block text-[17px] font-semibold leading-[1.15] text-spark-ink">
+                    {label}
+                  </span>
+                  <span className="block text-[13px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                </span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Says out loud what the row is doing, because the row is doing two
-          things: the first three choose where the words come from, and the
-          fourth chooses who is on screen. Until this row becomes one question
-          — a separate piece of work — naming the split is the honest fix.
+      {/* ── Row 2 · where the script comes from ──
+          Filming it yourself. This is the row that used to sit inside the
+          camera card, under a heading about the script, one level below the
+          tab that had already been chosen — up here it stops reading as the
+          same question asked twice. It keeps that row's visibility rules:
+          nothing to choose once you are recording, or while you are branding
+          a clip you already shot. */}
+      {step === "input" && inputMode === "camera" && cameraPhase === "script"
+        && !(cameraMode === "brand" && canBrandClips) && (
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            { key: "speak" as const,   kicker: "Fastest",           label: "AI writes it",              desc: "Say a topic" },
+            { key: "uploads" as const, kicker: "PDF or link",       label: "From a document",           desc: "We read it first" },
+            { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We keep the words, not the file" },
+            { key: "own" as const,     kicker: "Word for word",     label: "I'll write it",             desc: "Type it below" },
+          ]).map(({ key, kicker, label, desc }) => (
+            <SourceTile
+              key={key}
+              kicker={kicker}
+              label={label}
+              desc={desc}
+              active={cameraSource === key}
+              onClick={() => setCameraSource(key)}
+            />
+          ))}
+        </div>
+      )}
 
-          It also puts the price beside the choice that sets it. A rendered
-          video spends a credit and the camera does not, and today that only
-          surfaces three steps later, after a script has been written. */}
-      {/* "The first three write the script and render the video for you, one
-          credit each" was wrong twice. My script does not write the script,
-          you do — that is the whole point of the tab. And My listings holds
-          two things: a listing video, which costs a credit, and a photo reel,
-          which is free. Split by what actually happens, not by tab position. */}
+      {/* The same question on the render-it-for-me side. Three of the four
+          original tabs, minus the camera one that row 1 now owns. */}
+      {step === "input" && inputMode !== "camera" && (
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {([
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: "Say it, we script it" },
+            { mode: "paste" as InputMode,   kicker: "Word for word",         label: "My script",             desc: "Spoken exactly as written" },
+            { mode: "listing" as InputMode, kicker: "Zillow, MLS or photos", label: "My listings/My photos", desc: "A tour, or a photo reel" },
+          ]).map(({ mode, kicker, label, desc }) => (
+            <SourceTile
+              key={mode}
+              kicker={kicker}
+              label={label}
+              desc={desc}
+              active={inputMode === mode}
+              onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Puts the price beside the choice that sets it — otherwise it only
+          surfaces three steps later, after a script has been written.
+
+          Row 1 is now almost the whole rule: filming it yourself is free,
+          rendering costs a credit. The photo reel is the one exception, and
+          it is named rather than left to be discovered. */}
       {step === "input" && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-          <strong className="font-semibold text-spark-ink">AI writes it</strong> and{" "}
-          <strong className="font-semibold text-spark-ink">My listings</strong> write the script and
-          render it for you. <strong className="font-semibold text-spark-ink">My script</strong>{" "}
-          renders the words you give it. Those cost one credit each. Free:{" "}
-          <strong className="font-semibold text-spark-ink">My camera</strong>, which is you on
-          screen reading it yourself, and the <strong className="font-semibold text-spark-ink">photo
-          reel</strong> under My listings.
+          Filming it yourself is free. Anything{" "}
+          <strong className="font-semibold text-spark-ink">SparkReels makes</strong> costs one
+          credit — except the{" "}
+          <strong className="font-semibold text-spark-ink">photo reel</strong> under My listings,
+          which is free too.
         </p>
       )}
 
@@ -2036,42 +2119,13 @@ function CreatePageInner() {
             ) : (<>
 
             {cameraPhase === "script" && (<>
-            <div className="mb-4">
-              <p className="text-[11px] font-semibold text-spark-ink-muted mb-1.5">Where your script comes from</p>
-              <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
-                {([
-                  // Named the same as the top row's tab, because it is the
-                  // same thing. Calling it "Speak a topic" here and "AI writes
-                  // it" up there made one option look like two, which is most
-                  // of why this row reads as a repeat of a question already
-                  // answered rather than the finer version of it.
-                  { key: "speak" as const,   label: "AI writes it",   sub: "say a topic" },
-                  { key: "uploads" as const, label: "From a PDF or link", sub: "we read it first" },
-                  // Two uploads live on this screen and they do opposite
-                  // things: the one above keeps your footage and publishes it,
-                  // this one throws the file away and keeps only the words.
-                  // "Upload audio" said neither, and stopped being true when
-                  // this slot started accepting video as well.
-                  { key: "audio" as const,   label: "A recording of me talking", sub: "we keep the words, not the file" },
-                  { key: "own" as const,     label: "I'll write it",  sub: "type it below" },
-                ]).map(({ key, label, sub }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCameraSource(key)}
-                    aria-pressed={cameraSource === key}
-                    className={`px-2.5 py-2 rounded-lg border text-left transition-colors ${
-                      cameraSource === key
-                        ? "border-spark-amber bg-spark-amber-tint"
-                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                    }`}
-                  >
-                    <span className="block text-[12px] font-bold text-brand-text">{label}</span>
-                    <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* "Where your script comes from" used to be asked here, a level
+                below the tab that had already been chosen. It is row 2 at the
+                top of the page now — the same control, asked once. Two
+                uploads still live on this screen and they do opposite things:
+                the one above keeps your footage and publishes it, the one row
+                2 calls "a recording of me talking" throws the file away and
+                keeps only the words. */}
 
             {cameraSource === "speak" && (
             <div className="mb-4">
