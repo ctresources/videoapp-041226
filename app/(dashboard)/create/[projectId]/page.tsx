@@ -155,15 +155,25 @@ const mins = (words: number) => Math.round((words / 145) * 10) / 10;
  * AI-written short goes to HeyGen's Video Agent, which additionally plans the
  * scenes and picks the visuals. That extra work is the whole difference.
  */
-function renderEta(opts: { pastedScript: boolean; longForm: boolean }): {
+function renderEta(opts: { pastedScript: boolean; longForm: boolean; photoCount?: number }): {
   range: string;
   why: string;
 } {
   const usesVideoAgent = !opts.pastedScript && !opts.longForm;
   if (usesVideoAgent) {
+    // "chooses the visuals" stopped being half-true once the photo rules
+    // landed: it still plans the scenes, but with photos attached it is
+    // explicitly forbidden from sourcing property imagery of its own, so the
+    // visuals are the user's. Saying otherwise on the screen they watch for
+    // twenty minutes teaches them the wrong thing about where the pictures
+    // come from — and it is the sentence they would quote back when a photo
+    // they uploaded does not appear.
+    const photos = opts.photoCount ?? 0;
     return {
       range: "15-20 minutes",
-      why: "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
+      why: photos > 0
+        ? `The AI builds the scenes around your ${photos} photo${photos === 1 ? "" : "s"}, which takes longer than a straight read.`
+        : "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
     };
   }
   return opts.longForm
@@ -2557,6 +2567,7 @@ export default function ProjectEditorPage() {
               const eta = renderEta({
                 pastedScript: false,
                 longForm: selectedVideoType === "youtube_long",
+                photoCount: uploadedPhotos.length,
               });
               return (
                 <p className="text-xs text-slate-400 text-center mt-2">
@@ -2573,6 +2584,7 @@ export default function ProjectEditorPage() {
             const eta = renderEta({
               pastedScript: isPaste,
               longForm: selectedVideoType === "youtube_long",
+              photoCount: uploadedPhotos.length,
             });
             const shape = selectedVideoType === "reel_9x16" ? "9:16 (vertical)"
               : selectedVideoType === "short_1x1" ? "1:1 (square)"
@@ -2870,7 +2882,14 @@ export default function ProjectEditorPage() {
                           // Says what the button beside it is for. A hint that
                           // only tells you to leave, next to a button that
                           // takes you somewhere, leaves the button unexplained.
-                          : "Rendering. Close this page if you like, or write your titles and captions while it works"
+                          //
+                          // "write" was wrong: the title, description and
+                          // hashtags are generated with the script, and on a
+                          // listing the blog is too. Step 5 has always been a
+                          // review, never a blank page, and telling someone to
+                          // go and write what is already written invites them
+                          // to skip it.
+                          : "Rendering. Close this page if you like, or review your post copy while it works"
                     )
                     // Was "Copy these into your post when you publish", which
                     // stopped being true once Publish started reading the
@@ -2910,14 +2929,19 @@ export default function ProjectEditorPage() {
             )}
             {/* Once it is done, the finished video is the thing you want, and
                 until now there was no button that led to it — the copy said
-                "you'll find it in My Videos" and meant it literally. The share
-                kit stays reachable beside it rather than being replaced: the
-                titles, captions and blog post are still the reason step 5
-                exists. */}
+                "you'll find it in My Videos" and meant it literally. Step 5
+                stays reachable beside it rather than being replaced: the post
+                copy and the blog article are still the reason it exists.
+
+                Named the same as the button that leads there while the render
+                is still running. It was "Share kit" here and "Titles &
+                captions" there, two names for one screen on one footer, which
+                is the same class of thing as a button that does not do what it
+                says. */}
             {editorStep === 4 && renderComplete && !renderFailed && (
               <>
                 <Button variant="outline" size="lg" onClick={() => setEditorStep(5)} className="gap-2">
-                  Share kit
+                  Post copy{(script.blog_intro || script.blog_body) ? " & blog" : ""}
                 </Button>
                 <Button
                   size="lg"
@@ -2956,9 +2980,23 @@ export default function ProjectEditorPage() {
                     share reads as sharing a video that has not been made yet.
                     While it renders, the honest offer is the writing you can
                     get on with meanwhile. */}
+                {/* "Titles & captions" was wrong in both halves on a listing.
+                    Nothing there needs writing — the title, description and
+                    hashtags come with the script — and there is no caption at
+                    all: instagram_caption is written only by generateSeoData,
+                    on the market flow, so a listing's card shows title,
+                    description, meta description and hashtags and nothing
+                    that is a caption.
+
+                    "Post copy" covers whichever of those a project actually
+                    has without naming one it might not. The blog is named
+                    separately because it is a different artefact, an article
+                    for a website rather than copy for a post, and only when
+                    one exists — the card itself is gated the same way, so the
+                    button never promises a section that is not there. */}
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Titles &amp; captions <ArrowRight size={17} /></>}
+                  : <>Post copy{(script.blog_intro || script.blog_body) ? " & blog" : ""} <ArrowRight size={17} /></>}
               </Button>
             )}
             {/* Done SAVES, then leaves.
