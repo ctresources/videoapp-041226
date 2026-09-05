@@ -1212,11 +1212,31 @@ async function buildSlideshowAndRun(
    * settled once, here, rather than each block inventing its own.
    */
   const brandS = Math.min(width, height);
-  const brandMargin = Math.round(brandS * 0.05);
-  const brandBandH = Math.round(brandS * 0.075);
-  const brandGap = Math.round(brandS * 0.022);
+  const brandMargin = Math.round(brandS * 0.06);
+  /**
+   * Sized off the frame, not off cfg.logoSize.
+   *
+   * cfg.logoSize is 130, which on a 1920-wide frame is under 7% of the width —
+   * legible full screen and invisible on a phone. A share of the short edge
+   * gives the logo the same presence in all three shapes.
+   */
+  const brandLogoW = Math.round(brandS * 0.24);
+  const brandBandH = Math.round(brandS * 0.09);
+  const brandGap = Math.round(brandS * 0.018);
+  const brandAvatarSize = Math.round(brandS * 0.11);
+  const hasBrandLogo = !!logoPath && logoInputIdx >= 0;
   // Only reserved when there is a logo to put there.
-  const logoReserve = logoPath && logoInputIdx >= 0 ? brandBandH + brandGap : 0;
+  const logoReserve = hasBrandLogo ? brandBandH + brandGap : 0;
+  const brandAvatarY = height - brandMargin - logoReserve - brandAvatarSize;
+  /**
+   * Directly under the name, rather than pinned to the bottom margin.
+   *
+   * Anchoring it with y=H-h-margin put it on the bottom edge, so a short wide
+   * logo — which is most agency logos — floated a long way below the name
+   * with a band of empty picture between them. They are one piece of
+   * branding; they should read as one.
+   */
+  const brandLogoY = brandAvatarY + brandAvatarSize + brandGap;
 
   if (logoPath && logoInputIdx >= 0) {
     /**
@@ -1244,11 +1264,11 @@ async function buildSlideshowAndRun(
      * it ends up — FFmpeg resolves h at overlay time, we do not have to guess.
      */
     filterParts.push(
-      `[${logoInputIdx}:v]scale=${cfg.logoSize}:${brandBandH}:` +
+      `[${logoInputIdx}:v]scale=${brandLogoW}:${brandBandH}:` +
       `force_original_aspect_ratio=decrease[logosc]`,
     );
     filterParts.push(
-      `[${currentLabel}][logosc]overlay=x=${brandMargin}:y=H-h-${brandMargin}:format=auto[logoed]`,
+      `[${currentLabel}][logosc]overlay=x=${brandMargin}:y=${brandLogoY}:format=auto[logoed]`,
     );
     currentLabel = "logoed";
   }
@@ -1267,13 +1287,13 @@ async function buildSlideshowAndRun(
    */
   if (avatarPath && avatarInputIdx >= 0) {
     const S = brandS;
-    const aSize = Math.round(S * 0.11);
+    const aSize = brandAvatarSize;
     const aRadius = Math.floor(aSize / 2);
     const margin = brandMargin;
     const avX = margin;
-    // Lifted clear of the logo band beneath it. With no logo, logoReserve is
-    // zero and the badge sits where it always did.
-    const avY = height - margin - logoReserve - aSize;
+    // Settled with the rest of the brand stack, so the logo can be placed
+    // directly beneath this rather than guessing where it ended up.
+    const avY = brandAvatarY;
     // The ring is drawn inside the same pass that crops the circle: a filled
     // white square behind it used to stand in for a border, and on a photo it
     // read as exactly that — a white square with a face in it.
