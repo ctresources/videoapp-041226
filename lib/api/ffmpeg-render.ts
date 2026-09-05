@@ -733,6 +733,17 @@ export async function renderPhotoSlideshow(
 
   console.log(`[ffmpeg-slideshow] Temp dir: ${renderTmpDir}`);
 
+  /**
+   * How long this took, reported on the way out.
+   *
+   * The function's ceiling is 300 seconds and a full twelve-photo, sixty-second
+   * reel is the largest thing the form can ask for — so the number that
+   * matters is not whether a render succeeded but how close to the ceiling it
+   * came. A run that finishes in 290 seconds looks identical to one that
+   * finishes in 120 until it fails on a slower cold start.
+   */
+  const startedAt = Date.now();
+
   try {
     // ── 1. Write audio buffer ────────────────────────────────────────────────
     const audioPath = join(renderTmpDir, "voiceover.mp3");
@@ -806,7 +817,20 @@ export async function renderPhotoSlideshow(
 
     // ── 7. Return output buffer ──────────────────────────────────────────────
     const result = await fs.readFile(outputPath);
-    console.log(`[ffmpeg-slideshow] Output: ${(result.length / 1024 / 1024).toFixed(1)} MB`);
+    const elapsed = (Date.now() - startedAt) / 1000;
+    const headroom = Math.round((1 - elapsed / 300) * 100);
+    console.log(
+      `[ffmpeg-slideshow] Output: ${(result.length / 1024 / 1024).toFixed(1)} MB · ` +
+      `took ${elapsed.toFixed(1)}s of the 300s budget (${headroom}% spare)`,
+    );
+    // Loud while it is still only a warning, so the first reel to come close
+    // says so before one goes over.
+    if (elapsed > 210) {
+      console.warn(
+        `[ffmpeg-slideshow] SLOW: ${elapsed.toFixed(1)}s is within 90s of the timeout — ` +
+        `this render shape is close to the ceiling.`,
+      );
+    }
     return result;
 
   } finally {
@@ -1154,6 +1178,21 @@ async function buildSlideshowAndRun(
     });
     currentLabel = label;
   }
+  /**
+   * ── Bottom-left brand stack ──────────────────────────────────────────────
+   *
+   * The headshot badge and the agent's name sit on one line, and the logo goes
+   * under them. Both need the same margin, and the badge needs to know how
+   * tall the logo band is so it can sit clear of it — so the numbers are
+   * settled once, here, rather than each block inventing its own.
+   */
+  const brandS = Math.min(width, height);
+  const brandMargin = Math.round(brandS * 0.05);
+  const brandBandH = Math.round(brandS * 0.075);
+  const brandGap = Math.round(brandS * 0.022);
+  // Only reserved when there is a logo to put there.
+  const logoReserve = logoPath && logoInputIdx >= 0 ? brandBandH + brandGap : 0;
+
   if (logoPath && logoInputIdx >= 0) {
     /**
      * Reads currentLabel, like every other stage in this chain.
@@ -1168,8 +1207,24 @@ async function buildSlideshowAndRun(
      * It only ever failed on that combination, which is why it survived: a
      * reel with no logo, or with the closing card switched off, renders fine.
      */
-    filterParts.push(`[${logoInputIdx}:v]scale=${cfg.logoSize}:-1[logosc]`);
-    filterParts.push(`[${currentLabel}][logosc]overlay=x=20:y=20:format=auto[logoed]`);
+    /**
+     * Bottom left, beneath the name — not the top corner it used to sit in.
+     *
+     * Scaled to FIT a box rather than to a fixed width, so its height is known
+     * and the badge above can be lifted by exactly that much. A logo scaled
+     * with :-1 has whatever height its aspect ratio gives it, which is no basis
+     * for stacking anything on top of it.
+     *
+     * Placed with y=H-h-margin so it sits on the bottom margin whatever height
+     * it ends up — FFmpeg resolves h at overlay time, we do not have to guess.
+     */
+    filterParts.push(
+      `[${logoInputIdx}:v]scale=${cfg.logoSize}:${brandBandH}:` +
+      `force_original_aspect_ratio=decrease[logosc]`,
+    );
+    filterParts.push(
+      `[${currentLabel}][logosc]overlay=x=${brandMargin}:y=H-h-${brandMargin}:format=auto[logoed]`,
+    );
     currentLabel = "logoed";
   }
 
@@ -1186,12 +1241,14 @@ async function buildSlideshowAndRun(
    * enough to stay clear of the captions above it.
    */
   if (avatarPath && avatarInputIdx >= 0) {
-    const S = Math.min(width, height);
+    const S = brandS;
     const aSize = Math.round(S * 0.11);
     const aRadius = Math.floor(aSize / 2);
-    const margin = Math.round(S * 0.05);
+    const margin = brandMargin;
     const avX = margin;
-    const avY = height - margin - aSize;
+    // Lifted clear of the logo band beneath it. With no logo, logoReserve is
+    // zero and the badge sits where it always did.
+    const avY = height - margin - logoReserve - aSize;
     // The ring is drawn inside the same pass that crops the circle: a filled
     // white square behind it used to stand in for a border, and on a photo it
     // read as exactly that — a white square with a face in it.
