@@ -191,8 +191,13 @@ function DeleteVideoModal({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold text-brand-text">Delete this video?</h3>
+              {/* Says what survives and what doesn't. Deleting used to take
+                  the publish record with it, so Analytics' count dropped
+                  while the video was still live on YouTube — and the dialog
+                  mentioned none of that. */}
               <p className="text-sm text-slate-500 mt-0.5">
-                This action cannot be undone.
+                This removes it from SparkReels and cannot be undone. Anywhere you already
+                published it — YouTube included — is untouched, and stays in your published count.
               </p>
             </div>
           </div>

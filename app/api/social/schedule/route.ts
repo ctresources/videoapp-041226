@@ -22,7 +22,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: rows } = await admin
     .from("social_posts")
-    .select("id, platform, scheduled_at, post_status, caption, platform_post_id")
+    .select("id, platform, scheduled_at, post_status, caption, platform_post_id, video_title")
     .eq("user_id", user.id)
     .eq("post_status", "scheduled")
     .not("scheduled_at", "is", null)
@@ -31,7 +31,7 @@ export async function GET() {
   const posts = (rows ?? []).map((r) => {
     const row = r as {
       id: string; platform: string; scheduled_at: string; post_status: string;
-      caption: string | null; platform_post_id: string | null;
+      caption: string | null; platform_post_id: string | null; video_title: string | null;
     };
     return {
       id: row.id,
@@ -39,6 +39,7 @@ export async function GET() {
       scheduledAt: row.scheduled_at,
       status: row.post_status,
       caption: row.caption ?? undefined,
+      videoTitle: row.video_title ?? undefined,
       videoUrl: row.platform_post_id ? `https://youtu.be/${row.platform_post_id}` : undefined,
     };
   });

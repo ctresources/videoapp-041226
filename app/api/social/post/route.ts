@@ -117,6 +117,9 @@ export async function POST(req: NextRequest) {
         video_id: videoId,
         platform: "youtube",
         platform_post_id: result.videoId,
+        // Snapshotted, not joined: deleting the video nulls video_id, and a
+        // publish record with nothing naming what was posted is unreadable.
+        video_title: target.title || defaultTitle,
         caption: target.description ?? defaultYouTubeDesc,
         scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),

@@ -19,7 +19,7 @@ import { SUPPORTED_LANGUAGES } from "@/lib/utils/languages";
 export default function SettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [passwords, setPasswords] = useState({ newPass: "", confirm: "" });
+  const [passwords, setPasswords] = useState({ current: "", newPass: "", confirm: "" });
   const [savingPassword, setSavingPassword] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [prefs, setPrefs] = useState({ language: "en", city: "", state: "" });
@@ -90,15 +90,56 @@ export default function SettingsPage() {
       });
   }, [user]);
 
+  /**
+   * Changing the password requires proving you know the current one.
+   *
+   * updateUser() on a live session was the whole check, so anyone who found
+   * an unlocked machine — a shared desk, a borrowed laptop, a phone left
+   * open — could set a new password and lock the owner out of a paid account
+   * without ever knowing the old one.
+   *
+   * Supabase has a project-level `secure_password_change` setting for this,
+   * but that is a dashboard toggle rather than something the app can
+   * guarantee. Re-authenticating here works whatever that setting says: a
+   * sign-in with the current password succeeds or it does not, and a wrong
+   * one never reaches updateUser.
+   */
+  /**
+   * Someone who signed up with Google has no password yet, so there is no
+   * current one to prove. Asking for it would lock them out of ever setting
+   * one — the opposite of the problem being fixed.
+   */
+  const hasPassword = !!user?.identities?.some((i) => i.provider === "email");
+
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
+    if (hasPassword && !passwords.current) { toast.error("Enter your current password"); return; }
     if (passwords.newPass !== passwords.confirm) { toast.error("Passwords don't match"); return; }
     if (passwords.newPass.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (hasPassword && passwords.newPass === passwords.current) { toast.error("That's already your password"); return; }
+    if (!user?.email) { toast.error("Could not confirm your account — sign in again"); return; }
+
     setSavingPassword(true);
     const supabase = createClient();
+
+    // Verifying by signing in refreshes the very session this page is using,
+    // which is why it runs first and why a failure stops here: the account is
+    // left exactly as it was.
+    if (hasPassword) {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwords.current,
+      });
+      if (authError) {
+        toast.error("That current password isn't right");
+        setSavingPassword(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.updateUser({ password: passwords.newPass });
     if (error) toast.error(error.message);
-    else { toast.success("Password updated!"); setPasswords({ newPass: "", confirm: "" }); }
+    else { toast.success("Password updated!"); setPasswords({ current: "", newPass: "", confirm: "" }); }
     setSavingPassword(false);
   }
 
@@ -401,12 +442,28 @@ export default function SettingsPage() {
           <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
             <Lock size={18} className="text-slate-500" />
           </div>
-          <h3 className="font-semibold text-brand-text">Change Password</h3>
+          <h3 className="font-semibold text-brand-text">{hasPassword ? "Change Password" : "Set A Password"}</h3>
         </div>
         <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+          {hasPassword && (
+            <Input
+              label="Current Password"
+              type="password"
+              autoComplete="current-password"
+              value={passwords.current}
+              onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
+              placeholder="The password you sign in with"
+            />
+          )}
+          {!hasPassword && (
+            <p className="text-xs text-slate-500">
+              You sign in with Google. Setting a password here gives you a second way in — Google keeps working.
+            </p>
+          )}
           <Input
             label="New Password"
             type="password"
+            autoComplete="new-password"
             value={passwords.newPass}
             onChange={(e) => setPasswords((p) => ({ ...p, newPass: e.target.value }))}
             placeholder="Min. 8 characters"
@@ -419,7 +476,7 @@ export default function SettingsPage() {
             placeholder="Repeat new password"
           />
           <Button type="submit" loading={savingPassword} variant="outline" className="self-start">
-            Update Password
+            {hasPassword ? "Update Password" : "Set Password"}
           </Button>
         </form>
       </Card>
