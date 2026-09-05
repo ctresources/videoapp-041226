@@ -385,9 +385,15 @@ export default function CalendarPage() {
       {!loading && posts.length === 0 && (
         <div className="text-center py-12">
           <CalendarDays size={40} className="text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">No scheduled posts yet</p>
+          {/* This page reads the Blotato schedule, and nothing else writes to
+              it. Scheduling a YouTube video now genuinely holds the video —
+              but on YouTube, not here — so telling people to schedule
+              something "to see it appear here" promised a thing this page
+              cannot do. Said plainly until the two are joined up. */}
+          <p className="text-slate-500 font-medium">Nothing on the calendar</p>
           <p className="text-slate-400 text-sm mt-1">
-            Create a video and schedule it to see it appear here
+            Videos you schedule are held by YouTube and go live at the time you picked.
+            They don&apos;t show up here yet — check them in YouTube Studio.
           </p>
           <Link href="/create">
             <Button size="sm" className="mt-4 gap-2">

@@ -83,11 +83,16 @@ export async function POST(req: NextRequest) {
       const accessToken = await getValidAccessToken(user.id, admin);
       const target = nativeYouTubeTargets[0];
 
+      // Scheduling used to reach only as far as the log row: the upload went
+      // out immediately at whatever privacy was chosen, while the app said
+      // "Your video will be posted on Friday". YouTube holds a video only if
+      // it is uploaded private with a publishAt, which is what this passes.
       const result = await uploadVideoToYouTube(accessToken, {
         videoUrl: video.video_url,
         title: target.title || defaultTitle,
         description: target.description || defaultYouTubeDesc,
         privacy: target.privacy || "public",
+        publishAt: scheduledAt || null,
       });
 
       // Apply the project's generated thumbnail. Non-fatal by design: a
@@ -120,7 +125,10 @@ export async function POST(req: NextRequest) {
         caption: target.description || defaultYouTubeDesc,
         scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
-        post_status: "posted",
+        // A scheduled upload is on YouTube but not yet public, so it is not
+        // "posted" — it is waiting. Recording it as posted was the second
+        // half of the scheduling lie.
+        post_status: scheduledAt ? "scheduled" : "posted",
       });
       // The upload already happened. A bookkeeping failure must never be
       // reported as a failed post — that is the mistake this whole branch made.

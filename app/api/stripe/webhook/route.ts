@@ -19,6 +19,41 @@ function tierFromPriceId(
   return null;
 }
 
+/**
+ * Which user a subscription event belongs to.
+ *
+ * The metadata is the fast path, but it is only present on subscriptions
+ * created after checkout started setting `subscription_data.metadata` — every
+ * subscription that existed before that carries none, and reading it alone
+ * meant both the updated and deleted handlers returned without writing
+ * anything. Cancellations never took effect; portal plan changes never synced.
+ *
+ * The customer id is the fallback, and it is what repairs the existing ones.
+ * It is the same lookup invoice.payment_failed has always used.
+ */
+async function resolveSubscriptionUser(
+  admin: ReturnType<typeof createAdminClient>,
+  sub: Stripe.Subscription,
+): Promise<string | null> {
+  const fromMetadata = sub.metadata?.supabase_user_id;
+  if (fromMetadata) return fromMetadata;
+
+  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+  if (!customerId) return null;
+
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .limit(1);
+  const row = profiles?.[0] as { id: string } | undefined;
+  if (!row) {
+    console.error(`[stripe/webhook] no profile for customer ${customerId} on ${sub.id}`);
+    return null;
+  }
+  return row.id;
+}
+
 async function updateProfile(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
@@ -93,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
-      const userId = sub.metadata?.supabase_user_id;
+      const userId = await resolveSubscriptionUser(admin, sub);
       if (!userId) break;
 
       const item = sub.items.data[0];
@@ -120,7 +155,7 @@ export async function POST(req: NextRequest) {
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
-      const userId = sub.metadata?.supabase_user_id;
+      const userId = await resolveSubscriptionUser(admin, sub);
       if (!userId) break;
 
       // Plan allowances end with the subscription. Purchased add-ons are NOT

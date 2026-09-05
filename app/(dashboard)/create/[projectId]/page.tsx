@@ -1489,6 +1489,15 @@ export default function ProjectEditorPage() {
     if (!combined) return;
     try {
       sessionStorage.setItem("camera-record-script", combined);
+      // The unbranded choice travels with the script.
+      //
+      // It used to reach only the editor's own teleprompter overlay, which
+      // has no way of being opened — openTeleprompter() has no caller — so
+      // the checkbox governed nothing on the path this button actually takes.
+      // The recorder then started from its own default of false, and an agent
+      // who ticked "no logo, no name bar, no licence, no contact end card"
+      // recorded a fully branded take with the contact card burned in.
+      sessionStorage.setItem("camera-record-unbranded", tpUnbranded ? "1" : "0");
       // The photos go too. This crosses to the Camera tab because that is the
       // only recorder that composites them — the editor's own teleprompter
       // overlay cannot — and until now the script made the trip alone, so

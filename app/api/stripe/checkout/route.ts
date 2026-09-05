@@ -43,6 +43,23 @@ export async function GET(req: NextRequest) {
   // Only offer trial to users who have never had a subscription
   const isNewCustomer = !p?.stripe_subscription_id;
 
+  /**
+   * An existing subscriber belongs in the billing portal, not in checkout.
+   *
+   * This route creates a subscription; it has no idea one already exists. So
+   * "Upgrade" opened a second one on the same customer, and the webhook then
+   * overwrote stripe_subscription_id with the new id — orphaning the first,
+   * which kept billing forever with nothing in the app pointing at it. A
+   * Creator moving to Influencer paid both.
+   *
+   * The billing page now links existing subscribers straight to the portal.
+   * This is the backstop for a stale tab or a hand-typed URL, and it is the
+   * half that cannot be bypassed.
+   */
+  if (p?.stripe_subscription_id) {
+    return NextResponse.redirect(new URL("/api/stripe/portal", req.url));
+  }
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
@@ -52,9 +69,14 @@ export async function GET(req: NextRequest) {
     metadata: { supabase_user_id: user.id, plan },
     allow_promotion_codes: true,
     billing_address_collection: "auto",
-    ...(isNewCustomer && {
-      subscription_data: { trial_period_days: 7 },
-    }),
+    // The metadata has to be on the SUBSCRIPTION, not only on the session.
+    // customer.subscription.updated and .deleted read it off the subscription
+    // object, found none, and returned without writing anything — so no
+    // cancellation, and no portal plan change, ever reached the database.
+    subscription_data: {
+      metadata: { supabase_user_id: user.id, plan },
+      ...(isNewCustomer && { trial_period_days: 7 }),
+    },
   });
 
   return NextResponse.redirect(session.url!);

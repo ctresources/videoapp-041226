@@ -10,6 +10,48 @@ const MIN_PAYOUT_CENTS = 5000; // $50 minimum balance before a payout is sent
 type Admin = ReturnType<typeof createAdminClient>;
 
 /**
+ * Has this affiliate already been paid for these commissions?
+ *
+ * The retry rule — mark the payout failed, leave the commissions available,
+ * try again next run — assumes a failure means no money moved. It does not.
+ * A network timeout, or this function's 60-second budget expiring after
+ * Stripe accepted the transfer, both land in the failure path with the
+ * transfer already made. Next run then pays the same balance a second time,
+ * and the table shows one failed row beside one paid row, so the duplicate is
+ * invisible from inside the app.
+ *
+ * Stripe's own idempotency keys expire after 24 hours, which is no help at
+ * all on a monthly cron. So before re-paying an affiliate who has a failed
+ * payout on record, ask Stripe what actually reached their account. Every
+ * transfer carries its payout_id, so a failed row whose transfer exists is a
+ * bookkeeping failure, not a payment failure — and it is repaired rather than
+ * repeated.
+ */
+async function alreadyTransferred(
+  admin: Admin,
+  affiliateId: string,
+  connectAccountId: string,
+): Promise<{ payoutId: string; transferId: string } | null> {
+  const { data: failedRows } = await admin
+    .from("affiliate_payouts")
+    .select("id")
+    .eq("affiliate_id", affiliateId)
+    .eq("status", "failed");
+  const failedIds = new Set((failedRows ?? []).map((r) => (r as { id: string }).id));
+  if (failedIds.size === 0) return null;
+
+  // Bounded: only transfers to this affiliate's account, newest first. A
+  // failed payout older than this window has long since been reconciled by
+  // hand or written off.
+  const transfers = await stripe.transfers.list({ destination: connectAccountId, limit: 100 });
+  for (const t of transfers.data) {
+    const payoutId = t.metadata?.payout_id;
+    if (payoutId && failedIds.has(payoutId)) return { payoutId, transferId: t.id };
+  }
+  return null;
+}
+
+/**
  * Pays one affiliate: records a pending payout row, transfers the summed
  * available commissions to their connected account, then marks the payout and
  * its commissions paid. On a Stripe failure the payout row is marked failed and
@@ -23,6 +65,32 @@ async function payoutAffiliate(
   commissionIds: string[],
   totalCents: number,
 ): Promise<{ ok: boolean; error?: string }> {
+  // Repair before paying. If a previous run's "failure" actually sent the
+  // money, mark that payout paid, settle its commissions, and send nothing.
+  try {
+    const found = await alreadyTransferred(admin, affiliateId, connectAccountId);
+    if (found) {
+      const paidAt = new Date().toISOString();
+      await admin
+        .from("affiliate_payouts")
+        .update({ status: "paid", stripe_transfer_id: found.transferId, paid_at: paidAt, failure_reason: null })
+        .eq("id", found.payoutId);
+      await admin
+        .from("affiliate_commissions")
+        .update({ status: "paid", paid_at: paidAt, payout_id: found.payoutId })
+        .in("id", commissionIds);
+      console.warn(
+        `[affiliate-payouts] payout ${found.payoutId} was recorded failed but transfer ${found.transferId} exists — reconciled, no new transfer sent`,
+      );
+      return { ok: true };
+    }
+  } catch (err) {
+    // Reconciliation itself failing must not send money on a guess.
+    const msg = err instanceof Error ? err.message : "reconciliation failed";
+    console.error(`[affiliate-payouts] could not reconcile ${affiliateId}, skipping this run:`, msg);
+    return { ok: false, error: `reconciliation failed: ${msg}` };
+  }
+
   const { data: payoutRow, error: insertErr } = await admin
     .from("affiliate_payouts")
     .insert({ affiliate_id: affiliateId, amount_cents: totalCents, status: "pending" })
@@ -32,12 +100,17 @@ async function payoutAffiliate(
   const payoutId = (payoutRow as { id: string }).id;
 
   try {
-    const transfer = await stripe.transfers.create({
-      amount: totalCents,
-      currency: "usd",
-      destination: connectAccountId,
-      metadata: { affiliate_id: affiliateId, payout_id: payoutId },
-    });
+    const transfer = await stripe.transfers.create(
+      {
+        amount: totalCents,
+        currency: "usd",
+        destination: connectAccountId,
+        metadata: { affiliate_id: affiliateId, payout_id: payoutId },
+      },
+      // Covers the short window the reconciliation above cannot: a retry
+      // inside 24 hours returns the original transfer instead of a second one.
+      { idempotencyKey: `affiliate-payout-${payoutId}` },
+    );
     const paidAt = new Date().toISOString();
     await admin
       .from("affiliate_payouts")

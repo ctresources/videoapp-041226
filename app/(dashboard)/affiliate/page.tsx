@@ -30,11 +30,39 @@ export default function AffiliatePage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch("/api/affiliate/me")
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .catch(() => toast.error("Couldn't load your affiliate status"))
-      .finally(() => setLoading(false));
+    /**
+     * A ?claim= token from the approval email joins this account to the
+     * affiliate application before the status is read — otherwise the page
+     * would load "you haven't applied", and the link would look broken at the
+     * moment it worked.
+     *
+     * The token leaves the URL either way, so a shared screenshot or a
+     * copied address cannot hand it to someone else.
+     */
+    async function load() {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const claim = p.get("claim");
+        if (claim) {
+          window.history.replaceState({}, "", window.location.pathname);
+          const res = await fetch("/api/affiliate/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: claim }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (res.ok) toast.success("Your affiliate account is linked.");
+          else toast.error(body.error || "That link is no longer valid.");
+        }
+        const d = await fetch("/api/affiliate/me").then((r) => r.json());
+        setData(d);
+      } catch {
+        toast.error("Couldn't load your affiliate status");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
   // Reflect the ?connect=done / ?error= redirect from the Stripe Connect flow.

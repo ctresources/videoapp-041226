@@ -212,8 +212,16 @@ export async function uploadVideoToYouTube(
     description: string;
     privacy: "public" | "unlisted" | "private";
     tags?: string[];
+    /**
+     * ISO timestamp to hold the video until. YouTube requires the video be
+     * uploaded private for this to mean anything — a scheduled public upload
+     * is just a public upload — so the privacy above is overridden when this
+     * is set, and YouTube flips it public itself at the appointed time.
+     */
+    publishAt?: string | null;
   },
 ): Promise<{ videoId: string; youtubeUrl: string }> {
+  const scheduled = !!params.publishAt;
   // Step 1 — initiate resumable upload session
   const initRes = await fetch(
     `${YOUTUBE_UPLOAD_API}/videos?uploadType=resumable&part=snippet,status`,
@@ -227,12 +235,18 @@ export async function uploadVideoToYouTube(
       body: JSON.stringify({
         snippet: {
           title: params.title.slice(0, 100),
-          description: params.description,
+          // YouTube rejects the whole upload over 5,000 characters. The
+          // callers already trim to 4,900, but the Publish window appends a
+          // hashtag line afterwards and its textarea has no limit, so the
+          // last word on the length belongs here, next to the API that
+          // enforces it.
+          description: params.description.slice(0, 5000),
           tags: params.tags || [],
           categoryId: "22", // People & Blogs
         },
         status: {
-          privacyStatus: params.privacy,
+          privacyStatus: scheduled ? "private" : params.privacy,
+          ...(scheduled && { publishAt: params.publishAt }),
           selfDeclaredMadeForKids: false,
         },
       }),

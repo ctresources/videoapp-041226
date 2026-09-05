@@ -2,7 +2,11 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/beta", "/auth/callback", "/forgot-password", "/reset-password", "/privacy", "/terms", "/affiliates/apply"];
+// "/auth/reset-password" is the route handler the reset EMAIL links to, and it
+// is not the same path as "/reset-password", the page. Only the page was
+// listed, so every reset link redirected the one person who cannot sign in —
+// the one holding it — to /login, with no error and no way through.
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/beta", "/auth/callback", "/auth/reset-password", "/forgot-password", "/reset-password", "/privacy", "/terms", "/affiliates/apply"];
 const AUTH_ROUTES = ["/login", "/register", "/", "/beta"];
 
 // 60-day last-click attribution window for affiliate referrals.

@@ -406,7 +406,12 @@ export default async function BillingPage({
                   </Button>
                 </a>
               ) : (
-                <a href={`/api/stripe/checkout?plan=${plan.key}`}>
+                /* An existing subscriber goes to the billing portal, where
+                   Stripe changes the plan they already have and prorates it.
+                   Sending them to checkout opened a SECOND subscription on the
+                   same customer and left the first one billing invisibly — an
+                   upgrade cost both prices, every month, forever. */
+                <a href={hasSubscription ? "/api/stripe/portal" : `/api/stripe/checkout?plan=${plan.key}`}>
                   <Button
                     variant={plan.highlighted ? "primary" : "outline"}
                     size="sm"

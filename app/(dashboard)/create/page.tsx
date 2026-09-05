@@ -153,6 +153,10 @@ function CreatePageInner() {
   // it" side, so that tile has to put you back where you were rather than
   // always resetting to the first one.
   const [lastSparkTab, setLastSparkTab] = useState<InputMode>("script");
+  // The MLS unbranded cut, handed over from the editor's checkbox. Seeds the
+  // recorder and is sent to the script writers, which are told to leave the
+  // spoken call to action out — the half of "unbranded" that is not overlays.
+  const [cameraUnbranded, setCameraUnbranded] = useState(false);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -339,6 +343,16 @@ function CreatePageInner() {
       if (handoff) {
         setCameraGeneratedScript(handoff);
         sessionStorage.removeItem("camera-record-script");
+        // A script that arrived already written is not one we are about to
+        // write. Left on "speak", the tab lit up "AI writes it · Say a topic"
+        // and put a live voice-brief mic above a full teleprompter.
+        setCameraSource("own");
+      }
+      // The MLS unbranded choice, made in the editor and read here.
+      const unbrandedHandoff = sessionStorage.getItem("camera-record-unbranded");
+      if (unbrandedHandoff !== null) {
+        setCameraUnbranded(unbrandedHandoff === "1");
+        sessionStorage.removeItem("camera-record-unbranded");
       }
       /**
        * The editor's photos, handed over with the script.
@@ -807,6 +821,11 @@ function CreatePageInner() {
           length: cameraScriptLength,
           city: city || undefined,
           state: state || undefined,
+          // Half of "unbranded" is the spoken call to action, and only the
+          // script writer can leave that out. The recorder sent this; these
+          // two page-level routes did not, so a ticked box suppressed the
+          // overlays and still produced a script ending in "give me a call".
+          unbranded: cameraUnbranded,
         }),
       });
       const data = await safeJson(res);
@@ -832,6 +851,7 @@ function CreatePageInner() {
           length: cameraScriptLength,
           city: locCity.trim() || undefined,
           state: locState.trim() || undefined,
+          unbranded: cameraUnbranded,
         }),
       });
       const data = await safeJson(res);
@@ -2302,6 +2322,7 @@ function CreatePageInner() {
               city={locCity || undefined}
               state={locState || undefined}
               initialScript={cameraGeneratedScript || undefined}
+              initialUnbranded={cameraUnbranded}
               photos={cameraPhotos.map((p) => p.url)}
             />
             </>)}

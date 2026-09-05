@@ -70,8 +70,14 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, photos = [], onPhaseChange }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, photos = [], onPhaseChange }: {
   city?: string; state?: string; initialScript?: string;
+  /**
+   * Start with the MLS unbranded cut already on, because the editor's
+   * checkbox said so. Without it that choice died at the tab boundary and the
+   * recorder began from its own default of off.
+   */
+  initialUnbranded?: boolean;
   /** Photo URLs used as b-roll behind the speaker. Must be CORS-clean — see
    *  /api/photos/rehost — or they are silently dropped at load. */
   photos?: string[];
@@ -121,7 +127,13 @@ export function CameraRecorder({ city, state, initialScript, photos = [], onPhas
    * logo, the name bar, the licence and the contact end card — and the spoken
    * call to action, which the script generator is told to leave out.
    */
-  const [unbranded, setUnbranded] = useState(false);
+  const [unbranded, setUnbranded] = useState(initialUnbranded);
+
+  // The editor's checkbox can arrive after this component mounts, because the
+  // page reads it out of sessionStorage in an effect.
+  useEffect(() => {
+    if (initialUnbranded) setUnbranded(true);
+  }, [initialUnbranded]);
   const [liveCaptions, setLiveCaptions] = useState(true);
   // Photos fill the frame while the speaker stays on in a corner. On by
   // default when photos exist — that's why they were uploaded.

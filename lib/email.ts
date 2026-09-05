@@ -142,14 +142,23 @@ export async function notifyAffiliateApproved({
   email,
   refCode,
   appUrl,
+  claimToken,
 }: {
   name: string;
   email: string;
   refCode: string;
   appUrl: string;
+  /**
+   * Joins this application to whichever account redeems it. Sent here because
+   * receiving mail at the address is the proof of control that signing up with
+   * it is not — accounts are auto-confirmed. Null when the application is
+   * already linked to an account.
+   */
+  claimToken?: string | null;
 }) {
   if (!RESEND_API_KEY) return;
   const refLink = `${appUrl}/?ref=${refCode}`;
+  const claimLink = claimToken ? `${appUrl}/affiliate?claim=${claimToken}` : null;
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -164,7 +173,12 @@ export async function notifyAffiliateApproved({
         <p>Hi ${name},</p>
         <p>You're approved as a SparkReels affiliate! Here's your unique referral link — share it anywhere, and you'll earn commission on every new customer who subscribes through it:</p>
         <p><a href="${refLink}"><strong>${refLink}</strong></a></p>
-        <p>To get paid, sign in and open the <strong>Affiliate Program</strong> page, then connect your bank with Stripe. Payouts are sent monthly.</p>
+        ${claimLink
+          ? `<p><strong>First, link this to your account.</strong> Open the link below while signed in to SparkReels — it connects your affiliate account and your earnings to your login. It only works once, and it expires in 90 days.</p>
+             <p><a href="${claimLink}">${claimLink}</a></p>
+             <p>Don't have a SparkReels account yet? Create one first, then come back to this link.</p>
+             <p>To get paid, open the <strong>Affiliate Program</strong> page and connect your bank with Stripe. Payouts are sent monthly.</p>`
+          : `<p>To get paid, sign in and open the <strong>Affiliate Program</strong> page, then connect your bank with Stripe. Payouts are sent monthly.</p>`}
         <p>Thanks for helping more agents discover SparkReels.</p>
       `,
     }),

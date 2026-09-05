@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { notifyAffiliateApproved } from "@/lib/email";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -88,6 +89,13 @@ export async function PATCH(req: NextRequest) {
       newlyApproved = true;
       // Issue a ref_code on first approval if one doesn't exist yet.
       if (!affiliate.ref_code) update.ref_code = await generateRefCode(admin);
+      // And a claim token, unless this application is already joined to an
+      // account. Emailing it is what proves the applicant controls the
+      // address — the affiliate row is no longer linked by email match.
+      if (!affiliate.user_id) {
+        update.claim_token = randomBytes(24).toString("hex");
+        update.claim_token_expires_at = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      }
     }
   }
 
@@ -106,6 +114,9 @@ export async function PATCH(req: NextRequest) {
       email: updated.email,
       refCode: updated.ref_code,
       appUrl,
+      // Absent when the application was already joined to an account, in
+      // which case the email correctly just says to sign in.
+      claimToken: (updated as { claim_token?: string | null }).claim_token ?? null,
     });
   }
 
