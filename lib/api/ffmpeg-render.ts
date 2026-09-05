@@ -1037,9 +1037,32 @@ async function buildSlideshowAndRun(
    * confined to the four seconds the title is up. Everything after that is the
    * photograph as it was taken.
    */
+  /**
+   * Both washes are a share of the reel, not four fixed seconds.
+   *
+   * The title scrim ran 0–4s and the closing card had a 2.5s floor. That is
+   * fine over thirty seconds and ruinous over seven: four seconds dimmed at
+   * the top plus two and a half at the end left half a second of a 7-second
+   * reel showing the photographs at full strength. It read as a grey video
+   * with no colour in it, which is precisely what it was.
+   *
+   * Capped so the two together never take more than 60% of the reel, however
+   * short it is.
+   */
+  const clampDim = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  let titleDur = clampDim(audioDuration * 0.25, 1.2, 4);
+  let ctaDurPlanned = clampDim(audioDuration * 0.22, 1.5, 4);
+  const dimBudget = audioDuration * 0.6;
+  if (titleDur + ctaDurPlanned > dimBudget) {
+    const shrink = dimBudget / (titleDur + ctaDurPlanned);
+    titleDur *= shrink;
+    ctaDurPlanned *= shrink;
+  }
+  const titleTo = titleDur.toFixed(3);
+
   filterParts.push(
     `[${slideshowLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.35:t=fill:` +
-    `enable=between(t\\,0\\,4)[bgdark]`,
+    `enable=between(t\\,0\\,${titleTo})[bgdark]`,
   );
 
   // ── Title card (first 4 seconds) ─────────────────────────────────────────
@@ -1074,7 +1097,7 @@ async function buildSlideshowAndRun(
         `[${titleLabel}]drawtext=text='${escapeDrawtext(line)}':` +
         `${titleFontAttr}fontsize=${titleSize}:fontcolor=white:` +
         `borderw=2:bordercolor=black:x=(w-text_w)/2:y=${topY + i * lineStep}:` +
-        `enable='between(t\\,0\\,4)'[${out}]`,
+        `enable='between(t\\,0\\,${titleTo})'[${out}]`,
       );
       titleLabel = out;
     });
@@ -1145,7 +1168,9 @@ async function buildSlideshowAndRun(
   if (endLines.length > 0 && titleFontAttr) {
     // Long enough to read a phone number aloud, short enough not to be the
     // video — and never more than a third of a very short reel.
-    const ctaDur = Math.min(4, Math.max(2.5, audioDuration * 0.3));
+    // Shares the dim budget with the title scrim — see titleDur. Its own 2.5s
+    // floor was 36% of a 7-second reel, on top of the 4s wash at the other end.
+    const ctaDur = ctaDurPlanned;
     const from = Math.max(0, audioDuration - ctaDur).toFixed(3);
     const to = audioDuration.toFixed(3);
     const when = `enable='between(t\\,${from}\\,${to})'`;
