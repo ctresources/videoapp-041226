@@ -176,11 +176,16 @@ function fitTitleLines(
     }
   }
 
+  // Nothing fitted even at the smallest size, which means one unbroken word
+  // longer than the line. Hard-split it rather than returning a line that will
+  // run off the frame — the case this whole function exists to prevent.
   const maxChars = Math.max(8, Math.floor(maxWidth / (MIN_SIZE * 0.56)));
-  return {
-    lines: words.join(" ").match(new RegExp(`.{1,${maxChars}}(\s|$)`, "g"))?.map((l) => l.trim()).slice(0, maxLines) ?? [title],
-    size: MIN_SIZE,
-  };
+  const flat = words.join(" ");
+  const hardLines: string[] = [];
+  for (let i = 0; i < flat.length && hardLines.length < maxLines; i += maxChars) {
+    hardLines.push(flat.slice(i, i + maxChars).trim());
+  }
+  return { lines: hardLines.length ? hardLines : [title], size: MIN_SIZE };
 }
 
 /** Escape text for FFmpeg drawtext filter (colons, backslashes, single quotes). */
@@ -902,15 +907,31 @@ async function buildSlideshowAndRun(
     : false;
   const panelInputIdx = hasPanel ? nextInputIdx++ : -1;
 
-  // ── Ken Burns (zoompan) per photo ────────────────────────────────────────
-  // Scale each photo to 2× target first so zoompan has room to crop
+  /**
+   * ── Ken Burns (zoompan) per photo ────────────────────────────────────────
+   *
+   * The working canvas is 1.4× the output, not 2×, and that is the difference
+   * between a 60-second twelve-photo reel finishing and timing out.
+   *
+   * zoompan does its work at INPUT resolution, so a 2× canvas meant every
+   * frame of every photo was composed at 2160×3840 — 8.3 megapixels, thirty
+   * times a second — before being scaled back down to 1080×1920. The zoom only
+   * ever reaches 1.15, so anything above about 1.2× is headroom that is
+   * rendered and then thrown away. 1.4× keeps a comfortable margin over the
+   * crop and cuts the pixels pushed per frame by roughly half.
+   *
+   * Measured against the 504 this replaced: 12 photos at 60s exceeded the
+   * 300-second function ceiling; 10 photos at 30s took about three minutes.
+   */
+  const kbW = Math.round((width * 1.4) / 2) * 2;
+  const kbH = Math.round((height * 1.4) / 2) * 2;
   for (let i = 0; i < N; i++) {
     const zoomExpr = i % 2 === 0
       ? `'min(zoom+0.0004,1.15)'`                                       // zoom in
       : `'if(lte(zoom,1.0),1.15,max(1.0,zoom-0.0004))'`;               // zoom out
     filterParts.push(
-      `[${i}:v]scale=${width * 2}:${height * 2}:force_original_aspect_ratio=increase,` +
-      `crop=${width * 2}:${height * 2},` +
+      `[${i}:v]scale=${kbW}:${kbH}:force_original_aspect_ratio=increase,` +
+      `crop=${kbW}:${kbH},` +
       `zoompan=z=${zoomExpr}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
       `d=${frames}:s=${width}x${height}:fps=30[photo${i}]`,
     );
@@ -1244,7 +1265,10 @@ async function buildSlideshowAndRun(
         `-map [${currentLabel}]`,
         `-map ${audioMapFlag}`,
         "-c:v libx264",
-        "-preset fast",
+        // veryfast, not fast: a slideshow is mostly slow pans over still
+        // images, which x264 handles cheaply at any preset, and the time
+        // saved is the margin between finishing and a 300-second timeout.
+        "-preset veryfast",
         "-crf 22",
         "-pix_fmt yuv420p",
         "-c:a aac",

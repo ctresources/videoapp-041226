@@ -226,8 +226,28 @@ export function PhotoReelForm({
           state,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not build that reel");
+      /**
+       * A timeout does not answer in JSON.
+       *
+       * When the render runs past the function's limit the platform replies
+       * with its own plain-text page, and res.json() threw on the first
+       * character of it — so the user was shown "Unexpected token 'A', "An
+       * error o"... is not valid JSON" instead of what happened. A 504 has a
+       * real explanation and an obvious next step, and both belong on screen.
+       */
+      const raw = await res.text();
+      let data: { videoId?: string; error?: string } = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { /* not JSON — handled below */ }
+
+      if (!res.ok) {
+        const timedOut = res.status === 504 || /timed out/i.test(raw);
+        throw new Error(
+          data.error
+            || (timedOut
+              ? "That reel took too long to build. Try fewer photos, or a shorter length — a 60-second reel with twelve photos is the slowest thing here."
+              : `Could not build that reel (error ${res.status}).`),
+        );
+      }
       setSavedId(data.videoId as string);
       toast.success("Reel is ready. It's in My Videos.");
     } catch (err) {
