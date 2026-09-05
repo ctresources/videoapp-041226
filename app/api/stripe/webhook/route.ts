@@ -78,6 +78,34 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
+  /**
+   * Claim this event, or recognise it as one already applied.
+   *
+   * Stripe delivers at least once — on any non-2xx, on a timeout, and
+   * sometimes for no reason at all — and every handler below is a
+   * read-then-write. A redelivered video-pack purchase read the purchased
+   * balance a second time and added the videos again, free.
+   *
+   * The insert is the lock: the event id is the primary key, so the second
+   * delivery collides and returns here without touching a balance. 200, not
+   * an error — a duplicate is a success from Stripe's point of view, and a
+   * non-2xx would only earn another retry.
+   */
+  const { error: claimErr } = await admin
+    .from("stripe_webhook_events")
+    .insert({ id: event.id, type: event.type });
+  if (claimErr) {
+    // 23505 is the unique violation: seen it, applied it, done.
+    if (claimErr.code === "23505") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    // Any other failure means the guard is not working, and processing
+    // without it risks double-crediting. Refusing tells Stripe to retry.
+    console.error("[stripe/webhook] could not record event, refusing to process:", claimErr.message);
+    return NextResponse.json({ error: "Could not record event" }, { status: 500 });
+  }
+
+  try {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -263,6 +291,21 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+  }
+  } catch (err) {
+    /**
+     * The claim is released when handling fails.
+     *
+     * Otherwise the guard would turn a transient failure into a permanent
+     * one: the event would be marked seen, Stripe's retry would be answered
+     * "duplicate", and a real payment would never be applied. Deleting the
+     * row restores at-least-once for the case that actually needs it, while
+     * a successful run keeps its row and stays protected.
+     */
+    await admin.from("stripe_webhook_events").delete().eq("id", event.id);
+    const msg = err instanceof Error ? err.message : "webhook handler failed";
+    console.error(`[stripe/webhook] ${event.type} (${event.id}) failed, released for retry:`, msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
