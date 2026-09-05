@@ -178,10 +178,20 @@ export async function POST(req: NextRequest) {
       [body.city, body.state].filter(Boolean).join(", "),
     ].filter(Boolean).join("\n").trim();
 
+    /**
+     * The title is material too, and leaving it out of this check was a bug.
+     *
+     * A music-only reel has no script, no transcript, and often no captions
+     * and no address — so seoSource was empty and generation was skipped, on
+     * exactly the reels that need the post copy most. The title alone ("Welcome
+     * to 24 Shagbark Ct E, Harleysville, PA") is plenty to write from, and it
+     * is already being passed as the subject; it just was not being counted.
+     */
+    const titleIsReal = (body.title ?? "").trim().length > 3;
     const seoPromise: Promise<Awaited<ReturnType<typeof generateSeoData>> | null> =
-      seoSource.length > 20
+      seoSource.length > 20 || titleIsReal
         ? Promise.race([
-            generateSeoData(title, seoSource, [body.city, body.state].filter(Boolean) as string[]),
+            generateSeoData(title, seoSource || title, [body.city, body.state].filter(Boolean) as string[]),
             new Promise<null>((resolve) => setTimeout(() => resolve(null), 30_000)),
           ]).catch((e) => {
             console.warn("[photo-reel] post copy failed (non-fatal):", e);

@@ -59,6 +59,12 @@ export async function GET(req: NextRequest) {
     seo.youtube_description ||
     ai.description ||
     [ai.hook, ai.script].filter(Boolean).join("\n\n").slice(0, 4900) ||
+    // Last resort, and it is what the photo reels already made need: those
+    // have no seo_data and no ai_script at all, so every fallback above is
+    // empty and the box opened blank with nothing to publish. The title is
+    // always there, and a description is editable — a starting point beats
+    // an empty field.
+    proj?.title ||
     "";
 
   /**

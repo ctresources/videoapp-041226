@@ -622,8 +622,8 @@ export function PhotoReelForm({
 
       {rendering && (
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-          Rendering on our server, so you can leave this page. A 30-second reel takes about a
-          minute and a half, a 60-second one around three.
+          Rendering on our server, so you can leave this page. Most reels take three to five
+          minutes — the longer ones, and the ones with more photos, take the longer end of that.
         </p>
       )}
 
