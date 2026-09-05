@@ -25,7 +25,6 @@ interface ScheduledPost {
   caption?: string;
   videoTitle?: string;
   videoUrl?: string;
-  blotato_post_id?: string;
 }
 
 // ─── Platform helpers ─────────────────────────────────────────────────────────
@@ -82,14 +81,20 @@ function PostDrawer({ post, onClose, onCancel }: {
       const res = await fetch("/api/social/schedule", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: post.blotato_post_id ?? post.id }),
+        body: JSON.stringify({ postId: post.id }),
       });
-      if (!res.ok) throw new Error("Failed to cancel");
-      toast.success("Post cancelled");
+      // Cancelling deletes the private video YouTube is holding. If that
+      // fails the post is NOT cancelled — it still goes public on schedule —
+      // so the real reason has to reach the user rather than a generic line.
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to cancel");
+      }
+      toast.success("Post cancelled and removed from YouTube");
       onCancel(post.id);
       onClose();
-    } catch {
-      toast.error("Could not cancel post");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not cancel post");
     } finally {
       setCancelling(false);
     }
@@ -386,8 +391,7 @@ export default function CalendarPage() {
         <div className="text-center py-12">
           <CalendarDays size={40} className="text-slate-200 mx-auto mb-3" />
           {/* Scheduled uploads land here now — the endpoint reads our own
-              social_posts rows, not only the Blotato schedule nobody has a
-              key for. So the instruction is true again. */}
+              social_posts rows. So the instruction is true again. */}
           <p className="text-slate-500 font-medium">No scheduled posts yet</p>
           <p className="text-slate-400 text-sm mt-1">
             Publish a video with <strong>Schedule</strong> instead of Post now, and it will appear here

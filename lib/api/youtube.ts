@@ -175,6 +175,25 @@ export async function getValidAccessToken(
 }
 
 /**
+ * Delete a video from the connected channel.
+ *
+ * Used to cancel a scheduled post: a scheduled upload is already on YouTube
+ * as a private video holding a publishAt, so forgetting our own row would
+ * leave it to go public on time with nothing in the app aware of it.
+ *
+ * A 404 counts as success — the video is already gone, which is the outcome
+ * the caller wanted.
+ */
+export async function deleteYouTubeVideo(accessToken: string, youtubeVideoId: string): Promise<void> {
+  const res = await fetch(`${YOUTUBE_API}/videos?id=${encodeURIComponent(youtubeVideoId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.ok || res.status === 404) return;
+  throw new Error(`YouTube delete failed (${res.status}): ${await res.text()}`);
+}
+
+/**
  * Set a custom thumbnail on an uploaded YouTube video. Requires the channel
  * to be phone-verified for custom thumbnails — callers should treat failures
  * as non-fatal and fall back to manual upload in YouTube Studio.

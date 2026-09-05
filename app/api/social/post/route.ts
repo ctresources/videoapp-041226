@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { uploadMediaFromUrl, createPost, type PostTarget, type BlotatoPlatform } from "@/lib/api/blotato";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,12 +7,12 @@ export const maxDuration = 300;
 
 interface PostRequestTarget {
   accountId: string;
-  platform: BlotatoPlatform;
+  platform: string;
   caption?: string;
   title?: string;
   description?: string;
   privacy?: "public" | "unlisted" | "private";
-  source?: "native" | "blotato";
+  source?: "native";
 }
 
 export async function POST(req: NextRequest) {
@@ -34,25 +33,18 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  const [{ data: videoData }, { data: profileData }] = await Promise.all([
-    admin.from("generated_videos")
-      .select("*, projects(title, ai_script, seo_data, thumbnail_url)")
-      .eq("id", videoId)
-      .eq("user_id", user.id)
-      .single(),
-    admin.from("profiles")
-      .select("blotato_api_key")
-      .eq("id", user.id)
-      .single(),
-  ]);
+  const { data: videoData } = await admin
+    .from("generated_videos")
+    .select("*, projects(title, ai_script, seo_data, thumbnail_url)")
+    .eq("id", videoId)
+    .eq("user_id", user.id)
+    .single();
 
   const video = videoData as {
     video_url: string | null;
     project_id: string | null;
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null } | null;
   } | null;
-
-  const blotatoKey = (profileData as { blotato_api_key: string | null } | null)?.blotato_api_key;
 
   if (!video?.video_url) return NextResponse.json({ error: "Video not ready" }, { status: 404 });
 
@@ -144,59 +136,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Blotato targets (everything else) ─────────────────────────────────────
-  const blotatoTargets = targets.filter(
+  /**
+   * Anything that is not native YouTube.
+   *
+   * These used to go through Blotato, which no account has ever been
+   * configured with — and that branch is also why "Published to 3 platforms"
+   * overcounted, since it returned ONE result covering every target it was
+   * given. Upload-Post replaces it; until that lands, a request naming a
+   * platform we cannot post to is refused rather than silently dropped.
+   */
+  const unsupportedTargets = targets.filter(
     (t) => t.accountId !== "native_youtube" && t.source !== "native",
   );
 
-  if (blotatoTargets.length > 0) {
-    if (!blotatoKey) {
-      return NextResponse.json(
-        { error: "Blotato API key not connected. Go to Settings → Social Accounts.", results },
-        { status: 400 },
-      );
-    }
-
-    try {
-      const media = await uploadMediaFromUrl(blotatoKey, video.video_url, "video");
-
-      const postTargets: PostTarget[] = blotatoTargets.map((t) => ({
-        accountId: t.accountId,
-        platform: t.platform,
-        title: t.title || defaultTitle,
-        description: t.description || defaultYouTubeDesc,
-        privacy: t.privacy || "public",
-        notifySubscribers: true,
-        caption: t.caption || defaultCaption,
-        mediaType: "reel" as const,
-      }));
-
-      const result = await createPost(blotatoKey, {
-        mediaId: media.id,
-        targets: postTargets,
-        scheduledAt,
-      });
-
-      await admin.from("social_posts").insert({
-        user_id: user.id,
-        video_id: videoId,
-        platform: blotatoTargets.map((t) => t.platform).join(","),
-        platform_post_id: result.id,
-        caption: defaultCaption,
-        scheduled_at: scheduledAt || null,
-        posted_at: scheduledAt ? null : new Date().toISOString(),
-        post_status: scheduledAt ? "scheduled" : "posted",
-      });
-
-      results.push({
-        platform: blotatoTargets.map((t) => t.platform).join(","),
-        status: scheduledAt ? "scheduled" : "published",
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Blotato post failed";
-      console.error("[social/post] Blotato post failed:", msg);
-      results.push({ platform: "blotato", status: "failed", error: msg });
-    }
+  for (const t of unsupportedTargets) {
+    results.push({
+      platform: t.platform,
+      status: "failed",
+      error: "Only YouTube can be published to right now. More platforms are coming.",
+    });
   }
 
   // Update project status

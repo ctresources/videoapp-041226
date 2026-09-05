@@ -22,7 +22,7 @@ interface SocialAccount {
   /** The real UC… channel id — native YouTube only. */
   channelId?: string | null;
   avatarUrl?: string;
-  source?: "native" | "blotato";
+  source?: "native";
 }
 
 const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {

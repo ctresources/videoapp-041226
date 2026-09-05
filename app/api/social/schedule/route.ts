@@ -1,41 +1,34 @@
+/**
+ * The Content Calendar's data — videos scheduled to publish, and cancelling one.
+ *
+ * This used to read the Blotato schedule and nothing else, and returned an
+ * empty list to anyone without a Blotato key — which was everyone, so the
+ * calendar was permanently blank while telling people to schedule a video to
+ * fill it. Blotato is gone; these are our own social_posts rows.
+ */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listScheduledPosts, cancelScheduledPost } from "@/lib/api/blotato";
+import { getValidAccessToken, deleteYouTubeVideo } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET - list scheduled posts from Blotato
+export const dynamic = "force-dynamic";
+
+// GET — everything waiting to go out.
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("blotato_api_key")
-    .eq("id", user.id)
-    .single();
-
-  /**
-   * Scheduled YouTube uploads, from our own table.
-   *
-   * This endpoint used to read Blotato and nothing else, and returned an
-   * empty list without an API key — which is every user, since YouTube is
-   * the only platform anyone can connect. So the Content Calendar was
-   * permanently blank while telling people to schedule a video to fill it.
-   *
-   * A scheduled upload now records post_status "scheduled" with the time
-   * YouTube will publish it, so there is finally something true to show.
-   */
   const { data: rows } = await admin
     .from("social_posts")
-    .select("id, platform, scheduled_at, post_status, caption, platform_post_id, video_id")
+    .select("id, platform, scheduled_at, post_status, caption, platform_post_id")
     .eq("user_id", user.id)
     .eq("post_status", "scheduled")
     .not("scheduled_at", "is", null)
     .order("scheduled_at", { ascending: true });
 
-  const ownPosts = (rows ?? []).map((r) => {
+  const posts = (rows ?? []).map((r) => {
     const row = r as {
       id: string; platform: string; scheduled_at: string; post_status: string;
       caption: string | null; platform_post_id: string | null;
@@ -50,37 +43,53 @@ export async function GET() {
     };
   });
 
-  const apiKey = (profile as { blotato_api_key: string | null } | null)?.blotato_api_key;
-  if (!apiKey) return NextResponse.json({ posts: ownPosts });
-
-  try {
-    const posts = await listScheduledPosts(apiKey);
-    return NextResponse.json({ posts: [...ownPosts, ...(Array.isArray(posts) ? posts : [])] });
-  } catch {
-    return NextResponse.json({ posts: ownPosts });
-  }
+  return NextResponse.json({ posts });
 }
 
-// DELETE - cancel a scheduled post via Blotato
+/**
+ * DELETE — cancel a scheduled post.
+ *
+ * A scheduled upload already sits on YouTube as a private video waiting for
+ * its publishAt, so cancelling means deleting it there, not just forgetting
+ * the row. Removing only the row would leave a video that still goes public
+ * at the appointed time with nothing in the app aware of it.
+ */
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const scheduleId = body.scheduleId ?? body.postId;
   if (!scheduleId) return NextResponse.json({ error: "scheduleId required" }, { status: 400 });
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("blotato_api_key")
-    .eq("id", user.id)
+  const { data: row } = await admin
+    .from("social_posts")
+    .select("id, platform, platform_post_id, post_status")
+    .eq("id", scheduleId)
+    .eq("user_id", user.id)
     .single();
 
-  const apiKey = (profile as { blotato_api_key: string | null } | null)?.blotato_api_key;
-  if (!apiKey) return NextResponse.json({ error: "Blotato not connected" }, { status: 400 });
+  const post = row as { id: string; platform: string; platform_post_id: string | null; post_status: string } | null;
+  if (!post) return NextResponse.json({ error: "Scheduled post not found" }, { status: 404 });
+  if (post.post_status !== "scheduled") {
+    return NextResponse.json({ error: "That post has already gone out." }, { status: 400 });
+  }
 
-  await cancelScheduledPost(apiKey, scheduleId);
+  if (post.platform === "youtube" && post.platform_post_id) {
+    try {
+      const accessToken = await getValidAccessToken(user.id, admin);
+      await deleteYouTubeVideo(accessToken, post.platform_post_id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not remove the video from YouTube";
+      console.error("[social/schedule] YouTube delete failed:", msg);
+      // Reporting success here would tell the user it is cancelled while the
+      // video still publishes on schedule.
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+  }
+
+  await admin.from("social_posts").delete().eq("id", post.id);
   return NextResponse.json({ success: true });
 }
