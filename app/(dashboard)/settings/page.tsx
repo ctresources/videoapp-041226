@@ -144,12 +144,15 @@ export default function SettingsPage() {
     router.refresh();
   }
 
-  async function handleDeleteAccount() {
-    const confirmed = window.confirm(
-      "Are you sure? This will permanently delete your account and all your videos. This cannot be undone."
-    );
-    if (!confirmed) return;
-    toast.error("To delete your account, please contact support@sparkreels.ai");
+  function handleDeleteAccount() {
+    // The dialog used to say "this will permanently delete your account and
+    // all your videos", and clicking OK only produced a toast telling you to
+    // email support. Anyone who clicked OK reasonably believed their account
+    // was gone. Nothing here deletes anything, so nothing here says it will.
+    toast("Account deletion is handled by our team. Email support@sparkreels.ai from this address and we'll delete your account and videos.", {
+      duration: 8000,
+      icon: "✉️",
+    });
   }
 
   if (!loaded || !user) {

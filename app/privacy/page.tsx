@@ -225,12 +225,22 @@ export default function PrivacyPage() {
                 <strong className="text-white">Supabase</strong> — database, file storage, and authentication.
               </li>
               <li>
-                <strong className="text-white">HeyGen</strong> — AI video generation from your voice and
-                avatar. Receives your voice recordings and avatar selection. Receives no Google user data.
+                <strong className="text-white">HeyGen</strong> — AI video generation. Receives your script,
+                your avatar selection and your cloned voice. Receives no Google user data.
               </li>
               <li>
-                <strong className="text-white">OpenAI</strong> — script generation and content enhancement.
-                Receives your prompts and script text. Receives no Google user data.
+                <strong className="text-white">ElevenLabs</strong> — voice cloning and speech-to-text.
+                Receives the voice recordings you make in the app, both the sample used to create your
+                voice clone and any recording transcribed into a script. Receives no Google user data.
+              </li>
+              <li>
+                <strong className="text-white">Perplexity</strong> — script writing, market research, and the
+                title, description, tag and SEO generators. Receives your topics, prompts and script text.
+                Receives no Google user data.
+              </li>
+              <li>
+                <strong className="text-white">OpenAI</strong> — thumbnail background image generation.
+                Receives the headline text for the thumbnail being generated. Receives no Google user data.
               </li>
               <li>
                 <strong className="text-white">Stripe</strong> — secure payment processing. Receives your

@@ -556,9 +556,9 @@ function ScriptGenerator({
             <div className="relative">
               <select value={videoType} onChange={(e) => setVideoType(e.target.value)}
                 className="w-full appearance-none border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white text-slate-700 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300">
-                <option value="blog_video">Blog Video (3-5 min)</option>
+                <option value="blog_video">Standard video (about 3 min)</option>
                 <option value="short_form">Short / Reel (60-90 sec)</option>
-                <option value="youtube_16x9">Long Video (up to 8 min)</option>
+                <option value="youtube_16x9">Long video (about 8 min)</option>
               </select>
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
@@ -1536,7 +1536,7 @@ const HOW_TO_STEPS: { step: string; title: string; when: string; detail: string 
   { step: "1", title: "Title Generator", when: "Before you commit to a topic",
     detail: "Generate 8 title angles (question, data hook, urgency…), pick the strongest — a sharp title keeps the whole video focused." },
   { step: "2", title: "Script Generator", when: "Draft & compare without creating a project",
-    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → From my material → I have the script when you're ready to render." },
+    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → SparkReels makes it → My script when you're ready to render." },
   { step: "3", title: "Create Your Video", when: "The main event",
     detail: "Use the Create Video page — it researches your market and generates the script, title, description, and tags in one flow." },
   { step: "4", title: "Description Generator", when: "After the video renders",

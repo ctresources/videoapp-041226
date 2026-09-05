@@ -81,8 +81,11 @@ export async function POST(req: NextRequest) {
       // it is uploaded private with a publishAt, which is what this passes.
       const result = await uploadVideoToYouTube(accessToken, {
         videoUrl: video.video_url,
-        title: target.title || defaultTitle,
-        description: target.description || defaultYouTubeDesc,
+        // `??` not `||`: an empty string is a deliberate choice. Someone who
+        // clears the description wants a clean post, and substituting the
+        // generated text put back exactly what they had just removed.
+        title: target.title ?? defaultTitle,
+        description: target.description ?? defaultYouTubeDesc,
         privacy: target.privacy || "public",
         publishAt: scheduledAt || null,
       });
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
         video_id: videoId,
         platform: "youtube",
         platform_post_id: result.videoId,
-        caption: target.description || defaultYouTubeDesc,
+        caption: target.description ?? defaultYouTubeDesc,
         scheduled_at: scheduledAt || null,
         posted_at: scheduledAt ? null : new Date().toISOString(),
         // A scheduled upload is on YouTube but not yet public, so it is not

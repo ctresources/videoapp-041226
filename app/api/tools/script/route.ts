@@ -23,11 +23,15 @@ export async function POST(req: NextRequest) {
   if (!topic?.trim()) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
   const location = [city, state].filter(Boolean).join(", ");
+  // These have to match the caps the renderer enforces (video-length.ts:
+  // 400 words standard, 1,160 long, both hard-clamped). Asking for 1,800
+  // words produced a script a third of which was silently trimmed the moment
+  // it was pasted into Create.
   const lengthGuide = videoType === "short_form"
-    ? "60-90 seconds (about 150-200 words)"
+    ? "60-90 seconds (about 150-200 words). Never exceed 200 words."
     : videoType === "youtube_16x9"
-    ? "8-12 minutes (about 1200-1800 words)"
-    : "3-5 minutes (about 450-750 words)";
+    ? "about 8 minutes (1,000-1,150 words). Never exceed 1,150 words."
+    : "about 3 minutes (350-400 words). Never exceed 400 words.";
 
   const raw = await perplexityChat([
     {

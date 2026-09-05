@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
   PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image
@@ -322,15 +323,23 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
                         <Image size={12} /> YouTube Thumbnail
                       </label>
-                      <a
-                        href={thumbnailUrl}
-                        download="youtube-thumbnail.png"
-                        target="_blank"
-                        rel="noreferrer"
+                      {/* Fetched and saved, not linked: this is on Supabase
+                          Storage, so the download attribute did nothing and the
+                          PNG opened in a tab — at the exact moment the user was
+                          told to save it and upload it by hand. */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await downloadAsset(thumbnailUrl, "youtube-thumbnail", "png");
+                          } catch {
+                            window.open(thumbnailUrl, "_blank");
+                          }
+                        }}
                         className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
                       >
                         <Download size={11} /> Download PNG
-                      </a>
+                      </button>
                     </div>
                     <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
                       {/* eslint-disable-next-line @next/next/no-img-element */}

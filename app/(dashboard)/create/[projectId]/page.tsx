@@ -134,8 +134,8 @@ type VideoChoice = VideoType | "youtube_long";
 // the two apart — it has to be on the button itself, while the rest of the
 // detail only has to be true of the one you have actually picked.
 const videoTypes: { value: VideoChoice; label: string; ratio: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "Under 4 min · vertical · automatic b-roll", credits: 1 },
-  { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "Under 4 min · horizontal · automatic b-roll", credits: 1 },
+  { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "About 3 min · vertical · automatic b-roll", credits: 1 },
+  { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "About 3 min · horizontal · automatic b-roll", credits: 1 },
   { value: "youtube_long", label: "Longform", ratio: "16:9", desc: "Over 4 min, up to 8 · horizontal · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 

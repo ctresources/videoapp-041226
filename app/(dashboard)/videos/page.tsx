@@ -9,7 +9,7 @@ import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { TranslateModal } from "@/components/videos/TranslateModal";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { isHeygenUrl, posterFrameUrl } from "@/lib/utils/video-url";
+import { isHeygenUrl, posterFrameUrl, downloadAsset } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera,
@@ -91,7 +91,17 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
 
   // Time-based fallback progress (fills over estimated duration)
   const timePct = Math.min(99, Math.round((elapsed / estimated) * 100));
-  const displayPct = progress.progressPct > 0 ? progress.progressPct : timePct;
+  /**
+   * Never goes backwards.
+   *
+   * The status route returns a constant 50% for anything mid-render, and this
+   * preferred the reported figure whenever it was above zero — so the bar
+   * filled toward 99% on the time estimate, the first poll landed, and it
+   * snapped back to 50 and sat there for the rest of the render under the
+   * words "AI is creating your video". Taking the higher of the two keeps the
+   * reported value useful when it is genuinely ahead, without ever rewinding.
+   */
+  const displayPct = Math.max(progress.progressPct || 0, timePct);
 
   useEffect(() => {
     if (!video.render_job_id) return;
@@ -642,11 +652,25 @@ function VideosContent() {
                         >
                           <Share2 size={13} />
                         </Button>
-                        <a href={video.video_url} download target="_blank" rel="noreferrer">
-                          <Button variant="ghost" size="sm" title="Download">
-                            <Download size={13} />
-                          </Button>
-                        </a>
+                        {/* A cross-origin <a download> is ignored — the file
+                            just opened in a tab. And the extension follows the
+                            real container, so a WebM camera recording stops
+                            being saved as .mp4. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Download"
+                          onClick={async () => {
+                            try {
+                              await downloadAsset(video.video_url!, video.projects?.title || "video");
+                              toast.success("Video downloaded");
+                            } catch {
+                              window.open(video.video_url!, "_blank");
+                            }
+                          }}
+                        >
+                          <Download size={13} />
+                        </Button>
                       </div>
 
                       {/* Back into the flow that made this. A finished video

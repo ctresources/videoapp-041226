@@ -102,7 +102,7 @@ export default function HelpPage() {
         {/* ── PART 2 ── */}
         <Card padding="sm">
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 2 · Creating A Video</p>
-          <h2 className="text-base font-bold text-brand-text mb-3">Four Ways To Create</h2>
+          <h2 className="text-base font-bold text-brand-text mb-3">Ways To Create</h2>
 
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm">
@@ -115,24 +115,29 @@ export default function HelpPage() {
               </thead>
               <tbody className="text-slate-600">
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">AI Writes It</td>
-                  <td className="py-2 pr-3">You have a topic — AI does the rest</td>
-                  <td className="py-2 whitespace-nowrap">1 credit (6 long-form)</td>
-                </tr>
-                <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">I have the script</td>
-                  <td className="py-2 pr-3">You already have a script, a PDF, or photos</td>
-                  <td className="py-2 whitespace-nowrap">1 credit (6 long-form)</td>
-                </tr>
-                <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My Listing</td>
-                  <td className="py-2 pr-3">Turn a listing into a video</td>
-                  <td className="py-2 whitespace-nowrap">1 credit</td>
-                </tr>
-                <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Use Camera</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">I&apos;ll film it</td>
                   <td className="py-2 pr-3">Film yourself with the teleprompter</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">AI writes it</td>
+                  <td className="py-2 pr-3">You have a topic — AI does the rest</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My script</td>
+                  <td className="py-2 pr-3">You already have the words — spoken exactly as written</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My listings/My photos</td>
+                  <td className="py-2 pr-3">A scripted listing tour</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photo reel</td>
+                  <td className="py-2 pr-3">Your photos, Ken Burns and a music bed</td>
+                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE</td>
                 </tr>
               </tbody>
             </table>
@@ -144,21 +149,21 @@ export default function HelpPage() {
           <div className="flex flex-col gap-4">
             <Step n={6} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
               On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
-              pick <strong>Speak It</strong> or <strong>Type It</strong> at the top — everything below works
-              either way. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
+              pick <strong>I&apos;ll film it</strong> or <strong>SparkReels makes it</strong>, then choose
+              where the script comes from — everything below works either way. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
               <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
               anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
               tone, how long. It fills in whatever it catches and asks a quick follow-up for anything missing,
               then say <strong>&ldquo;SparkReels&rdquo;</strong> — or just say you&apos;re ready — and it writes
               the script. Prefer typing, or want a suggestion instead of a blank field? Tap a{" "}
-              <strong>Trending Radar</strong> pick or a <strong>Template</strong> (Real Estate Tips, vlogs,
+              <strong>Trending here</strong> pick or a <strong>Template</strong> (Real Estate Tips, vlogs,
               listicles, pros &amp; cons, map videos, home tours — your city auto-fills) and hit{" "}
-              <strong>Generate My Script</strong>. Either way, AI researches live market data for your city and
+              <strong>Next</strong>. Either way, AI researches live market data for your city and
               writes a broadcast-quality script with real stats.
             </Step>
             <Step n={7} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
-              disagree. Edit the script freely; a live word counter keeps you inside the cap (500 words
+              disagree. Edit the script freely; a live word counter keeps you inside the cap (400 words
               standard, 1,160 for Long). Set your <strong>Call To Action</strong> (pre-filled with your default
               CTA, localized to this video&apos;s city) — or choose <strong>None</strong> if this one shouldn&apos;t
               ask for anything. Your <strong>title, description &amp; hashtags</strong> are already generated

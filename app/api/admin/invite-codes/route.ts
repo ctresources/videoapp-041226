@@ -56,7 +56,10 @@ export async function POST(req: NextRequest) {
     code: `BETA-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
     label,
     credits,
-    max_uses: 1,
+    // Was hardcoded to 1, so setting Max Uses to 50 and generating five codes
+    // silently produced five single-use codes. The field is on the same form
+    // and was always enabled, with nothing saying it applied to one branch.
+    max_uses: maxUses,
     expires_at: expiresAt,
   }));
 

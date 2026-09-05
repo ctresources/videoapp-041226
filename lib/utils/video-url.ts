@@ -19,8 +19,38 @@ export function isHeygenUrl(url: string): boolean {
 }
 
 /** The file extension, lowercased, ignoring any query string or fragment. */
-function extensionOf(url: string): string {
+export function extensionOf(url: string): string {
   return url.split(/[?#]/)[0].split(".").pop()?.toLowerCase() ?? "";
+}
+
+/**
+ * Save a stored video (or any asset) to the user's disk.
+ *
+ * A cross-origin `<a download>` is ignored by every browser — the file just
+ * opens in a tab — and our assets live on Supabase Storage, a different
+ * origin from the app. So three separate download affordances (the card in My
+ * Videos, the thumbnail PNG in the Publish window, and this one) all failed
+ * the same way. Fetching the bytes and saving a blob URL is the only thing
+ * that actually downloads.
+ *
+ * The extension comes from the URL rather than being assumed: camera
+ * recordings are WebM, and saving one as .mp4 produced a file the receiving
+ * app refused to open.
+ */
+export async function downloadAsset(url: string, baseName: string, forcedExt?: string): Promise<void> {
+  const slug = baseName.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "download";
+  const ext = forcedExt ?? extensionOf(url) ?? "mp4";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `${slug}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
 }
 
 /**

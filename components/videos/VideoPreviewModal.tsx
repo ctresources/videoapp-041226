@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { videoMimeType } from "@/lib/utils/video-url";
+import { videoMimeType, downloadAsset } from "@/lib/utils/video-url";
 import { TranscriptEditor } from "@/components/videos/TranscriptEditor";
 
 interface VideoPreviewModalProps {
@@ -36,17 +36,10 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
   async function handleDownloadVideo() {
     setDownloading(true);
     try {
-      const res = await fetch(videoUrl);
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "video"}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Was hardcoded to .mp4, which handed the user a WebM camera
+      // recording inside an .mp4 name — rejected by whatever they opened it
+      // with. downloadAsset takes the extension from the URL.
+      await downloadAsset(videoUrl, title || "video");
       toast.success("Video downloaded!");
     } catch {
       window.open(videoUrl, "_blank");

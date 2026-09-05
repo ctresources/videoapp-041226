@@ -182,8 +182,24 @@ export default function AdminPage() {
     setGenerating(false);
   }
 
-  async function deleteCode(id: string) {
-    await fetch("/api/admin/invite-codes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+  /** A code is spent when its uses reach its cap — not when it has been used
+   *  once. used_by records only the most recent redeemer. */
+  function isCodeFull(inv: InviteCode) {
+    const row = inv as unknown as { uses_count?: number; max_uses?: number };
+    return (row.uses_count ?? 0) >= (row.max_uses ?? 1);
+  }
+
+  async function deleteCode(id: string, code: string) {
+    // A 13px trash icon destroyed a distributed code on one misclick, and a
+    // failed request showed the same success toast — so the code came back on
+    // the next refresh with no explanation.
+    if (!window.confirm(`Delete invite code ${code}? Anyone still holding it will not be able to redeem it.`)) return;
+    const res = await fetch("/api/admin/invite-codes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: null }));
+      toast.error(error || "Could not delete that code");
+      return;
+    }
     setInvites((prev) => prev.filter((c) => c.id !== id));
     toast.success("Code deleted");
   }
@@ -349,7 +365,11 @@ export default function AdminPage() {
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono font-semibold text-slate-800">{inv.code}</span>
-                            {!inv.used_by && (
+                            {/* Gated on being FULL, not on used_by — which is
+                                written on every redemption, so a 50-use code
+                                lost its Copy button after one person used it,
+                                while the row still said "1 / 50 (active)". */}
+                            {!isCodeFull(inv) && (
                               <button onClick={() => copyCode(inv.code)} className="text-slate-300 hover:text-blue-500 transition-colors" title="Copy">
                                 <Copy size={11} />
                               </button>
@@ -372,11 +392,9 @@ export default function AdminPage() {
                           {new Date(inv.created_at).toLocaleDateString()}
                         </td>
                         <td className="py-2">
-                          {!inv.used_by && (
-                            <button onClick={() => deleteCode(inv.id)} className="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
-                              <Trash2 size={13} />
-                            </button>
-                          )}
+                          <button onClick={() => deleteCode(inv.id, inv.code)} className="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
+                            <Trash2 size={13} />
+                          </button>
                         </td>
                       </tr>
                     ))}
