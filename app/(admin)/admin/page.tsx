@@ -51,6 +51,9 @@ interface UserRow {
   onboarding_done: boolean;
   created_at: string;
   video_count?: number;
+  /** Its own column now — it used to be the string "suspended" in role,
+   *  which destroyed the role and which nothing in the app ever read. */
+  suspended?: boolean;
 }
 
 const TIERS = ["free", "starter", "agent", "pro", "agency"] as const;
@@ -106,7 +109,11 @@ export default function AdminPage() {
     setSaving((s) => ({ ...s, [userId]: false }));
     if (res.ok) {
       toast.success(successMsg);
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ...payload } : u));
+      // Merge the row the SERVER wrote, not the request payload. Suspending
+      // sent { suspended: true }, which is not what the badge reads, so the
+      // badge never changed and admins clicked Suspend a second time.
+      const { user: saved } = await res.json().catch(() => ({ user: null }));
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ...(saved ?? payload) } : u));
     } else {
       const { error } = await res.json();
       toast.error(error || "Update failed");
@@ -146,7 +153,7 @@ export default function AdminPage() {
     return matchSearch && matchTier;
   });
 
-  const isSuspended = (u: UserRow) => u.role === "suspended";
+  const isSuspended = (u: UserRow) => !!u.suspended;
 
   const loadInvites = useCallback(async () => {
     setInvitesLoading(true);

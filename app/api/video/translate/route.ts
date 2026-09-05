@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/heygen";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
+import { perplexityChat } from "@/lib/api/perplexity";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET — the language picker's options, resolved from HeyGen rather than
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
 
   const { data: sourceData } = await admin
     .from("generated_videos")
-    .select("id, project_id, user_id, video_url, video_type, render_status, metadata")
+    // projects comes along for the post copy the dub needs translating.
+    .select("id, project_id, user_id, video_url, video_type, render_status, metadata, projects(title, seo_data)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
@@ -50,6 +52,7 @@ export async function POST(req: NextRequest) {
     video_type: string;
     render_status: string;
     metadata: Record<string, unknown> | null;
+    projects: { title?: string; seo_data?: { youtube_title?: string; youtube_description?: string } } | null;
   } | null;
 
   if (!source) return NextResponse.json({ error: "Video not found" }, { status: 404 });
@@ -119,10 +122,58 @@ export async function POST(req: NextRequest) {
     });
 
     const creditCost = 1;
+
+    /**
+     * Post copy in the language the video now speaks.
+     *
+     * A dub is given the SOURCE project's id, and the Publish window resolves
+     * its title, description and hashtags from the project — so a Spanish
+     * video was uploaded to YouTube with English everything. There is no
+     * per-translation project to hang metadata on, so it lives on the video
+     * row and Publish prefers it when it is there.
+     *
+     * Non-fatal and bounded: the dub is already rendering, and English post
+     * copy is a far better outcome than a failed translation.
+     */
+    let translatedMeta: { title?: string; description?: string } | null = null;
+    try {
+      const proj = source.projects;
+      const srcTitle = proj?.seo_data?.youtube_title || proj?.title || "";
+      const srcDesc = proj?.seo_data?.youtube_description || "";
+      if (srcTitle || srcDesc) {
+        const raw = await Promise.race([
+          perplexityChat([
+            {
+              role: "system",
+              content:
+                `Translate the given YouTube title and description into ${language}. Keep hashtags, URLs, phone numbers and proper nouns as they are. Respond with valid JSON only: {"title": "...", "description": "..."}`,
+            },
+            { role: "user", content: JSON.stringify({ title: srcTitle, description: srcDesc }) },
+          ], "sonar"),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 20_000)),
+        ]);
+        if (raw) {
+          const json = String(raw).replace(/^```(?:json)?|```$/g, "").trim();
+          const parsed = JSON.parse(json) as { title?: string; description?: string };
+          if (parsed.title || parsed.description) translatedMeta = parsed;
+        }
+      }
+    } catch (err) {
+      console.warn("[translate] post copy translation failed (non-fatal):", err instanceof Error ? err.message : err);
+    }
+
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the translation later fails
-      .update({ render_job_id: translationId, metadata: { credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
+      .update({
+        render_job_id: translationId,
+        metadata: {
+          credit_cost: creditCost,
+          credit_kind: videoKind,
+          credit_source: charge?.source ?? "plan",
+          ...(translatedMeta && { publish_title: translatedMeta.title, publish_description: translatedMeta.description }),
+        },
+      })
       .eq("id", videoRow.id);
 
     // Conditional write — see chargeOneVideo. Writing the precomputed value

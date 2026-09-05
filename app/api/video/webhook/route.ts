@@ -253,7 +253,23 @@ export async function POST(req: NextRequest) {
     eventType === "video_agent.fail" ||
     body.status === "failed";
 
-  const renderStatus = success ? "completed" : failed ? "failed" : null;
+  /**
+   * A success with no URL is a failure, and has to be recorded as one.
+   *
+   * The status was written from the event type alone, so a success payload
+   * that carried no video URL produced render_status "completed" beside a
+   * null video_url. My Videos gates every action on having both, so the card
+   * showed a green Ready badge, offered nothing but Delete, and explained
+   * nothing — and because the row was never marked failed, the refund never
+   * ran and the video the user paid for was simply gone.
+   */
+  const successWithoutFile = success && !videoUrl;
+  if (successWithoutFile) {
+    console.error(
+      `[webhook] ${eventType} reported success with no video URL (session=${sessionId} video=${videoId} callback=${callbackId}) — recording as failed so it refunds`,
+    );
+  }
+  const renderStatus = successWithoutFile ? "failed" : success ? "completed" : failed ? "failed" : null;
 
   console.log(`[webhook] ${eventType} | session=${sessionId} video=${videoId} callback=${callbackId} status=${renderStatus}`);
 
@@ -438,8 +454,12 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Persist the failure reason so the render can explain itself ───────────
-  if (failed) {
-    const reason = failureDetail || `${eventType} (no detail in payload)`;
+  // successWithoutFile joins this branch: a success event with no file is a
+  // failed render however it was labelled, and it must refund like one.
+  if (failed || successWithoutFile) {
+    const reason = successWithoutFile
+      ? "The render finished but no video file was delivered. Nothing was charged — please try again."
+      : failureDetail || `${eventType} (no detail in payload)`;
     await admin
       .from("generated_videos")
       .update({ metadata: { ...(video.metadata ?? {}), render_error: reason } })
@@ -454,7 +474,7 @@ export async function POST(req: NextRequest) {
   if (video.project_id) {
     await admin
       .from("projects")
-      .update({ status: success ? "ready" : "error" })
+      .update({ status: success && !successWithoutFile ? "ready" : "error" })
       .eq("id", video.project_id);
   }
 

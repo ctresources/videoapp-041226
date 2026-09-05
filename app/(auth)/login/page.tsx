@@ -33,6 +33,12 @@ const OAUTH_ERRORS: Record<string, { title: string; body: string }> = {
     title: "That reset link didn't work",
     body: "Password reset links can only be used once, and they expire after a short time. Request a new one below and use the most recent email.",
   },
+  // Signing back in will bounce them here again, so the message has to say
+  // what to do rather than invite another attempt.
+  suspended: {
+    title: "This account is suspended",
+    body: "Your videos and settings are safe, but the account can't be used while it's suspended. Email support@sparkreels.ai and we'll sort it out.",
+  },
 };
 
 export default function LoginPage() {

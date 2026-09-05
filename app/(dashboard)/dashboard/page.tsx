@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity, Film } from "lucide-react";
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
+import { freeTrialLocked, freeTrialDaysLeft } from "@/lib/utils/free-trial";
 async function DraftQueueWrapper({ userId }: { userId: string }) {
   const supabase = await createClient();
   const { data: profile } = await supabase
@@ -30,7 +31,7 @@ async function DashboardStats({ userId }: { userId: string }) {
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", userId).neq("render_provider", "camera"),
     supabase.from("generated_videos").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("render_provider", "camera"),
     supabase.from("social_posts").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("post_status", "posted"),
-    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end, role").eq("id", userId).single(),
+    supabase.from("profiles").select("full_name, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, subscription_tier, current_period_end, role, first_video_generated_at").eq("id", userId).single(),
   ]);
 
   const aiVideoCount = aiVideosResult.count ?? 0;
@@ -45,6 +46,7 @@ async function DashboardStats({ userId }: { userId: string }) {
     subscription_tier: string;
     current_period_end: string | null;
     role: string | null;
+    first_video_generated_at: string | null;
   } | null;
 
   // Short and long are separate allowances — users never see "credits". Each
@@ -54,6 +56,28 @@ async function DashboardStats({ userId }: { userId: string }) {
   // Admins are uncapped — create-blog neither refuses nor charges them, so
   // showing a countdown would be meaningless (and used to drain to zero).
   const isAdmin = profile?.role === "admin";
+
+  /**
+   * Camera recording is unlimited, but not unconditional.
+   *
+   * The upload and save routes both run the free-trial gate: a free-tier
+   * account that has not generated its first video, or is past day 30, gets
+   * a 403. This page said "∞" to everyone regardless, so a new user read
+   * unlimited, recorded a full take, and was refused on save — after the
+   * work, not before it. The badge now says what the server will actually
+   * allow.
+   */
+  const cameraLocked = !isAdmin && freeTrialLocked(
+    profile?.first_video_generated_at,
+    profile?.subscription_tier,
+  );
+  const trialDaysLeft = isAdmin ? null : freeTrialDaysLeft(profile?.first_video_generated_at);
+  const onFreeTier = !["starter", "agent", "pro", "agency"].includes(profile?.subscription_tier ?? "free");
+  const cameraLabel = isAdmin || !onFreeTier
+    ? "∞ Camera Recordings"
+    : cameraLocked
+      ? (profile?.first_video_generated_at ? "Camera Recording Ended" : "Camera Unlocks With Your First Video")
+      : `∞ Camera Recordings · ${trialDaysLeft} Day${trialDaysLeft === 1 ? "" : "s"} Left`;
   const videosLeftLabel = [
     `${creditsLeft} short video${creditsLeft !== 1 ? "s" : ""}`,
     longFormLeft > 0 ? `${longFormLeft} long video${longFormLeft !== 1 ? "s" : ""}` : "",
@@ -80,8 +104,8 @@ async function DashboardStats({ userId }: { userId: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             <Infinity size={16} className="text-spark-blue" />
             <span className="font-semibold text-sm text-spark-blue">Admin-Unlimited</span>
-            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              ∞ Camera Recordings
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${cameraLocked ? "text-slate-500 bg-slate-50 border-slate-200" : "text-emerald-600 bg-emerald-50 border-emerald-200"}`}>
+              {cameraLabel}
             </span>
           </div>
           <span className="text-xs shrink-0 text-spark-blue">No limit on AI videos</span>
@@ -95,10 +119,10 @@ async function DashboardStats({ userId }: { userId: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             <Film size={15} className={creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-spark-blue"} />
             <span className={`font-semibold text-sm ${creditsLeft === 0 ? "text-red-700" : creditsLeft <= 1 ? "text-amber-700" : "text-spark-ink"}`}>
-              {creditsLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
+              {creditsLeft === 0 && longFormLeft === 0 ? "No AI Videos Remaining This Month" : videosLeftLabel}
             </span>
-            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              ∞ Camera Recordings
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${cameraLocked ? "text-slate-500 bg-slate-50 border-slate-200" : "text-emerald-600 bg-emerald-50 border-emerald-200"}`}>
+              {cameraLabel}
             </span>
           </div>
           <span className={`text-xs shrink-0 ${creditsLeft === 0 ? "text-red-500" : creditsLeft <= 1 ? "text-amber-500" : "text-spark-blue"}`}>
@@ -139,10 +163,16 @@ async function DashboardStats({ userId }: { userId: string }) {
           </div>
           <div>
             <div className="flex items-center gap-1">
-              <Infinity className="w-5 h-5 font-bold text-emerald-600" />
+              {cameraLocked
+                ? <p className="text-2xl font-bold text-slate-400">&mdash;</p>
+                : <Infinity className="w-5 h-5 font-bold text-emerald-600" />}
             </div>
             <p className="text-xs text-slate-500 leading-tight">Camera Recordings</p>
-            <p className="text-[10px] text-emerald-600 font-semibold">{cameraVideoCount} Recorded</p>
+            <p className={`text-[10px] font-semibold ${cameraLocked ? "text-slate-400" : "text-emerald-600"}`}>
+              {cameraLocked
+                ? (profile?.first_video_generated_at ? "Trial ended" : "After your first video")
+                : `${cameraVideoCount} Recorded`}
+            </p>
           </div>
         </Card>
 

@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
   // overflow would be trimmed away. Direct Video takes the script as its own
   // field, so the full script is spoken; visuals come from the user's uploaded
   // photos, composited behind the avatar after rendering.
-  const useDirectVideo = engine === "direct" || isLongForm;
+  const engineIsDirect = engine === "direct" || isLongForm;
   // Logged unconditionally, not just on the branch taken. A user who expects
   // Video Agent (chose a short format) and lands on Direct Video with no
   // explanation is currently unanswerable — the request body that decided it
@@ -527,7 +527,7 @@ export async function POST(req: NextRequest) {
   // greppable by project id after the fact.
   console.log(
     `[create-blog] project=${projectId} videoType=${videoType} engine=${engine ?? "(none)"} ` +
-    `longForm=${longForm ?? "(none)"} isLongForm=${isLongForm} → ${useDirectVideo ? "Direct Video" : "Video Agent"}`,
+    `longForm=${longForm ?? "(none)"} isLongForm=${isLongForm} → ${engineIsDirect ? "Direct Video" : "Video Agent (unless the project is verbatim)"}`,
   );
   /**
    * The Video Agent's photo budget, which is about render time rather than
@@ -573,6 +573,22 @@ export async function POST(req: NextRequest) {
   };
 
   const aiScript = project.ai_script as Record<string, unknown> | null;
+
+  /**
+   * A pasted script is verbatim forever, not only on the visit that pasted it.
+   *
+   * The engine used to be decided by `engine: "direct"`, which the editor read
+   * out of the URL — so it survived exactly one navigation. Reopening a draft
+   * from Drafts or My Videos (neither links with a query) sent the same script
+   * through the summarising agent instead, and a 2,900-character story came
+   * back as an eight-second teaser with nothing on screen saying so. The
+   * project now carries the answer itself.
+   */
+  const isVerbatimProject = (aiScript as { verbatim?: boolean } | null)?.verbatim === true;
+  const useDirectVideo = engineIsDirect || isVerbatimProject;
+  if (isVerbatimProject && !engineIsDirect) {
+    console.log(`[create-blog] project=${projectId} is verbatim — Direct Video, whatever the request asked for`);
+  }
   const seoData = project.seo_data as Record<string, unknown> | null;
   const listingData = project.listing_data as Record<string, unknown> | null;
   /**

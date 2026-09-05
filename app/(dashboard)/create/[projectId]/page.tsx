@@ -768,7 +768,9 @@ export default function ProjectEditorPage() {
           aiS.draft_photo_urls.map((url) => ({ url, name: "", preview: url })),
         );
       }
-      if (typeof aiS.draft_music_id === "string") setSelectedMusicId(aiS.draft_music_id);
+      // Resolved, not just selected — a reopened draft used to render silent
+      // for exactly the same reason a spoken pick did.
+      if (typeof aiS.draft_music_id === "string") applyMusicId(aiS.draft_music_id);
       if (typeof aiS.draft_music_url === "string") setMusicUrl(aiS.draft_music_url);
       if (typeof aiS.draft_captions === "boolean") setBurnCaptions(aiS.draft_captions);
       if (typeof aiS.draft_look_id === "string" && aiS.draft_look_id) {
@@ -813,6 +815,26 @@ export default function ProjectEditorPage() {
     } finally {
       setMusicResolving(false);
     }
+  }
+
+  /**
+   * Picks a track by id — from a spoken instruction, or from a restored draft.
+   *
+   * Both of those used to call setSelectedMusicId on its own, which lights the
+   * chip and writes "Calm Piano" into the summary but never fetches a URL.
+   * Only the resolved URL is sent to the renderer, so the video came back
+   * silent while every control on screen said it had music. Routing through
+   * selectMusic makes the picture and the sound the same decision.
+   */
+  function applyMusicId(id: string) {
+    const preset = MUSIC_PRESETS.find((m) => m.id === id);
+    // "custom" is an uploaded file whose URL is already held; nothing to
+    // resolve, and no preset to find.
+    if (!preset || id === "custom") {
+      setSelectedMusicId(id);
+      return;
+    }
+    void selectMusic(preset);
   }
 
   async function handleMusicUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -995,7 +1017,14 @@ export default function ProjectEditorPage() {
       const res = await fetch("/api/ai/generate-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recordingId, projectType: "blog_video" }),
+        // Carried from the camera tab's market field via the URL. Without
+        // it the script API falls back to the profile's home city.
+        body: JSON.stringify({
+          recordingId,
+          projectType: "blog_video",
+          city: searchParams.get("city") || undefined,
+          state: searchParams.get("state") || undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -1897,7 +1926,7 @@ export default function ProjectEditorPage() {
               onSettings={(st) => {
                 if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
                 if (st.renderMode) setRenderMode(st.renderMode);
-                if (st.musicId) setSelectedMusicId(st.musicId);
+                if (st.musicId) applyMusicId(st.musicId);
                 if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
               }}
               onScript={(next) => setEditedScript(next)}
@@ -2176,7 +2205,7 @@ export default function ProjectEditorPage() {
                 // the user already made by hand.
                 if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
                 if (st.renderMode) setRenderMode(st.renderMode);
-                if (st.musicId) setSelectedMusicId(st.musicId);
+                if (st.musicId) applyMusicId(st.musicId);
                 if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
               }}
               onScript={(next) => setEditedScript(next)}

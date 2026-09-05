@@ -55,6 +55,17 @@ export async function POST(req: NextRequest) {
     video_type: "custom",
     location: city && state ? `${city}, ${state}` : "",
     custom_topic: title,
+    /**
+     * This script is spoken as written, and the project has to remember that.
+     *
+     * The renderer chose its engine from `engine: "direct"`, which the editor
+     * read out of the URL — so it survived exactly one visit. Save a draft,
+     * reopen it from Drafts or My Videos (neither links with a query), and
+     * the same script rendered on the summarising agent instead: a
+     * 2,900-character story came back as an eight-second teaser, with
+     * nothing on screen saying the promise had been dropped.
+     */
+    verbatim: true,
   };
 
   const { data: project, error: projectError } = await admin

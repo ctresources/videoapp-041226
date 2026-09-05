@@ -553,7 +553,14 @@ function CreatePageInner() {
         }));
       } catch { /* sessionStorage unavailable */ }
     }
-    router.push(`/create/${recordingId}?source=recording`);
+    // The market travels with the recording. The field above says it sets the
+    // channel CTA and the end card, but this route never sent it and the
+    // script API fell back to the profile's home city — a Willow Grove
+    // listing went out saying Blue Bell.
+    const marketQs = locCity.trim() && locState.trim()
+      ? `&city=${encodeURIComponent(locCity.trim())}&state=${encodeURIComponent(locState.trim())}`
+      : "";
+    router.push(`/create/${recordingId}?source=recording${marketQs}`);
   }
 
   async function persistMarkets(markets: { city: string; state: string }[]) {

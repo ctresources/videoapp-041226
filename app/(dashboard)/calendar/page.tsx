@@ -385,15 +385,13 @@ export default function CalendarPage() {
       {!loading && posts.length === 0 && (
         <div className="text-center py-12">
           <CalendarDays size={40} className="text-slate-200 mx-auto mb-3" />
-          {/* This page reads the Blotato schedule, and nothing else writes to
-              it. Scheduling a YouTube video now genuinely holds the video —
-              but on YouTube, not here — so telling people to schedule
-              something "to see it appear here" promised a thing this page
-              cannot do. Said plainly until the two are joined up. */}
-          <p className="text-slate-500 font-medium">Nothing on the calendar</p>
+          {/* Scheduled uploads land here now — the endpoint reads our own
+              social_posts rows, not only the Blotato schedule nobody has a
+              key for. So the instruction is true again. */}
+          <p className="text-slate-500 font-medium">No scheduled posts yet</p>
           <p className="text-slate-400 text-sm mt-1">
-            Videos you schedule are held by YouTube and go live at the time you picked.
-            They don&apos;t show up here yet — check them in YouTube Studio.
+            Publish a video with <strong>Schedule</strong> instead of Post now, and it will appear here
+            until YouTube makes it public.
           </p>
           <Link href="/create">
             <Button size="sm" className="mt-4 gap-2">

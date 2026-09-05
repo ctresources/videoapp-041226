@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { recordingId, projectType = "blog_video", videoLength, unbranded } = await req.json();
+  const { recordingId, projectType = "blog_video", videoLength, unbranded, city, state } = await req.json();
   const isUnbranded = unbranded === true;
   if (!recordingId) return NextResponse.json({ error: "recordingId required" }, { status: 400 });
 
@@ -42,6 +42,20 @@ export async function POST(req: NextRequest) {
   if (!profile) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
+
+  /**
+   * The market for THIS video, not the agent's home town.
+   *
+   * The camera tab asks for a city and state and says the answer feeds the
+   * channel CTA and the end card — "set it to the property's town, not your
+   * office" — but the recording route never sent them, and this route read
+   * the profile instead. A Willow Grove listing went out saying Blue Bell,
+   * which is the exact failure that field was added to prevent.
+   *
+   * The profile is still the fallback, for callers with nothing to say.
+   */
+  const videoCity = (typeof city === "string" && city.trim()) || profile.location_city || null;
+  const videoState = (typeof state === "string" && state.trim()) || profile.location_state || null;
 
   // Optionally enrich with real-time market data
   let marketContext = "";
@@ -85,8 +99,8 @@ export async function POST(req: NextRequest) {
       generateYoutubeMetadata({
         title: aiScript.title,
         script: aiScript.script,
-        city: profile.location_city || undefined,
-        state: profile.location_state || undefined,
+        city: videoCity || undefined,
+        state: videoState || undefined,
         agentName: profile.full_name || undefined,
         brokerage: profile.company_name || undefined,
         keywords: aiScript.keywords,
@@ -116,6 +130,11 @@ export async function POST(req: NextRequest) {
         status: "draft",
         ai_script: aiScript as unknown as Record<string, unknown>,
         seo_data: seoData as unknown as Record<string, unknown>,
+        // Written onto the project, so the editor's CTA and the render's end
+        // card read this video's market rather than falling back to the
+        // profile's home city later on.
+        location_city: videoCity,
+        location_state: videoState,
       })
       .select()
       .single();

@@ -79,13 +79,25 @@ export async function PATCH(req: NextRequest) {
     updates.credits_remaining = credits_remaining;
   }
   if (suspended !== undefined) {
-    // Store suspended state in role field: "suspended" is a special value
-    updates.role = suspended ? "suspended" : "user";
+    // Its own column now. Writing "suspended" into role destroyed the role —
+    // reactivating always wrote "user", so a suspended admin came back
+    // demoted — and nothing in the app ever read that value, which meant
+    // suspending someone locked them out of precisely nothing.
+    updates.suspended = suspended;
+    updates.suspended_at = suspended ? new Date().toISOString() : null;
   }
 
   if (Object.keys(updates).length === 0) return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
 
-  const { error } = await admin.from("profiles").update(updates).eq("id", userId);
+  // Returns the row it wrote, because the admin table used to merge the
+  // REQUEST payload into its local copy: { suspended: true } is not a field
+  // the badge reads, so the badge never changed and admins clicked twice.
+  const { data: updated, error } = await admin
+    .from("profiles")
+    .update(updates)
+    .eq("id", userId)
+    .select("id, email, full_name, role, suspended, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, created_at")
+    .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, user: updated });
 }

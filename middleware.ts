@@ -92,6 +92,30 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Authenticated users visiting public/auth pages → route based on profile status
+  /**
+   * A suspended account is signed out and kept out.
+   *
+   * Suspension used to be the string "suspended" written into role, and no
+   * route, page or middleware branch ever read it — so the admin's Suspend
+   * button changed a value nothing consulted and locked nobody out of
+   * anything. It has its own column now, and this is the check that makes
+   * the button mean what it says.
+   *
+   * Only on protected routes: a suspended user must still reach /login to
+   * see why, and the public pages are public.
+   */
+  if (user && !PUBLIC_ROUTES.some((r) => pathname === r)) {
+    const { data: suspensionRow } = await supabase
+      .from("profiles")
+      .select("suspended")
+      .eq("id", user.id)
+      .single();
+    if ((suspensionRow as { suspended?: boolean } | null)?.suspended) {
+      await supabase.auth.signOut();
+      return applyRef(NextResponse.redirect(new URL("/login?error=suspended", request.url)));
+    }
+  }
+
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
     const { data: profile } = await supabase
       .from("profiles")

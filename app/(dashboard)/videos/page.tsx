@@ -791,6 +791,23 @@ function VideosContent() {
           proj?.ai_script?.description ||
           [proj?.ai_script?.hook, proj?.ai_script?.script].filter(Boolean).join("\n\n").slice(0, 4900) ||
           "";
+        /**
+         * A dub carries the SOURCE project, so these project-derived defaults
+         * are in the wrong language for it. Passing nothing lets the modal
+         * resolve its own from /api/social/publish-defaults, which prefers the
+         * translated copy stored on the video row.
+         */
+        if (publishingVideo.translation_language) {
+          return (
+            <PublishModal
+              videoId={publishingVideo.id}
+              videoTitle=""
+              onClose={() => setPublishingVideo(null)}
+              onPublished={loadVideos}
+            />
+          );
+        }
+
         return (
           <PublishModal
             videoId={publishingVideo.id}

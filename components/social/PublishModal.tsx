@@ -43,7 +43,7 @@ type Tab = "now" | "schedule";
 
 export function PublishModal({
   videoId, videoTitle, defaultCaption = "", defaultDescription = "",
-  defaultTags = [], thumbnailUrl, onClose, onPublished
+  defaultTags = [], thumbnailUrl: thumbnailUrlProp, onClose, onPublished
 }: PublishModalProps) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -80,6 +80,47 @@ export function PublishModal({
   const [posted, setPosted] = useState(false);
   /** null = not attempted (no YouTube target), true/false = the real outcome. */
   const [thumbnailSet, setThumbnailSet] = useState<boolean | null>(null);
+  /** Resolved for callers that pass no thumbnail — see the defaults fetch. */
+  const [fetchedThumbnail, setFetchedThumbnail] = useState<string | null>(null);
+  const thumbnailUrl = thumbnailUrlProp || fetchedThumbnail || undefined;
+
+  /**
+   * Fill anything the caller did not hand us.
+   *
+   * The camera recorder mounts this window with an id and a title only, so
+   * the Description box opened empty — and because the server substitutes its
+   * own default for an empty field, YouTube then received an AI description
+   * the user had never seen. Fetching the same defaults My Videos passes
+   * means both routes publish the same thing, and the box shows it first.
+   */
+  useEffect(() => {
+    if (defaultDescription || defaultCaption || defaultTags.length) return;
+    let cancelled = false;
+    fetch(`/api/social/publish-defaults?videoId=${encodeURIComponent(videoId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d || cancelled) return;
+        const tags: string[] = Array.isArray(d.tags) ? d.tags : [];
+        const withFetchedTags = (text: string) => {
+          const hashes = tags.map((t) => `#${String(t).trim().replace(/^#+/, "")}`).filter((t) => t.length > 1);
+          if (!hashes.length) return text;
+          const body = text.trim();
+          if (hashes.every((t) => body.includes(t))) return body;
+          return body ? `${body}
+
+${hashes.join(" ")}` : hashes.join(" ");
+        };
+        if (d.description) setDescription(withFetchedTags(d.description));
+        if (d.caption) setCaption(withFetchedTags(d.caption));
+        if (d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
+        // videoTitle="" is how a caller says "you resolve it" — see the dub
+        // branch in My Videos.
+        if (d.thumbnailUrl) setFetchedThumbnail(d.thumbnailUrl);
+      })
+      .catch(() => { /* the boxes stay as they are; publishing still works */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]);
 
   useEffect(() => {
     fetch("/api/social/accounts")
