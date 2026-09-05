@@ -115,7 +115,9 @@ function ImageUploader({
 // Uploads headshot to Supabase (→ avatar_url) + registers with HeyGen Talking
 // Photo API (→ heygen_photo_id). The photo_id is cached so video renders never
 // re-upload the same photo.
-function TalkingAvatarUploader({
+// Exported so the first-run flow uses this exact uploader rather than a
+// second copy of the Supabase-then-HeyGen dance that could drift from it.
+export function TalkingAvatarUploader({
   userId,
   currentPhotoId,
   currentAvatarUrl,

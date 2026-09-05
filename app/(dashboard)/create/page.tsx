@@ -157,6 +157,15 @@ function CreatePageInner() {
   // recorder and is sent to the script writers, which are told to leave the
   // spoken call to action out — the half of "unbranded" that is not overlays.
   const [cameraUnbranded, setCameraUnbranded] = useState(false);
+  /**
+   * What is left to spend, read on mount.
+   *
+   * /api/profile/allowance exists for exactly this — its own docstring says
+   * "lets the create screen say you're out BEFORE someone fills in a topic" —
+   * and nothing called it. A zero balance was discovered at Generate, after
+   * the market, the topic, the recording and the style had all been chosen.
+   */
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -319,6 +328,13 @@ function CreatePageInner() {
       const saved = JSON.parse(localStorage.getItem(AUDIENCE_KEY) ?? "[]");
       if (Array.isArray(saved)) setCustomAudiences(saved.filter((a) => typeof a === "string"));
     } catch { /* private mode, or a corrupt entry. The six defaults still work */ }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited }); })
+      .catch(() => { /* the screen still works; it just cannot warn early */ });
   }, []);
 
   useEffect(() => {
@@ -1010,6 +1026,16 @@ function CreatePageInner() {
         : inputMode === "listing" ? "My listings/My photos"
           : "My script";
 
+  /**
+   * Out of videos, and said before the work rather than after it.
+   *
+   * Only for the routes that actually spend one — filming yourself is free,
+   * and so is the photo reel, so neither should be warned off.
+   */
+  const outOfVideos = !!allowance && !allowance.unlimited
+    && allowance.short === 0 && allowance.long === 0
+    && inputMode !== "camera";
+
   const showActionBar = inputMode === "script" && step === "input";
   // Listings keep their own submit inside ListingVideoForm, which owns that
   // form's validity; the other three tabs put their primary action on the bar.
@@ -1554,13 +1580,15 @@ function CreatePageInner() {
       {showActionBar && (
         <StepFooter
           hint={
-            locGenerating
-              ? "Researching the area and writing. This takes about a minute."
-              : !locationSet
-                ? "Add the city and state above to carry on."
-                : !locCustomTopic.trim()
-                  ? "Say or pick what the video is about to carry on."
-                  : "We'll write the script first, then you pick how it looks."
+            outOfVideos
+              ? "You have no videos left this month. Filming it yourself is still free."
+              : locGenerating
+                ? "Researching the area and writing. This takes about a minute."
+                : !locationSet
+                  ? "Add the city and state above to carry on."
+                  : !locCustomTopic.trim()
+                    ? "Say or pick what the video is about to carry on."
+                    : "We'll write the script first, then you pick how it looks."
           }
         >
           <Button
@@ -1575,6 +1603,16 @@ function CreatePageInner() {
               ? <>Sparking<span className="hidden sm:inline"> your script</span>…</>
               : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
           </Button>
+          {/* The way out, beside the thing they cannot do. Sending someone to
+              billing as a redirect is a worse welcome than offering it here. */}
+          {outOfVideos && (
+            <a
+              href="/billing"
+              className="text-[13px] font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
+            >
+              Get more videos
+            </a>
+          )}
         </StepFooter>
       )}
 

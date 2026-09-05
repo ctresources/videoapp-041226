@@ -116,6 +116,31 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  /**
+   * Un-onboarded users are pulled into the first-run flow from anywhere in the
+   * app, not only from the auth routes — otherwise someone who lands on
+   * /create directly (which is where login sends them) never sees it.
+   *
+   * /onboarding itself is excluded for the obvious reason, and so is /settings,
+   * because "everything here can be changed later in Settings" has to be true.
+   */
+  const FIRST_RUN_EXEMPT = ["/onboarding", "/settings", "/billing"];
+  if (
+    user
+    && !PUBLIC_ROUTES.some((r) => pathname === r)
+    && !FIRST_RUN_EXEMPT.some((r) => pathname.startsWith(r))
+    && !pathname.startsWith("/api")
+  ) {
+    const { data: onboardingRow } = await supabase
+      .from("profiles")
+      .select("onboarding_done")
+      .eq("id", user.id)
+      .single();
+    if ((onboardingRow as { onboarding_done?: boolean } | null)?.onboarding_done === false) {
+      return applyRef(NextResponse.redirect(new URL("/onboarding", request.url)));
+    }
+  }
+
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -123,8 +148,11 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
+    // First run goes to first run. This used to send people to /create and
+    // return, which short-circuited the paid check below for every account
+    // that had not saved a brand profile — which was almost all of them.
     if (!profile?.onboarding_done) {
-      return applyRef(NextResponse.redirect(new URL("/create", request.url)));
+      return applyRef(NextResponse.redirect(new URL("/onboarding", request.url)));
     }
 
     if (profile.role === "admin") {
