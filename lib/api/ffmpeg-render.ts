@@ -511,7 +511,11 @@ async function buildAndRun(
   let currentLabel = "captioned";
   if (logoPath) {
     filterParts.push(`[${logoInputIdx}:v]scale=${cfg.logoSize}:-1[logosc]`);
-    filterParts.push(`[captioned][logosc]overlay=x=20:y=20:format=auto[logoed]`);
+    // currentLabel, not [captioned]: the photo-reel renderer had this exact
+    // line hardcoded, and adding a stage in front of it silently produced a
+    // filtergraph that used one label twice. Nothing sits in front of it here
+    // yet — this is so nothing breaks when something does.
+    filterParts.push(`[${currentLabel}][logosc]overlay=x=20:y=20:format=auto[logoed]`);
     currentLabel = "logoed";
   }
 
@@ -1035,7 +1039,7 @@ async function buildSlideshowAndRun(
     const when = `enable='between(t\\,${from}\\,${to})'`;
 
     filterParts.push(
-      `[captioned]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.68:t=fill:` +
+      `[${currentLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.68:t=fill:` +
       `enable=between(t\\,${from}\\,${to})[ctabg]`,
     );
 
@@ -1063,8 +1067,21 @@ async function buildSlideshowAndRun(
     currentLabel = label;
   }
   if (logoPath && logoInputIdx >= 0) {
+    /**
+     * Reads currentLabel, like every other stage in this chain.
+     *
+     * It used to hardcode [captioned], which was correct until the closing
+     * card was added in front of it. After that, a reel with BOTH a logo and
+     * an end card built a filtergraph that used [captioned] twice — once by
+     * the end card's drawbox, once here — and left the end card's own output
+     * connected to nothing. FFmpeg refuses both, so the render died with exit
+     * code 1 and a wall of filtergraph in the error.
+     *
+     * It only ever failed on that combination, which is why it survived: a
+     * reel with no logo, or with the closing card switched off, renders fine.
+     */
     filterParts.push(`[${logoInputIdx}:v]scale=${cfg.logoSize}:-1[logosc]`);
-    filterParts.push(`[captioned][logosc]overlay=x=20:y=20:format=auto[logoed]`);
+    filterParts.push(`[${currentLabel}][logosc]overlay=x=20:y=20:format=auto[logoed]`);
     currentLabel = "logoed";
   }
 
