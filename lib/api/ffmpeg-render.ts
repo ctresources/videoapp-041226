@@ -136,6 +136,53 @@ async function probeAudioDuration(filePath: string): Promise<number> {
   return 60;
 }
 
+/**
+ * Break a title into lines that actually fit the frame, and pick a size for it.
+ *
+ * drawtext does not wrap. It draws one line at whatever size it is given, and
+ * centring an over-long line with x=(w-text_w)/2 pushes the ends off BOTH
+ * edges — a 43-character address at 68px is about 1,700px wide on a 1,080px
+ * reel, so the viewer sees the middle third of it.
+ *
+ * Width is estimated rather than measured: FFmpeg will not tell us how wide a
+ * string renders without rendering it. Montserrat's average advance is close
+ * enough to 0.56em for this, and the 0.86 frame margin absorbs the error.
+ */
+function fitTitleLines(
+  title: string,
+  frameWidth: number,
+  startSize: number,
+  maxLines = 3,
+): { lines: string[]; size: number } {
+  const words = title.trim().split(/\s+/).filter(Boolean);
+  const maxWidth = frameWidth * 0.86;
+  const MIN_SIZE = Math.round(startSize * 0.5);
+
+  for (let size = startSize; size >= MIN_SIZE; size -= 2) {
+    const maxChars = Math.max(8, Math.floor(maxWidth / (size * 0.56)));
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (candidate.length <= maxChars) { line = candidate; continue; }
+      if (line) lines.push(line);
+      line = word;
+    }
+    if (line) lines.push(line);
+    // A single word longer than the line is the one case shrinking cannot fix;
+    // it is accepted at the smallest size rather than looped over forever.
+    if (lines.length <= maxLines && lines.every((l) => l.length <= maxChars)) {
+      return { lines, size };
+    }
+  }
+
+  const maxChars = Math.max(8, Math.floor(maxWidth / (MIN_SIZE * 0.56)));
+  return {
+    lines: words.join(" ").match(new RegExp(`.{1,${maxChars}}(\s|$)`, "g"))?.map((l) => l.trim()).slice(0, maxLines) ?? [title],
+    size: MIN_SIZE,
+  };
+}
+
 /** Escape text for FFmpeg drawtext filter (colons, backslashes, single quotes). */
 function escapeDrawtext(text: string): string {
   return text
@@ -955,17 +1002,37 @@ async function buildSlideshowAndRun(
   // does not have. A reel with no title over the opening shot is a small loss;
   // a filter graph that will not initialise is the whole video.
   if (titleFontAttr && params.title.trim()) {
-    const escapedTitle = escapeDrawtext(params.title);
-    const titleX = `(w-text_w)/2`;
-    const titleY = videoType === "reel_9x16"
-      ? `${Math.round(height * 0.12)}`
-      : `(h-text_h)/2-40`;
-    filterParts.push(
-      `[bgdark]drawtext=text='${escapedTitle}':` +
-      `${titleFontAttr}fontsize=${cfg.titleFontSize}:fontcolor=white:` +
-      `borderw=2:bordercolor=black:x=${titleX}:y=${titleY}:` +
-      `enable='between(t\\,0\\,4)'[titled]`,
+    /**
+     * Wrapped and stacked, one drawtext per line.
+     *
+     * A single centred drawtext ran a long title off both edges — an address
+     * like "Welcome to 24 Shagbark CT E Harleysville PA" is about 1,700px at
+     * 68px, on a frame 1,080px wide, so only its middle was ever on screen.
+     * drawtext cannot wrap, so the wrapping happens here and each line gets
+     * its own filter — the same way the closing card already stacks its lines.
+     */
+    const { lines: titleLines, size: titleSize } = fitTitleLines(
+      params.title,
+      width,
+      cfg.titleFontSize,
     );
+    const lineStep = Math.round(titleSize * 1.22);
+    const blockHeight = lineStep * titleLines.length;
+    const topY = videoType === "reel_9x16"
+      ? Math.round(height * 0.12)
+      : Math.round((height - blockHeight) / 2) - 40;
+
+    let titleLabel = "bgdark";
+    titleLines.forEach((line, i) => {
+      const out = i === titleLines.length - 1 ? "titled" : `title${i}`;
+      filterParts.push(
+        `[${titleLabel}]drawtext=text='${escapeDrawtext(line)}':` +
+        `${titleFontAttr}fontsize=${titleSize}:fontcolor=white:` +
+        `borderw=2:bordercolor=black:x=(w-text_w)/2:y=${topY + i * lineStep}:` +
+        `enable='between(t\\,0\\,4)'[${out}]`,
+      );
+      titleLabel = out;
+    });
   } else {
     if (!titleFontAttr) console.warn("[ffmpeg-slideshow] No title font available — rendering without a title card.");
     filterParts.push(`[bgdark]copy[titled]`);
