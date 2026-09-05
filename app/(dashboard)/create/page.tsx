@@ -1880,7 +1880,7 @@ function CreatePageInner() {
             {/* Optional thumbnail hook */}
             <div className="mb-4">
               <label className="text-sm font-bold text-spark-ink-soft block mb-1">
-                First Frame Title / Thumbnail Hook <span className="font-normal text-spark-ink-faint">(optional)</span>
+                Opening Line <span className="font-normal text-spark-ink-faint">(optional)</span>
               </label>
               <input
                 type="text"
@@ -1890,7 +1890,7 @@ function CreatePageInner() {
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
               />
               <p className="text-[11px] text-spark-ink-faint mt-1">
-                Shown as bold text on the video&apos;s first frame. Thumbnail-style visual. Your spoken script is unchanged.
+                Spoken first, before your script. It also becomes the video&apos;s title, so the two never disagree.
               </p>
             </div>
 
@@ -2330,6 +2330,8 @@ function CreatePageInner() {
               state={locState || undefined}
               initialScript={cameraGeneratedScript || undefined}
               initialUnbranded={cameraUnbranded}
+              scriptLength={cameraScriptLength}
+              onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}
             />
             </>)}

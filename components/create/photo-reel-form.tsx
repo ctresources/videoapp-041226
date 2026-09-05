@@ -38,8 +38,8 @@ const LENGTHS = [7, 12, 30, 60] as const;
 type Voice = "music" | "script" | "record";
 
 export function PhotoReelForm({
-  city,
-  state,
+  city: initialCity,
+  state: initialState,
   /**
    * Photos already gathered on the Listing video tab, so a Zillow import does
    * not have to be re-uploaded by hand to make a reel of the same house.
@@ -66,6 +66,17 @@ export function PhotoReelForm({
       .map((url, i) => ({ url, name: `Listing photo ${i + 1}`, caption: "" })),
   );
   const [uploading, setUploading] = useState(false);
+  /**
+   * The market for THIS reel.
+   *
+   * These used to be read-only props holding whatever was loaded from the
+   * profile, because the listing tab has no market field — so the closing
+   * card named the agent's office town on a reel about a house somewhere
+   * else, and the help text below told the user to "set the market above",
+   * where there was nothing to set. Seeded from the props, editable here.
+   */
+  const [city, setCity] = useState(initialCity ?? "");
+  const [state, setState] = useState(initialState ?? "");
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<string>("reel_9x16");
   const [seconds, setSeconds] = useState<number>(30);
@@ -499,6 +510,31 @@ export function PhotoReelForm({
         </div>
       )}
 
+      {/* ── Market ── */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">
+          Market for this reel <span className="font-normal text-spark-ink-faint">· names the town on the closing card</span>
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="City"
+            className="min-w-0 flex-1 rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] text-spark-ink outline-none focus:border-spark-amber"
+          />
+          <input
+            value={state}
+            onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+            placeholder="ST"
+            maxLength={2}
+            className="w-14 shrink-0 rounded-lg border border-spark-rule px-2.5 py-1.5 text-[12.5px] uppercase text-spark-ink outline-none focus:border-spark-amber"
+          />
+        </div>
+        <p className="mt-1 text-[11px] leading-[1.45] text-spark-ink-faint">
+          Set it to the property&apos;s town, not your office.
+        </p>
+      </div>
+
       {/* ── Closing card ── */}
       {/* The phone comes from your profile and the town from the market above,
           so the only thing asked for here is the wording of the ask itself. */}
@@ -536,7 +572,7 @@ export function PhotoReelForm({
             <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
               {city || state
                 ? <>Followed by {[city, state].filter(Boolean).join(", ")} and your phone number from Settings.</>
-                : <>Followed by your phone number from Settings. Set the market above to name the town too.</>}
+                : <>Followed by your phone number from Settings. Fill in the market above to name the town too.</>}
             </p>
           </div>
         )}

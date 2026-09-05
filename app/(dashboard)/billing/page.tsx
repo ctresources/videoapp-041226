@@ -271,8 +271,13 @@ export default async function BillingPage({
           </div>
         )}
 
-        {/* Usage summary */}
-        {(currentPlan || currentTier === "beta") && (
+        {/* Usage summary.
+            Also shown to anyone holding purchased videos, plan or no plan. A
+            free user who bought a $25 video was redirected here, saw a green
+            "Added to your account!" banner, and then no counter anywhere on
+            the page confirming they owned it — the dashboard showed it, this
+            page did not. */}
+        {(currentPlan || currentTier === "beta" || shortLeft > 0 || longLeft > 0) && (
           <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* AI videos — short and long are separate allowances */}
             <div>

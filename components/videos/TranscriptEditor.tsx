@@ -67,7 +67,7 @@ export function TranscriptEditor({ videoId, title, onClose }: {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed");
       setOriginal(cues.map((c) => c.text));
-      toast.success("Transcript saved — the captions and .srt now match.");
+      toast.success("Transcript saved — your .srt download now matches.");
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
@@ -95,9 +95,9 @@ export function TranscriptEditor({ videoId, title, onClose }: {
         <div className="flex shrink-0 items-start gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2.5">
           <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-600" />
           <p className="text-[12px] leading-[1.45] text-amber-900">
-            This corrects the <strong>captions and the copy you publish with</strong> — not the
-            audio. The recording still says what it said; to change that, the narration has to be
-            re-recorded over the footage.
+            This corrects the <strong>.srt caption file you download</strong> — not the audio, and
+            not the captions already burned into this video. The recording still says what it said;
+            to change that, the narration has to be re-recorded over the footage.
           </p>
         </div>
 

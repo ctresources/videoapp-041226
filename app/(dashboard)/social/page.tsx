@@ -83,7 +83,7 @@ function SocialPageContent() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <p className="text-sm text-slate-500">Connect once — post to YouTube and other platforms directly from the app</p>
+        <p className="text-sm text-slate-500">Connect your YouTube channel once and publish to it straight from SparkReels</p>
       </div>
 
       {/* ── Native YouTube ───────────────────────────────────────────────────── */}

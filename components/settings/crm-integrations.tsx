@@ -17,11 +17,17 @@ interface CrmWebhook {
   created_at: string;
 }
 
+/**
+ * Only the events something actually fires.
+ *
+ * publishWebhookEvent is called with "video.published" and nothing else, so
+ * the other three were subscribable and permanently silent — an agent could
+ * wire their CRM to "Video Failed", send a test (which succeeds, because the
+ * test route sends a synthetic event), and then never hear from us again.
+ * They come back when something sends them.
+ */
 const ALL_EVENTS = [
   { value: "video.published", label: "Video Published" },
-  { value: "video.created",   label: "Video Created (draft)" },
-  { value: "video.failed",    label: "Video Failed" },
-  { value: "listing.created", label: "Listing Video Created" },
 ];
 
 // CRM platform presets — URL hints + setup guides
@@ -187,7 +193,11 @@ export function CrmIntegrations() {
                 onClick={() => applyPreset(crm)}
                 className="w-full text-xs font-medium py-1.5 rounded-lg bg-white/70 hover:bg-white border border-white/50 text-slate-600 hover:text-slate-800 transition-all"
               >
-                + Connect {crm.name}
+                {/* applyPreset only prefills the NAME field and opens the
+                    manual form — nothing here is CRM-specific, and all four
+                    presets produce the same generic webhook row. "Connect"
+                    promised an integration that does not exist. */}
+                Set up for {crm.name}
               </button>
             </div>
           ))}

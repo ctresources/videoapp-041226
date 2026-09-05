@@ -1456,9 +1456,22 @@ export default function ProjectEditorPage() {
         {selectedVideoType === "youtube_long" ? (
           // Said rather than silently offering one button: a picker that cannot
           // be changed reads as broken, where a sentence reads as a rule.
-          <p className="text-[10.5px] leading-[1.4] text-spark-ink-muted">
-            Longform is horizontal (16:9). Vertical is for Shorts.
-          </p>
+          /* The way back out. Switching to Longform replaced this row with a
+             sentence and left no control that returns to Shorts — so someone
+             who took "Switch to 8 min" and then trimmed the script still spent
+             a long video, with nothing on screen offering to undo it. */
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10.5px] leading-[1.4] text-spark-ink-muted">
+              Longform is horizontal (16:9) and uses one of your long videos.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedVideoType("youtube_16x9")}
+              className="self-start rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[10.5px] font-medium text-spark-ink transition-colors hover:border-spark-rule-dim"
+            >
+              Back to Shorts — uses a short video instead
+            </button>
+          </div>
         ) : (
           <div className="grid gap-1.5 sm:grid-cols-2">
             {shapes.map(({ value, label, desc }) => (

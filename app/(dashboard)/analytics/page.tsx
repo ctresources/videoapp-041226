@@ -92,7 +92,7 @@ export default async function AnalyticsPage() {
           Analytics
         </h1>
         <p className="text-slate-400 text-sm mt-0.5">
-          Your content performance at a glance
+          What you&apos;ve made, and where it&apos;s been posted
         </p>
       </div>
 

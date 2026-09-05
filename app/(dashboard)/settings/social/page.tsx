@@ -92,7 +92,7 @@ function SocialSettingsContent() {
         </Link>
         <div>
           <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Connect once — post to YouTube and other platforms directly from the app</p>
+          <p className="text-sm text-slate-500 mt-0.5">Connect your YouTube channel once and publish to it straight from SparkReels</p>
         </div>
       </div>
 

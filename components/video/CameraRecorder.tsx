@@ -70,7 +70,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, photos = [], onPhaseChange }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * Start with the MLS unbranded cut already on, because the editor's
@@ -78,6 +78,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * recorder began from its own default of off.
    */
   initialUnbranded?: boolean;
+  /** The teleprompter script length, owned by the page — see sparkLength. */
+  scriptLength: CameraLength;
+  onScriptLengthChange: (l: CameraLength) => void;
   /** Photo URLs used as b-roll behind the speaker. Must be CORS-clean — see
    *  /api/photos/rehost — or they are silently dropped at load. */
   photos?: string[];
@@ -90,7 +93,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * page uses this to fold the setup away while the camera has the screen.
    */
   onPhaseChange?: (phase: CamStep) => void;
-} = {}) {
+}) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
 
@@ -106,7 +109,16 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const [sparkTopic, setSparkTopic] = useState("");
   // Camera recordings are free and run up to 15 min, so script length is purely
   // the agent's choice — the AI used to always write ~2-3 minutes.
-  const [sparkLength, setSparkLength] = useState<CameraLength>("standard");
+  /**
+   * Lifted to the page.
+   *
+   * This used to be the recorder's own state, read only by its Spark button —
+   * so the four-way picker the user sees had no effect at all on row 2's "AI
+   * writes it" or "From a document", which always asked for 435 words. One
+   * picker, one value, whichever route writes the script.
+   */
+  const sparkLength = scriptLength;
+  const setSparkLength = onScriptLengthChange;
   const [sparking, setSparking] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
   // "flow" = teleprompter follows the reader's voice; "auto" = constant speed

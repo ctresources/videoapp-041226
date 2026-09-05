@@ -48,6 +48,10 @@ interface RenderProgress {
   url?: string | null;
 }
 
+/** How many videos the library loads. Raised from 50, which a working agent
+ *  reaches inside a few months — and there was no way to see past it. */
+const VIDEO_PAGE_SIZE = 200;
+
 const statusConfig: Record<string, { label: string; variant: "default" | "warning" | "success" | "error"; icon: React.ElementType }> = {
   pending:   { label: "In queue",     variant: "default",  icon: Clock },
   rendering: { label: "Rendering…",   variant: "warning",  icon: RefreshCw },
@@ -313,7 +317,7 @@ function VideosContent() {
       .from("generated_videos")
       .select("*, projects(title, seo_data, ai_script, thumbnail_url)")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(VIDEO_PAGE_SIZE);
 
     const videos = (data as unknown as GeneratedVideo[]) || [];
     setVideos(videos);
@@ -385,7 +389,12 @@ function VideosContent() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-2xl font-bold text-brand-text">My Videos</h2>
-          <p className="text-sm text-slate-500 mt-0.5">{videos.length} video{videos.length !== 1 ? "s" : ""} total</p>
+          {/* "total" over a query capped at 50: a user with 60 videos was told
+              they had 50, and the ten oldest were unreachable. */}
+          <p className="text-sm text-slate-500 mt-0.5">
+            {videos.length} video{videos.length !== 1 ? "s" : ""}
+            {videos.length >= VIDEO_PAGE_SIZE ? " — showing your most recent" : ""}
+          </p>
         </div>
         <Link href="/create">
           <Button size="sm" className="gap-2">

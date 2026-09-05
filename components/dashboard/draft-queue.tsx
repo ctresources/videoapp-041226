@@ -65,7 +65,13 @@ export function DraftQueue({ city, state }: Props) {
   }
 
   function handleGenerate(title: string) {
-    router.push(`/create?topic=${encodeURIComponent(title)}`);
+    // The market goes too. Without it a user whose profile has no city
+    // arrives with the topic filled and the primary greyed out, told to "add
+    // the city and state above" — when this component was handed both.
+    const market = city && state
+      ? `&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`
+      : "";
+    router.push(`/create?topic=${encodeURIComponent(title)}${market}`);
   }
 
   if (dismissed) return null;
