@@ -27,12 +27,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // for the editor's script textarea, deliberately opt out of one).
   const onCreateRoute = pathname.startsWith("/create");
 
+  /**
+   * Hold-Space-to-talk lives on the dashboard, not on every screen.
+   *
+   * It listens on the window and swallows Space to do it, so on a page of
+   * text — My Videos, Help, Billing — pressing Space to scroll instead
+   * scrolled nothing, opened the microphone, and on release pushed the
+   * reader into Create with whatever they had muttered. The shortcut is
+   * worth having where starting a video is the point of the page; it is a
+   * trap everywhere else.
+   */
+  const voiceShortcutRoute = pathname === "/dashboard";
+
   return (
     // No background here: the paper gradient lives on <body> and would be
     // covered by an opaque colour at this level.
     <CreateProgressProvider>
     <div className="flex min-h-screen">
-      <GlobalVoiceShortcut disabled={onCreateRoute} />
+      <GlobalVoiceShortcut disabled={onCreateRoute || !voiceShortcutRoute} />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div

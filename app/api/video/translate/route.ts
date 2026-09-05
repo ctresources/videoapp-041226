@@ -5,7 +5,7 @@ import {
   getSupportedTranslationLanguages,
 } from "@/lib/api/heygen";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
-import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
+import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET — the language picker's options, resolved from HeyGen rather than
@@ -125,7 +125,9 @@ export async function POST(req: NextRequest) {
       .update({ render_job_id: translationId, metadata: { credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
       .eq("id", videoRow.id);
 
-    if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+    // Conditional write — see chargeOneVideo. Writing the precomputed value
+    // let two overlapping requests spend the same video twice.
+    if (charge && !isAdmin) await chargeOneVideo(admin, user.id, videoKind);
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",

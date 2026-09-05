@@ -70,3 +70,52 @@ export function chargeFor(
 export function refundColumn(kind: VideoKind, source: AllowanceSource): keyof AllowanceColumns {
   return source === "purchased" ? purchasedColumn(kind) : planColumn(kind);
 }
+
+/**
+ * Spends one video of this kind, and does it exactly once.
+ *
+ * chargeFor computes an absolute new value from a balance that was read
+ * earlier, and writing that value back is a lost update: press Generate in
+ * two tabs a second apart and both read 2, both write 1, and two videos are
+ * made for the price of one. The same shape sits in the refund path, so a
+ * refund landing beside a charge could erase one of them.
+ *
+ * The write is now conditional on the balance still being what we read — the
+ * update matches on the old value as well as the user id, so the second
+ * writer changes no rows and is sent back to re-read. Postgres does the
+ * comparing, so no amount of overlap can double-spend.
+ *
+ * Returns what was charged, so a failed render refunds the same balance it
+ * took, or null when there is nothing of this kind left.
+ */
+export async function chargeOneVideo(
+  admin: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
+  userId: string,
+  kind: VideoKind,
+): Promise<{ column: keyof AllowanceColumns; source: AllowanceSource } | null> {
+  // Three attempts. Each retry means another tab won the race, and a user has
+  // to run out of balance long before they run out of attempts.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: fresh } = await admin
+      .from("profiles")
+      .select(ALLOWANCE_SELECT)
+      .eq("id", userId)
+      .single();
+    if (!fresh) return null;
+
+    const charge = chargeFor(fresh as Partial<AllowanceColumns>, kind);
+    if (!charge) return null;
+
+    const { data: updated } = await admin
+      .from("profiles")
+      .update({ [charge.column]: charge.newValue })
+      .eq("id", userId)
+      .eq(charge.column, charge.newValue + 1) // still what we read?
+      .select("id");
+
+    if (updated && updated.length > 0) {
+      return { column: charge.column, source: charge.source };
+    }
+  }
+  return null;
+}

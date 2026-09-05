@@ -19,7 +19,7 @@ import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
 import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
-import { chargeFor, type VideoKind } from "@/lib/utils/video-allowance";
+import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhones } from "@/lib/utils/format-phone";
@@ -1063,7 +1063,10 @@ export async function POST(req: NextRequest) {
       // Admins are never charged. Previously only the REFUSAL was skipped for
       // them, so balances still drained to zero and had to be topped up by hand
       // (one admin account was manually set to 9999 short videos).
-      if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+      // Conditional write — see chargeOneVideo. The absolute value computed
+      // above was a lost update: two tabs both read the same balance and both
+      // wrote the same lower number, so one video was free.
+      if (charge && !isAdmin) await chargeOneVideo(admin, user.id, videoKind);
       await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
@@ -1197,7 +1200,10 @@ export async function POST(req: NextRequest) {
     // Admins are never charged. Previously only the REFUSAL was skipped for
       // them, so balances still drained to zero and had to be topped up by hand
       // (one admin account was manually set to 9999 short videos).
-      if (charge && !isAdmin) await admin.from("profiles").update({ [charge.column]: charge.newValue }).eq("id", user.id);
+      // Conditional write — see chargeOneVideo. The absolute value computed
+      // above was a lost update: two tabs both read the same balance and both
+      // wrote the same lower number, so one video was free.
+      if (charge && !isAdmin) await chargeOneVideo(admin, user.id, videoKind);
       await startFreeTrialClockIfNeeded();
     await admin.from("api_usage_log").insert({
       user_id: user.id,

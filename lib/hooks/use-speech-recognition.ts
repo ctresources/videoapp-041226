@@ -227,11 +227,29 @@ export function useSpeechRecognition({
   // something, or it swallows every space in the sentence they're writing.
   useEffect(() => {
     if (!holdSpace) return;
+    /**
+     * Anything that owns the Space key already.
+     *
+     * Text fields were the whole list, which missed the two things Space
+     * does everywhere else in a browser: it scrolls the page, and it
+     * activates the focused control. Because this listener is on the window
+     * and calls preventDefault on every Space outside a text field, pressing
+     * Space to page down on any dashboard route scrolled nothing, started
+     * the microphone, and on release navigated away from what the reader was
+     * looking at — and no keyboard user could press a button.
+     *
+     * A focused button, link or checkbox keeps its own key. Page-scroll is
+     * handled by the caller: hold-to-talk belongs on screens whose primary
+     * action is speaking, not on every page in the app.
+     */
     function isTypingTarget(t: EventTarget | null) {
       const el = t as HTMLElement | null;
       if (!el) return false;
       const tag = el.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable) return true;
+      if (tag === "BUTTON" || tag === "A" || tag === "SUMMARY") return true;
+      const role = el.getAttribute?.("role");
+      return role === "button" || role === "link" || role === "checkbox" || role === "switch";
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== "Space" || e.repeat || isTypingTarget(e.target) || disabled) return;

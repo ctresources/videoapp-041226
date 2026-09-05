@@ -603,7 +603,7 @@ export default function ProjectEditorPage() {
           toast(
             (t) => (
               <span className="text-sm">
-                No credits left.{" "}
+                No videos left.{" "}
                 <a
                   href="/billing"
                   className="font-semibold underline text-primary-600"
@@ -624,7 +624,7 @@ export default function ProjectEditorPage() {
       toast.success(
         wasFree
           ? "Generating your new look. It'll appear below when ready! (Free this month)"
-          : "Generating your new look, 1 credit used",
+          : "Generating your new look — one short video used",
       );
       setGenerateLookPrompt("");
       setShowGenerateLook(false);
@@ -1316,7 +1316,7 @@ export default function ProjectEditorPage() {
               </button>
             </div>
             <p className="text-[10px] text-slate-400 mb-2">
-              Based on your selected avatar · 1st look/month free, then 1 credit · ready in ~2 min
+              Based on your selected avatar · 1st look/month free, then one short video · ready in ~2 min
             </p>
             {!selectedLookId && (
               <p className="text-[10px] text-amber-500 mb-2">Select an avatar above first</p>
@@ -1370,7 +1370,7 @@ export default function ProjectEditorPage() {
             {
               mode: "self" as const,
               label: "I'll record it",
-              desc: "You on camera, free. No credit used",
+              desc: "You on camera, free. Uses nothing from your plan",
             },
           ].map(({ mode, label, desc }) => (
             <button
