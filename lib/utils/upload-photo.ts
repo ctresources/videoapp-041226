@@ -60,28 +60,58 @@ async function toDownscaledJpeg(file: File): Promise<Blob> {
  * The assets bucket's RLS INSERT policy requires the first path segment to be
  * the user's id, so the path is always `${user.id}/video-photos/...`.
  */
-export async function uploadVideoPhoto(file: File): Promise<UploadedPhoto> {
-  if (file.size > MAX_BYTES) {
-    throw new Error(`"${file.name}" is over 25MB — please use a smaller image.`);
-  }
-
-  // This upload never passes through our own API — it goes straight to
-  // Supabase Storage — so the free-trial gate has to be checked explicitly
-  // here rather than at a route boundary. See app/api/video/photo-upload-gate.
+/**
+ * Checks the free-trial gate once, for a whole batch of photos.
+ *
+ * This upload never passes through our own API — it goes straight to Supabase
+ * Storage — so the gate has to be checked explicitly rather than at a route
+ * boundary. See app/api/video/photo-upload-gate. Called once per batch: it was
+ * being called once per FILE, so picking ten photos fired ten identical
+ * requests that could only ever give the same answer.
+ */
+export async function assertPhotoUploadAllowed(): Promise<void> {
   const gateRes = await fetch("/api/video/photo-upload-gate");
   if (!gateRes.ok) {
     const body = await gateRes.json().catch(() => null);
     throw new Error(body?.error || "Photo uploads aren't available right now.");
   }
+}
+
+/** The signed-in user's id, resolved once before a batch of uploads. */
+export async function currentUserId(): Promise<string> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Please sign in again.");
+  return user.id;
+}
+
+/**
+ * @param userId resolved by the caller, before the uploads start.
+ *
+ * Not looked up in here, and that is the point. Supabase's auth client guards
+ * the stored token with a Web Lock, and this function used to take that lock
+ * on every call — so ten photos uploading at once contended for it and one
+ * request stole it from another: `Lock "lock:sb-…-auth-token" was released
+ * because another request stole it`. It surfaced on phones, where a slower
+ * connection keeps all ten uploads in flight together and a token refresh is
+ * likely to land in the middle of them.
+ */
+export async function uploadVideoPhoto(file: File, userId?: string): Promise<UploadedPhoto> {
+  if (file.size > MAX_BYTES) {
+    throw new Error(`"${file.name}" is over 25MB — please use a smaller image.`);
+  }
+
+  // Optional so the callers that upload one photo at a time keep working
+  // unchanged — they never contended for the lock. Batch callers pass it and
+  // take the auth lookup out of the parallel path entirely.
+  const uid = userId ?? await currentUserId();
+  if (!userId) await assertPhotoUploadAllowed();
 
   // Re-encode to a small JPEG (renderable + HeyGen-compatible + fast to upload).
   const jpeg = await toDownscaledJpeg(file);
 
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Please sign in again.");
-
-  const path = `${user.id}/video-photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const path = `${uid}/video-photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
 
   const { error } = await supabase.storage
     .from("assets")

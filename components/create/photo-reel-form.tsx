@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
-import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
+import { uploadVideoPhoto, assertPhotoUploadAllowed, currentUserId } from "@/lib/utils/upload-photo";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { WPM } from "@/lib/utils/video-length";
 
@@ -114,19 +114,66 @@ export function PhotoReelForm({
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
+  /**
+   * Uploads a batch of photos without racing the auth lock.
+   *
+   * Every file used to check the upload gate and resolve the signed-in user
+   * for itself, and all of them ran at once — so ten photos meant ten
+   * identical gate requests and ten contenders for the Web Lock that guards
+   * the Supabase auth token, which is what produced `Lock "lock:sb-…-auth-
+   * token" was released because another request stole it` on a phone.
+   *
+   * The gate and the user are settled once, up front. Uploads then run three
+   * at a time: enough to be quick, few enough that a phone's connection is not
+   * carrying twelve at once.
+   *
+   * allSettled, not all — Promise.all rejects on the first failure and
+   * discards the successes with it, which is why a single bad photo emptied
+   * the whole list back to 0/12.
+   */
   async function addPhotos(files: FileList) {
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) return;
     setUploading(true);
     setError(null);
     try {
-      const added = await Promise.all(
-        Array.from(files).slice(0, room).map(async (f) => {
-          const { url, name } = await uploadVideoPhoto(f);
-          return { url, name, caption: "" };
-        }),
-      );
-      setPhotos((prev) => [...prev, ...added].slice(0, MAX_PHOTOS));
+      await assertPhotoUploadAllowed();
+      const userId = await currentUserId();
+
+      const queue = Array.from(files).slice(0, room);
+      const done: { url: string; name: string; caption: string }[] = [];
+      const failures: string[] = [];
+
+      const BATCH = 3;
+      for (let i = 0; i < queue.length; i += BATCH) {
+        const results = await Promise.allSettled(
+          queue.slice(i, i + BATCH).map((f) => uploadVideoPhoto(f, userId)),
+        );
+        results.forEach((r, j) => {
+          if (r.status === "fulfilled") {
+            done.push({ url: r.value.url, name: r.value.name, caption: "" });
+          } else {
+            const file = queue[i + j];
+            failures.push(r.reason instanceof Error ? r.reason.message : `"${file.name}" failed`);
+          }
+        });
+        // Shown as they land, so a slow batch does not look like a stall.
+        if (done.length) setPhotos((prev) => {
+          const merged = [...prev];
+          for (const d of done.splice(0)) {
+            if (merged.length < MAX_PHOTOS) merged.push(d);
+          }
+          return merged;
+        });
+      }
+
+      if (failures.length) {
+        setError(
+          failures.length === 1
+            ? failures[0]
+            : `${failures.length} photos didn't upload. ${failures[0]}`,
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Photo upload failed");
     } finally {
