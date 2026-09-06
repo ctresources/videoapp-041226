@@ -20,6 +20,29 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+
+  /**
+   * Retire the ones whose time has come.
+   *
+   * post_status was write-once: the publish route set "scheduled" and nothing
+   * ever advanced it. So a post sat on the calendar forever under the words
+   * "until YouTube makes it public", Analytics never counted it as published
+   * while counting it as upcoming, and — the dangerous one — the cancel guard
+   * below tested a status that could not change, so cancelling after the
+   * publish date deleted a LIVE video and called it a cancellation.
+   *
+   * A cron would be tidier, but this is the only route that reads these rows,
+   * so sweeping them here costs one write on a page nobody loads often and
+   * needs no new infrastructure. YouTube has published anything whose
+   * scheduled_at has passed.
+   */
+  await admin
+    .from("social_posts")
+    .update({ post_status: "posted", posted_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .eq("post_status", "scheduled")
+    .lte("scheduled_at", new Date().toISOString());
+
   const { data: rows } = await admin
     .from("social_posts")
     .select("id, platform, scheduled_at, post_status, caption, platform_post_id, video_title")
@@ -67,15 +90,32 @@ export async function DELETE(req: NextRequest) {
   const admin = createAdminClient();
   const { data: row } = await admin
     .from("social_posts")
-    .select("id, platform, platform_post_id, post_status")
+    .select("id, platform, platform_post_id, post_status, scheduled_at")
     .eq("id", scheduleId)
     .eq("user_id", user.id)
     .single();
 
-  const post = row as { id: string; platform: string; platform_post_id: string | null; post_status: string } | null;
+  const post = row as {
+    id: string; platform: string; platform_post_id: string | null;
+    post_status: string; scheduled_at: string | null;
+  } | null;
   if (!post) return NextResponse.json({ error: "Scheduled post not found" }, { status: 404 });
   if (post.post_status !== "scheduled") {
     return NextResponse.json({ error: "That post has already gone out." }, { status: 400 });
+  }
+  /**
+   * The status check above is not enough on its own.
+   *
+   * It is only as current as the last time someone loaded the calendar, and
+   * this endpoint deletes the video from YouTube — so a stale "scheduled" row
+   * whose publish time has passed would take a live, public video with it.
+   * The clock is the authority here, not the column.
+   */
+  if (post.scheduled_at && new Date(post.scheduled_at) <= new Date()) {
+    return NextResponse.json(
+      { error: "That video has already gone public on YouTube. Delete it in YouTube Studio if you want it taken down." },
+      { status: 400 },
+    );
   }
 
   if (post.platform === "youtube" && post.platform_post_id) {

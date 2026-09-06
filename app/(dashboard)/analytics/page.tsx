@@ -98,9 +98,9 @@ export default async function AnalyticsPage() {
 
       {/* Top stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Videos Created"   value={videos.length}    sub={`${recentVideos} this month`}  icon={Video}     color="text-primary-500"   bg="bg-primary-50" />
-        <StatCard label="Posts Published"  value={publishedPosts}   sub={`${recentPosts} this month`}   icon={Share2}    color="text-green-600"     bg="bg-green-50" />
-        <StatCard label="Scheduled Posts"  value={scheduledPosts}   sub="coming up"                     icon={Clock}     color="text-spark-blue"      bg="bg-spark-blue/10" />
+        <StatCard label="Videos Created"   value={videos.length}    sub={`${recentVideos} in the last 30 days`}  icon={Video}     color="text-primary-500"   bg="bg-primary-50" />
+        <StatCard label="Posts Published"  value={publishedPosts}   sub={`${recentPosts} in the last 30 days`}   icon={Share2}    color="text-green-600"     bg="bg-green-50" />
+        <StatCard label="Scheduled Posts"  value={scheduledPosts}   sub="waiting to go out"                     icon={Clock}     color="text-spark-blue"      bg="bg-spark-blue/10" />
         <StatCard label="Videos Rendered"  value={completedVideos}  sub="completed"                     icon={TrendingUp} color="text-spark-amber"   bg="bg-spark-amber-tint" />
       </div>
 
@@ -165,8 +165,8 @@ export default async function AnalyticsPage() {
           </span>
         </div>
         <p className="text-sm text-slate-400">
-          Views, likes, comments, shares, and click-through rates from YouTube, Instagram, TikTok,
-          and LinkedIn — pulled automatically from your connected platforms.
+          Views, likes, comments and click-through rates from your connected YouTube channel.
+          More platforms arrive with the publishing that feeds them.
         </p>
       </Card>
     </div>

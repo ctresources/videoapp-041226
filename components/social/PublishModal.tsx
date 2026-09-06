@@ -234,8 +234,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
             </p>
             <p className="text-sm text-slate-500">
               {tab === "schedule"
-                ? `Your video will be posted on ${new Date(`${scheduleDate}T${scheduleTime}`).toLocaleString()}`
-                : "Your video is live on the selected platforms."}
+                ? `Your video will go public on ${new Date(`${scheduleDate}T${scheduleTime}`).toLocaleString()}`
+                : "Your video is live on YouTube."}
             </p>
             <Button onClick={onClose} className="mt-2">Done</Button>
           </div>
@@ -375,15 +375,31 @@ ${hashes.join(" ")}` : hashes.join(" ");
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-500 block mb-1">Privacy</label>
-                  <select
-                    value={privacy}
-                    onChange={(e) => setPrivacy(e.target.value as "public" | "unlisted" | "private")}
-                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                  >
-                    <option value="public">Public</option>
-                    <option value="unlisted">Unlisted</option>
-                    <option value="private">Private</option>
-                  </select>
+                  {/* Scheduling and privacy cannot both be honoured. YouTube
+                      holds a scheduled upload as private and then makes it
+                      PUBLIC at the appointed time — there is no "publish this
+                      privately later". Offering the choice anyway meant
+                      picking Private and scheduling produced a public video,
+                      silently. So the control says what will happen instead of
+                      taking an answer it cannot keep. */}
+                  {tab === "schedule" ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                      Public at the scheduled time
+                      <span className="mt-0.5 block text-[11px] leading-[1.4] text-slate-400">
+                        YouTube holds it privately until then. Post now instead if you need it unlisted or private.
+                      </span>
+                    </div>
+                  ) : (
+                    <select
+                      value={privacy}
+                      onChange={(e) => setPrivacy(e.target.value as "public" | "unlisted" | "private")}
+                      className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                    >
+                      <option value="public">Public</option>
+                      <option value="unlisted">Unlisted</option>
+                      <option value="private">Private</option>
+                    </select>
+                  )}
                 </div>
               </div>
             )}
@@ -438,7 +454,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
               className="w-full gap-2"
             >
               {tab === "now"
-                ? <><Send size={16} /> {selectedIds.length > 0 ? `Publish to ${selectedIds.length} Platform${selectedIds.length !== 1 ? "s" : ""}` : "Select a Platform"}</>
+                ? <><Send size={16} /> {selectedIds.length > 0 ? "Publish to YouTube" : "Select a Platform"}</>
                 : <><Clock size={16} /> Schedule Post</>}
             </Button>
           </div>

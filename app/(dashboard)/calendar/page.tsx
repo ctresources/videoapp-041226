@@ -394,8 +394,8 @@ export default function CalendarPage() {
               social_posts rows. So the instruction is true again. */}
           <p className="text-slate-500 font-medium">No scheduled posts yet</p>
           <p className="text-slate-400 text-sm mt-1">
-            Publish a video with <strong>Schedule</strong> instead of Post now, and it will appear here
-            until YouTube makes it public.
+            Publish a video with <strong>Schedule</strong> instead of Post now, and it will appear
+            here until its time comes.
           </p>
           <Link href="/create">
             <Button size="sm" className="mt-4 gap-2">
