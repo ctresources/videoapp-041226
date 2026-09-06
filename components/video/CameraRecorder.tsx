@@ -489,13 +489,21 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
 
     const mimeType = pickRecordingMimeType();
 
-    // Cap the bitrate — the browser default (often 5–8 Mbps at 1080p) produced
-    // 500 MB+ files for long recordings, which storage rejected outright and
-    // the upload silently failed. ~2.5 Mbps stays visually clean for talking
-    // head footage while keeping a 15-min take near ~280 MB.
+    /**
+     * Cap the bitrate. The browser default (often 5-8 Mbps at 1080p) produced
+     * 500 MB+ files for long recordings, which storage rejected outright and
+     * the upload silently failed.
+     *
+     * 1.6 Mbps, not the 2.5 it asked for before: a measured 1:50 recording came
+     * back at 3,436 kb/s despite that 2.5 request — the hint is a hint, and the
+     * encoder overshot it — which made a 49 MB file that a phone spent a long
+     * time buffering before it would play. Asking for 1.6 lands nearer 2 in
+     * practice, roughly halving it. Resolution is untouched at 1080p; talking
+     * head footage is a mostly static frame and holds up at this rate.
+     */
     const recorder = new MediaRecorder(sourceStream, {
       ...(mimeType ? { mimeType } : {}),
-      videoBitsPerSecond: 2_500_000,
+      videoBitsPerSecond: 1_600_000,
       audioBitsPerSecond: 128_000,
     });
     recorder.ondataavailable = (e) => {

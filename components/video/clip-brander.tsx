@@ -403,6 +403,11 @@ export function ClipBrander({ photos = [], title }: {
         // candidates will pick its own, and naming an unsupported type here
         // throws before recording ever starts.
         ...(mimeType ? { mimeType } : {}),
+        // Capped, like the camera recorder. This asked for nothing at all, so
+        // the browser picked its own rate — often 5-8 Mbps at 1080p — and a
+        // branded clip came out as large as it felt like making it.
+        videoBitsPerSecond: 1_600_000,
+        audioBitsPerSecond: 128_000,
       });
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       rec.onstop = async () => {

@@ -351,6 +351,7 @@ export default function ProjectEditorPage() {
 
   // Photo uploads
   const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
+  const [matchingPhotos, setMatchingPhotos] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -1445,6 +1446,50 @@ export default function ProjectEditorPage() {
    * a different allowance, so putting it in this row would quietly turn a shape
    * picker into a length-and-price one.
    */
+  /**
+   * Reorder the photos to follow the script.
+   *
+   * On a button rather than automatic: the order is the agent's to own, and a
+   * render that silently rearranged photos they had deliberately sequenced
+   * would be worse than one that never helped at all. Nothing moves unless
+   * this is pressed, and the arrows still work afterwards.
+   */
+  async function matchPhotosToScript() {
+    if (uploadedPhotos.length < 2 || !editedScript.trim()) return;
+    setMatchingPhotos(true);
+    try {
+      const res = await fetch("/api/photos/match-to-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrls: uploadedPhotos.map((p) => p.url),
+          script: editedScript,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't match the photos this time.");
+
+      const order: string[] = data.photoUrls ?? [];
+      setUploadedPhotos((prev) => {
+        const byUrl = new Map(prev.map((p) => [p.url, p]));
+        const next = order.map((u) => byUrl.get(u)).filter(Boolean) as typeof prev;
+        // Anything the server did not return stays rather than disappearing.
+        for (const p of prev) if (!order.includes(p.url)) next.push(p);
+        return next;
+      });
+
+      toast.success(
+        data.moved
+          ? `Photos reordered to follow the script — ${data.matched} of ${data.total} matched.`
+          : "Your photos already follow the script.",
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't match the photos this time.");
+    } finally {
+      setMatchingPhotos(false);
+    }
+  }
+
   function renderFormatSelector() {
     const shapes = [
       { value: "reel_9x16" as const, label: "Vertical 9:16", desc: "Reels, TikTok, Shorts" },
@@ -2351,7 +2396,21 @@ export default function ProjectEditorPage() {
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to {UPLOAD_PHOTO_LIMIT})</span></p>
-              {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/{UPLOAD_PHOTO_LIMIT}</span>}
+              <div className="flex items-center gap-2.5">
+                {/* Only worth offering once there is a script to follow and
+                    more than one photo to put in an order. */}
+                {uploadedPhotos.length > 1 && editedScript.trim() && (
+                  <button
+                    type="button"
+                    onClick={matchPhotosToScript}
+                    disabled={matchingPhotos}
+                    className="text-[11px] font-semibold text-spark-amber hover:text-spark-blue disabled:opacity-50"
+                  >
+                    {matchingPhotos ? "Matching…" : "Match photos to script"}
+                  </button>
+                )}
+                {uploadedPhotos.length > 0 && <span className="text-xs text-slate-400">{uploadedPhotos.length}/{UPLOAD_PHOTO_LIMIT}</span>}
+              </div>
             </div>
             {/* The lower cap belongs to the Video Agent, which renders everything
                 EXCEPT pasted scripts and long-form (see useDirectVideo in
