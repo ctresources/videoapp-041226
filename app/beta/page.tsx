@@ -11,7 +11,7 @@ import Link from "next/link";
 // to go looking for a digital twin they don't have.
 const perks = [
   { icon: Sparkles, text: "1 free AI video — one short video, up to 3 minutes long." },
-  { icon: Camera,   text: "Photo avatar + your cloned voice. Digital twin is a paid-plan feature." },
+  { icon: Camera,   text: "Your photo as the presenter, speaking in your own cloned voice." },
   { icon: Camera,   text: "30 days of unlimited camera recordings, starting the day you generate your free video." },
   { icon: CheckCircle, text: "Built-in teleprompter — your script scrolls while you record." },
   { icon: CheckCircle, text: "AI script writer, thumbnails, channel banner and the rest of the AI tools — free for those same 30 days." },

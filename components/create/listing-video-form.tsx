@@ -588,7 +588,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
                 in the app. Read from RENDERED_SCRIPT_LENGTHS so it cannot go
                 stale again the next time those change. */}
             <strong>What happens next:</strong> We import the listing details, then use AI to write
-            a Fair Housing-compliant property tour voiceover script. Up to{" "}
+            a property tour voiceover script written to Fair Housing guidelines. Up to{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
             titles, hashtags and blog post that go with it. Takes about a minute.
@@ -639,7 +639,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
         </div>
         <div>
           <p className="font-semibold text-brand-text">Writing your property tour script…</p>
-          <p className="text-sm text-slate-400 mt-1">AI is crafting a Fair Housing-compliant voiceover</p>
+          <p className="text-sm text-slate-400 mt-1">AI is writing your tour script to Fair Housing guidelines</p>
         </div>
       </div>
     );
@@ -911,8 +911,14 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
       {/* Fair Housing notice */}
       <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed">
-          <strong>Fair Housing AI</strong>. Your script will be automatically reviewed to ensure compliance
-          with the Fair Housing Act. We never include demographic, school, or community-composition language.
+          {/* Was "automatically reviewed to ensure compliance … we never
+              include". There is no review: FAIR_HOUSING_GUARDRAIL is prompt
+              text in eight routes and nothing scans the output. Promising a
+              check that does not exist, to someone whose licence depends on
+              it, is the one place in this app where overclaiming is unsafe. */}
+          <strong>Fair Housing</strong>. The script is written to Fair Housing guidelines — the AI is
+          instructed to leave out demographic, school and community-composition language. That is
+          guidance rather than a check, so read the script before you publish it.
         </p>
       </div>
 

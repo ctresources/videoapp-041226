@@ -48,7 +48,6 @@ const PLANS = [
       "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
       "2 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
-      "Digital twin avatar",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Voice recording + AI script",
@@ -72,8 +71,6 @@ const PLANS = [
       "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
       "4 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
-      "Digital twin avatar",
-      "Priority rendering",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
       "Voice recording + AI script",
@@ -334,7 +331,7 @@ export default async function BillingPage({
               <div className="w-full h-2 bg-emerald-100 rounded-full">
                 <div className="h-2 bg-emerald-400 rounded-full w-full" />
               </div>
-              <p className="text-xs text-slate-400 mt-1.5">Up To 30 Mins Each · No Monthly Cap</p>
+              <p className="text-xs text-slate-400 mt-1.5">Up To 15 Mins Each · No Monthly Cap</p>
             </div>
           </div>
         )}
@@ -492,7 +489,7 @@ export default async function BillingPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { q: "Can I cancel anytime?", a: "Yes. Cancel from the Manage Billing page and your plan stays active until the end of your billing period." },
-            { q: "What happens to unused videos?", a: "Videos reset each billing cycle and don't roll over. Use them or lose them." },
+            { q: "What happens to unused videos?", a: "Your plan's videos reset each billing cycle and don't roll over. Add-on videos you buy are separate and never expire." },
             { q: "Can I upgrade mid-month?", a: "Yes. You're charged a prorated amount for the remainder of your current billing period." },
             { q: "Is my payment info secure?", a: "All payments are processed by Stripe. We never store your card details." },
           ].map(({ q, a }) => (

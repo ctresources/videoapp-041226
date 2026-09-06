@@ -218,7 +218,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h3 className="font-semibold text-brand-text">Social Accounts</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Connect YouTube, Instagram, TikTok</p>
+              <p className="text-xs text-slate-400 mt-0.5">Connect your YouTube channel</p>
             </div>
           </div>
           <span className="text-sm text-primary-500 group-hover:underline">Manage →</span>
@@ -354,7 +354,7 @@ export default function SettingsPage() {
           <div>
             <h3 className="font-semibold text-brand-text">Default Video CTA</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Spoken at the end of your AI avatar, Digital Twin, and teleprompter videos
+              Spoken at the end of your AI avatar and teleprompter videos
             </p>
           </div>
         </div>
@@ -427,7 +427,7 @@ export default function SettingsPage() {
             <Webhook size={18} className="text-spark-amber" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">CRM Integration <span className="text-xs font-medium text-slate-400">(Coming Soon)</span></h3>
+            <h3 className="font-semibold text-brand-text">CRM Integration</h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Auto-notify GoHighLevel, HubSpot, Follow Up Boss, BoldTrail when videos publish
             </p>

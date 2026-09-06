@@ -239,7 +239,7 @@ const steps = [
   {
     step: "02",
     title: "AI Builds Your Video Automatically.",
-    description: "Our AI writes a Fair Housing-compliant script, generates your AI avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video. Zero editing required.",
+    description: "Our AI writes your script to Fair Housing guidelines, generates your AI avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video. Zero editing required.",
   },
   {
     step: "03",
@@ -266,7 +266,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -277,7 +277,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
