@@ -669,7 +669,8 @@ export async function POST(req: NextRequest) {
   const isAdmin = profile.role === "admin";
 
   // ── Script length by plan ─────────────────────────────────────────────────
-  // Short videos: Creator up to 3 min, Producer/Influencer up to 4 min. Long videos: 8 min
+  // Short videos: about 3 min on every plan (standardMaxWords is 400 words
+  // regardless of tier). Long videos: 8 min.
   // on any plan. Word counts assume a natural ~145 wpm delivery. Short videos
   // also have a hard technical ceiling — they render on the Video Agent, whose
   // prompt carries the script, so past ~4 min the quality instructions get

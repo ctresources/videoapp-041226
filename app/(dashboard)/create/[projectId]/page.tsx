@@ -136,7 +136,7 @@ type VideoChoice = VideoType | "youtube_long";
 const videoTypes: { value: VideoChoice; label: string; ratio: string; desc: string; proOnly?: boolean; credits: number }[] = [
   { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "About 3 min · vertical · automatic b-roll", credits: 1 },
   { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "About 3 min · horizontal · automatic b-roll", credits: 1 },
-  { value: "youtube_long", label: "Longform", ratio: "16:9", desc: "Over 4 min, up to 8 · horizontal · uses your photos for visuals", proOnly: true, credits: 1 },
+  { value: "youtube_long", label: "Longform", ratio: "16:9", desc: "Up to 8 min · horizontal · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
 // LONG_MAX_WORDS used to be a second copy of this number, kept in step by hand.

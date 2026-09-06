@@ -156,7 +156,7 @@ const marqueeRow2 = [
   { label: "Seller Tips",          len: "3 min",  img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80" },
   { label: "Price Reduction",      len: "60 sec", img: "https://images.unsplash.com/photo-1709880945165-d2208c6ad2ec?auto=format&fit=crop&w=400&q=80" },
   { label: "New Construction Tour", len: "8 min", img: "https://images.unsplash.com/photo-1587582423116-ec07293f0395?auto=format&fit=crop&w=400&q=80" },
-  { label: "Investment Property",  len: "4 min",  img: "https://images.unsplash.com/photo-1543071293-d91175a68672?auto=format&fit=crop&w=400&q=80" },
+  { label: "Investment Property",  len: "3 min",  img: "https://images.unsplash.com/photo-1543071293-d91175a68672?auto=format&fit=crop&w=400&q=80" },
   { label: "Luxury Listing",       len: "90 sec", img: "https://images.unsplash.com/photo-1682184805271-11671b7ecf4c?auto=format&fit=crop&w=400&q=80" },
   { label: "School District Tour", len: "8 min",  img: "https://images.unsplash.com/photo-1767589565213-1daee51888b2?auto=format&fit=crop&w=400&q=80" },
   { label: "Coming Soon",          len: "60 sec", img: "https://images.unsplash.com/photo-1777106322601-578dc9213ace?auto=format&fit=crop&w=400&q=80" },
@@ -266,7 +266,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -277,7 +277,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 4 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Digital twin avatar", "Priority rendering", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -873,7 +873,7 @@ export default function LandingPage() {
                   <Zap size={15} className="text-primary-600" />
                 </div>
                 <p className="font-black text-slate-900">Short videos</p>
-                <span className="text-base font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 ml-auto">Up to 4 min</span>
+                <span className="text-base font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 ml-auto">Up to 3 min</span>
               </div>
               <p className="text-xl text-slate-500 leading-relaxed mb-3">
                 Reels, quick market updates, just-sold posts. Speak for a minute and the AI fills the
@@ -944,7 +944,7 @@ export default function LandingPage() {
               <div className="flex flex-wrap gap-3 shrink-0 text-xl">
                 <div className="border border-slate-200 px-4 py-2">
                   <span className="font-black text-slate-900">$25</span>
-                  <span className="text-slate-500 text-lg"> · One short video, up to 4 minutes</span>
+                  <span className="text-slate-500 text-lg"> · One short video, up to 3 minutes</span>
                 </div>
                 <div className="border border-blue-900 px-4 py-2 bg-blue-50">
                   <span className="font-black text-blue-900">$49</span>

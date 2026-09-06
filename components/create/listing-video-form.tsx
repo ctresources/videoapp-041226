@@ -521,32 +521,42 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
           <div className="flex-1 h-px bg-slate-300" />
         </div>
 
-        {/* ── URL import ── */}
-        <div>
-          <div className="flex gap-2">
+        {/* ── URL import ──
+            Given the weight of a primary action, because it is one. This was a
+            plain grey field the same size as every other input on the page,
+            under a divider that read like a footnote — so the fastest route in
+            (paste a link, get a finished tour) looked like an afterthought
+            beside the manual form. */}
+        <div className="rounded-2xl border-[1.5px] border-spark-amber bg-spark-amber-tint p-4">
+          <p className="mb-1 text-[15px] font-semibold text-spark-ink">
+            Paste a listing link
+          </p>
+          <p className="mb-3 text-[12.5px] leading-[1.4] text-spark-ink-muted">
+            We read the address, price, beds, baths and photos, and write the tour for you.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
-              <Link2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Link2 size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-spark-amber" />
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleScrape()}
                 placeholder="https://zillow.com/homedetails/..."
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-xl border-[1.5px] border-spark-rule bg-white py-3.5 pl-11 pr-3 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:border-spark-amber focus:outline-none"
               />
             </div>
-            <Button onClick={handleScrape} disabled={!url.trim()} className="gap-1.5 shrink-0">
-              Import <ArrowRight size={14} />
+            <Button onClick={handleScrape} disabled={!url.trim()} size="lg" className="shrink-0 gap-1.5">
+              Import <ArrowRight size={16} />
             </Button>
           </div>
           {/* Shortened links do work and were not mentioned, so a slow one
               read as an unsupported one. They take longer because the
               redirect has to be followed before the real page is even
               fetched — worth saying, so a wait looks like a wait. */}
-          <p className="text-xs text-slate-400 mt-1.5">
-            Supported: Zillow · Realtor.com · Redfin · Homes.com · Trulia · Compass
-            <br />
-            Short links (myre.io, bit.ly) work too. They just take a few seconds longer.
+          <p className="mt-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
+            Zillow · Realtor.com · Redfin · Homes.com · Trulia · Compass.
+            Short links (myre.io, bit.ly) work too — they just take a few seconds longer.
           </p>
         </div>
 

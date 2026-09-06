@@ -79,7 +79,7 @@ Return ONLY this JSON, no code fence:
 {"videoType":null,"renderMode":null,"musicId":null,"captions":null,"scriptEdit":null,"needsFacts":false,"reply":""}
 
 Fields — return the CURRENT value of each, re-reading the whole conversation, and null for anything never mentioned:
-- videoType: "reel_9x16" (shorts, vertical, 9:16, reel, TikTok), "youtube_16x9" (shorts, horizontal, 16:9, YouTube), "youtube_long" (longform, over 4 minutes, horizontal only)
+- videoType: "reel_9x16" (shorts, vertical, 9:16, reel, TikTok), "youtube_16x9" (shorts, horizontal, 16:9, YouTube), "youtube_long" (longform, up to 8 minutes, horizontal only)
 - renderMode: "avatar_voice" (avatar on screen, on camera, show me) or "voice_only" (voice only, no avatar, just narration)
 - musicId: one of ${musicList}, or "none" for no music
 - captions: true or false (subtitles, captions, burned-in text)

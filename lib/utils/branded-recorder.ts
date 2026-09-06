@@ -968,9 +968,21 @@ export class BrandedComposite {
     const v = this.videoEl;
     if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
 
-    const d = H * 0.36;
-    const cx = W * 0.035 + d / 2;
-    const cy = H * 0.05 + d / 2;
+    /**
+     * A corner credit, not a second subject.
+     *
+     * At H*0.36 this was a 691px circle on a 1080x1920 recording — more than
+     * half the frame's width, sitting far enough in to read as the middle of
+     * the picture rather than a corner of it. The photograph behind it is what
+     * the video is about; the presenter is who is talking over it.
+     *
+     * Sized off the SHORT edge so the circle is the same size whichever way up
+     * the video is — off H it grew by 78% the moment a recording was portrait.
+     */
+    const S = Math.min(W, H);
+    const d = S * 0.20;
+    const cx = S * 0.045 + d / 2;
+    const cy = S * 0.045 + d / 2;
     const side = Math.min(v.videoWidth, v.videoHeight);
 
     ctx.save();

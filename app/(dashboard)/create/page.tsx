@@ -409,8 +409,20 @@ function CreatePageInner() {
         .eq("id", user.id)
         .single()
         .then(({ data }) => {
-          if (data?.location_city && !urlCity) setLocCity(data.location_city);
-          if (data?.location_state && !urlState) setLocState(data.location_state);
+          /**
+           * The market is NOT seeded from Settings any more.
+           *
+           * Pre-filling it with the profile's home town meant the commonest
+           * outcome was a video about a house in one place captioned with
+           * another — the field looked answered, so nobody looked at it. It
+           * starts empty and is required, so the answer is always this video's
+           * answer. A ?city= in the URL still fills it, because that came from
+           * a deliberate choice somewhere else in the app.
+           *
+           * profileHomeState is still read: it only backfills the two-letter
+           * state once a city has been typed, which saves a keystroke without
+           * ever naming a town for you.
+           */
           if (data?.location_state) setProfileHomeState(data.location_state);
           if (urlCity) setLocCity(urlCity);
           if (urlState) setLocState(urlState);
@@ -1513,7 +1525,7 @@ function CreatePageInner() {
                     is not a UI choice — the render refuses long form for
                     vertical (see isLongForm in api/video/create-blog), so a
                     vertical longform tile would quietly clamp the script back
-                    to four minutes. */}
+                    to the three-minute short cap. */}
                 <div className="mt-6">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
@@ -1523,9 +1535,9 @@ function CreatePageInner() {
                   </div>
                   <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {([
-                      { p: "reel", l: "standard", title: "Shorts", sub: "Under 4 min · 9:16 (vertical)", w: "11px", h: "17px" },
-                      { p: "youtube", l: "standard", title: "Shorts", sub: "Under 4 min · 16:9 (horizontal)", w: "20px", h: "12px" },
-                      { p: "youtube", l: "long", title: "Longform", sub: "Over 4 min · 16:9 (horizontal)", w: "20px", h: "12px" },
+                      { p: "reel", l: "standard", title: "Shorts", sub: "Up to 3 min · 9:16 (vertical)", w: "11px", h: "17px" },
+                      { p: "youtube", l: "standard", title: "Shorts", sub: "Up to 3 min · 16:9 (horizontal)", w: "20px", h: "12px" },
+                      { p: "youtube", l: "long", title: "Longform", sub: "Up to 8 min · 16:9 (horizontal)", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
                       const on = locPlatform === p && locLength === l;
                       return (

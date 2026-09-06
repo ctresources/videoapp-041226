@@ -384,13 +384,18 @@ export function PhotoReelForm({
                     <ChevronDown size={17} />
                   </button>
                 </div>
+                {/* Set apart from the arrows, and a real target of its own.
+                    Enlarging the arrows put a 44px control immediately beside
+                    an 18px one, so reaching for delete hit "move later"
+                    instead — a miss that changes the video rather than doing
+                    nothing. */}
                 <button
                   type="button"
                   onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
-                  className="shrink-0 rounded-full bg-spark-ink p-1 text-white"
+                  className="ml-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-spark-ink text-white active:bg-red-600"
                   aria-label={`Remove photo ${i + 1}`}
                 >
-                  <X size={11} />
+                  <X size={15} />
                 </button>
               </div>
             ))}

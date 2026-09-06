@@ -171,7 +171,7 @@ export default function HelpPage() {
               same topic and market — it asks first, since it discards any edits you&apos;ve made.
             </Step>
             <Step n={8} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
-              Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 4 minutes with
+              Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 3 minutes with
               automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
               visuals; long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own). Pick a{" "}
               <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
