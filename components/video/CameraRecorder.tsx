@@ -34,6 +34,36 @@ import { TopicRadar } from "@/components/create/topic-radar";
 
 type CamStep = "script" | "camera" | "done";
 
+/**
+ * The two shapes, and how to hold the phone for each.
+ *
+ * The tip is the point: choosing horizontal while holding the phone upright
+ * crops the middle out of a portrait frame, which takes the top of your head
+ * and everything below your chest. The choice is only useful next to the
+ * instruction that makes it work.
+ */
+const SHAPES = {
+  vertical: { width: 1080, height: 1920 },
+  horizontal: { width: 1920, height: 1080 },
+} as const;
+
+const SHAPE_META = [
+  {
+    key: "vertical" as const,
+    label: "Vertical",
+    ratio: "9:16",
+    where: "Reels, TikTok, Shorts",
+    tip: "Hold your phone upright, the way you normally would.",
+  },
+  {
+    key: "horizontal" as const,
+    label: "Horizontal",
+    ratio: "16:9",
+    where: "YouTube, your website",
+    tip: "Turn your phone sideways before you start — on a laptop you are already there.",
+  },
+];
+
 const SPEED_OPTIONS = [
   { label: "Slow", px: 12 },
   { label: "Medium", px: 24 },
@@ -130,6 +160,17 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   // without having to remember to switch it on. Off falls back to the plain
   // recording path.
   const [brandedLook, setBrandedLook] = useState(true);
+  /**
+   * The shape to record in.
+   *
+   * Nothing used to choose this: the canvas copied whatever the camera gave
+   * it, so a phone held upright produced 9:16 and a laptop 16:9, and the
+   * format was a by-product of how you happened to be holding the device.
+   * Vertical by default because that is where a property reel goes.
+   */
+  const [shape, setShape] = useState<"vertical" | "horizontal">("vertical");
+  /** What the camera is actually handing us, so we can tell you to rotate. */
+  const [camLandscape, setCamLandscape] = useState<boolean | null>(null);
   const [brandedSupported, setBrandedSupported] = useState(false);
   /**
    * The unbranded cut most MLS boards require of listing media.
@@ -313,6 +354,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
+      // What the device is actually giving us, for the rotate warning above.
+      const camSettings = stream.getVideoTracks()[0]?.getSettings();
+      if (camSettings?.width && camSettings?.height) {
+        setCamLandscape(camSettings.width >= camSettings.height);
+      }
 
       // Branded Look: route the camera through the compositing canvas so the
       // preview shows exactly what gets recorded. Any failure falls back to
@@ -337,6 +383,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             // loaded and then never drawn — twelve images fetched for nothing.
             useBroll && !brollVideoUrl ? photos : [],
             unbranded,
+            "medium",
+            SHAPES[shape],
           );
           previewStream = await composite.init(stream, { brollVideo: brollVideoUrl });
           compositeRef.current = composite;
@@ -941,6 +989,64 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           )}
         </div>
 
+        {/* ── Shape ──
+            Chosen before recording rather than read off the finished file.
+            Cropping a portrait take into landscape afterwards loses your head
+            and your feet — the information was never captured — so the only
+            way to get a good landscape video is to frame one. */}
+        {brandedSupported && (
+          <div className="rounded-xl border border-spark-rule p-3.5">
+            <p className="mb-2 text-sm font-semibold text-brand-text">Shape</p>
+            <div className="grid grid-cols-2 gap-2">
+              {SHAPE_META.map((sh) => {
+                const active = shape === sh.key;
+                return (
+                  <button
+                    key={sh.key}
+                    type="button"
+                    onClick={() => {
+                      setShape(sh.key);
+                      // Compositing is what makes the shape possible: without
+                      // the canvas the raw camera stream is recorded and there
+                      // is nothing to fit into a frame.
+                      if (!brandedLook) {
+                        setBrandedLook(true);
+                        toast("Branded Look switched on — it's what lets the video be reshaped.", { icon: "✨" });
+                      }
+                    }}
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 text-left transition-colors",
+                      active
+                        ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
+                        : "border-spark-rule bg-white hover:border-spark-rule-dim",
+                    )}
+                  >
+                    <span className="block text-[13px] font-semibold text-spark-ink">
+                      {sh.label} · {sh.ratio}
+                    </span>
+                    <span className="block text-[11px] text-spark-ink-muted">{sh.where}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
+              {SHAPE_META.find((sh) => sh.key === shape)?.tip}
+            </p>
+            {/* Only once the camera has told us what it is giving us, and only
+                when it disagrees with the choice — a warning that fires before
+                the camera opens is a warning nobody can act on. */}
+            {camLandscape !== null && camLandscape !== (shape === "horizontal") && (
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11.5px] leading-[1.45] text-amber-900">
+                Your camera is {camLandscape ? "sideways" : "upright"} but you picked{" "}
+                {shape === "horizontal" ? "horizontal" : "vertical"}. Turn the phone{" "}
+                {shape === "horizontal" ? "sideways" : "upright"} before you record, or the sides
+                of the picture get cropped away.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Branded Look — record-time overlays baked into the file. The panel
             renders even where compositing is unsupported, because the channel
             CTA lives at the bottom of it and must never disappear. */}
@@ -1216,7 +1322,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             // Branded preview shows the composited canvas (unmirrored, WYSIWYG);
             // plain preview mirrors like a selfie camera.
             className={cn(
-              "w-full h-full object-cover",
+              // contain, not cover, while the composite is running: the
+              // composite IS the recording, so cropping it in the preview
+              // would show you a frame that is not the one being saved. The
+              // black around it is the honest answer — it is what the shape
+              // you picked looks like on this screen.
+              brandedActive ? "w-full h-full object-contain" : "w-full h-full object-cover",
               // Branded mode previews the actual composite — flipping that
               // would show something the file does not contain.
               !brandedActive && mirrorPreview && "[transform:scaleX(-1)]",

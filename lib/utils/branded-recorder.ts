@@ -139,6 +139,15 @@ export class BrandedComposite {
     private unbranded = false,
     /** How loud the music bed sits under the voice. Ignored without music. */
     private musicLevel: MusicLevel = "medium",
+    /**
+     * The shape to record in, rather than the shape the camera happens to be.
+     *
+     * Without this the canvas copied the video element's own dimensions, so a
+     * phone held upright recorded 9:16 and a laptop recorded 16:9 and nobody
+     * ever chose — the format was a by-product of how you were holding the
+     * device. Given a target, the camera is fitted INTO it instead.
+     */
+    private targetShape: { width: number; height: number } | null = null,
   ) {}
 
   /**
@@ -306,8 +315,13 @@ export class BrandedComposite {
 
     // The element's own dimensions are the source of truth — getSettings() can
     // come back empty on some devices, which silently forced a 1280x720 canvas.
-    const W = videoEl.videoWidth || settings.width || 1280;
-    const H = videoEl.videoHeight || settings.height || 720;
+    // The source's own size, still needed for the crop maths below.
+    const srcW = videoEl.videoWidth || settings.width || 1280;
+    const srcH = videoEl.videoHeight || settings.height || 720;
+    // The recording's size: the requested shape when there is one, otherwise
+    // the source, which is how this behaved before shapes could be chosen.
+    const W = this.targetShape?.width ?? srcW;
+    const H = this.targetShape?.height ?? srcH;
 
     const canvas = document.createElement("canvas");
     canvas.width = W;
@@ -738,7 +752,7 @@ export class BrandedComposite {
       this.drawCameraPip(W, H);
       this.hasDrawnFrame = true;
     } else if (this.videoEl && this.videoEl.readyState >= 2) {
-      ctx.drawImage(this.videoEl, 0, 0, W, H);
+      this.drawCameraCover(W, H);
       this.hasDrawnFrame = true;
     } else if (!this.hasDrawnFrame) {
       ctx.fillStyle = "#000";
@@ -963,6 +977,36 @@ export class BrandedComposite {
 
   /** The speaker, circle-cropped, top left — the logo owns the top right and
    *  the name bar and captions own the bottom. */
+  /**
+   * The camera, filling the frame without being stretched to fit it.
+   *
+   * Drawing the video at 0,0,W,H squashes it the moment the recording shape
+   * and the camera shape differ — a portrait phone feed across a landscape
+   * canvas made a very wide face. This takes the largest centred rectangle of
+   * the source that matches the canvas and scales that up: the same "cover"
+   * behaviour a photo gets, so the picture is cropped rather than distorted.
+   */
+  private drawCameraCover(W: number, H: number) {
+    const ctx = this.ctx;
+    const v = this.videoEl;
+    if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
+
+    const srcAspect = v.videoWidth / v.videoHeight;
+    const dstAspect = W / H;
+    let sw = v.videoWidth;
+    let sh = v.videoHeight;
+    if (srcAspect > dstAspect) {
+      // Source is wider: take a full-height slice from the middle.
+      sw = Math.round(v.videoHeight * dstAspect);
+    } else {
+      // Source is taller: take a full-width slice from the middle.
+      sh = Math.round(v.videoWidth / dstAspect);
+    }
+    const sx = Math.round((v.videoWidth - sw) / 2);
+    const sy = Math.round((v.videoHeight - sh) / 2);
+    ctx.drawImage(v, sx, sy, sw, sh, 0, 0, W, H);
+  }
+
   private drawCameraPip(W: number, H: number) {
     const ctx = this.ctx;
     const v = this.videoEl;
