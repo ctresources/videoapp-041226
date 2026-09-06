@@ -226,7 +226,7 @@ const comparison = [
   // Rows we don't win. A table where one product sweeps every line reads as
   // marketing; these are real gaps and they make the wins above believable.
   { feature: "Publishes to Instagram, TikTok & Facebook", us: false, a: true, b: true, c: false },
-  { feature: "Scheduled posting calendar",            us: false, a: true,  b: true,  c: true  },
+  { feature: "Scheduled posting calendar",            us: true,  a: true,  b: true,  c: true  },
   { feature: "Team seats & multi-agent brand controls", us: false, a: false, b: true,  c: false },
 ];
 

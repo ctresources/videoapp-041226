@@ -489,7 +489,7 @@ export default function SettingsPage() {
             <LogOut size={16} /> Sign Out
           </Button>
           <Button variant="danger" onClick={handleDeleteAccount} className="gap-2">
-            <Trash2 size={16} /> Delete Account
+            <Trash2 size={16} /> Request Account Deletion
           </Button>
         </div>
       </Card>

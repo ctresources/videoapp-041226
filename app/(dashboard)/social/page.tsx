@@ -175,9 +175,11 @@ function SocialPageContent() {
             <div className="flex items-start gap-2 text-xs text-slate-400">
               <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-400" />
               <span>
-                Requires <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong> in your environment.{" "}
-                Set these up in Google Cloud Console → YouTube Data API v3 → OAuth 2.0 credentials.
-                Redirect URI: <code className="bg-slate-100 px-1 rounded">/api/auth/youtube/callback</code>
+                {/* Was the Google Cloud Console setup instructions — developer
+                    text shown to every customer, naming environment variables
+                    no agent can reach. */}
+                Connecting opens Google so you can choose which channel to publish to. We never see
+                your Google password, and you can disconnect at any time.
               </span>
             </div>
           </div>

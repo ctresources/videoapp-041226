@@ -78,7 +78,7 @@ export default function HelpPage() {
               This powers live local market research, trending topics, and auto-localized templates.
             </Step>
             <Step n={3} title="Create Your AI Voice" icon={Mic}>
-              In <strong>Settings → AI Voice Clone</strong>, record or upload 1–2 minutes of your voice.
+              In <strong>Settings → AI Voice Clone</strong>, record or upload about 30 seconds of your voice.
               Your AI videos will speak in <em>your</em> voice.
             </Step>
             {/* The Digital Twin step is gone rather than reworded: training one
@@ -177,7 +177,7 @@ export default function HelpPage() {
               <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
               photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering time follows the length
               of the <em>script</em>, not the format — a longer script takes longer regardless of which format
-              you picked, typically <strong>5–20 minutes</strong>. Either way you can close the page and watch
+              you picked, typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long one. Either way you can close the page and watch
               for it in My Videos. If a render ever fails, your allowance is refunded automatically.
             </Step>
             <Step n={9} title="Use Camera — The Free Option" icon={Camera}>

@@ -159,7 +159,7 @@ export function TranslateModal({
           </div>
 
           <p className="text-sm text-slate-500 mb-4">
-            HeyGen re-voices the narration in the new language, keeping your cloned voice, and
+            HeyGen re-voices the narration in the new language, using HeyGen’s translation voice, and
             re-syncs the avatar's mouth to match.
           </p>
 

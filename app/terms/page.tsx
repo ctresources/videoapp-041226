@@ -70,9 +70,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">5. Subscriptions and Billing</h2>
             <ul className="list-disc pl-5 space-y-2">
-              <li>Paid plans are billed monthly or annually via Stripe.</li>
+              <li>Paid plans are billed monthly via Stripe.</li>
               <li>Subscriptions auto-renew unless cancelled before the renewal date.</li>
-              <li>You can cancel your subscription at any time from your account settings.</li>
+              <li>You can cancel your subscription at any time from Billing → Manage Billing.</li>
               <li>
                 <strong>Plan videos.</strong> Your plan includes a set number of short and
                 long AI videos each month. These are tracked separately, reset at the start

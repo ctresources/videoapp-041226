@@ -206,22 +206,35 @@ async function DashboardStats({ userId }: { userId: string }) {
 async function GettingStarted({ userId }: { userId: string }) {
   const supabase = await createClient();
 
-  const [profileResult, videoResult, socialResult] = await Promise.all([
-    supabase.from("profiles").select("heygen_voice_id, heygen_photo_id, avatar_url, onboarding_done").eq("id", userId).single(),
+  /**
+   * The YouTube connection lives on the profile, not in social_accounts.
+   *
+   * This counted rows in social_accounts, which nothing has written to since
+   * Blotato was removed — connecting YouTube writes profiles.youtube_*. So the
+   * count was always zero, the step could never be ticked, allDone was never
+   * true, and the Getting Started card could never be completed or dismissed
+   * by anyone.
+   */
+  const [profileResult, videoResult] = await Promise.all([
+    supabase.from("profiles").select("heygen_voice_id, heygen_photo_id, avatar_url, onboarding_done, youtube_channel_id").eq("id", userId).single(),
     supabase.from("generated_videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    supabase.from("social_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_active", true),
   ]);
 
-  const profile = profileResult.data as { heygen_voice_id: string | null; heygen_photo_id: string | null; avatar_url: string | null; onboarding_done: boolean } | null;
+  const profile = profileResult.data as {
+    heygen_voice_id: string | null; heygen_photo_id: string | null; avatar_url: string | null;
+    onboarding_done: boolean; youtube_channel_id: string | null;
+  } | null;
   const videoCount = videoResult.count ?? 0;
-  const socialCount = socialResult.count ?? 0;
 
   const steps = [
     { label: "Create Your Account", done: true },
     { label: "Set Up Your Voice Clone", done: !!profile?.heygen_voice_id, href: "/settings" },
-    { label: "Upload Your Avatar Photo", done: !!profile?.avatar_url, href: "/settings" },
+    // heygen_photo_id, not avatar_url: a photo that never registered with
+    // HeyGen ticked this box and then failed every render with "Avatar photo
+    // not set up". The tick has to mean the thing the render needs.
+    { label: "Upload Your Avatar Photo", done: !!profile?.heygen_photo_id, href: "/settings" },
     { label: "Generate Your First Video", done: videoCount > 0, href: "/create" },
-    { label: "Connect A Social Account", done: socialCount > 0, href: "/social" },
+    { label: "Connect YouTube", done: !!profile?.youtube_channel_id, href: "/social" },
   ];
 
   const allDone = steps.every((s) => s.done);
@@ -296,7 +309,7 @@ async function RecentProjects({ userId }: { userId: string }) {
         <div className="text-center py-10">
           <Mic className="w-10 h-10 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 text-sm">No Videos Yet</p>
-          <p className="text-slate-400 text-xs mt-1">Record Your First Voice To Get Started</p>
+          <p className="text-slate-400 text-xs mt-1">Make Your First Video To Get Started</p>
           <Link href="/create">
             <Button size="sm" className="mt-4 gap-2">
               <Plus size={14} /> Create First Video
@@ -363,7 +376,7 @@ export default async function DashboardPage() {
         <div className="spark-banner-gradient rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1 text-spark-ink">Create a New Video</h3>
           <p className="text-primary-100 text-sm mb-4">
-            Record Your Voice Or Pick A Template — We Handle The Rest.
+            Film It Yourself Or Let SparkReels Make It — You Pick Where The Script Comes From.
           </p>
           <Link href="/create">
             <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
@@ -374,7 +387,7 @@ export default async function DashboardPage() {
         <div className="spark-banner-gradient rounded-2xl p-6 text-white">
           <h3 className="font-bold text-lg mb-1 text-spark-ink">Content Calendar</h3>
           <p className="text-primary-100 text-sm mb-4">
-            View And Manage All Your Scheduled Posts Across Every Platform.
+            See What You Have Scheduled And When It Goes Out.
           </p>
           <Link href="/calendar">
             <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">

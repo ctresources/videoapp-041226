@@ -269,7 +269,7 @@ export default function AdminPage() {
         {[
           { label: "Total Users", value: stats.totalUsers, icon: Users, color: "text-primary-500", bg: "bg-primary-50" },
           { label: "Videos Generated", value: stats.totalVideos, icon: Video, color: "text-secondary-500", bg: "bg-purple-50" },
-          { label: "Paying Users", value: stats.proUsers, icon: ShieldCheck, color: "text-accent-500", bg: "bg-teal-50" },
+          { label: "Subscribed Users", value: stats.proUsers, icon: ShieldCheck, color: "text-accent-500", bg: "bg-teal-50" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="flex items-center gap-4">
             <div className={`w-11 h-11 ${bg} rounded-xl flex items-center justify-center shrink-0`}>

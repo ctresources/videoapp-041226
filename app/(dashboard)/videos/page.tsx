@@ -471,7 +471,7 @@ function VideosContent() {
         <Card className="flex flex-col items-center py-16 text-center">
           <Video className="w-12 h-12 text-slate-300 mb-3" />
           <p className="font-semibold text-brand-text">No videos yet</p>
-          <p className="text-sm text-slate-400 mt-1 mb-4">Create your first voice recording to generate a video</p>
+          <p className="text-sm text-slate-400 mt-1 mb-4">Make your first video — film it yourself, or let SparkReels write and render it</p>
           <Link href="/create">
             <Button className="gap-2"><Plus size={15} /> Create First Video</Button>
           </Link>

@@ -131,7 +131,7 @@ export function MediaAndDocs({
             </span>
             <span className="text-[11px] text-spark-ink-faint">
               Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple
-              · JPG, PNG, WEBP · max 15 MB each
+              · JPG, PNG, WEBP · max 25 MB each
             </span>
             <input
               type="file" accept="image/*" multiple className="sr-only"

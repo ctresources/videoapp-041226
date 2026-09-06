@@ -53,7 +53,7 @@ export function OutOfVideosModal({
 
         <p className="text-sm text-slate-500 leading-relaxed mb-5">
           {onFreePlan
-            ? "Your script is saved — pick a plan and you can generate it right away. Camera recordings and the AI tools stay free either way."
+            ? "Your script is saved — pick a plan and you can generate it right away. Camera recordings and the AI tools stay free."
             : isLong
               ? "Your script is saved. Buy a single long video, or move up a plan for more each month."
               : "Your script is saved. Buy more short videos, or move up a plan for a bigger monthly allowance."}

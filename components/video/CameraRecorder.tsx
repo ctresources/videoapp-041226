@@ -327,7 +327,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     const cap = reserveEndCard ? MAX_RECORD_SECONDS - Math.ceil(END_CARD_MS / 1000) - 1 : MAX_RECORD_SECONDS;
     if (isRecording && seconds >= cap) {
       stopRecording();
-      toast("15-minute limit reached — your recording has been saved.", { icon: "⏱️" });
+      toast("15-minute limit reached — wrapping up your recording.", { icon: "⏱️" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, isRecording, brandedActive, unbranded]);
@@ -1275,7 +1275,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         </Button>
         {!script.trim() ? (
           <p className="text-xs text-slate-400 text-center -mt-3">
-            Speak Or Spark A Script To Continue
+            Add A Script Above To Continue
           </p>
         ) : (
           <p className="text-xs text-slate-400 text-center -mt-3">

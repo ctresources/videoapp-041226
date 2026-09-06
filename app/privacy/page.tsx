@@ -247,9 +247,9 @@ export default function PrivacyPage() {
                 billing details. Receives no Google user data.
               </li>
               <li>
-                <strong className="text-white">Social platforms</strong> (Instagram, Facebook, LinkedIn,
-                TikTok, YouTube) — only when you connect an account and authorize posting, and only the
-                content you choose to publish.
+                <strong className="text-white">YouTube</strong> — only when you connect your channel and
+                authorize posting, and only the content you choose to publish. No other platform can
+                be connected today.
               </li>
             </ul>
             <p className="mt-3">We do not sell your personal information to any third party.</p>

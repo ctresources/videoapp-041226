@@ -892,7 +892,7 @@ function CreatePageInner() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
       setCameraGeneratedScript(data.script as string);
-      toast.success("Script ready. It's now loaded in your teleprompter above.");
+      toast.success("Script ready. It's now loaded in your teleprompter below.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -1214,7 +1214,7 @@ function CreatePageInner() {
             {([
               { key: "speak" as const,   kicker: "Fastest",           label: "AI writes it",              desc: "Say a topic" },
               { key: "uploads" as const, kicker: "PDF or link",       label: "From a document",           desc: "We read it first" },
-              { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We keep the words, not the file" },
+              { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We transcribe it into your script" },
               { key: "own" as const,     kicker: "Word for word",     label: "I'll write it",             desc: "Type it below" },
             ]).map(({ key, kicker, label, desc }) => (
               <SourceTile
@@ -1852,7 +1852,9 @@ function CreatePageInner() {
                     ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
                     : <><Sparkles size={13} /> Write the script from these</>}
                 </Button>
-                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script based on your attached PDF{pastePhotos.length > 0 ? " and photos" : ""}.</p>
+                {/* The photos are never read — only their COUNT reaches the
+                    prompt, as one sentence saying how many exist. */}
+                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script from your attached PDF.{pastePhotos.length > 0 ? " Your photos become b-roll; they aren't read." : ""}</p>
               </div>
             )}
 
@@ -2017,8 +2019,12 @@ function CreatePageInner() {
                 <p className="text-xs text-amber-600 mt-1 flex items-start gap-1">
                   <AlertCircle size={12} className="mt-0.5 shrink-0" />
                   <span>
-                    Too long for a standard video. Choose <strong>Long video</strong> on the next
-                    screen, or cut {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
+                    {/* Named a control that does not exist on this path: the
+                        editor's long-form switch lives in step 2, which a
+                        pasted script skips. The tiles directly above this ARE
+                        the choice, so it points at those. */}
+                    Too long for a standard video. Pick <strong>Longform</strong> above, or cut{" "}
+                    {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
                   </span>
                 </p>
               ) : (
