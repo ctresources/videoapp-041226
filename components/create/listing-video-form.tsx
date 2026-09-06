@@ -12,6 +12,7 @@ import {
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { createClient } from "@/lib/supabase/client";
 import { coerceListing } from "@/lib/utils/listing-data";
+import { currentUserId } from "@/lib/utils/upload-photo";
 import { RENDERED_SCRIPT_LENGTHS, ceilMinutesFor, type VideoLength } from "@/lib/utils/video-length";
 
 /**
@@ -20,14 +21,22 @@ import { RENDERED_SCRIPT_LENGTHS, ceilMinutesFor, type VideoLength } from "@/lib
  * "Users upload own assets" allows authenticated users to write to
  * `assets/{userId}/...`. Returns the public URL.
  */
-async function uploadPhotoToStorage(file: File): Promise<string> {
+/**
+ * @param userId resolved once by the caller, before the uploads start.
+ *
+ * Not looked up in here. Supabase guards the stored auth token with a Web
+ * Lock, and this took that lock on every call — so a batch of listing photos
+ * uploading together contended for it and one request stole it from another:
+ * `Lock "lock:sb-…-auth-token" was released because another request stole it`.
+ * The photo reel had the identical bug and hit it on a phone, where a slower
+ * connection keeps every upload in flight at once.
+ */
+async function uploadPhotoToStorage(file: File, userId: string): Promise<string> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in to upload photos");
 
   const extFromType = (file.type.split("/")[1] || "jpg").toLowerCase();
   const ext = extFromType.includes("jpeg") ? "jpg" : extFromType.replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${user.id}/listing-photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `${userId}/listing-photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const { error } = await supabase.storage
     .from("assets")
@@ -181,7 +190,9 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
       setUploadedFileName(file.name);
       setUploadingPhotos(true);
       try {
-        const url = await uploadPhotoToStorage(file);
+        // Single file, so there is nothing to contend with — it just needs the
+        // id the shared uploader no longer looks up for itself.
+        const url = await uploadPhotoToStorage(file, await currentUserId());
         setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, url] }));
         setManualMode(true);
         setStep("review");
@@ -275,14 +286,34 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
 
     setUploadingPhotos(true);
 
-    const results = await Promise.allSettled(batch.map((f) => uploadPhotoToStorage(f)));
+    /**
+     * The signed-in user, resolved once for the whole batch, then three
+     * uploads at a time.
+     *
+     * Every file used to resolve it for itself and all of them ran at once,
+     * which is what made them fight over the auth lock. Three at a time is
+     * also kinder to a phone: these are the raw files, up to 15 MB each, with
+     * no downscaling on this path.
+     */
+    let userId: string;
+    try {
+      userId = await currentUserId();
+    } catch (err) {
+      setUploadingPhotos(false);
+      return toast.error(err instanceof Error ? err.message : "You must be signed in to upload photos");
+    }
 
     const urls: string[] = [];
     const failures: string[] = [];
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") urls.push(r.value);
-      else failures.push(`${batch[i].name}: ${r.reason instanceof Error ? r.reason.message : "upload failed"}`);
-    });
+    const BATCH = 3;
+    for (let i = 0; i < batch.length; i += BATCH) {
+      const slice = batch.slice(i, i + BATCH);
+      const results = await Promise.allSettled(slice.map((f) => uploadPhotoToStorage(f, userId)));
+      results.forEach((r, j) => {
+        if (r.status === "fulfilled") urls.push(r.value);
+        else failures.push(`${slice[j].name}: ${r.reason instanceof Error ? r.reason.message : "upload failed"}`);
+      });
+    }
 
     if (urls.length > 0) {
       setListing((l) => ({ ...l, photoUrls: [...l.photoUrls, ...urls] }));
