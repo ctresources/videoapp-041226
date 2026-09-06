@@ -2068,7 +2068,7 @@ function CreatePageInner() {
                 share their input — a set of property pictures. */}
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {([
-                { key: "listing" as const, label: "Listing video", sub: "we write the tour · one from your plan" },
+                { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
                 { key: "reel" as const, label: "Photo reel", sub: "photos into a video · free" },
               ]).map(({ key, label, sub }) => (
                 <button

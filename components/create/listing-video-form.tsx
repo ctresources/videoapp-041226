@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
-  Upload, FileText, Camera, Trash2, ChevronLeft, ChevronRight,
+  Upload, FileText, Camera, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { createClient } from "@/lib/supabase/client";
@@ -409,118 +409,6 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
     return (
       <div className="flex flex-col gap-4">
 
-        {/* ── Primary: Photo upload ── */}
-        <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">
-            Listing Photos
-          </label>
-
-          {listing.photoUrls.length > 0 && (
-            <div className="grid grid-cols-4 gap-2 mb-2">
-              {listing.photoUrls.map((url, i) => (
-                <div
-                  key={`${url}-${i}`}
-                  className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Listing photo ${i + 1}`} className="w-full h-full object-cover" />
-                  {/* Always visible, never hover-gated: opacity-0 with
-                      group-hover means a phone can never reveal it, so these
-                      photos could not be removed or reordered on the device
-                      most of them are added from. */}
-                  <button
-                    type="button"
-                    onClick={() => setListing((l) => ({ ...l, photoUrls: l.photoUrls.filter((_, j) => j !== i) }))}
-                    className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1.5"
-                    aria-label={`Remove photo ${i + 1}`}
-                  >
-                    <X size={12} />
-                  </button>
-                  <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
-                  <div className="absolute inset-x-0 bottom-0 flex justify-between">
-                    <button
-                      type="button"
-                      onClick={() => movePhoto(i, i - 1)}
-                      disabled={i === 0}
-                      className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
-                      aria-label={`Move photo ${i + 1} earlier`}
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => movePhoto(i, i + 1)}
-                      disabled={i === listing.photoUrls.length - 1}
-                      className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
-                      aria-label={`Move photo ${i + 1} later`}
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              disabled={uploadingPhotos}
-              className="flex flex-col items-center justify-center gap-2 w-full px-4 py-5 rounded-xl border-2 border-dashed border-spark-blue/25 bg-spark-blue/10 hover:bg-spark-blue/15 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {uploadingPhotos ? (
-                <>
-                  <Loader2 size={24} className="animate-spin text-spark-blue" />
-                  <span className="text-sm font-semibold text-spark-blue">Uploading photos…</span>
-                </>
-              ) : (
-                <>
-                  <ImageIcon size={24} className="text-spark-blue" />
-                  <span className="text-sm font-bold text-spark-ink">
-                    {listing.photoUrls.length === 0
-                      ? `Select up to ${MAX_LISTING_PHOTOS} photos at once`
-                      : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
-                  </span>
-                  <span className="text-xs text-spark-blue text-center">
-                    Hold <strong>Cmd</strong> (Mac) or <strong>Ctrl</strong> (Windows) to pick multiple · JPG, PNG, WEBP · max 15 MB each
-                  </span>
-                </>
-              )}
-            </button>
-          )}
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files && files.length > 0) handlePhotosUpload(files);
-              if (photoInputRef.current) photoInputRef.current.value = "";
-            }}
-          />
-        </div>
-
-        {/* ── If photos uploaded, show Generate button ── */}
-        {listing.photoUrls.length > 0 && (
-          <Button
-            onClick={handleManual}
-            size="lg"
-            className="w-full gap-2"
-          >
-            Next: Add Listing Details <ArrowRight size={16} />
-          </Button>
-        )}
-
-        {/* ── Divider ── */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-300" />
-          <span className="text-sm font-semibold text-slate-600">or import listing details</span>
-          <div className="flex-1 h-px bg-slate-300" />
-        </div>
-
         {/* ── URL import ──
             Given the weight of a primary action, because it is one. This was a
             plain grey field the same size as every other input on the page,
@@ -560,6 +448,8 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
           </p>
         </div>
 
+        {/* The other two ways in, kept quiet: they are for the listings a link
+            cannot reach, not the common case. */}
         <button
           onClick={() => fileInputRef.current?.click()}
           className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-sm font-medium text-slate-600 hover:text-primary-600"
@@ -591,6 +481,105 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
           <PencilLine size={16} />
           Enter listing details manually
         </button>
+
+        {/* ── Photos, demoted ──
+            These are the b-roll your narrated tour is SHOWN over — not the
+            Photo reel tab, which turns photos into a video on their own. It
+            used to open this screen, above the import that usually fills it
+            for you, so the slowest way in was the first thing offered.
+
+            A row per photo rather than a four-column grid: at that size a
+            tile carried a number, a delete and two arrows in about a hundred
+            square pixels, and they collided. */}
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Listing photos{" "}
+            <span className="font-normal normal-case tracking-normal text-slate-400">
+              · the b-roll your tour plays over · usually filled by the import above
+            </span>
+          </p>
+
+          {listing.photoUrls.length > 0 && (
+            <div className="mb-2 flex flex-col gap-1.5">
+              {listing.photoUrls.map((url, i) => (
+                <div key={`${url}-${i}`} className="flex items-center gap-2">
+                  <span className="w-4 shrink-0 text-[11px] tabular-nums text-slate-400">{i + 1}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt={`Listing photo ${i + 1}`} className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-slate-400">
+                    {i === 0 ? "Opens the video" : `Photo ${i + 1}`}
+                  </span>
+                  <div className="flex shrink-0 flex-col gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i - 1)}
+                      disabled={i === 0}
+                      className="flex h-8 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-25 enabled:hover:border-spark-amber enabled:hover:text-spark-amber"
+                      aria-label={`Move photo ${i + 1} earlier`}
+                    >
+                      <ChevronUp size={17} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i + 1)}
+                      disabled={i === listing.photoUrls.length - 1}
+                      className="flex h-8 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-25 enabled:hover:border-spark-amber enabled:hover:text-spark-amber"
+                      aria-label={`Move photo ${i + 1} later`}
+                    >
+                      <ChevronDown size={17} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    className="ml-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white active:bg-red-600"
+                    aria-label={`Remove photo ${i + 1}`}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {listing.photoUrls.length < MAX_LISTING_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhotos}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 transition-all hover:border-primary-300 hover:bg-primary-50/30 disabled:opacity-60"
+            >
+              {uploadingPhotos ? (
+                <><Loader2 size={16} className="animate-spin text-spark-blue" /> Uploading photos…</>
+              ) : (
+                <>
+                  <ImageIcon size={16} />
+                  {listing.photoUrls.length === 0
+                    ? `Add photos (up to ${MAX_LISTING_PHOTOS})`
+                    : `Add more (${MAX_LISTING_PHOTOS - listing.photoUrls.length} slots left)`}
+                </>
+              )}
+            </button>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files && files.length > 0) handlePhotosUpload(files);
+              if (photoInputRef.current) photoInputRef.current.value = "";
+            }}
+          />
+
+          {listing.photoUrls.length > 0 && (
+            <Button onClick={handleManual} size="lg" className="mt-2 w-full gap-2">
+              Next: Add Listing Details <ArrowRight size={16} />
+            </Button>
+          )}
+        </div>
 
         <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
           <p className="text-xs text-spark-blue leading-relaxed">
@@ -1011,7 +1000,13 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
         size="lg"
         className="w-full gap-2"
       >
-        Write My Tour Script <ArrowRight size={16} />
+        <span className="flex flex-col items-center leading-[1.2]">
+          Write it — my avatar reads it
+          <span className="text-[12px] font-normal opacity-80">
+            Uses one video from your plan
+          </span>
+        </span>
+        <ArrowRight size={16} />
       </Button>
 
       {/* Goes to the camera tab, not the editor's teleprompter: only the
@@ -1023,7 +1018,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
         disabled={!listing.address.trim() || !listing.price.trim()}
         className="flex w-full flex-col items-center justify-center rounded-xl border border-spark-ink px-5 py-2.5 text-[15px] font-semibold leading-[1.25] text-spark-ink transition-colors hover:bg-spark-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-spark-ink"
       >
-        Read it myself on camera
+        Write it — I&apos;ll read it on camera
         {/* This one goes straight to the camera — handleGenerate(true) sends
             scriptOnly and hands the script and photos to the recorder. Saying
             so matters now that the button beside it stops at the script: the
@@ -1037,9 +1032,9 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
         {/* True of both buttons, which the old wording was not: it said the
             camera choice came on the next screen, and the camera button goes
             there now. What the two share is that neither spends a credit. */}
-        Both write the script first, and neither spends a credit. Recording it yourself stays free.
-        Rendering it with your avatar costs one, at Spark Video on the setup screen, where you pick
-        the avatar, shape and music.
+        Both write the script first. Reading it yourself is free; the avatar render uses one of your
+        short or long videos, and is spent at Spark Video on the setup screen, where you pick the
+        avatar, shape and music.
       </p>
     </div>
   );
