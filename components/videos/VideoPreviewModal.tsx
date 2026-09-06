@@ -117,7 +117,17 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className={`bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full ${isPortrait ? "max-w-sm" : "max-w-4xl"}`}>
+      {/**
+       * Capped to the viewport, with the header pinned and the rest scrolling.
+       *
+       * A 9:16 video at full width on a phone is about 375x667, and with a
+       * header and two rows of buttons under it the card was taller than the
+       * screen. Being vertically centred, it then overflowed at BOTH ends —
+       * so the header carrying the close button sat off the top edge, and the
+       * card covered the whole viewport so there was no overlay left to tap
+       * either. The video played and there was no way back out of it.
+       */}
+      <div className={`bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full max-h-[92dvh] ${isPortrait ? "max-w-sm" : "max-w-4xl"}`}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
           <div>
@@ -130,7 +140,10 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
         </div>
 
         {/* Video player */}
-        <div className={`relative bg-black flex items-center justify-center ${isPortrait ? "aspect-[9/16]" : "aspect-video"}`}>
+        {/* Capped as well as shaped: a portrait aspect ratio alone will grow
+            to whatever the width implies, which is what pushed the buttons —
+            and the header — off a phone screen. */}
+        <div className={`relative bg-black flex items-center justify-center shrink-0 max-h-[62dvh] ${isPortrait ? "aspect-[9/16]" : "aspect-video"}`}>
           <video
             ref={videoRef}
             controls
@@ -164,7 +177,9 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
             Two rows: publishing and downloading the file are what most visits
             are for, and the two transcript actions read as a pair rather than
             competing with them for the same row. */}
-        <div className="px-5 pt-4 flex gap-3 shrink-0 border-t border-slate-100">
+        {/* Scrolls rather than pushing itself off the screen — the header
+            above it stays put, so the way out is always reachable. */}
+        <div className="min-h-0 overflow-y-auto px-5 pt-4 flex gap-3 border-t border-slate-100">
           <Button className="flex-1 gap-2" onClick={onPublish}>
             <Send size={14} /> Publish to Social
           </Button>

@@ -359,24 +359,29 @@ export function PhotoReelForm({
                     making it draggable takes away click-and-drag selection
                     inside that input. Arrows also work on a phone, which
                     HTML5 drag does not. */}
-                <div className="flex shrink-0 flex-col">
+                {/* Sized for a thumb. These were 13px icons with 2px of
+                    padding — a target under 20px square, which is fine with a
+                    mouse and close to unhittable on a phone, where most of
+                    these reels are actually made. The icons grow a little and
+                    the tappable area a lot. */}
+                <div className="flex shrink-0 flex-col gap-0.5">
                   <button
                     type="button"
                     onClick={() => movePhoto(i, i - 1)}
                     disabled={i === 0}
-                    className="rounded p-0.5 text-spark-ink-faint disabled:opacity-25 enabled:hover:text-spark-amber"
+                    className="flex h-8 w-9 items-center justify-center rounded-lg border border-spark-rule bg-white text-spark-ink-muted disabled:opacity-25 enabled:active:bg-spark-amber-tint enabled:hover:border-spark-amber enabled:hover:text-spark-amber"
                     aria-label={`Move photo ${i + 1} earlier`}
                   >
-                    <ChevronUp size={13} />
+                    <ChevronUp size={17} />
                   </button>
                   <button
                     type="button"
                     onClick={() => movePhoto(i, i + 1)}
                     disabled={i === photos.length - 1}
-                    className="rounded p-0.5 text-spark-ink-faint disabled:opacity-25 enabled:hover:text-spark-amber"
+                    className="flex h-8 w-9 items-center justify-center rounded-lg border border-spark-rule bg-white text-spark-ink-muted disabled:opacity-25 enabled:active:bg-spark-amber-tint enabled:hover:border-spark-amber enabled:hover:text-spark-amber"
                     aria-label={`Move photo ${i + 1} later`}
                   >
-                    <ChevronDown size={13} />
+                    <ChevronDown size={17} />
                   </button>
                 </div>
                 <button
@@ -698,7 +703,7 @@ export function PhotoReelForm({
         <div className="flex items-center gap-2 rounded-lg border border-spark-rule px-3 py-2.5">
           <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
           <a href={`/videos?highlight=${savedId}`}>
-            <Button variant="outline" size="sm">View it</Button>
+            <Button variant="outline" size="lg">View it</Button>
           </a>
         </div>
       )}

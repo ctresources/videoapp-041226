@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
-  Upload, FileText, Camera, Trash2,
+  Upload, FileText, Camera, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { createClient } from "@/lib/supabase/client";
@@ -326,6 +326,24 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
     setUploadingPhotos(false);
   }
 
+  /**
+   * Reorder, which this grid has never had.
+   *
+   * The tiles are numbered and the number is what the video uses, so the order
+   * has always mattered and has always been whatever order the picker handed
+   * the files over in. Left/right rather than up/down because this is a grid,
+   * and the numbers read across it.
+   */
+  function movePhoto(from: number, to: number) {
+    setListing((l) => {
+      if (to < 0 || to >= l.photoUrls.length) return l;
+      const next = [...l.photoUrls];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return { ...l, photoUrls: next };
+    });
+  }
+
   function removePhoto(index: number) {
     setListing((l) => ({
       ...l,
@@ -406,14 +424,39 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt={`Listing photo ${i + 1}`} className="w-full h-full object-cover" />
+                  {/* Always visible, never hover-gated: opacity-0 with
+                      group-hover means a phone can never reveal it, so these
+                      photos could not be removed or reordered on the device
+                      most of them are added from. */}
                   <button
                     type="button"
                     onClick={() => setListing((l) => ({ ...l, photoUrls: l.photoUrls.filter((_, j) => j !== i) }))}
-                    className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1.5"
+                    aria-label={`Remove photo ${i + 1}`}
                   >
-                    <X size={11} />
+                    <X size={12} />
                   </button>
                   <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
+                  <div className="absolute inset-x-0 bottom-0 flex justify-between">
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i - 1)}
+                      disabled={i === 0}
+                      className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                      aria-label={`Move photo ${i + 1} earlier`}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(i, i + 1)}
+                      disabled={i === listing.photoUrls.length - 1}
+                      className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                      aria-label={`Move photo ${i + 1} later`}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -796,12 +839,32 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
                 <button
                   type="button"
                   onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Remove photo"
+                  className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1.5"
+                  aria-label={`Remove photo ${i + 1}`}
                 >
-                  <Trash2 size={11} />
+                  <Trash2 size={12} />
                 </button>
                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
+                <div className="absolute inset-x-0 bottom-0 flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => movePhoto(i, i - 1)}
+                    disabled={i === 0}
+                    className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                    aria-label={`Move photo ${i + 1} earlier`}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => movePhoto(i, i + 1)}
+                    disabled={i === listing.photoUrls.length - 1}
+                    className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                    aria-label={`Move photo ${i + 1} later`}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
