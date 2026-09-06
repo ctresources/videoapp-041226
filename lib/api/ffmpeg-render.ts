@@ -510,10 +510,15 @@ async function buildAndRun(
     bgLabel = "bgloop";
   }
 
-  // ── Dark overlay ─────────────────────────────────────────────────────────
-  filterParts.push(
-    `[${bgLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.50:t=fill[bgdark]`
-  );
+  /**
+   * No dark overlay. The footage keeps its colour.
+   *
+   * This dimmed the ENTIRE video to half brightness for its whole length —
+   * no time limit at all — so every frame of b-roll played through a black
+   * sheet. It was there to keep the white title legible, which is a text
+   * problem and is solved on the text below.
+   */
+  filterParts.push(`[${bgLabel}]copy[bgdark]`);
 
   // ── Preload font attributes (async) ──────────────────────────────────────
   //
@@ -544,6 +549,9 @@ async function buildAndRun(
     `text='${escapedTitle}':` +
     `${titleFontAttr}` +
     `fontsize=${cfg.titleFontSize}:fontcolor=white:` +
+    // Its own dark box, in place of the full-frame overlay that used to sit
+    // behind it — as big as the words and no bigger.
+    `box=1:boxcolor=black@0.5:boxborderw=${Math.round(cfg.titleFontSize * 0.32)}:` +
     `borderw=2:bordercolor=black:` +
     `x=${titleX}:y=${titleY}:` +
     `enable='between(t\\,0\\,4)'` +
@@ -1060,10 +1068,16 @@ async function buildSlideshowAndRun(
   }
   const titleTo = titleDur.toFixed(3);
 
-  filterParts.push(
-    `[${slideshowLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.35:t=fill:` +
-    `enable=between(t\\,0\\,${titleTo})[bgdark]`,
-  );
+  /**
+   * No wash. The photographs are the video.
+   *
+   * A full-frame scrim was how the white title was kept legible over a bright
+   * shot, and it worked — at the cost of every photograph underneath it. The
+   * legibility problem is a text problem, so it is solved on the text: each
+   * line carries its own dark box, which is the same device the name bar has
+   * always used, and the picture around it stays exactly as it was taken.
+   */
+  filterParts.push(`[${slideshowLabel}]copy[bgdark]`);
 
   // ── Title card (first 4 seconds) ─────────────────────────────────────────
   // Skipped outright without a font, rather than drawn in one the container
@@ -1096,6 +1110,9 @@ async function buildSlideshowAndRun(
       filterParts.push(
         `[${titleLabel}]drawtext=text='${escapeDrawtext(line)}':` +
         `${titleFontAttr}fontsize=${titleSize}:fontcolor=white:` +
+        // The box replaces the scrim: dark enough to read against any photo,
+        // and only as big as the words.
+        `box=1:boxcolor=black@0.5:boxborderw=${Math.round(titleSize * 0.32)}:` +
         `borderw=2:bordercolor=black:x=(w-text_w)/2:y=${topY + i * lineStep}:` +
         `enable='between(t\\,0\\,${titleTo})'[${out}]`,
       );
@@ -1175,18 +1192,21 @@ async function buildSlideshowAndRun(
     const to = audioDuration.toFixed(3);
     const when = `enable='between(t\\,${from}\\,${to})'`;
 
-    filterParts.push(
-      `[${currentLabel}]drawbox=x=0:y=0:w=${width}:h=${height}:color=black@0.68:t=fill:` +
-      `enable=between(t\\,${from}\\,${to})[ctabg]`,
-    );
-
+    /**
+     * No wash behind the ask either.
+     *
+     * This dimmed the whole frame to 32% for the closing seconds — the last
+     * thing a viewer sees of the property, and the shot most likely to be the
+     * best one. Each line carries its own dark box instead: readable over any
+     * photograph, and the photograph survives.
+     */
     // Stacked from a third of the way down, with the headline given twice the
     // room of the lines under it.
     const S = Math.min(width, height);
     const headSize = Math.round(S * 0.062);
     const bodySize = Math.round(S * 0.042);
     let y = Math.round(height * 0.34);
-    let label = "ctabg";
+    let label = currentLabel;
 
     endLines.forEach((line, i) => {
       const isHead = i === 0 && !!end?.headline?.trim();
@@ -1196,6 +1216,7 @@ async function buildSlideshowAndRun(
         `[${label}]drawtext=text='${escapeDrawtext(line)}':` +
         `${isHead ? titleFontAttr : nameFontAttr ?? titleFontAttr}fontsize=${size}:` +
         `fontcolor=white:borderw=2:bordercolor=black@0.5:` +
+        `box=1:boxcolor=black@0.55:boxborderw=${Math.round(size * 0.34)}:` +
         `x=(w-text_w)/2:y=${y}:${when}[${out}]`,
       );
       label = out;
