@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
+import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
 
 interface DraftProject {
   id: string;
@@ -858,7 +859,13 @@ function VideosContent() {
             // rather than one text twice.
             defaultCaption={proj?.ai_script?.description || ""}
             defaultTags={tags}
-            thumbnailUrl={proj?.thumbnail_url || proj?.seo_data?.thumbnail_url || undefined}
+            // A real uploaded PNG first; the generated card is the fallback,
+            // and its address is derived from the project id rather than read
+            // back out of seo_data — see projectThumbnailUrl.
+            thumbnailUrl={
+              proj?.thumbnail_url
+              || (publishingVideo.project_id ? projectThumbnailUrl(publishingVideo.project_id) : undefined)
+            }
             onClose={() => setPublishingVideo(null)}
             onPublished={loadVideos}
           />

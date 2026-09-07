@@ -87,8 +87,12 @@ export async function POST(req: NextRequest) {
     // that may not carry it — and nothing later in the flow would catch it.
     if (isUnbranded) aiScript.cta = "";
 
-    const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((aiScript.hook || aiScript.title).slice(0, 180))}&agent=${encodeURIComponent(profile.full_name || "")}`;
-
+    // No thumbnail_url is written here any more. It used to be a URL with the
+    // hook baked into its query string, built before the project it belongs to
+    // exists — so it could not carry the project's id, which is the only thing
+    // /api/thumbnail now accepts. Readers derive it from the id instead (see
+    // projectThumbnailUrl), which also means an edited hook is reflected rather
+    // than frozen at the moment the script was written.
     // SEO enrichment is optional — uses sonar (fast, ~5-10s each). If they timeout
     // after the script call consumed most of the 60s budget, proceed without them.
     const [baseSeo, ytMeta] = await Promise.all([
@@ -116,7 +120,6 @@ export async function POST(req: NextRequest) {
       ...(baseSeo ?? {}),
       youtube_title: ytMeta?.youtube_title || baseSeo?.youtube_title,
       youtube_description: ytMeta?.youtube_description || baseSeo?.youtube_description,
-      thumbnail_url: thumbnailUrl,
     };
 
     // Create project

@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, user_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url)")
+    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
@@ -85,6 +86,13 @@ export async function GET(req: NextRequest) {
     // for an Instagram caption, so the two fields get two texts.
     caption: ai.description || seo.instagram_caption || "",
     tags: seo.hashtags ?? seo.keywords ?? ai.hashtags ?? ai.keywords ?? [],
-    thumbnailUrl: proj?.thumbnail_url || seo.thumbnail_url || null,
+    // The stored PNG if one has been rendered, else the generated card — whose
+    // address is derived from the project id rather than read out of seo_data,
+    // where it was frozen with the hook inside it at script-writing time.
+    thumbnailUrl:
+      proj?.thumbnail_url
+      || ((video as { project_id?: string | null }).project_id
+        ? projectThumbnailUrl((video as { project_id: string }).project_id)
+        : null),
   });
 }

@@ -213,8 +213,8 @@ export async function POST(req: NextRequest) {
     return null;
   });
 
-  const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((parsed.hook || parsed.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
-
+  // See generate-script: the thumbnail URL is derived from the project id at
+  // read time now, not frozen into seo_data with the hook in its query string.
   const seoData = {
     meta_title: parsed.title,
     meta_description: parsed.description || parsed.hook,
@@ -224,7 +224,6 @@ export async function POST(req: NextRequest) {
     sources: parsed.sources,
     youtube_title: ytMeta?.youtube_title || parsed.title,
     youtube_description: ytMeta?.youtube_description || parsed.description || parsed.hook,
-    thumbnail_url: thumbnailUrl,
   };
 
   if (regenerateOnly) {

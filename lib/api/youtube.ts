@@ -207,7 +207,22 @@ export async function setVideoThumbnail(
   if (!imgRes.ok) throw new Error(`Failed to fetch thumbnail image (${imgRes.status})`);
   const buf = await imgRes.arrayBuffer();
   const contentType = imgRes.headers.get("content-type") || "image/png";
+  await setVideoThumbnailBytes(accessToken, youtubeVideoId, buf, contentType);
+}
 
+/**
+ * The same upload, for an image we already hold rather than one to go and get.
+ *
+ * The generated thumbnail card is rendered in process now: fetching it over
+ * HTTP would mean a server-to-server request to our own signed-in-only route,
+ * which has no cookies to present and would come back 401.
+ */
+export async function setVideoThumbnailBytes(
+  accessToken: string,
+  youtubeVideoId: string,
+  bytes: ArrayBuffer,
+  contentType = "image/png",
+): Promise<void> {
   const res = await fetch(
     `${YOUTUBE_UPLOAD_API}/thumbnails/set?videoId=${encodeURIComponent(youtubeVideoId)}`,
     {
@@ -215,9 +230,9 @@ export async function setVideoThumbnail(
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": contentType,
-        "Content-Length": String(buf.byteLength),
+        "Content-Length": String(bytes.byteLength),
       },
-      body: buf,
+      body: bytes,
     },
   );
   if (!res.ok) throw new Error(`Thumbnail set failed (${res.status}): ${await res.text()}`);

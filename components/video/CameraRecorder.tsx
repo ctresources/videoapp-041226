@@ -916,23 +916,33 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <TopicRadar city={city} state={state} onSelect={(t) => setSparkTopic(t)} />
 
-              {/* Script length — recordings are free, so pick whatever fits */}
+              {/* Script length — recordings are free, so pick whatever fits.
+                  Five options across four columns left "Longform 15 min"
+                  stranded on a row of its own, where a button sitting alone
+                  under a grid reads as a different kind of control rather than
+                  the fifth of five. Five columns, and the minutes lead.
+                  Three of the five were labelled "Shorts" and two "Longform",
+                  so the label was the half that could not tell them apart —
+                  the number is what anyone is actually choosing between. */}
               <div className="mt-2">
                 <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {CAMERA_LENGTHS.map((l) => (
                     <button
                       key={l.key}
                       type="button"
                       onClick={() => setSparkLength(l.key)}
-                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                      aria-pressed={sparkLength === l.key}
+                      className={`px-1 py-1.5 rounded-lg border text-center transition-colors ${
                         sparkLength === l.key
                           ? "border-primary-500 bg-white"
                           : "border-primary-200 bg-white/60 hover:border-primary-300"
                       }`}
                     >
-                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
-                      <span className="block text-[10px] text-slate-500">{l.minutes} min</span>
+                      <span className="block text-[12px] font-bold leading-[1.1] text-brand-text">
+                        {l.minutes} min
+                      </span>
+                      <span className="block text-[9.5px] leading-[1.2] text-slate-500">{l.label}</span>
                     </button>
                   ))}
                 </div>

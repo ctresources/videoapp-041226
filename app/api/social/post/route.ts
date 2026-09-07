@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
+import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes } from "@/lib/api/youtube";
+import { thumbnailCardPng } from "@/lib/api/thumbnail-card";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -90,21 +91,44 @@ export async function POST(req: NextRequest) {
         publishAt: scheduledAt || null,
       });
 
-      // Apply the project's generated thumbnail. Non-fatal by design: a
-      // channel without phone verification cannot take a custom thumbnail,
-      // and that must not fail an otherwise successful upload.
-      const thumb = video.projects?.thumbnail_url
-        || (video.projects?.seo_data as { thumbnail_url?: string } | null)?.thumbnail_url;
-      if (thumb && /^https?:\/\//.test(thumb)) {
-        try {
-          await setVideoThumbnail(accessToken, result.videoId, thumb);
+      // Apply the project's thumbnail. Non-fatal by design: a channel without
+      // phone verification cannot take a custom thumbnail, and that must not
+      // fail an otherwise successful upload.
+      //
+      // Two sources, and only one of them is a URL YouTube's side of this can
+      // reach. thumbnail_url holds a real PNG in storage once one has been
+      // rendered. Where none has, the fallback is the generated card, which
+      // lives behind a signed-in route — so it is rendered here, in process,
+      // and the bytes go up directly.
+      //
+      // The old code took `thumbnail_url || seo_data.thumbnail_url` and then
+      // required it to start with http. seo_data's value was always the
+      // relative "/api/thumbnail?hook=…", so it never passed that test: every
+      // project without a stored PNG uploaded with no thumbnail at all, and
+      // nothing said so. YouTube picked a frame from the video instead.
+      try {
+        const storedThumb = video.projects?.thumbnail_url;
+        if (storedThumb && /^https?:\/\//.test(storedThumb)) {
+          await setVideoThumbnail(accessToken, result.videoId, storedThumb);
           thumbnailSet = true;
-        } catch (err) {
-          console.warn(
-            "[social/post] YouTube thumbnail set failed (channel may need phone verification):",
-            err instanceof Error ? err.message : err,
-          );
+        } else {
+          const { data: prof } = await admin
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+          const png = await thumbnailCardPng({
+            hook: String(aiScript?.hook || aiScript?.title || "") || null,
+            agent: (prof as { full_name: string | null } | null)?.full_name ?? null,
+          });
+          await setVideoThumbnailBytes(accessToken, result.videoId, png);
+          thumbnailSet = true;
         }
+      } catch (err) {
+        console.warn(
+          "[social/post] YouTube thumbnail set failed (channel may need phone verification):",
+          err instanceof Error ? err.message : err,
+        );
       }
 
       // post_status must be one of scheduled/posting/posted/failed — the table's

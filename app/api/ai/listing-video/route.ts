@@ -416,8 +416,8 @@ export async function POST(req: NextRequest) {
     listing, listingCity, listingState, prof.full_name || undefined, isUnbranded,
   );
 
-  const thumbnailUrl = `/api/thumbnail?hook=${encodeURIComponent((scriptData.hook || scriptData.title).slice(0, 180))}&agent=${encodeURIComponent(prof.full_name || "")}`;
-
+  // See generate-script: the thumbnail URL is derived from the project id at
+  // read time now, not frozen into seo_data with the hook in its query string.
   // Attached after the fact because aiScript is built before this point — the
   // scriptOnly path returns from up there and wants no blog at all.
   if (blog) {
@@ -435,7 +435,6 @@ export async function POST(req: NextRequest) {
     hashtags: plainCopyAll(ytMeta?.hashtags?.length ? ytMeta.hashtags : scriptData.hashtags),
     youtube_title: plainCopy(ytMeta?.youtube_title || scriptData.title),
     youtube_description: plainCopy(ytMeta?.youtube_description || scriptData.description),
-    thumbnail_url: thumbnailUrl,
   };
 
   // Create project
