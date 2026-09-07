@@ -100,8 +100,18 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
   city?: string; state?: string; initialScript?: string;
+  /**
+   * No script at all — you talk, we keep what you said.
+   *
+   * The teleprompter is the whole reason this component asks for a script, so
+   * turning it off turns off everything that serves it: the script box, the
+   * Spark panel, the scroll-mode picker and the overlay while recording. The
+   * recording itself, the branding and the transcribe-and-continue step after
+   * it are identical either way.
+   */
+  freestyle?: boolean;
   /**
    * Start with the MLS unbranded cut already on, because the editor's
    * checkbox said so. Without it that choice died at the tab boundary and the
@@ -130,6 +140,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   useEffect(() => {
     if (initialScript) setScript(initialScript);
   }, [initialScript]);
+
+  /**
+   * What the teleprompter reads, which is nothing on the freestyle route.
+   *
+   * Derived rather than clearing `script`: someone who sparked a script, then
+   * decided to wing it, then changed their mind again would otherwise find
+   * their words gone. Switching the choice hides the script; it never eats it.
+   */
+  const promptScript = freestyle ? "" : script;
 
   useEffect(() => {
     onPhaseChange?.(step);
@@ -601,7 +620,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       ? (text: string) => compositeRef.current?.setCaption(text)
       : undefined;
 
-    if (scrollMode === "flow" && flowSupported) {
+    // Voice-follow needs words to follow. On the freestyle route there are
+    // none, so it falls to auto — which scrolls an empty prompter, i.e. does
+    // nothing — and live captions still run off their own recognizer below.
+    if (!freestyle && scrollMode === "flow" && flowSupported) {
       followerRef.current?.stop();
       // Photos advance with the speaker's position in the script rather than a
       // stopwatch, so the picture matches what is being said.
@@ -781,9 +803,14 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   async function saveTake(blob: Blob, openShare: boolean) {
     setSaving(true);
     try {
-      const title = script.split(/\n/)[0].slice(0, 100).trim() || "Camera Recording";
+      // promptScript, not script: on the freestyle route nothing was read, so
+      // storing a script that had been sparked and then abandoned would file
+      // the video under words it does not contain. The transcript from the
+      // step after this is what titles it there.
+      const title = promptScript.split(/\n/)[0].slice(0, 100).trim()
+        || (city ? `${city} recording` : "Camera Recording");
       const { videoId, title: savedName } = await uploadCameraRecording(blob, {
-        title, script, videoType: videoTypeForSize(recordedSizeRef.current),
+        title, script: promptScript, videoType: videoTypeForSize(recordedSizeRef.current),
       });
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
@@ -853,6 +880,21 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   if (step === "script") {
     return (
       <div className="flex flex-col gap-5">
+        {/* Says what is missing and that it is missing on purpose. A screen
+            that simply had no script box on it would read as one still
+            loading, or as the choice not having taken. */}
+        {freestyle && (
+          <div className="rounded-xl border border-spark-rule bg-white/60 px-4 py-3">
+            <p className="text-sm font-semibold text-brand-text">No script — just talk</p>
+            <p className="mt-0.5 text-[12.5px] leading-[1.45] text-spark-ink-muted">
+              The teleprompter stays off. Everything below still applies: your branding, your
+              shape, your photos behind you. We&apos;ll transcribe what you said afterwards and
+              write the title, description and hashtags from it.
+            </p>
+          </div>
+        )}
+
+        {!freestyle && (<>
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-semibold text-brand-text">Your Script</label>
@@ -988,6 +1030,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             </div>
           )}
         </div>
+        </>)}
 
         {/* ── Shape ──
             Chosen before recording rather than read off the finished file.
@@ -1219,6 +1262,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                 button in a fourth colour, as loud as Open Camera — so a small
                 text edit looked like a way to move forward. Outline, sized to
                 its own words. */}
+            {/* Hidden, not disabled, on the freestyle route — unlike the
+                unbranded case there is no script for it to write to, so there
+                is no control that moved and nothing to explain. */}
+            {!freestyle && (
             <div className="mt-3 pt-3 border-t border-spark-blue/20">
               {/* Disabled rather than hidden on an unbranded cut: the button
                   appends your name and an invitation to call you, which is the
@@ -1241,6 +1288,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   : "Adds your subscribe & contact ask to the end of the script, so the teleprompter reads it for you."}
               </p>
             </div>
+            )}
           </div>
 
         {/* Tips for best video */}
@@ -1254,7 +1302,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <li>Face a window or light source — never sit with a bright light behind you</li>
             <li>Keep the camera at eye level and record in a quiet room</li>
             <li><strong>8–15 minutes</strong> is YouTube&apos;s algorithm sweet spot — and 8+ minutes unlocks mid-roll ads</li>
-            <li>End with a subscribe CTA — tap <strong>Add Channel CTA</strong> above to drop yours into the script so the teleprompter reads it for you</li>
+            {freestyle
+              ? <li>Say your name and your town in the first ten seconds, and end by asking for the subscribe — nothing is on screen to remind you</li>
+              : <li>End with a subscribe CTA — tap <strong>Add Channel CTA</strong> above to drop yours into the script so the teleprompter reads it for you</li>}
           </ul>
         </div>
 
@@ -1269,11 +1319,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           onClick={openCamera}
           size="lg"
           className="w-full gap-2"
-          disabled={!script.trim()}
+          disabled={!freestyle && !script.trim()}
         >
           <Camera size={18} /> Open Camera
         </Button>
-        {!script.trim() ? (
+        {!freestyle && !script.trim() ? (
           <p className="text-xs text-slate-400 text-center -mt-3">
             Add A Script Above To Continue
           </p>
@@ -1291,8 +1341,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black">
         {/* Teleprompter pinned to the very top (right under the device lens) so
-            you read while looking at the camera. Shown once recording starts. */}
-        {isRecording && (
+            you read while looking at the camera. Shown once recording starts —
+            and never on the freestyle route, where an empty black band would
+            take a third of the screen away from the preview for nothing. */}
+        {isRecording && promptScript.trim() && (
           <div
             ref={teleRef}
             className="shrink-0 h-40 sm:h-44 bg-black/85 backdrop-blur-sm px-5 py-4 overflow-hidden select-none border-b border-white/10"
@@ -1303,7 +1355,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
               {/* Words carry data-w indices so Flow mode can scroll to and highlight the reader's position */}
               {(() => {
                 let w = 0;
-                return script.split(/(\s+)/).map((part, i) =>
+                return promptScript.split(/(\s+)/).map((part, i) =>
                   /\S/.test(part) ? <span key={i} data-w={w++}>{part}</span> : part,
                 );
               })()}

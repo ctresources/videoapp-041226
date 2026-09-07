@@ -149,8 +149,11 @@ export default function HelpPage() {
           <div className="flex flex-col gap-4">
             <Step n={6} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
               On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
-              pick <strong>I&apos;ll film it</strong> or <strong>SparkReels makes it</strong>, then choose
-              where the script comes from — everything below works either way. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
+              pick <strong>Film On Camera</strong> or <strong>Use My Avatar</strong>, then choose
+              where the script comes from — everything below works either way. On the camera side
+              there is a fifth choice, <strong>Speak naturally</strong>: no script and no
+              teleprompter, you just talk, and we write the title, description and hashtags from
+              what you said. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
               <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
               anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
               tone, how long. It fills in whatever it catches and asks a quick follow-up for anything missing,

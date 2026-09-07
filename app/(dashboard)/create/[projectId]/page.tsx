@@ -1426,6 +1426,17 @@ export default function ProjectEditorPage() {
             </button>
           ))}
         </div>
+        {/* Says out loud that these are two different exits, not three
+            settings on one.
+            Two of them finish on this screen and spend a video; the third
+            hands everything to the camera and finishes there, free — and
+            nothing below this picker applies to it. That was discoverable
+            only by choosing it and watching the page change. */}
+        <p className="text-[10.5px] leading-[1.45] text-spark-ink-faint">
+          {selfRecord
+            ? "You'll finish in the camera, not on this screen. Your script and photos come with you, and nothing here is spent."
+            : "The first two render here and use one video from your plan. I'll record it takes you to the camera instead — free, and you finish there."}
+        </p>
       </div>
     );
   }
@@ -2642,6 +2653,18 @@ export default function ProjectEditorPage() {
             </p>
             )}
 
+            {/* The other exit, set at the same weight as the sentence above.
+                This half of the fork had nothing at all here: the big line was
+                gated off and the next thing on screen was Save Draft, so the
+                free route arrived at its button with no line telling it what
+                the button would do. */}
+            {selfRecord && (
+            <p className="mb-1 text-[22px] font-semibold leading-[1.3] text-spark-ink-soft">
+              Click <span className="text-spark-ink">Open Camera</span> when you&rsquo;re ready to
+              record. It costs nothing, and you can retake it as many times as you like.
+            </p>
+            )}
+
             {/* 2a's summary line — restates the four choices just made, so the
                 button is not the first place you find out what you picked. */}
             <p className="mb-2 text-[11px] text-spark-ink-faint">
@@ -2650,7 +2673,13 @@ export default function ProjectEditorPage() {
                   say which one is about to be rendered. */}
               {selectedFormat && `${selectedFormat.label} ${selectedFormat.ratio}`}
               {" · "}
-              {renderMode === "avatar_voice" ? "avatar on screen" : "voice only"}
+              {/* renderMode is not consulted on the camera path — nothing
+                  server-side renders it — so printing "voice only" there was
+                  the summary confidently describing a render that will never
+                  happen. */}
+              {selfRecord
+                ? "you on camera"
+                : renderMode === "avatar_voice" ? "avatar on screen" : "voice only"}
               {" · "}
               {selectedMusicId === "none"
                 ? "no music"
@@ -2735,6 +2764,18 @@ export default function ProjectEditorPage() {
               video up, so they get their own step at the end rather than
               sitting under the script waiting to be scrolled past. */}
           {editorStep === 5 && (<>
+          {/* The step had no heading of its own — it opened straight onto a
+              collapsed card called "Title, Description & Hashtags", which is
+              one item in the kit standing in for all of it. Naming the step
+              is what makes the rest of it worth expanding. */}
+          <div className="mb-1">
+            <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Your Share Kit</h2>
+            <p className="mt-0.5 text-[11.5px] leading-[1.45] text-spark-ink-muted">
+              Written with your video: the title, description and hashtags Publish fills in for
+              you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
+              anything here before you post.
+            </p>
+          </div>
           {/* Social Content Pack */}
           {seo && (
             <Card padding="sm">
@@ -2999,7 +3040,7 @@ export default function ProjectEditorPage() {
                           // review, never a blank page, and telling someone to
                           // go and write what is already written invites them
                           // to skip it.
-                          : "Rendering. Close this page if you like, or review your post copy while it works"
+                          : "Rendering. Close this page if you like, or review your Share Kit while it works"
                     )
                     // Was "Copy these into your post when you publish", which
                     // stopped being true once Publish started reading the
@@ -3047,11 +3088,17 @@ export default function ProjectEditorPage() {
                 is still running. It was "Share kit" here and "Titles &
                 captions" there, two names for one screen on one footer, which
                 is the same class of thing as a button that does not do what it
-                says. */}
+                says.
+
+                "Your Share Kit" is now that one name, everywhere. "Post copy &
+                blog" was accurate and completely unmemorable — a filing label
+                for the single most valuable thing the product hands over, and
+                the reason nobody went looking for it. A kit is a thing you can
+                want; post copy is a folder. */}
             {editorStep === 4 && renderComplete && !renderFailed && (
               <>
                 <Button variant="outline" size="lg" onClick={() => setEditorStep(5)} className="gap-2">
-                  Post copy{(script.blog_intro || script.blog_body) ? " & blog" : ""}
+                  Your Share Kit
                 </Button>
                 <Button
                   size="lg"
@@ -3104,9 +3151,13 @@ export default function ProjectEditorPage() {
                     for a website rather than copy for a post, and only when
                     one exists — the card itself is gated the same way, so the
                     button never promises a section that is not there. */}
+                {/* Capitalised as a name, which is what stops it reading as an
+                    instruction to share a video that has not rendered yet —
+                    the objection that put "Post copy" here in the first place.
+                    "Your Share Kit" is a noun you are being handed. */}
                 {renderFailed
                   ? <><Wand2 size={17} /> Try again</>
-                  : <>Post copy{(script.blog_intro || script.blog_body) ? " & blog" : ""} <ArrowRight size={17} /></>}
+                  : <>Your Share Kit <ArrowRight size={17} /></>}
               </Button>
             )}
             {/* Done SAVES, then leaves.

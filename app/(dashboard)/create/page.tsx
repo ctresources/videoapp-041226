@@ -101,12 +101,34 @@ const TRY_LINES = [
 /** One tile in row 2. Both sides of row 1 lead to a row of these and they are
  *  answering the same question — where the words come from — so they are the
  *  same control, not two that happen to look alike. */
+/** Free or not, said on the control that decides it rather than three steps
+ *  later. Amber is the app's "this spends something" colour throughout; free
+ *  routes get the quiet neutral, so the pair reads at a glance without either
+ *  one shouting. */
+function CostPill({ free, children }: { free: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[9.5px] font-semibold uppercase tracking-[0.1em] ${
+        free
+          ? "bg-spark-rule/50 text-spark-ink-muted"
+          : "bg-spark-amber-tint text-[#A3660F]"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
 function SourceTile({
-  kicker, label, desc, active, onClick, disabled = false,
+  kicker, label, desc, active, onClick, disabled = false, cost,
 }: {
   kicker: string; label: string; desc: string; active: boolean; onClick: () => void;
   /** Still readable, no longer changeable — see cameraSourceLocked. */
   disabled?: boolean;
+  /** Only where this tile changes what the route costs. Row 1 answers it for
+   *  most tiles already, so repeating "free" on all four camera sources would
+   *  be noise — the photo reel is the one that differs from its row. */
+  cost?: React.ReactNode;
 }) {
   return (
     <button
@@ -122,12 +144,15 @@ function SourceTile({
           : `border-[1.5px] border-spark-rule bg-white/60 ${disabled ? "" : "hover:border-spark-rule-dim"}`
       }`}
     >
-      <span
-        className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
-          active ? "text-[#A3660F]" : "text-spark-ink-faint"
-        }`}
-      >
-        {kicker}
+      <span className="flex items-center justify-between gap-2">
+        <span
+          className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
+            active ? "text-[#A3660F]" : "text-spark-ink-faint"
+          }`}
+        >
+          {kicker}
+        </span>
+        {cost}
       </span>
       <span className="text-[15.5px] font-semibold leading-[1.15] text-spark-ink">{label}</span>
       <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>
@@ -289,7 +314,7 @@ function CreatePageInner() {
    * details in. Photos are not in the list: they are b-roll, not a script,
    * and stay available whichever way in you pick.
    */
-  const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own">("speak");
+  const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own" | "freestyle">("speak");
   /**
    * Record here, or brand a clip already shot.
    *
@@ -1033,7 +1058,7 @@ function CreatePageInner() {
   // Which of the three ways in you are on. Shown on every tab: they are all
   // step 1 of the same five, and only the AI tab said so.
   const tabLabel =
-    inputMode === "camera" ? "My camera"
+    inputMode === "camera" ? "Film on camera"
       : inputMode === "script" ? "AI writes it"
         : inputMode === "listing" ? "My listings/My photos"
           : "My script";
@@ -1125,9 +1150,14 @@ function CreatePageInner() {
             </span>{" "}
             your next video?
           </h1>
-          {/* No subline. It was pitching the product to someone who has
-              already bought it and is here to make a video — that argument
-              belongs on the landing page, not above the tool. */}
+          {/* The subline that was here before pitched the product to someone
+              who has already bought it. This one does a different job: it
+              describes the shape of the screen underneath — several routes in,
+              one set of finished assets out — which is the thing nobody
+              discovers until their third video. */}
+          <p className="mt-3 text-[15px] leading-[1.5] text-spark-ink-muted">
+            One idea. Multiple paths. One complete content package.
+          </p>
         </div>
       )}
 
@@ -1137,29 +1167,32 @@ function CreatePageInner() {
           the camera tab had to ask about the script a second time once you
           were inside it. Split in two, each row asks one thing.
 
-          Not "you" versus "not you" — it is you either way, live or as your
-          avatar speaking in your cloned voice. What differs is whether you
-          press record or we render it. */}
+          It is you either way, live or as your avatar speaking in your cloned
+          voice. What differs is whether you press record or we render it —
+          which is also the whole of what it costs, so each tile says so. */}
       {step === "input" && (
         <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {([
             {
               key: "film" as const,
-              label: "I'll film it",
+              label: "Film On Camera",
               desc: "Your camera + teleprompter",
               Icon: Video,
+              free: true,
+              cost: "Free",
             },
             {
               key: "spark" as const,
-              // Covers all three tabs on this side honestly. A photo reel has
-              // no avatar and no voice at all, and a listing video can render
-              // voice-only, so a label naming just the avatar would be wrong
-              // for two routes out of three.
-              label: "SparkReels makes it",
+              // The label names the avatar; the sub-line carries the other two
+              // routes on this side, because a photo reel has no avatar and no
+              // voice at all and a listing video can render voice-only.
+              label: "Use My Avatar",
               desc: "Your avatar, voice or photos",
               Icon: Sparkles,
+              free: false,
+              cost: "Uses 1 video",
             },
-          ]).map(({ key, label, desc, Icon }) => {
+          ]).map(({ key, label, desc, Icon, free, cost }) => {
             const active = key === "film" ? inputMode === "camera" : inputMode !== "camera";
             return (
               <button
@@ -1186,11 +1219,14 @@ function CreatePageInner() {
                 >
                   <Icon size={19} />
                 </span>
-                <span className="min-w-0">
-                  <span className="block text-[17px] font-semibold leading-[1.15] text-spark-ink">
-                    {label}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-[17px] font-semibold leading-[1.15] text-spark-ink">
+                      {label}
+                    </span>
+                    <CostPill free={free}>{cost}</CostPill>
                   </span>
-                  <span className="block text-[13px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.3] text-spark-ink-muted">{desc}</span>
                 </span>
               </button>
             );
@@ -1207,15 +1243,20 @@ function CreatePageInner() {
       {step === "input" && inputMode === "camera" && (
         <>
           <div
-            className={`mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 ${
+            className={`mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
             }`}
           >
+            {/* Five, in descending order of how much writing we do for you —
+                ending at the one where we do none. Three columns, not four:
+                five tiles across four leaves one stranded on a row of its
+                own, which reads as a different kind of control. */}
             {([
-              { key: "speak" as const,   kicker: "Fastest",           label: "AI writes it",              desc: "Say a topic" },
-              { key: "uploads" as const, kicker: "PDF or link",       label: "From a document",           desc: "We read it first" },
-              { key: "audio" as const,   kicker: "Already recorded",  label: "A recording of me talking", desc: "We transcribe it into your script" },
-              { key: "own" as const,     kicker: "Word for word",     label: "I'll write it",             desc: "Type it below" },
+              { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Say a topic" },
+              { key: "uploads" as const,   kicker: "PDF or link",      label: "From a document",           desc: "We read it first" },
+              { key: "audio" as const,     kicker: "Already recorded", label: "A recording of me talking", desc: "We transcribe it into your script" },
+              { key: "own" as const,       kicker: "Word for word",    label: "I'll write it",             desc: "Type it below" },
+              { key: "freestyle" as const, kicker: "No script",        label: "Speak naturally",           desc: "No teleprompter — just talk" },
             ]).map(({ key, kicker, label, desc }) => (
               <SourceTile
                 key={key}
@@ -1254,6 +1295,10 @@ function CreatePageInner() {
               kicker={kicker}
               label={label}
               desc={desc}
+              // Listings are the one tile on this side that does not cost what
+              // its row says — the photo reel under it is free — so it is the
+              // one tile that carries a pill of its own.
+              cost={mode === "listing" ? <CostPill free>Photo reel free</CostPill> : undefined}
               active={inputMode === mode}
               onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
             />
@@ -1274,11 +1319,13 @@ function CreatePageInner() {
           appeared was the one place it would set the wrong expectation. */}
       {step === "input" && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-          Filming it yourself is free. Anything{" "}
-          <strong className="font-semibold text-spark-ink">SparkReels makes</strong> uses one of
-          your short or long videos from your plan — except the{" "}
-          <strong className="font-semibold text-spark-ink">photo reel</strong> under My listings,
-          which is free too.
+          {/* The pills above now carry which route costs what, so this line
+              stops repeating them and says the thing they cannot: that the
+              choice is not the charge. People hesitate over a script because
+              they think editing spends something. */}
+          &ldquo;Uses 1 video&rdquo; means one of your short or long videos from your plan.
+          Nothing is spent until you press <strong className="font-semibold text-spark-ink">Spark Video</strong> —
+          picking a route, writing a script and setting the video up are all free.
         </p>
       )}
 
@@ -1667,6 +1714,10 @@ function CreatePageInner() {
             // you to type a script and press a button that isn't on screen.
             cameraMode === "brand" && canBrandClips
               ? "Pick a clip above, choose what gets burned in, then render it."
+              // Nothing to write and nothing to wait for — the only hint this
+              // route needs is that the button below is already the next step.
+              : cameraSource === "freestyle"
+              ? "No script to write. Set your shape and branding below, then press Open Camera and talk."
               : cameraScriptGenerating
               ? "Writing your teleprompter script…"
               : readyToContinue
@@ -2386,6 +2437,7 @@ function CreatePageInner() {
               state={locState || undefined}
               initialScript={cameraGeneratedScript || undefined}
               initialUnbranded={cameraUnbranded}
+              freestyle={cameraSource === "freestyle"}
               scriptLength={cameraScriptLength}
               onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}
