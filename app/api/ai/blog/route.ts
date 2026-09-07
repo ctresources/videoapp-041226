@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateBlogFromScript } from "@/lib/api/blog-writer";
+import { ensureVideoSrt } from "@/lib/utils/video-srt";
+import { parseSrt, srtToPlainText } from "@/lib/utils/srt";
 
 /**
  * POST /api/ai/blog — { projectId, force? }
@@ -22,7 +24,11 @@ import { generateBlogFromScript } from "@/lib/api/blog-writer";
  * route with a script in it at all — the words only exist after the render.
  */
 
-export const maxDuration = 60;
+// Writing the article is well under a minute. The budget is for the case
+// underneath it: a Speak naturally recording has no script, so the words have
+// to be transcribed off the video first, and that means downloading it — the
+// same 300 the captions and transcript routes run on, for the same work.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -69,13 +75,45 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const spoken = String(script.script ?? "").trim();
+  let spoken = String(script.script ?? "").trim();
+
+  /**
+   * Nothing written down — so read it off the video instead.
+   *
+   * This is the Speak naturally route, and an upload of footage shot
+   * elsewhere. Both produce a real video with real words in it and an empty
+   * `script`, because there never was a teleprompter. Refusing them an
+   * article would leave the one route where the agent has the most to say
+   * as the only route that cannot have it written up.
+   *
+   * ensureVideoSrt caches, so this costs a transcription once per video and
+   * nothing on any later visit — including the one the Edit transcript button
+   * may already have paid for.
+   */
   if (spoken.length < 200) {
-    // Said plainly rather than returning an empty blog. A ten-second camera
-    // take has nothing to expand into a thousand words, and an article
-    // invented from three sentences is worse than none.
+    const { data: vid } = await admin
+      .from("generated_videos")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .eq("render_status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const videoId = (vid as { id: string } | null)?.id;
+    if (videoId) {
+      const srt = await ensureVideoSrt(admin, user.id, videoId);
+      if (srt.ok) spoken = srtToPlainText(parseSrt(srt.srt)).trim();
+    }
+  }
+
+  if (spoken.length < 200) {
+    // Said plainly rather than returning an empty blog. A ten-second take has
+    // nothing to expand into a thousand words, and an article invented from
+    // three sentences is worse than none.
     return NextResponse.json(
-      { error: "This video's script is too short to write an article from." },
+      { error: "There aren't enough words in this video yet to write an article from." },
       { status: 422 },
     );
   }
