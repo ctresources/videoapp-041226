@@ -352,6 +352,7 @@ export default function ProjectEditorPage() {
   // Photo uploads
   const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
   const [matchingPhotos, setMatchingPhotos] = useState(false);
+  const [blogWriting, setBlogWriting] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -484,6 +485,10 @@ export default function ProjectEditorPage() {
   useEffect(() => {
     if (skipScriptStep && editedScript) setEditorStep(3);
     if (searchParams.get("record") === "1" && editedScript) setEditorStep(3);
+    // Arriving from the camera's done step, which has already produced the
+    // video. Step 5 is the only one that means anything there — the setup and
+    // render steps are behind it, not ahead.
+    if (searchParams.get("step") === "5") setEditorStep(5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editedScript]);
 
@@ -1651,6 +1656,46 @@ export default function ProjectEditorPage() {
       flush();
     }
     return blocks.join("\n");
+  }
+
+  /**
+   * Write the article for this project, whatever made the video.
+   *
+   * On a button rather than folded into the save that created the project.
+   * The routes that would have to carry it are the ones that can least afford
+   * a second AI call — save-camera-recording has a 60 second budget and
+   * already spends up to 25 of them on the post copy — and a video that is
+   * uploaded and safe must never end up reporting a failure because an extra
+   * was slow. It also means nothing is spent writing articles for the videos
+   * nobody wanted one for.
+   */
+  async function writeBlog() {
+    if (!project || blogWriting) return;
+    setBlogWriting(true);
+    try {
+      const res = await fetch("/api/ai/blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't write the article.");
+      const blog = data.blog as { intro: string; body: string; conclusion: string };
+      setProject((p) => p ? {
+        ...p,
+        ai_script: {
+          ...(p.ai_script as Record<string, unknown> | null ?? {}),
+          blog_intro: blog.intro,
+          blog_body: blog.body,
+          blog_conclusion: blog.conclusion,
+        } as typeof p.ai_script,
+      } : p);
+      toast.success("Article ready — Copy as HTML drops it into your site.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't write the article.");
+    } finally {
+      setBlogWriting(false);
+    }
   }
 
   function copyBlogHtml() {
@@ -2912,7 +2957,14 @@ export default function ProjectEditorPage() {
           )}
 
           {/* Blog content */}
-          {(script.blog_intro || script.blog_body) && (
+          {/* Always on screen now, written or not.
+              It used to render only where a blog already existed, so the three
+              routes that never wrote one — a camera recording, a pasted
+              script, a photo reel — showed no card, no button and nothing
+              saying a blog was even possible. The feature was invisible on
+              exactly the routes where the agent has the most to say and the
+              least of it written down. */}
+          {(
             <Card padding="sm">
               <button
                 onClick={() => toggle("blog")}
@@ -2920,12 +2972,41 @@ export default function ProjectEditorPage() {
               >
                 <div className="flex items-center gap-2">
                   <FileText size={16} className="text-slate-500" />
-                  <h3 className="font-semibold text-sm text-brand-text">Blog Post Content</h3>
+                  <h3 className="font-semibold text-sm text-brand-text">Blog article</h3>
+                  {/* Earned now. The badge used to sit on an article written by
+                      a prompt that said nothing about answer engines — the
+                      AEO/GEO work was real but it was in the YouTube title and
+                      description, one card up. Both the shared writer and the
+                      market prompt now ask for question-shaped H2 headings
+                      answered in their first sentence, which is the thing the
+                      badge was claiming all along. */}
                   <Badge variant="default" className="text-xs">AEO/GEO/SEO</Badge>
                 </div>
                 {expandedSections.blog ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
               </button>
-              {expandedSections.blog && (
+              {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
+                <div className="px-2 pb-1">
+                  <p className="text-xs leading-[1.5] text-slate-500">
+                    A ~1,000-word article on the same subject as this video, written to be read
+                    rather than heard, with question-shaped headings that search and answer
+                    engines can quote. Paste it straight into your website — the copy button
+                    gives you the HTML.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2.5 gap-1.5"
+                    loading={blogWriting}
+                    onClick={writeBlog}
+                  >
+                    {blogWriting ? "Writing…" : <><Sparkles size={13} /> Write the article</>}
+                  </Button>
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    Free — it uses nothing from your plan. Takes about half a minute.
+                  </p>
+                </div>
+              )}
+              {expandedSections.blog && (script.blog_intro || script.blog_body) && (
                 <div className="px-2 space-y-3">
                   {/* Copy the whole article as markup — the article now carries
                       headings, and re-adding them by hand after pasting was the

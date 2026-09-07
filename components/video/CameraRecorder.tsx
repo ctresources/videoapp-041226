@@ -14,6 +14,7 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  ArrowRight,
   Video,
   Share2,
   Lightbulb,
@@ -246,6 +247,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const [camError, setCamError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
+  /** The project behind the take — the way through to its Share Kit. */
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
   /** 3, 2, 1 — null when not counting. */
   const [countdown, setCountdown] = useState<number | null>(null);
   /**
@@ -812,11 +815,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       // step after this is what titles it there.
       const title = promptScript.split(/\n/)[0].slice(0, 100).trim()
         || (city ? `${city} recording` : "Camera Recording");
-      const { videoId, title: savedName } = await uploadCameraRecording(blob, {
+      const { videoId, title: savedName, projectId } = await uploadCameraRecording(blob, {
         title, script: promptScript, videoType: videoTypeForSize(recordedSizeRef.current),
       });
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
+      setSavedProjectId(projectId);
       if (openShare) setShowPublish(true);
       return videoId;
     } catch (err) {
@@ -1627,6 +1631,27 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             )}
           </Button>
         </div>
+
+        {/* The way through to everything written for this recording.
+            The camera route finished here, with Download, Share and
+            Re-record — so the titles, description, hashtags and blog article
+            that exist for a camera video by this point were on a screen the
+            camera route could not reach. Filming it yourself is not a reason
+            to lose the writing that goes with it. */}
+        {savedProjectId && (
+          <a
+            href={`/create/${savedProjectId}?step=5`}
+            className="flex items-center justify-between gap-3 rounded-xl border border-spark-rule bg-white px-4 py-3 transition-colors hover:border-spark-amber"
+          >
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold text-spark-ink">Your Share Kit</span>
+              <span className="block text-[11.5px] leading-[1.4] text-spark-ink-muted">
+                Title, description and hashtags — plus a blog article you can paste into your site.
+              </span>
+            </span>
+            <ArrowRight size={16} className="shrink-0 text-spark-amber" />
+          </a>
+        )}
 
         <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
           <RotateCcw size={13} /> Re-record

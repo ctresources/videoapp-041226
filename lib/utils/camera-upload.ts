@@ -49,7 +49,7 @@ export async function uploadCameraRecording(
      *  the end card is what carries the ask on screen. */
     cta?: string;
   } = {},
-): Promise<{ videoId: string; title: string }> {
+): Promise<{ videoId: string; title: string; projectId: string | null }> {
   const ext = blob.type.includes("mp4") ? "mp4" : "webm";
 
   const urlRes = await fetch("/api/video/camera-upload-url", {
@@ -89,5 +89,12 @@ export async function uploadCameraRecording(
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to save video");
 
-  return { videoId: data.videoId as string, title: (data.title as string) || opts.title || "Camera Recording" };
+  return {
+    videoId: data.videoId as string,
+    title: (data.title as string) || opts.title || "Camera Recording",
+    // The project this recording belongs to, so the caller can offer the
+    // Share Kit — the titles, description, hashtags and blog article that are
+    // written for a camera video as much as for a rendered one.
+    projectId: (data.projectId as string | undefined) ?? null,
+  };
 }

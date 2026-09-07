@@ -363,11 +363,11 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — curiosity or question format]
 3. [Option 3 — "did you know" or discovery angle]
 
-BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Lead with something concrete about the area.]
+BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting and no rhetorical questions.]
 
-BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard. Use 4-6 section headings, each on its own line and prefixed exactly "H2: " — the words after that prefix are the heading. Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
+BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard. Use 4-6 section headings, each on its own line and prefixed exactly "H2: " — the words after that prefix are the heading. Write each heading as the question a reader would actually type or say out loud, naming the town ("H2: What is happening to prices in Blue Bell?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips. Under each heading, 2-4 short paragraphs. Name the town this article is about naturally throughout, along with any neighborhoods and landmarks. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
 
-BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with a clear next step.]
+BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with the single clear next step a reader should take.]
 
 PRIMARY LOCATION: [The single place this script is actually about, as "City, ST". Take it from the topic itself whenever the topic names one.]
 

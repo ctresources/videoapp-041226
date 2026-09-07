@@ -275,5 +275,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ video: { id: (videoRow as { id: string }).id }, videoId: (videoRow as { id: string }).id, title });
+  // projectId goes back too, so the recorder can offer the Share Kit. Without
+  // it the camera route finished with no way to reach its own titles,
+  // description, hashtags or blog article — all of which exist by this point.
+  return NextResponse.json({
+    video: { id: (videoRow as { id: string }).id },
+    videoId: (videoRow as { id: string }).id,
+    projectId: resolvedProjectId,
+    title,
+  });
 }
