@@ -101,7 +101,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -113,6 +113,22 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * it are identical either way.
    */
   freestyle?: boolean;
+  /**
+   * The page above already owns the AI writer.
+   *
+   * On the camera tab the route is chosen before this component renders, and
+   * "AI writes it" and "From a document" each put their own writer on the
+   * page — a spoken brief, or a "write the script from these" button. This
+   * component then drew a second one: a "Spark with AI" panel with its own
+   * topic box, directly under the first. Two empty boxes, both asking what
+   * the video is about, and nothing saying which one wrote the script.
+   *
+   * So on those routes the writer here folds away and the box below is only
+   * what it has always actually been — the teleprompter, holding whatever was
+   * written above, editable before you record. The length picker stays: it
+   * sets the length the page's own writer uses.
+   */
+  scriptSourceAbove?: boolean;
   /**
    * Start with the MLS unbranded cut already on, because the editor's
    * checkbox said so. Without it that choice died at the tab boundary and the
@@ -883,6 +899,39 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * One length picker, rendered in either of two places.
+   *
+   * It used to live only inside the Spark panel, so folding that panel away on
+   * the routes where the page writes the script would have taken the length
+   * with it — and the page's writer reads the very same value.
+   */
+  const scriptLengthPicker = (
+    <div className="mt-2">
+      <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
+      <div className="grid grid-cols-5 gap-1.5">
+        {CAMERA_LENGTHS.map((l) => (
+          <button
+            key={l.key}
+            type="button"
+            onClick={() => setSparkLength(l.key)}
+            aria-pressed={sparkLength === l.key}
+            className={`px-1 py-1.5 rounded-lg border text-center transition-colors ${
+              sparkLength === l.key
+                ? "border-primary-500 bg-white"
+                : "border-primary-200 bg-white/60 hover:border-primary-300"
+            }`}
+          >
+            <span className="block text-[12px] font-bold leading-[1.1] text-brand-text">
+              {l.minutes} min
+            </span>
+            <span className="block text-[9.5px] leading-[1.2] text-slate-500">{l.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   // ── Script step ─────────────────────────────────────────────────────────────
   if (step === "script") {
     return (
@@ -904,19 +953,37 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         {!freestyle && (<>
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-semibold text-brand-text">Your Script</label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowSpark((v) => !v)}
-                className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
-              >
-                <Sparkles size={12} />
-                {showSpark ? "Hide" : "Spark with AI"}
-              </button>
-            </div>
+            <label className="text-sm font-semibold text-brand-text">
+              {/* Named for what it is on this route. "Your Script" under a
+                  brief box that is also asking for the script reads as a
+                  second one to fill in. */}
+              {scriptSourceAbove ? "Your teleprompter" : "Your Script"}
+            </label>
+            {!scriptSourceAbove && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowSpark((v) => !v)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                >
+                  <Sparkles size={12} />
+                  {showSpark ? "Hide" : "Spark with AI"}
+                </button>
+              </div>
+            )}
           </div>
 
-          {showSpark && (
+          {scriptSourceAbove && (
+            <p className="mb-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
+              The script written above lands here. Edit it if you want — this is
+              what scrolls while you record.
+            </p>
+          )}
+
+          {/* The length the writer above works to, so it stays on screen even
+              with that writer's own panel folded away. */}
+          {scriptSourceAbove && <div className="mb-3">{scriptLengthPicker}</div>}
+
+          {showSpark && !scriptSourceAbove && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <TopicRadar city={city} state={state} onSelect={(t) => setSparkTopic(t)} />
 
@@ -928,29 +995,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   Three of the five were labelled "Shorts" and two "Longform",
                   so the label was the half that could not tell them apart —
                   the number is what anyone is actually choosing between. */}
-              <div className="mt-2">
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {CAMERA_LENGTHS.map((l) => (
-                    <button
-                      key={l.key}
-                      type="button"
-                      onClick={() => setSparkLength(l.key)}
-                      aria-pressed={sparkLength === l.key}
-                      className={`px-1 py-1.5 rounded-lg border text-center transition-colors ${
-                        sparkLength === l.key
-                          ? "border-primary-500 bg-white"
-                          : "border-primary-200 bg-white/60 hover:border-primary-300"
-                      }`}
-                    >
-                      <span className="block text-[12px] font-bold leading-[1.1] text-brand-text">
-                        {l.minutes} min
-                      </span>
-                      <span className="block text-[9.5px] leading-[1.2] text-slate-500">{l.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {scriptLengthPicker}
 
               <div className="flex gap-2 mt-2">
                 <input
@@ -978,7 +1023,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <textarea
               value={script}
               onChange={(e) => setScript(e.target.value)}
-              placeholder="Type your script, or tap the mic to speak it…"
+              placeholder={
+                scriptSourceAbove
+                  ? "Your script appears here once it's written above — or type it yourself."
+                  : "Type your script, or tap the mic to speak it…"
+              }
               className="w-full h-36 text-sm px-3 py-3 pr-14 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
             />
             <div className="absolute bottom-2 right-2">

@@ -2430,6 +2430,19 @@ function CreatePageInner() {
 
             {cameraSource === "speak" && (
             <div className="mb-4">
+                {/* Named, because it is not the script. Unlabelled, a box
+                    saying "Say it or type it" sat directly above a second box
+                    saying "Your Script" — two empty boxes on one screen, both
+                    apparently wanting the words you are going to say. This one
+                    wants the topic; the one below holds what gets written. */}
+                <p className="text-xs font-semibold text-spark-ink-muted uppercase tracking-wide mb-1">
+                  Tell Us The Topic
+                </p>
+                <p className="mb-2 text-xs text-spark-ink-faint">
+                  Say or type what the video is about — a sentence is enough. The
+                  AI writes the script from it and loads it into your
+                  teleprompter below.
+                </p>
                 <VoiceBriefSession
                   disabled={cameraScriptGenerating}
                   onSwitchToTyping={() => { /* the box already takes typing */ }}
@@ -2551,6 +2564,11 @@ function CreatePageInner() {
               initialScript={cameraGeneratedScript || undefined}
               initialUnbranded={cameraUnbranded}
               freestyle={cameraSource === "freestyle"}
+              // The spoken brief and the write-from-uploads button are both on
+              // this page, above. Without this the recorder drew its own
+              // "Spark with AI" panel underneath them — a second topic box for
+              // the same script.
+              scriptSourceAbove={cameraSource === "speak" || cameraSource === "uploads"}
               scriptLength={cameraScriptLength}
               onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}
