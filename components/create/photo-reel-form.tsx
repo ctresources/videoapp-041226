@@ -99,6 +99,9 @@ export function PhotoReelForm({
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  /** Same as the camera's: View it is a full page navigation and the wait
+   *  before My Videos paints read as a dead button. */
+  const [openingVideo, setOpeningVideo] = useState(false);
 
   // ── Voiceover recording ──────────────────────────────────────────────────
   const [recording, setRecording] = useState(false);
@@ -707,8 +710,11 @@ export function PhotoReelForm({
       {savedId && (
         <div className="flex items-center gap-2 rounded-lg border border-spark-rule px-3 py-2.5">
           <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
-          <a href={`/videos?highlight=${savedId}`}>
-            <Button variant="outline" size="lg">View it</Button>
+          <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)}>
+            <Button variant="outline" size="lg" className="gap-2">
+              {openingVideo && <Loader2 size={15} className="animate-spin" />}
+              {openingVideo ? "Opening…" : "View it"}
+            </Button>
           </a>
         </div>
       )}

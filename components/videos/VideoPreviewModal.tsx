@@ -31,6 +31,25 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
   const [srtLoading, setSrtLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  /**
+   * Whether the file is still arriving.
+   *
+   * A freshly rendered video is being fetched from storage for the very first
+   * time, so the first few seconds of this modal are a black rectangle with
+   * the browser's own spinner somewhere in it — indistinguishable from a
+   * player that has failed. Starts true because opening the modal starts a
+   * load, and is cleared by whichever event gets there first.
+   */
+  const [buffering, setBuffering] = useState(true);
+  /** Long enough to be worth explaining, rather than just waiting harder. */
+  const [slow, setSlow] = useState(false);
+  const [playError, setPlayError] = useState(false);
+
+  useEffect(() => {
+    if (!buffering) { setSlow(false); return; }
+    const t = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(t);
+  }, [buffering]);
 
   // Cross-origin URLs ignore <a download> — fetch as a blob and save instead.
   async function handleDownloadVideo() {
@@ -150,9 +169,43 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
             className="w-full h-full object-contain"
             playsInline
             crossOrigin="anonymous"
+            // canPlay, not playing: autoplay is blocked often enough that
+            // waiting for playback to actually start would leave the overlay
+            // up over a video sitting ready behind a play button.
+            onCanPlay={() => setBuffering(false)}
+            onLoadedData={() => setBuffering(false)}
+            onPlaying={() => { setBuffering(false); setPlayError(false); }}
+            onWaiting={() => setBuffering(true)}
+            onStalled={() => setBuffering(true)}
+            onError={() => { setBuffering(false); setPlayError(true); }}
           >
             <source src={videoUrl} type={videoMimeType(videoUrl)} />
           </video>
+
+          {/* Says which of the two black rectangles this is. Not clickable —
+              the native controls underneath stay reachable through it, so
+              pressing play during a stall still works. */}
+          {buffering && !playError && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+              <Loader2 size={26} className="animate-spin text-white/80" />
+              <p className="text-sm font-semibold text-white">Buffering…</p>
+              <p className="text-xs leading-[1.45] text-white/60">
+                {slow
+                  ? "Still loading. A video this fresh is being fetched for the first time — it plays instantly after this."
+                  : "Loading your video for the first time."}
+              </p>
+            </div>
+          )}
+
+          {playError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+              <p className="text-sm font-semibold text-white">This video wouldn&apos;t play here</p>
+              <p className="text-xs leading-[1.45] text-white/60">
+                Download it below — the file itself is fine. Some phones refuse to play certain
+                recordings in the browser.
+              </p>
+            </div>
+          )}
 
           {/* Overlay controls */}
           <div className="absolute top-3 right-3 flex gap-1.5">

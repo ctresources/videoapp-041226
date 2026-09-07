@@ -269,6 +269,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    */
   const [takes, setTakes] = useState<{ url: string; blob: Blob; seconds: number }[]>([]);
   const [viewingTake, setViewingTake] = useState(0);
+  /** View it is a full page navigation, and the second or two before My Videos
+   *  paints looked like a link that had not registered the tap. */
+  const [openingVideo, setOpeningVideo] = useState(false);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
   const [showPublish, setShowPublish] = useState(false);
   const [ctaProfile, setCtaProfile] = useState<{
@@ -1574,9 +1577,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             {savedVideoId && (
               <a
                 href={`/videos?highlight=${savedVideoId}`}
-                className="text-xs font-semibold text-spark-amber hover:text-spark-blue whitespace-nowrap"
+                onClick={() => setOpeningVideo(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-spark-amber hover:text-spark-blue whitespace-nowrap"
               >
-                View it →
+                {openingVideo && <Loader2 size={12} className="animate-spin" />}
+                {openingVideo ? "Opening…" : "View it →"}
               </a>
             )}
             <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>

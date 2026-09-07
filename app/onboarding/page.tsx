@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TalkingAvatarUploader, VoiceCloneUploader } from "@/components/settings/brand-profile";
 import { FieldMic } from "@/components/ui/field-mic";
 import { toStateAbbr } from "@/lib/utils/us-states";
-import { Check, ArrowRight, Camera, MapPin, Mic } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Camera, MapPin, Mic } from "lucide-react";
 import toast from "react-hot-toast";
 
 type StepKey = "photo" | "market" | "voice";
@@ -254,6 +254,9 @@ export default function OnboardingPage() {
                 />
               </label>
 
+              {/* The numbered rail above says this is a sequence, and a
+                  sequence you can only walk forwards is a trap: swapping the
+                  headshot meant finishing setup and going to Settings. */}
               <div className="flex items-center gap-3">
                 <Button onClick={saveMarketAndContinue} className="gap-1.5">
                   Continue <ArrowRight size={14} />
@@ -264,6 +267,13 @@ export default function OnboardingPage() {
                   className="text-[12.5px] font-medium text-spark-ink-muted underline underline-offset-2 hover:text-spark-ink"
                 >
                   Do this later
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("photo")}
+                  className="ml-auto flex items-center gap-1 py-1 text-[12.5px] font-medium text-spark-ink-faint hover:text-spark-ink"
+                >
+                  <ArrowLeft size={13} /> Headshot
                 </button>
               </div>
             </div>
@@ -299,6 +309,13 @@ export default function OnboardingPage() {
                     Use a stock voice for now
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setStep("market")}
+                  className="ml-auto flex items-center gap-1 py-1 text-[12.5px] font-medium text-spark-ink-faint hover:text-spark-ink"
+                >
+                  <ArrowLeft size={13} /> Market
+                </button>
               </div>
             </div>
           )}

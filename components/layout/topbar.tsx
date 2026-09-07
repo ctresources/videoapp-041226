@@ -1,9 +1,9 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { ArrowLeft, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { cn } from "@/lib/utils/cn";
@@ -29,7 +29,35 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useAuth();
+
+  /**
+   * Back, on every screen except the one there is nothing behind.
+   *
+   * On desktop the sidebar makes every destination one click away, so this was
+   * never missed there. On a phone the sidebar is folded behind the hamburger,
+   * which left several screens — Billing, Analytics, the affiliate page, My
+   * Videos — with no visible way out except the browser chrome, and the
+   * install-to-home-screen version has no browser chrome.
+   *
+   * Not on the Create routes. Those are a numbered flow and their step footer
+   * already carries a Back that names the step it returns to — "Brief",
+   * "Script", "Setup". A second Back in the bar above it would look like the
+   * same control and do something different: leave the video instead of
+   * stepping back inside it. Where a step deliberately has no way back — mid
+   * render, when there is nothing to return to — that is the answer, not a
+   * gap for this to fill.
+   */
+  const showBack = pathname !== "/dashboard" && !pathname.startsWith("/create");
+
+  function goBack() {
+    // history.length counts entries for the whole tab, so a deep link opened
+    // in a fresh tab reads as 1 and lands on the dashboard rather than on
+    // whatever the browser had before this app.
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/dashboard");
+  }
   const title =
     Object.entries(pageTitles).find(
       ([key]) => pathname === key || (key !== "/dashboard" && pathname.startsWith(key))
@@ -65,6 +93,24 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               className={onCreate ? "text-spark-paper" : "text-spark-ink-muted"}
             />
           </button>
+          {showBack && (
+            <button
+              onClick={goBack}
+              aria-label="Go back"
+              className={cn(
+                // Sized as a real tap target rather than to the arrow: at
+                // 18px the icon alone is under half the 44px minimum, on the
+                // one control a phone user reaches for most.
+                "flex items-center gap-1.5 rounded-nav px-2.5 py-2 text-[12.5px] font-medium transition-colors",
+                onCreate
+                  ? "text-spark-paper hover:bg-white/10"
+                  : "text-spark-ink-muted hover:bg-spark-amber-tint hover:text-spark-ink"
+              )}
+            >
+              <ArrowLeft size={17} strokeWidth={1.9} />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+          )}
           {/* Logo on mobile (sidebar hidden); page title on desktop */}
           <Link href="/dashboard" className="md:hidden">
             <Image
