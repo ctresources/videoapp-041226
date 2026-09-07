@@ -52,14 +52,14 @@ const SHAPE_META = [
     key: "vertical" as const,
     label: "Vertical",
     ratio: "9:16",
-    where: "Reels, TikTok, Shorts",
+    where: "Reels, Shorts + TikTok",
     tip: "Hold your phone upright, the way you normally would.",
   },
   {
     key: "horizontal" as const,
     label: "Horizontal",
     ratio: "16:9",
-    where: "YouTube, your website",
+    where: "YouTube + websites",
     tip: "Turn your phone sideways before you start — on a laptop you are already there.",
   },
 ];
@@ -1042,7 +1042,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             way to get a good landscape video is to frame one. */}
         {brandedSupported && (
           <div className="rounded-xl border border-spark-rule p-3.5">
-            <p className="mb-2 text-sm font-semibold text-brand-text">Shape</p>
+            {/* Same eyebrow-and-question device as the Create screen, so the
+                two halves of one flow read as one flow. "Shape" named the
+                setting; this names the decision. */}
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
+              Production
+            </p>
+            <p className="mb-2 mt-[3px] text-[15px] font-semibold leading-[1.2] text-spark-ink">
+              Choose your format
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {SHAPE_META.map((sh) => {
                 const active = shape === sh.key;

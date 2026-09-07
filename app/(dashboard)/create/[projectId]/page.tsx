@@ -1503,12 +1503,14 @@ export default function ProjectEditorPage() {
 
   function renderFormatSelector() {
     const shapes = [
-      { value: "reel_9x16" as const, label: "Vertical 9:16", desc: "Reels, TikTok, Shorts" },
-      { value: "youtube_16x9" as const, label: "Horizontal 16:9", desc: "YouTube, your website" },
+      { value: "reel_9x16" as const, label: "Vertical 9:16", desc: "Reels, Shorts + TikTok" },
+      { value: "youtube_16x9" as const, label: "Horizontal 16:9", desc: "YouTube + websites" },
     ];
     return (
       <div className="mb-5 flex flex-col gap-[7px]">
-        <p className="spark-eyebrow text-[9px] tracking-[0.12em]">VIDEO SHAPE</p>
+        {/* Named the same as the camera's picker and the Create screen's, so
+            the three places this question is asked stop having three names. */}
+        <p className="spark-eyebrow text-[9px] tracking-[0.12em]">PRODUCTION · CHOOSE YOUR FORMAT</p>
         {selectedVideoType === "youtube_long" ? (
           // Said rather than silently offering one button: a picker that cannot
           // be changed reads as broken, where a sentence reads as a rule.

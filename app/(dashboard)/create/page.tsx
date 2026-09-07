@@ -23,6 +23,7 @@ import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { PhotoReelForm } from "@/components/create/photo-reel-form";
 import { SparkPanel } from "@/components/create/spark-panel";
 import {
+  CONTENT_TEMPLATES,
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
@@ -101,6 +102,49 @@ const TRY_LINES = [
 /** One tile in row 2. Both sides of row 1 lead to a row of these and they are
  *  answering the same question — where the words come from — so they are the
  *  same control, not two that happen to look alike. */
+/**
+ * The six chips above the template browser.
+ *
+ * Short chip labels, mapped onto templates that already exist, rather than a
+ * second set of topics to keep in step with the first. The label is what the
+ * agent calls the video; the template underneath is the prompt that writes it.
+ */
+const QUICK_TEMPLATES: { label: string; templateId: string }[] = [
+  { label: "Property tour",       templateId: "home_tour" },
+  { label: "Market update",       templateId: "market_conditions" },
+  { label: "Community spotlight", templateId: "neighborhood_spotlight" },
+  { label: "Seller tip",          templateId: "seller_tips" },
+  { label: "Buyer tip",           templateId: "homebuyer_tips" },
+  { label: "Just listed",         templateId: "just_listed" },
+];
+
+/**
+ * An amber eyebrow naming the section, and under it the question the controls
+ * answer.
+ *
+ * The screen used to be four unlabelled bands of tiles: you could see what the
+ * choices were without ever being told what was being asked. Naming the
+ * question is what turns a wall of buttons into a sequence.
+ *
+ * No circled step numbers, deliberately. The editor already counts five steps
+ * and says so, and a second 1-2-3-4 running down this one page would be two
+ * numbering systems disagreeing in the same eyeline.
+ */
+function SectionHead({ eyebrow, question, className = "" }: {
+  eyebrow: string; question: string; className?: string;
+}) {
+  return (
+    <div className={`flex flex-col gap-[3px] ${className}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
+        {eyebrow}
+      </p>
+      <p className="text-[17px] font-semibold leading-[1.2] tracking-[-0.01em] text-spark-ink">
+        {question}
+      </p>
+    </div>
+  );
+}
+
 /** Free or not, said on the control that decides it rather than three steps
  *  later. Amber is the app's "this spends something" colour throughout; free
  *  routes get the quiet neutral, so the pair reads at a glance without either
@@ -1061,7 +1105,7 @@ function CreatePageInner() {
     inputMode === "camera" ? "Film on camera"
       : inputMode === "script" ? "AI writes it"
         : inputMode === "listing" ? "My listings/My photos"
-          : "My script";
+          : "Paste my script";
 
   /**
    * Out of videos, and said before the work rather than after it.
@@ -1170,24 +1214,25 @@ function CreatePageInner() {
           It is you either way, live or as your avatar speaking in your cloned
           voice. What differs is whether you press record or we render it —
           which is also the whole of what it costs, so each tile says so. */}
+      {step === "input" && <SectionHead className="mt-7" eyebrow="Video style" question="How do you want to appear?" />}
       {step === "input" && (
-        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {([
             {
               key: "film" as const,
               label: "Film On Camera",
-              desc: "Your camera + teleprompter",
+              // "Your voice" rather than "your camera": the camera is implied
+              // by the label, and what actually differs from the other tile is
+              // whose voice comes out of the video.
+              desc: "Your voice + teleprompter",
               Icon: Video,
               free: true,
               cost: "Free",
             },
             {
               key: "spark" as const,
-              // The label names the avatar; the sub-line carries the other two
-              // routes on this side, because a photo reel has no avatar and no
-              // voice at all and a listing video can render voice-only.
               label: "Use My Avatar",
-              desc: "Your avatar, voice or photos",
+              desc: "Avatar + cloned voice",
               Icon: Sparkles,
               free: false,
               cost: "Uses 1 video",
@@ -1242,8 +1287,9 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && (
         <>
+          <SectionHead className="mt-7" eyebrow="Script source" question="How should your script begin?" />
           <div
-            className={`mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
+            className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
             }`}
           >
@@ -1252,11 +1298,13 @@ function CreatePageInner() {
                 five tiles across four leaves one stranded on a row of its
                 own, which reads as a different kind of control. */}
             {([
-              { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Say a topic" },
-              { key: "uploads" as const,   kicker: "PDF or link",      label: "From a document",           desc: "We read it first" },
+              { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Turn a topic into a polished script" },
+              // Not "Upload a PDF": this route takes a link as well, and the
+              // kicker already says which two.
+              { key: "uploads" as const,   kicker: "PDF or link",      label: "From a document",           desc: "Use a report, guide, or flyer" },
               { key: "audio" as const,     kicker: "Already recorded", label: "A recording of me talking", desc: "We transcribe it into your script" },
-              { key: "own" as const,       kicker: "Word for word",    label: "I'll write it",             desc: "Type it below" },
-              { key: "freestyle" as const, kicker: "No script",        label: "Speak naturally",           desc: "No teleprompter — just talk" },
+              { key: "own" as const,       kicker: "Word for word",    label: "I'll write it",             desc: "Use your own finished copy" },
+              { key: "freestyle" as const, kicker: "No script",        label: "Speak naturally",           desc: "Record without a prepared script" },
             ]).map(({ key, kicker, label, desc }) => (
               <SourceTile
                 key={key}
@@ -1284,11 +1332,17 @@ function CreatePageInner() {
       {/* The same question on the render-it-for-me side. Three of the four
           original tabs, minus the camera one that row 1 now owns. */}
       {step === "input" && inputMode !== "camera" && (
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <>
+        <SectionHead className="mt-7" eyebrow="Script source" question="How should your script begin?" />
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {([
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: "Say it, we script it" },
-            { mode: "paste" as InputMode,   kicker: "Word for word",         label: "My script",             desc: "Spoken exactly as written" },
-            { mode: "listing" as InputMode, kicker: "Zillow, MLS or photos", label: "My listings/My photos", desc: "A tour, or a photo reel" },
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: "Turn a topic into a polished script" },
+            { mode: "paste" as InputMode,   kicker: "Word for word",         label: "Paste my script",       desc: "Use your own finished copy" },
+            // One tile, two things, so the description has to carry both. The
+            // mock split it into Add Listing URL and Upload photos, but photos
+            // on their own cannot write a script — that is the photo reel,
+            // which is a different renderer and free.
+            { mode: "listing" as InputMode, kicker: "Zillow, MLS or photos", label: "My listings/My photos", desc: "Turn a listing into a script, or photos into a reel" },
           ]).map(({ mode, kicker, label, desc }) => (
             <SourceTile
               key={mode}
@@ -1304,6 +1358,7 @@ function CreatePageInner() {
             />
           ))}
         </div>
+        </>
       )}
 
       {/* Puts the price beside the choice that sets it — otherwise it only
@@ -1341,9 +1396,13 @@ function CreatePageInner() {
           and folding them in would have made the card the whole page. */}
       {inputMode === "script" && step === "input" && (
         <div className="mt-7 flex flex-col gap-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            {tabLabel} · Step 1 of 5
-          </p>
+          {/* The section name and the step counter in one eyebrow. Two
+              stacked amber eyebrows — one naming the tab, one naming the
+              section — would have been the same device used twice. */}
+          <SectionHead
+            eyebrow={`Topic details · ${tabLabel} · Step 1 of 5`}
+            question="What is your video about?"
+          />
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
@@ -1385,6 +1444,47 @@ function CreatePageInner() {
             />
           </ComposerCard>
 
+          {/* ── Start with a template or idea ──
+              Six chips, always visible, for the six kinds of video agents
+              actually post. The full browser below holds thirty and opens
+              collapsed, which meant most people never learned it was there —
+              a library nobody opens is worth less than six good defaults.
+              Both fill the same field the composer does. */}
+          <div className="flex flex-col gap-2">
+            <p className="text-[12.5px] font-medium text-spark-ink-soft">
+              Start with a template or idea
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_TEMPLATES.map((id) => {
+                const t = CONTENT_TEMPLATES.find((c) => c.id === id.templateId);
+                if (!t) return null;
+                // Compared against the raw template so a chip stays lit after
+                // a city is typed and the resolved text changes underneath it.
+                const active = topicTemplateRaw === t.topic;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      const resolved = substitutePlaceholders(t.topic, locCity.trim(), locState.trim());
+                      setLocCustomTopic(resolved);
+                      setTopicTemplateRaw(t.topic);
+                      setSparkSeed((s) => ({ text: resolved, n: s.n + 1 }));
+                    }}
+                    aria-pressed={active}
+                    className={`rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
+                      active
+                        ? "border-spark-amber bg-spark-amber text-white"
+                        : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
+                    }`}
+                  >
+                    {id.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* ── Spark an idea ──
               Trending, formats and the full template list are one panel with
               three tabs now, rather than a trending row plus an expanding
@@ -1424,7 +1524,7 @@ function CreatePageInner() {
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                Where? · City and state
+                City + State
               </p>
               <p className="text-[14px] text-spark-ink-muted">
                 {locationSet ? "Set" : "Say it or type it"}
@@ -1535,7 +1635,10 @@ function CreatePageInner() {
                       ] as [string, string][],
                     },
                     {
-                      label: "Style", value: locTone, set: setLocTone,
+                      // "Tone" is what the field is — the voice the script is
+                      // written in. "Style" reads as a visual setting on a
+                      // screen whose other controls are all visual.
+                      label: "Tone", value: locTone, set: setLocTone,
                       options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
                     },
                     {
@@ -1547,7 +1650,13 @@ function CreatePageInner() {
                     },
                   ].map(({ label, value, set, options }) => (
                     <div key={label}>
-                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">{label}</label>
+                      {/* All three are optional and every one of them defaults
+                          to a usable answer. Saying so on the label is what
+                          stops the row reading as three more things to fill
+                          in before the button will work. */}
+                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">
+                        {label} <span className="font-normal text-spark-ink-faint">(optional)</span>
+                      </label>
                       <div className="relative">
                         <select
                           value={value}
@@ -1576,15 +1685,19 @@ function CreatePageInner() {
                 <div className="mt-6">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                      Shorts or longform?
+                      Choose your format
                     </p>
                     <p className="text-[14px] text-spark-ink-muted">Default, change it anytime</p>
                   </div>
                   <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {([
-                      { p: "reel", l: "standard", title: "Shorts", sub: "Up to 3 min · 9:16 (vertical)", w: "11px", h: "17px" },
-                      { p: "youtube", l: "standard", title: "Shorts", sub: "Up to 3 min · 16:9 (horizontal)", w: "20px", h: "12px" },
-                      { p: "youtube", l: "long", title: "Longform", sub: "Up to 8 min · 16:9 (horizontal)", w: "20px", h: "12px" },
+                      // Where it gets posted, not just what shape it is. Both
+                      // Shorts tiles are called Shorts, so the sub-line is the
+                      // only thing telling them apart — and "9:16" says less
+                      // about which to pick than "Reels, Shorts + TikTok".
+                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "Up to 3 min · Reels, Shorts + TikTok", w: "11px", h: "17px" },
+                      { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 3 min · YouTube + websites", w: "20px", h: "12px" },
+                      { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
                       const on = locPlatform === p && locLength === l;
                       return (

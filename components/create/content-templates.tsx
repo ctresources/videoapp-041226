@@ -190,6 +190,21 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     needsLocation: true,
   },
   {
+    // Added for the quick-start chips on Create, which needed a
+    // new-listing announcement and had nothing to point at — every existing
+    // format was a tour, a tip or a roundup. It stands on its own outside
+    // those chips too: it is the single most-posted kind of agent video.
+    id: "just_listed",
+    label: "Just Listed",
+    emoji: "🏡",
+    icon: Star,
+    topic: "A just-listed announcement for a new property in {city}, {state} — the address and price, the three things that make it stand out, who it suits, and how to book a showing",
+    description: "Announce a new listing — price, standout features, showings",
+    color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
+    category: "format",
+    needsLocation: true,
+  },
+  {
     id: "qa_myth_buster",
     label: "Q&A / Myth-Buster",
     emoji: "❓",

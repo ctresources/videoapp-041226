@@ -125,7 +125,7 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My script</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Paste my script</td>
                   <td className="py-2 pr-3">You already have the words — spoken exactly as written</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
