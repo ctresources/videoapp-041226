@@ -39,6 +39,25 @@ const TABS = [
   { key: "ideas" as const, label: "Ideas" },
 ];
 
+/**
+ * The six chips under the title — the kinds of video agents actually post.
+ *
+ * Short chip labels mapped onto templates that already exist, rather than a
+ * second set of topics to keep in step with the first. The label is what an
+ * agent calls the video; the template underneath is the prompt that writes it.
+ *
+ * They are duplicates of six cards a tab away, deliberately: a card is found
+ * by looking through three tabs, a chip is found by arriving.
+ */
+const QUICK_TEMPLATES: { label: string; templateId: string }[] = [
+  { label: "Property tour",       templateId: "home_tour" },
+  { label: "Market update",       templateId: "market_conditions" },
+  { label: "Community spotlight", templateId: "neighborhood_spotlight" },
+  { label: "Seller tip",          templateId: "seller_tips" },
+  { label: "Buyer tip",           templateId: "homebuyer_tips" },
+  { label: "Just listed",         templateId: "just_listed" },
+];
+
 /** The design's grid is 3x2. */
 const SHOWN = 6;
 
@@ -78,7 +97,17 @@ interface SparkPanelProps {
  * an expanding browser, so the panel is a fixed height whatever is chosen.
  */
 export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
-  const [tab, setTab] = useState<"trending" | "formats" | "ideas">("trending");
+  /**
+   * Formats, not Trending.
+   *
+   * Trending cannot show anything until a city has been typed, and the city
+   * field is further down the page — so the panel opened on the one tab that
+   * was guaranteed to be empty on arrival. It used to fill that gap with a box
+   * asking for the city, which is a panel about ideas spending its first
+   * screen on a form field somewhere else. Formats works immediately, and
+   * Trending is one tap away once the market is in.
+   */
+  const [tab, setTab] = useState<"trending" | "formats" | "ideas">("formats");
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9999));
   const [trending, setTrending] = useState<TrendingTopic[]>([]);
   const [loading, setLoading] = useState(false);
@@ -167,20 +196,35 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       id="spark-panel"
       className="scroll-mt-6 rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-4 py-4 sm:px-5"
     >
-      {/* "What's it about?" matches the chip — the thing this fills is the
-          topic, which is a what, and two names for one field is how someone
-          ends up hunting for a question they already answered.
+      {/* The "What's it about?" eyebrow that sat beside this is gone. It was
+          the fourth place on one screen asking the same question — after the
+          section heading, the mic line and a chip — and the title beside it
+          already says what the panel holds. */}
+      <p className="text-[17px] font-semibold text-spark-ink">
+        Topics, ideas &amp; templates to spark you
+      </p>
 
-          The subtitle says what is actually in the panel. "Say or Choose to
-          Spark" was instructing rather than describing, and reads as talking
-          down once you can plainly see three tabs and six cards. */}
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-          What&rsquo;s it about?
-        </span>
-        <span className="text-[17px] font-semibold text-spark-ink">
-          Topics, ideas and templates to spark you
-        </span>
+      {/* The six most-posted kinds of video, straight off the title.
+          They lived above this panel as their own row, under their own
+          heading, which made two template pickers stacked and two pale pill
+          rows in a column — one of which was the composer's checklist and not
+          clickable at all. Here they are the fast path INTO the panel: the
+          same pick() every card below uses. */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {QUICK_TEMPLATES.map(({ label, templateId }) => {
+          const t = CONTENT_TEMPLATES.find((c) => c.id === templateId);
+          if (!t) return null;
+          return (
+            <button
+              key={templateId}
+              type="button"
+              onClick={() => pick(toSpark(t))}
+              className="rounded-full border border-spark-rule bg-white px-3.5 py-2 text-[13px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber"
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -204,10 +248,11 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
         })}
       </div>
 
+      {/* "For you today" is gone. It labelled the six cards under it, which
+          are already plainly six cards, and it sat where a tab had just been
+          chosen — so it read as a fourth tab that would not press. Shuffle
+          keeps the row to itself. */}
       <div className="mt-4 flex items-center gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-faint">
-          For you today
-        </span>
         <button
           type="button"
           onClick={() => setSeed(Math.floor(Math.random() * 9999))}
@@ -217,11 +262,12 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
         </button>
       </div>
 
-      {tab === "trending" && !hasMarket ? (
-        <p className="mt-3 rounded-[12px] border border-spark-rule bg-white px-3.5 py-3 text-[13.5px] text-spark-ink-muted">
-          Add the city and state below and we&rsquo;ll scan what&rsquo;s trending there.
-        </p>
-      ) : tab === "trending" && loading && six.length === 0 ? (
+      {/* The "add the city and state below" box is gone with it. This panel
+          opens on Formats now, so nothing lands on an empty Trending by
+          default — and a panel of ideas spending its first screen asking for
+          a field further down the page was the wrong thing in the wrong
+          place. Trending still says when it is working. */}
+      {tab === "trending" && loading && six.length === 0 ? (
         <div className="mt-3 flex items-center gap-2 py-2 text-[13.5px] text-spark-ink-faint">
           <Loader2 size={13} className="animate-spin text-spark-amber" />
           Scanning your market for trending topics…
@@ -247,12 +293,13 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       )}
 
       {/* Everything the cards are not showing. Replaces the expanding browser
-          that used to push the rest of the page down by several screens. */}
+          that used to push the rest of the page down by several screens.
+
+          The "Other sparks" eyebrow that used to sit inside this row went with
+          the rename — beside a control reading "Browse more sparks" it was the
+          same words twice, three inches apart, one of them shouting. */}
       {restCount > 0 && (
         <label className="mt-3.5 flex min-h-[60px] cursor-pointer items-center gap-3 rounded-[14px] border border-spark-rule bg-white px-4 py-3">
-          <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.13em] text-spark-ink-faint">
-            Other sparks
-          </span>
           <select
             value=""
             onChange={(e) => {
@@ -262,7 +309,7 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
             }}
             className="min-w-0 flex-1 cursor-pointer appearance-none border-none bg-transparent text-[16px] text-spark-ink focus:outline-none"
           >
-            <option value="">Browse the rest</option>
+            <option value="">Browse more sparks</option>
             {TABS.map(({ key, label }) =>
               rest[key].length ? (
                 <optgroup key={key} label={label}>

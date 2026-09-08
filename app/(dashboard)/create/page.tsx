@@ -24,7 +24,6 @@ import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { PhotoReelForm } from "@/components/create/photo-reel-form";
 import { SparkPanel } from "@/components/create/spark-panel";
 import {
-  CONTENT_TEMPLATES,
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
@@ -103,21 +102,8 @@ const TRY_LINES = [
 /** One tile in row 2. Both sides of row 1 lead to a row of these and they are
  *  answering the same question — where the words come from — so they are the
  *  same control, not two that happen to look alike. */
-/**
- * The six chips above the template browser.
- *
- * Short chip labels, mapped onto templates that already exist, rather than a
- * second set of topics to keep in step with the first. The label is what the
- * agent calls the video; the template underneath is the prompt that writes it.
- */
-const QUICK_TEMPLATES: { label: string; templateId: string }[] = [
-  { label: "Property tour",       templateId: "home_tour" },
-  { label: "Market update",       templateId: "market_conditions" },
-  { label: "Community spotlight", templateId: "neighborhood_spotlight" },
-  { label: "Seller tip",          templateId: "seller_tips" },
-  { label: "Buyer tip",           templateId: "homebuyer_tips" },
-  { label: "Just listed",         templateId: "just_listed" },
-];
+/* QUICK_TEMPLATES moved to spark-panel, which is where the chips now render —
+   under the panel's title rather than above it in a row of their own. */
 
 /**
  * An amber eyebrow naming the section, and under it the question the controls
@@ -1415,6 +1401,14 @@ function CreatePageInner() {
             eyebrow="3 · Topic details"
             question="What is your video about?"
           />
+          {/* Was the heading over a chip row of its own, directly above a
+              panel whose title says nearly the same thing. As a line under
+              the question it does the one job worth keeping: telling someone
+              staring at an empty box that they do not have to think of
+              something — there is a list further down. */}
+          <p className="-mt-2.5 text-[13.5px] leading-[1.45] text-spark-ink-muted">
+            Start with a template or idea below.
+          </p>
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
@@ -1459,46 +1453,13 @@ function CreatePageInner() {
             />
           </ComposerCard>
 
-          {/* ── Start with a template or idea ──
-              Six chips, always visible, for the six kinds of video agents
-              actually post. The full browser below holds thirty and opens
-              collapsed, which meant most people never learned it was there —
-              a library nobody opens is worth less than six good defaults.
-              Both fill the same field the composer does. */}
-          <div className="flex flex-col gap-2">
-            <p className="text-[12.5px] font-medium text-spark-ink-soft">
-              Start with a template or idea
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {QUICK_TEMPLATES.map((id) => {
-                const t = CONTENT_TEMPLATES.find((c) => c.id === id.templateId);
-                if (!t) return null;
-                // Compared against the raw template so a chip stays lit after
-                // a city is typed and the resolved text changes underneath it.
-                const active = topicTemplateRaw === t.topic;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      const resolved = substitutePlaceholders(t.topic, locCity.trim(), locState.trim());
-                      setLocCustomTopic(resolved);
-                      setTopicTemplateRaw(t.topic);
-                      setSparkSeed((s) => ({ text: resolved, n: s.n + 1 }));
-                    }}
-                    aria-pressed={active}
-                    className={`rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
-                      active
-                        ? "border-spark-amber bg-spark-amber text-white"
-                        : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
-                    }`}
-                  >
-                    {id.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* The six quick chips used to sit here, above the panel — a second
+              template picker stacked on the one below it, under a label
+              ("Start with a template or idea") that said almost exactly what
+              the panel's own title says. Every one of the six was already
+              inside it, one tab away. They are in the panel now, under its
+              title; the label moved up to the section question, where it
+              points at them. */}
 
           {/* ── Spark an idea ──
               Trending, formats and the full template list are one panel with
