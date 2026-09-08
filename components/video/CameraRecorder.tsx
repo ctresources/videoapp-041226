@@ -979,9 +979,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             </p>
           )}
 
-          {/* The length the writer above works to, so it stays on screen even
-              with that writer's own panel folded away. */}
-          {scriptSourceAbove && <div className="mb-3">{scriptLengthPicker}</div>}
+          {/* No length picker here any more when the page writes the script.
+              It now sits above the button that writes, which is where the
+              value is actually read — down here it was four sections BELOW
+              that button, so the script came out at the default and moving
+              this changed nothing until you regenerated. The Spark panel
+              below keeps its own copy, because there the button and the
+              picker are in the same box. */}
 
           {showSpark && !scriptSourceAbove && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
@@ -1043,6 +1047,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           </p>
         </div>
 
+        {/* Only once there is something for it to scroll. Choosing whether
+            the prompter follows your voice or runs at a constant speed, over
+            an empty box reading "0 words", is a setting for a thing that does
+            not exist yet — and it is the question you can answer best after
+            reading what was written. */}
+        {script.trim() && (
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             Teleprompter Mode
@@ -1096,6 +1106,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             </div>
           )}
         </div>
+        )}
         </>)}
 
         {/* ── Shape ──
@@ -1398,8 +1409,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           <Camera size={18} /> Open Camera
         </Button>
         {!freestyle && !script.trim() ? (
+          // A status, not a second instruction. The fixed bar at the bottom of
+          // the screen is already telling you what to do for your route; this
+          // line sitting under a greyed-out button was telling you something
+          // else at the same time, in Title Case, a few pixels away.
           <p className="text-xs text-slate-400 text-center -mt-3">
-            Add A Script Above To Continue
+            Waiting on your script
           </p>
         ) : (
           <p className="text-xs text-slate-400 text-center -mt-3">

@@ -15,6 +15,7 @@ import {
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
 import { MediaAndDocs } from "@/components/create/media-and-docs";
+import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -1855,27 +1856,19 @@ function CreatePageInner() {
           {/* Nothing for this bar to do on the upload route either: the render
               button lives in the card, and Spark script was appearing beside a
               clip brander with no topic to spark from. */}
+          {/* Transcribe & continue is the only action this bar owns.
+              It used to carry a second Spark script button as well — on the
+              spoken route, which is the one route where the brief panel
+              already has one. Two amber primaries with the same label and the
+              same effect were on screen together, one of them a full page
+              away from the brief it acted on. The panel's stays, because it
+              sits beside the thing it reads. */}
           {cameraMode === "brand" && canBrandClips ? null : readyToContinue ? (
             <Button onClick={handleContinue} size="lg" className="gap-2">
               Transcribe<span className="hidden sm:inline"> &amp; continue</span>{" "}
               <ArrowRight size={18} />
             </Button>
-          ) : cameraGeneratedScript.trim() || cameraSource !== "speak" ? null : (
-            // Only the spoken route has anything for this button to spark
-            // FROM. On the others it could only ever render disabled, which is
-            // the dead primary this footer already had once.
-            <Button
-              onClick={() => handleCameraScriptFromTopic(cameraVoiceTopic)}
-              loading={cameraScriptGenerating}
-              disabled={!cameraVoiceTopic.trim() || cameraScriptGenerating}
-              size="lg"
-              className="gap-2"
-            >
-              {cameraScriptGenerating
-                ? <>Sparking…</>
-                : <>Spark<span className="hidden sm:inline"> script</span> <ArrowRight size={18} /></>}
-            </Button>
-          )}
+          ) : null}
         </StepFooter>
       )}
 
@@ -2363,9 +2356,12 @@ function CreatePageInner() {
                   {cameraMode === "brand" && canBrandClips ? "Your footage" : "Your script"}
                 </p>
                 <p className="text-sm text-spark-ink-muted">
+                  {/* The subtitle promised the script while the first control
+                      under it asked about the picture. It now describes the
+                      screen: write it, then set up the take. */}
                   {cameraMode === "brand" && canBrandClips
                     ? "Add your branding to a clip you already shot"
-                    : "However it gets written, the teleprompter scrolls as you record"}
+                    : "First we write it, then you set up the take"}
                 </p>
               </div>
             </div>
@@ -2391,7 +2387,12 @@ function CreatePageInner() {
                   // filming. One described a feature and the other a size
                   // limit, which made them look like different kinds of thing.
                   { key: "record" as const, label: "Record it here", sub: "you, on camera, now" },
-                  { key: "brand" as const,  label: "Upload my footage", sub: "a clip you already shot · up to 2 min" },
+                  // Was "Upload my footage", which collided with Branded
+                  // Look's "Play my footage behind me" further down the same
+                  // screen. Both said "my footage" and meant opposite things:
+                  // this one makes the clip the video, that one makes it the
+                  // background while you present over it.
+                  { key: "brand" as const,  label: "Brand a clip I already shot", sub: "your footage, with your logo burned in · up to 2 min" },
                 ]).map(({ key, label, sub }) => (
                   <button
                     key={key}
@@ -2427,6 +2428,64 @@ function CreatePageInner() {
                 the one above keeps your footage and publishes it, the one row
                 2 calls "a recording of me talking" throws the file away and
                 keeps only the words. */}
+
+            {/* ── What the script gets written from ──
+                Everything above the writing happens here, in the order the
+                writer reads it: where, how long, what about, and what it has
+                to work with. The market and the length used to sit BELOW the
+                button that writes — the length four sections below, inside
+                "Your teleprompter" — so the script was written to whatever
+                the default was and the picker you scrolled past afterwards
+                did nothing until you regenerated it. */}
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
+              1 · What we&rsquo;re writing
+            </p>
+
+            {/* Market for THIS video. Without it the CTA and end card silently
+                fell back to the profile's home city — a Willow Grove listing
+                went out saying Blue Bell. Above the brief now: the spoken
+                brief fills it in as you talk, so watching it populate is the
+                confirmation that we heard the town right. */}
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-spark-ink-muted uppercase tracking-wide mb-1.5">
+                Market For This Video
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={locCity}
+                  onChange={(e) => setLocCity(e.target.value)}
+                  placeholder="City"
+                  className="flex-1 min-w-0 text-sm px-3 py-2 border border-spark-rule rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <input
+                  type="text"
+                  value={locState}
+                  onChange={(e) => setLocState(toStateAbbr(e.target.value))}
+                  placeholder="ST"
+                  maxLength={2}
+                  className="w-16 shrink-0 text-sm px-3 py-2 border border-spark-rule rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                />
+              </div>
+              <p className="text-xs text-spark-ink-faint mt-1">
+                Used by your channel CTA and the end card. Set it to the property&apos;s town, not your office.
+              </p>
+            </div>
+
+            {/* Only where something is about to be written to this length. On
+                the transcribe and type-it-yourself routes the length is
+                whatever you said or wrote, so a picker there would be a
+                setting that changes nothing. */}
+            {(cameraSource === "speak" || cameraSource === "uploads") && (
+              <div className="mb-3">
+                <ScriptLengthPicker
+                  value={cameraScriptLength}
+                  onChange={setCameraScriptLength}
+                  disabled={cameraScriptGenerating}
+                  hint="How long the AI writes for. Recording is free, so pick whatever the subject needs."
+                />
+              </div>
+            )}
 
             {cameraSource === "speak" && (
             <div className="mb-4">
@@ -2469,35 +2528,6 @@ function CreatePageInner() {
                 <VoiceUploader onFileSelected={handleFileSelected} />
               </div>
             )}
-
-            {/* Market for THIS video. Without it the CTA and end card silently
-                fell back to the profile's home city — a Willow Grove listing
-                went out saying Blue Bell. */}
-            <div className="mb-3">
-              <p className="text-xs font-semibold text-spark-ink-muted uppercase tracking-wide mb-1.5">
-                Market For This Video
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={locCity}
-                  onChange={(e) => setLocCity(e.target.value)}
-                  placeholder="City"
-                  className="flex-1 min-w-0 text-sm px-3 py-2 border border-spark-rule rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <input
-                  type="text"
-                  value={locState}
-                  onChange={(e) => setLocState(toStateAbbr(e.target.value))}
-                  placeholder="ST"
-                  maxLength={2}
-                  className="w-16 shrink-0 text-sm px-3 py-2 border border-spark-rule rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
-                />
-              </div>
-              <p className="text-xs text-spark-ink-faint mt-1">
-                Used by your channel CTA and the end card. Set it to the property&apos;s town, not your office.
-              </p>
-            </div>
 
             {/* Photos & docs. Sits above the script because it feeds it — the AI
                   writes from these, and they become the b-roll. */}
@@ -2556,6 +2586,19 @@ function CreatePageInner() {
               )}
             </div>
             </>)}
+
+            {/* ── How it records ──
+                The line the page was missing. Above it, everything that
+                changes what gets WRITTEN; below it, everything that changes
+                what gets FILMED — and none of the second half means anything
+                until the first half has produced a script. Stated rather than
+                implied, because eleven unlabelled sections in a row read as
+                eleven equally urgent things rather than two halves. */}
+            {cameraPhase === "script" && (
+              <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
+                2 · How it records
+              </p>
+            )}
 
             <CameraRecorder
               onPhaseChange={setCameraPhase}
