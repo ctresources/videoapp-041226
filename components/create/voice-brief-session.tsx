@@ -6,10 +6,20 @@ import { Mic, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { saidGoAhead } from "@/lib/utils/wake-word";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
-// "Sparking" rather than "making": it is the product's own verb, and the
-// opening line is the one place the tool gets to sound like someone rather
-// than a form. Kept to one question — it is read aloud.
-const OPENING_LINE = "What are we sparking today?";
+/**
+ * The opening line, and deliberately not a question any more.
+ *
+ * It was "What are we sparking today?" — sitting a couple of inches under a
+ * section heading already asking "What is your video about?", and directly
+ * above a chip asking "What's it about?". One question, three wordings, which
+ * reads as three separate things wanted rather than one.
+ *
+ * So this line stops asking and starts telling you what you can pack into the
+ * answer, which is the thing nobody discovers: that the whole brief can go in
+ * one sentence. Only the opening state — the moment you speak, this becomes
+ * the assistant's real reply and everything below is unchanged.
+ */
+const OPENING_LINE = "Topic, town, who it's for — all at once, or one at a time.";
 
 
 export interface BriefSlots {

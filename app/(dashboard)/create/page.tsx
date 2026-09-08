@@ -1215,10 +1215,24 @@ function CreatePageInner() {
           It is you either way, live or as your avatar speaking in your cloned
           voice. What differs is whether you press record or we render it —
           which is also the whole of what it costs, so each tile says so. */}
-      {step === "input" && <SectionHead className="mt-7" eyebrow="Video style" question="How do you want to appear?" />}
+      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Video style" question="How do you want to appear?" />}
       {step === "input" && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {/* Avatar first, because avatar is what the page opens on.
+              inputMode starts at "script", so this tile is already lit when
+              you arrive — and a selected control sitting second, to the right
+              of an unselected one, reads as something you changed rather than
+              the default you were given. First position and highlighted say
+              the same thing; second position and highlighted disagree. */}
           {([
+            {
+              key: "spark" as const,
+              label: "Use My Avatar",
+              desc: "Avatar + cloned voice",
+              Icon: Sparkles,
+              free: false,
+              cost: "Uses 1 video",
+            },
             {
               key: "film" as const,
               label: "Film On Camera",
@@ -1229,14 +1243,6 @@ function CreatePageInner() {
               Icon: Video,
               free: true,
               cost: "Free",
-            },
-            {
-              key: "spark" as const,
-              label: "Use My Avatar",
-              desc: "Avatar + cloned voice",
-              Icon: Sparkles,
-              free: false,
-              cost: "Uses 1 video",
             },
           ]).map(({ key, label, desc, Icon, free, cost }) => {
             const active = key === "film" ? inputMode === "camera" : inputMode !== "camera";
@@ -1288,7 +1294,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && (
         <>
-          <SectionHead className="mt-7" eyebrow="Script source" question="How should your script begin?" />
+          <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -1334,7 +1340,7 @@ function CreatePageInner() {
           original tabs, minus the camera one that row 1 now owns. */}
       {step === "input" && inputMode !== "camera" && (
         <>
-        <SectionHead className="mt-7" eyebrow="Script source" question="How should your script begin?" />
+        <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {([
             { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: "Turn a topic into a polished script" },
@@ -1397,24 +1403,32 @@ function CreatePageInner() {
           and folding them in would have made the card the whole page. */}
       {inputMode === "script" && step === "input" && (
         <div className="mt-7 flex flex-col gap-4">
-          {/* The section name and the step counter in one eyebrow. Two
-              stacked amber eyebrows — one naming the tab, one naming the
-              section — would have been the same device used twice. */}
+          {/* Just the section and its number.
+              It read "Topic details · AI writes it · Step 1 of 5", which was
+              three claims where one was wanted. The step count was true of the
+              whole page, not of this third section — so hanging it here made
+              Video style and Script source above look like they sat outside
+              the flow — and the topbar already carries it, with a progress
+              rail, at the top of every screen. The tab name went the same way:
+              row 2 is directly above with that tile lit. */}
           <SectionHead
-            eyebrow={`Topic details · ${tabLabel} · Step 1 of 5`}
+            eyebrow="3 · Topic details"
             question="What is your video about?"
           />
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
+            // Four nouns. "What's it about?" here was the third asking of the
+            // section's own question, and "Which town?" was a question in both
+            // of its states.
             chips={[
-              { label: "Topic", ask: "What's it about?", ok: !!locCustomTopic.trim() },
-              { label: "Which town?", ask: "Which town?", ok: locationSet },
-              { label: "Audience", ask: "Who's it for?", ok: !!locAudience.trim() },
+              { label: "Topic", ok: !!locCustomTopic.trim() },
+              { label: "Town", ok: locationSet },
+              { label: "Audience", ok: !!locAudience.trim() },
               // Always satisfiable now that format is asked on this step. It
               // starts on a default, so this reads as "set" from the outset —
               // the chip is a reminder of what you can say, not a blocker.
-              { label: "Format", ask: "Shorts or longform?", ok: formatTouched },
+              { label: "Format", ok: formatTouched },
             ]}
           >
             {/* One input for both ways in. Speech writes into the box, typing
@@ -1877,8 +1891,11 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
         <div className="mt-7 max-w-3xl">
+          {/* Third section of this page, counted with the other two. The step
+              count it used to carry belongs to the whole page and is in the
+              topbar; the tab name is the lit tile directly above. */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            {tabLabel} · Step 1 of 5
+            3 · Your script
           </p>
           {/* One column, top to bottom.
               Two columns asked which side to begin on and answered neither:
@@ -2340,9 +2357,10 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
         <div className="mt-7 max-w-3xl">
-          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            {tabLabel} · Step 1 of 5
-          </p>
+          {/* No eyebrow of its own. This tab's card carries two numbered
+              sections inside it — 3 and 4, continuing the page's count — so a
+              third amber label above them naming the tab and the step would
+              have been a heading for a heading. */}
           <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
@@ -2438,7 +2456,7 @@ function CreatePageInner() {
                 the default was and the picker you scrolled past afterwards
                 did nothing until you regenerated it. */}
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-              1 · What we&rsquo;re writing
+              3 · What we&rsquo;re writing
             </p>
 
             {/* Market for THIS video. Without it the CTA and end card silently
@@ -2596,7 +2614,7 @@ function CreatePageInner() {
                 eleven equally urgent things rather than two halves. */}
             {cameraPhase === "script" && (
               <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-                2 · How it records
+                4 · How it records
               </p>
             )}
 

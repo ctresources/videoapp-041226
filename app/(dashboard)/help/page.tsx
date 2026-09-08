@@ -149,7 +149,7 @@ export default function HelpPage() {
           <div className="flex flex-col gap-4">
             <Step n={6} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
               On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
-              pick <strong>Film On Camera</strong> or <strong>Use My Avatar</strong>, then choose
+              pick <strong>Use My Avatar</strong> or <strong>Film On Camera</strong>, then choose
               where the script comes from — everything below works either way. On the camera side
               there is a fifth choice, <strong>Speak naturally</strong>: no script and no
               teleprompter, you just talk, and we write the title, description and hashtags from

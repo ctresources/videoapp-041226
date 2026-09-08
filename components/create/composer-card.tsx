@@ -2,14 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-/** One thing the brief needs. Shows the question until it has an answer, then
- *  the short label — the v2 design's way of asking for four things without
- *  laying out four form rows. */
+/**
+ * One thing the brief needs — a checklist item, not a question.
+ *
+ * These used to show a question while blank ("What's it about?") and swap to a
+ * short label once answered. That put a third "what is this video about?" on a
+ * screen whose section heading already asked it and whose mic line asked it
+ * again — one question in three wordings inside four inches, which reads as
+ * three separate things being wanted rather than one.
+ *
+ * Nouns in both states now; the dot carries what the wording used to.
+ */
 export interface ComposerChip {
-  /** Short name once answered — "Where". */
+  /** Short name — "Town". */
   label: string;
-  /** The question while still blank — "Which town?". */
-  ask: string;
   /** Whether the brief has this yet. */
   ok: boolean;
 }
@@ -94,7 +100,7 @@ export function ComposerCard({
                   chip.ok ? "bg-spark-blue" : "bg-spark-ink-faint"
                 }`}
               />
-              {chip.ok ? chip.label : chip.ask}
+              {chip.label}
             </span>
           ))}
         </div>
