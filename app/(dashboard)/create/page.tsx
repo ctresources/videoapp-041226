@@ -1363,7 +1363,7 @@ function CreatePageInner() {
           eyebrow={blogOnly ? "1 · Source" : "2 · Script source"}
           question={blogOnly ? "What should the article come from?" : "How should your script begin?"}
         />
-        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
           {([
             { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a polished script" },
             // Only the two routes that write an article. A pasted script is
@@ -1394,6 +1394,31 @@ function CreatePageInner() {
               onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
             />
           ))}
+
+          {/* The blog, in the row rather than in a banner under it.
+              It was a full-width dashed strip below the tiles, which is where
+              a page puts a footnote — so the one output that costs nothing
+              read as an afterthought about the three that do. As a tile it is
+              a peer: the same shape, the same row, the same choice.
+
+              It is a toggle, not a fourth destination. On, it takes the row
+              down to the two sources that can actually write an article and
+              hides row 1, because a blog has no answer to how you appear. */}
+          <SourceTile
+            kicker={blogOnly ? "Words only" : "No video"}
+            label="Create a blog post"
+            desc={blogOnly ? "On — nothing will be rendered" : "An article for your site, free"}
+            cost={<CostPill free>Free</CostPill>}
+            active={blogOnly}
+            onClick={() => {
+              const next = !blogOnly;
+              setBlogOnly(next);
+              // Paste is the one source that cannot produce an article, so
+              // leaving someone on it would light a tile that the row is
+              // about to remove.
+              if (next && inputMode === "paste") { setInputMode("script"); setLastSparkTab("script"); }
+            }}
+          />
         </div>
         </>
       )}
@@ -1409,7 +1434,9 @@ function CreatePageInner() {
           never sold credits — plans hold a short-video allowance and a long-
           video allowance, counted separately — so the only place the word
           appeared was the one place it would set the wrong expectation. */}
-      {step === "input" && (
+      {/* Nothing on the blog route uses a video, so the line explaining what
+          "uses 1 video" means has nothing to explain there. */}
+      {step === "input" && !blogOnly && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
           {/* The pills above now carry which route costs what, so this line
               stops repeating them and says the thing they cannot: that the
@@ -1421,42 +1448,18 @@ function CreatePageInner() {
         </p>
       )}
 
-      {/* The words on their own.
-          Not a third tile in row 1: that row asks how you want to APPEAR, and
-          a blog has no answer to it. A separate, quieter door instead — a
-          different product coming out of the same brief, rather than a third
-          way to make a video. */}
-      {step === "input" && !blogOnly && (
-        <button
-          type="button"
-          onClick={() => { setBlogOnly(true); setInputMode("script"); setLastSparkTab("script"); }}
-          className="mt-2.5 flex w-full items-center gap-2 rounded-[12px] border border-dashed border-spark-rule px-3.5 py-2.5 text-left transition-colors hover:border-spark-amber"
-        >
-          <FileText size={15} className="shrink-0 text-spark-ink-faint" />
-          <span className="min-w-0 text-[13px] leading-[1.4] text-spark-ink-muted">
-            <strong className="font-semibold text-spark-ink">Just want the words?</strong>{" "}
-            Write a blog post — no video, nothing from your plan.
-          </span>
-          <ArrowRight size={14} className="ml-auto shrink-0 text-spark-amber" />
-        </button>
-      )}
-
+      {/* The dashed "Just want the words?" strip that used to sit here is
+          gone: it is a tile in the source row now, a peer of the three beside
+          it rather than a footnote under them. What stays is the line saying
+          what the mode means once it is on, which a lit tile cannot. */}
       {step === "input" && blogOnly && (
-        <div className="mt-2.5 flex items-center gap-2 rounded-[12px] border border-spark-amber bg-spark-amber-tint px-3.5 py-2.5">
-          <FileText size={15} className="shrink-0 text-[#A3660F]" />
-          <span className="min-w-0 text-[13px] leading-[1.4] text-spark-ink">
-            <strong className="font-semibold">Blog post only.</strong>{" "}
-            You&rsquo;ll get the article, the title, the description and the hashtags — no video, and
-            nothing from your plan.
-          </span>
-          <button
-            type="button"
-            onClick={() => setBlogOnly(false)}
-            className="ml-auto shrink-0 text-[12.5px] font-semibold text-[#A3660F] underline underline-offset-2 hover:text-spark-blue"
-          >
-            Make a video instead
-          </button>
-        </div>
+        <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
+          <strong className="font-semibold text-spark-ink">Blog post only.</strong>{" "}
+          You&rsquo;ll get the article, the title, the description and the hashtags — no video, and
+          nothing from your plan. Press{" "}
+          <strong className="font-semibold text-spark-ink">Create a blog post</strong> again to make a
+          video instead.
+        </p>
       )}
 
       {/* ── Your topic ──
