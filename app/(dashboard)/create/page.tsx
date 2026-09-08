@@ -117,16 +117,27 @@ const TRY_LINES = [
  * and says so, and a second 1-2-3-4 running down this one page would be two
  * numbering systems disagreeing in the same eyeline.
  */
-function SectionHead({ eyebrow, question, className = "" }: {
-  eyebrow: string; question: string; className?: string;
+function SectionHead({ eyebrow, question, aside, className = "" }: {
+  eyebrow: string; question: string;
+  /** Runs on the same line as the question, in muted type. For the one thing
+   *  worth saying beside it — on Topic details, that there is a list below so
+   *  nobody has to invent something in front of an empty box. On its own line
+   *  it read as a second heading; inline it reads as an aside. */
+  aside?: string;
+  className?: string;
 }) {
   return (
     <div className={`flex flex-col gap-[3px] ${className}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
         {eyebrow}
       </p>
-      <p className="text-[17px] font-semibold leading-[1.2] tracking-[-0.01em] text-spark-ink">
+      <p className="flex flex-wrap items-baseline gap-x-2.5 text-[17px] font-semibold leading-[1.2] tracking-[-0.01em] text-spark-ink">
         {question}
+        {aside && (
+          <span className="text-[13.5px] font-normal leading-[1.35] text-spark-ink-muted">
+            {aside}
+          </span>
+        )}
       </p>
     </div>
   );
@@ -1400,15 +1411,10 @@ function CreatePageInner() {
           <SectionHead
             eyebrow="3 · Topic details"
             question="What is your video about?"
+            // "Spark" rather than "Start" — the product's own verb for this,
+            // and the same one on the button it eventually leads to.
+            aside="Spark with a template or idea below."
           />
-          {/* Was the heading over a chip row of its own, directly above a
-              panel whose title says nearly the same thing. As a line under
-              the question it does the one job worth keeping: telling someone
-              staring at an empty box that they do not have to think of
-              something — there is a list further down. */}
-          <p className="-mt-2.5 text-[13.5px] leading-[1.45] text-spark-ink-muted">
-            Start with a template or idea below.
-          </p>
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
@@ -1462,10 +1468,12 @@ function CreatePageInner() {
               points at them. */}
 
           {/* ── Spark an idea ──
-              Trending, formats and the full template list are one panel with
-              three tabs now, rather than a trending row plus an expanding
-              browser below it. They all fill the same field the composer does,
-              so they read as alternatives to it, not as separate steps. */}
+              Flush against the composer above it. The -mt-4 cancels this
+              column's gap: the card rounds at the top, the panel rounds at the
+              bottom, and between them there is a single shared rule. They fill
+              the same field, so a gap made choosing an idea look like a
+              different exercise from typing one. */}
+          <div className="-mt-4">
           <SparkPanel
             city={locCity || undefined}
             state={locState || undefined}
@@ -1478,6 +1486,7 @@ function CreatePageInner() {
               setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
             }}
           />
+          </div>
         </div>
       )}
 

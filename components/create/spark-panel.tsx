@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   CONTENT_TEMPLATES,
   VIDEO_FORMATS,
@@ -18,23 +17,20 @@ interface Spark {
   raw: string;
 }
 
-interface TrendingTopic {
-  title: string;
-  reason: string;
-  category?: string;
-  videoType: "market_update" | "why_live_here" | "community_events" | "custom";
-  customTopic?: string;
-}
-
-const TYPE_LABELS: Record<TrendingTopic["videoType"], string> = {
-  market_update: "Market update",
-  why_live_here: "Neighborhood",
-  community_events: "Community events",
-  custom: "Trending now",
-};
-
+/**
+ * Two tabs, not three.
+ *
+ * "Trending here" is gone, and with it this panel's call to
+ * /api/ai/trending-topics, the cache behind it and its loading state. It could
+ * not show anything until a city had been typed, and the city field is further
+ * down the page — so it was the tab most likely to be empty, and it spent its
+ * empty state asking for a field somewhere else.
+ *
+ * The endpoint itself stays: the camera tab's TopicRadar and the dashboard
+ * widget both still use it. This panel simply no longer fires it, which also
+ * means typing a market here costs nothing.
+ */
 const TABS = [
-  { key: "trending" as const, label: "Trending here" },
   { key: "formats" as const, label: "Formats" },
   { key: "ideas" as const, label: "Ideas" },
 ];
@@ -87,9 +83,10 @@ interface SparkPanelProps {
 /**
  * The design's "Say or Choose to Spark" panel.
  *
- * One surface for all three ways of choosing an idea, replacing the trending
- * list and the categorised template browser that used to sit as two separate
- * sections. The card face carries a kicker and a title only: the descriptions
+ * One surface for choosing an idea, replacing the trending list and the
+ * categorised template browser that used to sit as two separate sections —
+ * and now flush against the composer above it, because they fill the same
+ * field. The card face carries a kicker and a title only: the descriptions
  * the old cards showed made every card three lines tall, which is what stopped
  * six of them fitting as a grid.
  *
@@ -97,55 +94,8 @@ interface SparkPanelProps {
  * an expanding browser, so the panel is a fixed height whatever is chosen.
  */
 export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
-  /**
-   * Formats, not Trending.
-   *
-   * Trending cannot show anything until a city has been typed, and the city
-   * field is further down the page — so the panel opened on the one tab that
-   * was guaranteed to be empty on arrival. It used to fill that gap with a box
-   * asking for the city, which is a panel about ideas spending its first
-   * screen on a form field somewhere else. Formats works immediately, and
-   * Trending is one tap away once the market is in.
-   */
-  const [tab, setTab] = useState<"trending" | "formats" | "ideas">("formats");
+  const [tab, setTab] = useState<"formats" | "ideas">("formats");
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9999));
-  const [trending, setTrending] = useState<TrendingTopic[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const hasMarket = !!(city?.trim() && state?.trim());
-
-  useEffect(() => {
-    if (!hasMarket) return;
-    const key = `topic_radar_${city}_${state}`;
-    try {
-      const cached = sessionStorage.getItem(key);
-      if (cached) {
-        const { data, ts } = JSON.parse(cached);
-        if (Array.isArray(data) && Date.now() - ts < 4 * 3600 * 1000) {
-          setTrending(data);
-          return;
-        }
-      }
-    } catch { /* ignore */ }
-
-    let cancelled = false;
-    setLoading(true);
-    fetch("/api/ai/trending-topics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city, state }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled || !Array.isArray(data.topics)) return;
-        setTrending(data.topics);
-        sessionStorage.setItem(key, JSON.stringify({ data: data.topics, ts: Date.now() }));
-      })
-      .catch(() => { /* silent */ })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [city, state, hasMarket]);
 
   const toSpark = (t: ContentTemplate): Spark => ({
     kicker: t.category === "format" ? "Format" : t.category === "location" ? "Location" : t.category === "community" ? "Community" : "Idea",
@@ -153,48 +103,59 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
     raw: t.topic,
   });
 
-  const pools = useMemo(() => ({
-    trending: trending.map((t): Spark => ({
-      kicker: t.category?.trim() || TYPE_LABELS[t.videoType] || "Trending now",
-      title: t.title,
-      raw: t.customTopic || t.title,
-    })),
-    formats: VIDEO_FORMATS.map(toSpark),
-    ideas: CONTENT_TEMPLATES.filter((t) => t.category !== "format").map(toSpark),
-  }), [trending]);
+  /**
+   * Everything except what the chips already offer.
+   *
+   * The six chips ARE six of these templates, so without this the panel drew
+   * "Seller tip" as a chip and "Home Seller Tips" as a card directly beneath
+   * it — the same topic twice, in two shapes, four inches apart, and again a
+   * third time inside Browse more sparks.
+   */
+  const chipIds = useMemo(() => new Set(QUICK_TEMPLATES.map((q) => q.templateId)), []);
 
-  // Every tab's six, not just the open one. All three are a tab click away, so
-  // anything drawn on any of them is already reachable by looking — the picker
-  // is for what is not. Trending and Formats hold exactly six, so they are
-  // fully on the cards and contribute nothing here.
+  const pools = useMemo(() => ({
+    formats: VIDEO_FORMATS.filter((t) => !chipIds.has(t.id)).map(toSpark),
+    ideas: CONTENT_TEMPLATES
+      .filter((t) => t.category !== "format" && !chipIds.has(t.id))
+      .map(toSpark),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [chipIds]);
+
+  // Both tabs' six, not just the open one. Either is a tab click away, so
+  // anything drawn on either is already reachable by looking — the picker at
+  // the bottom is for what is not.
   const sixByTab = useMemo(() => ({
-    trending: shuffled(pools.trending, seed).slice(0, SHOWN),
     formats: shuffled(pools.formats, seed).slice(0, SHOWN),
     ideas: shuffled(pools.ideas, seed).slice(0, SHOWN),
   }), [pools, seed]);
   const six = sixByTab[tab];
 
   const shownTitles = useMemo(
-    () => new Set([...sixByTab.trending, ...sixByTab.formats, ...sixByTab.ideas].map((s) => s.title)),
+    () => new Set([...sixByTab.formats, ...sixByTab.ideas].map((s) => s.title)),
     [sixByTab],
   );
   const rest = useMemo(() => {
-    const out: Record<keyof typeof pools, Spark[]> = { trending: [], formats: [], ideas: [] };
+    const out: Record<keyof typeof pools, Spark[]> = { formats: [], ideas: [] };
     (Object.keys(pools) as (keyof typeof pools)[]).forEach((k) => {
       out[k] = pools[k].filter((s) => !shownTitles.has(s.title));
     });
     return out;
   }, [pools, shownTitles]);
-  const restCount = rest.trending.length + rest.formats.length + rest.ideas.length;
+  const restCount = rest.formats.length + rest.ideas.length;
 
   function pick(s: Spark) {
     onSelect(substitutePlaceholders(s.raw, city?.trim(), state?.trim()), s.raw);
   }
 
   return (
+    // Joined to the composer above it: no top rounding, no top border, and
+    // the page pulls it flush. The two were separate cards with a gap, which
+    // made picking an idea look like a different exercise from typing one when
+    // they fill the same field. One block now, two shades — white where you
+    // write, paper where you choose.
     <section
       id="spark-panel"
-      className="scroll-mt-6 rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-4 py-4 sm:px-5"
+      className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-4 sm:px-5"
     >
       {/* The "What's it about?" eyebrow that sat beside this is gone. It was
           the fourth place on one screen asking the same question — after the
@@ -210,7 +171,11 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
           rows in a column — one of which was the composer's checklist and not
           clickable at all. Here they are the fast path INTO the panel: the
           same pick() every card below uses. */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* One row: the six chips, then the two tabs behind a divider.
+          The chips pick a topic outright; the tabs change what the cards
+          below show. Run together they would read as eight of the same
+          thing, so the rule is what says the last two are a switch. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {QUICK_TEMPLATES.map(({ label, templateId }) => {
           const t = CONTENT_TEMPLATES.find((c) => c.id === templateId);
           if (!t) return null;
@@ -225,9 +190,9 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
             </button>
           );
         })}
-      </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+        <span aria-hidden className="mx-1 h-6 w-px flex-none bg-spark-rule-dim" />
+
         {TABS.map(({ key, label }) => {
           const on = tab === key;
           return (
@@ -262,17 +227,11 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
         </button>
       </div>
 
-      {/* The "add the city and state below" box is gone with it. This panel
-          opens on Formats now, so nothing lands on an empty Trending by
-          default — and a panel of ideas spending its first screen asking for
-          a field further down the page was the wrong thing in the wrong
-          place. Trending still says when it is working. */}
-      {tab === "trending" && loading && six.length === 0 ? (
-        <div className="mt-3 flex items-center gap-2 py-2 text-[13.5px] text-spark-ink-faint">
-          <Loader2 size={13} className="animate-spin text-spark-amber" />
-          Scanning your market for trending topics…
-        </div>
-      ) : (
+      {/* No loading state left to draw. Both tabs come out of a list this
+          file already holds, so there is nothing to wait for — the spinner
+          and the "add the city and state" box that lived here both belonged
+          to the trending tab, which is gone. */}
+      {(
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {six.map((s, i) => (
             <button

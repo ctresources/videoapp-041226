@@ -79,7 +79,12 @@ export function ComposerCard({
         </div>
       )}
 
-      <div className="rounded-[22px] border-[1.5px] border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
+      {/* Rounded at the top only. The Spark panel sits flush underneath and
+          rounds the bottom, so the two read as one block — white where you
+          write, paper where you choose — rather than two cards with a gap,
+          which made picking an idea look like a different exercise from
+          typing one when they fill the same field. */}
+      <div className="rounded-t-[22px] border-[1.5px] border-b-0 border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
         {children}
 
         {/* One bottom row: what is still missing, and the way in. The chips are
