@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { isHeygenUrl, posterFrameUrl, downloadAsset } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
-  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera,
+  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera, FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -25,6 +25,9 @@ interface DraftProject {
   title: string;
   status: string;
   created_at: string;
+  /** Read for one thing: whether an article was written. A project with a
+   *  finished blog and no video is not an unfinished video — see hasArticle. */
+  ai_script: { blog_body?: string } | null;
 }
 
 interface GeneratedVideo {
@@ -269,7 +272,14 @@ function VideosContent() {
   const [loading, setLoading] = useState(true);
 
   async function handleDeleteDraft(draft: DraftProject) {
-    if (!confirm(`Delete the draft "${draft.title || "Untitled Draft"}"? This cannot be undone.`)) return;
+    // Names what is actually being thrown away. "Delete the draft" understated
+    // it for a project holding a finished thousand-word article.
+    const isArticle = !!draft.ai_script?.blog_body?.trim();
+    const label = draft.title || (isArticle ? "Untitled Article" : "Untitled Draft");
+    const what = isArticle
+      ? `Delete "${label}" and the article written for it? This cannot be undone.`
+      : `Delete the draft "${label}"? This cannot be undone.`;
+    if (!confirm(what)) return;
     setDeletingDraftId(draft.id);
     try {
       const res = await fetch("/api/project/delete", {
@@ -328,11 +338,12 @@ function VideosContent() {
     const videos = (data as unknown as GeneratedVideo[]) || [];
     setVideos(videos);
 
-    // Draft projects — script exists but no video was generated yet. Shown in
-    // their own section so the user knows to come back and finish them.
+    // Projects with no video against them. Two different things live here and
+    // used to be shown as one: an unfinished video, and a finished blog post.
+    // ai_script comes back so they can be told apart.
     const { data: draftData } = await supabase
       .from("projects")
-      .select("id, title, status, created_at")
+      .select("id, title, status, created_at, ai_script")
       .eq("status", "draft")
       .order("created_at", { ascending: false })
       .limit(24);
@@ -427,28 +438,67 @@ function VideosContent() {
         </div>
       )}
 
-      {/* Drafts — scripts saved but video not generated yet */}
-      {drafts.length > 0 && (
-        <div className="mb-6">
+      {/* Two sections, not one.
+          A project with no video against it used to be filed as a "Draft —
+          Not Generated Yet", told it was unfinished, and offered "Continue
+          Editing". For fifteen of them that was wrong: they hold a finished
+          thousand-word article, written free alongside the script, and there
+          was never a video to generate. Calling a finished thing unfinished is
+          how it stays unread. */}
+      {[
+        {
+          key: "blogs",
+          items: drafts.filter((d) => !!d.ai_script?.blog_body?.trim()),
+          heading: "Blog posts — written, no video",
+          badge: "Article",
+          accent: "border-t-emerald-400",
+          iconClass: "text-emerald-500",
+          note: "article ready to paste into your site",
+          cta: "Open the article",
+          href: (id: string) => `/create/${id}?step=5`,
+          deleteTitle: "Delete this project and its article",
+        },
+        {
+          key: "drafts",
+          items: drafts.filter((d) => !d.ai_script?.blog_body?.trim()),
+          heading: "Drafts — script saved, video not generated",
+          badge: "Draft",
+          accent: "border-t-amber-400",
+          iconClass: "text-amber-500",
+          note: "video not generated",
+          cta: "Continue editing",
+          href: (id: string) => `/create/${id}`,
+          deleteTitle: "Delete draft",
+        },
+      ].filter((s) => s.items.length > 0).map((s) => (
+        <div key={s.key} className="mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <Pencil size={15} className="text-amber-500" />
-            <h3 className="font-semibold text-brand-text">Drafts — Not Generated Yet</h3>
-            <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{drafts.length}</span>
+            {s.key === "blogs"
+              ? <FileText size={15} className={s.iconClass} />
+              : <Pencil size={15} className={s.iconClass} />}
+            <h3 className="font-semibold text-brand-text">{s.heading}</h3>
+            <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+              {s.items.length}
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {drafts.map((d) => (
-              <Card key={d.id} padding="sm" className="border-t-4 border-t-amber-400">
+            {s.items.map((d) => (
+              <Card key={d.id} padding="sm" className={`border-t-4 ${s.accent}`}>
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className="font-medium text-sm text-brand-text line-clamp-2">{d.title || "Untitled Draft"}</p>
-                  <Badge variant="warning" className="text-xs shrink-0">Draft</Badge>
+                  <p className="font-medium text-sm text-brand-text line-clamp-2">
+                    {d.title || (s.key === "blogs" ? "Untitled Article" : "Untitled Draft")}
+                  </p>
+                  <Badge variant={s.key === "blogs" ? "default" : "warning"} className="text-xs shrink-0">
+                    {s.badge}
+                  </Badge>
                 </div>
                 <p className="text-xs text-slate-400 mb-3">
-                  Saved {new Date(d.created_at).toLocaleDateString()} · video not generated
+                  Saved {new Date(d.created_at).toLocaleDateString()} · {s.note}
                 </p>
                 <div className="flex gap-2">
-                  <Link href={`/create/${d.id}`} className="flex-1">
+                  <Link href={s.href(d.id)} className="flex-1">
                     <Button size="sm" variant="outline" className="w-full gap-1.5">
-                      <Pencil size={12} /> Continue Editing
+                      {s.key === "blogs" ? <FileText size={12} /> : <Pencil size={12} />} {s.cta}
                     </Button>
                   </Link>
                   <Button
@@ -457,7 +507,7 @@ function VideosContent() {
                     onClick={() => handleDeleteDraft(d)}
                     disabled={deletingDraftId === d.id}
                     className="text-slate-300 hover:text-red-500 shrink-0"
-                    title="Delete draft"
+                    title={s.deleteTitle}
                   >
                     {deletingDraftId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </Button>
@@ -466,7 +516,7 @@ function VideosContent() {
             ))}
           </div>
         </div>
-      )}
+      ))}
 
       {videos.length === 0 && drafts.length === 0 ? (
         <Card className="flex flex-col items-center py-16 text-center">
