@@ -2817,10 +2817,17 @@ export default function ProjectEditorPage() {
               is what makes the rest of it worth expanding. */}
           <div className="mb-1">
             <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Your Share Kit</h2>
+            {/* Does not claim a video when there isn't one. Arriving here on
+                the blog route, "written with your video" names something that
+                was never made. */}
             <p className="mt-0.5 text-[11.5px] leading-[1.45] text-spark-ink-muted">
-              Written with your video: the title, description and hashtags Publish fills in for
-              you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
-              anything here before you post.
+              {renderedVideoId || renderComplete
+                ? <>Written with your video: the title, description and hashtags Publish fills in for
+                    you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
+                    anything here before you post.</>
+                : <>Written with your script, and nothing was spent on it. The article is below, ready
+                    to paste into your site — with the title, description and hashtags to go with it.
+                    Want a video of this too? Step back to the script and carry on.</>}
             </p>
           </div>
           {/* Social Content Pack */}
@@ -3094,7 +3101,14 @@ export default function ProjectEditorPage() {
                 // Nothing to go back to mid-render — unless it failed, in which
                 // case the setup step is exactly where the fix is.
                 : editorStep === 4 ? (renderFailed ? () => setEditorStep(3) : undefined)
-                  : () => setEditorStep(editorStep === 5 ? 4 : 2)
+                  // Step 5 normally comes after a render, so Back is the render
+                  // screen. On the blog route nothing was ever rendered, and
+                  // sending someone to a progress screen for a video that does
+                  // not exist is a dead end dressed as a step — the script is
+                  // what is actually behind them.
+                  : editorStep === 5 && !renderedVideoId && !renderComplete
+                    ? () => setEditorStep(2)
+                    : () => setEditorStep(editorStep === 5 ? 4 : 2)
             }
             backLabel={
               editorStep === 2 ? "Brief"

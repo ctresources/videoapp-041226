@@ -220,6 +220,20 @@ function CreatePageInner() {
   // it" side, so that tile has to put you back where you were rather than
   // always resetting to the first one.
   const [lastSparkTab, setLastSparkTab] = useState<InputMode>("script");
+  /**
+   * Words only — no video at the end of it.
+   *
+   * The article was already being written, free, at the moment the script was:
+   * generate-location-script returns blog_intro/body/conclusion with every
+   * script and charges nothing for any of it. It was simply unreachable. The
+   * Share Kit is editor step 5, step 5 only opened from step 4, and step 4
+   * only opened by rendering — so the only door to a finished blog was
+   * spending a video to read it.
+   *
+   * This mode changes the destination, not the writing: same brief, same
+   * script call, and it lands on the Share Kit instead of the setup step.
+   */
+  const [blogOnly, setBlogOnly] = useState(false);
   // The MLS unbranded cut, handed over from the editor's checkbox. Seeds the
   // recorder and is sent to the script writers, which are told to leave the
   // spoken call to action out — the half of "unbranded" that is not overlays.
@@ -738,8 +752,14 @@ function CreatePageInner() {
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || `Script generation failed (${res.status})`);
-      toast.success("Sparked. Your script is ready to review.");
-      router.push(`/create/${(data.project as { id: string }).id}?source=location`);
+      // The article comes back with the script, in the same call, for the same
+      // nothing — so the blog route has no more work to do and goes straight
+      // to the Share Kit rather than through a setup step for a video nobody
+      // asked for. The project is saved either way and shows in My Videos
+      // under Drafts, so the article is findable again later.
+      const projectId = (data.project as { id: string }).id;
+      toast.success(blogOnly ? "Your article is ready." : "Sparked. Your script is ready to review.");
+      router.push(`/create/${projectId}?source=location${blogOnly ? "&step=5" : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -1212,8 +1232,9 @@ function CreatePageInner() {
           It is you either way, live or as your avatar speaking in your cloned
           voice. What differs is whether you press record or we render it —
           which is also the whole of what it costs, so each tile says so. */}
-      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Video style" question="How do you want to appear?" />}
-      {step === "input" && (
+      {/* Row 1 is about the video, so it goes away when there isn't one. */}
+      {step === "input" && !blogOnly && <SectionHead className="mt-7" eyebrow="1 · Video style" question="How do you want to appear?" />}
+      {step === "input" && !blogOnly && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
@@ -1337,16 +1358,26 @@ function CreatePageInner() {
           original tabs, minus the camera one that row 1 now owns. */}
       {step === "input" && inputMode !== "camera" && (
         <>
-        <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <SectionHead
+          className="mt-7"
+          eyebrow={blogOnly ? "1 · Source" : "2 · Script source"}
+          question={blogOnly ? "What should the article come from?" : "How should your script begin?"}
+        />
+        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
           {([
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: "Turn a topic into a polished script" },
-            { mode: "paste" as InputMode,   kicker: "Word for word",         label: "Paste my script",       desc: "Use your own finished copy" },
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a polished script" },
+            // Only the two routes that write an article. A pasted script is
+            // words you already have, so there is nothing for us to research
+            // and nothing to expand — and it is the one route that has never
+            // produced a blog.
+            ...(blogOnly ? [] : [
+              { mode: "paste" as InputMode, kicker: "Word for word", label: "Paste my script", desc: "Use your own finished copy" },
+            ]),
             // One tile, two things, so the description has to carry both. The
             // mock split it into Add Listing URL and Upload photos, but photos
             // on their own cannot write a script — that is the photo reel,
             // which is a different renderer and free.
-            { mode: "listing" as InputMode, kicker: "Zillow, MLS or photos", label: "My listings/My photos", desc: "Turn a listing into a script, or photos into a reel" },
+            { mode: "listing" as InputMode, kicker: blogOnly ? "Zillow or MLS" : "Zillow, MLS or photos", label: blogOnly ? "My listings" : "My listings/My photos", desc: blogOnly ? "Turn a listing into a property article" : "Turn a listing into a script, or photos into a reel" },
           ]).map(({ mode, kicker, label, desc }) => (
             <SourceTile
               key={mode}
@@ -1356,7 +1387,9 @@ function CreatePageInner() {
               // Listings are the one tile on this side that does not cost what
               // its row says — the photo reel under it is free — so it is the
               // one tile that carries a pill of its own.
-              cost={mode === "listing" ? <CostPill free>Photo reel free</CostPill> : undefined}
+              cost={blogOnly
+                ? <CostPill free>Free</CostPill>
+                : mode === "listing" ? <CostPill free>Photo reel free</CostPill> : undefined}
               active={inputMode === mode}
               onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
             />
@@ -1388,6 +1421,44 @@ function CreatePageInner() {
         </p>
       )}
 
+      {/* The words on their own.
+          Not a third tile in row 1: that row asks how you want to APPEAR, and
+          a blog has no answer to it. A separate, quieter door instead — a
+          different product coming out of the same brief, rather than a third
+          way to make a video. */}
+      {step === "input" && !blogOnly && (
+        <button
+          type="button"
+          onClick={() => { setBlogOnly(true); setInputMode("script"); setLastSparkTab("script"); }}
+          className="mt-2.5 flex w-full items-center gap-2 rounded-[12px] border border-dashed border-spark-rule px-3.5 py-2.5 text-left transition-colors hover:border-spark-amber"
+        >
+          <FileText size={15} className="shrink-0 text-spark-ink-faint" />
+          <span className="min-w-0 text-[13px] leading-[1.4] text-spark-ink-muted">
+            <strong className="font-semibold text-spark-ink">Just want the words?</strong>{" "}
+            Write a blog post — no video, nothing from your plan.
+          </span>
+          <ArrowRight size={14} className="ml-auto shrink-0 text-spark-amber" />
+        </button>
+      )}
+
+      {step === "input" && blogOnly && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-[12px] border border-spark-amber bg-spark-amber-tint px-3.5 py-2.5">
+          <FileText size={15} className="shrink-0 text-[#A3660F]" />
+          <span className="min-w-0 text-[13px] leading-[1.4] text-spark-ink">
+            <strong className="font-semibold">Blog post only.</strong>{" "}
+            You&rsquo;ll get the article, the title, the description and the hashtags — no video, and
+            nothing from your plan.
+          </span>
+          <button
+            type="button"
+            onClick={() => setBlogOnly(false)}
+            className="ml-auto shrink-0 text-[12.5px] font-semibold text-[#A3660F] underline underline-offset-2 hover:text-spark-blue"
+          >
+            Make a video instead
+          </button>
+        </div>
+      )}
+
       {/* ── Your topic ──
           One card, per the v2 composer. The speak-or-type choice used to be
           two large tiles in a section of their own, above a second section
@@ -1409,8 +1480,8 @@ function CreatePageInner() {
               rail, at the top of every screen. The tab name went the same way:
               row 2 is directly above with that tile lit. */}
           <SectionHead
-            eyebrow="3 · Topic details"
-            question="What is your video about?"
+            eyebrow={blogOnly ? "2 · Topic details" : "3 · Topic details"}
+            question={blogOnly ? "What is your article about?" : "What is your video about?"}
             // "Spark" rather than "Start" — the product's own verb for this,
             // and the same one on the button it eventually leads to.
             aside="Spark with a template or idea below."
@@ -1737,15 +1808,19 @@ function CreatePageInner() {
       {showActionBar && (
         <StepFooter
           hint={
-            outOfVideos
+            // Nothing to run out of on the blog route, so the out-of-videos
+            // warning does not belong on it.
+            outOfVideos && !blogOnly
               ? "You have no videos left this month. Filming it yourself is still free."
               : locGenerating
                 ? "Researching the area and writing. This takes about a minute."
                 : !locationSet
                   ? "Add the city and state above to carry on."
                   : !locCustomTopic.trim()
-                    ? "Say or pick what the video is about to carry on."
-                    : "We'll write the script first, then you pick how it looks."
+                    ? `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`
+                    : blogOnly
+                      ? "About a thousand words, with headings, ready to paste into your site."
+                      : "We'll write the script first, then you pick how it looks."
           }
         >
           <Button
@@ -1757,8 +1832,10 @@ function CreatePageInner() {
             className="gap-2"
           >
             {locGenerating
-              ? <>Sparking<span className="hidden sm:inline"> your script</span>…</>
-              : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
+              ? <>Sparking<span className="hidden sm:inline"> your {blogOnly ? "article" : "script"}</span>…</>
+              : blogOnly
+                ? <>Write<span className="hidden sm:inline"> the blog</span> <ArrowRight size={18} /></>
+                : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
           </Button>
           {/* The way out, beside the thing they cannot do. Sending someone to
               billing as a redirect is a worse welcome than offering it here. */}
@@ -2261,6 +2338,7 @@ function CreatePageInner() {
                 first or the recording fails outright. */}
             {listingMode === "listing" && (
             <ListingVideoForm
+              blogOnly={blogOnly}
               onListingPhotos={(photoUrls, address) => {
                 setListingPhotos(photoUrls);
                 setListingAddress(address);

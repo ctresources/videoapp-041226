@@ -71,7 +71,7 @@ const EMPTY_LISTING: ListingData = {
 
 const PROPERTY_TYPES = ["Single Family", "Condo", "Townhouse", "Multi-Family", "Land", "Other"];
 
-export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
+export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly = false }: {
   /**
    * Hand the finished script and the listing's photos to the camera tab.
    *
@@ -92,6 +92,15 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
    * video was the one thing that could not see them.
    */
   onListingPhotos?: (photoUrls: string[], address: string) => void;
+  /**
+   * Words only — land on the Share Kit instead of the video setup step.
+   *
+   * A listing already writes its own ~1,000-word property article alongside
+   * the script, in a call that charges nothing, so there is no more work to do
+   * on this route either. The article was just as unreachable as the market
+   * one: the only door to it was rendering a video.
+   */
+  blogOnly?: boolean;
 } = {}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("url");
@@ -385,8 +394,8 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos }: {
         return;
       }
 
-      toast.success("Listing script ready!");
-      router.push(`/create/${data.project.id}?source=listing`);
+      toast.success(blogOnly ? "Your property article is ready." : "Listing script ready!");
+      router.push(`/create/${data.project.id}?source=listing${blogOnly ? "&step=5" : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
       setStep("review");
