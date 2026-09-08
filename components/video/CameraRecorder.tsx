@@ -283,12 +283,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * Every take from this session, newest last.
    *
    * Recording again used to replace the preview, so comparing two takes meant
-   * going to My Videos and back. They are all saved either way — this is about
+   * going to My Content and back. They are all saved either way — this is about
    * being able to look at them here before deciding.
    */
   const [takes, setTakes] = useState<{ url: string; blob: Blob; seconds: number }[]>([]);
   const [viewingTake, setViewingTake] = useState(0);
-  /** View it is a full page navigation, and the second or two before My Videos
+  /** View it is a full page navigation, and the second or two before My Content
    *  paints looked like a link that had not registered the tap. */
   const [openingVideo, setOpeningVideo] = useState(false);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
@@ -604,7 +604,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       const url = URL.createObjectURL(blob);
       setVideoBlob(blob);
       setVideoUrl(url);
-      // Kept rather than replaced. Each is saved to My Videos on its own, but
+      // Kept rather than replaced. Each is saved to My Content on its own, but
       // choosing between two takes should not mean leaving this screen.
       setTakes((prev) => {
         const next = [...prev, { url, blob, seconds }];
@@ -816,7 +816,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   }, [videoBlob, savedVideoId]);
 
   /**
-   * Put the take in My Videos.
+   * Put the take in My Content.
    *
    * `openShare` is what the button passes. The automatic save below does not —
    * a share sheet appearing unasked, over a take nobody has watched yet, is
@@ -865,7 +865,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    *
    * The editor's teleprompter has always uploaded the moment it stops. To the
    * person holding the camera these are the same feature, and only one of them
-   * kept the footage. A retake now costs a spare row in My Videos, which is a
+   * kept the footage. A retake now costs a spare row in My Content, which is a
    * delete; the alternative cost the whole recording.
    */
   const savedBlobsRef = useRef(new WeakSet<Blob>());
@@ -877,7 +877,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     savedBlobsRef.current.add(videoBlob);
     (async () => {
       const id = await saveTake(videoBlob, false);
-      if (id) toast.success("Saved to My Videos.");
+      if (id) toast.success("Saved to My Content.");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoBlob]);
@@ -1624,7 +1624,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           )}
         </div>
 
-        {/* Every take from this session. Each is already in My Videos on its
+        {/* Every take from this session. Each is already in My Content on its
             own — this is so two of them can be compared without leaving. */}
         {takes.length > 1 && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1650,13 +1650,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         <div className="flex items-center justify-between gap-3 px-1">
           <p className="text-sm font-semibold text-brand-text">
             {savedVideoId
-              ? "Saved to My Videos"
+              ? "Saved to My Content"
               : saving
-                ? "Saving to My Videos…"
+                ? "Saving to My Content…"
                 : "Recording complete"}
           </p>
           <div className="flex items-center gap-3">
-            {/* It said the video was in My Videos and then offered no way to
+            {/* It said the video was in My Content and then offered no way to
                 get there — Download, Share and Re-record, all of which keep
                 you here. The one thing the sentence promises has to be
                 reachable from the sentence. */}
@@ -1685,13 +1685,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             size="lg"
             className="gap-2"
           >
-            {/* No longer the only route into My Videos — takes save
+            {/* No longer the only route into My Content — takes save
                 themselves the moment they finish — so it is the share sheet
                 once that has happened, and the retry if it has not. */}
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> {savedVideoId ? "Share it" : "Save to My Videos"}</>
+              <><Share2 size={16} /> {savedVideoId ? "Share it" : "Save to My Content"}</>
             )}
           </Button>
         </div>

@@ -579,7 +579,7 @@ export async function POST(req: NextRequest) {
    *
    * The engine used to be decided by `engine: "direct"`, which the editor read
    * out of the URL — so it survived exactly one navigation. Reopening a draft
-   * from Drafts or My Videos (neither links with a query) sent the same script
+   * from Drafts or My Content (neither links with a query) sent the same script
    * through the summarising agent instead, and a 2,900-character story came
    * back as an eight-second teaser with nothing on screen saying so. The
    * project now carries the answer itself.

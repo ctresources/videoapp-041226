@@ -4,7 +4,7 @@
  * The title, description, caption, hashtags and thumbnail a video should be
  * published with.
  *
- * These used to be assembled by hand at each call site. My Videos built all
+ * These used to be assembled by hand at each call site. My Content built all
  * seven with a chain of fallbacks; the camera recorder passed an id and a
  * title and nothing else — so the same video published differently depending
  * on which button opened the window, and the camera route's Publish box came

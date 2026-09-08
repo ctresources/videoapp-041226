@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
      *
      * For "read it myself on camera", where the teleprompter needs the words
      * and nothing else. Creating a draft project for a video that is about to
-     * be recorded rather than rendered would leave an orphan in My Videos that
+     * be recorded rather than rendered would leave an orphan in My Content that
      * nobody asked for. Mirrors regenerateOnly in generate-location-script.
      */
     scriptOnly?: boolean;

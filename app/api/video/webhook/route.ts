@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
    *
    * The status was written from the event type alone, so a success payload
    * that carried no video URL produced render_status "completed" beside a
-   * null video_url. My Videos gates every action on having both, so the card
+   * null video_url. My Content gates every action on having both, so the card
    * showed a green Ready badge, offered nothing but Delete, and explained
    * nothing — and because the row was never marked failed, the refund never
    * ran and the video the user paid for was simply gone.

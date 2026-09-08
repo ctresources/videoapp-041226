@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Saves an in-progress draft back onto the project without generating a video.
- * The project keeps status "draft" and shows up in My Videos under Drafts so
+ * The project keeps status "draft" and shows up in My Content under Drafts so
  * the user can come back and finish later.
  *
  * It used to save four fields — script, CTA, hook, title — and the setup

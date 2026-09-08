@@ -37,7 +37,7 @@ export async function uploadCameraRecording(
     projectId?: string;
     videoType?: string;
     /** What was read on camera. Used to write the description and hashtags —
-     *  without it a camera video reaches My Videos with nothing to post it. */
+     *  without it a camera video reaches My Content with nothing to post it. */
     script?: string;
     /** Opening line. Stands in for the description on an uploaded clip, which
      *  has no script to summarise — its words are still inside its audio. */
@@ -69,7 +69,7 @@ export async function uploadCameraRecording(
   if (uploadError) {
     // The upload happens browser→storage directly, so a failure here never
     // reaches our server logs — the recording just silently never appeared in
-    // My Videos. Surface the real reason, especially the size limit.
+    // My Content. Surface the real reason, especially the size limit.
     const raw = uploadError.message || "";
     const sizeMb = Math.round(blob.size / 1024 / 1024);
     console.error(`[camera-upload] Upload failed (${sizeMb} MB):`, raw);

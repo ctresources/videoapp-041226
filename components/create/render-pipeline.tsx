@@ -11,7 +11,7 @@ export interface PipelineStage {
 type RenderState = "rendering" | "completed" | "failed";
 
 /**
- * Polls the render every 6s, matching what My Videos already does.
+ * Polls the render every 6s, matching what My Content already does.
  *
  * Without this the card can only ever say "Working" — including for a render
  * that has already failed, which is the one case where saying nothing is
@@ -173,7 +173,7 @@ export function RenderPipeline({
 
       {complete && (
         <p className="mt-3 text-[12.5px] font-medium leading-[1.45] text-spark-blue">
-          Your video is ready. It&apos;s waiting in My Videos.
+          Your video is ready. It&apos;s waiting in My Content.
         </p>
       )}
       {failed && (

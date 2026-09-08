@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
         // Only worth an AI call when there are spoken words to summarise. An
         // uploaded clip has none — its words are still locked inside its audio
         // — so its post copy is built from what the form collected instead of
-        // it arriving in My Videos with nothing to publish it with.
+        // it arriving in My Content with nothing to publish it with.
         //
         // Bounded: the recording is already saved and playable, so this must
         // never be what makes the request time out. Losing the metadata is

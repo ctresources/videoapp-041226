@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
    * Hold-Space-to-talk lives on the dashboard, not on every screen.
    *
    * It listens on the window and swallows Space to do it, so on a page of
-   * text — My Videos, Help, Billing — pressing Space to scroll instead
+   * text — My Content, Help, Billing — pressing Space to scroll instead
    * scrolled nothing, opened the microphone, and on release pushed the
    * reader into Create with whatever they had muttered. The shortcut is
    * worth having where starting a video is the point of the page; it is a

@@ -366,7 +366,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
    *
    * `record` asks for the script alone and hands it to the camera tab — no
    * project row, because a recording is not a render and an unused draft in
-   * My Videos is just litter.
+   * My Content is just litter.
    */
   async function handleGenerate(record = false) {
     if (!listing.address.trim()) return toast.error("Address is required");

@@ -85,7 +85,7 @@ const NAV_ICONS: Record<string, ReactNode> = {
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/create", label: "Create Video" },
-  { href: "/videos", label: "My Videos" },
+  { href: "/videos", label: "My Content" },
   { href: "/tools", label: "AI Tools" },
   { href: "/calendar", label: "Calendar" },
   { href: "/analytics", label: "Analytics" },

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
      *
      * The renderer chose its engine from `engine: "direct"`, which the editor
      * read out of the URL — so it survived exactly one visit. Save a draft,
-     * reopen it from Drafts or My Videos (neither links with a query), and
+     * reopen it from Drafts or My Content (neither links with a query), and
      * the same script rendered on the summarising agent instead: a
      * 2,900-character story came back as an eight-second teaser, with
      * nothing on screen saying the promise had been dropped.

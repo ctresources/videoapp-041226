@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
      * Post copy — the title, description and hashtags Publish needs.
      *
      * Every scripted route writes these when the script is written. A reel has
-     * no script-writing step, so reels arrived in My Videos with nothing to
+     * no script-writing step, so reels arrived in My Content with nothing to
      * post them with: Publish reads seo_data off the project, and this route
      * never wrote any.
      *

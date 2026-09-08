@@ -755,7 +755,7 @@ function CreatePageInner() {
       // The article comes back with the script, in the same call, for the same
       // nothing — so the blog route has no more work to do and goes straight
       // to the Share Kit rather than through a setup step for a video nobody
-      // asked for. The project is saved either way and shows in My Videos
+      // asked for. The project is saved either way and shows in My Content
       // under Drafts, so the article is findable again later.
       const projectId = (data.project as { id: string }).id;
       toast.success(blogOnly ? "Your article is ready." : "Sparked. Your script is ready to review.");

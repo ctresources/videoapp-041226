@@ -100,7 +100,7 @@ export function PhotoReelForm({
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   /** Same as the camera's: View it is a full page navigation and the wait
-   *  before My Videos paints read as a dead button. */
+   *  before My Content paints read as a dead button. */
   const [openingVideo, setOpeningVideo] = useState(false);
 
   // ── Voiceover recording ──────────────────────────────────────────────────
@@ -299,7 +299,7 @@ export function PhotoReelForm({
         );
       }
       setSavedId(data.videoId as string);
-      toast.success("Reel is ready. It's in My Videos.");
+      toast.success("Reel is ready. It's in My Content.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not build that reel");
     } finally {
@@ -436,7 +436,7 @@ export function PhotoReelForm({
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold text-spark-ink-muted">
           Title <span className="font-normal text-spark-ink-faint">
-            · shown on screen for the first 4 seconds, and names the video in My Videos
+            · shown on screen for the first 4 seconds, and names the video in My Content
           </span>
         </span>
         <input
@@ -709,7 +709,7 @@ export function PhotoReelForm({
 
       {savedId && (
         <div className="flex items-center gap-2 rounded-lg border border-spark-rule px-3 py-2.5">
-          <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
+          <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Content</p>
           <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)}>
             <Button variant="outline" size="lg" className="gap-2">
               {openingVideo && <Loader2 size={15} className="animate-spin" />}

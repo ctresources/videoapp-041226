@@ -107,7 +107,7 @@ export function ClipBrander({ photos = [], title }: {
   // An uploaded clip is the one video the app cannot describe for itself: the
   // camera tab has the script that was read, and every rendered video has the
   // script it was written from, but this clip's words are still inside its
-  // audio. Without these it reached My Videos as a filename with nothing to
+  // audio. Without these it reached My Content as a filename with nothing to
   // post it with, and with the agent's home town on the end card whatever the
   // footage was of.
   const [videoTitle, setVideoTitle] = useState("");
@@ -422,7 +422,7 @@ export function ClipBrander({ photos = [], title }: {
         try {
           const { videoId } = await uploadCameraRecording(blob, {
             // The suffix is how the two cuts of the same clip are told apart in
-            // My Videos, where they are otherwise the same title twice.
+            // My Content, where they are otherwise the same title twice.
             title: `${videoTitle.trim() || title || fileName} — ${unbranded ? "unbranded" : "branded"}`,
             hook: hook.trim(),
             city: city.trim(),
@@ -442,7 +442,7 @@ export function ClipBrander({ photos = [], title }: {
           });
           setSavedId(videoId);
           setPhase("done");
-          toast.success("Saved to My Videos.");
+          toast.success("Saved to My Content.");
           // Not awaited: the save is complete and the video is watchable. This
           // fills in the captions and the description behind it.
           void readClipAudio(videoId);
@@ -886,14 +886,14 @@ export function ClipBrander({ photos = [], title }: {
             <div className="flex items-center gap-2">
               <Loader2 size={14} className="shrink-0 animate-spin text-spark-amber" />
               <p className="text-[12px] text-spark-ink-muted">
-                Rendered. Uploading to My Videos — this can take a minute on a long clip, and you
+                Rendered. Uploading to My Content — this can take a minute on a long clip, and you
                 can switch tabs now.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
-                <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Videos</p>
+                <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Content</p>
                 {savedId && (
                   <a href={`/videos?highlight=${savedId}`}>
                     <Button variant="outline" size="sm" className="gap-1.5">
@@ -925,7 +925,7 @@ export function ClipBrander({ photos = [], title }: {
                   {transcript.status === "failed" && (
                     <span>
                       Couldn&rsquo;t read the audio this time — the video is saved. Try{" "}
-                      <strong>Edit transcript</strong> on it in My Videos.
+                      <strong>Edit transcript</strong> on it in My Content.
                     </span>
                   )}
                 </div>

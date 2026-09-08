@@ -271,6 +271,11 @@ function VideosContent() {
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // The two halves of the drafts list, counted once and used in both the
+  // header line and the sections below it.
+  const articleCount = drafts.filter((d) => !!d.ai_script?.blog_body?.trim()).length;
+  const draftCount = drafts.length - articleCount;
+
   async function handleDeleteDraft(draft: DraftProject) {
     // Names what is actually being thrown away. "Delete the draft" understated
     // it for a project holding a finished thousand-word article.
@@ -405,11 +410,19 @@ function VideosContent() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-bold text-brand-text">My Videos</h2>
-          {/* "total" over a query capped at 50: a user with 60 videos was told
+          <h2 className="text-2xl font-bold text-brand-text">My Content</h2>
+          {/* Counts what is actually on the page. It said "N videos" over a
+              list that also holds articles and drafts, so the number never
+              matched what you could see.
+
+              "total" over a query capped at 50: a user with 60 videos was told
               they had 50, and the ten oldest were unreachable. */}
           <p className="text-sm text-slate-500 mt-0.5">
-            {videos.length} video{videos.length !== 1 ? "s" : ""}
+            {[
+              `${videos.length} video${videos.length !== 1 ? "s" : ""}`,
+              articleCount > 0 ? `${articleCount} blog post${articleCount !== 1 ? "s" : ""}` : "",
+              draftCount > 0 ? `${draftCount} draft${draftCount !== 1 ? "s" : ""}` : "",
+            ].filter(Boolean).join(" · ")}
             {videos.length >= VIDEO_PAGE_SIZE ? " — showing your most recent" : ""}
           </p>
         </div>
@@ -521,10 +534,16 @@ function VideosContent() {
       {videos.length === 0 && drafts.length === 0 ? (
         <Card className="flex flex-col items-center py-16 text-center">
           <Video className="w-12 h-12 text-slate-300 mb-3" />
-          <p className="font-semibold text-brand-text">No videos yet</p>
-          <p className="text-sm text-slate-400 mt-1 mb-4">Make your first video — film it yourself, or let SparkReels write and render it</p>
+          {/* Not "No videos yet" any more: a blog post lands here too, and it
+              is the one thing on this page you can have without spending
+              anything — worth saying to someone looking at an empty screen. */}
+          <p className="font-semibold text-brand-text">Nothing here yet</p>
+          <p className="text-sm text-slate-400 mt-1 mb-4">
+            Film a video yourself, let SparkReels render one — or write a blog post, which costs
+            nothing from your plan.
+          </p>
           <Link href="/create">
-            <Button className="gap-2"><Plus size={15} /> Create First Video</Button>
+            <Button className="gap-2"><Plus size={15} /> Make something</Button>
           </Link>
         </Card>
       ) : (

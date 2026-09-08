@@ -91,7 +91,7 @@ export function PublishModal({
    * The camera recorder mounts this window with an id and a title only, so
    * the Description box opened empty — and because the server substitutes its
    * own default for an empty field, YouTube then received an AI description
-   * the user had never seen. Fetching the same defaults My Videos passes
+   * the user had never seen. Fetching the same defaults My Content passes
    * means both routes publish the same thing, and the box shows it first.
    */
   useEffect(() => {
@@ -115,7 +115,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
         if (d.caption) setCaption(withFetchedTags(d.caption));
         if (d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
         // videoTitle="" is how a caller says "you resolve it" — see the dub
-        // branch in My Videos.
+        // branch in My Content.
         if (d.thumbnailUrl) setFetchedThumbnail(d.thumbnailUrl);
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });

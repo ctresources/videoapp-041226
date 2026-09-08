@@ -7,7 +7,7 @@
  * An uploaded clip was the one video the app could not describe: the camera
  * tab has the script that was read and every rendered video has the script it
  * was written from, but this clip's words were locked inside its audio. So it
- * arrived in My Videos with a filename, no captions, and a description built
+ * arrived in My Content with a filename, no captions, and a description built
  * out of whatever the upload form could be bothered to collect.
  *
  * The transcription runs against the file already in storage rather than

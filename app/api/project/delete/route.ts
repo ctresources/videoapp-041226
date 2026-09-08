@@ -33,7 +33,7 @@ export async function DELETE(req: NextRequest) {
     .eq("project_id", projectId);
   if (count && count > 0) {
     return NextResponse.json(
-      { error: "This project has videos — delete them from My Videos instead." },
+      { error: "This project has videos — delete them from My Content instead." },
       { status: 400 },
     );
   }

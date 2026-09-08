@@ -181,7 +181,7 @@ export default function HelpPage() {
               photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering time follows the length
               of the <em>script</em>, not the format — a longer script takes longer regardless of which format
               you picked, typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long one. Either way you can close the page and watch
-              for it in My Videos. If a render ever fails, your allowance is refunded automatically.
+              for it in My Content. If a render ever fails, your allowance is refunded automatically.
             </Step>
             <Step n={9} title="Use Camera — The Free Option" icon={Camera}>
               Write or Spark a script, tap <strong>Add Channel CTA</strong> to append your closing pitch, then
@@ -201,7 +201,7 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
             <Step n={10} title="Publish To YouTube — One Click" icon={MonitorPlay}>
-              Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Videos</Link> and
+              Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Content</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
             </Step>

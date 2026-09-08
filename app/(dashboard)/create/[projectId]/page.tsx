@@ -254,7 +254,7 @@ export default function ProjectEditorPage() {
   // mean the back button walked steps instead of leaving the editor.
   const [editorStep, setEditorStep] = useState<2 | 3 | 4 | 5>(2);
   // Set once a render has been accepted, so the last steps can link straight
-  // to the video rather than the whole My Videos list.
+  // to the video rather than the whole My Content list.
   const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
   // The HeyGen job behind the current render, so step 4 can poll it.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
@@ -270,7 +270,7 @@ export default function ProjectEditorPage() {
   // The render finishing was only ever recorded as "not failed", so the page
   // learned it was done and did nothing with the knowledge: the footer went on
   // saying "Rendering — you can close this page" and the only route to the
-  // finished video was the My Videos link in the nav.
+  // finished video was the My Content link in the nav.
   const [renderComplete, setRenderComplete] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
@@ -956,7 +956,7 @@ export default function ProjectEditorPage() {
         const err = await safeJson(res);
         throw new Error((err?.error as string) || "Failed to save draft");
       }
-      toast.success("Draft saved. Find it under Drafts in My Videos.");
+      toast.success("Draft saved. Find it under Drafts in My Content.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save draft");
     } finally {
@@ -1313,15 +1313,15 @@ export default function ProjectEditorPage() {
       if (!body?.video) throw new Error("Invalid response from video generator");
       const { video } = body as { video: { id: string; render_status?: string; render_job_id?: string } };
       setRenderJobId(video.render_job_id ?? null);
-      // Stays on the generating step rather than jumping to My Videos. The
+      // Stays on the generating step rather than jumping to My Content. The
       // render outlives this page either way, and leaving immediately skipped
       // past the publishing assets — the title, description and hashtags that
       // were written for this video and are needed to post it.
       setRenderedVideoId(video.id);
       if (video.render_status === "completed") {
-        toast.success("Video ready. It's in My Videos.", { duration: 4000 });
+        toast.success("Video ready. It's in My Content.", { duration: 4000 });
       } else {
-        toast.success("Video is rendering. You'll see it in My Videos shortly.", { duration: 5000 });
+        toast.success("Video is rendering. You'll see it in My Content shortly.", { duration: 5000 });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start video generation");
@@ -2758,7 +2758,7 @@ export default function ProjectEditorPage() {
               return (
                 <p className="text-xs text-slate-400 text-center mt-2">
                   AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
-                  see it in My Videos when ready. You can close this page.
+                  see it in My Content when ready. You can close this page.
                 </p>
               );
             })()}
@@ -2800,7 +2800,7 @@ export default function ProjectEditorPage() {
                   // enough that nobody is watching the screen when it lands.
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
-                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Videos.`}
+                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Content.`}
               />
             );
           })()}
@@ -3177,7 +3177,7 @@ export default function ProjectEditorPage() {
             )}
             {/* Once it is done, the finished video is the thing you want, and
                 until now there was no button that led to it — the copy said
-                "you'll find it in My Videos" and meant it literally. Step 5
+                "you'll find it in My Content" and meant it literally. Step 5
                 stays reachable beside it rather than being replaced: the post
                 copy and the blog article are still the reason it exists.
 
