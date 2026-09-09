@@ -426,9 +426,11 @@ function VideosContent() {
             {videos.length >= VIDEO_PAGE_SIZE ? " — showing your most recent" : ""}
           </p>
         </div>
+        {/* "New Video" named one of the three things this page holds, on the
+            one button that leads to all of them. */}
         <Link href="/create">
           <Button size="sm" className="gap-2">
-            <Plus size={15} /> New Video
+            <Plus size={15} /> Create
           </Button>
         </Link>
       </div>
@@ -547,6 +549,18 @@ function VideosContent() {
           </Link>
         </Card>
       ) : (
+        <>
+        {/* Named, like the two sections above it. Blog posts and Drafts each
+            got a heading when they were split apart, which left the videos as
+            a bare grid under two labelled lists — so it read as the drafts
+            spilling downwards rather than as the third thing on the page. */}
+        <div className="flex items-center gap-2 mb-3">
+          <Film size={15} className="text-spark-amber" />
+          <h3 className="font-semibold text-brand-text">Videos — rendered and recorded</h3>
+          <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+            {videos.length}
+          </span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos.map((video) => {
             const status = statusConfig[video.render_status] || statusConfig.pending;
@@ -859,6 +873,7 @@ function VideosContent() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Video Preview Modal */}

@@ -1232,10 +1232,13 @@ function CreatePageInner() {
           It is you either way, live or as your avatar speaking in your cloned
           voice. What differs is whether you press record or we render it —
           which is also the whole of what it costs, so each tile says so. */}
-      {/* Row 1 is about the video, so it goes away when there isn't one. */}
-      {step === "input" && !blogOnly && <SectionHead className="mt-7" eyebrow="1 · Video style" question="How do you want to appear?" />}
-      {step === "input" && !blogOnly && (
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {/* Now that the nav verb is Create, this row is what you are creating
+          rather than only how you appear — so the blog belongs in it, beside
+          the two videos, not in the source row below where it was the odd one
+          out among three answers to "where do the words come from". */}
+      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you making?" />}
+      {step === "input" && (
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -1262,17 +1265,41 @@ function CreatePageInner() {
               free: true,
               cost: "Free",
             },
+            {
+              key: "blog" as const,
+              label: "Blog post",
+              desc: "An article for your site",
+              Icon: FileText,
+              free: true,
+              cost: "Free",
+            },
           ]).map(({ key, label, desc, Icon, free, cost }) => {
-            const active = key === "film" ? inputMode === "camera" : inputMode !== "camera";
+            const active = key === "blog"
+              ? blogOnly
+              : blogOnly ? false
+                : key === "film" ? inputMode === "camera" : inputMode !== "camera";
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  if (key === "blog") {
+                    setBlogOnly(true);
+                    // Neither of the two routes a blog cannot come from. The
+                    // camera records rather than writes, and a pasted script
+                    // is words you already have — nothing to research, nothing
+                    // to expand.
+                    if (inputMode === "camera" || inputMode === "paste") {
+                      setInputMode("script");
+                      setLastSparkTab("script");
+                    }
+                    return;
+                  }
+                  setBlogOnly(false);
                   setInputMode(
                     key === "film" ? "camera" : lastSparkTab === "camera" ? "script" : lastSparkTab
-                  )
-                }
+                  );
+                }}
                 aria-pressed={active}
                 className={`flex min-h-[86px] items-center gap-3 rounded-[14px] px-4 py-3 text-left transition-colors ${
                   active
@@ -1360,10 +1387,10 @@ function CreatePageInner() {
         <>
         <SectionHead
           className="mt-7"
-          eyebrow={blogOnly ? "1 · Source" : "2 · Script source"}
+          eyebrow={blogOnly ? "2 · Source" : "2 · Script source"}
           question={blogOnly ? "What should the article come from?" : "How should your script begin?"}
         />
-        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
+        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
           {([
             { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a polished script" },
             // Only the two routes that write an article. A pasted script is
@@ -1394,31 +1421,10 @@ function CreatePageInner() {
               onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
             />
           ))}
-
-          {/* The blog, in the row rather than in a banner under it.
-              It was a full-width dashed strip below the tiles, which is where
-              a page puts a footnote — so the one output that costs nothing
-              read as an afterthought about the three that do. As a tile it is
-              a peer: the same shape, the same row, the same choice.
-
-              It is a toggle, not a fourth destination. On, it takes the row
-              down to the two sources that can actually write an article and
-              hides row 1, because a blog has no answer to how you appear. */}
-          <SourceTile
-            kicker={blogOnly ? "Words only" : "No video"}
-            label="Create a blog post"
-            desc={blogOnly ? "On — nothing will be rendered" : "An article for your site, free"}
-            cost={<CostPill free>Free</CostPill>}
-            active={blogOnly}
-            onClick={() => {
-              const next = !blogOnly;
-              setBlogOnly(next);
-              // Paste is the one source that cannot produce an article, so
-              // leaving someone on it would light a tile that the row is
-              // about to remove.
-              if (next && inputMode === "paste") { setInputMode("script"); setLastSparkTab("script"); }
-            }}
-          />
+          {/* The blog tile lived here for one commit. It is in row 1 now,
+              beside the two videos: this row answers where the WORDS come
+              from, and "a blog post" is not an answer to that — it is what
+              comes out at the other end. */}
         </div>
         </>
       )}
@@ -1448,17 +1454,14 @@ function CreatePageInner() {
         </p>
       )}
 
-      {/* The dashed "Just want the words?" strip that used to sit here is
-          gone: it is a tile in the source row now, a peer of the three beside
-          it rather than a footnote under them. What stays is the line saying
-          what the mode means once it is on, which a lit tile cannot. */}
+      {/* What the lit tile cannot say: what you actually end up with. Leaving
+          the mode needs no instructions now that it is one of three tiles in
+          a row — pressing another one is the way out. */}
       {step === "input" && blogOnly && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-          <strong className="font-semibold text-spark-ink">Blog post only.</strong>{" "}
-          You&rsquo;ll get the article, the title, the description and the hashtags — no video, and
-          nothing from your plan. Press{" "}
-          <strong className="font-semibold text-spark-ink">Create a blog post</strong> again to make a
-          video instead.
+          <strong className="font-semibold text-spark-ink">No video will be made.</strong>{" "}
+          You&rsquo;ll get about a thousand words with headings, ready to paste into your site — plus
+          the title, description and hashtags to go with it.
         </p>
       )}
 
@@ -1483,7 +1486,9 @@ function CreatePageInner() {
               rail, at the top of every screen. The tab name went the same way:
               row 2 is directly above with that tile lit. */}
           <SectionHead
-            eyebrow={blogOnly ? "2 · Topic details" : "3 · Topic details"}
+            // Always 3 now. Row 1 stays on screen in blog mode — it is where
+            // the blog was chosen — so nothing shifts up behind it.
+            eyebrow="3 · Topic details"
             question={blogOnly ? "What is your article about?" : "What is your video about?"}
             // "Spark" rather than "Start" — the product's own verb for this,
             // and the same one on the button it eventually leads to.
