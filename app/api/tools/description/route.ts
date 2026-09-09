@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
+import { briefBlock } from "@/lib/api/brief-context";
 
 export const maxDuration = 30;
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { title, script } = await req.json() as { title: string; script?: string };
+  const { title, script, audience, tone, purpose } = await req.json() as { title: string; script?: string; audience?: string; tone?: string; purpose?: string };
   if (!title?.trim()) return NextResponse.json({ error: "title required" }, { status: 400 });
 
   const raw = await perplexityChat([
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       role: "user",
       content: `Write a YouTube description for a real estate video.
 
-Title: "${title}"${script ? `\nScript excerpt: "${script.slice(0, 600)}"` : ""}
+Title: "${title}"${script ? `\nScript excerpt: "${script.slice(0, 600)}"` : ""}${briefBlock({ audience, tone, purpose })}
 
 DESCRIPTION STRUCTURE:
 1. First 150 chars (hook + primary keyword — this is what shows before "Show more")

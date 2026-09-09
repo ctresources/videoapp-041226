@@ -194,6 +194,10 @@ export async function POST(req: NextRequest) {
     audience: audience || null,
     tone: tone || null,
     cta_preference: ctaPreference || null,
+    // Saved for the same reason the other three are: the AI Tools read the
+    // brief back off the project so a title or a description generated later
+    // is written for the same person, and for the same reason, as the script.
+    purpose: purpose || null,
     // Lets the editor preselect the matching format instead of defaulting to a
     // standard video and silently trimming a long script.
     video_length: videoLength === "long" ? "long" : "standard",

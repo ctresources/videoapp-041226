@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
+import { briefBlock } from "@/lib/api/brief-context";
 
 export const maxDuration = 30;
 
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { topic, city, state } = await req.json() as { topic: string; city?: string; state?: string };
+  const { topic, city, state, audience, tone, purpose } = await req.json() as { topic: string; city?: string; state?: string; audience?: string; tone?: string; purpose?: string };
   if (!topic?.trim()) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
   const location = [city, state].filter(Boolean).join(", ");
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       role: "user",
       content: `Generate 8 YouTube video title options for a real estate agent.
 
-Topic: "${topic}"${location ? `\nLocation: ${location}` : ""}
+Topic: "${topic}"${location ? `\nLocation: ${location}` : ""}${briefBlock({ audience, tone, purpose })}
 
 Create these 8 title styles:
 1. Data/number hook (e.g. "Why 73% of Buyers in [City] Are…")

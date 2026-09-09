@@ -15,11 +15,95 @@ type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail"
 interface Project {
   id: string;
   title: string;
-  ai_script?: { hook?: string; script?: string; description?: string; hashtags?: string[] } | null;
+  /**
+   * The brief that produced this project, not only its output.
+   *
+   * generate-location-script has been writing audience, tone, cta_preference
+   * and now purpose onto ai_script all along, and this page already selects
+   * ai_script whole — so the context was sitting unread in the browser while
+   * every tool generated as though it had none. Typing it is most of the fix.
+   */
+  ai_script?: {
+    hook?: string; script?: string; description?: string; hashtags?: string[];
+    audience?: string | null; tone?: string | null;
+    cta_preference?: string | null; purpose?: string | null;
+  } | null;
   seo_data?: { hashtags?: string[]; youtube_title?: string } | null;
   /** The place this video is actually about — not the profile's home market. */
   location_city?: string | null;
   location_state?: string | null;
+}
+
+/** The four fields a tool inherits from a project, and can be overridden on it. */
+interface BriefContext {
+  audience: string;
+  tone: string;
+  purpose: string;
+}
+
+const EMPTY_BRIEF: BriefContext = { audience: "", tone: "", purpose: "" };
+
+function briefFrom(p: Project | null): BriefContext {
+  const s = p?.ai_script;
+  return {
+    audience: s?.audience ?? "",
+    tone: s?.tone ?? "",
+    purpose: s?.purpose ?? "",
+  };
+}
+
+const TOOL_AUDIENCES = [
+  "Move-up (keeping a low rate)", "Downsizing", "Relocating in", "First-time buyers",
+  "Sellers deciding when", "Investors", "Luxury", "Mixed",
+];
+const TOOL_TONES = ["Friendly", "Modern", "Luxury", "High-Energy", "Educational"];
+const TOOL_PURPOSES: [string, string][] = [
+  ["found", "Get found"],
+  ["answer", "Answer a question they keep asking"],
+  ["appointment", "Win the appointment"],
+  ["topofmind", "Stay top of mind"],
+  ["announce", "Announce something"],
+];
+
+/**
+ * Who it's for, how it sounds, what it's for — shown rather than applied
+ * silently.
+ *
+ * A tool that quietly writes for an audience you cannot see is one you cannot
+ * debug when the title comes back wrong. These fill in from the project the
+ * same way city and state already do, and typing over them still wins.
+ */
+function BriefFields({ value, onChange }: { value: BriefContext; onChange: (b: BriefContext) => void }) {
+  const cell = "w-full appearance-none border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-slate-700 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300";
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      {([
+        { k: "audience" as const, label: "Audience", opts: TOOL_AUDIENCES.map((a) => [a, a] as [string, string]) },
+        { k: "tone" as const,     label: "Tone",     opts: TOOL_TONES.map((t) => [t, t] as [string, string]) },
+        { k: "purpose" as const,  label: "Why",      opts: TOOL_PURPOSES },
+      ]).map(({ k, label, opts }) => (
+        <div key={k}>
+          <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+          <div className="relative">
+            <select
+              value={value[k]}
+              onChange={(e) => onChange({ ...value, [k]: e.target.value })}
+              className={cell}
+            >
+              <option value="">Any</option>
+              {/* A value saved before these lists existed still shows rather
+                  than silently resetting the select to "Any". */}
+              {value[k] && !opts.some(([v]) => v === value[k]) && (
+                <option value={value[k]}>{value[k]}</option>
+              )}
+              {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // Ordered to match the video workflow: title & script BEFORE rendering,
@@ -233,6 +317,7 @@ function TagGenerator({ projects, initialProjectId }: { projects: Project[]; ini
 
 function DescriptionGenerator({ projects, initialProjectId }: { projects: Project[]; initialProjectId?: string }) {
   const [projectId, setProjectId] = useState("");
+  const [brief, setBrief] = useState<BriefContext>(EMPTY_BRIEF);
   const [title, setTitle] = useState("");
   const [script, setScript] = useState("");
   const [result, setResult] = useState<{ description: string; hashtags: string[] } | null>(null);
@@ -243,6 +328,7 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
     setProjectId(p?.id ?? "");
     if (p?.title) setTitle(p.title);
     if (p?.ai_script?.script) setScript(p.ai_script.script.slice(0, 600));
+    setBrief(briefFrom(p));
   };
 
   // Deep link from the project editor: ?project=<id> preselects that project
@@ -260,7 +346,7 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
       const res = await fetch("/api/tools/description", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, script }),
+        body: JSON.stringify({ title, script, ...brief }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -296,6 +382,7 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
   return (
     <div>
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
+      <BriefFields value={brief} onChange={setBrief} />
 
       <div className="space-y-4 mb-4">
         <div>
@@ -382,6 +469,7 @@ function TitleGenerator({
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [brief, setBrief] = useState<BriefContext>(EMPTY_BRIEF);
   const [titles, setTitles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -393,6 +481,9 @@ function TitleGenerator({
     if (project.location_city) setCity(project.location_city);
     if (project.location_state) setState(project.location_state);
     if (!topic.trim()) setTopic(project.title);
+    // The brief that produced the project, so a title written later is written
+    // for the same person and the same reason as the script was.
+    setBrief(briefFrom(project));
   }
 
   useEffect(() => {
@@ -408,7 +499,7 @@ function TitleGenerator({
       const res = await fetch("/api/tools/title", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, city, state }),
+        body: JSON.stringify({ topic, city, state, ...brief }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -423,6 +514,7 @@ function TitleGenerator({
   return (
     <div>
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
+      <BriefFields value={brief} onChange={setBrief} />
       <div className="space-y-4 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Topic or keyword</label>
@@ -490,6 +582,7 @@ function ScriptGenerator({
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [brief, setBrief] = useState<BriefContext>(EMPTY_BRIEF);
   const [videoType, setVideoType] = useState("blog_video");
 
   // Same as the title tool: the project's own location, not the home market.
@@ -499,6 +592,9 @@ function ScriptGenerator({
     if (project.location_city) setCity(project.location_city);
     if (project.location_state) setState(project.location_state);
     if (!topic.trim()) setTopic(project.title);
+    // The brief that produced the project, so a title written later is written
+    // for the same person and the same reason as the script was.
+    setBrief(briefFrom(project));
   }
 
   useEffect(() => {
@@ -517,7 +613,7 @@ function ScriptGenerator({
       const res = await fetch("/api/tools/script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, city, state, videoType }),
+        body: JSON.stringify({ topic, city, state, videoType, ...brief }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -533,6 +629,7 @@ function ScriptGenerator({
   return (
     <div>
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
+      <BriefFields value={brief} onChange={setBrief} />
       <div className="space-y-4 mb-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Video topic</label>

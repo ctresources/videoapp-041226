@@ -3,6 +3,7 @@ import { perplexityChat } from "@/lib/api/perplexity";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
+import { briefBlock } from "@/lib/api/brief-context";
 
 export const maxDuration = 60;
 
@@ -14,11 +15,14 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { topic, city, state, videoType = "blog_video" } = await req.json() as {
+  const { topic, city, state, videoType = "blog_video", audience, tone, purpose } = await req.json() as {
     topic: string;
     city?: string;
     state?: string;
     videoType?: string;
+    audience?: string;
+    tone?: string;
+    purpose?: string;
   };
   if (!topic?.trim()) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
       role: "user",
       content: `Write a complete real estate video script.
 
-Topic: "${topic}"${location ? `\nLocation: ${location}` : ""}
+Topic: "${topic}"${location ? `\nLocation: ${location}` : ""}${briefBlock({ audience, tone, purpose })}
 Video length: ${lengthGuide}
 
 ${location ? `Search for current real estate data for ${location} (median price, days on market, inventory, trends) and weave it into the script.` : ""}
