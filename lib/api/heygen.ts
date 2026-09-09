@@ -756,6 +756,18 @@ export interface VideoAgentSession {
   status: "pending" | "thinking" | "generating" | "processing" | "completed" | "failed";
   videoId: string | null;
   error: string | null;
+  /**
+   * 0-100. Zero on a failure means the job died before rendering started —
+   * planning, not the script or the settings. Paired with an empty `error`
+   * that is the signature of a fault on their side, not ours.
+   */
+  progress: number | null;
+  /**
+   * The last thing the agent said before it stopped. When the API returns no
+   * error at all — which is what two real failures did — this is the only
+   * clue there is. Internal diagnostics; never shown to a user.
+   */
+  lastMessage: string | null;
 }
 
 /**
@@ -1154,6 +1166,12 @@ export async function getVideoAgentSession(
   const json = await res.json();
   const d = json.data;
 
+  const messages = Array.isArray(d.messages) ? d.messages : [];
+  const lastModel = messages
+    .filter((m: { role?: string }) => m.role && m.role !== "user")
+    .sort((a: { created_at?: number }, b: { created_at?: number }) => (a.created_at ?? 0) - (b.created_at ?? 0))
+    .slice(-1)[0];
+
   return {
     sessionId: d.session_id || sessionId,
     status: d.status,
@@ -1161,6 +1179,8 @@ export async function getVideoAgentSession(
     error: d.error
       ? (typeof d.error === "string" ? d.error : JSON.stringify(d.error))
       : null,
+    progress: typeof d.progress === "number" ? d.progress : null,
+    lastMessage: lastModel?.content ? String(lastModel.content).slice(0, 500) : null,
   };
 }
 

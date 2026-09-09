@@ -153,7 +153,7 @@ export function RenderPipeline({
                   {stage.title}
                 </span>
                 <span className="block text-[12px] text-spark-ink-muted">
-                  {broke ? error || "Render failed" : stage.sub}
+                  {broke ? "Didn't finish" : stage.sub}
                 </span>
               </span>
               <span
@@ -178,7 +178,9 @@ export function RenderPipeline({
       )}
       {failed && (
         <p className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12.5px] leading-[1.45] text-red-700">
-          {error || "The render failed."} Any credits it used have been returned.
+          {error
+            ? error
+            : "We couldn't render this right now. Your credit has been returned — try again."}
         </p>
       )}
       {!complete && !failed && note && (
