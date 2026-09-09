@@ -116,7 +116,7 @@ const features = [
     // Was buried at the end of a list about YouTube metadata, as "and a full
     // blog post" — the one deliverable here that lives on the agent's own
     // site, described as a footnote about someone else's platform.
-    description: "Around a thousand words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. Copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all.",
+    description: "Around a thousand words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -504,34 +504,34 @@ export default function LandingPage() {
                 good time to sell in Mesa?&rdquo; Buyers ask an AI assistant these questions months
                 before they ever call an agent — and the AI answers by quoting websites it trusts.
               </p>
-              <p className="text-slate-500 mb-4 leading-relaxed">
-                Right now it isn&apos;t quoting you. <span className="font-semibold text-slate-700">AI
-                Answer Blocks</span> researches what buyers in your market are actually asking — then
-                hands you <span className="font-semibold text-slate-700">three videos to record</span>,
-                opening line included, one click to the recording screen.
-              </p>
-              <p className="text-slate-500 mb-4 leading-relaxed">
-                No more guessing what to post. These aren&apos;t invented topics — they&apos;re the
-                questions your buyers are typing into ChatGPT this month. Each one also comes with a
-                text block for your website, written the way AI assistants extract and cite answers.
-              </p>
-              {/* The blog, named. The section was already about being quoted by
-                  AI and already mentioned "a text block for your website" —
-                  which is the article, described as though it were a fragment.
-                  It is a thousand words with question-shaped headings, and it
-                  is the thing on the site an AI can actually cite: a video
-                  cannot be quoted, a page can.
+              {/* Two features, told apart.
+                  This section described both in nearly the same words — Answer
+                  Blocks handing you "a text block for your website", the blog
+                  being "a full blog post" — which read as one thing described
+                  twice, or two things doing the same job. They are a pair:
+                  one decides what to write about, the other is what gets
+                  published. Saying so is worth more than the acronyms.
 
-                  "Never uses one of your videos" is the claim worth making and
-                  the one that stays true on every plan — the article is not
-                  metered against your allowance. It is inside the same 30-day
-                  free window as camera recording, which is why this does not
-                  say free. */}
+                  "Never uses one of your videos" is the claim that stays true
+                  on every plan — the article is not metered against your
+                  allowance. It sits inside the same 30-day free window as
+                  camera recording, which is why this does not say free. */}
+              <p className="text-slate-500 mb-4 leading-relaxed">
+                Right now it isn&apos;t quoting you. Fixing that takes two things, and you get both.
+              </p>
+              <p className="text-slate-500 mb-4 leading-relaxed">
+                <span className="font-semibold text-slate-700">First, what to say.</span> AI Answer
+                Blocks researches what buyers in your market are actually asking this month — not
+                invented topics, the questions being typed into ChatGPT — and hands you three videos
+                to record, opening line included, one click to the recording screen.
+              </p>
               <p className="text-slate-500 mb-6 leading-relaxed">
-                And every script comes with a <span className="font-semibold text-slate-700">full
-                blog post</span> — around a thousand words, with the headings written as the
-                questions people actually ask, answered in the first line so an assistant can quote
-                them. Copy it as HTML straight into your site. An AI cannot quote your video; it can
+                <span className="font-semibold text-slate-700">Then, something to quote.</span> Every
+                script comes with a full blog post — around a thousand words, headings written as the
+                questions people actually ask and answered in the first line, which is the shape an
+                assistant lifts and cites. That is{" "}
+                <span className="font-semibold text-slate-700">AEO and GEO</span>, alongside ordinary
+                SEO. Copy it as HTML straight into your site. An AI cannot quote your video; it can
                 quote your page. Blog posts{" "}
                 <span className="font-semibold text-slate-700">never use one of your videos</span> —
                 you can write one without making a video at all.
@@ -563,16 +563,30 @@ export default function LandingPage() {
                   Open with: &ldquo;If you have about $450k, these are the Charlotte areas to check first.&rdquo;
                 </p>
               </div>
-              <div className="bg-white border border-slate-200 p-4">
-                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">② The block you paste on your site</p>
+              {/* Was "② The block you paste on your site", which is what the
+                  blog post is also for — two panels claiming the same job. The
+                  article gets its own numbered slot, so the example shows the
+                  pair the copy beside it describes: a question, the video that
+                  answers it, and the page an assistant can quote. */}
+              <div className="bg-white border border-slate-200 p-4 mb-3">
+                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">② The blog post that goes with it</p>
                 <p className="text-lg text-slate-600 leading-relaxed">
-                  Start by comparing housing stock, commute, and HOA costs — not just list price. At
-                  this budget, look at townhomes near the light-rail corridor and older single-family
-                  stock further out…
+                  <span className="font-semibold text-slate-700">H2: What can $450,000 buy in Charlotte right now?</span>{" "}
+                  At this budget you are mostly looking at townhomes near the light-rail corridor and
+                  older single-family stock further out. Compare housing stock, commute and HOA costs
+                  — not just list price…
+                </p>
+              </div>
+              <div className="bg-white border border-slate-200 p-4">
+                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">③ The rest of your Share Kit</p>
+                <p className="text-lg text-slate-600 leading-relaxed">
+                  Title, description and hashtags for YouTube. An Instagram caption, a LinkedIn post
+                  and an email blurb, already written.
                 </p>
               </div>
               <p className="text-base text-slate-400 mt-3 leading-relaxed">
-                Illustrative example. Your blocks are researched for your own market and named to you.
+                Illustrative example. The questions are researched for your own market, and everything
+                below them is written in your name.
               </p>
             </div>
           </div>
