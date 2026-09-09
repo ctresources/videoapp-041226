@@ -66,6 +66,7 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): lead the intro with the property's specifics — city, price, beds, baths, square footage — in the first two sentences, in plain declarative language an AI assistant can quote back as an answer. Explicit named entities throughout, so a sentence can be lifted and cited.
 - AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a buyer would actually type or ask aloud (e.g. "H2: What does the kitchen offer?", "H2: How much is ${listing.price} getting you here?"). Answer each heading in its first sentence, then support it. Never open a section with a rhetorical question or a scene-setter — an answer engine reads the first sentence.
 - Use real numbers from the listing wherever one exists. Round nothing, invent nothing, and never state a fact the listing above does not contain.
+- GENERICITY CHECK, before you finish: reread the article and ask whether it could describe a different property by changing only the address. If it could, it is too generic — go back and use the specifics this listing actually gives you. Do not invent detail to pass this check.
 
 FAIR HOUSING (overrides everything else here):
 - Never mention schools, churches, demographics, neighborhood composition, safety, or who the home would "suit".

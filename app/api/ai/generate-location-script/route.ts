@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     audience,
     tone,
     ctaPreference,
+    purpose,
     videoLength,
     videoPlatform,
     regenerateOnly,
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
     audience?: string;
     tone?: string;
     ctaPreference?: string;
+    purpose?: string;
     /** "long" asks for an ~8-minute script; anything else is a standard video. */
     videoLength?: VideoLength;
     /** Vertical reel or landscape YouTube. Chosen on step 1 so the editor can
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest) {
   const cap = maxWords(length, tier);
 
   const params: LocationParams = {
-    city, state, zip, month, year, customTopic, audience, tone, ctaPreference,
+    city, state, zip, month, year, customTopic, audience, tone, ctaPreference, purpose,
     targetWords: words,
     maxWords: cap,
   };

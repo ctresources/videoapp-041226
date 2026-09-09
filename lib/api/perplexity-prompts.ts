@@ -39,6 +39,12 @@ export interface LocationParams {
   tone?: string;          // e.g. "Friendly", "Modern", "Luxury", "High-Energy", "Educational"
   ctaPreference?: string; // e.g. "call", "text", "website", "consultation"
   /**
+   * Why the video exists — "found", "answer", "appointment", "topofmind",
+   * "announce". Distinct from ctaPreference, which is only how the closing ask
+   * is worded. This changes what the whole script is trying to do.
+   */
+  purpose?: string;
+  /**
    * How many words of narration to aim for. Drives both the prompt's stated
    * target and the token budget. Defaults to ~2 minutes when omitted so
    * existing callers behave exactly as before.
@@ -79,7 +85,9 @@ This article is written for three surfaces at once — SEO, GEO and AEO — and 
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): write clear factual sentences built on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it. Keep every figure, date and proper noun exactly as your research gave it. Do not round and do not invent; a made-up number is worse than a missing one.
 - AEO (answer engines, voice search, featured snippets): use 4-6 section headings, each on its own line and prefixed exactly "H2: ". Write each heading as the question a reader would actually type or say out loud ("H2: What is happening to prices in ${place}?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips.
 
-Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
+Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.
+
+GENERICITY CHECK (do this before you finish): reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighborhoods, streets, price bands, commute times and comparisons that make it true only here. Do not invent facts to pass this check; if you do not have local detail on a point, cut the point rather than fake it.]
 
 BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with the single clear next step a reader should take.]`;
 }
@@ -188,6 +196,11 @@ VIDEO TITLE OPTIONS:
 1. [Option 1 — include a real data point]
 2. [Option 2 — curiosity/question format]
 3. [Option 3 — trend/news format]
+TITLE STANDARD — one of the three must be the question a person would actually say out loud, with the tension in it. Weak titles name a category; strong ones name a decision or a number.
+WEAK: "Tips for Move-Up Buyers"  STRONG: "We Need More Space But We Have a 3% Rate. Should We Move?"
+WEAK: "Fall Activities"          STRONG: "The Complete Fall Guide: Pumpkin Patches, Corn Mazes and Weekend Events"
+WEAK: "Best Parks"               STRONG: "Parks Guide: Playgrounds, Trails, Dog-Friendly Spaces and What Each Park Is Best For"
+Name the town in at least one option. Do not invent a number to make a title stronger.
 
 ${blogSections(location)}
 
@@ -253,6 +266,11 @@ VIDEO TITLE OPTIONS:
 1. [Option 1 — lifestyle focused]
 2. [Option 2 — comparison or ranking angle]
 3. [Option 3 — "hidden gem" or discovery angle]
+TITLE STANDARD — one of the three must be the question a person would actually say out loud, with the tension in it. Weak titles name a category; strong ones name a decision or a number.
+WEAK: "Tips for Move-Up Buyers"  STRONG: "We Need More Space But We Have a 3% Rate. Should We Move?"
+WEAK: "Fall Activities"          STRONG: "The Complete Fall Guide: Pumpkin Patches, Corn Mazes and Weekend Events"
+WEAK: "Best Parks"               STRONG: "Parks Guide: Playgrounds, Trails, Dog-Friendly Spaces and What Each Park Is Best For"
+Name the town in at least one option. Do not invent a number to make a title stronger.
 
 ${blogSections(location)}
 
@@ -325,6 +343,11 @@ VIDEO TITLE OPTIONS:
 1. [Option 1 — month + city specific]
 2. [Option 2 — "don't miss" angle]
 3. [Option 3 — community character angle]
+TITLE STANDARD — one of the three must be the question a person would actually say out loud, with the tension in it. Weak titles name a category; strong ones name a decision or a number.
+WEAK: "Tips for Move-Up Buyers"  STRONG: "We Need More Space But We Have a 3% Rate. Should We Move?"
+WEAK: "Fall Activities"          STRONG: "The Complete Fall Guide: Pumpkin Patches, Corn Mazes and Weekend Events"
+WEAK: "Best Parks"               STRONG: "Parks Guide: Playgrounds, Trails, Dog-Friendly Spaces and What Each Park Is Best For"
+Name the town in at least one option. Do not invent a number to make a title stronger.
 
 ${blogSections(location)}
 
@@ -395,6 +418,11 @@ VIDEO TITLE OPTIONS:
 1. [Option 1 — direct and informative]
 2. [Option 2 — curiosity or question format]
 3. [Option 3 — "did you know" or discovery angle]
+TITLE STANDARD — one of the three must be the question a person would actually say out loud, with the tension in it. Weak titles name a category; strong ones name a decision or a number.
+WEAK: "Tips for Move-Up Buyers"  STRONG: "We Need More Space But We Have a 3% Rate. Should We Move?"
+WEAK: "Fall Activities"          STRONG: "The Complete Fall Guide: Pumpkin Patches, Corn Mazes and Weekend Events"
+WEAK: "Best Parks"               STRONG: "Parks Guide: Playgrounds, Trails, Dog-Friendly Spaces and What Each Park Is Best For"
+Name the town in at least one option. Do not invent a number to make a title stronger.
 
 ${blogSections("the town this article is about")}
 
@@ -439,13 +467,71 @@ export function buildRequest(videoType: LocationVideoType, params: LocationParam
   }
 }
 
+/**
+ * What each audience changes about the script.
+ *
+ * Keyed on the exact string the dropdown sends, which is why an audience with
+ * no entry here used to vanish: the lookup returned undefined and the whole
+ * clause was dropped, so picking it produced the same generic script as
+ * picking nothing, with nothing on screen saying so. "Relocation" was in that
+ * state from the day it was added, and every audience a user typed themselves
+ * — the field saves and re-offers custom values — has always been.
+ * audienceClause() below is what stops a missing key meaning silence.
+ *
+ * Written as tensions rather than segments where the tension is the thing that
+ * changes the writing. "Move-up" is a life stage; "keeping a low rate" is the
+ * reason the script has to argue rather than describe. The old segment keys
+ * are kept alongside the new ones so projects saved before this still resolve.
+ */
 const AUDIENCE_SCRIPT_GUIDANCE: Record<string, string> = {
-  "Buyers": "Focus on timing, market opportunities, competition dynamics, and smart buying strategy. Speak to people ready to make a move.",
-  "Sellers": "Emphasize pricing power, buyer demand, and how to maximize home value. Speak to homeowners thinking about selling.",
+  // Tension-shaped — what the dropdown offers now.
+  "Move-up (keeping a low rate)": "They want more space but are giving up a cheap mortgage to get it. Do not pretend that trade is small. Put a real number on what the payment change looks like, name what the extra space is worth in daily life, and be honest that waiting is a legitimate choice.",
+  "Downsizing": "They are leaving a home they have equity and history in. Lead with what they gain — proceeds, lower upkeep, a location that fits how they live now — and treat the emotional cost of leaving as real rather than an obstacle to talk past.",
+  "Relocating in": "They do not know this market yet, so explain the place before the transaction. Compare areas to each other, name commute times, price bands and housing stock, and assume nothing about local geography or process.",
+  "First-time buyers": "Reduce fear, simplify the process, and build confidence. Avoid jargon. Be encouraging and supportive.",
+  "Sellers deciding when": "The question is timing, not whether. Give them what the market is doing now against what waiting a season would likely mean, with real figures, and say plainly when waiting is the better call.",
   "Investors": "Highlight ROI potential, appreciation trends, rental demand, and cash flow opportunities. Use numbers and data.",
-  "First-Time Buyers": "Reduce fear, simplify the process, and build confidence. Avoid jargon. Be encouraging and supportive.",
   "Luxury": "Use elevated, polished language. Focus on exclusivity, lifestyle, and premium positioning. Avoid anything that sounds generic.",
   "Mixed": "Speak broadly — address both buyers and sellers. Balance opportunity messaging for both sides of the market.",
+
+  // Kept so projects written before the rename still resolve.
+  "Buyers": "Focus on timing, market opportunities, competition dynamics, and smart buying strategy. Speak to people ready to make a move.",
+  "Sellers": "Emphasize pricing power, buyer demand, and how to maximize home value. Speak to homeowners thinking about selling.",
+  "First-Time Buyers": "Reduce fear, simplify the process, and build confidence. Avoid jargon. Be encouraging and supportive.",
+  "Relocation": "They do not know this market yet, so explain the place before the transaction. Compare areas to each other, name commute times, price bands and housing stock, and assume nothing about local geography or process.",
+};
+
+/**
+ * The audience clause, which is never empty when an audience was chosen.
+ *
+ * A value with no guidance entry still reaches the model as the audience it
+ * is — "write this for people relocating in" is worth far more than the
+ * silence the lookup used to produce. Anything a user typed themselves lands
+ * here, and those are the ones most worth honouring: they took the trouble.
+ */
+function audienceClause(audience?: string): string {
+  const a = audience?.trim();
+  if (!a) return "";
+  const known = AUDIENCE_SCRIPT_GUIDANCE[a];
+  return known
+    ? `\nTarget Audience: ${a}. ${known}`
+    : `\nTarget Audience: ${a}. Write for exactly this audience — their situation, their vocabulary, and the questions they specifically would ask. Do not broaden it into a general audience.`;
+}
+
+/**
+ * What the video is FOR, which changes more than the closing line.
+ *
+ * SCOPE's point: different jobs deserve different pressure. A guide meant to
+ * make someone trust you in six months should not sell like a listing
+ * announcement, and an article that pushes hard on every surface is the reason
+ * most agent content reads as advertising.
+ */
+const PURPOSE_SCRIPT_GUIDANCE: Record<string, string> = {
+  found: "This exists to be found later by someone searching. Prioritise being genuinely useful and specific over being persuasive — answer the question completely, and keep the ask light at the end.",
+  answer: "This answers one question people keep asking. Say the answer in the first fifteen seconds rather than building to it, then spend the rest earning it with detail and examples.",
+  appointment: "This is meant to win a conversation. Be concrete about what you would actually do for them and why it needs a person, and make the closing ask direct rather than soft.",
+  topofmind: "This is for people who are not ready yet. Do not push for a decision — be useful, human and memorable, and let the close be an invitation to keep following rather than to act now.",
+  announce: "This announces something specific and time-bound. Lead with what is new and the detail that matters — price, address, date — and keep it short rather than padding it into a guide.",
 };
 
 const TONE_SCRIPT_GUIDANCE: Record<string, string> = {
@@ -494,14 +580,16 @@ export async function generateLocationScript(
         ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".${preferenceGuidance}`
         : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".${preferenceGuidance}`;
 
-    const audienceGuidance = params.audience && AUDIENCE_SCRIPT_GUIDANCE[params.audience]
-      ? `\nTarget Audience: ${params.audience}. ${AUDIENCE_SCRIPT_GUIDANCE[params.audience]}`
+    const audienceGuidance = audienceClause(params.audience);
+    const purposeGuidance = params.purpose && PURPOSE_SCRIPT_GUIDANCE[params.purpose]
+      ? `
+Purpose: ${PURPOSE_SCRIPT_GUIDANCE[params.purpose]}`
       : "";
     const toneGuidance = params.tone && TONE_SCRIPT_GUIDANCE[params.tone]
       ? `\nBrand Tone: ${params.tone}. ${TONE_SCRIPT_GUIDANCE[params.tone]}`
       : "";
 
-    systemMsg.content += `\n\n${nameClause}${audienceGuidance}${toneGuidance}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
+    systemMsg.content += `\n\n${nameClause}${audienceGuidance}${purposeGuidance}${toneGuidance}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
 
     // Length control for the structured types (market_update, why_live_here,
     // community_events). The custom type states its own target inline, so it's

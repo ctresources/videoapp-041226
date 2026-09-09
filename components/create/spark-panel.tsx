@@ -30,6 +30,9 @@ const SHORT_LABELS: Record<string, string> = {
  * names for three of these — one fewer set of words to keep in step.
  */
 const GROUPS: { keys: TemplateCategory[]; label: string }[] = [
+  // First, because these are the ones somebody is actually deciding. Every
+  // other group names a subject; this one names a conflict.
+  { keys: ["decision"], label: "The hard questions" },
   { keys: ["general"],  label: "Real estate tips" },
   { keys: ["format"],   label: "Formats" },
   // One group, not two. "Your area" and "Local events & community" were the

@@ -72,6 +72,7 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a reader would actually type or say out loud — for example "H2: What is happening to prices in ${place}?" rather than "H2: Market conditions". Answer each heading in the FIRST sentence under it, then support the answer. An answer engine reads the first sentence; a section that warms up before answering is a section it skips.
 - Keep every figure, date and proper noun exactly as the script gave it. Do not round, do not invent, and do not add a statistic the script does not contain. Where the script is vague, stay vague — a made-up number is worse than a missing one.
 - Close the conclusion with the single practical next step a reader should take.
+- GENERICITY CHECK, before you finish: reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighbourhoods, streets, price bands and comparisons the script gives you that make it true only here. Do not invent detail to pass this check; where the script is thin on a point, cut the point rather than fake it.
 
 FAIR HOUSING (overrides everything above):
 - Never mention schools, churches, demographics, neighbourhood composition, safety, crime, or who an area would "suit".

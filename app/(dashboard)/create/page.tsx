@@ -87,11 +87,28 @@ type InputMode = "script" | "camera" | "listing" | "paste";
 // three words and stop — leaving the market, audience and tone to be asked
 // for separately when they could have said it all in one breath.
 /** The common ones, offered first. Anything else you say joins them. */
-// "Relocation" earns a place beside the other six: people moving into a market
-// from outside it are a different audience from local buyers — they need the
-// area explained rather than the deal — and it was common enough to be typed
-// in by hand and land in the custom list.
-const BASE_AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "Relocation", "Luxury", "Mixed"];
+/**
+ * Audiences named by their tension, not their segment.
+ *
+ * "Buyers" is a category; it tells the writer nothing it did not already
+ * assume. "Move-up (keeping a low rate)" is a conflict, and a conflict is what
+ * makes a script argue rather than describe — the same reason the strongest
+ * blog headings are questions rather than labels.
+ *
+ * The old segment names still resolve in AUDIENCE_SCRIPT_GUIDANCE, so projects
+ * written before this keep the guidance they were generated with. Anything a
+ * user types themselves is honoured too — see audienceClause.
+ */
+const BASE_AUDIENCES = [
+  "Move-up (keeping a low rate)",
+  "Downsizing",
+  "Relocating in",
+  "First-time buyers",
+  "Sellers deciding when",
+  "Investors",
+  "Luxury",
+  "Mixed",
+];
 const AUDIENCE_KEY = "spark_custom_audiences";
 
 const TRY_LINES = [
@@ -294,6 +311,16 @@ function CreatePageInner() {
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
+  /**
+   * Why this video exists — the one thing the brief never asked.
+   *
+   * It collected what it is about, who it is for, how it should sound and how
+   * long it runs, then wrote every script as though the purpose were always
+   * the same. "Win the appointment" and "still be the person they remember in
+   * six months" produce genuinely different scripts from one topic, and the
+   * CTA dropdown is not this: that is the ask at the end, not the reason.
+   */
+  const [locPurpose, setLocPurpose] = useState("");
   // Chosen BEFORE generating: the script has to be written to length, or a
   // "long" video ends up with a 2-minute script.
   const [locLength, setLocLength] = useState<"standard" | "long">("standard");
@@ -750,6 +777,7 @@ function CreatePageInner() {
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
+          purpose: locPurpose || undefined,
           videoLength: locLength,
           videoPlatform: locPlatform,
         }),
@@ -1712,7 +1740,7 @@ function CreatePageInner() {
               with Where, so the page asks its questions in one place. */}
           <div className="mt-6">
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     {
                       // Custom audiences join the list. Saying "people
@@ -1733,6 +1761,17 @@ function CreatePageInner() {
                       // screen whose other controls are all visual.
                       label: "Tone", value: locTone, set: setLocTone,
                       options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+                    },
+                    {
+                      label: "Why", value: locPurpose, set: setLocPurpose,
+                      options: [
+                        ["", "Any"],
+                        ["found", "Get found"],
+                        ["answer", "Answer a question they keep asking"],
+                        ["appointment", "Win the appointment"],
+                        ["topofmind", "Stay top of mind"],
+                        ["announce", "Announce something"],
+                      ] as [string, string][],
                     },
                     {
                       label: "Call to action", value: locCta, set: setLocCta,

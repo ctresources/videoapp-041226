@@ -8,7 +8,7 @@ import {
   Sun, Star, ListOrdered, Scale, Map, DoorOpen, HelpCircle,
 } from "lucide-react";
 
-export type TemplateCategory = "general" | "format" | "location" | "community";
+export type TemplateCategory = "general" | "format" | "location" | "community" | "decision";
 
 export interface ContentTemplate {
   id: string;
@@ -130,6 +130,83 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     description: "Down payment help, FHA loans, step-by-step process",
     color: "bg-pink-50", iconColor: "text-pink-500",
     category: "general",
+    needsLocation: true,
+  },
+
+  // ── Decisions ─────────────────────────────────────────────────────────────
+  // Every other template here names a subject. These name a conflict, which is
+  // what an actual person is carrying when they open ChatGPT at eleven at
+  // night — and the blog prompt wants question-shaped headings answered in
+  // their first sentence, which a topic-shaped subject makes the model invent
+  // and a question-shaped one hands it directly.
+  //
+  // The tension is stated in the topic so the script argues rather than
+  // describes, and so it stays honest: each one names the case for not doing
+  // the thing, because an article that only argues one way is an ad.
+  {
+    id: "move_or_stay",
+    label: "Move or stay put?",
+    emoji: "🔒",
+    icon: Scale,
+    topic: "Whether to move or stay put in {city}, {state} when you need more space but would be giving up a much cheaper mortgage rate to get it — what the payment actually changes to, what the extra space is worth in daily life, and when staying is the better call",
+    description: "The low-rate trap, argued both ways",
+    color: "bg-spark-blue/10", iconColor: "text-spark-blue",
+    category: "decision",
+    needsLocation: true,
+  },
+  {
+    id: "buy_first_sell_first",
+    label: "Buy first or sell first?",
+    emoji: "🔁",
+    icon: ArrowDownToLine,
+    topic: "Whether to buy first or sell first in {city}, {state} — how each order actually works here, what a contingent offer does to your negotiating position in this market, what bridge financing costs, and the real risk on each side",
+    description: "The order problem, and what each side risks",
+    color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
+    category: "decision",
+    needsLocation: true,
+  },
+  {
+    id: "renovate_or_move",
+    label: "Renovate or move?",
+    emoji: "🔨",
+    icon: HardHat,
+    topic: "Whether to renovate the home you have or buy a bigger one in {city}, {state} — what local renovation costs run per project, which of them return their money here and which do not, and how that compares against the price of moving up",
+    description: "Cost of staying against cost of going",
+    color: "bg-orange-50", iconColor: "text-orange-500",
+    category: "decision",
+    needsLocation: true,
+  },
+  {
+    id: "rent_it_or_sell_it",
+    label: "Rent it or sell it?",
+    emoji: "🔑",
+    icon: Building2,
+    topic: "Whether to keep your current home in {city}, {state} as a rental or sell it when you move — what it would realistically rent for here, what being a landlord actually involves, and what you would net from selling instead",
+    description: "Keeping the old house, honestly costed",
+    color: "bg-green-50", iconColor: "text-green-600",
+    category: "decision",
+    needsLocation: true,
+  },
+  {
+    id: "wait_for_rates",
+    label: "Wait for rates?",
+    emoji: "⏳",
+    icon: TrendingUp,
+    topic: "Whether waiting for lower rates is worth it in {city}, {state} — what a rate drop would actually save on a monthly payment here, what it would likely do to prices and competition at the same time, and who genuinely should wait",
+    description: "What waiting costs, and who should",
+    color: "bg-spark-blue/10", iconColor: "text-spark-blue",
+    category: "decision",
+    needsLocation: true,
+  },
+  {
+    id: "priced_out_or_wrong_search",
+    label: "Priced out, or looking wrong?",
+    emoji: "🎯",
+    icon: Shield,
+    topic: "Whether buyers in {city}, {state} are genuinely priced out or searching in the wrong places — what the budget actually reaches in nearby areas and property types, which expectations are the expensive ones, and when the honest answer is to wait and save",
+    description: "Budget against expectations, said plainly",
+    color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
+    category: "decision",
     needsLocation: true,
   },
 
