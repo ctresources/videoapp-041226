@@ -29,11 +29,14 @@ const SHORT_LABELS: Record<string, string> = {
  * Labels borrowed from the browser this panel replaced, which already had
  * names for three of these — one fewer set of words to keep in step.
  */
-const GROUPS: { key: TemplateCategory; label: string }[] = [
-  { key: "general",   label: "Real estate tips" },
-  { key: "format",    label: "Formats" },
-  { key: "location",  label: "Your area" },
-  { key: "community", label: "Local events & community" },
+const GROUPS: { keys: TemplateCategory[]; label: string }[] = [
+  { keys: ["general"],  label: "Real estate tips" },
+  { keys: ["format"],   label: "Formats" },
+  // One group, not two. "Your area" and "Local events & community" were the
+  // same subject split by an internal distinction — a schools piece and a
+  // farmers-market piece are both a video about where you live, and nobody
+  // hunting for one would know which of the two headings to look under.
+  { keys: ["location", "community"], label: "Local events & community" },
 ];
 
 interface SparkPanelProps {
@@ -78,11 +81,11 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       </p>
 
       <div className="mt-2.5 flex flex-col gap-2.5">
-        {GROUPS.map(({ key, label }) => {
-          const items = CONTENT_TEMPLATES.filter((t) => t.category === key);
+        {GROUPS.map(({ keys, label }) => {
+          const items = CONTENT_TEMPLATES.filter((t) => keys.includes(t.category));
           if (items.length === 0) return null;
           return (
-            <div key={key}>
+            <div key={label}>
               <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-spark-ink-faint">
                 {label}
               </p>
