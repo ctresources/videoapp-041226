@@ -1214,14 +1214,16 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="pt-2">
           <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
+            {/* Ends on the three verbs. "your next video?" made the headline
+                name an output, which meant it had to change when the output
+                did — and a headline that flickers a word as you pick a tile
+                draws the eye to the wrong thing. Without it the sentence is
+                true of all three: a video, a recording, an article. */}
             How will you{" "}
             <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
               Speak, Spark, Share
-            </span>{" "}
-            {/* One word, because one word is what is wrong. With the Blog post
-                tile lit three inches below, a headline promising a video names
-                the one thing that is not about to be made. */}
-            your next {blogOnly ? "post" : "video"}?
+            </span>
+            ?
           </h1>
           {/* The subline that was here before pitched the product to someone
               who has already bought it. This one does a different job: it
