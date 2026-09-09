@@ -66,11 +66,10 @@ WHAT WAS SAID IN THE VIDEO — cover this same ground, in writing, with the deta
 ${script.slice(0, 6000)}
 """
 
-SEARCH + ANSWER-ENGINE OPTIMISATION (this is the point of the article):
-- Open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting, no rhetorical questions.
-- Give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a reader would actually type or say out loud — for example "H2: What is happening to prices in ${place}?" rather than "H2: Market conditions".
-- Answer each heading in the FIRST sentence under it, then support the answer. An answer engine reads the first sentence; a section that warms up before answering is a section it skips.
-- Name ${place} naturally throughout, along with any neighbourhoods, streets or landmarks the script mentions. This is a local search page and the place name is the thing it has to win on.
+SEO, GEO AND AEO (this is the point of the article — it is written for three surfaces at once):
+- SEO (Google and Bing): name ${place} naturally throughout, along with any neighbourhoods, streets or landmarks the script mentions. This is a local search page and the place name is the thing it has to win on.
+- GEO (generative engines — ChatGPT, Perplexity, Gemini): open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting, no rhetorical questions. Build on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it.
+- AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a reader would actually type or say out loud — for example "H2: What is happening to prices in ${place}?" rather than "H2: Market conditions". Answer each heading in the FIRST sentence under it, then support the answer. An answer engine reads the first sentence; a section that warms up before answering is a section it skips.
 - Keep every figure, date and proper noun exactly as the script gave it. Do not round, do not invent, and do not add a statistic the script does not contain. Where the script is vague, stay vague — a made-up number is worse than a missing one.
 - Close the conclusion with the single practical next step a reader should take.
 

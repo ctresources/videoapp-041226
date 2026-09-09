@@ -61,11 +61,10 @@ Neighborhood: ${listing.neighborhood || "N/A"}
 Description: ${listing.description}
 Key Features: ${listing.features.slice(0, 8).join(", ")}
 
-SEARCH + ANSWER-ENGINE OPTIMISATION (this is the point of the article):
-- Lead the intro with the property's specifics — city, price, beds, baths, square footage — in the first two sentences, in plain declarative language an AI assistant can quote back as an answer.
-- Give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a buyer would actually type or ask aloud (e.g. "H2: What does the kitchen offer?", "H2: How much is ${listing.price} getting you here?").
-- Answer each heading in its first sentence, then support it. Never open a section with a rhetorical question or a scene-setter.
-- Name ${where} naturally through the article — this is a local search page.
+SEO, GEO AND AEO (this is the point of the article — it is written for three surfaces at once):
+- SEO (Google and Bing): name ${where} naturally through the article, along with the neighbourhood and any nearby landmarks. This is a local search page and the place name is what it ranks on.
+- GEO (generative engines — ChatGPT, Perplexity, Gemini): lead the intro with the property's specifics — city, price, beds, baths, square footage — in the first two sentences, in plain declarative language an AI assistant can quote back as an answer. Explicit named entities throughout, so a sentence can be lifted and cited.
+- AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a buyer would actually type or ask aloud (e.g. "H2: What does the kitchen offer?", "H2: How much is ${listing.price} getting you here?"). Answer each heading in its first sentence, then support it. Never open a section with a rhetorical question or a scene-setter — an answer engine reads the first sentence.
 - Use real numbers from the listing wherever one exists. Round nothing, invent nothing, and never state a fact the listing above does not contain.
 
 FAIR HOUSING (overrides everything else here):

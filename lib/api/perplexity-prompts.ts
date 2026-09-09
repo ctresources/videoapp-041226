@@ -51,6 +51,39 @@ export interface LocationParams {
   maxWords?: number;
 }
 
+/**
+ * The three BLOG POST sections, written once and used by all four video types.
+ *
+ * They used to differ: the custom topic asked for a full article with
+ * answer-engine instructions, and the other three asked for a two-sentence
+ * intro and nothing else. Only the custom type is reachable from the app
+ * today, so the gap was invisible — but they are live paths, and a route into
+ * one of them would have produced a stub where an article was expected.
+ *
+ * SEO, GEO and AEO are named outright rather than only described. The
+ * mechanics below are what actually shape the output, but naming the three
+ * surfaces tells the model what game it is playing — the same thing the
+ * YouTube metadata prompt does, and that one has always been the strongest
+ * of them.
+ *
+ * @param place  What to name throughout — a town, or a phrase standing in for
+ *               one when the topic carries its own location.
+ */
+function blogSections(place: string): string {
+  return `BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Open with two or three plain declarative sentences that state the subject and ${place} outright, in language an AI assistant can quote back as an answer to a question. No scene-setting and no rhetorical questions.]
+
+BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard.
+
+This article is written for three surfaces at once — SEO, GEO and AEO — and the rules below are how it wins each:
+- SEO (Google and Bing): name ${place} naturally throughout, along with any neighborhoods, streets and landmarks. This is a local search page and the place name is what it has to rank on.
+- GEO (generative engines — ChatGPT, Perplexity, Gemini): write clear factual sentences built on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it. Keep every figure, date and proper noun exactly as your research gave it. Do not round and do not invent; a made-up number is worse than a missing one.
+- AEO (answer engines, voice search, featured snippets): use 4-6 section headings, each on its own line and prefixed exactly "H2: ". Write each heading as the question a reader would actually type or say out loud ("H2: What is happening to prices in ${place}?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips.
+
+Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
+
+BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with the single clear next step a reader should take.]`;
+}
+
 /** Narration length instruction + a matching max_tokens budget. */
 function lengthSpec(targetWords?: number, hardMaxWords?: number): { instruction: string; maxTokens: number } {
   const words = targetWords && targetWords > 0 ? targetWords : 300;
@@ -156,7 +189,7 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — curiosity/question format]
 3. [Option 3 — trend/news format]
 
-BLOG POST INTRO: [2-3 sentences expanding on the hook with real data]
+${blogSections(location)}
 
 SOURCES USED: [List every URL or domain you pulled data from]
 
@@ -181,7 +214,7 @@ Search for: current median home price in ${location}, days on market, active lis
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.2,
-    max_tokens: 1200,
+    max_tokens: 3200,
   };
 }
 
@@ -221,7 +254,7 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — comparison or ranking angle]
 3. [Option 3 — "hidden gem" or discovery angle]
 
-BLOG POST INTRO: [2-3 sentences that could open a blog post about moving to this area]
+${blogSections(location)}
 
 SOURCES USED: [List the domains you pulled data from]
 
@@ -245,7 +278,7 @@ Search for: "${city} ${state} school district name", "${city} ${state} school di
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.3,
-    max_tokens: 1200,
+    max_tokens: 3200,
   };
 }
 
@@ -293,7 +326,7 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — "don't miss" angle]
 3. [Option 3 — community character angle]
 
-BLOG POST INTRO: [2-3 sentences introducing a blog post about events in this area this month]
+${blogSections(location)}
 
 SOURCES USED: [List which platforms each event came from]
 
@@ -319,7 +352,7 @@ Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${
     web_search_options: { search_context_size: "high" },
     return_citations: true,
     temperature: 0.4,
-    max_tokens: 1400,
+    max_tokens: 3400,
   };
 }
 
@@ -363,11 +396,7 @@ VIDEO TITLE OPTIONS:
 2. [Option 2 — curiosity or question format]
 3. [Option 3 — "did you know" or discovery angle]
 
-BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting and no rhetorical questions.]
-
-BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard. Use 4-6 section headings, each on its own line and prefixed exactly "H2: " — the words after that prefix are the heading. Write each heading as the question a reader would actually type or say out loud, naming the town ("H2: What is happening to prices in Blue Bell?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips. Under each heading, 2-4 short paragraphs. Name the town this article is about naturally throughout, along with any neighborhoods and landmarks. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.]
-
-BLOG POST CONCLUSION: [80-120 words summarizing the practical takeaway and closing with the single clear next step a reader should take.]
+${blogSections("the town this article is about")}
 
 PRIMARY LOCATION: [The single place this script is actually about, as "City, ST". Take it from the topic itself whenever the topic names one.]
 
