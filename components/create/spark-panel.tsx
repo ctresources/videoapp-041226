@@ -68,22 +68,25 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
     // write, paper where you choose.
     <section
       id="spark-panel"
-      className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-4 sm:px-5"
+      // Tightened once every topic was on screen at once. Six cards could
+      // afford card-sized padding; thirty chips cannot, and the panel is a
+      // list to scan rather than a thing to admire.
+      className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-3.5 sm:px-5"
     >
-      <p className="text-[17px] font-semibold text-spark-ink">
+      <p className="text-[15px] font-semibold text-spark-ink">
         Topics, ideas &amp; templates to spark you
       </p>
 
-      <div className="mt-3 flex flex-col gap-3.5">
+      <div className="mt-2.5 flex flex-col gap-2.5">
         {GROUPS.map(({ key, label }) => {
           const items = CONTENT_TEMPLATES.filter((t) => t.category === key);
           if (items.length === 0) return null;
           return (
             <div key={key}>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-faint">
+              <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-spark-ink-faint">
                 {label}
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {items.map((t) => (
                   <button
                     key={t.id}
@@ -92,7 +95,7 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
                       onSelect(substitutePlaceholders(t.topic, city?.trim(), state?.trim()), t.topic)
                     }
                     title={t.description}
-                    className="rounded-full border border-spark-rule bg-white px-3.5 py-2 text-[13px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber"
+                    className="rounded-full border border-spark-rule bg-white px-2.5 py-1 text-[12px] font-medium leading-[1.35] text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber"
                   >
                     {SHORT_LABELS[t.id] ?? t.label}
                   </button>
