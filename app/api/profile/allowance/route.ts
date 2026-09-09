@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
+import { freeTrialLocked } from "@/lib/utils/free-trial";
 
 /**
  * The caller's remaining short/long videos.
@@ -16,7 +17,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role`)
+    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at`)
     .eq("id", user.id)
     .single();
 
@@ -32,5 +33,12 @@ export async function GET() {
     long: availableFor(profile as never, "long"),
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
+    // So the Create screen can mark the Blog post tile locked BEFORE someone
+    // picks it, waits a minute for a script, and lands on a Share Kit with no
+    // article in it and nothing saying why.
+    trialLocked: !isAdmin && freeTrialLocked(
+      profile.first_video_generated_at as string | null,
+      profile.subscription_tier as string | null,
+    ),
   });
 }

@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { targetWords, maxWords, clampScript, type VideoLength } from "@/lib/utils/video-length";
+import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -99,13 +100,30 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, company_name, phone, company_phone, website, subscription_tier")
+    .select("full_name, company_name, phone, company_phone, website, subscription_tier, role, first_video_generated_at")
     .eq("id", user.id)
     .single();
 
   if (!profile) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
+
+  /**
+   * Whether the article rides along with this script.
+   *
+   * The route itself stays open whatever the answer — it has to, or a free
+   * account could never generate the one video that starts its own 30-day
+   * clock (see free-trial.ts). So the gate lands on the blog fields rather
+   * than on the request: the script writes, the video renders, the article is
+   * simply not included once the window has closed.
+   *
+   * Both doors, deliberately. Gating only the standalone writer would leave
+   * the same free article one click away — pick an avatar, generate, never
+   * render.
+   */
+  const p = profile as { role?: string | null; subscription_tier?: string | null; first_video_generated_at?: string | null };
+  const blogAllowed = p.role === "admin"
+    || !freeTrialLocked(p.first_video_generated_at, p.subscription_tier);
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
   // Script length follows the video the user asked for: a long video needs a
@@ -160,9 +178,12 @@ export async function POST(req: NextRequest) {
     description: parsed.description,
     hashtags: parsed.hashtags,
     keywords: parsed.keywords,
-    blog_intro: parsed.blog_intro,
-    blog_body: parsed.blog_body,
-    blog_conclusion: parsed.blog_conclusion,
+    // Empty rather than absent when the trial has closed: the Share Kit reads
+    // these to decide whether to show the article or offer to write one, and
+    // an empty string is the same "no article yet" it already handles.
+    blog_intro: blogAllowed ? parsed.blog_intro : "",
+    blog_body: blogAllowed ? parsed.blog_body : "",
+    blog_conclusion: blogAllowed ? parsed.blog_conclusion : "",
     sources: parsed.sources,
     raw: parsed.raw,
     video_type: parsed.video_type,
@@ -220,7 +241,9 @@ export async function POST(req: NextRequest) {
     meta_description: parsed.description || parsed.hook,
     keywords: parsed.keywords,
     hashtags: ytMeta?.hashtags?.length ? ytMeta.hashtags : parsed.hashtags,
-    blog_intro: parsed.blog_intro,
+    // seo_data carries a copy of the opening paragraph, so it follows the
+    // same rule — otherwise half the article would survive the gate.
+    blog_intro: blogAllowed ? parsed.blog_intro : "",
     sources: parsed.sources,
     youtube_title: ytMeta?.youtube_title || parsed.title,
     youtube_description: ytMeta?.youtube_description || parsed.description || parsed.hook,

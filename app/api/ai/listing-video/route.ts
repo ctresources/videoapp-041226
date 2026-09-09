@@ -9,6 +9,7 @@ import {
 } from "@/lib/utils/video-length";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { parseCityState } from "@/lib/utils/parse-address";
+import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy, plainCopyAll } from "@/lib/utils/copy-style";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 
@@ -280,7 +281,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select(`full_name, company_name, phone, company_phone, website, location_city, location_state, subscription_tier, role, ${ALLOWANCE_SELECT}`)
+    .select(`full_name, company_name, phone, company_phone, website, location_city, location_state, subscription_tier, role, first_video_generated_at, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
 
@@ -412,9 +413,23 @@ export async function POST(req: NextRequest) {
     return null;
   });
 
-  const blog = await generateListingBlog(
-    listing, listingCity, listingState, prof.full_name || undefined, isUnbranded,
+  /**
+   * The article, unless the free window has closed.
+   *
+   * Skipped rather than refused, and skipped before the call rather than
+   * after — this is a separate Perplexity request, so a locked account should
+   * not pay for prose nobody is going to be given. The listing video itself
+   * carries on exactly as before.
+   */
+  const blogAllowed = isAdmin || !freeTrialLocked(
+    (profile as { first_video_generated_at?: string | null }).first_video_generated_at,
+    tier,
   );
+  const blog = blogAllowed
+    ? await generateListingBlog(
+        listing, listingCity, listingState, prof.full_name || undefined, isUnbranded,
+      )
+    : null;
 
   // See generate-script: the thumbnail URL is derived from the project id at
   // read time now, not frozen into seo_data with the hook in its query string.

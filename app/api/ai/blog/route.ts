@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateBlogFromScript } from "@/lib/api/blog-writer";
+import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { ensureVideoSrt } from "@/lib/utils/video-srt";
 import { parseSrt, srtToPlainText } from "@/lib/utils/srt";
 
@@ -34,6 +35,14 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Same 30-day window as camera recording and the AI Tools. Unlike those,
+  // this one has a second door — the article that rides along with a script —
+  // which is closed in generate-location-script and listing-video by dropping
+  // the blog fields rather than by refusing the request, because those routes
+  // have to stay open for the free video that starts the clock.
+  const gate = await freeTrialGateResponse(user.id);
+  if (gate) return gate;
 
   const { projectId, force } = (await req.json()) as { projectId?: string; force?: boolean };
   if (!projectId) {

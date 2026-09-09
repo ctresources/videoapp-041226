@@ -246,7 +246,7 @@ function CreatePageInner() {
    * and nothing called it. A zero balance was discovered at Generate, after
    * the market, the topic, the recording and the style had all been chosen.
    */
-  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -414,7 +414,7 @@ function CreatePageInner() {
   useEffect(() => {
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited }); })
+      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited, trialLocked: !!d.trialLocked }); })
       .catch(() => { /* the screen still works; it just cannot warn early */ });
   }, []);
 
@@ -1131,6 +1131,14 @@ function CreatePageInner() {
    * Only for the routes that actually spend one — filming yourself is free,
    * and so is the photo reel, so neither should be warned off.
    */
+  /**
+   * The article is inside the same 30-day free window as camera recording and
+   * the AI Tools — unlocked by generating the free video, then 30 days.
+   * Null while the allowance is still loading, so the tile does not flash
+   * "locked" at a paying customer on every page load.
+   */
+  const blogTrialLocked = !!allowance?.trialLocked;
+
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
     && inputMode !== "camera";
@@ -1273,10 +1281,16 @@ function CreatePageInner() {
             {
               key: "blog" as const,
               label: "Blog post",
-              desc: "An article for your site",
+              // Said on the tile, before a minute is spent writing a script
+              // that arrives with no article attached and nothing explaining
+              // the gap. The 30-day window is the same one camera recording
+              // and the AI Tools run on.
+              desc: blogTrialLocked
+                ? "Free trial ended — pick a plan"
+                : "An article for your site",
               Icon: FileText,
               free: true,
-              cost: "Free",
+              cost: blogTrialLocked ? "Locked" : "Included",
             },
           ]).map(({ key, label, desc, Icon, free, cost }) => {
             const active = key === "blog"
@@ -1289,6 +1303,10 @@ function CreatePageInner() {
                 type="button"
                 onClick={() => {
                   if (key === "blog") {
+                    if (blogTrialLocked) {
+                      router.push("/billing");
+                      return;
+                    }
                     setBlogOnly(true);
                     // Neither of the two routes a blog cannot come from. The
                     // camera records rather than writes, and a pasted script

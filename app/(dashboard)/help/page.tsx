@@ -142,7 +142,7 @@ export default function HelpPage() {
               </tbody>
             </table>
             <p className="text-xs text-slate-400 mt-1.5">
-              * Unlimited on any paid plan. On the free 100-agent beta, camera recording — and every AI Tool — is unlimited for 30 days starting the day you generate your free video.
+              * Unlimited on any paid plan. On the free 100-agent beta, camera recording, blog posts and every AI Tool are unlimited for 30 days starting the day you generate your free video.
             </p>
           </div>
 
