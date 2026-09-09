@@ -196,15 +196,23 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
         {TABS.map(({ key, label }) => {
           const on = tab === key;
           return (
+            // The same chip as the six beside it — same radius, padding, type
+            // size and weight, sentence case rather than shouted uppercase.
+            // A black pill next to six white ones read as a different species
+            // of control on a row that is meant to be one row.
+            //
+            // Selected is the app's amber, which is what a chosen thing looks
+            // like everywhere else here, rather than the inverted black that
+            // only this panel used.
             <button
               key={key}
               type="button"
               onClick={() => setTab(key)}
               aria-pressed={on}
-              className={`rounded-full border-[1.5px] px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                 on
-                  ? "border-spark-ink bg-spark-ink text-white"
-                  : "border-spark-rule-dim bg-transparent text-spark-ink-muted hover:border-spark-ink-faint"
+                  ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
+                  : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
               }`}
             >
               {label}
