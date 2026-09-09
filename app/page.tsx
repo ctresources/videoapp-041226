@@ -240,17 +240,23 @@ const steps = [
   {
     step: "01",
     title: "Hit the Mic. Speak, Spark, Share.",
-    description: "Open the app — AI hands you 5 trending local topics before you type a word. Pick one, or speak your own. Talk for 60–90 seconds. No script, no prep, no camera. Just your expertise.",
+    // Was "AI hands you 5 trending local topics". Every topic is on screen
+    // now — twenty-five chips in three groups — rather than five picked for
+    // you behind a tab.
+    description: "Open the app and pick what you're making: your avatar, your own camera, or just a blog post. Twenty-five topics sit right there with your city already filled in — tap one, or speak your own for 60–90 seconds. No script, no prep, no camera.",
   },
   {
     step: "02",
-    title: "AI Builds Your Video Automatically.",
-    description: "Our AI writes your script to Fair Housing guidelines, generates your AI avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video. Zero editing required.",
+    title: "AI Builds It Automatically.",
+    description: "Our AI writes your script to Fair Housing guidelines, generates your avatar speaking in your cloned voice, adds b-roll and captions, and produces a broadcast-quality video — vertical for Reels and Shorts, or horizontal for YouTube. Zero editing required. Prefer to be on camera? The teleprompter is free and unlimited.",
   },
   {
     step: "03",
     title: "Publish. Rank. Stay Top-of-Mind.",
-    description: "One click publishes to YouTube with SEO-optimized metadata designed to rank in your town. Your LinkedIn post, Instagram caption, and email blurb are already written and waiting to copy.",
+    // The Share Kit, named. It was described as scattered assets — "your
+    // LinkedIn post, Instagram caption and email blurb" — which is a list of
+    // parts rather than the thing you are handed.
+    description: "One click publishes to YouTube with SEO metadata built to rank in your town. Your Share Kit is already written: titles, description, hashtags, LinkedIn post, Instagram caption, email blurb — and a full blog post for your own site, which is the thing an AI assistant can actually quote.",
   },
 ];
 
@@ -708,7 +714,10 @@ export default function LandingPage() {
         <div className="max-w-[1600px] mx-auto">
           <div className="text-center mb-10">
             <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
-            <h2 className="text-4xl font-black text-slate-900 mb-3">From Speak, To AI Script and Video Generated.</h2>
+            {/* "and Video Generated" named one of the three outputs. A blog
+                post is a first-class one now, and the teleprompter route makes
+                a video without generating anything. */}
+            <h2 className="text-4xl font-black text-slate-900 mb-3">From one conversation to a video, a script and a blog post.</h2>
             <p className="text-slate-500">What used to take a full Saturday now takes one conversation.</p>
           </div>
 
@@ -720,16 +729,16 @@ export default function LandingPage() {
               {
                 num: "1",
                 color: "bg-blue-900",
-                title: "Speak your topic",
-                description: "Hit the mic — or pick a trending local topic before you start. Choose your length: a 60-second reel, or a full-length market update up to 8 minutes.",
+                title: "Pick what you're making",
+                description: "Your avatar, your own camera, or just a blog post. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel, or a full market update up to 8 minutes.",
                 photo: "https://images.unsplash.com/photo-1598978996253-dcfb7f324f89?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },
               {
                 num: "2",
                 color: "bg-blue-700",
-                title: "AI builds your video",
-                description: "Script written. AI avatar rendered. Captions added. B-roll included. A broadcast-quality video — fully produced, zero editing.",
+                title: "AI builds it",
+                description: "Script written. Avatar rendered in your cloned voice. Captions added. B-roll included. Vertical for Reels and Shorts, horizontal for YouTube. Fully produced, zero editing — or film it yourself on the free teleprompter.",
                 photo: "https://images.unsplash.com/photo-1614963326505-843868e1d83a?auto=format&fit=crop&w=600&q=80",
                 alt: "AI generating video",
               },
@@ -737,7 +746,7 @@ export default function LandingPage() {
                 num: "3",
                 color: "bg-blue-500",
                 title: "Publish and share",
-                description: "One click to YouTube with SEO-optimized title, description, and tags. Your LinkedIn post and Instagram caption are already written.",
+                description: "One click to YouTube with SEO title, description and tags. Your Share Kit is already written — LinkedIn post, Instagram caption, email blurb, and a full blog post for your own site.",
                 photo: "https://images.unsplash.com/photo-1726066012749-f81bf4422d4e?auto=format&fit=crop&w=600&q=80",
                 alt: "Published video on social",
               },

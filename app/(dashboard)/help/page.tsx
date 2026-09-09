@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import {
-  Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle,
+  Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
 } from "lucide-react";
 
@@ -56,7 +56,7 @@ export default function HelpPage() {
           <h1 className="text-xl font-bold text-spark-ink">How It Works</h1>
         </div>
         <p className="text-sm text-primary-100">
-          From blank account to published video — set up once, then every video takes about 5 minutes of your time.
+          From blank account to published video — set up once, then every video takes about 5 minutes of your time. Or skip the video entirely and just write the blog post.
         </p>
       </div>
 
@@ -115,8 +115,13 @@ export default function HelpPage() {
               </thead>
               <tbody className="text-slate-600">
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">I&apos;ll film it</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Film On Camera</td>
                   <td className="py-2 pr-3">Film yourself with the teleprompter</td>
+                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Blog post</td>
+                  <td className="py-2 pr-3">Words for your own site — no video made at all</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
                 <tr className="border-t border-slate-100">
@@ -147,49 +152,65 @@ export default function HelpPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Step n={6} title="Speak It Or Type It — Your Choice" icon={Sparkles}>
-              On <Link href="/create" className="text-primary-600 font-medium hover:underline">Create Video</Link>,
-              pick <strong>Use My Avatar</strong> or <strong>Film On Camera</strong>, then choose
-              where the script comes from — everything below works either way. On the camera side
-              there is a fifth choice, <strong>Speak naturally</strong>: no script and no
-              teleprompter, you just talk, and we write the title, description and hashtags from
-              what you said. Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
+            <Step n={6} title="Three Questions, Then It Writes" icon={Sparkles}>
+              <Link href="/create" className="text-primary-600 font-medium hover:underline">Create</Link>{" "}
+              asks three things in order. <strong>1 · What are you sparking?</strong> —{" "}
+              <strong>Use My Avatar</strong>, <strong>Film On Camera</strong> or{" "}
+              <strong>Blog post</strong>. <strong>2 · Where should the script begin?</strong> — a
+              topic, your own pasted words, or a listing. <strong>3 · What is it about?</strong>
+            </Step>
+            <Step n={7} title="Speak It Or Type It — Your Choice" icon={Mic}>
+              Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
               <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
               anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
               tone, how long. It fills in whatever it catches and asks a quick follow-up for anything missing,
               then say <strong>&ldquo;SparkReels&rdquo;</strong> — or just say you&apos;re ready — and it writes
-              the script. Prefer typing, or want a suggestion instead of a blank field? Tap a{" "}
-              <strong>Trending here</strong> pick or a <strong>Template</strong> (Real Estate Tips, vlogs,
-              listicles, pros &amp; cons, map videos, home tours — your city auto-fills) and hit{" "}
-              <strong>Next</strong>. Either way, AI researches live market data for your city and
-              writes a broadcast-quality script with real stats.
+              the script. Prefer typing, or want a suggestion instead of a blank field? Every topic
+              is a chip under the box — twenty-five of them in three groups (Real estate tips,
+              Formats, Local events &amp; community), your city filled in automatically. Tap one and
+              it lands in the same box the mic writes into, so you can add to it before you send.
+              Either way, AI researches live market data for your city and writes a
+              broadcast-quality script with real stats.
             </Step>
-            <Step n={7} title="Review & Edit The Script" icon={Wand2}>
+            <Step n={8} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
-              disagree. Edit the script freely; a live word counter keeps you inside the cap (400 words
-              standard, 1,160 for Long). Set your <strong>Call To Action</strong> (pre-filled with your default
-              CTA, localized to this video&apos;s city) — or choose <strong>None</strong> if this one shouldn&apos;t
-              ask for anything. Your <strong>title, description &amp; hashtags</strong> are already generated
-              below the script. Didn&apos;t land right? <strong>Regenerate</strong> redoes the script from the
-              same topic and market — it asks first, since it discards any edits you&apos;ve made.
+              disagree. Edit the script freely; a live word counter keeps you inside the cap. Set your{" "}
+              <strong>Call To Action</strong>, or choose <strong>None</strong> if this one shouldn&apos;t ask
+              for anything. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
+              it discards your edits.
             </Step>
-            <Step n={8} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
-              Pick a <strong>format</strong>: YouTube/Blog (16:9) or Reel (9:16) — both up to 3 minutes with
-              automatic b-roll — or a <strong>Long Video</strong> (up to 8 minutes, using your own photos for
-              visuals; long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own). Pick a{" "}
-              <strong>style</strong> (Voice Only or Avatar + Voice), choose your avatar look, optionally attach
-              photos or documents as b-roll, and hit <strong>Generate</strong>. Rendering time follows the length
-              of the <em>script</em>, not the format — a longer script takes longer regardless of which format
-              you picked, typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long one. Either way you can close the page and watch
-              for it in My Content. If a render ever fails, your allowance is refunded automatically.
+            <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
+              Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
+              <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes with automatic
+              b-roll — or <strong>Longform 16:9</strong> (up to 8 minutes, using your own photos for visuals;
+              long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own).
+              Then <strong>who&apos;s on screen</strong>: Voice only, Avatar + voice, or <strong>I&apos;ll record
+              it</strong>, which is the free way out of this screen — it hands your script and photos to the
+              camera instead of rendering. Attach photos or documents as b-roll, and hit{" "}
+              <strong>Spark Video</strong>. Rendering time follows the length of the <em>script</em>, not the
+              format — typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long
+              one. You can close the page and watch for it in My Content. If a render ever fails, your
+              allowance is refunded automatically.
             </Step>
-            <Step n={9} title="Use Camera — The Free Option" icon={Camera}>
-              Write or Spark a script, tap <strong>Add Channel CTA</strong> to append your closing pitch, then
-              open the camera — or skip straight there with <strong>Record on Camera</strong>, a one-click button
-              on any script or blog post that hands your hook, script and CTA to the teleprompter for you. The{" "}
-              <strong>teleprompter scrolls automatically</strong> while you record in up to 1080p/60fps, for up
-              to <strong>15 minutes</strong> (8–15 min is YouTube&apos;s algorithm sweet spot and unlocks mid-roll
-              ads). Follow the on-screen Tips For Best Video for lighting and framing.
+            <Step n={10} title="Use Camera — The Free Option" icon={Camera}>
+              The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
+              market, how long the script should be, and where the words come from: a topic, a PDF or link, a
+              recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
+              script and no teleprompter at all. Then <strong>how it records</strong> — vertical or horizontal,
+              Branded Look, your photos playing behind you, and <strong>Add Channel CTA</strong> to append your
+              closing pitch. You can also skip straight here with <strong>Record on Camera</strong>, a
+              one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
+              while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
+              YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
+            </Step>
+            <Step n={11} title="Your Share Kit — And A Blog Post" icon={FileText}>
+              Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
+              Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
+              holds a <strong>blog article</strong> — around a thousand words, headings written as the
+              questions people actually ask and answered in the first line, which is the shape an AI assistant
+              quotes. <strong>Copy as HTML</strong> drops it into your website. An AI can&apos;t quote your
+              video; it can quote your page. Blog posts never use a video from your plan, and you can write one
+              without making a video at all — pick <strong>Blog post</strong> on the first question.
             </Step>
           </div>
           <VideoPlaceholder label="Creating A Video" />
@@ -200,12 +221,12 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={10} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={12} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Content</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
             </Step>
-            <Step n={11} title="Everywhere Else" icon={Upload}>
+            <Step n={13} title="Everywhere Else" icon={Upload}>
               Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
               <strong> Instagram caption, LinkedIn post, and email blurb</strong> from the project&apos;s
               Title, Description &amp; Hashtags card.
@@ -219,16 +240,16 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={12} title="The Everyday Tools" icon={Wand2}>
+            <Step n={14} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">AI Tools</Link> to
-              make a video — Create Video generates everything automatically. Use these to iterate: brainstorm
+              make a video — Create generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
               description or 20 fresh tags for any video (including older ones), and name your channel (one-time).
               From any project&apos;s <strong>Title, Description &amp; Hashtags</strong> card, tap{" "}
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.
             </Step>
-            <Step n={13} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            <Step n={15} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
               <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
@@ -245,9 +266,10 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-3">The Weekly Rhythm</h2>
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, and YouTube (Part 1)</li>
-            <li><strong>Weekly:</strong> pick a template or trending topic → generate script → generate video — about 5 minutes of your time</li>
+            <li><strong>Weekly:</strong> tap a topic chip → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
+            <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>
           <Link
             href="/create"
