@@ -22,6 +22,7 @@ import {
   Film,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { showTrialLock } from "@/lib/utils/trial-lock";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
@@ -840,7 +841,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       if (openShare) setShowPublish(true);
       return videoId;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      const payload = err instanceof Error
+        ? { error: err.message, code: (err as Error & { code?: string }).code }
+        : null;
+      if (!showTrialLock(payload)) {
+        toast.error(err instanceof Error ? err.message : "Upload failed");
+      }
       return null;
     } finally {
       setSaving(false);

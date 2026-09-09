@@ -1169,7 +1169,7 @@ function CreatePageInner() {
    * Null while the allowance is still loading, so the tile does not flash
    * "locked" at a paying customer on every page load.
    */
-  const blogTrialLocked = !!allowance?.trialLocked;
+  const trialLocked = !!allowance?.trialLocked;
 
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
@@ -1304,13 +1304,18 @@ function CreatePageInner() {
             {
               key: "film" as const,
               label: "Film On Camera",
+              // Said here because the alternative is finding out at the end.
+              // Nothing checks the window before the camera opens, so a locked
+              // user could record fifteen minutes, watch the upload succeed,
+              // and meet the 403 only at the save — with the take gone and no
+              // copy anywhere but the tab they are about to close.
               // "Your voice" rather than "your camera": the camera is implied
               // by the label, and what actually differs from the other tile is
               // whose voice comes out of the video.
-              desc: "Your voice + teleprompter",
+              desc: trialLocked ? "Free trial ended — pick a plan" : "Your voice + teleprompter",
               Icon: Video,
               free: true,
-              cost: "Free",
+              cost: trialLocked ? "Locked" : "Free",
             },
             {
               key: "blog" as const,
@@ -1319,12 +1324,12 @@ function CreatePageInner() {
               // that arrives with no article attached and nothing explaining
               // the gap. The 30-day window is the same one camera recording
               // and the AI Tools run on.
-              desc: blogTrialLocked
+              desc: trialLocked
                 ? "Free trial ended — pick a plan"
                 : "An article for your site",
               Icon: FileText,
               free: true,
-              cost: blogTrialLocked ? "Locked" : "Included",
+              cost: trialLocked ? "Locked" : "Included",
             },
           ]).map(({ key, label, desc, Icon, free, cost }) => {
             const active = key === "blog"
@@ -1337,7 +1342,7 @@ function CreatePageInner() {
                 type="button"
                 onClick={() => {
                   if (key === "blog") {
-                    if (blogTrialLocked) {
+                    if (trialLocked) {
                       router.push("/billing");
                       return;
                     }
@@ -1350,6 +1355,10 @@ function CreatePageInner() {
                       setInputMode("script");
                       setLastSparkTab("script");
                     }
+                    return;
+                  }
+                  if (key === "film" && trialLocked) {
+                    router.push("/billing");
                     return;
                   }
                   setBlogOnly(false);

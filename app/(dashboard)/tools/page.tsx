@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { showTrialLock } from "@/lib/utils/trial-lock";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner" | "answers";
 
@@ -212,7 +213,10 @@ function TagGenerator({ projects, initialProjectId }: { projects: Project[]; ini
         body: JSON.stringify({ title }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setTags(data.tags);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate tags");
@@ -349,7 +353,10 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
         body: JSON.stringify({ title, script, ...brief }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setResult(data);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate description");
@@ -502,7 +509,10 @@ function TitleGenerator({
         body: JSON.stringify({ topic, city, state, ...brief }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setTitles(data.titles);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate titles");
@@ -616,7 +626,10 @@ function ScriptGenerator({
         body: JSON.stringify({ topic, city, state, videoType, ...brief }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setResult(data);
       setActiveHook(0);
     } catch (e) {
@@ -738,7 +751,10 @@ function ChannelNameGenerator() {
         body: JSON.stringify({ agentName, city, state, niche }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setNames(data.names);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate names");
@@ -831,7 +847,10 @@ function AnswerBlocksGenerator() {
         body: JSON.stringify({ agentName, city, state, niche, brokerage }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setBlocks(data.blocks);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate answer blocks");
@@ -1118,7 +1137,10 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setThumbUrl(data.url);
       if (data.headline) setHeadline(data.headline);
       if (data.backgroundUrl) setBgUrl(data.backgroundUrl);
@@ -1419,7 +1441,10 @@ function BannerGenerator() {
         body: JSON.stringify({ ...fields, palette, photoUrls: photos }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
       setBannerUrl(data.url);
       toast.success("Banner generated!");
     } catch (e) {
@@ -1691,6 +1716,16 @@ export default function ToolsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
+  // Every tool on this page runs behind the free-trial gate. Without this the
+  // page looked entirely open: fill in the topic, press generate, get a 403.
+  const [trialLocked, setTrialLocked] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setTrialLocked(!!d.trialLocked); })
+      .catch(() => { /* the tools still say so on the 403 */ });
+  }, []);
 
   // Deep links from the project editor: /tools?tab=description&project=<id>
   // (window.location keeps this client page free of a useSearchParams Suspense boundary)
@@ -1734,6 +1769,21 @@ export default function ToolsPage() {
         </div>
         <p className="text-sm text-primary-100 mt-1">Supercharge your content creation with AI</p>
       </div>
+
+      {trialLocked && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <p className="text-sm text-amber-900">
+            <span className="font-semibold">Your free trial has ended.</span>{" "}
+            The AI Tools are included on every paid plan.
+          </p>
+          <Link
+            href="/billing"
+            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+          >
+            See plans
+          </Link>
+        </div>
+      )}
 
       {/* How-to-use workflow panel */}
       {showHelp && <HowToUsePanel onClose={() => setShowHelp(false)} />}

@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { showTrialLock } from "@/lib/utils/trial-lock";
 import { joinHookAndScript, dropDuplicateHook } from "@/lib/utils/script-assembly";
 
 /** Safely parse JSON from a fetch Response — returns null if the body is HTML/empty */
@@ -1679,7 +1680,10 @@ export default function ProjectEditorPage() {
         body: JSON.stringify({ projectId: project.id }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Couldn't write the article.");
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data?.error || "Couldn't write the article.");
+      }
       const blog = data.blog as { intro: string; body: string; conclusion: string };
       setProject((p) => p ? {
         ...p,

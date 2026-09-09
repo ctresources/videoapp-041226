@@ -87,7 +87,14 @@ export async function uploadCameraRecording(
     body: JSON.stringify({ storagePath: urlData.path, ...opts }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to save video");
+  if (!res.ok) {
+    // The gate's `code` is the difference between a toast someone can act on
+    // and one they cannot, and throwing a bare Error threw it away. Attached
+    // to the error so the recorder can offer the plan page.
+    const err = new Error(data.error || "Failed to save video") as Error & { code?: string };
+    if (data.code) err.code = data.code;
+    throw err;
+  }
 
   return {
     videoId: data.videoId as string,
