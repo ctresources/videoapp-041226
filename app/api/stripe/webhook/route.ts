@@ -3,6 +3,7 @@ import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
 import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
+import { notifyBillingEvent, type BillingEventKind } from "@/lib/email";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,48 @@ async function updateProfile(
   updates: Record<string, unknown>
 ) {
   await admin.from("profiles").update(updates).eq("id", userId);
+}
+
+/**
+ * Tell the owner a billing thing happened.
+ *
+ * Every one of these used to be visible only inside Stripe. A cancellation
+ * you find out about a week later is a conversation you have already lost.
+ *
+ * Awaited rather than fired and forgotten: this runs in a serverless handler
+ * that can be frozen the moment it responds, and an un-awaited fetch is the
+ * classic way a notification silently never leaves. notifyBillingEvent
+ * swallows its own errors, so awaiting it cannot fail the webhook and make
+ * Stripe replay the event.
+ */
+async function notifyBilling(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  kind: BillingEventKind,
+  extra: { tier?: string | null; amount?: string | null; periodEnd?: string | null } = {},
+) {
+  const { data } = await admin
+    .from("profiles")
+    .select("full_name, subscription_tier")
+    .eq("id", userId)
+    .maybeSingle();
+  const p = data as { full_name: string | null; subscription_tier: string | null } | null;
+
+  // profiles has no email column — auth.users owns it.
+  let email: string | null = null;
+  try {
+    const { data: u } = await admin.auth.admin.getUserById(userId);
+    email = u?.user?.email ?? null;
+  } catch { /* a missing email is not worth losing the alert over */ }
+
+  await notifyBillingEvent({
+    kind,
+    name: p?.full_name ?? null,
+    email,
+    tier: extra.tier ?? p?.subscription_tier ?? null,
+    amount: extra.amount ?? null,
+    periodEnd: extra.periodEnd ?? null,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -151,6 +194,16 @@ export async function POST(req: NextRequest) {
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         cancel_at_period_end: sub.cancel_at_period_end,
       });
+
+      // Sent here rather than on subscription.created: this is the branch that
+      // knows the plan and fires once, where created and updated both arrive
+      // for a single checkout and would have sent the same alert twice.
+      await notifyBilling(admin, userId, "subscribed", {
+        tier: planInfo?.tier ?? null,
+        amount: typeof item?.price.unit_amount === "number"
+          ? `$${(item.price.unit_amount / 100).toFixed(2)}${sub.status === "trialing" ? " (after trial)" : ""}`
+          : null,
+      });
       break;
     }
 
@@ -178,6 +231,26 @@ export async function POST(req: NextRequest) {
           long_credits_remaining: planInfo?.longVideos ?? 0,
         }),
       });
+
+      /**
+       * Only on the transition, not on every update.
+       *
+       * subscription.updated fires for renewals, price changes and card
+       * updates too. previous_attributes carries cancel_at_period_end only
+       * when that field actually changed in this event, so this is the one
+       * moment somebody clicked cancel — and the one worth an email, because
+       * they still have access and can still be reached.
+       */
+      const cancelJustScheduled =
+        sub.cancel_at_period_end === true
+        && (event.data.previous_attributes as Record<string, unknown> | undefined)
+             ?.cancel_at_period_end === false;
+      if (cancelJustScheduled) {
+        await notifyBilling(admin, userId, "cancel_scheduled", {
+          tier: planInfo?.tier ?? null,
+          periodEnd: periodEnd ? new Date(periodEnd * 1000).toDateString() : null,
+        });
+      }
       break;
     }
 
@@ -197,6 +270,13 @@ export async function POST(req: NextRequest) {
         credits_remaining: 0,
         long_credits_remaining: 0,
       });
+
+      // The plan comes off the subscription, not the profile: updateProfile
+      // has already set the tier to "free" by this line, so reading it back
+      // would report what they are now rather than what they just left.
+      await notifyBilling(admin, userId, "canceled", {
+        tier: tierFromPriceId(sub.items.data[0]?.price.id ?? "")?.tier ?? null,
+      });
       break;
     }
 
@@ -210,6 +290,11 @@ export async function POST(req: NextRequest) {
         .limit(1);
       if (profiles?.[0]) {
         await updateProfile(admin, profiles[0].id, { subscription_status: "past_due" });
+        await notifyBilling(admin, profiles[0].id, "payment_failed", {
+          amount: typeof invoice.amount_due === "number"
+            ? `$${(invoice.amount_due / 100).toFixed(2)}`
+            : null,
+        });
       }
       break;
     }

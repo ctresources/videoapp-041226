@@ -184,3 +184,98 @@ export async function notifyAffiliateApproved({
     }),
   }).catch(() => {});
 }
+
+/**
+ * A billing event worth knowing about the moment it happens.
+ *
+ * Every one of these was previously invisible outside the Stripe dashboard:
+ * a subscription started, a card failed, someone scheduled a cancellation, or
+ * a subscription ended. A cancellation you find out about a week later is a
+ * conversation you have already lost.
+ *
+ * Deliberately one function rather than four. They differ only in a subject
+ * line and a sentence, and four near-identical senders is four places to
+ * update when the address changes.
+ */
+export type BillingEventKind =
+  | "subscribed"
+  | "cancel_scheduled"
+  | "canceled"
+  | "payment_failed";
+
+const BILLING_COPY: Record<BillingEventKind, { subject: string; line: string; urgent: boolean }> = {
+  subscribed: {
+    subject: "New subscriber",
+    line: "A subscription just started.",
+    urgent: false,
+  },
+  cancel_scheduled: {
+    subject: "Cancellation scheduled",
+    line: "Someone has scheduled a cancellation. They keep access until the period ends, so there is still time to reach them.",
+    urgent: true,
+  },
+  canceled: {
+    subject: "Subscription canceled",
+    line: "A subscription has ended. Plan allowances are now zero; any purchased add-on videos they bought separately are still on the account.",
+    urgent: true,
+  },
+  payment_failed: {
+    subject: "Payment failed",
+    line: "A payment failed. Stripe will retry, but the account is marked past due in the meantime.",
+    urgent: true,
+  },
+};
+
+export async function notifyBillingEvent({
+  kind,
+  name,
+  email,
+  tier,
+  amount,
+  periodEnd,
+}: {
+  kind: BillingEventKind;
+  name?: string | null;
+  email?: string | null;
+  /** Plan they were on, where the event knows it. */
+  tier?: string | null;
+  /** Formatted for a human — "$189.00" — not cents. */
+  amount?: string | null;
+  /** When their access actually ends, for a scheduled cancellation. */
+  periodEnd?: string | null;
+}) {
+  if (!RESEND_API_KEY) return;
+
+  const copy = BILLING_COPY[kind];
+  const who = name || email || "(unknown account)";
+
+  const rows = [
+    ["Name", name || "(no name)"],
+    ["Email", email || "(no email)"],
+    tier ? ["Plan", tier] : null,
+    amount ? ["Amount", amount] : null,
+    periodEnd ? ["Access until", periodEnd] : null,
+  ].filter(Boolean) as [string, string][];
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: `${copy.urgent ? "⚠️ " : ""}${copy.subject} — ${who}`,
+      html: `
+        <p>${copy.line}</p>
+        <table>
+          ${rows.map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`).join("")}
+        </table>
+      `,
+    }),
+    // Never let a notification failure take down a webhook. Stripe retries any
+    // non-2xx, so a throw here would replay the whole event — re-running the
+    // profile write for the sake of an email that did not send.
+  }).catch(() => {});
+}
