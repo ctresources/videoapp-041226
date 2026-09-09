@@ -329,6 +329,8 @@ export default function ProjectEditorPage() {
   // Previously this started null and forced a choice, which meant a wrong
   // choice produced a stock-footage video with no hint why.
   const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
+  /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
+  const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -653,7 +655,9 @@ export default function ProjectEditorPage() {
       // The last five are for the teleprompter's branded composite — logo,
       // headshot, licence line and market on the end card. The editor had
       // never needed them because its recorder composited nothing.
-      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state")
+      // The last four decide whether the "add your photos and voice" nudge is
+      // still worth showing — an agent who did both was being told to do them.
+      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state, heygen_photo_id, heygen_digital_twin_group_id, voice_clone_id, heygen_voice_id")
       .eq("id", user.id)
       .single();
     if (data) {
@@ -663,7 +667,16 @@ export default function ProjectEditorPage() {
         full_name?: string | null; company_name?: string | null; phone?: string | null;
         license_number?: string | null; logo_url?: string | null; avatar_url?: string | null;
         location_city?: string | null; location_state?: string | null;
+        heygen_photo_id?: string | null; heygen_digital_twin_group_id?: string | null;
+        voice_clone_id?: string | null; heygen_voice_id?: string | null;
       };
+      // Either route to an avatar counts, and either route to a voice — a
+      // digital twin is as done as a photo avatar, a HeyGen voice as done as
+      // an ElevenLabs clone.
+      setAvatarVoiceReady(
+        !!(p.heygen_photo_id || p.heygen_digital_twin_group_id)
+        && !!(p.voice_clone_id || p.heygen_voice_id),
+      );
       setBrandInfo({
         name: p.full_name,
         brokerage: p.company_name,
@@ -2289,7 +2302,8 @@ export default function ProjectEditorPage() {
             )}
           </Card>
 
-          {/* Settings nudge */}
+          {/* Settings nudge — only while one of the two is still missing */}
+          {!avatarVoiceReady && (
           <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
             <Settings size={16} className="text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
@@ -2302,6 +2316,7 @@ export default function ProjectEditorPage() {
               </p>
             </div>
           </div>
+          )}
 
           {/* Generate video */}
           <Card>
