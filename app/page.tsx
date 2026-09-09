@@ -496,8 +496,14 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
               <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Get Found On AI</p>
+              {/* Was "asking ChatGPT, not Google" — which dismissed a channel
+                  this product also serves. Every video ships with SEO title
+                  and description copy written to rank on Google and YouTube;
+                  a headline saying that surface no longer matters argues
+                  against half of what the plan buys. The urgency is in "before
+                  they ever call you", not in writing Google off. */}
               <h2 className="text-4xl font-black text-slate-900 mb-3">
-                Your next client is asking ChatGPT, not Google.
+                Your next client asks ChatGPT before they ever call you.
               </h2>
               <p className="text-slate-500 mb-4 leading-relaxed">
                 &ldquo;Which Charlotte neighborhood should I buy in with $450k?&rdquo; &ldquo;Is now a
@@ -525,14 +531,23 @@ export default function LandingPage() {
                 invented topics, the questions being typed into ChatGPT — and hands you three videos
                 to record, opening line included, one click to the recording screen.
               </p>
+              {/* Was "An AI cannot quote your video; it can quote your page."
+                  A sharp line that argued against the product: it told a
+                  shopper the free deliverable wins the battle the paid one
+                  cannot, and it contradicted this app's own YouTube prompt,
+                  which writes descriptions specifically so an assistant can
+                  quote them — FAQ block included. Assistants do cite video.
+                  The bundle is the stronger claim and the true one. */}
               <p className="text-slate-500 mb-6 leading-relaxed">
-                <span className="font-semibold text-slate-700">Then, something to quote.</span> Every
-                script comes with a full blog post — around a thousand words, headings written as the
-                questions people actually ask and answered in the first line, which is the shape an
-                assistant lifts and cites. That is{" "}
+                <span className="font-semibold text-slate-700">Then, two places to be quoted.</span>{" "}
+                Your video goes out with a description built around a real FAQ block — the format
+                voice search and AI Overviews pull their answers from. And every script also comes
+                with a full blog post for your own site: around a thousand words, headings written as
+                the questions people actually ask and answered in the first line, which is the shape
+                an assistant lifts and cites. That is{" "}
                 <span className="font-semibold text-slate-700">AEO and GEO</span>, alongside ordinary
-                SEO. Copy it as HTML straight into your site. An AI cannot quote your video; it can
-                quote your page. Blog posts{" "}
+                SEO. Copy it as HTML and paste it in. One recording, two surfaces — and most agents
+                have neither. Blog posts{" "}
                 <span className="font-semibold text-slate-700">never use one of your videos</span> —
                 you can write one without making a video at all.
               </p>
