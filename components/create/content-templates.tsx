@@ -3,9 +3,9 @@
 import {
   Home, Tag, Gem, Truck, TrendingUp, Building2,
   ArrowDownToLine, HardHat, Shield, UserCheck,
-  CalendarDays, Music2, Utensils, Trees, BookOpen,
-  Newspaper, Store, GraduationCap, ShoppingBag, Heart,
-  Sun, Star, Clapperboard, ListOrdered, Scale, Map, DoorOpen, HelpCircle,
+  CalendarDays, Utensils, Trees,
+  Store, GraduationCap, ShoppingBag,
+  Sun, Star, ListOrdered, Scale, Map, DoorOpen, HelpCircle,
 } from "lucide-react";
 
 export type TemplateCategory = "general" | "format" | "location" | "community";
@@ -305,17 +305,6 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     topic: "New real estate development and construction projects planned for {city}, {state} — what's being built and when",
     description: "Mixed-use, residential, commercial projects",
     color: "bg-slate-50", iconColor: "text-slate-500",
-    category: "community",
-    needsLocation: true,
-  },
-  {
-    id: "local_news_roundup",
-    label: "Community News Roundup",
-    emoji: "📰",
-    icon: Newspaper,
-    topic: "Community news roundup for {city}, {state} — infrastructure, city council decisions, parks, and local improvements",
-    description: "Roads, city projects, zoning changes, local gov",
-    color: "bg-spark-amber-tint", iconColor: "text-spark-amber",
     category: "community",
     needsLocation: true,
   },

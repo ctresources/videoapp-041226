@@ -87,7 +87,11 @@ type InputMode = "script" | "camera" | "listing" | "paste";
 // three words and stop — leaving the market, audience and tone to be asked
 // for separately when they could have said it all in one breath.
 /** The common ones, offered first. Anything else you say joins them. */
-const BASE_AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"];
+// "Relocation" earns a place beside the other six: people moving into a market
+// from outside it are a different audience from local buyers — they need the
+// area explained rather than the deal — and it was common enough to be typed
+// in by hand and land in the custom list.
+const BASE_AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "Relocation", "Luxury", "Mixed"];
 const AUDIENCE_KEY = "spark_custom_audiences";
 
 const TRY_LINES = [
