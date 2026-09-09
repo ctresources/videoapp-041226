@@ -161,9 +161,9 @@ export default async function BillingPage({
             <p className="font-semibold text-sm">Added to your account! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
               {searchParams.kind === "long"
-                ? "Your long video is ready to create — head to Create Video."
+                ? "Your long video is ready to create — head to Create."
                 : searchParams.added
-                  ? `${searchParams.added} short video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create Video.`
+                  ? `${searchParams.added} short video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create.`
                   : "Your purchase was added to your account."}
             </p>
           </div>

@@ -1536,9 +1536,9 @@ const HOW_TO_STEPS: { step: string; title: string; when: string; detail: string 
   { step: "1", title: "Title Generator", when: "Before you commit to a topic",
     detail: "Generate 8 title angles (question, data hook, urgency…), pick the strongest — a sharp title keeps the whole video focused." },
   { step: "2", title: "Script Generator", when: "Draft & compare without creating a project",
-    detail: "Iterate on scripts freely here, then paste your favorite into Create Video → Use My Avatar → Paste my script when you're ready to render." },
+    detail: "Iterate on scripts freely here, then paste your favorite into Create → Use My Avatar → Paste my script when you're ready to render." },
   { step: "3", title: "Create Your Video", when: "The main event",
-    detail: "Use the Create Video page — it researches your market and generates the script, title, description, and tags in one flow." },
+    detail: "Use the Create page — it researches your market and generates the script, title, description, and tags in one flow." },
   { step: "4", title: "Description Generator", when: "After the video renders",
     detail: "A keyword-rich YouTube description with an FAQ block — regenerate a better one, or refresh an older video's description." },
   { step: "5", title: "Tag Generator", when: "Same moment — the YouTube upload form",
@@ -1553,12 +1553,12 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
       </button>
       <p className="text-sm font-bold text-brand-text mb-3">How These Tools Fit Your Workflow</p>
 
-      {/* The de-confusion callout — Create Video already does all of this */}
+      {/* The de-confusion callout — Create already does all of this */}
       <div className="flex items-start gap-2.5 p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl mb-4">
         <Video size={15} className="text-spark-blue mt-0.5 shrink-0" />
         <p className="text-sm text-slate-600 leading-relaxed">
           <strong>Making a video? You don&apos;t need to start here.</strong>{" "}
-          <Link href="/create" className="text-spark-blue font-semibold hover:underline">Create Video</Link>{" "}
+          <Link href="/create" className="text-spark-blue font-semibold hover:underline">Create</Link>{" "}
           automatically generates the script, title, description, and tags for every project. These tools
           are your workbench — brainstorm angles, compare versions, or refresh older videos.
         </p>
