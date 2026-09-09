@@ -25,7 +25,7 @@ const painPoints = [
   {
     icon: PenLine,
     pain: "“I sit down to record and have no idea what to say.”",
-    fix: "Two answers: AI hands you five trending local topics before you start, and AI Answer Blocks shows you the exact questions buyers in your market are typing into ChatGPT. Pick one, hit record — the script writes itself.",
+    fix: "Two answers: twenty-five ready-to-record topics sit on the Create screen with your city filled in, and AI Answer Blocks shows you the exact questions buyers in your market are typing into ChatGPT. Tap one, hit record — the script writes itself.",
   },
   {
     icon: TrendingDown,
@@ -40,7 +40,7 @@ const painPoints = [
   {
     icon: Bot,
     pain: "“Buyers ask ChatGPT now — and it's never heard of me.”",
-    fix: "AI Answer Blocks finds the questions your buyers ask AI, then turns each one into a video you can record in a click — plus text for your site so you're the one AI quotes.",
+    fix: "AI Answer Blocks finds the questions your buyers ask AI and turns each one into a video you can record in a click. Every script then comes with a full blog post for your own site, written so an assistant can quote it — which is how you become the answer instead of a name nobody has heard.",
   },
 ];
 
@@ -77,13 +77,13 @@ const segments = [
 
 const features = [
   {
-    title: "AI Topic Radar",
-    description: "Never stare at a blank screen. Before you record, AI scans your local market and hands you 5 trending, ready-to-record topics — tailored to your city this week. Click one. Hit the mic. Done.",
+    title: "Never Stare At A Blank Screen",
+    description: "Twenty-five ready-to-record topics sit on the Create screen with your city already filled in — tips, formats, and local events. Open the camera and AI Topic Radar goes further, scanning your market for what is trending there this week. Tap one. Hit the mic. Done.",
     photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "One Video → Full Content Pack",
-    description: "Every video you create automatically generates a LinkedIn post, Instagram caption, YouTube description, and email newsletter blurb — all copy-ready. One recording session fuels your entire week of content.",
+    title: "One Video → Your Share Kit",
+    description: "Every video you create automatically generates a LinkedIn post, Instagram caption, YouTube description, email newsletter blurb — and a full blog post for your own site. All copy-ready. One recording session fuels your entire week of content.",
     photo: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -131,7 +131,7 @@ const features = [
   },
   {
     title: "8 AI Tools, Included",
-    description: "Channel name, banner, thumbnails, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, free on every plan. Everything you need to launch a channel and get found, without hiring a designer.",
+    description: "Channel name, banner, thumbnails, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, included on every paid plan. Everything you need to launch a channel and get found, without hiring a designer.",
     photo: "https://images.unsplash.com/photo-1497048679117-1a29644559e3?auto=format&fit=crop&w=600&q=80",
   },
   {
