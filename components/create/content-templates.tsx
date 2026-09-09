@@ -204,6 +204,21 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
     category: "format",
     needsLocation: true,
   },
+  {
+    // No price is written into the topic. Hard-coding one would be wrong in
+    // most markets on the first tap, and the chip drops this into an editable
+    // box — so it asks for the local median and the brackets either side, and
+    // the agent can swap in their own number before sending.
+    id: "what_price_buys",
+    label: "What this price buys",
+    emoji: "🏷️",
+    icon: ShoppingBag,
+    topic: "What a given budget actually buys in {city}, {state} right now — walk through the local median price point and the brackets just above and below it, with what a buyer realistically gets at each: size, age, condition, lot, and which neighborhoods are in reach",
+    description: "Show what a budget really gets at today's prices",
+    color: "bg-green-50", iconColor: "text-green-600",
+    category: "format",
+    needsLocation: true,
+  },
 
   // ── Location-specific ─────────────────────────────────────────────────────
   {
