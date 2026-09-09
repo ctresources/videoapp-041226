@@ -243,7 +243,7 @@ const steps = [
     // Was "AI hands you 5 trending local topics". Every topic is on screen
     // now — twenty-five chips in three groups — rather than five picked for
     // you behind a tab.
-    description: "Open the app and pick what you're making: your avatar, your own camera, or just a blog post. Twenty-five topics sit right there with your city already filled in — tap one, or speak your own for 60–90 seconds. No script, no prep, no camera.",
+    description: "Open the app and pick what you're making: your avatar, your own camera, or a blog post on its own. Twenty-five topics sit right there with your city already filled in — tap one, or speak your own for 60–90 seconds. No script, no prep, no camera.",
   },
   {
     step: "02",
@@ -759,7 +759,7 @@ export default function LandingPage() {
                 num: "1",
                 color: "bg-blue-900",
                 title: "Pick what you're making",
-                description: "Your avatar, your own camera, or just a blog post. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel, or a full market update up to 8 minutes.",
+                description: "Your avatar, your own camera, or a blog post on its own. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel, or a full market update up to 8 minutes.",
                 photo: "https://images.unsplash.com/photo-1598978996253-dcfb7f324f89?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },

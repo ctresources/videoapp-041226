@@ -56,7 +56,10 @@ export default function HelpPage() {
           <h1 className="text-xl font-bold text-spark-ink">How It Works</h1>
         </div>
         <p className="text-sm text-primary-100">
-          From blank account to published video — set up once, then every video takes about 5 minutes of your time. Or skip the video entirely and just write the blog post.
+          {/* "Or skip the video entirely" made the video sound like the chore
+              you get to avoid, on a page about making videos. The capability
+              is worth naming; the framing is additive now. */}
+          From blank account to published video — set up once, then every video takes about 5 minutes of your time. You can also write just the blog post, with no video at all.
         </p>
       </div>
 
@@ -208,9 +211,12 @@ export default function HelpPage() {
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
               holds a <strong>blog article</strong> — around a thousand words, headings written as the
               questions people actually ask and answered in the first line, which is the shape an AI assistant
-              quotes. <strong>Copy as HTML</strong> drops it into your website. An AI can&apos;t quote your
-              video; it can quote your page. Blog posts never use a video from your plan, and you can write one
-              without making a video at all — pick <strong>Blog post</strong> on the first question.
+              quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
+              <strong>Copy as HTML</strong> drops it into your website. That gives one recording two places to
+              be quoted from: the video&apos;s own description, which is written with a real FAQ block for
+              voice search, and the article on your own site. Blog posts never use a video from your plan, and
+              you can write one without making a video at all — pick <strong>Blog post</strong> on the first
+              question.
             </Step>
           </div>
           <VideoPlaceholder label="Creating A Video" />
@@ -254,8 +260,10 @@ export default function HelpPage() {
               months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
               <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
               can record right now — including a <strong>Record on Camera</strong> shortcut straight to the
-              teleprompter — and a ready-to-paste <strong>text block</strong> for your website, written the way
-              AI assistants extract and cite answers.
+              teleprompter — and a short ready-to-paste <strong>answer</strong> for your website, written the
+              way AI assistants extract and cite answers. Think of it as the step before everything else:
+              Answer Blocks decides <em>what</em> is worth saying, and the Share Kit&apos;s blog article (step
+              11) is the long version of whatever you then make.
             </Step>
           </div>
           <VideoPlaceholder label="AI Tools" />
