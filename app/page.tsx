@@ -112,8 +112,11 @@ const features = [
     photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "YouTube SEO Rankings",
-    description: "Every video includes an SEO-optimized title, description, tags, and a full blog post — built to rank on YouTube search for your target neighborhood keywords.",
+    title: "A Blog Post With Every Script",
+    // Was buried at the end of a list about YouTube metadata, as "and a full
+    // blog post" — the one deliverable here that lives on the agent's own
+    // site, described as a footnote about someone else's platform.
+    description: "Around a thousand words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. Copy it as HTML into your site. Free on every plan, and you can write one without making a video at all.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -216,6 +219,9 @@ const comparison = [
   { feature: "Long-form video (up to 8 minutes)",     us: true,  a: false, b: true,  c: false },
   { feature: "Channel branding kit (name, banner, thumbnails)", us: true, a: false, b: false, c: false },
   { feature: "AI answer-engine content (get cited by ChatGPT)", us: true, a: false, b: false, c: false },
+  // The video tools compete on video. None of them hand you a page, which is
+  // the only thing on this list an AI assistant can actually quote.
+  { feature: "Blog post written with every script (free)", us: true, a: false, b: false, c: false },
   { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
   { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
   { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
@@ -255,7 +261,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script, free", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -266,7 +272,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script, free", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -277,7 +283,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script, free", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag & channel-name generators", "Thumbnail & YouTube channel banner generator", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -498,10 +504,25 @@ export default function LandingPage() {
                 hands you <span className="font-semibold text-slate-700">three videos to record</span>,
                 opening line included, one click to the recording screen.
               </p>
-              <p className="text-slate-500 mb-6 leading-relaxed">
+              <p className="text-slate-500 mb-4 leading-relaxed">
                 No more guessing what to post. These aren&apos;t invented topics — they&apos;re the
                 questions your buyers are typing into ChatGPT this month. Each one also comes with a
                 text block for your website, written the way AI assistants extract and cite answers.
+              </p>
+              {/* The blog, named. The section was already about being quoted by
+                  AI and already mentioned "a text block for your website" —
+                  which is the article, described as though it were a fragment.
+                  It is a thousand words with question-shaped headings, it is
+                  free, and it is the thing on the site an AI can actually
+                  cite: a video cannot be quoted, a page can. */}
+              <p className="text-slate-500 mb-6 leading-relaxed">
+                And every script comes with a <span className="font-semibold text-slate-700">full
+                blog post</span> — around a thousand words, with the headings written as the
+                questions people actually ask, answered in the first line so an assistant can quote
+                them. Copy it as HTML straight into your site. An AI cannot quote your video; it can
+                quote your page. Blog posts are{" "}
+                <span className="font-semibold text-slate-700">free on every plan</span> and never
+                use one of your videos — you can write one without making a video at all.
               </p>
               <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-xl font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
                 Show Me What My Buyers Are Asking <ArrowRight size={15} />

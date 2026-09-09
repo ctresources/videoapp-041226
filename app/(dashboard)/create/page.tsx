@@ -1210,7 +1210,10 @@ function CreatePageInner() {
             <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
               Speak, Spark, Share
             </span>{" "}
-            your next video?
+            {/* One word, because one word is what is wrong. With the Blog post
+                tile lit three inches below, a headline promising a video names
+                the one thing that is not about to be made. */}
+            your next {blogOnly ? "post" : "video"}?
           </h1>
           {/* The subline that was here before pitched the product to someone
               who has already bought it. This one does a different job: it
@@ -1236,7 +1239,9 @@ function CreatePageInner() {
           rather than only how you appear — so the blog belongs in it, beside
           the two videos, not in the source row below where it was the odd one
           out among three answers to "where do the words come from". */}
-      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you making?" />}
+      {/* "Sparking", not "making" — the product's own verb, the one in the
+          headline above and on the button at the end. */}
+      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you sparking?" />}
       {step === "input" && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {/* Avatar first, because avatar is what the page opens on.
