@@ -1033,6 +1033,9 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   // that aren't one of the avatar looks are tracked here so the picker can show
   // them as a selectable tile.
   const [customPhoto, setCustomPhoto] = useState("");
+  // Typed market for the badge. Empty means "whatever the video already says".
+  const [badgeCity, setBadgeCity] = useState("");
+  const [badgeState, setBadgeState] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
 
@@ -1115,6 +1118,17 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     }
   }
 
+  // Show what the badge will actually say, rather than an empty box the user
+  // has to guess at. The list already carries each project's market, so this
+  // costs no request — and a prefilled field is also the only hint that the
+  // badge is editable at all.
+  useEffect(() => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+    setBadgeCity(project.location_city || "");
+    setBadgeState(project.location_state || "");
+  }, [projectId, projects]);
+
   // reuseBackground=true re-renders just the text/photo over the same scene —
   // takes seconds instead of regenerating a whole new AI background.
   // A custom uploaded photo always wins over both.
@@ -1134,6 +1148,8 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
           photoUrl: photoUrl || undefined,
           photoSide,
           backgroundUrl: customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
+          city: badgeCity.trim() || undefined,
+          state: badgeState.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -1328,6 +1344,33 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
             <p className="text-[11px] text-slate-400 mt-1">To change the photo, pick or upload a different one under &ldquo;Photo On Thumbnail&rdquo; above, then Update Thumbnail.</p>
+
+            {/* The badge was derived and had no way to be corrected: the
+                project's market, else a place found in the title, else the
+                profile's home market. Typing here outranks all three and
+                fixes the project's market at the same time. */}
+            <label className="block text-xs font-semibold text-slate-600 mt-4 mb-1">Market Badge</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={badgeCity}
+                onChange={(e) => setBadgeCity(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
+                placeholder="City or area"
+                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+              />
+              <input
+                type="text"
+                value={badgeState}
+                onChange={(e) => setBadgeState(e.target.value.toUpperCase().slice(0, 2))}
+                onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
+                placeholder="ST"
+                className="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Leave blank to use this video&rsquo;s market. Changing it here also updates the video&rsquo;s market, so titles and descriptions match.
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button

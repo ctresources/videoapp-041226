@@ -23,7 +23,7 @@ import { RenderPipeline } from "@/components/create/render-pipeline";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save,
+  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -331,6 +331,18 @@ export default function ProjectEditorPage() {
   const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
   /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
   const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
+  /**
+   * The video's market, editable in place.
+   *
+   * It decides the CTA, the titles and descriptions, the thumbnail's badge and
+   * what the AI Tools write — and until now the only way to correct a wrong
+   * one was to start the video again. It is shown on every step because a
+   * wrong town is usually noticed while reading the script, not before.
+   */
+  const [editingMarket, setEditingMarket] = useState(false);
+  const [marketCity, setMarketCity] = useState("");
+  const [marketState, setMarketState] = useState("");
+  const [savingMarket, setSavingMarket] = useState(false);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -939,6 +951,32 @@ export default function ProjectEditorPage() {
       return;
     }
     setProject((prev) => (prev ? { ...prev, seo_data: newSeo, ai_script: newAi } : prev));
+  }
+
+  async function saveMarket() {
+    if (!project) return;
+    const city = marketCity.trim();
+    const state = marketState.trim().toUpperCase();
+    if (!city || !state) { toast.error("Enter a city and a state"); return; }
+    setSavingMarket(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("projects")
+        .update({ location_city: city, location_state: state })
+        .eq("id", project.id);
+      if (error) throw new Error(error.message);
+      setProject((prev) => (prev ? { ...prev, location_city: city, location_state: state } : prev));
+      setEditingMarket(false);
+      // Says what it actually affects. "Saved" would leave the user guessing
+      // whether the script they are looking at is about to change (it isn't —
+      // this feeds what gets written from here on).
+      toast.success(`Market set to ${city}, ${state}. New titles, descriptions and thumbnails will use it.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save the market");
+    } finally {
+      setSavingMarket(false);
+    }
   }
 
   async function handleSaveDraft() {
@@ -2031,6 +2069,49 @@ export default function ProjectEditorPage() {
             <span className="spark-surface rounded px-1.5 py-px font-mono text-[9.5px] font-medium uppercase tracking-[0.04em] text-spark-ink-muted">
               {project.status}
             </span>
+
+            {/* Market — shown as a chip, edited in place. */}
+            {editingMarket ? (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={marketCity}
+                  onChange={(e) => setMarketCity(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveMarket(); if (e.key === "Escape") setEditingMarket(false); }}
+                  placeholder="City"
+                  className="w-28 rounded border border-spark-rule px-1.5 py-px text-[11px] focus:outline-none focus:ring-1 focus:ring-spark-amber"
+                />
+                <input
+                  value={marketState}
+                  onChange={(e) => setMarketState(e.target.value.toUpperCase().slice(0, 2))}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveMarket(); if (e.key === "Escape") setEditingMarket(false); }}
+                  placeholder="ST"
+                  className="w-10 rounded border border-spark-rule px-1.5 py-px text-[11px] uppercase focus:outline-none focus:ring-1 focus:ring-spark-amber"
+                />
+                <button
+                  onClick={saveMarket}
+                  disabled={savingMarket}
+                  className="rounded bg-spark-amber px-1.5 py-px text-[10px] font-semibold text-white disabled:opacity-50"
+                >
+                  {savingMarket ? "…" : "Save"}
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => {
+                  setMarketCity(project.location_city || "");
+                  setMarketState(project.location_state || "");
+                  setEditingMarket(true);
+                }}
+                title="Change this video's city and state"
+                className="flex items-center gap-1 rounded px-1.5 py-px text-[11px] text-spark-ink-faint transition-colors hover:bg-spark-surface hover:text-spark-amber"
+              >
+                <MapPin size={10} strokeWidth={1.8} />
+                {project.location_city
+                  ? `${project.location_city}${project.location_state ? `, ${project.location_state}` : ""}`
+                  : "Set market"}
+              </button>
+            )}
           </div>
         </div>
 

@@ -216,6 +216,18 @@ export interface RenderThumbnailOptions {
    * lets the user edit just the text and re-render in seconds.
    */
   backgroundUrl?: string;
+  /**
+   * The market to print on the badge, typed by the user.
+   *
+   * Everything else in the chain is inferred — the project's stored market, a
+   * "City, ST" found in the title, the profile's home market — and inference
+   * has no way to be corrected. This is the correction, so it outranks all
+   * three. When a projectId is given it is also written back to the project,
+   * because a badge that says the wrong town usually means the project's
+   * market is wrong too, and fixing it in one place should fix it in both.
+   */
+  city?: string;
+  state?: string;
 }
 
 /**
@@ -285,8 +297,20 @@ export async function renderAndSaveThumbnail(
   // Market priority: the project's stored market → a "City, ST" mention in
   // the title/headline text itself → the profile's home market.
   const textMarket = extractMarketFromText([sourceTitle, opts.headline].filter(Boolean).join(" "));
-  const city = projCity || textMarket?.city || p?.location_city || undefined;
-  const state = projState || textMarket?.state || p?.location_state || undefined;
+  const typedCity = opts.city?.trim() || "";
+  const typedState = opts.state?.trim() || "";
+  const city = typedCity || projCity || textMarket?.city || p?.location_city || undefined;
+  const state = typedState || projState || textMarket?.state || p?.location_state || undefined;
+
+  // A typed market is a correction to the project, not just to this image.
+  // Written before the render so a failed render still keeps the fix.
+  if (opts.projectId && (typedCity || typedState)) {
+    const patch: Record<string, string> = {};
+    if (typedCity) patch.location_city = typedCity;
+    if (typedState) patch.location_state = typedState;
+    await admin.from("projects").update(patch).eq("id", opts.projectId);
+    console.log(`[thumbnail] Market corrected on project ${opts.projectId}: ${typedCity || "—"}, ${typedState || "—"}`);
+  }
 
   // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
   const sharp = (await import("sharp")).default;
