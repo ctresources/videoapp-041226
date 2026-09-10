@@ -1074,6 +1074,9 @@ export async function POST(req: NextRequest) {
         title,
         callbackUrl,
         callbackId: videoRow.id,
+        // Same id, second purpose: a retried submit returns the first render
+        // rather than paying for a second one.
+        idempotencyKey: videoRow.id,
         // The Video Agent asks for captions in its prompt; Direct Video has no
         // prompt, so the same flag has to be sent to HeyGen explicitly here.
         captions: captions !== false,
@@ -1263,6 +1266,9 @@ export async function POST(req: NextRequest) {
       files: files.length > 0 ? files : undefined,
       callbackUrl,
       callbackId: videoRow?.id,
+      // Same id, second purpose: a retried submit returns the first render
+      // rather than paying for a second one.
+      idempotencyKey: videoRow?.id,
       // Colors, fonts and logo applied by HeyGen rather than requested in the
       // prompt. Null when the agent hasn't picked one — the render is then
       // exactly what it was before.

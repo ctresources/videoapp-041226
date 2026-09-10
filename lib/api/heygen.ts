@@ -702,6 +702,18 @@ export interface GenerateVideoV3Params {
    * either way, and `style` is what actually burns them in.
    */
   captions?: boolean;
+  /**
+   * Makes a retry of this exact submit return the first result instead of
+   * starting a second render.
+   *
+   * This is the one call in the app that spends real money per attempt — a
+   * short Video Agent render is around $5 — so a double-click that beats the
+   * disabled button, or a platform-level retry after a timeout, buys two
+   * videos and two charges for one intent. The video row's id is the right
+   * key: it exists before the submit and is unique per render the user asked
+   * for.
+   */
+  idempotencyKey?: string;
 }
 
 /** Map pixel dimensions to the aspect_ratio string the v3 Videos API expects. */
@@ -747,6 +759,7 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
     headers: {
       "x-api-key": getApiKey(),
       "Content-Type": "application/json",
+      ...(params.idempotencyKey && { "Idempotency-Key": params.idempotencyKey }),
     },
     body: JSON.stringify(body),
   });
@@ -785,6 +798,18 @@ export interface GenerateVideoAgentParams {
   callbackUrl?: string;
   callbackId?: string;
   styleId?: string;
+  /**
+   * Makes a retry of this exact submit return the first result instead of
+   * starting a second render.
+   *
+   * This is the one call in the app that spends real money per attempt — a
+   * short Video Agent render is around $5 — so a double-click that beats the
+   * disabled button, or a platform-level retry after a timeout, buys two
+   * videos and two charges for one intent. The video row's id is the right
+   * key: it exists before the submit and is unique per render the user asked
+   * for.
+   */
+  idempotencyKey?: string;
   /**
    * Applies the account's brand kit — colors, fonts and logo — to everything
    * the agent builds. The prompt previously just asked for the logo to be
@@ -1181,6 +1206,7 @@ export async function generateVideoAgent(
     headers: {
       "x-api-key": getApiKey(),
       "Content-Type": "application/json",
+      ...(params.idempotencyKey && { "Idempotency-Key": params.idempotencyKey }),
     },
     body: JSON.stringify(body),
   });
