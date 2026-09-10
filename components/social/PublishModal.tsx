@@ -122,7 +122,20 @@ export function PublishModal({
    * means both routes publish the same thing, and the box shows it first.
    */
   useEffect(() => {
-    if (defaultDescription || defaultCaption || defaultTags.length) return;
+    // Always fetched, never skipped.
+    //
+    // This used to return early whenever the caller passed any copy, which My
+    // Content always does — so the request never went out on the ordinary
+    // route, only for dubs and the camera recorder. That was harmless while
+    // the response held nothing but fallbacks for text already on screen. It
+    // stopped being harmless the moment the response also carried the
+    // project's photos and market, which have no caller-supplied equivalent:
+    // they simply never arrived, and a picker with nothing to show renders as
+    // no picker at all.
+    //
+    // The caller's copy still wins — that guard moved down to the three fields
+    // it was actually protecting.
+    const callerSuppliedCopy = !!(defaultDescription || defaultCaption || defaultTags.length);
     let cancelled = false;
     fetch(`/api/social/publish-defaults?videoId=${encodeURIComponent(videoId)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -138,11 +151,15 @@ export function PublishModal({
 
 ${hashes.join(" ")}` : hashes.join(" ");
         };
-        if (d.description) setDescription(withFetchedTags(d.description));
-        if (d.caption) setCaption(withFetchedTags(d.caption));
-        if (d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
+        if (!callerSuppliedCopy) {
+          if (d.description) setDescription(withFetchedTags(d.description));
+          if (d.caption) setCaption(withFetchedTags(d.caption));
+          if (d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
+        }
         // videoTitle="" is how a caller says "you resolve it" — see the dub
         // branch in My Content.
+        // A caller-passed thumbnail already wins over this one downstream, so
+        // this is a fallback either way and is safe to always accept.
         if (d.thumbnailUrl) setFetchedThumbnail(d.thumbnailUrl);
         setProjectId(d.projectId ?? null);
         setPhotos(Array.isArray(d.photos) ? d.photos : []);
