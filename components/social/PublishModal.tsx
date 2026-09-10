@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Sparkles
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Sparkles, User
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -109,6 +109,16 @@ export function PublishModal({
   // is how it went unfixed.
   const [badgeCity, setBadgeCity] = useState("");
   const [badgeState, setBadgeState] = useState("");
+  /**
+   * Who appears on the thumbnail.
+   *
+   * "" means "whoever this project already used, else the profile headshot" —
+   * the render resolves that itself, so the empty value is not a null choice
+   * but the deliberate one, and picking a backdrop no longer has to say
+   * anything about the person.
+   */
+  const [looks, setLooks] = useState<{ id: string; name: string; preview_image_url: string }[]>([]);
+  const [cutout, setCutout] = useState("");
   /** Stops the auto-build from running twice, and from re-running on a swap. */
   const autoBuilt = useRef(false);
 
@@ -178,7 +188,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
    * Passing backgroundUrl skips the AI scene entirely, so this is a crop and a
    * text pass rather than an image generation — seconds, not a minute.
    */
-  async function buildPhotoThumb(photo: string, quiet = false) {
+  /**
+   * @param nextCutout the person to use, when it is being changed in the same
+   *   click. setCutout does not apply until the next render, so reading the
+   *   state here would send the previous pick — the tile would highlight and
+   *   the image would not change.
+   */
+  async function buildPhotoThumb(photo: string, quiet = false, nextCutout?: string) {
     if (!projectId || thumbBusy) return;
     setThumbBusy(true);
     setActivePhoto(photo || null);
@@ -198,6 +214,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
           // instead of reverting to what the project used to say.
           ...(badgeCity.trim() ? { city: badgeCity.trim() } : {}),
           ...(badgeState.trim() ? { state: badgeState.trim() } : {}),
+          // Omitted when empty on purpose: the render then keeps whoever this
+          // project last used rather than resetting to the headshot.
+          ...((nextCutout ?? cutout) ? { photoUrl: nextCutout ?? cutout } : {}),
         }),
       });
       const data = await res.json();
@@ -228,6 +247,16 @@ ${hashes.join(" ")}` : hashes.join(" ");
     buildPhotoThumb(photos[0], true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasStoredThumb, projectId, photos]);
+
+  useEffect(() => {
+    fetch("/api/avatar/looks")
+      .then((r) => (r.ok ? r.json() : { looks: [] }))
+      .then((d) => setLooks(
+        ((d.looks || []) as { id: string; name: string; preview_image_url: string | null }[])
+          .filter((l): l is { id: string; name: string; preview_image_url: string } => !!l.preview_image_url),
+      ))
+      .catch(() => { /* the picker just shows the default tile */ });
+  }, []);
 
   useEffect(() => {
     fetch("/api/social/accounts")
@@ -480,6 +509,43 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       >
                         {thumbBusy ? "…" : "Update"}
                       </button>
+                    </div>
+                  )}
+
+                  {/* Who is on it. Separate from the backdrop strip below,
+                      because they are two different questions and answering
+                      one used to silently answer the other. */}
+                  {projectId && looks.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[11px] text-slate-400 mb-1.5">Who appears on it</p>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        <button
+                          type="button"
+                          onClick={() => { setCutout(""); buildPhotoThumb(activePhoto || photos[0] || "", false, ""); }}
+                          disabled={thumbBusy}
+                          title="Keep whoever this thumbnail already uses"
+                          className={`h-12 w-12 flex-none rounded-full border-2 flex items-center justify-center bg-slate-50 transition-colors disabled:opacity-50 ${
+                            cutout === "" ? "border-primary-500" : "border-transparent hover:border-slate-300"
+                          }`}
+                        >
+                          <User size={16} className="text-slate-400" />
+                        </button>
+                        {looks.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => { setCutout(l.preview_image_url); buildPhotoThumb(activePhoto || photos[0] || "", false, l.preview_image_url); }}
+                            disabled={thumbBusy}
+                            title={l.name}
+                            className={`h-12 w-12 flex-none overflow-hidden rounded-full border-2 transition-colors disabled:opacity-50 ${
+                              cutout === l.preview_image_url ? "border-primary-500" : "border-transparent hover:border-slate-300"
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={l.preview_image_url} alt={l.name} className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
