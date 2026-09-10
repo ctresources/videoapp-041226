@@ -1176,6 +1176,12 @@ export async function POST(req: NextRequest) {
         render_status: "rendering",
         metadata: {
           dimension, orientation, city, state, title,
+          // The photos this video was actually built from, cropped to frame.
+          // The Direct path has always recorded these; the agent path did not,
+          // so the Share Kit had no idea a listing video even had photos and
+          // fell back to the plain text card. Same key, so one reader serves
+          // both paths.
+          ...(combinedPhotos.length > 0 && { photo_urls: combinedPhotos }),
           // Mixed under the voiceover by the webhook at store time.
           ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
           // The prompt asks the Video Agent for burned captions, but that is a

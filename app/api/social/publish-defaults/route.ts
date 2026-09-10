@@ -42,14 +42,14 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url)")
+    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url, listing_data)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
-  const proj = (video as { projects?: { title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string } | null }).projects ?? null;
+  const proj = (video as { projects?: { title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string; listing_data?: Record<string, unknown> | null } | null }).projects ?? null;
   const seo = (proj?.seo_data ?? {}) as Seo;
   const ai = (proj?.ai_script ?? {}) as Script;
 
@@ -76,9 +76,33 @@ export async function GET(req: NextRequest) {
    * YouTube with an English title and description. The translate route writes
    * publish_title / publish_description onto the video row, and they win here.
    */
-  const vidMeta = (video as { metadata?: { publish_title?: string; publish_description?: string } | null }).metadata ?? null;
+  const vidMeta = (video as { metadata?: { publish_title?: string; publish_description?: string; photo_urls?: string[] } | null }).metadata ?? null;
+
+  /**
+   * The photos available as a thumbnail backdrop, best first.
+   *
+   * The video's own list leads because those are the pictures a viewer just
+   * watched — a thumbnail drawn from one of them is a promise the video keeps.
+   * The listing's remaining photos follow, so a video that used five of twelve
+   * still offers all twelve to choose from.
+   */
+  const usedPhotos = Array.isArray((vidMeta as { photo_urls?: unknown } | null)?.photo_urls)
+    ? ((vidMeta as unknown as { photo_urls: unknown[] }).photo_urls.filter(
+        (u): u is string => typeof u === "string" && u.startsWith("http"),
+      ))
+    : [];
+  const listingPhotos = Array.isArray(proj?.listing_data?.photoUrls)
+    ? (proj!.listing_data!.photoUrls as unknown[]).filter(
+        (u): u is string => typeof u === "string" && u.startsWith("http"),
+      )
+    : [];
+  const photos = Array.from(new Set([...usedPhotos, ...listingPhotos])).slice(0, 24);
 
   return NextResponse.json({
+    projectId: (video as { project_id?: string | null }).project_id ?? null,
+    photos,
+    /** True when a PNG has been rendered and saved, so the modal leaves it be. */
+    hasStoredThumbnail: !!proj?.thumbnail_url,
     title: vidMeta?.publish_title || seo.youtube_title || proj?.title || "Untitled Video",
     description: vidMeta?.publish_description || description,
     // The short social blurb — ai_script.description is written to be exactly

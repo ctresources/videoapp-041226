@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Sparkles
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 interface SocialAccount {
@@ -48,6 +48,10 @@ export function PublishModal({
 }: PublishModalProps) {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Declared here rather than beside the render: the thumbnail effect below
+  // lists it as a dependency, and a const read before its own declaration is
+  // a crash, not a warning.
+  const hasYoutube = accounts.some((a) => selectedIds.includes(a.id) && a.platform.toLowerCase() === "youtube");
   /**
    * The hashtags, appended once to whatever text they belong under.
    *
@@ -86,6 +90,24 @@ export function PublishModal({
   const thumbnailUrl = thumbnailUrlProp || fetchedThumbnail || undefined;
 
   /**
+   * The photo-backed thumbnail, built here rather than in AI Tools.
+   *
+   * The plain card — hook text on a dark ground — is what a project without
+   * photos gets, and it was what every project got, because the good one lived
+   * behind a separate tool that had to be visited by hand. A listing video
+   * already has the pictures; a thumbnail that uses one of them is a promise
+   * the video keeps.
+   */
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [hasStoredThumb, setHasStoredThumb] = useState<boolean | null>(null);
+  const [photoThumb, setPhotoThumb] = useState<string | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<string | null>(null);
+  /** Stops the auto-build from running twice, and from re-running on a swap. */
+  const autoBuilt = useRef(false);
+
+  /**
    * Fill anything the caller did not hand us.
    *
    * The camera recorder mounts this window with an id and a title only, so
@@ -117,11 +139,67 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // videoTitle="" is how a caller says "you resolve it" — see the dub
         // branch in My Content.
         if (d.thumbnailUrl) setFetchedThumbnail(d.thumbnailUrl);
+        setProjectId(d.projectId ?? null);
+        setPhotos(Array.isArray(d.photos) ? d.photos : []);
+        setHasStoredThumb(!!d.hasStoredThumbnail);
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
+
+  /**
+   * Render the photo thumbnail on a chosen backdrop.
+   *
+   * Passing backgroundUrl skips the AI scene entirely, so this is a crop and a
+   * text pass rather than an image generation — seconds, not a minute.
+   */
+  async function buildPhotoThumb(photo: string, quiet = false) {
+    if (!projectId || thumbBusy) return;
+    setThumbBusy(true);
+    setActivePhoto(photo || null);
+    try {
+      const res = await fetch("/api/tools/thumbnail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // No headline on purpose. The generator writes a 3-4 word curiosity
+        // hook when none is given ("INSIDE TRANSFORMATION!"); handing it the
+        // YouTube title instead gets clamped to that title's first four words
+        // ("A FULLY REMODELED ONE-LEVEL"), which is a caption, not a hook.
+        body: JSON.stringify({
+          projectId,
+          // Empty means "paint a scene" — the generator's own default.
+          ...(photo ? { backgroundUrl: photo } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't build the thumbnail");
+      setPhotoThumb(data.url);
+      if (!quiet) toast.success("Thumbnail updated");
+    } catch (err) {
+      // On the automatic pass this is silent by design: the plain card is
+      // already on screen and still publishes. Only a deliberate swap earns
+      // an error message.
+      if (!quiet) toast.error(err instanceof Error ? err.message : "Couldn't build the thumbnail");
+      setActivePhoto(null);
+    } finally {
+      setThumbBusy(false);
+    }
+  }
+
+  /**
+   * Build one automatically, once, when the project has photos and nothing has
+   * been rendered before. A stored thumbnail is someone's earlier choice and
+   * is never overwritten.
+   */
+  useEffect(() => {
+    if (autoBuilt.current) return;
+    if (!hasYoutube || hasStoredThumb !== false) return;
+    if (!projectId || photos.length === 0) return;
+    autoBuilt.current = true;
+    buildPhotoThumb(photos[0], true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasYoutube, hasStoredThumb, projectId, photos]);
 
   useEffect(() => {
     fetch("/api/social/accounts")
@@ -207,7 +285,6 @@ ${hashes.join(" ")}` : hashes.join(" ");
     }
   }
 
-  const hasYoutube = accounts.some((a) => selectedIds.includes(a.id) && a.platform.toLowerCase() === "youtube");
   const minDate = new Date().toISOString().split("T")[0];
 
   return (
@@ -331,9 +408,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
                         type="button"
                         onClick={async () => {
                           try {
-                            await downloadAsset(thumbnailUrl, "youtube-thumbnail", "png");
+                            await downloadAsset(photoThumb || thumbnailUrl, "youtube-thumbnail", "png");
                           } catch {
-                            window.open(thumbnailUrl, "_blank");
+                            window.open(photoThumb || thumbnailUrl, "_blank");
                           }
                         }}
                         className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
@@ -344,11 +421,54 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={thumbnailUrl}
+                        src={photoThumb || thumbnailUrl}
                         alt="YouTube thumbnail preview"
                         className="w-full h-full object-cover"
                       />
                     </div>
+                    {/* Swap the backdrop. Built from the first photo already —
+                        this is for disagreeing with that pick. */}
+                    {photos.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-[11px] text-slate-400 mb-1.5">
+                          {thumbBusy ? "Building…" : "Tap a photo to use it as the backdrop"}
+                        </p>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {photos.map((src) => (
+                            <button
+                              key={src}
+                              type="button"
+                              onClick={() => buildPhotoThumb(src)}
+                              disabled={thumbBusy}
+                              className={`h-12 w-20 flex-none overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
+                                activePhoto === src ? "border-primary-500" : "border-transparent hover:border-slate-300"
+                              }`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={src} alt="" className="h-full w-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No photos means an AI b-roll video, which has no picture
+                        of its own to borrow. The generator can still paint a
+                        scene, but that is an image generation with a real cost,
+                        so it is a button rather than something that happens on
+                        every open. One click, and no trip to AI Tools. */}
+                    {photos.length === 0 && projectId && !photoThumb && (
+                      <button
+                        type="button"
+                        onClick={() => buildPhotoThumb("")}
+                        disabled={thumbBusy}
+                        className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                      >
+                        <Sparkles size={11} />
+                        {thumbBusy ? "Designing…" : "Design a bolder thumbnail"}
+                      </button>
+                    )}
+
                     {thumbnailSet === false ? (
                       <p className="text-xs text-amber-700 mt-1">
                         1280×720 · YouTube wouldn&apos;t take it — custom thumbnails need a phone-verified
