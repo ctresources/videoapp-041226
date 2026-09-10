@@ -444,7 +444,13 @@ export async function renderAndSaveThumbnail(
   // Photo — the chosen look or the profile headshot, anchored bottom-right so
   // the person stands on the edge. Background auto-removed when a
   // REMOVEBG_API_KEY is configured; otherwise the photo is used as-is.
-  const photoSrc = opts.photoUrl || p?.avatar_url;
+  // The caller's pick, else the one this project was last built with, else the
+  // profile headshot. The middle step is what keeps a chosen look across a
+  // rebuild that says nothing about the person.
+  const rememberedPhoto = typeof (projectSeoData as { thumbnail_photo_url?: unknown } | null)?.thumbnail_photo_url === "string"
+    ? ((projectSeoData as { thumbnail_photo_url: string }).thumbnail_photo_url)
+    : null;
+  const photoSrc = opts.photoUrl || rememberedPhoto || p?.avatar_url;
   if (photoSrc) {
     try {
       // Cutout cache: each unique photo is background-removed once, ever —
@@ -507,7 +513,15 @@ export async function renderAndSaveThumbnail(
       .from("projects")
       .update({
         thumbnail_url: publicUrl,
-        seo_data: { ...(projectSeoData || {}), thumbnail_url: publicUrl },
+        seo_data: {
+          ...(projectSeoData || {}),
+          thumbnail_url: publicUrl,
+          // Which cutout this was built with. Rebuilding without it — swapping
+          // the backdrop from the Share Kit, say — otherwise fell back to the
+          // profile headshot and silently replaced a look the user had chosen
+          // by hand. A backdrop swap should change the backdrop.
+          ...(photoSrc ? { thumbnail_photo_url: photoSrc } : {}),
+        },
       })
       .eq("id", opts.projectId)
       .eq("user_id", opts.userId);
