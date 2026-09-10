@@ -8,8 +8,7 @@
  *   4. Submit Video Agent job via POST /v3/video-agents → session_id
  *   5. Two-step poll: GET /v3/video-agents/{session_id} → video_id → GET /v3/videos/{video_id}
  *
- * The only remaining v2 call is deleteAvatarLook (DELETE /v2/photo_avatar/{id}) —
- * HeyGen exposes no v3 delete-avatar endpoint yet. v2 is supported until Oct 31, 2026.
+ * Every call is v3. v1 and v2 are retired on 2026-10-31.
  *
  * Users never interact with HeyGen directly — everything goes through our app.
  * All generated content is Fair Housing compliant.
@@ -930,7 +929,9 @@ export async function getAvatarLooks(groupId: string): Promise<AvatarLook[]> {
  * Delete a photo avatar look. Returns true when HeyGen confirms deletion.
  */
 export async function deleteAvatarLook(lookId: string): Promise<boolean> {
-  const res = await fetch(`${HEYGEN_API}/v2/photo_avatar/${lookId}`, {
+  // v3 since Sept 2026: v1 and v2 are retired on 2026-10-31, and this was the
+  // last v2 call left in the render path.
+  const res = await fetch(`${HEYGEN_API}/v3/avatars/looks/${encodeURIComponent(lookId)}`, {
     method: "DELETE",
     headers: { "x-api-key": getApiKey() },
   });
@@ -1143,6 +1144,65 @@ export async function generateVideoAgent(
 
   console.log(`[heygen] Video Agent session created: ${sessionId}`);
   return sessionId;
+}
+
+export interface VideoSceneSummary {
+  index: number;
+  /** "color" / "image" / "video" — a solid colour behind a talking head is
+   *  what "black bars" and "flat backgrounds" look like from the API side. */
+  background: string;
+  /** Element types placed on the scene: avatar, image, video, motion_graphics. */
+  elements: string[];
+  /** The narration over this scene, in playback order. */
+  text: string;
+}
+
+/**
+ * Read back a finished video's scene-by-scene composition
+ * (GET /v3/videos/{video_id}/scenes, added Aug 2026).
+ *
+ * The finished MP4 shows what went wrong; this shows what was *composed* —
+ * whether the presenter was actually placed, what filled the frame behind
+ * them, and which words landed on which scene. Diagnostics only: nothing in
+ * the product reads it, and it is never shown to a user.
+ *
+ * Returns null rather than throwing — a diagnostic that breaks the page it is
+ * diagnosing is worse than no diagnostic.
+ */
+export async function getVideoScenes(videoId: string): Promise<VideoSceneSummary[] | null> {
+  try {
+    const res = await fetch(
+      `${HEYGEN_API}/v3/videos/${encodeURIComponent(videoId)}/scenes`,
+      { headers: { "x-api-key": getApiKey() } },
+    );
+    if (!res.ok) {
+      console.warn(`[heygen] getVideoScenes(${videoId}) ${res.status}`);
+      return null;
+    }
+    const json = await res.json();
+    const scenes = json.data?.scenes;
+    if (!Array.isArray(scenes)) return null;
+
+    return scenes.map((sc: Record<string, unknown>, i: number) => {
+      const bg = sc.background as { type?: string; color?: string } | undefined;
+      const els = Array.isArray(sc.elements) ? sc.elements : [];
+      const script = Array.isArray(sc.script) ? sc.script : [];
+      return {
+        index: i + 1,
+        background: bg?.type === "color" ? `color ${bg.color ?? ""}`.trim() : (bg?.type ?? "none"),
+        // Element types are an open set — unknown ones arrive as placeholders,
+        // so read the type and don't assume the shape underneath it.
+        elements: els.map((e: Record<string, unknown>) => String(e.type ?? "unknown")),
+        text: script
+          .map((p: Record<string, unknown>) => String(p.text ?? ""))
+          .join(" ")
+          .trim(),
+      };
+    });
+  } catch (err) {
+    console.warn(`[heygen] getVideoScenes(${videoId}) failed:`, err);
+    return null;
+  }
 }
 
 /**

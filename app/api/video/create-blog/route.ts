@@ -26,6 +26,7 @@ import { formatPhones } from "@/lib/utils/format-phone";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
+import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { standardMaxWords, clampScript } from "@/lib/utils/video-length";
 
 export const maxDuration = 300;
@@ -1281,6 +1282,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // msg is the provider's own text — vendor name, endpoint and a JSON blob.
+    // friendlyRenderError picks out the cases the agent can act on (an image we
+    // couldn't load, a voice that isn't ready) and gives everything else the
+    // generic sentence. The raw text stays in the log above.
+    return NextResponse.json({ error: friendlyRenderError(msg) }, { status: 500 });
   }
 }

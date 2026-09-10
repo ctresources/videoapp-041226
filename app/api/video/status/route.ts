@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getVideoStatus, getVideoAgentSession, getVideoV3Status } from "@/lib/api/heygen";
+import { getVideoStatus, getVideoAgentSession, getVideoV3Status, getVideoScenes } from "@/lib/api/heygen";
+import { friendlyRenderError, GENERIC_RENDER_ERROR } from "@/lib/utils/render-errors";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { downloadAndStoreVideo } from "@/lib/utils/store-video";
@@ -104,8 +105,7 @@ export async function GET(req: NextRequest) {
     // the fail branches below) so a failed render can explain itself even after
     // the live poll that detected it is long gone.
     const storedMeta = (video.metadata as Record<string, unknown> | null) ?? {};
-    const RENDER_FAILED_MESSAGE =
-      "We couldn't render this right now. Your credit has been returned — try again.";
+    const RENDER_FAILED_MESSAGE = GENERIC_RENDER_ERROR;
     // Two different strings, deliberately: render_error is the raw diagnostic
     // (a provider message, or a sentinel when they gave us nothing) and is for
     // us; render_message is the sentence a person reads. Reading the diagnostic
@@ -113,6 +113,39 @@ export async function GET(req: NextRequest) {
     let errorMsg: string | null = status === "failed"
       ? ((storedMeta.render_message as string | undefined) || RENDER_FAILED_MESSAGE)
       : null;
+
+    // Diagnostic: ?scenes=1 reads back what was actually composed — the
+    // background behind each scene, what was placed on it, and the words over
+    // it. The finished file shows a bad frame; this shows the decision that
+    // produced it. Owner-scoped by the query above, and never rendered in the
+    // product — it exists to answer "why does it look like that".
+    if (req.nextUrl.searchParams.get("scenes") === "1") {
+      // On the agent path render_job_id holds the SESSION id until the render
+      // completes, and only a video id has scenes. A failed agent render is
+      // exactly the one worth inspecting, so resolve the video id through the
+      // session rather than returning nothing for it.
+      let sceneVideoId = renderId;
+      let scenes = await getVideoScenes(sceneVideoId);
+      if (!scenes && video.render_provider === "heygen_agent") {
+        try {
+          const session = await getVideoAgentSession(renderId);
+          if (session.videoId) {
+            sceneVideoId = session.videoId;
+            scenes = await getVideoScenes(sceneVideoId);
+          }
+        } catch {
+          /* the session is gone; the null result below says so */
+        }
+      }
+      return NextResponse.json({
+        renderId,
+        videoId: sceneVideoId,
+        provider: video.render_provider,
+        status,
+        sceneCount: scenes?.length ?? 0,
+        scenes,
+      });
+    }
 
     // Diagnostic: ?refresh=1 forces a fresh HeyGen query even for an already
     // terminal row, so we can recover the real failure_message that the webhook
@@ -201,9 +234,10 @@ export async function GET(req: NextRequest) {
             // sent the user off to fix a video that was never the problem.
             const diedBeforeStarting = !session.error && !session.progress;
             errorMsg = session.error
-              || (diedBeforeStarting
+              ? friendlyRenderError(session.error)
+              : diedBeforeStarting
                 ? "We couldn't render this right now. Your credit has been returned — try again in a few minutes."
-                : "We couldn't render this right now. Your credit has been returned — try again.");
+                : GENERIC_RENDER_ERROR;
 
             await admin
               .from("generated_videos")
@@ -275,8 +309,7 @@ export async function GET(req: NextRequest) {
               console.log(`[status] HeyGen Agent ${renderId} → video ${session.videoId} completed`);
             } else if (videoStatus.status === "failed") {
               status = "failed";
-              errorMsg = videoStatus.error
-                || "We couldn't render this right now. Your credit has been returned — try again.";
+              errorMsg = friendlyRenderError(videoStatus.error);
 
               await admin
                 .from("generated_videos")
@@ -336,8 +369,7 @@ export async function GET(req: NextRequest) {
             }
           } else if (videoStatus.status === "failed") {
             status = "failed";
-            errorMsg = videoStatus.error
-              || "We couldn't render this right now. Your credit has been returned — try again.";
+            errorMsg = friendlyRenderError(videoStatus.error);
 
             await admin
               .from("generated_videos")
@@ -389,8 +421,7 @@ export async function GET(req: NextRequest) {
             console.log(`[status] HeyGen ${renderId} completed via direct poll`);
           } else if (heygenStatus.status === "failed") {
             status = "failed";
-            errorMsg = heygenStatus.error
-              || "We couldn't render this right now. Your credit has been returned — try again.";
+            errorMsg = friendlyRenderError(heygenStatus.error);
 
             await admin
               .from("generated_videos")
