@@ -103,6 +103,47 @@ export async function notifyBetaCapacity({
   }).catch(() => {});
 }
 
+/**
+ * Tells the owner the render account is out of money — the one failure no
+ * customer can fix and no retry will clear.
+ *
+ * Sent at the moment a render is refused, because the alternative is finding
+ * out from a support message. The agent's own message says nothing about
+ * balances; this is the half of it that goes to whoever can act.
+ */
+export async function notifyRenderBalanceLow({
+  balanceUsd,
+  estimatedUsd,
+  userEmail,
+}: {
+  balanceUsd: number | null;
+  estimatedUsd: number | null;
+  userEmail?: string | null;
+}) {
+  if (!RESEND_API_KEY) return;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: `Render account out of funds — a video was just refused`,
+      html: `<p>A render was <strong>blocked before submitting</strong> because the
+             render account cannot cover it.</p>
+             <ul>
+               <li>Balance: <strong>$${balanceUsd ?? "unknown"}</strong></li>
+               <li>This render needed: <strong>$${estimatedUsd ?? "unknown"}</strong></li>
+               ${userEmail ? `<li>Affected user: ${userEmail}</li>` : ""}
+             </ul>
+             <p>Nothing was charged to their allowance and no credit was spent.
+             They were told to try again shortly, so this stays invisible to them
+             until it is fixed — top up the render account, or check that
+             auto-reload's card is still good.</p>`,
+    }),
+  }).catch(() => {});
+}
+
 /** Notifies the owner that a new affiliate application came in for review. */
 export async function notifyNewAffiliateApplication({
   name,

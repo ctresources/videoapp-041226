@@ -281,6 +281,65 @@ export function estimateRenderCostUsd(params: {
   return null;
 }
 
+export interface PreflightResult {
+  /** False only when we are confident the account cannot pay for this render. */
+  ok: boolean;
+  balanceUsd: number | null;
+  estimatedUsd: number | null;
+  /** Set when ok is false. Plain English, no vendor name — it reaches a user. */
+  reason?: string;
+}
+
+/**
+ * Can the render account pay for this video before we charge anyone for it?
+ *
+ * The order of operations was the problem. A render was submitted, the
+ * customer's allowance was charged, the job died at progress 0 with no reason
+ * given, and the refund put things back — leaving the agent with a failure they
+ * could neither explain nor fix. When the account is simply out of money that
+ * whole round trip is avoidable: the answer is knowable up front.
+ *
+ * Deliberately conservative. It blocks ONLY on a wallet balance that is
+ * genuinely short — a subscription, an unreadable balance, a lookup that times
+ * out, or an unknown rate all return ok, because a diagnostic that cannot
+ * answer must never be the thing that stops a render. False negatives cost a
+ * failed job; false positives cost every job.
+ */
+export async function preflightRenderBalance(params: {
+  renderProvider: string;
+  engine?: string | null;
+  avatarType?: string | null;
+  /** Estimated finished length. HeyGen bills duration, so this sets the cost. */
+  estimatedSeconds: number;
+}): Promise<PreflightResult> {
+  const estimatedUsd = estimateRenderCostUsd({
+    renderProvider: params.renderProvider,
+    engine: params.engine,
+    avatarType: params.avatarType,
+    durationSeconds: params.estimatedSeconds,
+  });
+
+  const account = await getAccountBalance();
+  const balanceUsd = account.currency === "usd" ? account.balance : null;
+
+  // Anything we cannot price, or cannot read, proceeds exactly as before.
+  if (estimatedUsd === null || balanceUsd === null || account.billingType !== "wallet") {
+    return { ok: true, balanceUsd, estimatedUsd };
+  }
+
+  if (balanceUsd >= estimatedUsd) {
+    return { ok: true, balanceUsd, estimatedUsd };
+  }
+
+  return {
+    ok: false,
+    balanceUsd,
+    estimatedUsd,
+    reason:
+      "We can't render this one right now. Nothing has been charged and your video allowance is untouched — please try again shortly.",
+  };
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }

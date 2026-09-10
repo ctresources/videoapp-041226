@@ -9,6 +9,7 @@ import {
   uploadTalkingPhoto,
   getLookInfo,
   isCapacityError,
+  preflightRenderBalance,
   capacityRetryAfterSeconds,
   DIMENSIONS,
   type VideoType,
@@ -23,6 +24,7 @@ import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-all
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhones } from "@/lib/utils/format-phone";
+import { notifyRenderBalanceLow } from "@/lib/email";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
@@ -1043,6 +1045,27 @@ export async function POST(req: NextRequest) {
         directEngine = fallback as typeof preferredEngine;
       }
 
+      // Same question on the Direct path, priced by the engine and look that
+      // are only known here — the rate differs fourfold between them.
+      const directPreflight = await preflightRenderBalance({
+        renderProvider: "heygen_v3_direct",
+        engine: directEngine,
+        avatarType: look.avatarType,
+        estimatedSeconds: Math.round((scriptWordCount / 145) * 60),
+      });
+      if (!directPreflight.ok) {
+        console.error(
+          `[create-blog] BLOCKED before submit (direct) — balance ` +
+          `$${directPreflight.balanceUsd} < estimated $${directPreflight.estimatedUsd}.`,
+        );
+        notifyRenderBalanceLow({
+          balanceUsd: directPreflight.balanceUsd,
+          estimatedUsd: directPreflight.estimatedUsd,
+          userEmail: user.email,
+        }).catch(() => {});
+        return NextResponse.json({ error: directPreflight.reason }, { status: 503 });
+      }
+
       const directVideoId = await generateVideoV3({
         avatarId: directAvatarId,
         voiceId: directVoiceId,
@@ -1193,6 +1216,37 @@ export async function POST(req: NextRequest) {
      * deliberately, with a render to look at.
      */
     const styleId: string | null = null;
+
+    /**
+     * Can the render account pay for this before anyone is charged for it?
+     *
+     * A job that dies for want of money dies at progress 0 with nothing
+     * reported — indistinguishable, from the agent's side, from their video
+     * being broken. They watched their allowance get spent and refunded for a
+     * render that was never going to start. This is knowable up front, and
+     * costs one lookup.
+     *
+     * Blocks only on a confident answer; see preflightRenderBalance.
+     */
+    const preflight = await preflightRenderBalance({
+      renderProvider: "heygen_agent",
+      estimatedSeconds: Math.round((scriptWordCount / 145) * 60),
+    });
+    if (!preflight.ok) {
+      console.error(
+        `[create-blog] BLOCKED before submit — render account balance ` +
+        `$${preflight.balanceUsd} < estimated $${preflight.estimatedUsd}. ` +
+        `Top up the render account.`,
+      );
+      notifyRenderBalanceLow({
+        balanceUsd: preflight.balanceUsd,
+        estimatedUsd: preflight.estimatedUsd,
+        userEmail: user.email,
+      }).catch(() => {});
+      await admin.from("generated_videos").delete().eq("id", videoRow?.id ?? "");
+      await admin.from("projects").update({ status: "draft" }).eq("id", projectId);
+      return NextResponse.json({ error: preflight.reason }, { status: 503 });
+    }
 
     const sessionId = await generateVideoAgent({
       prompt,
