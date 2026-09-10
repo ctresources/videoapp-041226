@@ -42,14 +42,44 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url, listing_data, location_city, location_state)")
+    .select("id, user_id, project_id, metadata, translation_language")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
-  const proj = (video as { projects?: { title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string; listing_data?: Record<string, unknown> | null; location_city?: string | null; location_state?: string | null } | null }).projects ?? null;
+  /**
+   * The project, read on its own rather than embedded.
+   *
+   * This was a `projects(...)` join, and the fields it returned were only ever
+   * fallbacks — the title, description and thumbnail on screen all arrive as
+   * props from My Content — so an embed returning nothing looked exactly like
+   * an embed working. The photo list has no prop behind it: when the embed
+   * came back empty the picker simply never appeared, with no error anywhere.
+   *
+   * A second lookup on an indexed primary key costs almost nothing and cannot
+   * be wrong about its own shape.
+   */
+  type ProjectRow = {
+    title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string | null;
+    listing_data?: Record<string, unknown> | null;
+    location_city?: string | null; location_state?: string | null;
+  };
+  const projectId = (video as { project_id?: string | null }).project_id ?? null;
+  let proj: ProjectRow | null = null;
+  if (projectId) {
+    const { data: projRow, error: projErr } = await admin
+      .from("projects")
+      .select("title, ai_script, seo_data, thumbnail_url, listing_data, location_city, location_state")
+      .eq("id", projectId)
+      .single();
+    if (projErr) {
+      // Loud, because everything downstream degrades quietly into defaults.
+      console.error(`[publish-defaults] project ${projectId} lookup failed: ${projErr.message}`);
+    }
+    proj = (projRow as ProjectRow | null) ?? null;
+  }
   const seo = (proj?.seo_data ?? {}) as Seo;
   const ai = (proj?.ai_script ?? {}) as Script;
 
@@ -97,9 +127,13 @@ export async function GET(req: NextRequest) {
       )
     : [];
   const photos = Array.from(new Set([...usedPhotos, ...listingPhotos])).slice(0, 24);
+  console.log(
+    `[publish-defaults] video=${videoId} project=${projectId ?? "none"} ` +
+    `photos=${photos.length} (video ${usedPhotos.length}, listing ${listingPhotos.length})`,
+  );
 
   return NextResponse.json({
-    projectId: (video as { project_id?: string | null }).project_id ?? null,
+    projectId,
     photos,
     /** True when a PNG has been rendered and saved, so the modal leaves it be. */
     hasStoredThumbnail: !!proj?.thumbnail_url,
@@ -117,10 +151,6 @@ export async function GET(req: NextRequest) {
     // The stored PNG if one has been rendered, else the generated card — whose
     // address is derived from the project id rather than read out of seo_data,
     // where it was frozen with the hook inside it at script-writing time.
-    thumbnailUrl:
-      proj?.thumbnail_url
-      || ((video as { project_id?: string | null }).project_id
-        ? projectThumbnailUrl((video as { project_id: string }).project_id)
-        : null),
+    thumbnailUrl: proj?.thumbnail_url || (projectId ? projectThumbnailUrl(projectId) : null),
   });
 }
