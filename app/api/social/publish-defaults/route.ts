@@ -42,14 +42,14 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url, listing_data)")
+    .select("id, user_id, project_id, metadata, translation_language, projects(title, ai_script, seo_data, thumbnail_url, listing_data, location_city, location_state)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
 
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
-  const proj = (video as { projects?: { title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string; listing_data?: Record<string, unknown> | null } | null }).projects ?? null;
+  const proj = (video as { projects?: { title?: string; ai_script?: Script; seo_data?: Seo; thumbnail_url?: string; listing_data?: Record<string, unknown> | null; location_city?: string | null; location_state?: string | null } | null }).projects ?? null;
   const seo = (proj?.seo_data ?? {}) as Seo;
   const ai = (proj?.ai_script ?? {}) as Script;
 
@@ -103,6 +103,10 @@ export async function GET(req: NextRequest) {
     photos,
     /** True when a PNG has been rendered and saved, so the modal leaves it be. */
     hasStoredThumbnail: !!proj?.thumbnail_url,
+    // The market the badge prints, so the field beside it opens showing the
+    // truth rather than an empty box the user has to guess at.
+    city: proj?.location_city ?? "",
+    state: proj?.location_state ?? "",
     title: vidMeta?.publish_title || seo.youtube_title || proj?.title || "Untitled Video",
     description: vidMeta?.publish_description || description,
     // The short social blurb — ai_script.description is written to be exactly

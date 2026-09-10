@@ -104,6 +104,11 @@ export function PublishModal({
   const [photoThumb, setPhotoThumb] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+  // The market printed on the badge. Editable here because here is where it is
+  // read — sending someone to another screen to fix a word they are looking at
+  // is how it went unfixed.
+  const [badgeCity, setBadgeCity] = useState("");
+  const [badgeState, setBadgeState] = useState("");
   /** Stops the auto-build from running twice, and from re-running on a swap. */
   const autoBuilt = useRef(false);
 
@@ -142,6 +147,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
         setProjectId(d.projectId ?? null);
         setPhotos(Array.isArray(d.photos) ? d.photos : []);
         setHasStoredThumb(!!d.hasStoredThumbnail);
+        setBadgeCity(d.city || "");
+        setBadgeState(d.state || "");
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });
     return () => { cancelled = true; };
@@ -170,6 +177,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
           projectId,
           // Empty means "paint a scene" — the generator's own default.
           ...(photo ? { backgroundUrl: photo } : {}),
+          // Sent on every build, so a corrected market survives a photo swap
+          // instead of reverting to what the project used to say.
+          ...(badgeCity.trim() ? { city: badgeCity.trim() } : {}),
+          ...(badgeState.trim() ? { state: badgeState.trim() } : {}),
         }),
       });
       const data = await res.json();
@@ -194,12 +205,12 @@ ${hashes.join(" ")}` : hashes.join(" ");
    */
   useEffect(() => {
     if (autoBuilt.current) return;
-    if (!hasYoutube || hasStoredThumb !== false) return;
+    if (hasStoredThumb !== false) return;
     if (!projectId || photos.length === 0) return;
     autoBuilt.current = true;
     buildPhotoThumb(photos[0], true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasYoutube, hasStoredThumb, projectId, photos]);
+  }, [hasStoredThumb, projectId, photos]);
 
   useEffect(() => {
     fetch("/api/social/accounts")
@@ -390,100 +401,133 @@ ${hashes.join(" ")}` : hashes.join(" ");
               ))}
             </div>
 
+            {/* Thumbnail — shown whatever is selected. It was inside the
+                YouTube-only block, which made a good thumbnail invisible to
+                anyone posting to Instagram, and hid the photo picker with
+                it. YouTube is the only platform we can APPLY it to; every
+                other one still wants the image, downloaded. */}
+            {thumbnailUrl && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                      <Image size={12} /> YouTube Thumbnail
+                    </label>
+                    {/* Fetched and saved, not linked: this is on Supabase
+                        Storage, so the download attribute did nothing and the
+                        PNG opened in a tab — at the exact moment the user was
+                        told to save it and upload it by hand. */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await downloadAsset(photoThumb || thumbnailUrl, "youtube-thumbnail", "png");
+                        } catch {
+                          window.open(photoThumb || thumbnailUrl, "_blank");
+                        }
+                      }}
+                      className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                    >
+                      <Download size={11} /> Download PNG
+                    </button>
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoThumb || thumbnailUrl}
+                      alt="YouTube thumbnail preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* The market printed on the badge, fixed where it is read.
+                      Saving rebuilds the thumbnail AND corrects the project, so
+                      titles and descriptions stop disagreeing with it. */}
+                  {projectId && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <input
+                        value={badgeCity}
+                        onChange={(e) => setBadgeCity(e.target.value)}
+                        placeholder="City or area on the badge"
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      />
+                      <input
+                        value={badgeState}
+                        onChange={(e) => setBadgeState(e.target.value.toUpperCase().slice(0, 2))}
+                        placeholder="ST"
+                        className="w-12 rounded-lg border border-slate-200 px-2 py-1.5 text-xs uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => buildPhotoThumb(activePhoto || photos[0] || "")}
+                        disabled={thumbBusy || !badgeCity.trim()}
+                        className="flex-none rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {thumbBusy ? "…" : "Update"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Swap the backdrop. Built from the first photo already —
+                      this is for disagreeing with that pick. */}
+                  {photos.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[11px] text-slate-400 mb-1.5">
+                        {thumbBusy ? "Building…" : "Tap a photo to use it as the backdrop"}
+                      </p>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {photos.map((src) => (
+                          <button
+                            key={src}
+                            type="button"
+                            onClick={() => buildPhotoThumb(src)}
+                            disabled={thumbBusy}
+                            className={`h-12 w-20 flex-none overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
+                              activePhoto === src ? "border-primary-500" : "border-transparent hover:border-slate-300"
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={src} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No photos means an AI b-roll video, which has no picture
+                      of its own to borrow. The generator can still paint a
+                      scene, but that is an image generation with a real cost,
+                      so it is a button rather than something that happens on
+                      every open. One click, and no trip to AI Tools. */}
+                  {photos.length === 0 && projectId && !photoThumb && (
+                    <button
+                      type="button"
+                      onClick={() => buildPhotoThumb("")}
+                      disabled={thumbBusy}
+                      className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                    >
+                      <Sparkles size={11} />
+                      {thumbBusy ? "Designing…" : "Design a bolder thumbnail"}
+                    </button>
+                  )}
+
+                  {thumbnailSet === false ? (
+                    <p className="text-xs text-amber-700 mt-1">
+                      1280×720 · YouTube wouldn&apos;t take it — custom thumbnails need a phone-verified
+                      channel. Download it above and set it in YouTube Studio.
+                    </p>
+                  ) : thumbnailSet ? (
+                    <p className="text-xs text-emerald-700 mt-1">1280×720 · Applied to your YouTube video.</p>
+                  ) : (
+                    <p className="text-xs text-slate-400 mt-1">
+                      1280×720 · Applied to YouTube when you publish. Needs a phone-verified channel —
+                      we&apos;ll tell you here if it doesn&apos;t take.
+                    </p>
+                  )}
+                </div>
+              )}
+
             {/* YouTube-specific fields */}
             {hasYoutube && (
               <div className="flex flex-col gap-3">
-                {/* Thumbnail */}
-                {thumbnailUrl && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                        <Image size={12} /> YouTube Thumbnail
-                      </label>
-                      {/* Fetched and saved, not linked: this is on Supabase
-                          Storage, so the download attribute did nothing and the
-                          PNG opened in a tab — at the exact moment the user was
-                          told to save it and upload it by hand. */}
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await downloadAsset(photoThumb || thumbnailUrl, "youtube-thumbnail", "png");
-                          } catch {
-                            window.open(photoThumb || thumbnailUrl, "_blank");
-                          }
-                        }}
-                        className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
-                      >
-                        <Download size={11} /> Download PNG
-                      </button>
-                    </div>
-                    <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video w-full">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={photoThumb || thumbnailUrl}
-                        alt="YouTube thumbnail preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {/* Swap the backdrop. Built from the first photo already —
-                        this is for disagreeing with that pick. */}
-                    {photos.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-[11px] text-slate-400 mb-1.5">
-                          {thumbBusy ? "Building…" : "Tap a photo to use it as the backdrop"}
-                        </p>
-                        <div className="flex gap-1.5 overflow-x-auto pb-1">
-                          {photos.map((src) => (
-                            <button
-                              key={src}
-                              type="button"
-                              onClick={() => buildPhotoThumb(src)}
-                              disabled={thumbBusy}
-                              className={`h-12 w-20 flex-none overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
-                                activePhoto === src ? "border-primary-500" : "border-transparent hover:border-slate-300"
-                              }`}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={src} alt="" className="h-full w-full object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* No photos means an AI b-roll video, which has no picture
-                        of its own to borrow. The generator can still paint a
-                        scene, but that is an image generation with a real cost,
-                        so it is a button rather than something that happens on
-                        every open. One click, and no trip to AI Tools. */}
-                    {photos.length === 0 && projectId && !photoThumb && (
-                      <button
-                        type="button"
-                        onClick={() => buildPhotoThumb("")}
-                        disabled={thumbBusy}
-                        className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:opacity-50"
-                      >
-                        <Sparkles size={11} />
-                        {thumbBusy ? "Designing…" : "Design a bolder thumbnail"}
-                      </button>
-                    )}
-
-                    {thumbnailSet === false ? (
-                      <p className="text-xs text-amber-700 mt-1">
-                        1280×720 · YouTube wouldn&apos;t take it — custom thumbnails need a phone-verified
-                        channel. Download it above and set it in YouTube Studio.
-                      </p>
-                    ) : thumbnailSet ? (
-                      <p className="text-xs text-emerald-700 mt-1">1280×720 · Applied to your YouTube video.</p>
-                    ) : (
-                      <p className="text-xs text-slate-400 mt-1">
-                        1280×720 · Applied to YouTube when you publish. Needs a phone-verified channel —
-                        we&apos;ll tell you here if it doesn&apos;t take.
-                      </p>
-                    )}
-                  </div>
-                )}
                 <div>
                   <label className="text-xs font-medium text-slate-500 block mb-1">Description</label>
                   <textarea
