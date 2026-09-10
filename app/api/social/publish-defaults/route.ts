@@ -80,6 +80,16 @@ export async function GET(req: NextRequest) {
     }
     proj = (projRow as ProjectRow | null) ?? null;
   }
+  // The agent's own headshot, so the thumbnail's person picker can offer it as
+  // a tile with a face on it rather than a generic "default" nobody can
+  // picture. One indexed read.
+  const { data: profRow } = await admin
+    .from("profiles")
+    .select("avatar_url")
+    .eq("id", user.id)
+    .single();
+  const headshotUrl = (profRow as { avatar_url?: string | null } | null)?.avatar_url ?? null;
+
   const seo = (proj?.seo_data ?? {}) as Seo;
   const ai = (proj?.ai_script ?? {}) as Script;
 
@@ -141,6 +151,12 @@ export async function GET(req: NextRequest) {
     // truth rather than an empty box the user has to guess at.
     city: proj?.location_city ?? "",
     state: proj?.location_state ?? "",
+    headshotUrl,
+    // Which cutout this project's thumbnail was last built with, so the picker
+    // opens with the right tile marked instead of guessing.
+    thumbnailPhotoUrl: typeof (seo as { thumbnail_photo_url?: unknown }).thumbnail_photo_url === "string"
+      ? (seo as { thumbnail_photo_url: string }).thumbnail_photo_url
+      : null,
     title: vidMeta?.publish_title || seo.youtube_title || proj?.title || "Untitled Video",
     description: vidMeta?.publish_description || description,
     // The short social blurb — ai_script.description is written to be exactly

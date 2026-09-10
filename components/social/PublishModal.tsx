@@ -118,6 +118,7 @@ export function PublishModal({
    * anything about the person.
    */
   const [looks, setLooks] = useState<{ id: string; name: string; preview_image_url: string }[]>([]);
+  const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
   const [cutout, setCutout] = useState("");
   /** Stops the auto-build from running twice, and from re-running on a swap. */
   const autoBuilt = useRef(false);
@@ -176,6 +177,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
         setHasStoredThumb(!!d.hasStoredThumbnail);
         setBadgeCity(d.city || "");
         setBadgeState(d.state || "");
+        setHeadshotUrl(d.headshotUrl || null);
+        // Mark the tile this thumbnail was actually built with, so the picker
+        // opens showing the truth rather than defaulting to the first tile.
+        setCutout(d.thumbnailPhotoUrl || "");
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });
     return () => { cancelled = true; };
@@ -515,20 +520,35 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   {/* Who is on it. Separate from the backdrop strip below,
                       because they are two different questions and answering
                       one used to silently answer the other. */}
-                  {projectId && looks.length > 0 && (
+                  {projectId && (looks.length > 0 || headshotUrl) && (
                     <div className="mt-2">
                       <p className="text-[11px] text-slate-400 mb-1.5">Who appears on it</p>
                       <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {/* The profile headshot, shown as itself. It was a
+                            generic tile meaning "the default", which after the
+                            project started remembering its cutout no longer
+                            led anywhere — there was no way back to the plain
+                            headshot once a look had been picked. Sending the
+                            URL outright is that way back. */}
                         <button
                           type="button"
-                          onClick={() => { setCutout(""); buildPhotoThumb(activePhoto || photos[0] || "", false, ""); }}
-                          disabled={thumbBusy}
-                          title="Keep whoever this thumbnail already uses"
-                          className={`h-12 w-12 flex-none rounded-full border-2 flex items-center justify-center bg-slate-50 transition-colors disabled:opacity-50 ${
-                            cutout === "" ? "border-primary-500" : "border-transparent hover:border-slate-300"
+                          onClick={() => {
+                            const next = headshotUrl || "";
+                            setCutout(next);
+                            buildPhotoThumb(activePhoto || photos[0] || "", false, next);
+                          }}
+                          disabled={thumbBusy || !headshotUrl}
+                          title={headshotUrl ? "Use your profile headshot" : "Add a headshot in Settings to use it here"}
+                          className={`h-12 w-12 flex-none overflow-hidden rounded-full border-2 flex items-center justify-center bg-slate-50 transition-colors disabled:opacity-40 ${
+                            headshotUrl && cutout === headshotUrl ? "border-primary-500" : "border-transparent hover:border-slate-300"
                           }`}
                         >
-                          <User size={16} className="text-slate-400" />
+                          {headshotUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={headshotUrl} alt="Your headshot" className="h-full w-full object-cover" />
+                          ) : (
+                            <User size={16} className="text-slate-400" />
+                          )}
                         </button>
                         {looks.map((l) => (
                           <button
