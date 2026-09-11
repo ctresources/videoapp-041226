@@ -260,6 +260,9 @@ export async function GET() {
           createdAt: p.created_at,
           cta: p.cta?.trim() || null,
           fromTopic: !!p.custom_topic?.trim(),
+          // An empty CTA — present but blank — is how an unbranded cut is
+          // written (the same test /api/ai/blog uses); a missing one isn't.
+          unbranded: p.cta === "",
           captions: {
             youtubeTitle: p.yt_title ?? "",
             youtubeDescription: p.yt_description ?? "",

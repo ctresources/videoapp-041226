@@ -75,6 +75,8 @@ export interface CampaignProject {
   cta: string | null;
   /** Written from a typed or spoken topic (rather than a voice note or pasted script). */
   fromTopic: boolean;
+  /** An unbranded cut (e.g. for an MLS listing): no agent, no contact ask, so no CTA by design. */
+  unbranded: boolean;
   captions: SparkCaptions;
   videos: CampaignVideo[];
 }
@@ -202,11 +204,98 @@ export function sparkHasBlog(c: Campaign): boolean {
   return c.blog.hasArticle || c.blog.status !== "draft" || !!c.blog.plannedAt;
 }
 
+/** What the rules need to know beyond the Spark itself. */
+export interface SparkContext {
+  youtubeConnected: boolean;
+}
+
+export interface SetupNeed {
+  key: string;
+  /** What's missing, e.g. "YouTube caption". */
+  label: string;
+  /** Holds the Spark back from Ready. Needs for channels that can't publish yet don't. */
+  blocking: boolean;
+  projectId?: string;
+  /** Where it gets fixed. */
+  fix: "captions" | "thumbnail" | "cta" | "youtube";
+}
+
+export interface PublishingSetup {
+  needs: SetupNeed[];
+  /** How many needs hold the Spark back from Ready. */
+  blocking: number;
+  /** The blocking needs in a few words: "YouTube caption needed", "2 captions needed", "Complete". */
+  summary: string;
+}
+
+/**
+ * What a Spark still needs before it can go out — kept apart from its content.
+ *
+ * Captions, thumbnails, the CTA and its link, and a channel are publishing
+ * requirements, not content items. Counting them as items would make
+ * "3 of 4" change every time a channel is added.
+ *
+ * Required today, while YouTube is the only channel that publishes:
+ * - each video's YouTube title and description;
+ * - a thumbnail on each 16:9 video (Shorts mostly ignore custom ones);
+ * - a CTA and a destination link, unless the Spark is unbranded — MLS listing
+ *   cuts carry no contact ask by design;
+ * - a connected YouTube account.
+ * An Instagram caption is listed but does not hold the Spark back until
+ * Instagram can publish.
+ */
+export function publishingSetup(c: Campaign, ctx: SparkContext): PublishingSetup {
+  const needs: SetupNeed[] = [];
+  const withVideo = c.projects.filter((p) => p.videos.length > 0);
+
+  for (const p of withVideo) {
+    if (!p.captions.youtubeTitle.trim() || !p.captions.youtubeDescription.trim()) {
+      needs.push({ key: `yt-${p.id}`, label: "YouTube caption", blocking: true, projectId: p.id, fix: "captions" });
+    }
+    if (videoShape(leadVideo(p)?.videoType) === "16:9" && !p.thumbnailUrl) {
+      needs.push({ key: `thumb-${p.id}`, label: "Thumbnail", blocking: true, projectId: p.id, fix: "thumbnail" });
+    }
+    if (!p.captions.instagramCaption.trim()) {
+      needs.push({ key: `ig-${p.id}`, label: "Instagram caption", blocking: false, projectId: p.id, fix: "captions" });
+    }
+  }
+
+  const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
+  if (lead && !lead.unbranded) {
+    if (!(c.ctaText?.trim() || lead.cta)) needs.push({ key: "cta", label: "CTA", blocking: true, fix: "cta" });
+    if (!c.destinationUrl) needs.push({ key: "link", label: "Destination link", blocking: true, fix: "cta" });
+  }
+
+  if (withVideo.length && !ctx.youtubeConnected) {
+    needs.push({ key: "youtube", label: "YouTube connection", blocking: true, fix: "youtube" });
+  }
+
+  const blocking = needs.filter((n) => n.blocking);
+  return { needs, blocking: blocking.length, summary: summarizeNeeds(blocking) };
+}
+
+/** A list of needs in a few words. One caption is named; several are counted. */
+export function summarizeNeeds(needs: SetupNeed[]): string {
+  if (!needs.length) return "Complete";
+  const parts: string[] = [];
+  const captions = needs.filter((n) => n.fix === "captions");
+  if (captions.length === 1) parts.push(`${captions[0].label} needed`);
+  else if (captions.length > 1) parts.push(`${captions.length} captions needed`);
+  const thumbs = needs.filter((n) => n.fix === "thumbnail").length;
+  if (thumbs === 1) parts.push("Thumbnail needed");
+  else if (thumbs > 1) parts.push(`${thumbs} thumbnails needed`);
+  if (needs.some((n) => n.key === "cta")) parts.push("CTA needed");
+  if (needs.some((n) => n.key === "link")) parts.push("Destination link needed");
+  if (needs.some((n) => n.key === "youtube")) parts.push("Connect YouTube");
+  return parts.join(" · ");
+}
+
 export interface SparkProgress {
   status: SparkStatus;
-  /** Items that are ready, scheduled or published. */
-  ready: number;
-  total: number;
+  /** Content items (each video, and the article) that are ready, scheduled or published. */
+  contentReady: number;
+  contentTotal: number;
+  setup: PublishingSetup;
   /** Where the Spark sits in the seven steps, 1–7. */
   step: number;
   hasBlog: boolean;
@@ -214,15 +303,17 @@ export interface SparkProgress {
 }
 
 /**
- * A Spark's status, worked out from its items rather than stored, so it can
- * never disagree with them. The items are each video and, when there is one,
- * the article.
+ * A Spark's status, worked out from its content and its publishing setup
+ * rather than stored, so it can never disagree with them.
  *
- * Scheduled means every item has a date — a video queued for a channel or an
- * article with a manual publishing reminder. Anything short of that, with some
- * work done, is In Progress. A failure outranks everything until dealt with.
+ * - Content is each video and, when there is one, the article.
+ * - Ready needs every content item ready AND nothing blocking in the setup.
+ * - Scheduled means every content item has a date: a video queued for a
+ *   channel, or an article with a manual publishing reminder.
+ * - Anything short of Ready with some work done is In Progress.
+ * - A failure outranks everything until dealt with.
  */
-export function sparkProgress(c: Campaign): SparkProgress {
+export function sparkProgress(c: Campaign, ctx: SparkContext): SparkProgress {
   type Item = { ready: boolean; dated: boolean; published: boolean; failed: boolean };
   const items: Item[] = c.projects.map((p) => {
     const s = videoState(c, p);
@@ -248,24 +339,34 @@ export function sparkProgress(c: Campaign): SparkProgress {
 
   const total = items.length;
   const ready = items.filter((i) => i.ready).length;
+  const setup = publishingSetup(c, ctx);
+  const contentDone = total > 0 && ready === total;
 
   let status: SparkStatus;
   if (items.some((i) => i.failed)) status = "failed";
   else if (total > 0 && items.every((i) => i.published)) status = "published";
   else if (total > 0 && items.every((i) => i.dated && i.ready)) status = "scheduled";
-  else if (total > 0 && ready === total) status = "ready";
+  else if (contentDone && setup.blocking === 0) status = "ready";
   else if (ready > 0) status = "in_progress";
   else status = "draft";
 
   // Start → Blog or Video → Source are behind every Spark that exists. From
-  // there: still being made (4), ready to put on the calendar (5), going out
-  // (6), all out and measurable (7).
+  // there: still being made or set up (4), ready to put on the calendar (5),
+  // going out (6), all out and measurable (7).
   const step = status === "published" ? 7
     : items.some((i) => i.published) ? 6
-    : total > 0 && ready === total ? 5
+    : contentDone && setup.blocking === 0 ? 5
     : 4;
 
-  return { status, ready, total, step, hasBlog, hasVideo: c.projects.some((p) => p.videos.length > 0) };
+  return {
+    status,
+    contentReady: ready,
+    contentTotal: total,
+    setup,
+    step,
+    hasBlog,
+    hasVideo: c.projects.some((p) => p.videos.length > 0),
+  };
 }
 
 /** Where a Spark came from, in the words the Create page uses. */

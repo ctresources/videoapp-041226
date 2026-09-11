@@ -16,6 +16,7 @@ import {
   leadVideo,
   sparkProgress,
   sparkSource,
+  summarizeNeeds,
   videoLength,
   videoShape,
   videoState,
@@ -130,7 +131,9 @@ function SubPanel({ title, onClose, children }: { title: string; onClose: () => 
 }
 
 export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChannel, onClose, onSaved }: Props) {
-  const progress = sparkProgress(c);
+  const ctx = { youtubeConnected: !!youtubeChannel };
+  const progress = sparkProgress(c, ctx);
+  const optionalNeeds = progress.setup.needs.filter((n) => !n.blocking);
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
 
   const [selectedId, setSelectedId] = useState<string | null>(lead?.id ?? null);
@@ -160,8 +163,8 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
     setDest(c.destinationUrl ?? "");
     setReminder(toInputs(c.blog.plannedAt, tz));
     setExternally(c.blog.status === "scheduled_externally");
-    setStepView(sparkProgress(c).step);
-  }, [c, tz]);
+    setStepView(sparkProgress(c, { youtubeConnected: !!youtubeChannel }).step);
+  }, [c, tz, youtubeChannel]);
 
   useEffect(() => {
     if (selected) setCaps(selected.captions);
@@ -371,11 +374,29 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-medium", status.badge)}>
                     Status: {status.label}
-                    {progress.status !== "published" && progress.total > 0 && ` · ${progress.ready} of ${progress.total} items ready`}
                   </span>
                   <span className={cn(pill, "border-spark-rule bg-white text-spark-ink-muted")}>{kind}</span>
                   <span className={cn(pill, "border-spark-rule bg-white text-spark-ink-muted")}>Source: {sparkSource(lead)}</span>
                 </div>
+                {/* Two measures, kept apart: content is what was made; setup is
+                    what it needs to go out. Captions never enter the count. */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+                  <span className="text-spark-ink-soft">
+                    Content ready: <span className="font-semibold text-spark-ink">{progress.contentReady} of {progress.contentTotal}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSub("review")}
+                    className={cn("text-left hover:underline", progress.setup.blocking ? "text-[#8D580F]" : "text-emerald-700")}
+                  >
+                    Publishing setup: <span className="font-semibold">{progress.setup.summary}</span>
+                  </button>
+                </div>
+                {optionalNeeds.length > 0 && (
+                  <p className="mt-1 text-[11px] text-spark-ink-faint">
+                    Not holding it back: {summarizeNeeds(optionalNeeds)}, for when Instagram can publish.
+                  </p>
+                )}
               </div>
               <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-spark-ink-faint hover:bg-spark-paper">
                 <X size={16} />
@@ -897,9 +918,19 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
 
         {sub === "review" && (
           <SubPanel title="Review and Schedule" onClose={() => setSub(null)}>
-            <p className="mb-3 text-[12.5px] text-spark-ink-muted">
-              {progress.ready} of {progress.total} items ready. Here&apos;s each one, and how it gets published.
-            </p>
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-spark-paper/70 px-3 py-2">
+                <div className="text-[11px] text-spark-ink-muted">Content ready</div>
+                <div className="text-[16px] font-semibold text-spark-ink">{progress.contentReady} of {progress.contentTotal}</div>
+              </div>
+              <div className="rounded-lg bg-spark-paper/70 px-3 py-2">
+                <div className="text-[11px] text-spark-ink-muted">Publishing setup</div>
+                <div className={cn("text-[13px] font-semibold leading-snug", progress.setup.blocking ? "text-[#8D580F]" : "text-emerald-700")}>
+                  {progress.setup.summary}
+                </div>
+              </div>
+            </div>
+            <div className="spark-eyebrow mb-2 text-[9px]">CONTENT</div>
             <ul className="space-y-2">
               {c.projects.map((p) => {
                 const s = videoState(c, p);
@@ -910,7 +941,6 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
                   : s === "rendering" ? "Still rendering"
                   : s === "failed" ? "The last attempt to publish failed"
                   : "No finished video yet";
-                const missingCaption = !p.captions.youtubeTitle.trim() || !p.captions.youtubeDescription.trim();
                 return (
                   <li key={p.id} className="rounded-xl border border-spark-rule bg-white p-3">
                     <div className="flex items-start gap-2">
@@ -918,11 +948,6 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
                       <div className="min-w-0 flex-1">
                         <div className="text-[13px] font-medium text-spark-ink">{roleLabel(p)}</div>
                         <div className="text-[11.5px] text-spark-ink-muted">{detail}</div>
-                        {missingCaption && (
-                          <button onClick={() => { setSelectedId(p.id); setSub(null); setEditing("captions"); }} className="mt-1 text-[11.5px] font-medium text-spark-amber hover:underline">
-                            YouTube caption missing · Edit Captions
-                          </button>
-                        )}
                       </div>
                       <MethodPill kind="auto" />
                     </div>
@@ -968,6 +993,42 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
                 </div>
               </li>
             </ul>
+
+            <div className="spark-eyebrow mb-2 mt-5 text-[9px]">PUBLISHING SETUP</div>
+            {progress.setup.needs.length === 0 ? (
+              <p className="flex items-center gap-1.5 text-[12.5px] text-emerald-700">
+                <CheckCircle2 size={14} /> Complete. Captions, thumbnails, CTA, link and channel are all set.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {progress.setup.needs.map((n) => {
+                  const p = n.projectId ? c.projects.find((x) => x.id === n.projectId) : undefined;
+                  const label = p ? `${n.label} · ${roleLabel(p)}` : n.label;
+                  const fixCls = "shrink-0 text-[11.5px] font-medium text-spark-amber hover:underline";
+                  return (
+                    <li key={n.key} className="flex items-center gap-2 rounded-lg border border-spark-rule-soft bg-white px-3 py-2">
+                      <Circle size={13} className={cn("shrink-0", n.blocking ? "text-[#8D580F]" : "text-spark-ink-faint")} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] text-spark-ink">{label} needed</div>
+                        {!n.blocking && <div className="text-[11px] text-spark-ink-faint">Required once Instagram can publish</div>}
+                      </div>
+                      {n.fix === "captions" && p && (
+                        <button onClick={() => { setSelectedId(p.id); setSub(null); setEditing("captions"); }} className={fixCls}>Edit Captions</button>
+                      )}
+                      {n.fix === "thumbnail" && p && (
+                        <Link href={`/create/${p.id}`} className={fixCls}>Change Thumbnail</Link>
+                      )}
+                      {n.fix === "cta" && (
+                        <button onClick={() => { setSub(null); setEditing("cta"); }} className={fixCls}>Edit CTA</button>
+                      )}
+                      {n.fix === "youtube" && (
+                        <Link href="/settings/social" className={fixCls}>Connect YouTube</Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </SubPanel>
         )}
       </div>

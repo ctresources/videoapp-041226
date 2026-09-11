@@ -90,8 +90,10 @@ function ItemChip({ item, tz, wide, onOpen }: {
   );
 }
 
-function SparkRow({ campaign: c, onOpen }: { campaign: Campaign; onOpen: () => void }) {
-  const progress = sparkProgress(c);
+function SparkRow({ campaign: c, youtubeConnected, onOpen }: {
+  campaign: Campaign; youtubeConnected: boolean; onOpen: () => void;
+}) {
+  const progress = sparkProgress(c, { youtubeConnected });
   const status = SPARK_STATUS_META[progress.status];
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
   const kind = progress.hasVideo && progress.hasBlog ? "Video + Blog" : progress.hasBlog ? "Blog" : "Video";
@@ -114,8 +116,11 @@ function SparkRow({ campaign: c, onOpen }: { campaign: Campaign; onOpen: () => v
           <div className="line-clamp-2 text-[12.5px] font-medium leading-snug text-spark-ink">{c.name}</div>
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px] text-spark-ink-faint">
             <span className={cn("rounded-full px-1.5 py-px font-medium", status.badge)}>{status.label}</span>
-            {progress.total > 0 && progress.status !== "published" && (
-              <span>{progress.ready} of {progress.total} ready</span>
+            {progress.contentTotal > 0 && progress.status !== "published" && (
+              <span>Content {progress.contentReady} of {progress.contentTotal}</span>
+            )}
+            {progress.setup.blocking > 0 && progress.status !== "published" && (
+              <span>· {progress.setup.blocking} setup {progress.setup.blocking === 1 ? "item" : "items"}</span>
             )}
             <span>· {kind}</span>
           </div>
@@ -212,10 +217,10 @@ export function CampaignCalendar() {
     if (filters.platform !== "all" && !calendarItems(c).some((i) => i.platform === filters.platform)) return false;
     if (filters.status !== "all") {
       const own = [c.blog.status, ...c.posts.map((p) => p.status)] as string[];
-      if (!own.includes(filters.status) && sparkProgress(c).status !== filters.status) return false;
+      if (!own.includes(filters.status) && sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel }).status !== filters.status) return false;
     }
     return true;
-  }), [campaigns, filters]);
+  }), [campaigns, filters, data?.youtubeChannel]);
 
   if (loading && !data) {
     return (
@@ -499,7 +504,7 @@ export function CampaignCalendar() {
             ) : (
               <ul className="max-h-[680px] overflow-y-auto px-2 pb-2">
                 {railCampaigns.map((c) => (
-                  <SparkRow key={c.id} campaign={c} onOpen={() => setOpenId(c.id)} />
+                  <SparkRow key={c.id} campaign={c} youtubeConnected={!!data.youtubeChannel} onOpen={() => setOpenId(c.id)} />
                 ))}
               </ul>
             )}
