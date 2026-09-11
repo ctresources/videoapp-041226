@@ -183,11 +183,15 @@ export function MicrophoneCheck() {
           </p>
         ) : (
           <>
+            {/* Locked while the sample records: switching reopens the stream,
+                and the recorder would be left holding a dead one — a sample
+                that ends early or empty. */}
             <select
               value={mic.selectedId ?? ""}
               onChange={(e) => void mic.select(e.target.value)}
+              disabled={recording}
               aria-label="Microphone"
-              className="mt-2 w-full rounded-lg border border-spark-rule bg-white px-3 py-2 text-[13px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber/30"
+              className="mt-2 w-full rounded-lg border border-spark-rule bg-white px-3 py-2 text-[13px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber/30 disabled:opacity-60"
             >
               {!mic.selectedId && <option value="">Default microphone</option>}
               {mic.devices.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
