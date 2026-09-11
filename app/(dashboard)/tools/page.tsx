@@ -115,7 +115,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
-  { id: "banner",      label: "Channel Banner",       icon: Megaphone },
+  { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
 ];
@@ -1425,6 +1425,50 @@ const BANNER_DEFAULTS = {
   qr2Link: "",
 };
 
+type BannerPlatform = "youtube" | "facebook" | "linkedin";
+
+// Facebook/LinkedIn wording must stay in sync with DEFAULTS in
+// lib/utils/social-banner-render.ts (YouTube's with banner-render.ts).
+const BANNER_PLATFORM_DEFAULTS: Record<BannerPlatform, typeof BANNER_DEFAULTS> = {
+  youtube: BANNER_DEFAULTS,
+  facebook: { ...BANNER_DEFAULTS, headline: "YOUR LOCAL REAL ESTATE GUIDE", subscribeMain: "FOLLOW" },
+  linkedin: { ...BANNER_DEFAULTS, headline: "YOUR LOCAL REAL ESTATE GUIDE", subscribeMain: "CONNECT" },
+};
+
+const BANNER_PLATFORMS: {
+  id: BannerPlatform;
+  label: string;
+  size: string;
+  fileName: string;
+  intro: string;
+  /** Dashed outline on the preview, as % of the image. */
+  safeZone: React.CSSProperties;
+  safeNote: string;
+  uploadHint: string;
+}[] = [
+  {
+    id: "youtube", label: "YouTube", size: "2560×1440", fileName: "channel-banner-2560x1440.png",
+    intro: "Generate a 2560×1440 YouTube channel banner. Every field is pre-filled to match the template — edit any of it, add up to two QR codes and two photos, then download.",
+    safeZone: { left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%" },
+    safeNote: "The dashed box is YouTube's safe zone — the only part guaranteed to show on phones and TVs. Everything else appears on desktop.",
+    uploadHint: "Download it, then upload in YouTube Studio → Customization → Branding → Banner image.",
+  },
+  {
+    id: "facebook", label: "Facebook", size: "1640×720", fileName: "facebook-cover-1640x720.png",
+    intro: "Generate a Facebook cover at 1640×720 — twice the size Facebook shows it, so it stays sharp. Same fields as the YouTube banner; the layout keeps everything inside the area phones and desktops both show.",
+    safeZone: { left: "11%", top: "6.67%", width: "78%", height: "86.67%" },
+    safeNote: "The dashed box is the part Facebook shows everywhere — desktop trims the top and bottom, phones trim the sides.",
+    uploadHint: "Download it, then on your Page or profile choose Edit cover photo → Upload photo.",
+  },
+  {
+    id: "linkedin", label: "LinkedIn", size: "1584×396", fileName: "linkedin-banner-1584x396.png",
+    intro: "Generate a 1584×396 LinkedIn background banner. Same fields as the YouTube banner; content stays clear of the bottom-left corner, where your profile photo sits.",
+    safeZone: { left: "20%", top: "0", width: "60%", height: "100%" },
+    safeNote: "The dashed box is roughly what a phone shows. QR codes sit to the right, where desktop viewers — the ones who can scan them — see them.",
+    uploadHint: "Download it, then on your LinkedIn profile click the camera icon on the background image and upload it.",
+  },
+];
+
 // Swatch preview colors — must stay in sync with BANNER_PALETTES in
 // lib/utils/banner-render.ts (server does the actual coloring).
 const BANNER_PALETTE_SWATCHES: { key: string; name: string; left: string; right: string; text: string }[] = [
@@ -1437,6 +1481,9 @@ const BANNER_PALETTE_SWATCHES: { key: string; name: string; left: string; right:
 ];
 
 function BannerGenerator() {
+  const [platform, setPlatform] = useState<BannerPlatform>("youtube");
+  const spec = BANNER_PLATFORMS.find((p) => p.id === platform)!;
+  const mainLabel = platform === "youtube" ? "SUBSCRIBE" : "main word";
   const [fields, setFields] = useState({ ...BANNER_DEFAULTS });
   const [palette, setPalette] = useState("ocean");
   const [photos, setPhotos] = useState<string[]>([]);
@@ -1448,6 +1495,23 @@ function BannerGenerator() {
 
   const setField = (k: keyof typeof BANNER_DEFAULTS, v: string) =>
     setFields((f) => ({ ...f, [k]: v }));
+
+  function switchPlatform(next: BannerPlatform) {
+    if (next === platform) return;
+    const from = BANNER_PLATFORM_DEFAULTS[platform];
+    const to = BANNER_PLATFORM_DEFAULTS[next];
+    // Swap in the new platform's wording only where the field still holds the
+    // old default — anything the user typed carries over untouched.
+    setFields((f) => {
+      const out = { ...f };
+      for (const k of Object.keys(to) as (keyof typeof BANNER_DEFAULTS)[]) {
+        if (f[k] === from[k]) out[k] = to[k];
+      }
+      return out;
+    });
+    setPlatform(next);
+    setBannerUrl("");
+  }
 
   async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1481,7 +1545,7 @@ function BannerGenerator() {
       const res = await fetch("/api/tools/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fields, palette, photoUrls: photos }),
+        body: JSON.stringify({ ...fields, palette, photoUrls: photos, platform }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1507,7 +1571,7 @@ function BannerGenerator() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "channel-banner-2560x1440.png";
+      a.download = spec.fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1525,10 +1589,25 @@ function BannerGenerator() {
 
   return (
     <div>
-      <p className="text-sm text-slate-500 mb-5">
-        Generate a 2560×1440 YouTube channel banner. Every field is pre-filled to match the template —
-        edit any of it, add up to two QR codes and two photos, then download.
-      </p>
+      {/* Platform — same fields for all three, only the canvas changes */}
+      <div className="mb-4">
+        <label className={labelCls}>Platform</label>
+        <div className="flex flex-wrap gap-2">
+          {BANNER_PLATFORMS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => switchPlatform(p.id)}
+              className={`px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-colors ${
+                platform === p.id ? "border-primary-500 bg-primary-50 text-slate-800" : "border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              {p.label} <span className="text-xs font-normal text-slate-400">{p.size}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-sm text-slate-500 mb-5">{spec.intro}</p>
 
       {/* Color palette */}
       <div className="mb-4">
@@ -1559,7 +1638,7 @@ function BannerGenerator() {
       <div className="mb-4">
         <label className={labelCls}>Headline</label>
         <input type="text" value={fields.headline} onChange={(e) => setField("headline", e.target.value)}
-          placeholder="WATCHING ON TV?" className={inputCls} />
+          placeholder={BANNER_PLATFORM_DEFAULTS[platform].headline} className={inputCls} />
       </div>
 
       {/* QR 1 */}
@@ -1578,7 +1657,7 @@ function BannerGenerator() {
       {/* Subscribe block */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div>
-          <label className={labelCls}>Above SUBSCRIBE</label>
+          <label className={labelCls}>Above {mainLabel}</label>
           <input type="text" value={fields.subscribeKicker} onChange={(e) => setField("subscribeKicker", e.target.value)} className={inputCls} />
         </div>
         <div>
@@ -1586,7 +1665,7 @@ function BannerGenerator() {
           <input type="text" value={fields.subscribeMain} onChange={(e) => setField("subscribeMain", e.target.value)} className={inputCls} />
         </div>
         <div>
-          <label className={labelCls}>Below SUBSCRIBE</label>
+          <label className={labelCls}>Below {mainLabel}</label>
           <input type="text" value={fields.subscribeSub} onChange={(e) => setField("subscribeSub", e.target.value)} className={inputCls} />
         </div>
       </div>
@@ -1660,20 +1739,17 @@ function BannerGenerator() {
 
       {bannerUrl && (
         <div className="mt-6">
-          {/* Preview with the mobile/TV safe-zone outline (center 1546×423). */}
+          {/* Preview with the platform's safe-zone outline. */}
           <div className="relative rounded-xl overflow-hidden border border-slate-200 max-w-3xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bannerUrl} alt="Generated banner" className="w-full h-auto block" />
+            <img src={bannerUrl} alt={`Generated ${spec.label} banner`} className="w-full h-auto block" />
             <div
               className="absolute border-2 border-dashed border-white/70 pointer-events-none"
-              style={{ left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%" }}
+              style={spec.safeZone}
               title="Safe zone — visible on all devices"
             />
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            The dashed box is YouTube&apos;s safe zone — the only part guaranteed to show on phones and TVs.
-            Everything else appears on desktop.
-          </p>
+          <p className="text-[11px] text-slate-400 mt-1">{spec.safeNote}</p>
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button
               onClick={downloadBanner}
@@ -1681,11 +1757,9 @@ function BannerGenerator() {
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
               {downloading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-              {downloading ? "Downloading…" : "Download PNG (2560×1440)"}
+              {downloading ? "Downloading…" : `Download PNG (${spec.size})`}
             </button>
-            <p className="text-xs text-slate-400">
-              Download it, then upload in YouTube Studio → Customization → Branding → Banner image.
-            </p>
+            <p className="text-xs text-slate-400">{spec.uploadHint}</p>
           </div>
         </div>
       )}

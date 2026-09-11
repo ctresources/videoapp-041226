@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { renderAndSaveBanner } from "@/lib/utils/banner-render";
+import { isSocialPlatform, renderAndSaveSocialBanner } from "@/lib/utils/social-banner-render";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,8 +9,10 @@ export const maxDuration = 60;
 
 /**
  * POST /api/tools/banner
- * Renders a 2560×1440 YouTube channel banner from the template
- * (editable text, up to two QR codes, 0–2 photos) and returns its URL.
+ * Renders a banner (editable text, up to two QR codes, 0–2 photos) and
+ * returns its URL. `platform` picks the canvas: "facebook" (1640×720 cover)
+ * or "linkedin" (1584×396); anything else — including requests that don't
+ * send it — is the 2560×1440 YouTube channel banner.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -32,10 +35,11 @@ export async function POST(req: NextRequest) {
     qr2Link?: string;
     photoUrls?: string[];
     palette?: string;
+    platform?: string;
   };
 
   try {
-    const result = await renderAndSaveBanner({
+    const fields = {
       userId: user.id,
       headline: body.headline,
       qr1Caption: body.qr1Caption,
@@ -49,7 +53,10 @@ export async function POST(req: NextRequest) {
       qr2Link: body.qr2Link,
       photoUrls: Array.isArray(body.photoUrls) ? body.photoUrls : undefined,
       palette: body.palette,
-    });
+    };
+    const result = isSocialPlatform(body.platform)
+      ? await renderAndSaveSocialBanner({ ...fields, platform: body.platform })
+      : await renderAndSaveBanner(fields);
     return NextResponse.json(result);
   } catch (err) {
     console.error("[banner] Error:", err);
