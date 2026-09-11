@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { readFileSync } from "fs";
 import path from "path";
 import * as opentypeNs from "opentype.js";
+import { glyphPathData } from "@/lib/utils/glyph-path-data";
 
 // opentype.js is an old UMD package — depending on how the server bundle
 // resolves it, its functions land on the namespace itself or on .default.
@@ -32,7 +33,7 @@ function getFont(): opentypeNs.Font {
 }
 
 function textPathData(text: string, x: number, y: number, fontSize: number): string {
-  return getFont().getPath(text, x, y, fontSize).toPathData(2);
+  return glyphPathData(getFont().getPath(text, x, y, fontSize));
 }
 function textWidth(text: string, fontSize: number): number {
   return getFont().getAdvanceWidth(text, fontSize);

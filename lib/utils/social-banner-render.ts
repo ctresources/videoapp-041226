@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { readFileSync } from "fs";
 import path from "path";
 import * as opentypeNs from "opentype.js";
+import { glyphPathData } from "@/lib/utils/glyph-path-data";
 
 // Facebook covers and LinkedIn banners. This is a separate renderer from the
 // YouTube one on purpose: banner-render.ts is positioned by hand to match a
@@ -148,33 +149,12 @@ function fitWrapped(text: string, maxWidth: number, start: number, min: number, 
   }
 }
 
-/**
- * SVG path data written straight from the glyph commands. Not
- * Path.toPathData(): in opentype.js 2.0 its number rounding emits NaN for
- * some coordinates (often the start of an O's inner contour), and librsvg
- * stops drawing the word at the first NaN — the raw commands are always fine.
- */
-function pathData(p: opentypeNs.Path): string {
-  const n = (v: number) => String(Math.round(v * 100) / 100);
-  return p.commands
-    .map((c) => {
-      switch (c.type) {
-        case "M":
-        case "L": return `${c.type}${n(c.x)} ${n(c.y)}`;
-        case "Q": return `Q${n(c.x1)} ${n(c.y1)} ${n(c.x)} ${n(c.y)}`;
-        case "C": return `C${n(c.x1)} ${n(c.y1)} ${n(c.x2)} ${n(c.y2)} ${n(c.x)} ${n(c.y)}`;
-        default: return "Z";
-      }
-    })
-    .join("");
-}
-
 function lineToPaths(line: string, startX: number, y: number, fontSize: number, fill: string): string {
   const space = textWidth(" ", fontSize);
   let cx = startX;
   const out: string[] = [];
   for (const word of line.split(" ")) {
-    if (word) out.push(`<path d="${pathData(getFont().getPath(word, cx, y, fontSize))}" fill="${fill}"/>`);
+    if (word) out.push(`<path d="${glyphPathData(getFont().getPath(word, cx, y, fontSize))}" fill="${fill}"/>`);
     cx += textWidth(word, fontSize) + space;
   }
   return out.join("");
