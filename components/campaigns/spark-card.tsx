@@ -173,6 +173,7 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
   const [article, setArticle] = useState({ title: "", intro: "", body: "", conclusion: "" });
   const [previewHtml, setPreviewHtml] = useState("");
   const [addRole, setAddRole] = useState<CampaignRole>("short_variation");
+  const [scheduling, setScheduling] = useState<{ projectId: string; date: string; time: string } | null>(null);
   const [planName, setPlanName] = useState("");
   const [newSeriesName, setNewSeriesName] = useState("");
   const [seriesName, setSeriesName] = useState(mySeries?.name ?? "");
@@ -344,6 +345,57 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
 
   function setRole(projectId: string, role: CampaignRole) {
     act(`role-${projectId}`, () => patchVideo({ action: "role", projectId, role }), "Role updated.");
+  }
+
+  /**
+   * Publish to YouTube, now or at a time.
+   *
+   * The same route the Publish window uses, with the captions shown on this
+   * card — so what you read here is what goes out. A time is handed to
+   * YouTube, which holds the video and makes it public itself.
+   */
+  function publish(p: CampaignProject, whenIso: string | null) {
+    const v = leadVideo(p);
+    if (!v?.videoUrl || v.renderStatus !== "completed") {
+      toast.error("That video hasn't finished rendering yet.");
+      return;
+    }
+    if (!youtubeChannel) {
+      toast.error("Connect your YouTube channel first, in Settings → Social Accounts.");
+      return;
+    }
+    const title = p.captions.youtubeTitle.trim() || p.title;
+    const already = c.posts.filter((x) => x.projectId === p.id && x.platform === "youtube" && x.status !== "failed");
+    const warning = already.length
+      ? `This video is already on YouTube (${already.map((x) => ITEM_STATUS_META[x.status].label.toLowerCase()).join(", ")}). Post it again?\n\n`
+      : "";
+    const question = whenIso
+      ? `${warning}Schedule “${title}” on ${youtubeChannel} for ${formatWhen(new Date(whenIso), tz)}?`
+      : `${warning}Publish “${title}” to ${youtubeChannel} now? It goes public immediately.`;
+    if (!window.confirm(question)) return;
+
+    act(`publish-${p.id}`, () => send("/api/social/post", "POST", {
+      videoId: v.id,
+      scheduledAt: whenIso,
+      targets: [{
+        accountId: "native_youtube",
+        platform: "youtube",
+        source: "native",
+        title,
+        description: p.captions.youtubeDescription,
+        privacy: "public",
+      }],
+    }), whenIso ? "Scheduled on YouTube." : "Published to YouTube.", () => setScheduling(null));
+  }
+
+  /**
+   * Cancel a scheduled upload. YouTube is already holding the video, so this
+   * asks YouTube to delete it — and if YouTube refuses, its reason is shown
+   * rather than a cheerful "cancelled".
+   */
+  function cancelScheduled(postId: string) {
+    if (!window.confirm("Cancel this scheduled post? The video is removed from YouTube, where it is waiting privately.")) return;
+    act(`cancel-${postId}`, () => send("/api/social/schedule", "DELETE", { postId }), "Scheduled post cancelled.");
   }
 
   function createSeries() {
@@ -835,7 +887,7 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                 )}
                 <p className="text-[11px] text-spark-ink-faint">
                   SparkReels won&apos;t publish the article. This date is a reminder to publish it yourself.
-                  Scheduling videos from the Spark Card arrives with the publishing queue.
+                  Videos are different: Publish now and Schedule above send them to YouTube.
                 </p>
                 <div className="flex justify-end gap-1.5">
                   <button onClick={() => { setReminder(toInputs(c.blog.plannedAt, tz)); setExternally(c.blog.status === "scheduled_externally"); setEditing(null); }} className={quietBtn}>Cancel</button>
@@ -847,27 +899,100 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
             )}
 
             <ul className="divide-y divide-spark-rule-soft">
-              {youtubeRows.map(({ project: p, published, booked, state }) => (
-                <li key={p.id} className="flex flex-wrap items-center gap-2 py-2.5">
-                  <PlayCircle size={14} className="shrink-0 text-spark-ink-faint" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[12.5px] text-spark-ink">YouTube · {roleLabel(p)}</div>
-                    <div className="text-[11px] text-spark-ink-faint">
-                      {published?.at ? `Published ${when(published.at)}`
-                        : booked?.at ? when(booked.at)
-                        : youtubeChannel ? "Not scheduled yet" : "YouTube not connected"}
-                      {published?.url && (
+              {youtubeRows.map(({ project: p, published, booked, state }) => {
+                const v = leadVideo(p);
+                const canSend = !!v?.videoUrl && v.renderStatus === "completed" && !published;
+                const form = scheduling?.projectId === p.id ? scheduling : null;
+                return (
+                  <li key={p.id} className="py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <PlayCircle size={14} className="shrink-0 text-spark-ink-faint" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] text-spark-ink">YouTube · {roleLabel(p)}</div>
+                        <div className="text-[11px] text-spark-ink-faint">
+                          {published?.at ? `Published ${when(published.at)}`
+                            : booked?.at ? `Goes public ${when(booked.at)}`
+                            : youtubeChannel ? "Not scheduled yet" : "YouTube not connected"}
+                          {published?.url && (
+                            <>
+                              {" · "}
+                              <a href={published.url} target="_blank" rel="noopener noreferrer" className="text-spark-amber hover:underline">View</a>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <MethodPill kind="auto" />
+                      <span className={cn(pill, VIDEO_STATE_META[state].chip)}>{VIDEO_STATE_META[state].label}</span>
+                    </div>
+
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+                      {canSend && !form && (
                         <>
-                          {" · "}
-                          <a href={published.url} target="_blank" rel="noopener noreferrer" className="text-spark-amber hover:underline">View</a>
+                          <button onClick={() => publish(p, null)} disabled={busy !== null} className={quietBtn}>
+                            {busy === `publish-${p.id}` ? <Loader2 size={12} className="animate-spin" /> : <PlayCircle size={12} />} Publish now
+                          </button>
+                          <button
+                            onClick={() => { const n = toInputs(null, tz, true); setScheduling({ projectId: p.id, date: n.date, time: "09:00" }); }}
+                            disabled={busy !== null}
+                            className={quietBtn}
+                          >
+                            <CalendarDays size={12} /> Schedule
+                          </button>
                         </>
                       )}
+                      {booked?.kind === "post" && (
+                        <button onClick={() => cancelScheduled(booked.id)} disabled={busy !== null} className={quietBtn}>
+                          {busy === `cancel-${booked.id}` ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Cancel scheduled post
+                        </button>
+                      )}
+                      {!canSend && !published && (
+                        <span className="text-[11px] text-spark-ink-faint">
+                          {v ? "Ready to publish once rendering finishes." : "No finished video yet."}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <MethodPill kind="auto" />
-                  <span className={cn(pill, VIDEO_STATE_META[state].chip)}>{VIDEO_STATE_META[state].label}</span>
-                </li>
-              ))}
+
+                    {form && (
+                      <div className="mt-2 space-y-2 rounded-xl border border-spark-rule bg-white p-3">
+                        <div className="grid grid-cols-[1fr_120px] gap-2">
+                          <input
+                            type="date"
+                            value={form.date}
+                            onChange={(e) => setScheduling({ ...form, date: e.target.value })}
+                            aria-label="Publish date"
+                            className={inputCls}
+                          />
+                          <input
+                            type="time"
+                            value={form.time}
+                            onChange={(e) => setScheduling({ ...form, time: e.target.value })}
+                            aria-label="Publish time"
+                            className={inputCls}
+                          />
+                        </div>
+                        <p className="text-[11px] text-spark-ink-faint">
+                          YouTube holds the video privately and makes it public at this time, in {tz.replace(/_/g, " ")}.
+                        </p>
+                        <div className="flex justify-end gap-1.5">
+                          <button onClick={() => setScheduling(null)} className={quietBtn}>Cancel</button>
+                          <button
+                            onClick={() => {
+                              if (!form.date) { toast.error("Pick a date."); return; }
+                              const at = zonedToUtc(form.date, form.time || "09:00", tz);
+                              if (at.getTime() <= Date.now()) { toast.error("Pick a time in the future, or use Publish now."); return; }
+                              publish(p, at.toISOString());
+                            }}
+                            disabled={busy !== null}
+                            className={ctaBtn}
+                          >
+                            {busy === `publish-${p.id}` ? <Loader2 size={12} className="animate-spin" /> : <CalendarDays size={12} />} Schedule it
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
 
               <li className="flex flex-wrap items-center gap-2 py-2.5">
                 <FileText size={14} className="shrink-0 text-spark-ink-faint" />
@@ -1192,7 +1317,7 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                 const ok = s === "ready" || s === "scheduled" || s === "published";
                 const detail = s === "published" ? "Published on YouTube"
                   : s === "scheduled" ? "Scheduled on YouTube"
-                  : s === "ready" ? "Ready. Scheduling from here arrives with the publishing queue."
+                  : s === "ready" ? "Ready. Publish it now, or schedule it, under Channels and Schedule."
                   : s === "rendering" ? "Still rendering"
                   : s === "failed" ? "The last attempt to publish failed"
                   : "No finished video yet";
