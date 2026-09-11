@@ -382,9 +382,30 @@ ${propertyPhotos
   // The failure that directive guards against is dead air, and DURATION already
   // covers it: filler and silent gaps are banned, and no target runtime is ever
   // stated, so there is nothing for the agent to pad towards.
+  /**
+   * What the video should LOOK like, as opposed to what it must not do.
+   *
+   * The rest of this prompt is prohibitions. There was one STYLE block and it
+   * lived in the tail, which is trimmed blind at the character cap — on a
+   * listing render the photo rules alone exhausted the budget, so the only art
+   * direction in the prompt never reached the agent at all. Every scene came
+   * back on a plain white canvas. That is not the agent ignoring a look; it is
+   * the agent never being given one.
+   *
+   * Written as HeyGen's prompting guide describes: a named direction, art
+   * direction, motion, transitions, and a closing line for the feel. Colour and
+   * type are deliberately NOT stated here — brand_kit_id is sent on the same
+   * request and applies the agent's own palette and fonts deterministically,
+   * which beats describing them in prose and then disagreeing with the kit.
+   */
+  const styleBlock = `STYLE — ${params.isShortForm ? "Social Property Cut" : "Local Property Feature"}
+Calm, premium and editorial. Photographs fill the frame in true, natural colour with no grade — never desaturated, washed-out, grey, teal-and-orange or filmic — and every graphic sits on the bottom band described in RULE #1, taking its colours and type from the attached brand kit. Motion is slow and deliberate: a gentle push or drift across each photograph on a locked camera, text rising a few pixels into place and then holding still, never sliding, spinning, bouncing or scaling, and never a handheld shake, whip pan or rapid zoom. Transitions are ${params.isShortForm ? "straight cuts, quick and rhythmic, with no dissolves" : "straight cuts, with an occasional half-second dissolve between subjects and a single accent rule that wipes across when the topic changes"}. Charts follow the content: bars for prices, lines for trends, infographics for inventory and demand${toneVisual ? `; ${params.tone!.toLowerCase()} throughout — ${toneVisual}` : ""}. The feel is ${params.isShortForm ? "immediate and confident, made to stop a thumb" : "unhurried, warm and expensive-looking: confident, never salesy, never flashy"}.`;
+
   const head = `You are producing a professional real estate marketing video.
 
 ${orientationBlock}
+
+${styleBlock}
 
 ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 - The attached photos are the picture. Each one fills the whole ${canvasLabel} canvas edge to edge, with gentle Ken Burns motion, for the entire runtime.
@@ -394,11 +415,9 @@ ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 - All ${totalPhotos} photos appear. With the photos on screen the whole time there is room for every one of them.
 
 ` : ""}${params.hasAvatar && !pipMode ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
-- EVERY text or graphic element — captions, headlines, hooks, lower-thirds, stats, numbers, charts, infographics, logos, badges, arrows — must sit ENTIRELY inside the BOTTOM 20% of the canvas (on a 1080-tall frame that is the bottom ~216px; on a 1920-tall frame ~384px).
-- The TOP 80% is a NO-OVERLAY ZONE. The presenter's head and face are there. Never center an overlay, never place text beside the head, never over the chest or shoulders. This applies even when the presenter is only partly visible.
-- Standard treatment: a full-width semi-transparent dark bar pinned to the bottom edge, white or soft-gold text inside.
-- A graphic too large for the bottom band must be SHRUNK to fit, or shown on a b-roll-only scene where the presenter is off camera. Never enlarge it into the face zone.
-- When in doubt, move it DOWN. Bottom edge is always correct; middle of frame is always wrong.
+- EVERY text and graphic element — captions, headlines, hooks, stats, charts, logos, badges, arrows — sits ENTIRELY inside the BOTTOM 20% of the canvas, on a full-width semi-transparent dark bar. The top 80% is a NO-OVERLAY ZONE: the presenter's head is there, and that holds even when they are only partly visible.
+- A graphic too large for the band is SHRUNK to fit, or given a b-roll-only scene with the presenter off camera. Never enlarged into the face zone.
+- When in doubt, move it DOWN.
 
 PRESENTER FRAMING (RULE #2)
 - Head-and-shoulders to mid-chest, as a news anchor is framed: the head fills a QUARTER to a THIRD of the frame height, never more, with headroom above the hair.
@@ -414,15 +433,9 @@ ${propertyPhotos
 - The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
 - With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.` : ""}
 
-PICTURE (RULE #3)
-- Natural, true colour. No desaturated, washed-out, grey, teal-and-orange or filmic grade. Photos must look like the photographs they are.
-- Motion is slow and steady: gentle pans and pushes on a locked camera. No handheld shake, no jitter, no whip pans, no rapid zooms.
-
 LOCATION ACCURACY — ${locationOr}, ${monthName}
-- Any establishing shot, aerial or street scene must be OF ${locationOr}, never another town or a generic stand-in.
-- Every visual must be believable for ${locationOr} during ${monthName}: correct hemisphere and season, foliage, weather, daylight, architecture, building materials, street layout, landscaping and terrain.
-- Prohibited unless ${locationOr} genuinely has them: palm trees, tropical plants, desert cacti, snow-capped mountains, ocean beaches, glaciers, redwood forests, farm fields, or snow outside its real cold season.
-- Unsure whether something fits? Use a neutral interior or a generic residential street — never invent dramatic or exotic scenery.
+- Any establishing shot, aerial or street scene must be OF ${locationOr}, never another town or a generic stand-in, and must be believable there during ${monthName}: correct season, foliage, weather, daylight, architecture, materials and terrain. Nothing the area does not genuinely have.
+- Unsure whether something fits? Use a neutral interior or an ordinary residential street — never invent dramatic or exotic scenery.
 
 FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 - Never imply preference or limitation based on race, color, religion, sex, gender identity, sexual orientation, disability, familial status or national origin.
@@ -472,7 +485,7 @@ DETAILS
 - DISPLAY ONLY, never spoken:${params.phone1 ? ` Mobile ${params.phone1}` : ""}${params.phone2 ? ` · Office ${params.phone2}` : ""}${params.website ? ` · Web ${params.website}` : ""}
 
 NARRATION SCRIPT — SPEAK THIS EXACTLY, ONCE, IN FULL
-Do not repeat the opening line. Never speak any headline, title-card, overlay or thumbnail text — those are visual only. The voiceover starts with the first words below:
+Do not repeat the opening line. Never speak any headline, title-card, overlay or thumbnail text — those are visual only. Never speak phone numbers, emails or URLs: they are display-only, shown on screen and omitted from the voiceover, and no contact detail may be added that is not in the script. The script is already normalized — read every word as written, never spelling out letters. The voiceover starts with the first words below:
 
 ${params.script}
 `;
@@ -501,30 +514,16 @@ ${params.script}
    */
   const tail = `${photoBlock}
 
-PRONUNCIATION
-- The script is already normalized (abbreviations expanded) — read every word exactly as written, never spelling out letters.
-- NEVER speak phone numbers, emails or URLs — they are display-only. Omit any from the voiceover and show them on screen instead. Add no contact info that isn't in the script.${params.burnCaptions ? `
-
-BURNED CAPTIONS (REQUIRED)
-- Synchronized captions for the ENTIRE video, 4–6 words at a time, bold white on semi-transparent dark, inside the bottom band — above the hook bar on Scene 1, above the contact card on the final scene. Never over the face.` : ""}
-
 VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
 - Room mentioned → show that room. Neighborhood/street → that street type. Statistic or price → a data overlay of that exact number (in the bottom band). Lifestyle benefit → show it. Address → a matching home exterior.
-- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.
+- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.${propertyPhotos ? "" : `
 
-B-ROLL CONTENT — ${locationOr} aerials/establishing shots, residential streets and curb appeal, interiors (kitchens, living spaces, open plans), lifestyle scenes (cafes, parks, people).
-- MEDIUM: real places → stock footage; numbers and trends → motion graphics; abstract ideas → AI-generated.${audienceVisual ? `
+B-ROLL CONTENT — ${locationOr} aerials and establishing shots, residential streets and curb appeal, interiors, lifestyle scenes.
+- MEDIUM: real places → stock footage; numbers and trends → motion graphics; abstract ideas → AI-generated.`}${audienceVisual ? `
 - Audience (${params.audience}): ${audienceVisual}` : ""}${params.keywords.length > 0 ? `
 - Emphasis: ${params.keywords.slice(0, 5).join(", ")}` : ""}
 
-STYLE
-- B-roll: a slight warm lean, inviting rather than cool. Colour and motion are settled by RULE #3, which is in the head where it cannot be trimmed — this line used to carry it alone and was cut from the prompt on the very render that came back grey.${toneVisual ? `
-- Tone (${params.tone}): ${toneVisual}` : ""}
-- ${params.isShortForm ? "Fast punchy cuts, bold overlays, social-optimized" : "Smooth cinematic transitions, premium editorial feel"}.
-- Charts: bars → prices, lines → trends, infographics → inventory/demand. All obey RULE #1 above, whichever layout it describes.
-- Text: white or soft gold, gold/navy accents, bold and readable — no clutter.
-
-Deliver a polished, scroll-stopping video that positions the agent as the trusted local expert and converts viewers into leads.${params.pdfContent ? `
+${params.pdfContent ? `
 
 PDF REFERENCE (supplemental context for b-roll, on-screen stats and talking points)
 ${params.pdfContent}` : ""}`;
