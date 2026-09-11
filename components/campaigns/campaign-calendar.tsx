@@ -8,16 +8,15 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
 import { addDays, browserTimeZone, dayKey, shortTime, weekdayOf, ymd } from "@/lib/utils/time-zone";
 import {
-  BLOG_STATUSES,
   calendarItems,
-  campaignStatus,
+  sparkProgress,
   type CalendarItem,
   type Campaign,
   type CampaignsPayload,
   type ItemStatus,
 } from "@/lib/utils/campaigns";
-import { CampaignDrawer } from "@/components/campaigns/campaign-drawer";
-import { CAMPAIGN_STATUS_META, ITEM_STATUS_META, platformLabel } from "@/components/campaigns/status-meta";
+import { SparkCard } from "@/components/campaigns/spark-card";
+import { ITEM_STATUS_META, SPARK_STATUS_META, platformLabel } from "@/components/campaigns/status-meta";
 
 type View = "month" | "week" | "list";
 
@@ -91,10 +90,11 @@ function ItemChip({ item, tz, wide, onOpen }: {
   );
 }
 
-function CampaignRow({ campaign: c, onOpen }: { campaign: Campaign; onOpen: () => void }) {
-  const status = CAMPAIGN_STATUS_META[campaignStatus(c)];
+function SparkRow({ campaign: c, onOpen }: { campaign: Campaign; onOpen: () => void }) {
+  const progress = sparkProgress(c);
+  const status = SPARK_STATUS_META[progress.status];
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
-  const published = c.posts.filter((p) => p.status === "published").length;
+  const kind = progress.hasVideo && progress.hasBlog ? "Video + Blog" : progress.hasBlog ? "Blog" : "Video";
   return (
     <li>
       <button
@@ -114,9 +114,10 @@ function CampaignRow({ campaign: c, onOpen }: { campaign: Campaign; onOpen: () =
           <div className="line-clamp-2 text-[12.5px] font-medium leading-snug text-spark-ink">{c.name}</div>
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px] text-spark-ink-faint">
             <span className={cn("rounded-full px-1.5 py-px font-medium", status.badge)}>{status.label}</span>
-            <span>{c.projects.length} {c.projects.length === 1 ? "project" : "projects"}</span>
-            <span>· Blog {BLOG_STATUSES[c.blog.status].toLowerCase()}</span>
-            {published > 0 && <span>· {published} posted</span>}
+            {progress.total > 0 && progress.status !== "published" && (
+              <span>{progress.ready} of {progress.total} ready</span>
+            )}
+            <span>· {kind}</span>
           </div>
         </div>
       </button>
@@ -143,10 +144,10 @@ export function CampaignCalendar() {
     try {
       const res = await fetch("/api/campaigns", { cache: "no-store" });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "Couldn't load your campaigns.");
+      if (!res.ok) throw new Error(body.error || "Couldn't load your Sparks.");
       setData(body as CampaignsPayload);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Couldn't load your campaigns.");
+      setLoadError(e instanceof Error ? e.message : "Couldn't load your Sparks.");
     } finally {
       setLoading(false);
     }
@@ -211,7 +212,7 @@ export function CampaignCalendar() {
     if (filters.platform !== "all" && !calendarItems(c).some((i) => i.platform === filters.platform)) return false;
     if (filters.status !== "all") {
       const own = [c.blog.status, ...c.posts.map((p) => p.status)] as string[];
-      if (!own.includes(filters.status) && campaignStatus(c) !== filters.status) return false;
+      if (!own.includes(filters.status) && sparkProgress(c).status !== filters.status) return false;
     }
     return true;
   }), [campaigns, filters]);
@@ -264,7 +265,7 @@ export function CampaignCalendar() {
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-spark-ink">Campaigns</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-spark-ink">Spark Calendar</h1>
           <p className="mt-1 text-[13px] text-spark-ink-muted">
             {rangeLabel} · {publishedCount} published, {bookedCount} scheduled · times in {tz.replace(/_/g, " ")}{" "}
             <Link href="/settings" className="text-spark-amber hover:underline">change</Link>
@@ -294,7 +295,7 @@ export function CampaignCalendar() {
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           </button>
           <Link href="/create" className="spark-cta inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium">
-            <Plus size={13} /> New video
+            <Plus size={13} /> Create Spark
           </Link>
         </div>
       </div>
@@ -306,9 +307,9 @@ export function CampaignCalendar() {
           value={filters.campaign}
           onChange={(e) => setFilters((f) => ({ ...f, campaign: e.target.value }))}
           className={cn(selectCls, "max-w-[240px]")}
-          aria-label="Campaign"
+          aria-label="Spark"
         >
-          <option value="all">All campaigns</option>
+          <option value="all">All Sparks</option>
           {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select
@@ -462,7 +463,10 @@ export function CampaignCalendar() {
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[13px] text-spark-ink">{i.title}</span>
                               <span className="block truncate text-[11px] text-spark-ink-faint">
-                                {platformLabel(i.platform)} · {i.campaignName}
+                                {i.kind === "blog" && i.status !== "published"
+                                  ? "Blog · Manual publishing reminder"
+                                  : platformLabel(i.platform)}{" "}
+                                · {i.campaignName}
                               </span>
                             </span>
                             <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium", meta.chip)}>
@@ -483,19 +487,19 @@ export function CampaignCalendar() {
         <aside className="w-full shrink-0 xl:w-[320px]">
           <div className="rounded-xl border border-spark-rule bg-white">
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
-              <h2 className="text-[14px] font-bold text-spark-ink">Campaigns</h2>
+              <h2 className="text-[14px] font-bold text-spark-ink">My Sparks</h2>
               <span className="text-[11px] text-spark-ink-faint">{railCampaigns.length}</span>
             </div>
             {railCampaigns.length === 0 ? (
               <p className="px-4 pb-4 pt-1 text-[12px] leading-relaxed text-spark-ink-faint">
                 {campaigns.length
-                  ? "No campaign matches these filters."
-                  : "Every video you make from September on starts its own campaign here."}
+                  ? "No Spark matches these filters."
+                  : "Every great piece of content starts with a Spark. Each video you make from September on starts its own here."}
               </p>
             ) : (
               <ul className="max-h-[680px] overflow-y-auto px-2 pb-2">
                 {railCampaigns.map((c) => (
-                  <CampaignRow key={c.id} campaign={c} onOpen={() => setOpenId(c.id)} />
+                  <SparkRow key={c.id} campaign={c} onOpen={() => setOpenId(c.id)} />
                 ))}
               </ul>
             )}
@@ -504,8 +508,9 @@ export function CampaignCalendar() {
       </div>
 
       {open && (
-        <CampaignDrawer
+        <SparkCard
           campaign={open}
+          allCampaigns={campaigns}
           timeZone={tz}
           youtubeChannel={data.youtubeChannel}
           onClose={() => setOpenId(null)}

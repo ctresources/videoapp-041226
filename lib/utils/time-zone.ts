@@ -117,11 +117,16 @@ export function formatInZone(date: Date, tz: string, opts: Intl.DateTimeFormatOp
   return new Intl.DateTimeFormat("en-US", { timeZone: tz, ...opts }).format(date);
 }
 
-/** "9:00a" / "5:30p" — the compact time the calendar design uses. */
+/** "9:00 AM" / "5:30 PM". */
 export function shortTime(date: Date, tz: string): string {
   const p = zonedParts(date, tz);
   const h = p.hour % 12 || 12;
-  return `${h}:${String(p.minute).padStart(2, "0")}${p.hour < 12 ? "a" : "p"}`;
+  return `${h}:${String(p.minute).padStart(2, "0")} ${p.hour < 12 ? "AM" : "PM"}`;
+}
+
+/** "Tue, Sep 22 · 9:00 AM" — the one long form every date on a Spark uses. */
+export function formatWhen(date: Date, tz: string): string {
+  return `${formatInZone(date, tz, { weekday: "short", month: "short", day: "numeric" })} · ${shortTime(date, tz)}`;
 }
 
 /** Offered first in Settings: most users are in one of these. */

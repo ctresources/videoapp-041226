@@ -86,7 +86,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/create", label: "Create Spark" },
   { href: "/videos", label: "My Sparks" },
-  { href: "/tools", label: "AI Tools" },
+  { href: "/tools", label: "Spark Studio" },
   { href: "/calendar", label: "Spark Calendar" },
   { href: "/analytics", label: "Spark Insights" },
   { href: "/social", label: "Social Media" },

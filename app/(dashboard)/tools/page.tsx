@@ -1875,7 +1875,7 @@ export default function ToolsPage() {
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
               <Sparkles size={18} />
             </div>
-            <h1 className="text-xl font-bold text-spark-ink">AI Tools</h1>
+            <h1 className="text-xl font-bold text-spark-ink">Spark Studio</h1>
           </div>
           <button
             onClick={() => setShowHelp((v) => !v)}
@@ -1891,7 +1891,7 @@ export default function ToolsPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
           <p className="text-sm text-amber-900">
             <span className="font-semibold">Your free trial has ended.</span>{" "}
-            The AI Tools are included on every paid plan.
+            Spark Studio is included on every paid plan.
           </p>
           <Link
             href="/billing"
