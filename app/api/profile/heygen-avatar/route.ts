@@ -9,6 +9,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { registerFormatLooks } from "@/lib/utils/avatar-crops";
 import { uploadTalkingPhoto } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -37,6 +38,16 @@ export async function POST(req: NextRequest) {
       .from("profiles")
       .update({ heygen_photo_id: photoId })
       .eq("id", user.id);
+
+    // One headshot, two registered shapes. HeyGen renders the presenter at the
+    // aspect its photo was registered with rather than the one the render asks
+    // for, so a single look is wrong for one of the two formats whichever way
+    // it is cropped. Registered here, chosen per render.
+    //
+    // Deliberately awaited: a render fired moments after this would otherwise
+    // find no looks and fall back. It adds a couple of seconds to an upload
+    // that already takes some.
+    await registerFormatLooks(user.id, photoId, image_url);
 
     console.log(`[heygen-avatar] Registered talking photo for user ${user.id}: ${photoId}`);
 

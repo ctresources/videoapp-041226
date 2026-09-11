@@ -25,6 +25,7 @@ import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
+import { registerFormatLooks } from "@/lib/utils/avatar-crops";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
@@ -209,6 +210,13 @@ function buildVideoAgentPrompt(params: {
   isSquare?: boolean;
   isLongForm?: boolean;
   burnCaptions?: boolean;
+  /**
+   * The presenter's look is registered at this canvas's aspect ratio, so it
+   * cannot arrive the wrong shape. Set from what the render actually resolved,
+   * never assumed — see create-blog, where a failed crop or a look still
+   * pending at HeyGen leaves it false and the full rules in place.
+   */
+  avatarMatchesCanvas?: boolean;
   hookText?: string;
   listingAddress?: string;
   listingPhotoCount?: number;
@@ -282,7 +290,26 @@ function buildVideoAgentPrompt(params: {
   const fillRule = "Fill leftover space with a background (blurred enlarged footage, b-roll, or a branded backdrop)"
     + (params.hasAvatar ? " — never by zooming into the presenter." : ".");
 
-  const orientationBlock = params.isSquare
+  /**
+   * The short form, used when the presenter's look was registered at this
+   * canvas's own shape.
+   *
+   * Everything trimmed here — never render portrait, the menu of ways to fill
+   * leftover space, never crop the head to gain width — describes repairing a
+   * mismatch that cannot occur once the look matches the frame. What survives
+   * is the check rather than the workaround: the agent still zooms for reasons
+   * of its own composition, which is a separate habit and was reported against
+   * a correctly shaped avatar.
+   *
+   * Around 600 characters, and they are the difference between the style
+   * direction arriving and being truncated away.
+   */
+  const shortOrientationBlock = `OUTPUT FORMAT — ${canvasLabel} (NON-NEGOTIABLE)
+Fill the canvas edge to edge — no black bars, which are a failed render.${params.hasAvatar
+    ? " Never gain width by zooming into the presenter, and never crop the head, chin or ears."
+    : ""}`;
+
+  const orientationBlock = params.avatarMatchesCanvas ? shortOrientationBlock : params.isSquare
     ? `OUTPUT FORMAT — 1:1 SQUARE (NON-NEGOTIABLE)
 CANVAS: 1080 × 1080, perfectly square. NOT vertical, NOT widescreen.
 Fill the square edge-to-edge — no black bars. ${fillRule}`
@@ -623,13 +650,15 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at")
+    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
     heygen_voice_id: string | null;
     heygen_photo_id: string | null;
+    heygen_look_wide: string | null;
+    heygen_look_tall: string | null;
     heygen_digital_twin_look_id: string | null;
     avatar_url: string | null;
     logo_url: string | null;
@@ -660,6 +689,16 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.warn("[create-blog] HeyGen auto-register failed:", err);
     }
+  }
+
+  // Backfill the two format looks for anyone whose avatar predates them. Same
+  // shape as the auto-register above, and for the same reason: the alternative
+  // is asking every existing user to re-upload a headshot they already gave us.
+  if (profile?.heygen_photo_id && profile.avatar_url
+      && (!profile.heygen_look_wide || !profile.heygen_look_tall)) {
+    const ids = await registerFormatLooks(user.id, profile.heygen_photo_id, profile.avatar_url);
+    if (ids.wide) profile.heygen_look_wide = ids.wide;
+    if (ids.tall) profile.heygen_look_tall = ids.tall;
   }
 
   if (!profile?.heygen_photo_id) {
@@ -768,6 +807,59 @@ export async function POST(req: NextRequest) {
   try {
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
     const orientation = isShortForm ? "portrait" : "landscape";
+
+    // avatarId is only set when the client explicitly selected a look (Avatar + Voice mode).
+    // Voice Only mode sends no lookId, so no avatar is placed on screen.
+    const requestedLook: string | undefined = lookId || undefined;
+
+    /**
+     * Use the look registered at this canvas's shape.
+     *
+     * The presenter is rendered at the aspect its photo was registered with,
+     * not the one the render asks for, so the wrong look is barred down the
+     * sides of a landscape video or across the top and bottom of a reel — and
+     * the agent's repair is to zoom into the face. Both shapes are registered
+     * at upload; this picks between them.
+     *
+     * Substituted only when the look chosen IS one of these two. A deliberately
+     * picked look — a different outfit, a digital twin — is left exactly as
+     * asked for, whatever its shape, and choosing nothing still means nobody
+     * on screen.
+     */
+    const formatLook = orientation === "portrait"
+      ? profile.heygen_look_tall
+      : profile.heygen_look_wide;
+    const pickedAFormatVariant = !!requestedLook
+      && (requestedLook === profile.heygen_look_wide || requestedLook === profile.heygen_look_tall);
+    // Only ever a substitution, never an addition. No requested look means
+    // Voice Only, where the whole point is that nobody is on screen —
+    // resolving a default here would put a presenter into a video that asked
+    // for none.
+    const avatarId: string | undefined = !requestedLook
+      ? undefined
+      : pickedAFormatVariant
+        ? (formatLook || requestedLook)
+        : requestedLook;
+
+    /**
+     * Whether the presenter actually matches the canvas.
+     *
+     * The prompt's aspect rules — fill the frame, never zoom to gain width,
+     * black bars are a failed render — exist for the mismatch. Dropping them
+     * because the looks *should* match would remove the protection on exactly
+     * the paths where it is needed: a crop that failed, a look still pending at
+     * HeyGen, an account from before any of this existed. So the prompt follows
+     * what happened rather than what was intended.
+     */
+    const avatarMatchesCanvas = !!avatarId && !!formatLook && avatarId === formatLook;
+    if (avatarId && !avatarMatchesCanvas) {
+      console.warn(
+        `[create-blog] presenter may not match the canvas (${orientation}, look=${avatarId}, ` +
+        `wide=${profile.heygen_look_wide ?? "none"}, tall=${profile.heygen_look_tall ?? "none"}) ` +
+        `— keeping the full aspect rules in the prompt.`,
+      );
+    }
+
     const dimension = DIMENSIONS[videoType as VideoType] || DIMENSIONS.blog_long;
 
     /**
@@ -843,6 +935,7 @@ export async function POST(req: NextRequest) {
       // They did: the payload said no avatar, the prompt demanded one on
       // screen half the time, and HeyGen resolved it with a stock one.
       hasAvatar: !!lookId,
+      avatarMatchesCanvas,
       burnCaptions: captions !== false,
       hookText,
       listingAddress,
@@ -890,10 +983,6 @@ export async function POST(req: NextRequest) {
     );
 
     const callbackUrl = buildCallbackUrl();
-
-    // avatarId is only set when the client explicitly selected a look (Avatar + Voice mode).
-    // Voice Only mode sends no lookId, so no avatar is placed on screen.
-    const avatarId: string | undefined = lookId || undefined;
 
     // ── Direct Video path (opt-in via engine="direct") ──────────────────────────
     // Experimental: HeyGen v3 Direct Video — a single talking-head from the

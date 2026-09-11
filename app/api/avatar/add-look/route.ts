@@ -39,10 +39,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Crop image to 16:9 (1280×720) before registering with HeyGen.
-    // HeyGen's Video Agent renders the avatar in the photo's registered aspect
-    // ratio — portrait photos produce pillarboxed portrait output even when
-    // orientation:"landscape" is requested. A landscape crop fixes this.
+    // Crop to 16:9 before registering with HeyGen.
+    //
+    // HeyGen renders the avatar at the aspect ratio its photo was registered
+    // with, whatever orientation the render requests, so a portrait source
+    // produces pillarboxed output inside a landscape frame — and the agent's
+    // repair for that is to zoom into the face, which crops the head.
+    //
+    // This comment said 16:9 while the line below resized to 1024x1024, so
+    // every look added here was registered SQUARE and barred on both sides in
+    // a landscape render. The file it wrote was even named square_. It now
+    // does what it always claimed to.
+    //
+    // "attention" rather than a centre crop: reshaping a headshot throws away
+    // most of one dimension, and the half worth keeping holds the face.
     let finalImageUrl = image_url;
     try {
       const imgResponse = await fetch(image_url);
@@ -51,11 +61,11 @@ export async function POST(req: NextRequest) {
         // @ts-ignore -- types unresolvable, runtime import is fine
         const sharp = (await import("sharp")).default;
         const croppedBuffer = await sharp(imgBuffer)
-          .resize({ width: 1024, height: 1024, fit: "cover", position: "attention" })
+          .resize({ width: 1920, height: 1080, fit: "cover", position: "attention" })
           .jpeg({ quality: 92 })
           .toBuffer();
 
-        const filePath = `${user.id}/looks/square_${Date.now()}.jpg`;
+        const filePath = `${user.id}/looks/wide_${Date.now()}.jpg`;
         const { error: uploadErr } = await admin.storage
           .from("avatars")
           .upload(filePath, croppedBuffer, { contentType: "image/jpeg", upsert: false });
