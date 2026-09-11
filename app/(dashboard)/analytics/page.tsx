@@ -89,7 +89,7 @@ export default async function AnalyticsPage() {
       <div>
         <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
           <BarChart2 size={22} className="text-primary-500" />
-          Analytics
+          Spark Insights
         </h1>
         <p className="text-slate-400 text-sm mt-0.5">
           What you&apos;ve made, and where it&apos;s been posted

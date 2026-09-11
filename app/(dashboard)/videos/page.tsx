@@ -410,7 +410,7 @@ function VideosContent() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-bold text-brand-text">My Content</h2>
+          <h2 className="text-2xl font-bold text-brand-text">My Sparks</h2>
           {/* Counts what is actually on the page. It said "N videos" over a
               list that also holds articles and drafts, so the number never
               matched what you could see.

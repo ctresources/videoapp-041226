@@ -249,7 +249,7 @@ export default function CalendarPage() {
         <div>
           <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
             <CalendarDays size={22} className="text-primary-500" />
-            Content Calendar
+            Spark Calendar
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
             {thisMonthPosts.length} post{thisMonthPosts.length !== 1 ? "s" : ""} scheduled in{" "}
