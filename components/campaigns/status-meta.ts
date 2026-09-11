@@ -22,6 +22,7 @@ export const ITEM_STATUS_META: Record<ItemStatus, { label: string; chip: string;
 };
 
 export const SPARK_STATUS_META: Record<SparkStatus, { label: string; badge: string }> = {
+  planned: { label: "Planned", badge: "bg-white text-spark-ink-faint ring-1 ring-inset ring-spark-rule-dim" },
   draft: { label: "Draft", badge: "bg-spark-rule-soft text-spark-ink-muted" },
   in_progress: { label: "In Progress", badge: "bg-[#FBF0DD] text-[#8D580F]" },
   ready: { label: "Ready", badge: "bg-[#F4F2EC] text-spark-ink-soft" },

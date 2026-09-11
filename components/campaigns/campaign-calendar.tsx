@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileText, Layers, PlayCircle, Plus, RefreshCw } from "lucide-react";
+
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
@@ -14,6 +15,7 @@ import {
   type Campaign,
   type CampaignsPayload,
   type ItemStatus,
+  type SparkSeries,
 } from "@/lib/utils/campaigns";
 import { SparkCard } from "@/components/campaigns/spark-card";
 import { ITEM_STATUS_META, SPARK_STATUS_META, platformLabel } from "@/components/campaigns/status-meta";
@@ -90,10 +92,10 @@ function ItemChip({ item, tz, wide, onOpen }: {
   );
 }
 
-function SparkRow({ campaign: c, youtubeConnected, onOpen }: {
-  campaign: Campaign; youtubeConnected: boolean; onOpen: () => void;
+function SparkRow({ campaign: c, youtubeConnected, series, onOpen }: {
+  campaign: Campaign; youtubeConnected: boolean; series: SparkSeries | null; onOpen: () => void;
 }) {
-  const progress = sparkProgress(c, { youtubeConnected });
+  const progress = sparkProgress(c, { youtubeConnected, series });
   const status = SPARK_STATUS_META[progress.status];
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
   const kind = progress.hasVideo && progress.hasBlog ? "Video + Blog" : progress.hasBlog ? "Blog" : "Video";
@@ -217,10 +219,11 @@ export function CampaignCalendar() {
     if (filters.platform !== "all" && !calendarItems(c).some((i) => i.platform === filters.platform)) return false;
     if (filters.status !== "all") {
       const own = [c.blog.status, ...c.posts.map((p) => p.status)] as string[];
-      if (!own.includes(filters.status) && sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel }).status !== filters.status) return false;
+      const s = data?.series.find((x) => x.id === c.seriesId) ?? null;
+      if (!own.includes(filters.status) && sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel, series: s }).status !== filters.status) return false;
     }
     return true;
-  }), [campaigns, filters, data?.youtubeChannel]);
+  }), [campaigns, filters, data?.youtubeChannel, data?.series]);
 
   if (loading && !data) {
     return (
@@ -503,8 +506,35 @@ export function CampaignCalendar() {
               </p>
             ) : (
               <ul className="max-h-[680px] overflow-y-auto px-2 pb-2">
-                {railCampaigns.map((c) => (
-                  <SparkRow key={c.id} campaign={c} youtubeConnected={!!data.youtubeChannel} onOpen={() => setOpenId(c.id)} />
+                {/* Grouped by Series, in running order, with everything else after. */}
+                {data.series
+                  .map((s) => ({ series: s, sparks: railCampaigns.filter((c) => c.seriesId === s.id) }))
+                  .filter((g) => g.sparks.length > 0)
+                  .map(({ series: s, sparks }) => (
+                    <li key={s.id} className="mt-1 first:mt-0">
+                      <div className="flex items-center gap-1.5 px-2 pb-1 pt-2 text-[10.5px] font-medium text-spark-ink-muted">
+                        <Layers size={11} className="text-spark-ink-faint" />
+                        <span className="truncate">{s.name}</span>
+                        <span className="text-spark-ink-faint">· {sparks.length}</span>
+                      </div>
+                      <ul className="border-l border-spark-rule-soft pl-1.5">
+                        {sparks
+                          .slice()
+                          .sort((a, b) => (a.seriesPosition ?? 0) - (b.seriesPosition ?? 0))
+                          .map((c) => (
+                            <SparkRow
+                              key={c.id}
+                              campaign={c}
+                              youtubeConnected={!!data.youtubeChannel}
+                              series={s}
+                              onOpen={() => setOpenId(c.id)}
+                            />
+                          ))}
+                      </ul>
+                    </li>
+                  ))}
+                {railCampaigns.filter((c) => !c.seriesId || !data.series.some((s) => s.id === c.seriesId)).map((c) => (
+                  <SparkRow key={c.id} campaign={c} youtubeConnected={!!data.youtubeChannel} series={null} onOpen={() => setOpenId(c.id)} />
                 ))}
               </ul>
             )}
@@ -516,6 +546,8 @@ export function CampaignCalendar() {
         <SparkCard
           campaign={open}
           allCampaigns={campaigns}
+          series={data.series}
+          onOpenSpark={setOpenId}
           timeZone={tz}
           youtubeChannel={data.youtubeChannel}
           onClose={() => setOpenId(null)}

@@ -41,7 +41,16 @@ export type ItemStatus =
   | "cancelled";
 
 /** A whole Spark's status. */
-export type SparkStatus = "draft" | "in_progress" | "ready" | "scheduled" | "published" | "failed";
+export type SparkStatus = "planned" | "draft" | "in_progress" | "ready" | "scheduled" | "published" | "failed";
+
+/** Several related Sparks that tell one story over time. */
+export interface SparkSeries {
+  id: string;
+  name: string;
+  /** Defaults every Spark in the Series inherits unless it sets its own. */
+  ctaText: string | null;
+  destinationUrl: string | null;
+}
 
 /** One video's status within its Spark. */
 export type VideoState = "draft" | "rendering" | "ready" | "scheduled" | "published" | "failed";
@@ -102,6 +111,8 @@ export interface Campaign {
   updatedAt: string;
   ctaText: string | null;
   destinationUrl: string | null;
+  seriesId: string | null;
+  seriesPosition: number | null;
   blog: {
     projectId: string | null;
     /** Whether the article has actually been written. */
@@ -119,6 +130,7 @@ export interface Campaign {
 
 export interface CampaignsPayload {
   campaigns: Campaign[];
+  series: SparkSeries[];
   /** The saved zone, or null if the user has never had one set. */
   timeZone: string | null;
   youtubeChannel: string | null;
@@ -207,6 +219,22 @@ export function sparkHasBlog(c: Campaign): boolean {
 /** What the rules need to know beyond the Spark itself. */
 export interface SparkContext {
   youtubeConnected: boolean;
+  /** The Series this Spark belongs to, when it is in one. */
+  series?: SparkSeries | null;
+}
+
+/**
+ * The CTA and link a Spark actually uses: its own, else the Series' defaults.
+ * A listing Series then needs the showing link entered once, not five times.
+ */
+export function effectiveCta(c: Campaign, series?: SparkSeries | null): {
+  text: string | null; url: string | null; inherited: boolean;
+} {
+  const own = c.ctaText?.trim() || null;
+  const ownUrl = c.destinationUrl || null;
+  const text = own ?? series?.ctaText?.trim() ?? null;
+  const url = ownUrl ?? series?.destinationUrl ?? null;
+  return { text, url, inherited: (!own && !!text) || (!ownUrl && !!url) };
 }
 
 export interface SetupNeed {
@@ -262,8 +290,10 @@ export function publishingSetup(c: Campaign, ctx: SparkContext): PublishingSetup
 
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
   if (lead && !lead.unbranded) {
-    if (!(c.ctaText?.trim() || lead.cta)) needs.push({ key: "cta", label: "CTA", blocking: true, fix: "cta" });
-    if (!c.destinationUrl) needs.push({ key: "link", label: "Destination link", blocking: true, fix: "cta" });
+    // The Series' defaults count as set: the Spark inherits them.
+    const cta = effectiveCta(c, ctx.series);
+    if (!(cta.text || lead.cta)) needs.push({ key: "cta", label: "CTA", blocking: true, fix: "cta" });
+    if (!cta.url) needs.push({ key: "link", label: "Destination link", blocking: true, fix: "cta" });
   }
 
   if (withVideo.length && !ctx.youtubeConnected) {
@@ -348,6 +378,9 @@ export function sparkProgress(c: Campaign, ctx: SparkContext): SparkProgress {
   else if (total > 0 && items.every((i) => i.dated && i.ready)) status = "scheduled";
   else if (contentDone && setup.blocking === 0) status = "ready";
   else if (ready > 0) status = "in_progress";
+  // A name and nothing else — a slot planned in a Series. Draft means work
+  // has started; Planned means it hasn't.
+  else if (!c.projects.length && !hasBlog) status = "planned";
   else status = "draft";
 
   // Start → Blog or Video → Source are behind every Spark that exists. From
@@ -356,6 +389,7 @@ export function sparkProgress(c: Campaign, ctx: SparkContext): SparkProgress {
   const step = status === "published" ? 7
     : items.some((i) => i.published) ? 6
     : contentDone && setup.blocking === 0 ? 5
+    : status === "planned" ? 2
     : 4;
 
   return {

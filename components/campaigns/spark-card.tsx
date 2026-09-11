@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  BarChart3, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Circle, Copy, ExternalLink, Eye,
-  FileText, Image as ImageIcon, Link2, Loader2, Pencil, PlayCircle, Plus, Radio, Sparkles, X,
+  ArrowDown, ArrowUp, BarChart3, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Circle, Copy,
+  ExternalLink, Eye, FileText, Image as ImageIcon, Layers, Link2, Loader2, Pencil, PlayCircle, Plus,
+  Radio, Sparkles, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { blogAsHtml } from "@/lib/utils/blog-html";
 import { formatWhen, ymd, zonedParts, zonedToUtc } from "@/lib/utils/time-zone";
 import {
   CAMPAIGN_ROLES,
+  effectiveCta,
   isHttpUrl,
   leadVideo,
   sparkProgress,
@@ -24,6 +26,7 @@ import {
   type CampaignProject,
   type CampaignRole,
   type SparkCaptions,
+  type SparkSeries,
 } from "@/lib/utils/campaigns";
 import {
   COMING_SOON_CHANNELS,
@@ -35,15 +38,19 @@ import {
 
 interface Props {
   campaign: Campaign;
-  /** Every Spark, for Add Video to Spark. */
+  /** Every Spark, for Add Video to Spark and the Series strip. */
   allCampaigns: Campaign[];
+  /** Every Series this user has. */
+  series: SparkSeries[];
   timeZone: string;
   youtubeChannel: string | null;
   onClose: () => void;
+  /** Open another Spark — a tile in the Series strip. */
+  onOpenSpark: (id: string) => void;
   onSaved: () => Promise<void> | void;
 }
 
-type Sub = null | "preview" | "article" | "addVideo" | "review";
+type Sub = null | "preview" | "article" | "addVideo" | "review" | "series";
 type Editing = null | "cta" | "captions" | "schedule" | "publish";
 
 const STEPS = [
@@ -130,10 +137,21 @@ function SubPanel({ title, onClose, children }: { title: string; onClose: () => 
   );
 }
 
-export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChannel, onClose, onSaved }: Props) {
-  const ctx = { youtubeConnected: !!youtubeChannel };
+export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, youtubeChannel, onClose, onOpenSpark, onSaved }: Props) {
+  const mySeries = series.find((s) => s.id === c.seriesId) ?? null;
+  const ctx = { youtubeConnected: !!youtubeChannel, series: mySeries };
   const progress = sparkProgress(c, ctx);
   const optionalNeeds = progress.setup.needs.filter((n) => !n.blocking);
+  // What the Spark actually uses: its own CTA and link, else the Series'.
+  const shownCta = effectiveCta(c, mySeries);
+
+  // The Sparks in this Series, in their running order.
+  const seriesSparks = mySeries
+    ? allCampaigns
+      .filter((x) => x.seriesId === mySeries.id)
+      .sort((a, b) => (a.seriesPosition ?? 0) - (b.seriesPosition ?? 0) || a.createdAt.localeCompare(b.createdAt))
+    : [];
+  const myIndex = seriesSparks.findIndex((x) => x.id === c.id);
   const lead = c.projects.find((p) => p.role === "primary") ?? c.projects[0];
 
   const [selectedId, setSelectedId] = useState<string | null>(lead?.id ?? null);
@@ -155,6 +173,10 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
   const [article, setArticle] = useState({ title: "", intro: "", body: "", conclusion: "" });
   const [previewHtml, setPreviewHtml] = useState("");
   const [addRole, setAddRole] = useState<CampaignRole>("short_variation");
+  const [planName, setPlanName] = useState("");
+  const [newSeriesName, setNewSeriesName] = useState("");
+  const [seriesName, setSeriesName] = useState(mySeries?.name ?? "");
+  const [seriesCta, setSeriesCta] = useState({ text: mySeries?.ctaText ?? "", url: mySeries?.destinationUrl ?? "" });
 
   // Re-seed from the saved Spark whenever a save brings back fresh values.
   useEffect(() => {
@@ -163,8 +185,11 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
     setDest(c.destinationUrl ?? "");
     setReminder(toInputs(c.blog.plannedAt, tz));
     setExternally(c.blog.status === "scheduled_externally");
-    setStepView(sparkProgress(c, { youtubeConnected: !!youtubeChannel }).step);
-  }, [c, tz, youtubeChannel]);
+    const s = series.find((x) => x.id === c.seriesId) ?? null;
+    setStepView(sparkProgress(c, { youtubeConnected: !!youtubeChannel, series: s }).step);
+    setSeriesName(s?.name ?? "");
+    setSeriesCta({ text: s?.ctaText ?? "", url: s?.destinationUrl ?? "" });
+  }, [c, tz, youtubeChannel, series]);
 
   useEffect(() => {
     if (selected) setCaps(selected.captions);
@@ -207,6 +232,7 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
 
   const patchSpark = (fields: Record<string, unknown>) => send("/api/campaigns", "PATCH", { id: c.id, ...fields });
   const patchVideo = (fields: Record<string, unknown>) => send("/api/campaigns/project", "PATCH", fields);
+  const postSeries = (fields: Record<string, unknown>) => send("/api/campaigns/series", "POST", fields);
 
   function saveName() {
     const next = name.trim();
@@ -320,6 +346,55 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
     act(`role-${projectId}`, () => patchVideo({ action: "role", projectId, role }), "Role updated.");
   }
 
+  function createSeries() {
+    const name = newSeriesName.trim();
+    if (!name) { toast.error("Give the Series a name."); return; }
+    act("series", () => postSeries({ action: "create", name, sparkId: c.id }), "Series started.", () => { setNewSeriesName(""); setSub(null); });
+  }
+
+  function joinSeries(seriesId: string) {
+    act("series", () => postSeries({ action: "move", sparkId: c.id, seriesId }), "Added to the Series.", () => setSub(null));
+  }
+
+  function leaveSeries() {
+    act("series", () => postSeries({ action: "move", sparkId: c.id, seriesId: null }), "Taken out of the Series. Its CTA and link stayed with this Spark.", () => setSub(null));
+  }
+
+  function renameSeries() {
+    if (!mySeries) return;
+    const name = seriesName.trim();
+    if (!name || name === mySeries.name) return;
+    act("series", () => postSeries({ action: "rename", seriesId: mySeries.id, name }), "Series renamed.");
+  }
+
+  function saveSeriesDefaults() {
+    if (!mySeries) return;
+    const url = seriesCta.url.trim();
+    if (url && !isHttpUrl(url)) { toast.error("The destination link must be a full web address, starting with https://"); return; }
+    act("series", () => postSeries({ action: "defaults", seriesId: mySeries.id, cta_text: seriesCta.text, destination_url: url || null }), "Series defaults saved.");
+  }
+
+  function deleteSeries() {
+    if (!mySeries) return;
+    act("series", () => postSeries({ action: "delete", seriesId: mySeries.id }), "Series deleted. Every Spark kept its CTA and link.", () => setSub(null));
+  }
+
+  function planSpark() {
+    if (!mySeries) return;
+    const name = planName.trim();
+    if (!name) { toast.error("Give the Spark a name."); return; }
+    act("plan", () => postSeries({ action: "plan", seriesId: mySeries.id, name }), "Planned Spark added.", () => setPlanName(""));
+  }
+
+  function reorder(index: number, dir: -1 | 1) {
+    if (!mySeries) return;
+    const next = [...seriesSparks];
+    const to = index + dir;
+    if (to < 0 || to >= next.length) return;
+    [next[index], next[to]] = [next[to], next[index]];
+    act("reorder", () => postSeries({ action: "reorder", seriesId: mySeries.id, order: next.map((x) => x.id) }), "Order saved.");
+  }
+
   function attach(projectId: string) {
     act(`attach-${projectId}`, () => patchVideo({ action: "attach", projectId, campaignId: c.id, role: addRole }), "Video added to this Spark.", () => setSub(null));
   }
@@ -349,7 +424,19 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
           <div className="border-b border-spark-rule bg-white px-5 py-4">
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
-                <div className="spark-eyebrow text-[9px]">SPARK CARD</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="spark-eyebrow text-[9px]">SPARK CARD</span>
+                  {mySeries && (
+                    <button
+                      type="button"
+                      onClick={() => setSub("series")}
+                      className="inline-flex items-center gap-1 text-[10.5px] text-spark-ink-muted hover:text-spark-amber"
+                    >
+                      <Layers size={11} />
+                      Spark Series: {mySeries.name} · Spark {myIndex + 1} of {seriesSparks.length}
+                    </button>
+                  )}
+                </div>
                 {editingName ? (
                   <input
                     autoFocus
@@ -639,14 +726,17 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
             ) : (
               <>
                 <div className="text-[13px] text-spark-ink">
-                  {c.ctaText || (lead?.cta ? <span className="text-spark-ink-muted">From the script: {lead.cta}</span> : <span className="text-spark-ink-faint">No CTA yet</span>)}
+                  {shownCta.text || (lead?.cta ? <span className="text-spark-ink-muted">From the script: {lead.cta}</span> : <span className="text-spark-ink-faint">No CTA yet</span>)}
                 </div>
-                {c.destinationUrl ? (
-                  <a href={c.destinationUrl} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block break-all text-[12px] text-spark-amber hover:underline">
-                    {c.destinationUrl}
+                {shownCta.url ? (
+                  <a href={shownCta.url} target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block break-all text-[12px] text-spark-amber hover:underline">
+                    {shownCta.url}
                   </a>
                 ) : (
                   <div className="mt-0.5 text-[12px] text-spark-ink-faint">No destination link yet</div>
+                )}
+                {shownCta.inherited && mySeries && (
+                  <p className="mt-1 text-[11px] text-spark-ink-faint">Inherited from the Series “{mySeries.name}”. Editing here sets this Spark&apos;s own.</p>
                 )}
               </>
             )}
@@ -812,6 +902,80 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
             )}
           </Section>
 
+          {/* ── Spark Series ── */}
+          <Section
+            icon={Layers}
+            title="Spark Series"
+            actions={mySeries ? (
+              <button onClick={() => setSub("series")} className={quietBtn}><Pencil size={12} /> Manage Series</button>
+            ) : (
+              <button onClick={() => setSub("series")} className={quietBtn}><Plus size={12} /> Add to a Series</button>
+            )}
+          >
+            {!mySeries ? (
+              <p className="text-[12px] text-spark-ink-faint">
+                Not in a Series. A Series groups related Sparks — a listing&apos;s coming soon, tour, open house, price change and just sold.
+              </p>
+            ) : (
+              <>
+                <ul className="space-y-1.5">
+                  {seriesSparks.map((s, i) => {
+                    const st = SPARK_STATUS_META[sparkProgress(s, { youtubeConnected: !!youtubeChannel, series: mySeries }).status];
+                    const isThis = s.id === c.id;
+                    return (
+                      <li
+                        key={s.id}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-2.5 py-2",
+                          isThis ? "border-spark-amber bg-spark-amber-tint/50" : "border-spark-rule-soft bg-white",
+                        )}
+                      >
+                        <span className="w-4 shrink-0 text-[11px] text-spark-ink-faint">{i + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => !isThis && onOpenSpark(s.id)}
+                          className="min-w-0 flex-1 text-left"
+                          disabled={isThis}
+                        >
+                          <span className="block truncate text-[12.5px] text-spark-ink">{s.name}</span>
+                        </button>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", st.badge)}>{st.label}</span>
+                        <span className="flex shrink-0 gap-0.5">
+                          <button onClick={() => reorder(i, -1)} disabled={i === 0 || busy !== null} aria-label="Move up" className="rounded p-1 text-spark-ink-faint hover:bg-spark-paper disabled:opacity-30">
+                            <ArrowUp size={12} />
+                          </button>
+                          <button onClick={() => reorder(i, 1)} disabled={i === seriesSparks.length - 1 || busy !== null} aria-label="Move down" className="rounded p-1 text-spark-ink-faint hover:bg-spark-paper disabled:opacity-30">
+                            <ArrowDown size={12} />
+                          </button>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") planSpark(); }}
+                    placeholder="Plan another Spark — e.g. Price Change"
+                    aria-label="Name of the planned Spark"
+                    className={inputCls}
+                  />
+                  <button onClick={planSpark} disabled={busy !== null} className={quietBtn}>
+                    {busy === "plan" ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add Spark
+                  </button>
+                </div>
+
+                {(mySeries.ctaText || mySeries.destinationUrl) && (
+                  <p className="mt-2 text-[11px] text-spark-ink-faint">
+                    Series CTA and link are inherited by every Spark that has none of its own. Change them under Manage Series.
+                  </p>
+                )}
+              </>
+            )}
+          </Section>
+
           {/* ── Performance ── */}
           <Section icon={BarChart3} title="Spark Performance" actions={<span className="text-[11px] text-spark-ink-faint">Last updated: —</span>}>
             <div className="grid grid-cols-3 gap-2">
@@ -912,6 +1076,97 @@ export function SparkCard({ campaign: c, allCampaigns, timeZone: tz, youtubeChan
                   </li>
                 ))}
               </ul>
+            )}
+          </SubPanel>
+        )}
+
+        {sub === "series" && (
+          <SubPanel title={mySeries ? "Manage Series" : "Add to a Series"} onClose={() => setSub(null)}>
+            {mySeries ? (
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls} htmlFor="series-name">Series name</label>
+                  <div className="flex gap-2">
+                    <input id="series-name" value={seriesName} onChange={(e) => setSeriesName(e.target.value)} className={inputCls} />
+                    <button onClick={renameSeries} disabled={busy !== null} className={quietBtn}>Rename</button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-spark-rule bg-white p-3">
+                  <div className="mb-2 text-[12px] font-medium text-spark-ink">Shared CTA and link</div>
+                  <p className="mb-2 text-[11px] text-spark-ink-faint">
+                    Every Spark in this Series uses these unless it has its own. A listing Series needs the showing link entered once.
+                  </p>
+                  <label className={labelCls} htmlFor="series-cta">CTA</label>
+                  <textarea id="series-cta" rows={2} value={seriesCta.text} onChange={(e) => setSeriesCta({ ...seriesCta, text: e.target.value })} className={inputCls} />
+                  <label className={cn(labelCls, "mt-2")} htmlFor="series-link">Destination link</label>
+                  <input id="series-link" type="url" value={seriesCta.url} onChange={(e) => setSeriesCta({ ...seriesCta, url: e.target.value })} placeholder="https://" className={inputCls} />
+                  <div className="mt-2 flex justify-end">
+                    <button onClick={saveSeriesDefaults} disabled={busy !== null} className={ctaBtn}>
+                      {busy === "series" && <Loader2 size={12} className="animate-spin" />} Save defaults
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-[12px] font-medium text-spark-ink">Move this Spark</div>
+                  <div className="space-y-1.5">
+                    {series.filter((s) => s.id !== mySeries.id).map((s) => (
+                      <button key={s.id} onClick={() => joinSeries(s.id)} disabled={busy !== null} className="flex w-full items-center justify-between gap-2 rounded-lg border border-spark-rule-soft bg-white px-3 py-2 text-left text-[12.5px] text-spark-ink hover:border-spark-amber/50">
+                        {s.name}
+                        <span className="text-[11px] text-spark-amber">Move here</span>
+                      </button>
+                    ))}
+                    <button onClick={leaveSeries} disabled={busy !== null} className={quietBtn}>Take out of this Series</button>
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-spark-ink-faint">
+                    A Spark that leaves keeps whatever CTA and link it was inheriting.
+                  </p>
+                </div>
+
+                <div className="border-t border-spark-rule-soft pt-3">
+                  <button
+                    onClick={() => { if (window.confirm(`Delete the Series “${mySeries.name}”? Its ${seriesSparks.length} Sparks stay, each keeping its CTA and link.`)) deleteSeries(); }}
+                    disabled={busy !== null}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                  >
+                    <Trash2 size={12} /> Delete Series
+                  </button>
+                  <p className="mt-1.5 text-[11px] text-spark-ink-faint">The Sparks are kept — only the grouping goes.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls} htmlFor="new-series">Start a Series with this Spark</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="new-series"
+                      value={newSeriesName}
+                      onChange={(e) => setNewSeriesName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") createSeries(); }}
+                      placeholder="e.g. 2549 Crestline Drive"
+                      className={inputCls}
+                    />
+                    <button onClick={createSeries} disabled={busy !== null} className={ctaBtn}>
+                      {busy === "series" ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Create
+                    </button>
+                  </div>
+                </div>
+                {series.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-[12px] font-medium text-spark-ink">Or add it to one you have</div>
+                    <div className="space-y-1.5">
+                      {series.map((s) => (
+                        <button key={s.id} onClick={() => joinSeries(s.id)} disabled={busy !== null} className="flex w-full items-center justify-between gap-2 rounded-lg border border-spark-rule-soft bg-white px-3 py-2 text-left text-[12.5px] text-spark-ink hover:border-spark-amber/50">
+                          {s.name}
+                          <span className="text-[11px] text-spark-amber">Add here</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </SubPanel>
         )}

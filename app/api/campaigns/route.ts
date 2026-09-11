@@ -32,9 +32,13 @@ type Admin = ReturnType<typeof createAdminClient>;
  */
 const CAMPAIGNS_START = "2026-09-01T04:00:00Z";
 
+interface SeriesRow {
+  id: string; name: string; cta_text: string | null; destination_url: string | null;
+}
 interface CampaignRow {
   id: string; name: string; created_at: string; updated_at: string;
   cta_text: string | null; destination_url: string | null;
+  series_id: string | null; series_position: number | null;
   blog_project_id: string | null; blog_title: string | null; blog_status: BlogStatus;
   blog_planned_at: string | null; blog_published_at: string | null;
   blog_platform: string | null; blog_url: string | null;
@@ -130,13 +134,18 @@ export async function GET() {
 
   await fileNewProjects(admin, userId);
 
-  const [campaignsRes, profileRes] = await Promise.all([
+  const [campaignsRes, profileRes, seriesRes] = await Promise.all([
     admin
       .from("campaigns")
-      .select("id, name, created_at, updated_at, cta_text, destination_url, blog_project_id, blog_title, blog_status, blog_planned_at, blog_published_at, blog_platform, blog_url")
+      .select("id, name, created_at, updated_at, cta_text, destination_url, series_id, series_position, blog_project_id, blog_title, blog_status, blog_planned_at, blog_published_at, blog_platform, blog_url")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     admin.from("profiles").select("time_zone, youtube_channel_name").eq("id", userId).maybeSingle(),
+    admin
+      .from("spark_series")
+      .select("id, name, cta_text, destination_url")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (campaignsRes.error) {
@@ -149,10 +158,16 @@ export async function GET() {
   const savedZone = profile?.time_zone;
   const timeZone = isValidTimeZone(savedZone) ? savedZone : null;
   const youtubeChannel = profile?.youtube_channel_name ?? null;
+  const series = ((seriesRes.data ?? []) as SeriesRow[]).map((s) => ({
+    id: s.id,
+    name: s.name,
+    ctaText: s.cta_text,
+    destinationUrl: s.destination_url,
+  }));
 
   const ids = rows.map((r) => r.id);
   if (!ids.length) {
-    return NextResponse.json({ campaigns: [], timeZone, youtubeChannel } satisfies CampaignsPayload);
+    return NextResponse.json({ campaigns: [], series, timeZone, youtubeChannel } satisfies CampaignsPayload);
   }
 
   // Captions and the article are read as single JSON fields: the calendar
@@ -237,6 +252,8 @@ export async function GET() {
       updatedAt: r.updated_at,
       ctaText: r.cta_text,
       destinationUrl: r.destination_url,
+      seriesId: r.series_id,
+      seriesPosition: r.series_position,
       blog: {
         projectId: r.blog_project_id,
         hasArticle: !!(blogProject?.blog_intro?.trim() || blogProject?.blog_conclusion?.trim()),
@@ -286,7 +303,7 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ campaigns, timeZone, youtubeChannel } satisfies CampaignsPayload);
+  return NextResponse.json({ campaigns, series, timeZone, youtubeChannel } satisfies CampaignsPayload);
 }
 
 const TEXT_LIMITS: Record<string, number> = {
