@@ -34,6 +34,37 @@ export function pickRecordingMimeType(): string {
 }
 
 /**
+ * The same question for audio-only recordings.
+ *
+ * A separate list because the video one above is video containers: asking
+ * MediaRecorder for "video/mp4" on an audio-only stream is a different
+ * question, and Safari answers it differently. MP4/AAC first for the same
+ * reason — it is what iOS plays back without argument — falling through to
+ * the WebM/Opus every other browser records happily.
+ */
+const AUDIO_CANDIDATES = [
+  "audio/mp4;codecs=mp4a.40.2",
+  "audio/mp4",
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+];
+
+/** The best supported audio recording type, or "" to let the browser decide. */
+export function pickAudioMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  return AUDIO_CANDIDATES.find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+}
+
+/** A file extension for a recorded blob, from whatever type it really is. */
+export function extensionForType(type: string): string {
+  if (type.includes("mp4")) return "m4a";
+  if (type.includes("ogg")) return "ogg";
+  if (type.includes("webm")) return "webm";
+  return "bin";
+}
+
+/**
  * What was actually recorded, which is not always what was asked for.
  *
  * Both recorders used to label the finished blob with the type they requested,
