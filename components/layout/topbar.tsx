@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils/cn";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/create": "Create Spark",
+  "/create": "Spark Studio",
   "/videos": "My Sparks",
-  "/tools": "Spark Studio",
+  "/tools": "Spark Tools",
   "/campaigns": "Spark Calendar",
   "/calendar": "Spark Calendar",
   "/analytics": "Spark Insights",

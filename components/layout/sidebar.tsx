@@ -84,9 +84,9 @@ const NAV_ICONS: Record<string, ReactNode> = {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/create", label: "Create Spark" },
+  { href: "/create", label: "Spark Studio" },
   { href: "/videos", label: "My Sparks" },
-  { href: "/tools", label: "Spark Studio" },
+  { href: "/tools", label: "Spark Tools" },
   { href: "/calendar", label: "Spark Calendar" },
   { href: "/analytics", label: "Spark Insights" },
   { href: "/social", label: "Social Media" },
