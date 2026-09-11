@@ -13,6 +13,7 @@ const pageTitles: Record<string, string> = {
   "/create": "Create",
   "/videos": "My Content",
   "/tools": "AI Tools",
+  "/campaigns": "Campaigns",
   "/calendar": "Calendar",
   "/analytics": "Analytics",
   "/social": "Social Media",

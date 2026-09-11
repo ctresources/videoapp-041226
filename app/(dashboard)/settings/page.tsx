@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone } from "lucide-react";
+import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock } from "lucide-react";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { SUPPORTED_LANGUAGES } from "@/lib/utils/languages";
+import { allTimeZones, browserTimeZone, isValidTimeZone, US_TIME_ZONES } from "@/lib/utils/time-zone";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function SettingsPage() {
   const [passwords, setPasswords] = useState({ current: "", newPass: "", confirm: "" });
   const [savingPassword, setSavingPassword] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [prefs, setPrefs] = useState({ language: "en", city: "", state: "" });
+  const [prefs, setPrefs] = useState({ language: "en", city: "", state: "", timeZone: "" });
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [brandData, setBrandData] = useState<BrandProfileInitial | null>(null);
   const [ctaTemplate, setCtaTemplate] = useState(DEFAULT_CTA_TEMPLATE);
@@ -43,7 +44,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id")
+      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -57,12 +58,15 @@ export default function SettingsPage() {
           website: string | null; license_number: string | null;
           heygen_digital_twin_group_id: string | null; heygen_digital_twin_look_id: string | null;
           default_cta: string | null; market_years: string | null;
+          time_zone: string | null;
         } | null;
         if (row) {
           setPrefs({
             language: row.preferred_language || "en",
             city: row.location_city || "",
             state: row.location_state || "",
+            // Never set yet: offer the browser's zone, saved with the rest.
+            timeZone: isValidTimeZone(row.time_zone) ? row.time_zone : browserTimeZone(),
           });
           if (row.default_cta?.trim()) setCtaTemplate(row.default_cta);
           setMarketYears(row.market_years || "");
@@ -154,6 +158,7 @@ export default function SettingsPage() {
         preferred_language: prefs.language,
         location_city: prefs.city.trim() || null,
         location_state: prefs.state.trim() || null,
+        time_zone: isValidTimeZone(prefs.timeZone) ? prefs.timeZone : null,
       })
       .eq("id", user.id);
     if (error) toast.error(error.message);
@@ -206,6 +211,13 @@ export default function SettingsPage() {
     );
   }
 
+  // US zones first; then everything else the browser knows. A saved zone that
+  // is in neither list (an older browser that cannot list zones) still shows.
+  const otherZones = allTimeZones().filter((z) => !US_TIME_ZONES.some((u) => u.value === z));
+  if (prefs.timeZone && !US_TIME_ZONES.some((u) => u.value === prefs.timeZone) && !otherZones.includes(prefs.timeZone)) {
+    otherZones.unshift(prefs.timeZone);
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 
@@ -249,6 +261,28 @@ export default function SettingsPage() {
               ))}
             </select>
             <p className="text-xs text-slate-400 mt-1">AI scripts will be written and narrated in this language</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <Clock size={13} className="text-slate-400" /> Time Zone
+            </label>
+            <select
+              value={prefs.timeZone}
+              onChange={(e) => setPrefs((p) => ({ ...p, timeZone: e.target.value }))}
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+            >
+              <optgroup label="United States">
+                {US_TIME_ZONES.map((z) => (
+                  <option key={z.value} value={z.value}>{z.label} ({z.value.replace(/_/g, " ")})</option>
+                ))}
+              </optgroup>
+              {otherZones.length > 0 && (
+                <optgroup label="Everywhere else">
+                  {otherZones.map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">Publish dates and times are shown and scheduled in this zone</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
