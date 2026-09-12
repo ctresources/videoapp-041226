@@ -1,5 +1,19 @@
 import { createClient } from "@/lib/supabase/client";
-import { takeFailure, failureError } from "@/lib/utils/upload-failpoint";
+import type { UploadStage } from "@/lib/utils/pending-upload";
+
+/**
+ * An upload error that says how far it got.
+ *
+ * The recorder shows this, and the difference matters: a failure after the
+ * save means the recording may already be on the server, and the retry checks
+ * rather than sending it again.
+ */
+function stagedError(message: string, stage: UploadStage, code?: string) {
+  const err = new Error(message) as Error & { stage: UploadStage; code?: string };
+  err.stage = stage;
+  if (code) err.code = code;
+  return err;
+}
 
 /**
  * The video_type that matches a recording's actual shape.
@@ -79,7 +93,9 @@ export async function uploadCameraRecording(
     body: JSON.stringify({ ext, key: opts.idempotencyKey }),
   });
   const urlData = await urlRes.json();
-  if (!urlRes.ok) throw new Error(urlData.error || "Failed to prepare upload");
+  if (!urlRes.ok) {
+    throw stagedError(urlData.error || "Failed to prepare upload", "before-upload", urlData.code);
+  }
 
   /**
    * The save already worked, and this browser never heard.
@@ -98,10 +114,6 @@ export async function uploadCameraRecording(
     };
   }
 
-  // Stops here with the upload slot already prepared — the shape of a
-  // connection dying mid-attempt.
-  if (takeFailure("before-upload")) throw failureError("before-upload");
-
   const supabase = createClient();
   const { error: uploadError } = await supabase.storage
     .from("assets")
@@ -116,15 +128,13 @@ export async function uploadCameraRecording(
     const sizeMb = Math.round(blob.size / 1024 / 1024);
     console.error(`[camera-upload] Upload failed (${sizeMb} MB):`, raw);
     if (/maximum allowed size|too large|payload/i.test(raw)) {
-      throw new Error(
+      throw stagedError(
         `Your recording is ${sizeMb} MB, which exceeds the storage upload limit. Record a shorter take, or raise the file size limit in Supabase → Storage → Settings.`,
+        "before-upload",
       );
     }
-    throw new Error(raw || "Upload failed");
+    throw stagedError(raw || "Upload failed", "before-upload");
   }
-
-  // The file is in storage and nothing knows about it yet.
-  if (takeFailure("after-upload")) throw failureError("after-upload");
 
   const res = await fetch("/api/video/save-camera-recording", {
     method: "POST",
@@ -135,15 +145,10 @@ export async function uploadCameraRecording(
   if (!res.ok) {
     // The gate's `code` is the difference between a toast someone can act on
     // and one they cannot, and throwing a bare Error threw it away. Attached
-    // to the error so the recorder can offer the plan page.
-    const err = new Error(data.error || "Failed to save video") as Error & { code?: string };
-    if (data.code) err.code = data.code;
-    throw err;
+    // to the error so the recorder can offer the plan page. The file is in
+    // storage by now, which is what the stage says.
+    throw stagedError(data.error || "Failed to save video", "after-upload", data.code);
   }
-
-  // The row is written and this browser is about to not find out — the case
-  // that used to end with a retry deleting the file the row points at.
-  if (takeFailure("after-save")) throw failureError("after-save");
 
   return {
     videoId: data.videoId as string,

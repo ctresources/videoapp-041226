@@ -38,16 +38,10 @@ import {
   isMemoryOnly,
   describeAge,
   describeSize,
+  STAGE_LABELS,
+  type UploadStage,
   type RecoveryRecord,
 } from "@/lib/utils/pending-upload";
-import {
-  armSimulator,
-  readFailConfig,
-  writeFailConfig,
-  STAGE_LABELS,
-  STAGE_EFFECTS,
-  type FailStage,
-} from "@/lib/utils/upload-failpoint";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
@@ -124,7 +118,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -182,13 +176,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * only as an escape hatch — no screen passes false.
    */
   micTools?: boolean;
-  /**
-   * The temporary failure simulator, for testing upload recovery.
-   *
-   * Off by default and passed only by the hidden QA page, so the live Camera
-   * tab never renders a control that can make a real recording fail.
-   */
-  qaMode?: boolean;
 }) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
@@ -403,27 +390,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const recoveryIdsRef = useRef(new WeakMap<Blob, string>());
   /** In-flight save per recovery id, so two callers share one attempt. */
   const inFlightRef = useRef(new Map<string, Promise<{ videoId: string; alreadySaved: boolean } | null>>());
-  /** QA only: which stage the next upload should fail at. */
-  const [failStage, setFailStage] = useState<FailStage | null>(null);
-  const [failOnce, setFailOnce] = useState(true);
-
-  useEffect(() => {
-    /**
-     * The gate itself.
-     *
-     * Nothing anywhere can simulate a failure until this runs, and it only
-     * runs in a recorder that was given the prop — which is the hidden page
-     * and nowhere else. Disarmed on the way out, so navigating from here to
-     * the live Camera tab without a full page load cannot inherit it.
-     */
-    armSimulator(qaMode);
-    if (qaMode) {
-      const cfg = readFailConfig();
-      setFailStage(cfg.stage);
-      setFailOnce(cfg.once);
-    }
-    return () => armSimulator(false);
-  }, [qaMode]);
   const [viewingTake, setViewingTake] = useState(0);
   /** View it is a full page navigation, and the second or two before My Content
    *  paints looked like a link that had not registered the tap. */
@@ -1287,19 +1253,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     return !!(id && savedByRecovery[id]);
   });
 
-  /** QA only: two savers reaching for one recording at the same moment. */
-  async function qaRetryTwice(rec: RecoveryRecord) {
-    const [a, b] = await Promise.all([
-      preserveThenUpload(rec, false),
-      preserveThenUpload(rec, false),
-    ]);
-    toast(
-      `A: ${a ? a.videoId : "failed"} · B: ${b ? b.videoId : "failed"}` +
-      (a && b && a.videoId === b.videoId ? " — same video ✓" : ""),
-      { duration: 9000 },
-    );
-  }
-
   const takesRef = useRef(takes);
   takesRef.current = takes;
   useEffect(() => () => {
@@ -1354,59 +1307,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   if (step === "script") {
     return (
       <div className="flex flex-col gap-5">
-        {/* Temporary: makes an upload fail at a chosen point, so the recovery
-            paths can be walked deliberately instead of by yanking the network
-            at the right half-second. Hidden page only. */}
-        {qaMode && (
-          <div className="rounded-xl border border-dashed border-spark-blue/50 bg-spark-blue/5 p-4">
-            <p className="text-sm font-semibold text-spark-ink">QA — simulate an upload failure</p>
-            <p className="mt-0.5 text-xs text-spark-ink-muted">
-              Temporary, and only on this page. The setting clears itself after two hours so a
-              forgotten switch can&apos;t affect a real recording.
-            </p>
-            <div className="mt-3 flex flex-col gap-2">
-              {([null, "before-upload", "after-upload", "after-save"] as const).map((s) => (
-                <label key={s ?? "off"} className="flex items-start gap-2 text-xs text-slate-700">
-                  <input
-                    type="radio"
-                    name="qa-failpoint"
-                    checked={failStage === s}
-                    onChange={() => { setFailStage(s); writeFailConfig({ stage: s, once: failOnce }); }}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium">
-                      {s === null ? "Off — upload normally" : `Fail ${STAGE_LABELS[s]}`}
-                    </span>
-                    {s !== null && (
-                      <span className="block text-slate-500">{STAGE_EFFECTS[s]}</span>
-                    )}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
-              <input
-                type="checkbox"
-                checked={failOnce}
-                onChange={(e) => { setFailOnce(e.target.checked); writeFailConfig({ stage: failStage, once: e.target.checked }); }}
-              />
-              Fail only the next attempt, so the retry after it runs for real
-            </label>
-            {recoveries.length > 0 && (
-              <Button
-                onClick={() => qaRetryTwice(recoveries[0])}
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                disabled={!!retryingId}
-              >
-                Retry the newest held recording twice at once
-              </Button>
-            )}
-          </div>
-        )}
-
         {/* Recordings that never reached the server, offered before anything
             else on this screen — recording over the top of one is the single
             action that would lose it for good. Listed rather than merged: a
@@ -1445,8 +1345,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                       simulated failure, so printing both said it twice. */}
                   {rec.lastError && (
                     <p className="mt-1 text-xs text-red-700">
-                      {rec.lastStage && STAGE_LABELS[rec.lastStage as FailStage]
-                        ? `Stopped ${STAGE_LABELS[rec.lastStage as FailStage]}.`
+                      {rec.lastStage && STAGE_LABELS[rec.lastStage as UploadStage]
+                        ? `Stopped ${STAGE_LABELS[rec.lastStage as UploadStage]}.`
                         : rec.lastError}
                     </p>
                   )}
@@ -2374,9 +2274,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <div className="flex flex-col gap-1">
               {/* Where it stopped, when that is known — Download and Save to
                   My Content below stay available either way. */}
-              {viewedRecovery.lastStage && STAGE_LABELS[viewedRecovery.lastStage as FailStage] && (
+              {viewedRecovery.lastStage && STAGE_LABELS[viewedRecovery.lastStage as UploadStage] && (
                 <span className="font-medium text-red-700">
-                  Stopped {STAGE_LABELS[viewedRecovery.lastStage as FailStage]}.
+                  Stopped {STAGE_LABELS[viewedRecovery.lastStage as UploadStage]}.
                 </span>
               )}
               {storeUnavailable ? (

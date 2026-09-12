@@ -32,6 +32,20 @@ const DB_VERSION = 2;
 export type RecoveryKind = "camera" | "voice-sample";
 
 /**
+ * How far an upload got before it stopped.
+ *
+ * "It failed" and "it failed after the file was already in storage" call for
+ * different things, and after a lost reply the recording may in fact be saved.
+ */
+export type UploadStage = "before-upload" | "after-upload" | "after-save";
+
+export const STAGE_LABELS: Record<UploadStage, string> = {
+  "before-upload": "before the file was uploaded",
+  "after-upload": "after the file uploaded, before it was saved",
+  "after-save": "after it was saved — the reply never arrived",
+};
+
+/**
  * `uploading` is written before the attempt, so a tab that dies mid-upload is
  * found in that state next time rather than looking untouched.
  */
