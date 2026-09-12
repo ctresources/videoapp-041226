@@ -27,10 +27,19 @@ export function MicrophoneCheck() {
   const [countdown, setCountdown] = useState(TEST_SECONDS);
   const [sampleUrl, setSampleUrl] = useState<string | null>(null);
   const [sampleType, setSampleType] = useState("");
+  /**
+   * How long the sample really ran.
+   *
+   * Not the player's number: browsers routinely leave duration out of a
+   * MediaRecorder file's header, so an audio element shows whatever it works
+   * out after buffering — which is how five seconds displayed as 0:04.
+   */
+  const [sampleSeconds, setSampleSeconds] = useState(0);
   const [heardWhileRecording, setHeardWhileRecording] = useState(false);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const startedAtRef = useRef(0);
   const sampleUrlRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +87,23 @@ export function MicrophoneCheck() {
       const recorder = new MediaRecorder(stream, format ? { mimeType: format } : undefined);
       recorderRef.current = recorder;
       recorder.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+
+      /**
+       * Time from when recording actually begins, not from the call.
+       *
+       * There is a gap between start() and the first captured audio — enough
+       * that a five-second countdown started here cut the recording short,
+       * which is the other half of why it read 0:04.
+       */
+      recorder.onstart = () => {
+        startedAtRef.current = performance.now();
+        setCountdown(TEST_SECONDS);
+        timerRef.current = setInterval(() => setCountdown((s) => Math.max(0, s - 1)), 1000);
+        stopTimeoutRef.current = setTimeout(() => {
+          try { recorder.stop(); } catch { /* stopped by hand already */ }
+        }, TEST_SECONDS * 1000);
+      };
+
       recorder.onstop = () => {
         const type = recordedType(recorder, format);
         const blob = new Blob(chunksRef.current, { type });
@@ -86,16 +112,16 @@ export function MicrophoneCheck() {
         sampleUrlRef.current = url;
         setSampleUrl(url);
         setSampleType(type);
+        setSampleSeconds(startedAtRef.current ? (performance.now() - startedAtRef.current) / 1000 : 0);
         setRecording(false);
         if (timerRef.current) clearInterval(timerRef.current);
       };
-      recorder.start();
+
+      // A timeslice gives the file regular cue points, which also helps a
+      // player work out how long it is.
+      recorder.start(250);
       setRecording(true);
       setCountdown(TEST_SECONDS);
-      timerRef.current = setInterval(() => setCountdown((s) => Math.max(0, s - 1)), 1000);
-      stopTimeoutRef.current = setTimeout(() => {
-        try { recorder.stop(); } catch { /* stopped by hand already */ }
-      }, TEST_SECONDS * 1000);
     } catch (err) {
       setRecording(false);
       toast.error(micErrorMessage(err));
@@ -122,8 +148,15 @@ export function MicrophoneCheck() {
       </div>
 
       {mic.notice && (
-        <div className={cn("flex items-start gap-2 rounded-xl border px-3 py-2 text-[12.5px]", mic.notice.kind === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-spark-blue/20 bg-spark-blue/10 text-spark-blue")}>
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+        <div className={cn(
+          "flex items-start gap-2 rounded-xl border px-3 py-2 text-[12.5px]",
+          mic.notice.kind === "error" ? "border-red-200 bg-red-50 text-red-700"
+            : mic.notice.kind === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-spark-blue/20 bg-spark-blue/10 text-spark-blue",
+        )}>
+          {mic.notice.kind === "success"
+            ? <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+            : <AlertTriangle size={14} className="mt-0.5 shrink-0" />}
           <span className="flex-1">{mic.notice.message}</span>
           <button onClick={mic.clearNotice} className="text-[11px] underline">Dismiss</button>
         </div>
@@ -148,7 +181,7 @@ export function MicrophoneCheck() {
             </div>
           </div>
           {mic.open ? (
-            <button onClick={mic.stop} className={quietBtn}><Square size={12} /> Turn microphone off</button>
+            <button onClick={mic.stop} className={quietBtn}><MicOff size={12} /> Turn microphone off</button>
           ) : (
             <button onClick={allowAccess} className={ctaBtn}><Mic size={13} /> Allow Microphone Access</button>
           )}
@@ -239,7 +272,9 @@ export function MicrophoneCheck() {
             <div className="flex flex-wrap items-center gap-2">
               <button onClick={recordSample} className={quietBtn}><RefreshCw size={12} /> Record again</button>
               <button onClick={dropSample} className={quietBtn}>Discard</button>
-              <span className="text-[11.5px] text-spark-ink-faint">Recorded as {sampleType || "an unknown format"}</span>
+              <span className="text-[11.5px] text-spark-ink-faint">
+                {sampleSeconds ? `${sampleSeconds.toFixed(1)} seconds · ` : ""}{sampleType || "an unknown format"}
+              </span>
             </div>
             {!heardWhileRecording && (
               <p className="flex items-start gap-1.5 text-[12px] text-[#8D580F]">

@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-upload";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
+import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
@@ -102,7 +103,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = false }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -151,6 +152,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * page uses this to fold the setup away while the camera has the screen.
    */
   onPhaseChange?: (phase: CamStep) => void;
+  /**
+   * The shared microphone tools: a picker, a live meter and a pre-flight
+   * check before the take.
+   *
+   * Off by default, so the live Camera tab behaves exactly as it always has.
+   * The hidden /campaigns/camera page turns it on while it is being tried on
+   * real devices. When it is off, not one line below runs differently.
+   */
+  micTools?: boolean;
 }) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
@@ -208,6 +218,21 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const [shape, setShape] = useState<"vertical" | "horizontal">("vertical");
   /** What the camera is actually handing us, so we can tell you to rotate. */
   const [camLandscape, setCamLandscape] = useState<boolean | null>(null);
+  /**
+   * The shared microphone tools, when micTools is on.
+   *
+   * The meter reads the camera stream's own audio track — the camera asks for
+   * video and audio in one prompt, and a second microphone stream is what iOS
+   * punishes. Every one of these is inert when micTools is off.
+   */
+  const { devices: mics, preferredId, setPreferredId, refresh: refreshMics } = useMicrophoneDevices();
+  const [micId, setMicId] = useState<string | null>(null);
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [micNotice, setMicNotice] = useState<string | null>(null);
+  const { level: micLevel, clipping: micClipping, heard: micHeardLive } = useStreamLevel(micStream);
+  const [micHeard, setMicHeard] = useState(false);
+  useEffect(() => { if (micHeardLive) setMicHeard(true); }, [micHeardLive]);
+  useEffect(() => { setMicId(preferredId); }, [preferredId]);
   const [brandedSupported, setBrandedSupported] = useState(false);
   /**
    * The unbranded cut most MLS boards require of listing media.
@@ -391,11 +416,31 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     setCamError(null);
     try {
       // Ask for 1080p at 60fps — browsers gracefully fall back to the best the camera supports
+      //
+      // The audio half is unchanged when the microphone tools are off. With
+      // them on it also names the chosen microphone; if that one has gone, the
+      // catch below reopens on the default rather than leaving you stuck.
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 }, facingMode: "user" },
-        audio: { echoCancellation: true, noiseSuppression: true },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          ...(micTools && micId ? { deviceId: { exact: micId } } : {}),
+        },
       });
       streamRef.current = stream;
+      if (micTools) {
+        setMicStream(stream);
+        setMicHeard(false);
+        void refreshMics();
+        const gave = stream.getAudioTracks()[0];
+        // The browser handed back a different microphone from the one asked
+        // for: say so rather than let the take run on the wrong input.
+        if (micId && gave?.getSettings().deviceId && gave.getSettings().deviceId !== micId) {
+          setMicId(gave.getSettings().deviceId ?? null);
+          setMicNotice(`That microphone isn't available, so we switched to ${gave.label || "the default microphone"}.`);
+        }
+      }
       // What the device is actually giving us, for the rotate warning above.
       const camSettings = stream.getVideoTracks()[0]?.getSettings();
       if (camSettings?.width && camSettings?.height) {
@@ -460,11 +505,33 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       setStep("camera");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
+      const name = typeof err === "object" && err && "name" in err ? String((err as { name: unknown }).name) : "";
+
+      /**
+       * The chosen microphone has gone — a headset unplugged since last time.
+       *
+       * Only reachable with the tools on, because only then is a specific
+       * device named. Forget the choice and reopen on the default: a missing
+       * pair of earbuds must never be the reason you cannot record.
+       */
+      if (micTools && micId && (name === "NotFoundError" || name === "OverconstrainedError")) {
+        setMicId(null);
+        setPreferredId(null);
+        setMicNotice("Your selected microphone disconnected. We switched to the default microphone.");
+        await openCamera();
+        return;
+      }
+
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
+      // Unchanged for the Camera tab. With the tools on, a microphone-specific
+      // failure gets the shared wording, which says what to do about it.
+      const micSpecific = micTools && (name === "NotReadableError" || name === "AbortError");
       setCamError(
-        msg.includes("permission") || msg.includes("notallowed") || msg.includes("denied")
-          ? "Camera or microphone access was denied. Please allow access in your browser settings and try again."
-          : "Could not access your camera. Make sure it is not in use by another application.",
+        micSpecific
+          ? micErrorMessage(err)
+          : msg.includes("permission") || msg.includes("notallowed") || msg.includes("denied")
+            ? "Camera or microphone access was denied. Please allow access in your browser settings and try again."
+            : "Could not access your camera. Make sure it is not in use by another application.",
       );
     }
   }
@@ -478,6 +545,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     transcriberRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    // The meter reads the camera's own audio track, so it ends with it.
+    setMicStream(null);
   }
 
   function startScroll() {
@@ -1398,6 +1467,61 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
               : <li>End with a subscribe CTA — tap <strong>Add Channel CTA</strong> above to drop yours into the script so the teleprompter reads it for you</li>}
           </ul>
         </div>
+
+        {/* The shared microphone tools. Rendered only when micTools is on, so
+            the Camera tab is exactly as it was. */}
+        {micTools && (
+          <div className="rounded-xl border border-spark-rule bg-white p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Microphone</p>
+              <a href="/campaigns/microphone" className="text-[11px] font-medium text-spark-amber hover:underline">
+                Test it first
+              </a>
+            </div>
+
+            {mics.length > 0 ? (
+              <select
+                value={micId ?? ""}
+                onChange={(e) => { const id = e.target.value || null; setMicId(id); setPreferredId(id); }}
+                disabled={isRecording}
+                aria-label="Microphone"
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
+              >
+                <option value="">Default microphone</option>
+                {mics.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
+              </select>
+            ) : (
+              <p className="mt-2 text-xs text-slate-400">
+                Your microphones are listed once you open the camera — browsers hide their names until then.
+              </p>
+            )}
+
+            <div className="mt-3">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full transition-[width] duration-75 ${micClipping ? "bg-red-500" : "bg-primary-500"}`}
+                  style={{ width: `${micStream ? micLevel : 0}%` }}
+                />
+              </div>
+              {/* The pre-flight check, in the order it matters: can we hear you,
+                  and is it too loud. It can only answer once the camera — and
+                  with it the microphone — is open. */}
+              <p className={`mt-2 text-xs ${micClipping ? "text-amber-700" : micHeard ? "text-emerald-700" : "text-slate-400"}`}>
+                {!micStream ? "Open the camera, then say a few words to check your microphone."
+                  : micClipping ? "That's very loud and will distort. Move back, or turn the input down."
+                  : micHeard ? "Sound detected — your microphone is working."
+                  : "We cannot hear you yet. Check the right microphone is selected and not muted."}
+              </p>
+            </div>
+
+            {micNotice && (
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-secondary-600">
+                <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                {micNotice}
+              </p>
+            )}
+          </div>
+        )}
 
         {camError && (
           <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm rounded-xl px-4 py-3">

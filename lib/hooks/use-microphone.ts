@@ -41,7 +41,7 @@ export interface MicDiagnostics {
 }
 
 export interface MicNotice {
-  kind: "info" | "error";
+  kind: "success" | "info" | "error";
   message: string;
 }
 
@@ -97,6 +97,115 @@ function describeAgent(): { browser: string; os: string } {
     : /Windows/.test(ua) ? "Windows"
     : "Unknown system";
   return { browser, os };
+}
+
+/**
+ * The level of a stream somebody else already opened.
+ *
+ * The camera asks for video and audio in one permission prompt and holds that
+ * one stream. Opening a second microphone stream just to draw a meter is
+ * exactly what iOS punishes, so the meter reads the audio track that is
+ * already there. Returns 0–100, plus whether it is peaking.
+ */
+export function useStreamLevel(stream: MediaStream | null): { level: number; clipping: boolean; heard: boolean } {
+  const [level, setLevel] = useState(0);
+  const [clipping, setClipping] = useState(false);
+  const [heard, setHeard] = useState(false);
+
+  useEffect(() => {
+    if (!stream || !stream.getAudioTracks().length) { setLevel(0); return; }
+    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+
+    const ctx = new Ctor();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    let frame = 0;
+    let live = true;
+
+    const tick = () => {
+      if (!live) return;
+      analyser.getByteTimeDomainData(data);
+      let peak = 0;
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const centred = (data[i] - 128) / 128;
+        sum += centred * centred;
+        peak = Math.max(peak, Math.abs(centred));
+      }
+      const shown = Math.min(100, Math.round(Math.sqrt(sum / data.length) * 280));
+      setLevel(shown);
+      if (shown > 12) setHeard(true);
+      setClipping(peak > 0.98);
+      frame = requestAnimationFrame(tick);
+    };
+    tick();
+
+    return () => {
+      live = false;
+      cancelAnimationFrame(frame);
+      void ctx.close().catch(() => {});
+      setLevel(0);
+      setClipping(false);
+    };
+  }, [stream]);
+
+  return { level, clipping, heard };
+}
+
+/**
+ * The microphones on this device, and the saved preference — without opening
+ * a stream. For a screen that opens its own (the camera opens video and audio
+ * together) but still wants a picker.
+ */
+export function useMicrophoneDevices(): {
+  devices: MicDevice[];
+  preferredId: string | null;
+  setPreferredId: (id: string | null) => void;
+  refresh: () => Promise<MicDevice[]>;
+} {
+  const [devices, setDevices] = useState<MicDevice[]>([]);
+  const [preferredId, setPreferred] = useState<string | null>(null);
+
+  useEffect(() => { setPreferred(readPreferred()?.deviceId ?? null); }, []);
+
+  const refresh = useCallback(async (): Promise<MicDevice[]> => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return [];
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const mics = all
+        .filter((d) => d.kind === "audioinput")
+        .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` }));
+      setDevices(mics);
+      return mics;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+    if (!md?.addEventListener) return;
+    const onChange = () => void refresh();
+    md.addEventListener("devicechange", onChange);
+    return () => md.removeEventListener("devicechange", onChange);
+  }, [refresh]);
+
+  const setPreferredId = useCallback((id: string | null) => {
+    setPreferred(id);
+    try {
+      if (!id) window.localStorage.removeItem(PREFERRED_KEY);
+      else {
+        const label = devices.find((d) => d.deviceId === id)?.label ?? "";
+        window.localStorage.setItem(PREFERRED_KEY, JSON.stringify({ deviceId: id, label }));
+      }
+    } catch { /* a browser with storage blocked still records */ }
+  }, [devices]);
+
+  return { devices, preferredId, setPreferredId, refresh };
 }
 
 export interface UseMicrophone {
@@ -302,7 +411,7 @@ export function useMicrophone(): UseMicrophone {
     try {
       const label = devices.find((d) => d.deviceId === id)?.label ?? activeLabel ?? "";
       window.localStorage.setItem(PREFERRED_KEY, JSON.stringify({ deviceId: id, label }));
-      setNotice({ kind: "info", message: "Saved as your preferred microphone on this device." });
+      setNotice({ kind: "success", message: "Saved as your preferred microphone on this device." });
     } catch {
       setNotice({ kind: "error", message: "This browser wouldn't let us remember that choice." });
     }
