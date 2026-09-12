@@ -148,11 +148,20 @@ export function useSpeechRecognition({
   const start = useCallback(() => {
     if (disabled || recognitionRef.current) return;
 
+    // Dictation needs the microphone, and the microphone needs https. Without
+    // this the browser refuses with a bare "not-allowed", which reads as "you
+    // denied permission" when in fact permission was never askable.
+    if (!window.isSecureContext) {
+      toast.error("Speaking needs a secure connection (https). Open SparkReels over https and try again.");
+      onUnsupportedRef.current?.();
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SR) {
-      toast.error("Speech recognition is not supported in this browser. Try Chrome or Safari.");
+      toast.error("This browser can't turn speech into text. Try the latest Chrome, Edge or Safari — or type it instead.");
       onUnsupportedRef.current?.();
       return;
     }
@@ -203,11 +212,15 @@ export function useSpeechRecognition({
     recognition.onerror = (e: { error: string }) => {
       // `aborted` is what fires when we stop the session ourselves.
       if (e.error === "aborted") return;
+      // The same wording the shared microphone layer uses, so a blocked
+      // microphone reads the same whether you were dictating or recording.
       const msg =
-        e.error === "not-allowed" ? "Microphone access denied. Please allow mic access and try again." :
-        e.error === "network"     ? "Network error during speech recognition. Check your connection." :
-        e.error === "no-speech"   ? "No speech detected — tap the mic and try again." :
-        "Speech recognition failed. Try again.";
+        e.error === "not-allowed"    ? "Microphone access is blocked. Open your browser's site settings and allow microphone access for SparkReels." :
+        e.error === "service-not-allowed" ? "Your browser or system is blocking speech recognition. Check its privacy settings, or type it instead." :
+        e.error === "audio-capture"  ? "We could not find a microphone. Connect one, or use your device's built-in microphone." :
+        e.error === "network"        ? "Speech recognition needs the internet and couldn't reach it. Check your connection and try again." :
+        e.error === "no-speech"      ? "We didn't hear anything — tap the mic and try again." :
+        "That didn't come through. Tap the mic to try again, or type it instead.";
       toast.error(msg);
       stop();
     };

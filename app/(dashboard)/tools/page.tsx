@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
+import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner" | "answers";
 
@@ -256,7 +257,15 @@ function TagGenerator({ projects, initialProjectId }: { projects: Project[]; ini
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Video Title</label>
+        {/* Speak it or type it. A title is one line, so speaking replaces
+            what's there rather than adding to it. */}
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="block text-sm font-medium text-slate-700">Video Title</label>
+          <FieldMic
+            title="Say the title. Replaces what's there"
+            onTranscript={(t) => setTitle(t.replace(/[.]\s*$/, "").trim())}
+          />
+        </div>
         <input
           type="text"
           value={title}
@@ -393,7 +402,13 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
 
       <div className="space-y-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Video Title</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">Video Title</label>
+            <FieldMic
+              title="Say the title. Replaces what's there"
+              onTranscript={(t) => setTitle(t.replace(/[.]\s*$/, "").trim())}
+            />
+          </div>
           <input
             type="text"
             value={title}
@@ -403,9 +418,19 @@ function DescriptionGenerator({ projects, initialProjectId }: { projects: Projec
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Script or topic notes <span className="text-slate-400 font-normal">(optional)</span>
-          </label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">
+              Script or topic notes <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            {/* Notes are sentences you add to, so this appends — and uses the
+                longer pause, because thinking mid-sentence shouldn't end the
+                turn. Same treatment as the editor's description field. */}
+            <FieldMic
+              title="Dictate. Adds to the end of your notes"
+              silenceMs={PROSE_SILENCE_MS}
+              onTranscript={(t) => setScript((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))}
+            />
+          </div>
           <textarea
             value={script}
             onChange={(e) => setScript(e.target.value)}
@@ -527,7 +552,13 @@ function TitleGenerator({
       <BriefFields value={brief} onChange={setBrief} />
       <div className="space-y-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Topic or keyword</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">Topic or keyword</label>
+            <FieldMic
+              title="Say the topic. Replaces what's there"
+              onTranscript={(t) => setTopic(t.replace(/[.]\s*$/, "").trim())}
+            />
+          </div>
           <input
             type="text"
             value={topic}
@@ -645,7 +676,13 @@ function ScriptGenerator({
       <BriefFields value={brief} onChange={setBrief} />
       <div className="space-y-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Video topic</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">Video topic</label>
+            <FieldMic
+              title="Say the topic. Replaces what's there"
+              onTranscript={(t) => setTopic(t.replace(/[.]\s*$/, "").trim())}
+            />
+          </div>
           <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
             placeholder="e.g. Why buyers are leaving the city for the suburbs"
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400" />
