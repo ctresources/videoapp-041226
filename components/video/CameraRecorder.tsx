@@ -103,7 +103,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = false }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -153,12 +153,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    */
   onPhaseChange?: (phase: CamStep) => void;
   /**
-   * The shared microphone tools: a picker, a live meter and a pre-flight
-   * check before the take.
+   * The shared microphone tools, and the shape fail-safe that came with them:
+   * a picker, a live meter, a pre-flight check, the exact output stated in
+   * pixels, and a refusal to record a shape other than the one on screen.
    *
-   * Off by default, so the live Camera tab behaves exactly as it always has.
-   * The hidden /campaigns/camera page turns it on while it is being tried on
-   * real devices. When it is off, not one line below runs differently.
+   * On everywhere since both shapes were tested on 2026-09-11. Kept as a prop
+   * only as an escape hatch — no screen passes false.
    */
   micTools?: boolean;
 }) {

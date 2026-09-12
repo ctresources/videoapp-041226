@@ -7,8 +7,10 @@ import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
+import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
+import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
 import {
-  Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
+  AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
   RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck,
 } from "lucide-react";
 
@@ -758,6 +760,23 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   const [recBlob, setRecBlob] = useState<Blob | null>(null);
   const [recUrl, setRecUrl] = useState<string | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+  /** What was actually recorded, so the file is named honestly. */
+  const [recType, setRecType] = useState("");
+
+  /**
+   * The shared microphone layer.
+   *
+   * A voice clone is built from this one sample, so the things that were
+   * missing here matter more than anywhere else: which microphone is being
+   * used, whether it can be heard, whether it is clipping, and what to do
+   * when the browser refuses. The recording flow itself is unchanged.
+   */
+  const { devices: mics, preferredId, setPreferredId, refresh: refreshMics } = useMicrophoneDevices();
+  const [micId, setMicId] = useState<string | null>(null);
+  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
+  const [micNotice, setMicNotice] = useState<string | null>(null);
+  const { level: micLevel, clipping: micClipping, heard: micHeard } = useStreamLevel(liveStream);
+  useEffect(() => { setMicId(preferredId); }, [preferredId]);
 
   // Clean up object URL on unmount
   useEffect(() => () => { if (recUrl) URL.revokeObjectURL(recUrl); }, [recUrl]);
@@ -768,27 +787,46 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
     return `${m}:${sec}`;
   }
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (deviceId?: string | null) => {
     setMicError(null);
+    setMicNotice(null);
+    const wanted = deviceId === undefined ? micId : deviceId;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/ogg";
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          ...(wanted ? { deviceId: { exact: wanted } } : {}),
+        },
+      });
 
-      const mr = new MediaRecorder(stream, { mimeType });
+      // Negotiated, not guessed: the old list never offered MP4, so Safari
+      // recorded a format it plays back worse than the one it prefers.
+      const mimeType = pickAudioMimeType();
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mr;
       chunksRef.current = [];
+      setLiveStream(stream);
+      void refreshMics();
+
+      // The browser handed back a different microphone from the one asked for.
+      const got = stream.getAudioTracks()[0];
+      if (wanted && got?.getSettings().deviceId && got.getSettings().deviceId !== wanted) {
+        setMicId(got.getSettings().deviceId ?? null);
+        setMicNotice(`That microphone isn't available, so we're using ${got.label || "the default microphone"}.`);
+      }
 
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+        setLiveStream(null);
+        const type = recordedType(mr, mimeType);
+        const blob = new Blob(chunksRef.current, { type });
         const url = URL.createObjectURL(blob);
         setRecBlob(blob);
         setRecUrl(url);
+        setRecType(type);
         setRecState("recorded");
         if (timerRef.current) clearInterval(timerRef.current);
       };
@@ -798,12 +836,19 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
       setRecSeconds(0);
       timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Microphone access denied";
-      setMicError(msg.includes("denied") || msg.includes("Permission")
-        ? "Microphone permission denied. Allow access in your browser settings."
-        : "Could not access microphone. Try uploading a file instead.");
+      const name = typeof err === "object" && err && "name" in err ? String((err as { name: unknown }).name) : "";
+      // A headset that has been unplugged since last time must not be the
+      // reason you cannot record: forget it and try the default.
+      if (wanted && (name === "NotFoundError" || name === "OverconstrainedError")) {
+        setMicId(null);
+        setPreferredId(null);
+        setMicNotice("Your selected microphone disconnected. We switched to the default microphone.");
+        await startRecording(null);
+        return;
+      }
+      setMicError(micErrorMessage(err));
     }
-  }, []);
+  }, [micId, refreshMics, setPreferredId]);
 
   function stopRecording() {
     mediaRecorderRef.current?.stop();
@@ -953,10 +998,44 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
             </div>
           )}
 
+          {/* Which microphone, before the one sample that becomes your voice.
+              Names only appear once permission has been given, so the picker
+              says so rather than showing an empty list. */}
+          {recState === "idle" && (
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="mb-1.5 text-xs font-semibold text-slate-600">Microphone</p>
+              {mics.length > 0 ? (
+                <select
+                  value={micId ?? ""}
+                  onChange={(e) => { const id = e.target.value || null; setMicId(id); setPreferredId(id); }}
+                  aria-label="Microphone"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Default microphone</option>
+                  {mics.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
+                </select>
+              ) : (
+                <p className="text-xs text-slate-400">
+                  Your microphones are listed after the first recording — browsers hide their names until you allow access.
+                </p>
+              )}
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Quiet room, no fans or TV, and stay about the same distance from the microphone throughout.
+              </p>
+            </div>
+          )}
+
+          {micNotice && (
+            <p className="flex items-start gap-1.5 rounded-xl bg-secondary-50 px-3 py-2 text-xs text-secondary-700">
+              <AlertCircle size={13} className="mt-0.5 shrink-0" />
+              {micNotice}
+            </p>
+          )}
+
           {/* Idle — ready to record */}
           {recState === "idle" && !micError && (
             <button
-              onClick={startRecording}
+              onClick={() => startRecording()}
               className="flex items-center gap-3 w-full p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-red-300 hover:bg-red-50/30 transition-all"
             >
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
@@ -980,6 +1059,23 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
               <p className="text-xs text-red-500 text-center">
                 Speak clearly and naturally. Aim for at least 30 seconds.
               </p>
+
+              {/* The sample is only as good as what the microphone hears, and
+                  none of this was visible before: silence and clipping both
+                  produce a bad clone, and neither shows up until playback. */}
+              <div className="w-full">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-red-100">
+                  <div
+                    className={`h-full transition-[width] duration-75 ${micClipping ? "bg-red-600" : "bg-red-400"}`}
+                    style={{ width: `${micLevel}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 text-center text-[11px] text-red-500">
+                  {micClipping ? "Too loud — move back a little, or turn the input down."
+                    : micHeard ? "Sound detected."
+                    : "We cannot hear you yet — check the microphone isn't muted."}
+                </p>
+              </div>
               <button
                 onClick={stopRecording}
                 className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
@@ -1001,7 +1097,7 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
               <audio ref={audioRef} src={recUrl} controls className="w-full h-9" />
               <div className="flex gap-2">
                 <button
-                  onClick={() => submitAudio(recBlob!, "recording.webm")}
+                  onClick={() => submitAudio(recBlob!, `recording.${extensionForType(recType)}`)}
                   disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors"
                 >
