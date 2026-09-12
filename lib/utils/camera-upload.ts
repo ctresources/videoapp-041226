@@ -25,6 +25,17 @@ export function videoTypeForSize(
 }
 
 /**
+ * The file extension for a recorded VIDEO blob.
+ *
+ * Not `extensionForType` from recording-format — that one answers the same
+ * question for audio, where mp4 means an `.m4a`. Calling it here would have
+ * filed every MP4 camera take as an audio file.
+ */
+export function videoExtensionForType(type: string): string {
+  return type.includes("mp4") ? "mp4" : "webm";
+}
+
+/**
  * Uploads a camera/teleprompter recording directly from the browser to
  * Supabase Storage via a signed URL, then registers it as a completed video.
  * Long recordings (10+ min ≈ 100–200 MB) far exceed the serverless
@@ -36,6 +47,15 @@ export async function uploadCameraRecording(
     title?: string;
     projectId?: string;
     videoType?: string;
+    /**
+     * The recording's recovery id, stable across retries.
+     *
+     * Both halves of the save use it: the storage path is derived from it, so
+     * a retry replaces its own file rather than leaving another behind, and
+     * the save route returns the existing video for a key it has already
+     * seen instead of creating a second one.
+     */
+    idempotencyKey?: string;
     /** What was read on camera. Used to write the description and hashtags —
      *  without it a camera video reaches My Content with nothing to post it. */
     script?: string;
@@ -50,12 +70,12 @@ export async function uploadCameraRecording(
     cta?: string;
   } = {},
 ): Promise<{ videoId: string; title: string; projectId: string | null }> {
-  const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+  const ext = videoExtensionForType(blob.type);
 
   const urlRes = await fetch("/api/video/camera-upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ext }),
+    body: JSON.stringify({ ext, key: opts.idempotencyKey }),
   });
   const urlData = await urlRes.json();
   if (!urlRes.ok) throw new Error(urlData.error || "Failed to prepare upload");

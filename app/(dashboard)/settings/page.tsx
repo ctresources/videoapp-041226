@@ -9,6 +9,7 @@ import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Meg
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
+import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -519,9 +520,14 @@ export default function SettingsPage() {
       <Card className="border border-red-100">
         <h3 className="font-semibold text-brand-text mb-4">Account Actions</h3>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="ghost" onClick={handleLogout} className="gap-2 text-slate-500">
-            <LogOut size={16} /> Sign Out
-          </Button>
+          {/* A recording still waiting on this device is reachable only by
+              signing back in here, so this is the last moment it is worth
+              mentioning. */}
+          <SignOutGuard onProceed={handleLogout} trigger={(requestSignOut) => (
+            <Button variant="ghost" onClick={requestSignOut} className="gap-2 text-slate-500">
+              <LogOut size={16} /> Sign Out
+            </Button>
+          )} />
           <Button variant="danger" onClick={handleDeleteAccount} className="gap-2">
             <Trash2 size={16} /> Request Account Deletion
           </Button>

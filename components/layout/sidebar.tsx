@@ -6,7 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
-import { useEffect, useState, type ReactNode } from "react";
+import { SignOutGuard } from "@/components/recovery/sign-out-guard";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Icon geometry is lifted verbatim from the design handoff's assets/nav-items.json
 // rather than swapped for lucide equivalents — the set is drawn on a 24px grid at
@@ -114,6 +115,9 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   // (the /admin route bounced them straight back), and the plan label was
   // hardcoded to "Free plan" even for Pro subscribers.
   const [account, setAccount] = useState<{ isAdmin: boolean; tier: string } | null>(null);
+  // Submitted directly rather than by its own button, so the guard can hold
+  // the sign-out open while the user retries or downloads.
+  const logoutFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -217,14 +221,22 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
             </p>
           </div>
         </div>
-        <form action="/api/auth/logout" method="POST">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] text-spark-ink-muted transition-colors hover:bg-red-50 hover:text-red-600"
-          >
-            <LogOut size={15} strokeWidth={1.7} className="flex-none" />
-            Sign Out
-          </button>
+        {/* Still the same form POST — that route clears the auth cookies by
+            hand so the middleware sees none on the way to /login, and a client
+            sign-out does not. The guard only decides whether it is submitted
+            now or after the user has dealt with a recording still waiting on
+            this device. */}
+        <form ref={logoutFormRef} action="/api/auth/logout" method="POST">
+          <SignOutGuard onProceed={() => logoutFormRef.current?.submit()} trigger={(requestSignOut) => (
+            <button
+              type="button"
+              onClick={requestSignOut}
+              className="flex w-full items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] text-spark-ink-muted transition-colors hover:bg-red-50 hover:text-red-600"
+            >
+              <LogOut size={15} strokeWidth={1.7} className="flex-none" />
+              Sign Out
+            </button>
+          )} />
         </form>
       </div>
     </aside>

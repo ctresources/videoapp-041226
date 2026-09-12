@@ -25,9 +25,30 @@ export async function POST(req: NextRequest) {
   if (gate) return gate;
 
   const admin = createAdminClient();
-  const { ext } = (await req.json()) as { ext?: string };
+  const { ext, key } = (await req.json()) as { ext?: string; key?: string };
   const safeExt = ext === "mp4" ? "mp4" : "webm";
-  const path = `camera-recordings/${user.id}/${Date.now()}.${safeExt}`;
+
+  /**
+   * The path is derived from the recording's recovery id, not the clock.
+   *
+   * A recording kept on the device after a failed upload is retried with the
+   * same id, and a timestamped path gave each attempt its own object — so a
+   * take that failed twice left two abandoned files in storage paid for by
+   * nobody. Same recording, same path.
+   *
+   * Sanitised rather than trusted: this becomes a storage key, and the save
+   * route only accepts paths inside this user's own folder.
+   */
+  const safeKey = (key || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 64);
+  const path = `camera-recordings/${user.id}/${safeKey || Date.now()}.${safeExt}`;
+
+  // A retry writes to a path that may already hold the previous attempt's
+  // bytes, and a signed upload URL will not overwrite. Removing first makes
+  // the retry a clean replacement instead of a failure. Best effort: nothing
+  // there is the normal case.
+  if (safeKey) {
+    await admin.storage.from("assets").remove([path]).catch(() => {});
+  }
 
   const { data, error } = await admin.storage
     .from("assets")

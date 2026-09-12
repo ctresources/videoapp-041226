@@ -35,6 +35,14 @@ export async function POST(req: NextRequest) {
   let city: string;
   let state: string;
   let cta: string;
+  /**
+   * The recording's recovery id, stable across retries of the same take.
+   *
+   * A recording is now kept on the device until this route confirms it is
+   * saved, so a failed upload is offered again — and without this, the second
+   * attempt made a second video, a second project and a second file.
+   */
+  let idempotencyKey: string | null;
   let uploadedInline = false;
 
   const contentType = req.headers.get("content-type") || "";
@@ -50,6 +58,7 @@ export async function POST(req: NextRequest) {
       city?: string;
       state?: string;
       cta?: string;
+      idempotencyKey?: string;
     };
 
     if (!body.storagePath) {
@@ -69,6 +78,7 @@ export async function POST(req: NextRequest) {
     city = (body.city || "").trim().slice(0, 100);
     state = (body.state || "").trim().slice(0, 50);
     cta = (body.cta || "").trim().slice(0, 2000);
+    idempotencyKey = (body.idempotencyKey || "").trim().slice(0, 64) || null;
   } else {
     const formData = await req.formData();
     const file = formData.get("video") as File | null;
@@ -82,6 +92,8 @@ export async function POST(req: NextRequest) {
     city = "";
     state = "";
     cta = "";
+    // The legacy inline path predates device recovery and has no id to send.
+    idempotencyKey = null;
 
     if (!file) return NextResponse.json({ error: "No video file provided" }, { status: 400 });
 
@@ -96,6 +108,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
     uploadedInline = true;
+  }
+
+  /**
+   * A repeat of a save that already worked returns the first result.
+   *
+   * Checked before any project is created, so a retry cannot leave a stub
+   * project behind either. Scoped to this user: a recovery id is generated on
+   * someone's device and is not a secret, so it is only ever matched against
+   * that person's own rows.
+   */
+  if (idempotencyKey) {
+    const { data: already } = await admin
+      .from("generated_videos")
+      .select("id, project_id")
+      .eq("user_id", user.id)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (already) {
+      const row = already as { id: string; project_id: string };
+      return NextResponse.json({
+        video: { id: row.id },
+        videoId: row.id,
+        projectId: row.project_id,
+        title,
+        deduped: true,
+      });
+    }
   }
 
   // Resolve project — use the existing script project if supplied, else create a stub
@@ -146,11 +185,33 @@ export async function POST(req: NextRequest) {
       render_provider: "camera",
       render_status: "completed",
       metadata: { source: "teleprompter" },
+      idempotency_key: idempotencyKey,
     })
     .select("id")
     .single();
 
   if (videoErr || !videoRow) {
+    // Two attempts for the same recording raced each other — a retry fired
+    // while the first was still in flight. The unique index is what caught it;
+    // the winner's row is the answer both attempts should get.
+    if (idempotencyKey && (videoErr as { code?: string } | null)?.code === "23505") {
+      const { data: winner } = await admin
+        .from("generated_videos")
+        .select("id, project_id")
+        .eq("user_id", user.id)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      if (winner) {
+        const row = winner as { id: string; project_id: string };
+        return NextResponse.json({
+          video: { id: row.id },
+          videoId: row.id,
+          projectId: row.project_id,
+          title,
+          deduped: true,
+        });
+      }
+    }
     if (uploadedInline) {
       await admin.storage.from("assets").remove([storagePath]);
     }

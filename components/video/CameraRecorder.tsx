@@ -26,7 +26,20 @@ import { showTrialLock } from "@/lib/utils/trial-lock";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import { resolveCta } from "@/lib/utils/default-cta";
-import { uploadCameraRecording, videoTypeForSize } from "@/lib/utils/camera-upload";
+import { uploadCameraRecording, videoTypeForSize, videoExtensionForType } from "@/lib/utils/camera-upload";
+import { useAuth } from "@/providers/supabase-provider";
+import {
+  newRecoveryId,
+  putRecovery,
+  updateRecovery,
+  deleteRecovery,
+  listRecoveries,
+  downloadRecovery,
+  isMemoryOnly,
+  describeAge,
+  describeSize,
+  type RecoveryRecord,
+} from "@/lib/utils/pending-upload";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
@@ -312,6 +325,24 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /**
+   * Recordings on this device whose upload has not been confirmed.
+   *
+   * Scoped to the signed-in user by the store itself — a shared office
+   * computer must never offer one agent's unfinished take to the next person
+   * to sign in.
+   */
+  const [recoveries, setRecoveries] = useState<RecoveryRecord[]>([]);
+  /** Which held recording is uploading right now, if any. */
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  /**
+   * The browser refused to keep a recovery copy — private mode, a full disk,
+   * site data blocked. The upload still goes ahead; what changes is what we
+   * are allowed to promise about closing the page.
+   */
+  const [storeUnavailable, setStoreUnavailable] = useState(false);
+  /** The take on screen has a failed upload behind it. */
+  const [saveFailed, setSaveFailed] = useState(false);
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
   /** The project behind the take — the way through to its Share Kit. */
   const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
@@ -337,6 +368,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * being able to look at them here before deciding.
    */
   const [takes, setTakes] = useState<{ url: string; blob: Blob; seconds: number }[]>([]);
+  /**
+   * Each take's recovery id, which is also the server's idempotency key.
+   *
+   * Minted when the take comes into existence and kept for as long as the blob
+   * does, so every retry of the same recording carries the same id and the
+   * server can recognise it rather than saving it twice. Keyed on the blob so
+   * a second take gets its own id instead of overwriting the first.
+   */
+  const recoveryIdsRef = useRef(new WeakMap<Blob, string>());
   const [viewingTake, setViewingTake] = useState(0);
   /** View it is a full page navigation, and the second or two before My Content
    *  paints looked like a link that had not registered the tap. */
@@ -350,6 +390,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     avatar_url: string | null; logo_url: string | null;
     license_number: string | null; phone: string | null;
   } | null>(null);
+
+  /** Who the held recordings belong to. The store refuses to file one without it. */
+  const { user } = useAuth();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // Held between openCamera() and the camera step mounting its <video>.
@@ -717,6 +760,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       const type = recordedType(recorder, mimeType);
       const blob = new Blob(chunksRef.current, { type });
       const url = URL.createObjectURL(blob);
+      // Minted here, at the one moment this recording becomes a thing that can
+      // be lost. Every later attempt to save it carries this same id.
+      recoveryIdsRef.current.set(blob, newRecoveryId());
+      setSaveFailed(false);
       setVideoBlob(blob);
       setVideoUrl(url);
       // Kept rather than replaced. Each is saved to My Content on its own, but
@@ -944,42 +991,164 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * a share sheet appearing unasked, over a take nobody has watched yet, is
    * startling.
    */
-  async function saveTake(blob: Blob, openShare: boolean) {
+  /** Everything the device needs to finish this upload later, without the page. */
+  function buildRecord(blob: Blob): RecoveryRecord {
+    let id = recoveryIdsRef.current.get(blob);
+    if (!id) {
+      id = newRecoveryId();
+      recoveryIdsRef.current.set(blob, id);
+    }
+    const size = recordedSizeRef.current;
+    const mimeType = blob.type || "video/webm";
+    // promptScript, not script: on the freestyle route nothing was read, so
+    // storing a script that had been sparked and then abandoned would file
+    // the video under words it does not contain. The transcript from the
+    // step after this is what titles it there.
+    const title = promptScript.split(/\n/)[0].slice(0, 100).trim()
+      || (city ? `${city} recording` : "Camera Recording");
+    return {
+      id,
+      // Empty only if auth has not resolved yet, which a recording taking
+      // seconds makes unlikely. The store then keeps it in memory rather than
+      // filing it unowned, where the next person to sign in could see it.
+      userId: user?.id ?? "",
+      kind: "camera",
+      projectId: null,
+      blob,
+      title,
+      script: promptScript,
+      videoType: videoTypeForSize(size),
+      width: size?.width ?? null,
+      height: size?.height ?? null,
+      mimeType,
+      extension: videoExtensionForType(mimeType),
+      createdAt: Date.now(),
+      status: "pending",
+      attempts: 0,
+      lastError: null,
+    };
+  }
+
+  /**
+   * The record to save this blob under — the existing one if it has already
+   * been tried.
+   *
+   * Building a fresh record on every save reset the attempt count to zero and
+   * the recorded time to now, so pressing Save to My Content after a failure —
+   * the path most likely to be a second attempt — reported it as a first one.
+   * A retry is another go at the same recording, not a new recording.
+   */
+  function recordFor(blob: Blob): RecoveryRecord {
+    const id = recoveryIdsRef.current.get(blob);
+    const existing = id ? recoveries.find((r) => r.id === id) : undefined;
+    return existing ? { ...existing, blob } : buildRecord(blob);
+  }
+
+  /**
+   * The only path from a finished recording to a saved one.
+   *
+   * The automatic save, the button and a retry all come through here, so the
+   * guarantee holds however the save was asked for — there is no second route
+   * that skips the keeping step.
+   *
+   * The order is the whole point:
+   *   1. the blob is already in memory;
+   *   2. try to keep it on the device;
+   *   3. upload whether or not that worked — a browser that refuses to store
+   *      a copy is no reason not to try the thing that makes the copy moot;
+   *   4. count it saved only once the server returns a video id;
+   *   5. delete the device copy only then.
+   */
+  async function preserveThenUpload(record: RecoveryRecord, openShare: boolean) {
     setSaving(true);
+    setRetryingId(record.id);
+    const kept = await putRecovery({ ...record, status: "uploading" });
+    setStoreUnavailable(!kept);
+    setRecoveries((prev) => [
+      { ...record, status: "uploading" },
+      ...prev.filter((r) => r.id !== record.id),
+    ]);
     try {
-      // promptScript, not script: on the freestyle route nothing was read, so
-      // storing a script that had been sparked and then abandoned would file
-      // the video under words it does not contain. The transcript from the
-      // step after this is what titles it there.
-      const title = promptScript.split(/\n/)[0].slice(0, 100).trim()
-        || (city ? `${city} recording` : "Camera Recording");
-      const { videoId, title: savedName, projectId } = await uploadCameraRecording(blob, {
-        title, script: promptScript, videoType: videoTypeForSize(recordedSizeRef.current),
+      const { videoId, title: savedName, projectId } = await uploadCameraRecording(record.blob, {
+        title: record.title,
+        script: record.script,
+        videoType: record.videoType,
+        // Same id on every attempt, so a retry of a save that already worked
+        // returns that video rather than making another one.
+        idempotencyKey: record.id,
       });
+      // Confirmed. Only now is the copy on the device redundant.
+      await deleteRecovery(record.id);
+      setRecoveries((prev) => prev.filter((r) => r.id !== record.id));
+      setStoreUnavailable(false);
+      setSaveFailed(false);
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
       setSavedProjectId(projectId);
       if (openShare) setShowPublish(true);
       return videoId;
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      const attempts = record.attempts + 1;
+      await updateRecovery(record.id, { status: "failed", attempts, lastError: message });
+      setRecoveries((prev) => [
+        { ...record, status: "failed", attempts, lastError: message },
+        ...prev.filter((r) => r.id !== record.id),
+      ]);
+      setSaveFailed(true);
       const payload = err instanceof Error
         ? { error: err.message, code: (err as Error & { code?: string }).code }
         : null;
-      if (!showTrialLock(payload)) {
-        toast.error(err instanceof Error ? err.message : "Upload failed");
-      }
+      if (!showTrialLock(payload)) toast.error(message);
       return null;
     } finally {
       setSaving(false);
+      setRetryingId(null);
     }
+  }
+
+  /** Finish an upload that was interrupted, from the copy on this device. */
+  async function retryRecovery(rec: RecoveryRecord) {
+    if (retryingId) return;
+    const id = await preserveThenUpload(rec, false);
+    if (id) toast.success("Uploaded — it's in My Content.");
+  }
+
+  /**
+   * Forget a held recording.
+   *
+   * Confirmed every time: this is the only copy, and deleting it silently
+   * would be exactly the loss the whole feature exists to prevent. Nothing
+   * removes one on its own — not age, not a later take.
+   */
+  async function removeRecovery(rec: RecoveryRecord) {
+    if (!confirm("Remove this recording from your device? It was never uploaded, so this cannot be undone.")) return;
+    await deleteRecovery(rec.id);
+    setRecoveries((prev) => prev.filter((r) => r.id !== rec.id));
   }
 
   async function handleSaveForSocial() {
     if (!videoBlob) return;
     // Already saved by the effect below — this is only the share sheet now.
     if (savedVideoId) { setShowPublish(true); return; }
-    await saveTake(videoBlob, true);
+    // Same path as the automatic save, so pressing the button after a failure
+    // retries from the kept copy rather than starting a different kind of save.
+    await preserveThenUpload(recordFor(videoBlob), true);
   }
+
+  /**
+   * Recordings still waiting from an earlier visit.
+   *
+   * The beforeunload warning below can be dismissed, and on a phone it is not
+   * shown at all — a call arriving mid-upload simply takes the tab. Loaded per
+   * user, so signing in as someone else shows none of them.
+   */
+  useEffect(() => {
+    if (!user?.id) { setRecoveries([]); return; }
+    let live = true;
+    listRecoveries(user.id, "camera").then((rs) => { if (live) setRecoveries(rs); });
+    return () => { live = false; };
+  }, [user?.id]);
 
   /**
    * Save the take as soon as it exists, rather than waiting to be asked.
@@ -1003,7 +1172,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     if (!videoBlob || saving || savedBlobsRef.current.has(videoBlob)) return;
     savedBlobsRef.current.add(videoBlob);
     (async () => {
-      const id = await saveTake(videoBlob, false);
+      const id = await preserveThenUpload(recordFor(videoBlob), false);
       if (id) toast.success("Saved to My Content.");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1063,6 +1232,70 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   if (step === "script") {
     return (
       <div className="flex flex-col gap-5">
+        {/* Recordings that never reached the server, offered before anything
+            else on this screen — recording over the top of one is the single
+            action that would lose it for good. Listed rather than merged: a
+            second failed take must not stand in for the first. */}
+        {recoveries.map((rec) => {
+          const memoryOnly = isMemoryOnly(rec.id);
+          return (
+            <div
+              key={rec.id}
+              className="flex flex-col gap-3 rounded-xl border border-spark-amber/40 bg-spark-amber/5 p-4"
+            >
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-spark-amber" />
+                <div className="text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">
+                    {memoryOnly
+                      ? "This recording is only in this open page."
+                      : "Your recording is safely waiting on this device."}
+                  </p>
+                  <p className="mt-0.5">
+                    {memoryOnly
+                      ? "Your browser wouldn't store a recovery copy, so download it now — closing or reloading this page will lose it."
+                      : "The upload didn't finish. You can send it again without recording it again."}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {rec.title} · {describeSize(rec.blob.size)} · recorded {describeAge(rec.createdAt)}
+                    {rec.width && rec.height ? ` · ${rec.width} × ${rec.height}` : ""}
+                    {rec.attempts > 0 ? ` · ${rec.attempts} failed ${rec.attempts === 1 ? "attempt" : "attempts"}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => retryRecovery(rec)}
+                  loading={retryingId === rec.id}
+                  disabled={!!retryingId}
+                  size="sm"
+                  className="gap-2"
+                >
+                  {/* Button draws its own spinner from `loading` — a second
+                      one here would sit right beside it. */}
+                  {retryingId === rec.id ? "Uploading…" : "Retry Upload"}
+                </Button>
+                <Button
+                  onClick={() => downloadRecovery(rec)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={!!retryingId}
+                >
+                  <Download size={14} /> Download
+                </Button>
+                <button
+                  onClick={() => removeRecovery(rec)}
+                  disabled={!!retryingId}
+                  className="px-3 text-sm text-slate-500 hover:text-slate-700 disabled:opacity-40"
+                >
+                  Remove From Device
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
         {/* Says what is missing and that it is missing on purpose. A screen
             that simply had no script box on it would read as one still
             loading, or as the choice not having taken. */}
@@ -1936,6 +2169,27 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
           </div>
         </div>
+
+        {/* After a failed upload, say where the recording actually is.
+            Two different facts, and the difference matters: one of them means
+            they can close the page, and the other means they cannot. */}
+        {saveFailed && !savedVideoId && (
+          <div className="flex items-start gap-2 rounded-lg bg-spark-amber/5 px-3 py-2.5 text-xs text-slate-600">
+            <AlertCircle size={13} className="mt-0.5 shrink-0 text-spark-amber" />
+            {storeUnavailable ? (
+              <span>
+                The upload didn&apos;t go through, and your browser wouldn&apos;t store a recovery
+                copy either. This recording only exists in this open page — download it now,
+                or it will be lost when you close or reload.
+              </span>
+            ) : (
+              <span>
+                The upload didn&apos;t go through, but your recording is safely waiting on this
+                device. Try again below — you won&apos;t need to record it again.
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-2">
