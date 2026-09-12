@@ -270,6 +270,21 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
   /**
+   * Why the composite is not running, when it was wanted.
+   *
+   * A take recorded without it comes out in the camera's own shape, which is
+   * how a vertical choice produced a horizontal file with nothing on screen
+   * saying so. With micTools on, this blocks the take instead.
+   */
+  const [compositeFailure, setCompositeFailure] = useState<string | null>(null);
+  /** The user has seen the problem and chosen to record horizontal anyway. */
+  const [rawShapeApproved, setRawShapeApproved] = useState(false);
+  /**
+   * A vertical take with no composite would be a horizontal file. Only the
+   * hidden page enforces this for now — the Camera tab is unchanged.
+   */
+  const shapeUnsafe = micTools && shape === "vertical" && !brandedActive && !rawShapeApproved;
+  /**
    * The take's real pixel shape, captured while the camera is still open.
    *
    * The upload runs from an effect on the finished blob, by which point
@@ -451,6 +466,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       // preview shows exactly what gets recorded. Any failure falls back to
       // the plain path — the recording itself is never blocked.
       let previewStream: MediaStream = stream;
+      setCompositeFailure(
+        !brandedSupported ? "This browser can't reshape video while recording."
+          : !brandedLook ? "Branded Look is switched off, so the camera records at its own shape."
+          : null,
+      );
       if (brandedLook && brandedSupported) {
         try {
           const music = musicUrlFor(musicId);
@@ -483,6 +503,11 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
           console.warn("[camera] Branded Look unavailable, recording plain:", err);
           compositeRef.current = null;
           setBrandedActive(false);
+          setCompositeFailure(
+            err instanceof Error && /read back black/.test(err.message)
+              ? "Your browser couldn't read the camera picture, so the shaped recorder didn't start."
+              : "The shaped recorder didn't start on this device.",
+          );
           // A black readback is a browser/GPU problem with a known fix, so say
           // so — "unavailable on this device" reads as permanent and isn't.
           const blackFrames = err instanceof Error && /read back black/.test(err.message);
@@ -547,6 +572,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     streamRef.current = null;
     // The meter reads the camera's own audio track, so it ends with it.
     setMicStream(null);
+    // Approving a horizontal take applies to that take only. Carrying it into
+    // the next one would be the same silent shape change, one step removed.
+    setRawShapeApproved(false);
+    setCompositeFailure(null);
   }
 
   function startScroll() {
@@ -641,6 +670,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     // the raw camera stream exactly as before.
     const sourceStream = compositeRef.current?.stream ?? streamRef.current;
     if (!sourceStream) return;
+    // Second line of defence. The button is already disabled in this state;
+    // this is here so no other path can start a take that would silently come
+    // out in a different shape from the one on screen.
+    if (shapeUnsafe) {
+      toast.error("Vertical 9:16 can't be recorded right now — choose Try Again or Record Horizontal Instead.");
+      return;
+    }
     chunksRef.current = [];
     scrollPosRef.current = 0;
     if (teleRef.current) teleRef.current.scrollTop = 0;
@@ -1189,7 +1225,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             Cropping a portrait take into landscape afterwards loses your head
             and your feet — the information was never captured — so the only
             way to get a good landscape video is to frame one. */}
-        {brandedSupported && (
+        {(brandedSupported || micTools) && (
           <div className="rounded-xl border border-spark-rule p-3.5">
             {/* Same eyebrow-and-question device as the Create screen, so the
                 two halves of one flow read as one flow. "Shape" named the
@@ -1236,6 +1272,24 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <p className="mt-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
               {SHAPE_META.find((sh) => sh.key === shape)?.tip}
             </p>
+
+            {/* What will actually be recorded, in pixels, and by which path.
+                The preview alone cannot tell you this: a raw horizontal camera
+                shown in a vertical frame looks like a vertical recording. */}
+            {micTools && (
+              <div className="mt-3 rounded-lg bg-spark-paper/70 px-3 py-2">
+                <p className="text-[11.5px] font-medium text-spark-ink">
+                  Output: {shape === "vertical" ? "Vertical 9:16 · 1080 × 1920" : "Horizontal 16:9 · 1920 × 1080"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-spark-ink-muted">
+                  {!brandedSupported
+                    ? "Raw camera — this browser can't reshape video, so takes come out in the camera's own shape."
+                    : !brandedLook
+                      ? "Raw camera — Branded Look is off, so takes come out in the camera's own shape."
+                      : "Branded composite — the camera is fitted into the shape above, with your overlays."}
+                </p>
+              </div>
+            )}
             {/* Only once the camera has told us what it is giving us, and only
                 when it disagrees with the choice — a warning that fires before
                 the camera opens is a warning nobody can act on. */}
@@ -1598,7 +1652,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
               // would show you a frame that is not the one being saved. The
               // black around it is the honest answer — it is what the shape
               // you picked looks like on this screen.
-              brandedActive ? "w-full h-full object-contain" : "w-full h-full object-cover",
+              // Raw recording is shown contained too when the tools are on:
+              // object-cover filled a vertical frame with a horizontal camera,
+              // which is precisely how a 16:9 take looked like a 9:16 Reel.
+              brandedActive || micTools ? "w-full h-full object-contain" : "w-full h-full object-cover",
               // Branded mode previews the actual composite — flipping that
               // would show something the file does not contain.
               !brandedActive && mirrorPreview && "[transform:scaleX(-1)]",
@@ -1696,6 +1753,40 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             </div>
           )}
 
+          {/* The shape you chose cannot be recorded: stop, explain, and let the
+              user decide. Recording horizontal without being asked is the bug
+              this replaces. */}
+          {shapeUnsafe && !isRecording && (
+            <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3">
+              <p className="flex items-start gap-2 text-[13px] font-semibold text-amber-200">
+                <AlertCircle size={15} className="mt-0.5 shrink-0" />
+                Vertical 9:16 can&apos;t be recorded right now
+              </p>
+              <p className="mt-1 text-[12px] leading-[1.45] text-white/80">
+                {compositeFailure ?? "The shaped recorder isn't running."} Recording now would save a
+                horizontal 16:9 video from your camera, not the vertical one you picked.
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                <Button
+                  onClick={() => { closeCamera(); setStep("script"); }}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-white/25 bg-white/10 text-white hover:bg-white/20"
+                >
+                  <RotateCcw size={14} /> Try Again
+                </Button>
+                <Button
+                  onClick={() => { setShape("horizontal"); setRawShapeApproved(true); }}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-white/25 bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Video size={14} /> Record Horizontal Instead
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Controls */}
           <div className="flex gap-2">
             {!isRecording && (
@@ -1705,7 +1796,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                 </Button>
                 <Button
                   onClick={beginCountdown}
-                  disabled={countdown !== null}
+                  disabled={countdown !== null || shapeUnsafe}
                   size="lg"
                   className="gap-2 flex-[2]"
                 >
