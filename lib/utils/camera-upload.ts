@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { takeFailure, failureError } from "@/lib/utils/upload-failpoint";
 
 /**
  * The video_type that matches a recording's actual shape.
@@ -69,7 +70,7 @@ export async function uploadCameraRecording(
      *  the end card is what carries the ask on screen. */
     cta?: string;
   } = {},
-): Promise<{ videoId: string; title: string; projectId: string | null }> {
+): Promise<{ videoId: string; title: string; projectId: string | null; alreadySaved?: boolean }> {
   const ext = videoExtensionForType(blob.type);
 
   const urlRes = await fetch("/api/video/camera-upload-url", {
@@ -79,6 +80,27 @@ export async function uploadCameraRecording(
   });
   const urlData = await urlRes.json();
   if (!urlRes.ok) throw new Error(urlData.error || "Failed to prepare upload");
+
+  /**
+   * The save already worked, and this browser never heard.
+   *
+   * The route confirmed both the video row and the file behind it before
+   * saying so, so there is nothing left to upload and nothing left to write.
+   * Returning here is what lets the caller drop its device copy instead of
+   * saving the same recording a second time.
+   */
+  if (urlData.alreadySaved && urlData.videoId) {
+    return {
+      videoId: urlData.videoId as string,
+      title: opts.title || "Camera Recording",
+      projectId: (urlData.projectId as string | undefined) ?? null,
+      alreadySaved: true,
+    };
+  }
+
+  // Stops here with the upload slot already prepared — the shape of a
+  // connection dying mid-attempt.
+  if (takeFailure("before-upload")) throw failureError("before-upload");
 
   const supabase = createClient();
   const { error: uploadError } = await supabase.storage
@@ -101,6 +123,9 @@ export async function uploadCameraRecording(
     throw new Error(raw || "Upload failed");
   }
 
+  // The file is in storage and nothing knows about it yet.
+  if (takeFailure("after-upload")) throw failureError("after-upload");
+
   const res = await fetch("/api/video/save-camera-recording", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -115,6 +140,10 @@ export async function uploadCameraRecording(
     if (data.code) err.code = data.code;
     throw err;
   }
+
+  // The row is written and this browser is about to not find out — the case
+  // that used to end with a retry deleting the file the row points at.
+  if (takeFailure("after-save")) throw failureError("after-save");
 
   return {
     videoId: data.videoId as string,

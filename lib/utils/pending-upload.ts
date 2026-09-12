@@ -59,6 +59,13 @@ export interface RecoveryRecord {
   status: RecoveryStatus;
   attempts: number;
   lastError: string | null;
+  /**
+   * Where the last attempt stopped, when the failure said so.
+   *
+   * "It failed" and "it failed after the file was already in storage" call for
+   * different things, and the second one is the case worth recognising.
+   */
+  lastStage?: string | null;
 }
 
 /** What is stored: the blob lives beside the rest rather than inside it. */
@@ -210,7 +217,7 @@ export async function putRecovery(rec: RecoveryRecord): Promise<boolean> {
 /** Update the bookkeeping on a record without rewriting its blob needlessly. */
 export async function updateRecovery(
   id: string,
-  patch: Partial<Pick<RecoveryRecord, "status" | "attempts" | "lastError" | "projectId">>,
+  patch: Partial<Pick<RecoveryRecord, "status" | "attempts" | "lastError" | "lastStage" | "projectId">>,
 ): Promise<void> {
   const inMemory = memoryFallback.get(id);
   if (inMemory) {

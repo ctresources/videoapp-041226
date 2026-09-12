@@ -27,6 +27,9 @@ export function CameraWithMicTools() {
       </div>
       <CameraRecorder
         micTools
+        // The upload failure simulator. Only here — the live Camera tab renders
+        // the same component without it.
+        qaMode
         scriptLength={scriptLength}
         onScriptLengthChange={setScriptLength}
         freestyle
