@@ -356,11 +356,20 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * are allowed to promise about closing the page.
    */
   const [storeUnavailable, setStoreUnavailable] = useState(false);
-  /** The take on screen has a failed upload behind it. */
-  const [saveFailed, setSaveFailed] = useState(false);
   const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
   /** The project behind the take — the way through to its Share Kit. */
   const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
+  /**
+   * What each take saved as, keyed by its recovery id.
+   *
+   * savedVideoId is whichever take saved LAST, and this screen shows whichever
+   * take you are looking at. With two takes that meant a failed one inheriting
+   * the previous take's success: the screen said Saved to My Content, offered
+   * View it, and hid the warning — over a recording that had not been saved.
+   */
+  const [savedByRecovery, setSavedByRecovery] = useState<
+    Record<string, { videoId: string; projectId: string | null; title: string }>
+  >({});
   /** 3, 2, 1 — null when not counting. */
   const [countdown, setCountdown] = useState<number | null>(null);
   /**
@@ -801,7 +810,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       // Minted here, at the one moment this recording becomes a thing that can
       // be lost. Every later attempt to save it carries this same id.
       recoveryIdsRef.current.set(blob, newRecoveryId());
-      setSaveFailed(false);
       setVideoBlob(blob);
       setVideoUrl(url);
       // Kept rather than replaced. Each is saved to My Content on its own, but
@@ -1148,10 +1156,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       await deleteRecovery(record.id);
       setRecoveries((prev) => prev.filter((r) => r.id !== record.id));
       setStoreUnavailable(false);
-      setSaveFailed(false);
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
       setSavedProjectId(projectId);
+      // Recorded against this take specifically, so the screen can tell which
+      // of several takes it is describing.
+      setSavedByRecovery((prev) => ({
+        ...prev,
+        [record.id]: { videoId, projectId, title: savedName },
+      }));
       if (openShare) setShowPublish(true);
       return { videoId, alreadySaved: !!alreadySaved };
     } catch (err) {
@@ -1163,7 +1176,6 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         { ...record, status: "failed", attempts, lastError: message, lastStage: stage },
         ...prev.filter((r) => r.id !== record.id),
       ]);
-      setSaveFailed(true);
       const payload = err instanceof Error
         ? { error: err.message, code: (err as Error & { code?: string }).code }
         : null;
@@ -1200,12 +1212,14 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   }
 
   async function handleSaveForSocial() {
-    if (!videoBlob) return;
+    // The take on screen, which is the one this button appears to be about.
+    const blob = viewedBlob;
+    if (!blob) return;
     // Already saved by the effect below — this is only the share sheet now.
-    if (savedVideoId) { setShowPublish(true); return; }
+    if (viewedSaved) { setShowPublish(true); return; }
     // Same path as the automatic save, so pressing the button after a failure
     // retries from the kept copy rather than starting a different kind of save.
-    await preserveThenUpload(recordFor(videoBlob), true);
+    await preserveThenUpload(recordFor(blob), true);
   }
 
   /**
@@ -1254,10 +1268,24 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoBlob]);
 
-  /** The held record behind the take on screen, if its save has failed. */
-  const currentRecovery = videoBlob
-    ? recoveries.find((r) => r.id === recoveryIdsRef.current.get(videoBlob))
+  /**
+   * The take the done screen is actually showing — not necessarily the newest.
+   *
+   * Everything the screen says about saving is answered for THIS take, because
+   * the takes strip lets you look at an earlier one and the answers differ.
+   */
+  const viewedBlob = takes[viewingTake]?.blob ?? videoBlob;
+  const viewedRecoveryId = viewedBlob ? recoveryIdsRef.current.get(viewedBlob) : undefined;
+  /** Where this take ended up, if it reached the server. */
+  const viewedSaved = viewedRecoveryId ? savedByRecovery[viewedRecoveryId] : undefined;
+  /** Its copy held on this device, if it has not. */
+  const viewedRecovery = viewedRecoveryId
+    ? recoveries.find((r) => r.id === viewedRecoveryId)
     : undefined;
+  const allTakesSaved = takes.every((t) => {
+    const id = recoveryIdsRef.current.get(t.blob);
+    return !!(id && savedByRecovery[id]);
+  });
 
   /** QA only: two savers reaching for one recording at the same moment. */
   async function qaRetryTwice(rec: RecoveryRecord) {
@@ -1401,7 +1429,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   <p className="mt-0.5">
                     {memoryOnly
                       ? "Your browser wouldn't store a recovery copy, so download it now — closing or reloading this page will lose it."
-                      : "The upload didn't finish. You can send it again without recording it again."}
+                      : rec.lastStage === "after-save"
+                        ? "It may already have reached the server — the reply never arrived, so this browser can't tell. Retrying will check rather than save it twice."
+                        : "The upload didn't finish. You can send it again without recording it again."}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {rec.title} · {describeSize(rec.blob.size)} · recorded {describeAge(rec.createdAt)}
@@ -1411,11 +1441,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   {/* Which stage it stopped at, because the answer changes what
                       a retry has to do — and after a lost reply the recording
                       may already be saved. */}
+                  {/* The stage sentence already contains the reason for a
+                      simulated failure, so printing both said it twice. */}
                   {rec.lastError && (
                     <p className="mt-1 text-xs text-red-700">
-                      Stopped{rec.lastStage && STAGE_LABELS[rec.lastStage as FailStage]
-                        ? ` ${STAGE_LABELS[rec.lastStage as FailStage]}`
-                        : ""}: {rec.lastError}
+                      {rec.lastStage && STAGE_LABELS[rec.lastStage as FailStage]
+                        ? `Stopped ${STAGE_LABELS[rec.lastStage as FailStage]}.`
+                        : rec.lastError}
                     </p>
                   )}
                 </div>
@@ -2297,25 +2329,31 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                 {i + 1} · {formatTime(t.seconds)}
               </button>
             ))}
-            <span className="text-[11px] text-spark-ink-faint">all saved</span>
+            {/* Was unconditional, which stopped being true the moment a take
+                could fail to save. */}
+            <span className="text-[11px] text-spark-ink-faint">
+              {allTakesSaved ? "all saved" : "not all saved yet"}
+            </span>
           </div>
         )}
         <div className="flex items-center justify-between gap-3 px-1">
           <p className="text-sm font-semibold text-brand-text">
-            {savedVideoId
+            {viewedSaved
               ? "Saved to My Content"
               : saving
                 ? "Saving to My Content…"
-                : "Recording complete"}
+                : viewedRecovery
+                  ? "Not saved yet — kept on this device"
+                  : "Recording complete"}
           </p>
           <div className="flex items-center gap-3">
             {/* It said the video was in My Content and then offered no way to
                 get there — Download, Share and Re-record, all of which keep
                 you here. The one thing the sentence promises has to be
                 reachable from the sentence. */}
-            {savedVideoId && (
+            {viewedSaved && (
               <a
-                href={`/videos?highlight=${savedVideoId}`}
+                href={`/videos?highlight=${viewedSaved.videoId}`}
                 onClick={() => setOpeningVideo(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold text-spark-amber hover:text-spark-blue whitespace-nowrap"
               >
@@ -2330,15 +2368,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         {/* After a failed upload, say where the recording actually is.
             Two different facts, and the difference matters: one of them means
             they can close the page, and the other means they cannot. */}
-        {saveFailed && !savedVideoId && (
+        {viewedRecovery && !viewedSaved && (
           <div className="flex items-start gap-2 rounded-lg bg-spark-amber/5 px-3 py-2.5 text-xs text-slate-600">
             <AlertCircle size={13} className="mt-0.5 shrink-0 text-spark-amber" />
             <div className="flex flex-col gap-1">
               {/* Where it stopped, when that is known — Download and Save to
                   My Content below stay available either way. */}
-              {currentRecovery?.lastStage && STAGE_LABELS[currentRecovery.lastStage as FailStage] && (
+              {viewedRecovery.lastStage && STAGE_LABELS[viewedRecovery.lastStage as FailStage] && (
                 <span className="font-medium text-red-700">
-                  Stopped {STAGE_LABELS[currentRecovery.lastStage as FailStage]}.
+                  Stopped {STAGE_LABELS[viewedRecovery.lastStage as FailStage]}.
                 </span>
               )}
               {storeUnavailable ? (
@@ -2346,6 +2384,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   The upload didn&apos;t go through, and your browser wouldn&apos;t store a recovery
                   copy either. This recording only exists in this open page — download it now,
                   or it will be lost when you close or reload.
+                </span>
+              ) : viewedRecovery.lastStage === "after-save" ? (
+                <span>
+                  It may already have reached the server — the reply never arrived, so this
+                  browser can&apos;t tell. Your recording is safely waiting on this device, and
+                  Save to My Content below will check rather than save it twice.
                 </span>
               ) : (
                 <span>
@@ -2374,7 +2418,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> {savedVideoId ? "Share it" : "Save to My Content"}</>
+              <><Share2 size={16} /> {viewedSaved ? "Share it" : "Save to My Content"}</>
             )}
           </Button>
         </div>
@@ -2385,9 +2429,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             that exist for a camera video by this point were on a screen the
             camera route could not reach. Filming it yourself is not a reason
             to lose the writing that goes with it. */}
-        {savedProjectId && (
+        {viewedSaved?.projectId && (
           <a
-            href={`/create/${savedProjectId}?step=5`}
+            href={`/create/${viewedSaved.projectId}?step=5`}
             className="flex items-center justify-between gap-3 rounded-xl border border-spark-rule bg-white px-4 py-3 transition-colors hover:border-spark-amber"
           >
             <span className="min-w-0">
@@ -2405,10 +2449,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         </Button>
       </div>
 
-      {showPublish && savedVideoId && (
+      {showPublish && viewedSaved && (
         <PublishModal
-          videoId={savedVideoId}
-          videoTitle={savedTitle}
+          videoId={viewedSaved.videoId}
+          videoTitle={viewedSaved.title || savedTitle}
           onClose={() => setShowPublish(false)}
           onPublished={() => setShowPublish(false)}
         />
