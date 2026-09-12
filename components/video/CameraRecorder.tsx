@@ -294,6 +294,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * webcam take ended up playing letterboxed inside a portrait frame.
    */
   const recordedSizeRef = useRef<{ width: number; height: number } | null>(null);
+  /**
+   * The same facts, in state, for the done screen to render from.
+   *
+   * A ref does not re-render, and both of these are captured in onstop —
+   * where closeCamera() then sets brandedActive back to false. Reading either
+   * during render would show a stale shape on a second take, and would call
+   * every branded take "raw camera".
+   */
+  const [takeShape, setTakeShape] = useState<{ width: number; height: number; branded: boolean } | null>(null);
   const transcriberRef = useRef<LiveTranscriber | null>(null);
   const stoppingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -723,6 +732,13 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         const s = streamRef.current?.getVideoTracks()[0]?.getSettings();
         return s?.width && s?.height ? { width: s.width, height: s.height } : null;
       })();
+      // Captured here because closeCamera() on the next line destroys the
+      // composite and clears brandedActive — after which neither can be asked.
+      setTakeShape(
+        recordedSizeRef.current
+          ? { ...recordedSizeRef.current, branded: !!compositeRef.current }
+          : null,
+      );
       closeCamera();
       setStep("done");
     };
@@ -1834,16 +1850,42 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+        {/* The take's own shape, not a fixed 16:9 box.
+            This was a landscape frame with object-cover inside it, so a 9:16
+            take was cropped to fill it: the video looked horizontal and the
+            branding — which sits along the top and bottom of a vertical
+            frame — was cut off the sides of the view. The file was correct
+            the whole time; this screen was not. */}
+        <div
+          className="relative mx-auto w-full overflow-hidden rounded-2xl bg-black"
+          style={{
+            aspectRatio: takeShape ? `${takeShape.width} / ${takeShape.height}` : "16 / 9",
+            maxHeight: "70vh",
+          }}
+        >
           {(takes[viewingTake]?.url ?? videoUrl) && (
             <video
               src={takes[viewingTake]?.url ?? videoUrl ?? undefined}
               controls
               playsInline
-              className="w-full h-full object-cover"
+              className="h-full w-full object-contain"
             />
           )}
         </div>
+
+        {/* What was actually recorded, in pixels. The shape is the one thing
+            this screen used to get wrong, so it now says it outright. */}
+        {micTools && takeShape && (
+          <p className="text-[11.5px] text-spark-ink-muted">
+            Recorded {takeShape.width} × {takeShape.height} ·{" "}
+            {takeShape.width > takeShape.height
+              ? "Horizontal 16:9"
+              : takeShape.width < takeShape.height
+                ? "Vertical 9:16"
+                : "Square 1:1"}
+            {takeShape.branded ? " · branded composite" : " · raw camera"}
+          </p>
+        )}
 
         {/* Every take from this session. Each is already in My Content on its
             own — this is so two of them can be compared without leaving. */}
