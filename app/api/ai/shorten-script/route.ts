@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { chatText } from "@/lib/api/perplexity-chat";
-import { clampScript, LONG_MAX_WORDS, minutesFor } from "@/lib/utils/video-length";
+import {
+  clampScript,
+  maxWords,
+  targetWords,
+  minutesFor,
+  type VideoLength,
+} from "@/lib/utils/video-length";
 import { PLAIN_COPY_RULES, plainCopy } from "@/lib/utils/copy-style";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -30,12 +36,18 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { script } = (await req.json()) as { script?: string };
+  const { script, length } = (await req.json()) as { script?: string; length?: string };
   const text = (script ?? "").trim();
   if (!text) return NextResponse.json({ error: "script is required" }, { status: 400 });
 
+  // Cut to the length actually chosen, not always the long-video maximum. A
+  // script over the Shorts cap has a real target of its own; sending it to
+  // 1,160 words would leave it still too long for the video being made.
+  const videoLength: VideoLength = length === "rendered_long" ? "long" : "standard";
+  const cap = maxWords(videoLength, null);
+
   const words = text.split(/\s+/).length;
-  if (words <= LONG_MAX_WORDS) {
+  if (words <= cap) {
     // Nothing to do, and rewriting anyway would quietly reword a script that
     // already fits.
     return NextResponse.json({ script: text, words, unchanged: true });
@@ -45,14 +57,14 @@ export async function POST(req: NextRequest) {
    * A target under the cap, and the cap stated outright.
    *
    * A prompt that names only a target overshoots by roughly a third — the same
-   * lesson the generation prompts learned. The margin between 1,100 and 1,160
-   * is what absorbs the overshoot that still happens.
+   * lesson the generation prompts learned. The margin below the cap is what
+   * absorbs the overshoot that still happens.
    */
-  const target = 1_100;
+  const target = targetWords(videoLength, null);
 
   const system = [
     "You shorten real estate video scripts that are too long to be spoken in full.",
-    `Cut the script to about ${target} words. Never exceed ${LONG_MAX_WORDS} words.`,
+    `Cut the script to about ${target} words. Never exceed ${cap} words.`,
     "Cut whole sentences and repetitions. Do not paraphrase what survives:",
     "the wording that remains must be the author's own, because the avatar",
     "speaks this script exactly as written and the author chose those words.",
@@ -86,7 +98,7 @@ export async function POST(req: NextRequest) {
    * exact silent cut this route exists to avoid. Clamping here means the word
    * count the user sees is the one that gets spoken.
    */
-  const shortened = clampScript(plainCopy(raw.trim()), LONG_MAX_WORDS);
+  const shortened = clampScript(plainCopy(raw.trim()), cap);
   const finalWords = shortened.split(/\s+/).length;
 
   return NextResponse.json({

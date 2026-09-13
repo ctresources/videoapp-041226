@@ -357,9 +357,20 @@ function CreatePageInner() {
   const [pasteScript, setPasteScript] = useState("");
   /** Cutting a script down to what the renderer will actually speak. */
   const [pasteShortening, setPasteShortening] = useState(false);
+  /** The cap the pasted script is actually measured against — the length picked above. */
+  const pasteIsLong = pasteScriptLength === "rendered_long";
+  const pasteWordCap = pasteIsLong ? LONG_MAX_WORDS : SHORT_MAX_WORDS;
   /** Source material to summarise — a blog post, an article, notes. */
   const [pasteBlogText, setPasteBlogText] = useState("");
   const [pasteBlogGenerating, setPasteBlogGenerating] = useState(false);
+  /**
+   * Words produced by the last successful summarise, or null.
+   *
+   * The confirmation used to be "there is text in the script box", which is
+   * true the moment anything is pasted — so it congratulated you on a summary
+   * that had never run.
+   */
+  const [pasteSummarised, setPasteSummarised] = useState<number | null>(null);
   const [pasteHook, setPasteHook] = useState("");
   const [pasteCity, setPasteCity] = useState("");
   const [pasteState, setPasteState] = useState("");
@@ -921,6 +932,7 @@ function CreatePageInner() {
       if (!res.ok) throw new Error((data.error as string) || "Couldn't turn that into a script");
       setPasteScript(data.script as string);
       const words = Number(data.words ?? 0);
+      setPasteSummarised(words);
       toast.success(`Script ready — ${words.toLocaleString()} words, about ${data.minutes} min. Read it over before you generate.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't turn that into a script");
@@ -1012,7 +1024,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/shorten-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: original }),
+        body: JSON.stringify({ script: original, length: pasteScriptLength }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Couldn't shorten the script");
@@ -2166,41 +2178,70 @@ function CreatePageInner() {
               </div>
             </div>
 
-            {/* Material first, then the button that uses it. The spark
-                controls used to sit above the photos and the PDF, so the
-                only way to feed them was to scroll past the button, add
-                the material, and come back up. */}
-            <MediaAndDocs
-              photos={pastePhotos}
-              onAddPhotos={handlePastePhotosUpload}
-              onRemovePhoto={removePastePhoto}
-              onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
-              photosUploading={pastePhotoUploading}
-              blurb="Photos become b-roll in the video"
-              // Only when the AI is writing. A script spoken exactly as
-              // written has nothing to take from an attachment — offering
-              // one next to your own words implied it would be read, and
-              // it never was.
-              // Offered when the AI is writing, and when a blog post is being
-              // summarised — there the URL attach is the fastest way in, and it
-              // brings the page's own images across as b-roll. Still hidden for
-              // your own words, which have nothing to take from an attachment.
-              doc={pasteSource === "own" ? undefined : {
-                mode: pastePdfMode,
-                onModeChange: setPastePdfMode,
-                attached: !!pastePdfUrl,
-                attachedName: pastePdfName,
-                onClear: () => {
-                  setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
-                },
-                uploading: pastePdfUploading,
-                onUploadPdf: handlePastePdfUpload,
-                urlInput: pastePdfUrlInput,
-                onUrlInputChange: setPastePdfUrlInput,
-                onFetchUrl: handlePasteUrlExtract,
-                fetching: pastePdfUrlExtracting,
-              }}
-            />
+            {/* Video length, asked once for all three ways in, and before
+                anything that uses it: the summariser and the AI writer both
+                take it as their target, and it used to sit below the buttons
+                that consume it.
+
+                It also used to live inside the AI panel, so on the tab's own
+                path — your words, pasted — there was no length control at all,
+                while the warning under the script box said "Pick Longform
+                above", naming a thing that was not on screen.
+
+                The renderer's two lengths, not the teleprompter's five: this
+                script goes to HeyGen and is clamped there, so offering 4- and
+                15-minute options meant writing a script the user picked and
+                then cutting it. */}
+            <div className="mb-4 pb-4 border-b border-spark-rule-soft">
+              <p className="text-sm font-bold text-spark-ink-soft mb-1">Video Length</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {RENDERED_SCRIPT_LENGTHS.map((l) => {
+                  const isLong = l.key === "rendered_long";
+                  /**
+                   * Shorts and Longform spend separate balances that never
+                   * mix, so having shorts left says nothing about whether a
+                   * long one can be made.
+                   *
+                   * Not a refusal, though: the next step offers to read the
+                   * script yourself on camera, which spends neither balance.
+                   * Saying "none left" flat would turn a choice about who is
+                   * on screen into a wall.
+                   */
+                  const none = !!allowance && !allowance.unlimited
+                    && (isLong ? allowance.long === 0 : allowance.short === 0);
+                  return (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setPasteScriptLength(l.key)}
+                      aria-pressed={pasteScriptLength === l.key}
+                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                        pasteScriptLength === l.key
+                          ? "border-spark-amber bg-spark-amber-tint"
+                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                      <span className="block text-[10px] text-spark-ink-muted">
+                        up to {ceilMinutesFor(l.words)} min
+                      </span>
+                      {/* Said here rather than discovered at Generate — and
+                          said as what it is, which is that the avatar render
+                          needs one, not that this length is closed. */}
+                      {none && (
+                        <span className="block text-[10px] font-medium text-amber-600">
+                          none left — read it yourself
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-[1.45] text-spark-ink-faint">
+                Either length can be read by your avatar, which uses one video of that
+                kind, or by you on camera, which is free. You choose next.
+              </p>
+            </div>
 
             {/* Market for THIS video, asked before either way of writing the
                 script rather than after both. Sitting at the foot of the card
@@ -2302,9 +2343,12 @@ function CreatePageInner() {
                 Summarised from your text only — no statistics or facts are added.
                 {pastePhotos.length > 0 ? " Your photos become b-roll." : ""}
               </p>
-              {pasteScript && !pasteBlogGenerating && (
+              {/* Only after one actually ran, and says what it produced — the
+                  old version was true whenever the script box had anything in
+                  it, so it appeared over untouched pasted text. */}
+              {pasteSummarised !== null && !pasteBlogGenerating && (
                 <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                  <CheckCircle size={11} /> Script ready. Read and edit it below before generating.
+                  <CheckCircle size={11} /> Summarised to {pasteSummarised.toLocaleString()} words. Read and edit it below before generating.
                 </p>
               )}
             </div>
@@ -2340,67 +2384,6 @@ function CreatePageInner() {
               )}
             </div>
             )}
-
-            {/* Video length, asked once for all three ways in.
-                It used to live inside the AI panel, so on the tab's own path —
-                your words, pasted — there was no length control at all. The
-                over-length warning under the script box still said "Pick
-                Longform above", naming a thing that was not on screen.
-
-                The renderer's two lengths, not the teleprompter's five: this
-                script goes to HeyGen and is clamped there, so offering 4- and
-                15-minute options meant writing a script the user picked and
-                then cutting it. */}
-            <div className="mb-4">
-              <p className="text-sm font-bold text-spark-ink-soft mb-1">Video Length</p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {RENDERED_SCRIPT_LENGTHS.map((l) => {
-                  const isLong = l.key === "rendered_long";
-                  /**
-                   * Shorts and Longform spend separate balances that never
-                   * mix, so having shorts left says nothing about whether a
-                   * long one can be made.
-                   *
-                   * Not a refusal, though: the next step offers to read the
-                   * script yourself on camera, which spends neither balance.
-                   * Saying "none left" flat would turn a choice about who is
-                   * on screen into a wall.
-                   */
-                  const none = !!allowance && !allowance.unlimited
-                    && (isLong ? allowance.long === 0 : allowance.short === 0);
-                  return (
-                    <button
-                      key={l.key}
-                      type="button"
-                      onClick={() => setPasteScriptLength(l.key)}
-                      aria-pressed={pasteScriptLength === l.key}
-                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
-                        pasteScriptLength === l.key
-                          ? "border-spark-amber bg-spark-amber-tint"
-                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                      }`}
-                    >
-                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
-                      <span className="block text-[10px] text-spark-ink-muted">
-                        up to {ceilMinutesFor(l.words)} min
-                      </span>
-                      {/* Said here rather than discovered at Generate — and
-                          said as what it is, which is that the avatar render
-                          needs one, not that this length is closed. */}
-                      {none && (
-                        <span className="block text-[10px] font-medium text-amber-600">
-                          none left — read it yourself
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-1 text-[10.5px] leading-[1.45] text-spark-ink-faint">
-                Either length can be read by your avatar, which uses one video of that
-                kind, or by you on camera, which is free. You choose next.
-              </p>
-            </div>
 
             {/* Title */}
             <div className="mb-4">
@@ -2495,37 +2478,36 @@ function CreatePageInner() {
                   Standard video: up to {SHORT_MAX_WORDS} words (~{minutesFor(SHORT_MAX_WORDS)} min) ·
                   Long video: up to {LONG_MAX_WORDS.toLocaleString()} words (~{minutesFor(LONG_MAX_WORDS)} min)
                 </p>
-              ) : pasteWordCount <= SHORT_MAX_WORDS ? (
+              ) : pasteWordCount <= pasteWordCap ? (
                 <p className="text-xs text-spark-ink-faint mt-1">
-                  Fits a standard video ({SHORT_MAX_WORDS} words max). A long video takes up to{" "}
-                  {LONG_MAX_WORDS.toLocaleString()}.
-                </p>
-              ) : pasteWordCount <= LONG_MAX_WORDS ? (
-                <p className="text-xs text-amber-600 mt-1 flex items-start gap-1">
-                  <AlertCircle size={12} className="mt-0.5 shrink-0" />
-                  <span>
-                    {/* Named a control that does not exist on this path: the
-                        editor's long-form switch lives in step 2, which a
-                        pasted script skips. The tiles directly above this ARE
-                        the choice, so it points at those. */}
-                    Too long for a standard video. Pick <strong>Longform</strong> above, or cut{" "}
-                    {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
-                  </span>
+                  Fits {pasteIsLong ? "a long" : "a standard"} video ({pasteWordCap.toLocaleString()} words
+                  max){pasteIsLong ? "." : `. Longform takes up to ${LONG_MAX_WORDS.toLocaleString()}.`}
                 </p>
               ) : (
+                /* One rule instead of two.
+                   The offer to cut used to appear only past the long-video
+                   maximum, so the ordinary case — a script too long for the
+                   Shorts you actually picked — got a sentence telling you to
+                   count out 712 words by hand. It is measured against the
+                   length chosen above, whichever that is. */
                 <div className="mt-1 flex flex-col items-start gap-1.5">
-                  <p className="text-xs text-red-500 flex items-start gap-1">
+                  <p className={`text-xs flex items-start gap-1 ${pasteIsLong ? "text-red-500" : "text-amber-600"}`}>
                     <AlertCircle size={12} className="mt-0.5 shrink-0" />
                     <span>
-                      Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
-                      The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
-                      before rendering.
+                      {pasteIsLong ? (
+                        <>
+                          Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
+                          The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
+                          before rendering.
+                        </>
+                      ) : (
+                        <>
+                          Too long for a standard video. Pick <strong>Longform</strong> above, or cut{" "}
+                          {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
+                        </>
+                      )}
                     </span>
                   </p>
-                  {/* Offered only here. Past the long-video maximum there is no
-                      longer a length to switch to, so the choice is between
-                      cutting deliberately and letting the render-time clamp
-                      stop mid-argument and drop the rest. */}
                   <Button
                     onClick={shortenPastedScript}
                     loading={pasteShortening}
@@ -2534,9 +2516,49 @@ function CreatePageInner() {
                   >
                     {pasteShortening
                       ? "Shortening…"
-                      : `Shorten it to fit (~${LONG_MAX_WORDS.toLocaleString()} words)`}
+                      : `Shorten it to fit (~${pasteWordCap.toLocaleString()} words)`}
                   </Button>
                 </div>
+              )}
+            </div>
+
+            {/* Optional, so it sits after the script rather than in front of
+                it. The one exception is the URL attach in blog mode, which is
+                a way IN — it fetches the post's text and its images — so the
+                panel says where it leads rather than leaving it to be found. */}
+            <div className="mt-4 pt-4 border-t border-spark-rule-soft">
+              <MediaAndDocs
+                photos={pastePhotos}
+                onAddPhotos={handlePastePhotosUpload}
+                onRemovePhoto={removePastePhoto}
+                onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
+                photosUploading={pastePhotoUploading}
+                blurb="Photos become b-roll in the video"
+                // Offered when the AI is writing, and when a blog post is being
+                // summarised — there the URL attach brings the page's own text
+                // and images across. Hidden for your own words, which have
+                // nothing to take from an attachment.
+                doc={pasteSource === "own" ? undefined : {
+                  mode: pastePdfMode,
+                  onModeChange: setPastePdfMode,
+                  attached: !!pastePdfUrl,
+                  attachedName: pastePdfName,
+                  onClear: () => {
+                    setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
+                  },
+                  uploading: pastePdfUploading,
+                  onUploadPdf: handlePastePdfUpload,
+                  urlInput: pastePdfUrlInput,
+                  onUrlInputChange: setPastePdfUrlInput,
+                  onFetchUrl: handlePasteUrlExtract,
+                  fetching: pastePdfUrlExtracting,
+                }}
+              />
+              {pasteSource === "blog" && (
+                <p className="mt-1.5 text-[11px] text-spark-ink-faint">
+                  Attaching your blog&apos;s URL fills the box above with its text, and brings its
+                  images across as b-roll.
+                </p>
               )}
             </div>
           </Card>
