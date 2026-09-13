@@ -43,11 +43,28 @@ export async function POST(req: NextRequest) {
   if (gate) return gate;
 
   let url: string;
+  let maxChars: number | undefined;
   try {
-    ({ url } = await req.json());
+    ({ url, maxChars } = await req.json());
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  /**
+   * How much text to return.
+   *
+   * 5,000 by default because that is what every existing caller was built
+   * around: the reference-doc extracts feed straight into script prompts, and
+   * quietly handing them four times as much text would inflate every one of
+   * those prompts — squeezing the instruction budget that decides how well a
+   * render follows its brief.
+   *
+   * Summarising a whole blog post is the case that needs more. 5,000
+   * characters is roughly 800 words, and this app's own blog generator writes
+   * about 1,300, so the default truncates its own output before the summariser
+   * ever sees the end of it. That path asks for 20,000; nothing else changes.
+   */
+  const textLimit = Math.min(Math.max(Number(maxChars) || 5000, 500), 20000);
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -102,7 +119,7 @@ export async function POST(req: NextRequest) {
       if (!pdfText || pdfText.trim().length < 30) {
         return NextResponse.json({ error: "This PDF has no readable text (it may be scanned/image-only). Try a text-based PDF." }, { status: 400 });
       }
-      return NextResponse.json({ text: pdfText.slice(0, 5000), url: parsedUrl.toString() });
+      return NextResponse.json({ text: pdfText.slice(0, textLimit), url: parsedUrl.toString() });
     }
 
     if (
@@ -129,7 +146,7 @@ export async function POST(req: NextRequest) {
     // HTML, before extractTextFromHtml strips every tag including <img>.
     const photoUrls = extractImageUrls(html, parsedUrl.toString());
 
-    return NextResponse.json({ text: text.slice(0, 5000), url: parsedUrl.toString(), photoUrls });
+    return NextResponse.json({ text: text.slice(0, textLimit), url: parsedUrl.toString(), photoUrls });
   } catch (err) {
     if (err instanceof Error && err.name === "TimeoutError") {
       return NextResponse.json({ error: "URL took too long to load" }, { status: 408 });

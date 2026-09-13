@@ -348,7 +348,7 @@ function CreatePageInner() {
    * not to do that. Defaults to your own words, which is what the tab is for;
    * the AI draft is still here, one click away, for a starting point to edit.
    */
-  const [pasteSource, setPasteSource] = useState<"own" | "ai">("own");
+  const [pasteSource, setPasteSource] = useState<"own" | "ai" | "blog">("own");
 
   const [locGenerating, setLocGenerating] = useState(false);
 
@@ -357,6 +357,9 @@ function CreatePageInner() {
   const [pasteScript, setPasteScript] = useState("");
   /** Cutting a script down to what the renderer will actually speak. */
   const [pasteShortening, setPasteShortening] = useState(false);
+  /** Source material to summarise — a blog post, an article, notes. */
+  const [pasteBlogText, setPasteBlogText] = useState("");
+  const [pasteBlogGenerating, setPasteBlogGenerating] = useState(false);
   const [pasteHook, setPasteHook] = useState("");
   const [pasteCity, setPasteCity] = useState("");
   const [pasteState, setPasteState] = useState("");
@@ -860,11 +863,21 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/extract-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: pastePdfUrlInput.trim() }),
+        // Summarising a whole post needs the whole post. The default 5,000
+        // characters is about 800 words, which truncates a normal blog before
+        // the summariser ever sees the end of it.
+        body: JSON.stringify({
+          url: pastePdfUrlInput.trim(),
+          ...(pasteSource === "blog" && { maxChars: 20000 }),
+        }),
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
       setPastePdfText(body.text as string);
+      // In blog mode the fetched page IS the source material, so it goes
+      // straight into the box you are about to summarise rather than sitting
+      // in an attachment you would have to copy out of.
+      if (pasteSource === "blog") setPasteBlogText(body.text as string);
       setPastePdfUrl(body.url as string);
       try { setPastePdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPastePdfName("URL"); }
       const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
@@ -885,6 +898,34 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
       setPastePdfUrlExtracting(false);
+    }
+  }
+
+  /**
+   * Summarise pasted source material into a script of the chosen length.
+   *
+   * The result lands in the same box you edit by hand, and nothing renders
+   * until you press generate — so what you read is what gets spoken.
+   */
+  async function handleScriptFromBlog() {
+    const source = pasteBlogText.trim();
+    if (!source) return;
+    setPasteBlogGenerating(true);
+    try {
+      const res = await fetch("/api/ai/script-from-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: source, length: pasteScriptLength }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Couldn't turn that into a script");
+      setPasteScript(data.script as string);
+      const words = Number(data.words ?? 0);
+      toast.success(`Script ready — ${words.toLocaleString()} words, about ${data.minutes} min. Read it over before you generate.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't turn that into a script");
+    } finally {
+      setPasteBlogGenerating(false);
     }
   }
 
@@ -2096,9 +2137,10 @@ function CreatePageInner() {
             {/* Which way in — asked before anything else, the way the listings
                 tab asks how you want to get the details in. */}
             <div className="mb-4">
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {([
                   { key: "own" as const, label: "I'll paste or type it", sub: "spoken exactly as written" },
+                  { key: "blog" as const, label: "Paste a blog post", sub: "summarised into a script" },
                   { key: "ai" as const, label: "Let AI draft it", sub: "then edit it yourself" },
                 ]).map(({ key, label, sub }) => (
                   <button
@@ -2134,7 +2176,11 @@ function CreatePageInner() {
               // written has nothing to take from an attachment — offering
               // one next to your own words implied it would be read, and
               // it never was.
-              doc={pasteSource !== "ai" ? undefined : {
+              // Offered when the AI is writing, and when a blog post is being
+              // summarised — there the URL attach is the fastest way in, and it
+              // brings the page's own images across as b-roll. Still hidden for
+              // your own words, which have nothing to take from an attachment.
+              doc={pasteSource === "own" ? undefined : {
                 mode: pastePdfMode,
                 onModeChange: setPastePdfMode,
                 attached: !!pastePdfUrl,
@@ -2210,6 +2256,76 @@ function CreatePageInner() {
                     prompt, as one sentence saying how many exist. */}
                 <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script from your attached PDF.{pastePhotos.length > 0 ? " Your photos become b-roll; they aren't read." : ""}</p>
               </div>
+            )}
+
+            {/* Summarise something already written.
+                Between the two existing ways in: the words are yours, but too
+                many of them to speak, so the AI shortens rather than writes.
+                What comes back lands in the same box as everything else and is
+                spoken exactly as it reads there — nothing renders until you
+                press generate, so the review is real. */}
+            {pasteSource === "blog" && (
+            <div className="mb-4 pb-4 border-b border-spark-rule-soft">
+              <p className="text-sm font-bold text-spark-ink-soft mb-2">Your Blog Post</p>
+              <div className="mb-2">
+                <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Video Length</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {RENDERED_SCRIPT_LENGTHS.map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setPasteScriptLength(l.key)}
+                      aria-pressed={pasteScriptLength === l.key}
+                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                        pasteScriptLength === l.key
+                          ? "border-spark-amber bg-spark-amber-tint"
+                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                      <span className="block text-[10px] text-spark-ink-muted">
+                        up to {ceilMinutesFor(l.words)} min
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                value={pasteBlogText}
+                onChange={(e) => setPasteBlogText(e.target.value)}
+                placeholder="Paste your blog post here — or attach its URL above and we'll fetch the text and its images."
+                rows={6}
+                className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
+              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  loading={pasteBlogGenerating}
+                  disabled={pasteBlogText.trim().length < 200}
+                  onClick={handleScriptFromBlog}
+                  className="whitespace-nowrap gap-1"
+                >
+                  <Sparkles size={13} /> Summarise into a script
+                </Button>
+                {pasteBlogText.trim() && (
+                  <span className="text-[11px] text-spark-ink-faint">
+                    {pasteBlogText.trim().split(/\s+/).length.toLocaleString()} words in
+                    {pasteBlogText.length > 20000 ? " · too long, trim to 20,000 characters" : ""}
+                  </span>
+                )}
+              </div>
+              {/* Said plainly, because it is the whole promise of this option:
+                  only what you wrote goes in. Nothing is researched or added. */}
+              <p className="text-[11px] text-spark-ink-faint mt-1.5">
+                Summarised from your text only — no statistics or facts are added.
+                {pastePhotos.length > 0 ? " Your photos become b-roll." : ""}
+              </p>
+              {pasteScript && !pasteBlogGenerating && (
+                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                  <CheckCircle size={11} /> Script ready. Read and edit it below before generating.
+                </p>
+              )}
+            </div>
             )}
 
             {/* Let AI Spark The Script */}
