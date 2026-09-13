@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { script, length } = (await req.json()) as { script?: string; length?: string };
+  const { script, length, budget } = (await req.json()) as {
+    script?: string; length?: string; budget?: number;
+  };
   const text = (script ?? "").trim();
   if (!text) return NextResponse.json({ error: "script is required" }, { status: 400 });
 
@@ -44,7 +46,19 @@ export async function POST(req: NextRequest) {
   // script over the Shorts cap has a real target of its own; sending it to
   // 1,160 words would leave it still too long for the video being made.
   const videoLength: VideoLength = length === "rendered_long" ? "long" : "standard";
-  const cap = maxWords(videoLength, null);
+  const hardCap = maxWords(videoLength, null);
+  /**
+   * What is left for the script once the closing ask is counted.
+   *
+   * The caller knows the user's own CTA and how long it is; this route does
+   * not. Cutting to the cap and letting the CTA be appended afterwards would
+   * put the script straight back over it, and the render clamp would take the
+   * tail — which is the failure this button exists to prevent.
+   */
+  const cap = Math.min(
+    hardCap,
+    Math.max(50, Number.isFinite(budget) ? Number(budget) : hardCap),
+  );
 
   const words = text.split(/\s+/).length;
   if (words <= cap) {

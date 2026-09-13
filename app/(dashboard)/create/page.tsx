@@ -15,6 +15,7 @@ import {
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
 import { MediaAndDocs } from "@/components/create/media-and-docs";
+import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -360,6 +361,38 @@ function CreatePageInner() {
   /** The cap the pasted script is actually measured against — the length picked above. */
   const pasteIsLong = pasteScriptLength === "rendered_long";
   const pasteWordCap = pasteIsLong ? LONG_MAX_WORDS : SHORT_MAX_WORDS;
+  /**
+   * The closing ask, and what it costs.
+   *
+   * It is appended to the narration at render time and counted against the
+   * same cap, so a script written right up to the limit loses its last
+   * sentences to make room — silently, after the video is made. The fields are
+   * the ones resolveCta fills; the count is only as true as the CTA is on the
+   * day, since it can still be edited on the setup step.
+   */
+  const [ctaProfile, setCtaProfile] = useState<{
+    full_name: string | null; company_name: string | null;
+    location_city: string | null; location_state: string | null;
+    default_cta: string | null; market_years: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name, company_name, location_city, location_state, default_cta, market_years")
+          .eq("id", user.id)
+          .single();
+        if (data) setCtaProfile(data as typeof ctaProfile);
+      } catch { /* the budget note simply stays hidden */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Source material to summarise — a blog post, an article, notes. */
   const [pasteBlogText, setPasteBlogText] = useState("");
   const [pasteBlogGenerating, setPasteBlogGenerating] = useState(false);
@@ -377,6 +410,26 @@ function CreatePageInner() {
   const [pasteGenerating, setPasteGenerating] = useState(false);
   const [pasteAiTopic, setPasteAiTopic] = useState("");
   const [pasteAiGenerating, setPasteAiGenerating] = useState(false);
+
+  /**
+   * The closing ask, and what it costs the script.
+   *
+   * Declared here rather than beside the other paste derivations because it
+   * reads pasteCity/pasteState, which are set below them.
+   */
+  const pasteCtaWords = (() => {
+    if (!ctaProfile) return 0;
+    const resolved = resolveCta(ctaProfile.default_cta, {
+      city: pasteCity.trim() || ctaProfile.location_city,
+      state: pasteState.trim() || ctaProfile.location_state,
+      name: ctaProfile.full_name,
+      company: ctaProfile.company_name,
+      years: ctaProfile.market_years,
+    });
+    return resolved.trim() ? resolved.trim().split(/\s+/).length : 0;
+  })();
+  /** What is actually left for the script itself. */
+  const pasteScriptBudget = Math.max(50, pasteWordCap - pasteCtaWords);
 
   // Paste tab uploads
   const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
@@ -1024,7 +1077,14 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/shorten-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: original, length: pasteScriptLength }),
+        // The budget, not the raw cap — the CTA is appended to the narration
+        // and counted against the same limit, so cutting to the cap would
+        // still lose the tail once it is added.
+        body: JSON.stringify({
+          script: original,
+          length: pasteScriptLength,
+          budget: pasteScriptBudget,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Couldn't shorten the script");
@@ -2478,7 +2538,7 @@ function CreatePageInner() {
                   Standard video: up to {SHORT_MAX_WORDS} words (~{minutesFor(SHORT_MAX_WORDS)} min) ·
                   Long video: up to {LONG_MAX_WORDS.toLocaleString()} words (~{minutesFor(LONG_MAX_WORDS)} min)
                 </p>
-              ) : pasteWordCount <= pasteWordCap ? (
+              ) : pasteWordCount <= pasteScriptBudget ? (
                 <p className="text-xs text-spark-ink-faint mt-1">
                   Fits {pasteIsLong ? "a long" : "a standard"} video ({pasteWordCap.toLocaleString()} words
                   max){pasteIsLong ? "." : `. Longform takes up to ${LONG_MAX_WORDS.toLocaleString()}.`}
@@ -2497,13 +2557,13 @@ function CreatePageInner() {
                       {pasteIsLong ? (
                         <>
                           Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
-                          The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
+                          The last {(pasteWordCount - pasteScriptBudget).toLocaleString()} words will be cut
                           before rendering.
                         </>
                       ) : (
                         <>
                           Too long for a standard video. Pick <strong>Longform</strong> above, or cut{" "}
-                          {(pasteWordCount - SHORT_MAX_WORDS).toLocaleString()} words to fit.
+                          {(pasteWordCount - pasteScriptBudget).toLocaleString()} words to fit.
                         </>
                       )}
                     </span>
@@ -2516,9 +2576,21 @@ function CreatePageInner() {
                   >
                     {pasteShortening
                       ? "Shortening…"
-                      : `Shorten it to fit (~${pasteWordCap.toLocaleString()} words)`}
+                      : `Shorten it to fit (~${pasteScriptBudget.toLocaleString()} words)`}
                   </Button>
                 </div>
+              )}
+
+              {/* The closing ask is appended to the narration and counted
+                  against the same cap, so a script written right up to the
+                  limit loses its last sentences to make room for it — after
+                  the video is made, with nothing on screen having said so. */}
+              {pasteCtaWords > 0 && (
+                <p className="text-[11px] text-spark-ink-faint mt-1.5">
+                  Your call to action is spoken at the end and counts toward this total:
+                  about {pasteCtaWords.toLocaleString()} words, leaving{" "}
+                  {pasteScriptBudget.toLocaleString()} for the script. You can edit it on the next step.
+                </p>
               )}
             </div>
 
