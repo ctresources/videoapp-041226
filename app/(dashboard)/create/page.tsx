@@ -1131,6 +1131,11 @@ function CreatePageInner() {
           hook: pasteHook.trim() || undefined,
           city: pasteCity || undefined,
           state: pasteState || undefined,
+          // The length chosen here, carried to the project so the setup step
+          // opens on it. Without this the editor always preset Shorts, and a
+          // 1,100-word pasted script landed on a 400-word format that would
+          // trim it — the choice made on this screen reaching nothing.
+          length: pasteScriptLength,
         }),
       });
       const data = await safeJson(res);
@@ -2267,29 +2272,6 @@ function CreatePageInner() {
             {pasteSource === "blog" && (
             <div className="mb-4 pb-4 border-b border-spark-rule-soft">
               <p className="text-sm font-bold text-spark-ink-soft mb-2">Your Blog Post</p>
-              <div className="mb-2">
-                <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Video Length</p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {RENDERED_SCRIPT_LENGTHS.map((l) => (
-                    <button
-                      key={l.key}
-                      type="button"
-                      onClick={() => setPasteScriptLength(l.key)}
-                      aria-pressed={pasteScriptLength === l.key}
-                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
-                        pasteScriptLength === l.key
-                          ? "border-spark-amber bg-spark-amber-tint"
-                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                      }`}
-                    >
-                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
-                      <span className="block text-[10px] text-spark-ink-muted">
-                        up to {ceilMinutesFor(l.words)} min
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
               <textarea
                 value={pasteBlogText}
                 onChange={(e) => setPasteBlogText(e.target.value)}
@@ -2332,34 +2314,6 @@ function CreatePageInner() {
             {pasteSource === "ai" && (
             <div className="mb-4 pb-4 border-b border-spark-rule-soft">
               <p className="text-sm font-bold text-spark-ink-soft mb-2">Let AI Spark The Script</p>
-              <div className="mb-2">
-                <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Script Length</p>
-                {/* The renderer's two lengths, not the teleprompter's five.
-                    This tab's script goes to HeyGen and is clamped there, so
-                    offering 4- and 15-minute options meant writing a script
-                    the user picked and then cutting it — quietly, after they
-                    had read it. */}
-                <div className="grid grid-cols-2 gap-1.5">
-                  {RENDERED_SCRIPT_LENGTHS.map((l) => (
-                    <button
-                      key={l.key}
-                      type="button"
-                      onClick={() => setPasteScriptLength(l.key)}
-                      aria-pressed={pasteScriptLength === l.key}
-                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
-                        pasteScriptLength === l.key
-                          ? "border-spark-amber bg-spark-amber-tint"
-                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                      }`}
-                    >
-                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
-                      <span className="block text-[10px] text-spark-ink-muted">
-                        up to {ceilMinutesFor(l.words)} min
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -2386,6 +2340,67 @@ function CreatePageInner() {
               )}
             </div>
             )}
+
+            {/* Video length, asked once for all three ways in.
+                It used to live inside the AI panel, so on the tab's own path —
+                your words, pasted — there was no length control at all. The
+                over-length warning under the script box still said "Pick
+                Longform above", naming a thing that was not on screen.
+
+                The renderer's two lengths, not the teleprompter's five: this
+                script goes to HeyGen and is clamped there, so offering 4- and
+                15-minute options meant writing a script the user picked and
+                then cutting it. */}
+            <div className="mb-4">
+              <p className="text-sm font-bold text-spark-ink-soft mb-1">Video Length</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {RENDERED_SCRIPT_LENGTHS.map((l) => {
+                  const isLong = l.key === "rendered_long";
+                  /**
+                   * Shorts and Longform spend separate balances that never
+                   * mix, so having shorts left says nothing about whether a
+                   * long one can be made.
+                   *
+                   * Not a refusal, though: the next step offers to read the
+                   * script yourself on camera, which spends neither balance.
+                   * Saying "none left" flat would turn a choice about who is
+                   * on screen into a wall.
+                   */
+                  const none = !!allowance && !allowance.unlimited
+                    && (isLong ? allowance.long === 0 : allowance.short === 0);
+                  return (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setPasteScriptLength(l.key)}
+                      aria-pressed={pasteScriptLength === l.key}
+                      className={`px-2 py-1.5 rounded-lg border text-center transition-colors ${
+                        pasteScriptLength === l.key
+                          ? "border-spark-amber bg-spark-amber-tint"
+                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
+                      <span className="block text-[10px] text-spark-ink-muted">
+                        up to {ceilMinutesFor(l.words)} min
+                      </span>
+                      {/* Said here rather than discovered at Generate — and
+                          said as what it is, which is that the avatar render
+                          needs one, not that this length is closed. */}
+                      {none && (
+                        <span className="block text-[10px] font-medium text-amber-600">
+                          none left — read it yourself
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-[1.45] text-spark-ink-faint">
+                Either length can be read by your avatar, which uses one video of that
+                kind, or by you on camera, which is free. You choose next.
+              </p>
+            </div>
 
             {/* Title */}
             <div className="mb-4">
@@ -2504,7 +2519,7 @@ function CreatePageInner() {
                     <span>
                       Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
                       The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
-                      before recording.
+                      before rendering.
                     </span>
                   </p>
                   {/* Offered only here. Past the long-video maximum there is no

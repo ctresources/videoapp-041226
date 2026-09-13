@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     hook?: string;
     city?: string;
     state?: string;
+    length?: string;
   };
 
   const { script, city = "", state = "" } = body;
@@ -55,6 +56,16 @@ export async function POST(req: NextRequest) {
     video_type: "custom",
     location: city && state ? `${city}, ${state}` : "",
     custom_topic: title,
+    /**
+     * The length picked on the paste screen.
+     *
+     * The editor presets its format from exactly this key, and nothing was
+     * writing it — so every pasted script arrived on the setup step as a
+     * standard video regardless of how long it was. An 8-minute script then
+     * sat on a 400-word format, to be trimmed at render with the choice the
+     * user had already made nowhere in sight.
+     */
+    video_length: body.length === "rendered_long" ? "long" : "standard",
     /**
      * This script is spoken as written, and the project has to remember that.
      *

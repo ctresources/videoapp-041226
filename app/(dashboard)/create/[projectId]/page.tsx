@@ -2432,18 +2432,19 @@ export default function ProjectEditorPage() {
                 through Direct Video, so there is no voice-only/avatar choice
                 to make — it gets told what will happen instead of being asked. */}
             <div className="mb-5">
-              {isPaste ? (
-                <div className="flex items-start gap-2.5 rounded-lg border border-spark-rule bg-white px-3 py-2.5">
-                  <Video size={16} className="mt-0.5 shrink-0 text-spark-amber" />
-                  <div className="min-w-0">
-                    <p className="text-[11.5px] font-medium text-spark-ink">Your avatar reads your script</p>
-                    <p className="mt-0.5 text-[10px] leading-[1.4] text-spark-ink-muted">
-                      Rendered word for word as a talking-head video, so nothing gets shortened or rewritten.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                renderModeSelector()
+              {/* A pasted script used to be told what would happen rather than
+                  asked: the picker was replaced by a statement that the avatar
+                  reads it. Two of the three answers were indeed settled — the
+                  script is spoken word for word either way — but the third was
+                  not a render mode at all. Reading it yourself costs nothing
+                  and spends no video, and it was the one exit this path never
+                  offered, on the tab most likely to hold a script someone
+                  wrote to read aloud. */}
+              {renderModeSelector()}
+              {isPaste && !selfRecord && (
+                <p className="mt-1.5 text-[10.5px] leading-[1.45] text-spark-ink-faint">
+                  Either way your script is read word for word, so nothing gets shortened or rewritten.
+                </p>
               )}
             </div>
             {/* Hidden when you are the one on camera. The look, the format
