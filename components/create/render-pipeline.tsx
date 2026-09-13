@@ -172,9 +172,23 @@ export function RenderPipeline({
       </div>
 
       {complete && (
-        <p className="mt-3 text-[12.5px] font-medium leading-[1.45] text-spark-blue">
-          Your video is ready. It&apos;s waiting in My Content.
-        </p>
+        <>
+          <p className="mt-3 text-[12.5px] font-medium leading-[1.45] text-spark-blue">
+            Your video is ready. It&apos;s waiting in My Content.
+          </p>
+          {/* The render finishing is not the video finishing.
+              What HeyGen hands back is the bare avatar; the b-roll, the music
+              and the captions are composited afterwards, and the row only
+              points at the finished file once that is done. So the first thing
+              you can watch may be a plain talking head — which reads as a
+              failed render rather than an unfinished one, and is exactly when
+              someone publishes it. */}
+          <p className="mt-1.5 text-[12px] leading-[1.45] text-spark-ink-muted">
+            Give it another minute before you publish. Your b-roll, music and captions are
+            added after the render, so the first version you see may be the plain
+            presenter. Refresh and it will be there.
+          </p>
+        </>
       )}
       {failed && (
         <p className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-[12.5px] leading-[1.45] text-red-700">
