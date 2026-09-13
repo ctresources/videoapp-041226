@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import { topTerms } from "@/lib/utils/script-keywords";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -41,6 +42,20 @@ export async function POST(req: NextRequest) {
   const firstSentence = script.trim().split(/(?<=[.!?])\s+/)[0] ?? script.trim().slice(0, 120);
   const hookText = body.hook?.trim() || firstSentence;
 
+  /**
+   * What this script is about, for the b-roll to follow.
+   *
+   * Stock footage is searched on the market plus these, and the render prompt
+   * lists them as its emphasis. A pasted script used to save an empty array,
+   * so both fell back to the town alone: every pasted video got the same few
+   * generic neighbourhood clips on a loop, however specific the script was.
+   *
+   * Counted rather than modelled. This runs on every paste and the answer only
+   * has to be good enough to search stock footage with, which does not justify
+   * a model call or the wait that comes with it.
+   */
+  const keywords = topTerms(script);
+
   const aiScript = {
     title,
     hook: hookText,
@@ -49,7 +64,7 @@ export async function POST(req: NextRequest) {
     cta: "",
     description: "",
     hashtags: [],
-    keywords: [],
+    keywords,
     blog_intro: "",
     blog_body: "",
     blog_conclusion: "",
@@ -96,7 +111,7 @@ export async function POST(req: NextRequest) {
         youtube_description: firstSentence,
         instagram_caption: "",
         hashtags: [],
-        keywords: [],
+        keywords,
         thumbnail_url: "",
         slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60),
       },
