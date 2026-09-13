@@ -355,6 +355,8 @@ function CreatePageInner() {
   // Paste-script tab
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasteScript, setPasteScript] = useState("");
+  /** Cutting a script down to what the renderer will actually speak. */
+  const [pasteShortening, setPasteShortening] = useState(false);
   const [pasteHook, setPasteHook] = useState("");
   const [pasteCity, setPasteCity] = useState("");
   const [pasteState, setPasteState] = useState("");
@@ -947,6 +949,52 @@ function CreatePageInner() {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
       setPasteUploadGenerating(false);
+    }
+  }
+
+  /**
+   * Cut a pasted script down to what the renderer will actually speak.
+   *
+   * Offered only past the long-video maximum, where there is no longer a
+   * length to switch to: the render-time clamp stops at a sentence boundary
+   * and drops everything after it, so the choice is between cutting on purpose
+   * and being cut silently.
+   *
+   * The script in the box is replaced, and the toast carries an Undo — these
+   * are the user's own words, and a rewrite they did not like should cost one
+   * click to reverse rather than a retype.
+   */
+  async function shortenPastedScript() {
+    const original = pasteScript;
+    setPasteShortening(true);
+    try {
+      const res = await fetch("/api/ai/shorten-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: original }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Couldn't shorten the script");
+      setPasteScript(data.script as string);
+      const removed = Number(data.removed ?? 0);
+      toast(
+        (t) => (
+          <span className="text-sm">
+            Shortened by {removed.toLocaleString()} words.{" "}
+            <button
+              onClick={() => { setPasteScript(original); toast.dismiss(t.id); }}
+              className="font-semibold underline"
+            >
+              Undo
+            </button>
+          </span>
+        ),
+        { duration: 10000 },
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't shorten the script");
+    } finally {
+      setPasteShortening(false);
     }
   }
 
@@ -2334,14 +2382,30 @@ function CreatePageInner() {
                   </span>
                 </p>
               ) : (
-                <p className="text-xs text-red-500 mt-1 flex items-start gap-1">
-                  <AlertCircle size={12} className="mt-0.5 shrink-0" />
-                  <span>
-                    Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
-                    The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
-                    before recording.
-                  </span>
-                </p>
+                <div className="mt-1 flex flex-col items-start gap-1.5">
+                  <p className="text-xs text-red-500 flex items-start gap-1">
+                    <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                    <span>
+                      Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
+                      The last {(pasteWordCount - LONG_MAX_WORDS).toLocaleString()} words will be cut
+                      before recording.
+                    </span>
+                  </p>
+                  {/* Offered only here. Past the long-video maximum there is no
+                      longer a length to switch to, so the choice is between
+                      cutting deliberately and letting the render-time clamp
+                      stop mid-argument and drop the rest. */}
+                  <Button
+                    onClick={shortenPastedScript}
+                    loading={pasteShortening}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {pasteShortening
+                      ? "Shortening…"
+                      : `Shorten it to fit (~${LONG_MAX_WORDS.toLocaleString()} words)`}
+                  </Button>
+                </div>
               )}
             </div>
           </Card>
