@@ -67,7 +67,11 @@ export async function stockBrollFor(opts: {
   const runtimeSeconds = (opts.scriptWords / 145) * 60;
   const coveredByPhotos = opts.userPhotoCount * 4;
   const shortfall = Math.max(0, runtimeSeconds - coveredByPhotos);
-  const wanted = Math.min(MAX_CLIPS, Math.ceil(shortfall / 5));
+  // Each clip now holds 20s rather than 5 — see SECONDS_PER_CLIP in
+  // composite-photos. Length is free (pass 2 re-encodes the full runtime
+  // regardless) while each extra clip is another download inside the same
+  // budget, so the same four clips cover four times the runtime.
+  const wanted = Math.min(MAX_CLIPS, Math.ceil(shortfall / 20));
   if (wanted === 0) {
     console.log(`[stock-broll] ${opts.userPhotoCount} photo(s) already cover the runtime — no stock needed`);
     return [];

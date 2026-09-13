@@ -2301,6 +2301,23 @@ function CreatePageInner() {
                 Either length can be read by your avatar, which uses one video of that
                 kind, or by you on camera, which is free. You choose next.
               </p>
+              {/* Said before the choice, not discovered after an eight-minute
+                  render. Stock footage is composited inside a serverless
+                  function with a hard time limit, and a script past ~600 words
+                  is skipped rather than risking a timeout that would take the
+                  whole job down — so on Longform the photos are the visuals,
+                  and with none attached it is the presenter throughout. */}
+              {pasteIsLong && (
+                <p className="mt-1.5 flex items-start gap-1 text-[10.5px] leading-[1.45] text-amber-600">
+                  <AlertCircle size={11} className="mt-0.5 shrink-0" />
+                  <span>
+                    Longform uses your photos for visuals — automatic stock footage only
+                    applies to Shorts. {pastePhotos.length === 0
+                      ? "With none attached it will be you on screen the whole way through."
+                      : `Your ${pastePhotos.length} photo${pastePhotos.length === 1 ? "" : "s"} will loop across the full length.`}
+                  </span>
+                </p>
+              )}
             </div>
 
             {/* Market for THIS video, asked before either way of writing the

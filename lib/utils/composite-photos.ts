@@ -33,8 +33,23 @@ ffmpeg.setFfmpegPath(ffmpegPath.path);
 /** Ceiling on background sources — photos and stock clips combined. */
 const MAX_SOURCES = 16;
 const SECONDS_PER_PHOTO = 4;
-/** Stock clips are trimmed to this so one long take can't dominate the mix. */
-const SECONDS_PER_CLIP = 5;
+/**
+ * How long each stock clip runs.
+ *
+ * Was 5s, to stop one long take dominating a mix that was mostly photos. That
+ * reasoning holds when the user supplied photos; it is backwards when stock is
+ * all there is. Four clips at 5s is 20 seconds of footage under a 3-minute
+ * video — the same 20 seconds nine times over, which is what "the b-roll just
+ * alternated" actually is.
+ *
+ * 20s costs nothing extra to encode: pass 2 re-encodes the full runtime of the
+ * avatar either way, and pass 1 only builds the short background track. The
+ * clip count is the expensive axis, because every clip is a separate download
+ * inside the same 300s budget. Length is the free one, so it is the one to
+ * spend: four clips now make 80 seconds, and a 3-minute video loops them twice
+ * instead of nine times.
+ */
+const SECONDS_PER_CLIP = 20;
 
 /**
  * Longest edge of the composited output. The avatar arrives from HeyGen at
