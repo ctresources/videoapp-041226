@@ -118,7 +118,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -176,6 +176,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * only as an escape hatch — no screen passes false.
    */
   micTools?: boolean;
+  /**
+   * Shows the recovery id outright, for the hidden testing page.
+   *
+   * Everywhere else the same information is offered as Copy support details,
+   * because the id identifies a recording but is not something anyone needs to
+   * read. It is not a credential either way — every route checks ownership, so
+   * holding the id grants nothing on its own.
+   */
+  qaMode?: boolean;
 }) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
@@ -1171,6 +1180,34 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * would be exactly the loss the whole feature exists to prevent. Nothing
    * removes one on its own — not age, not a later take.
    */
+  async function copyText(text: string, done: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(done);
+    } catch {
+      toast.error("Your browser blocked copying. Select the text and copy it by hand.");
+    }
+  }
+
+  /**
+   * What support needs to find this recording, and nothing else.
+   *
+   * Deliberately without the title or the script: those are the user's words,
+   * and pasting them into a support message is not something to do on their
+   * behalf.
+   */
+  function copySupportDetails(rec: RecoveryRecord) {
+    const lines = [
+      `Recovery ID: ${rec.id}`,
+      `Recorded: ${new Date(rec.createdAt).toISOString()}`,
+      `Size: ${describeSize(rec.blob.size)}`,
+      rec.width && rec.height ? `Dimensions: ${rec.width} x ${rec.height}` : null,
+      `Failed attempts: ${rec.attempts}`,
+      rec.lastStage ? `Stopped: ${STAGE_LABELS[rec.lastStage as UploadStage] ?? rec.lastStage}` : null,
+    ].filter(Boolean).join("\n");
+    copyText(lines, "Support details copied.");
+  }
+
   async function removeRecovery(rec: RecoveryRecord) {
     if (!confirm("Remove this recording from your device? It was never uploaded, so this cannot be undone.")) return;
     await deleteRecovery(rec.id);
@@ -1341,14 +1378,37 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   {/* Which stage it stopped at, because the answer changes what
                       a retry has to do — and after a lost reply the recording
                       may already be saved. */}
-                  {/* The stage sentence already contains the reason for a
-                      simulated failure, so printing both said it twice. */}
+                  {/* The stage names the reason on its own, so printing the
+                      raw error beside it said the same thing twice. */}
                   {rec.lastError && (
                     <p className="mt-1 text-xs text-red-700">
                       {rec.lastStage && STAGE_LABELS[rec.lastStage as UploadStage]
                         ? `Stopped ${STAGE_LABELS[rec.lastStage as UploadStage]}.`
                         : rec.lastError}
                     </p>
+                  )}
+                  {/* Identifies the recording without putting an opaque string
+                      in front of someone who only wants their video back. It
+                      goes nowhere on its own — not the URL, not a log, not the
+                      video's title or script — and disappears with the notice
+                      once the upload succeeds. */}
+                  {qaMode ? (
+                    <p className="mt-1.5 flex flex-wrap items-center gap-2 font-mono text-[11px] text-slate-500">
+                      <span className="break-all">{rec.id}</span>
+                      <button
+                        onClick={() => copyText(rec.id, "Recovery ID copied.")}
+                        className="rounded border border-spark-rule px-1.5 py-0.5 font-sans text-[11px] text-slate-600 hover:text-slate-900"
+                      >
+                        Copy
+                      </button>
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => copySupportDetails(rec)}
+                      className="mt-1.5 self-start text-xs font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700"
+                    >
+                      Copy support details
+                    </button>
                   )}
                 </div>
               </div>

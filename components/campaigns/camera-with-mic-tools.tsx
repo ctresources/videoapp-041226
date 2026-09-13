@@ -27,6 +27,9 @@ export function CameraWithMicTools() {
       </div>
       <CameraRecorder
         micTools
+        // Shows recovery ids outright. Testing only — the live Camera tab
+        // offers Copy support details instead.
+        qaMode
         scriptLength={scriptLength}
         onScriptLengthChange={setScriptLength}
         freestyle
