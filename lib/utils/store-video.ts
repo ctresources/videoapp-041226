@@ -66,6 +66,10 @@ export interface StoreOptions {
  * Returns the permanent public URL, or null if the video could not be stored
  * at all. Post-processing failures do NOT produce a null — the stored raw
  * render is still a good result.
+ *
+ * Also returns null when the row has no owner, which is a data problem rather
+ * than a storage one: the caller keeps whatever source URL it already had and
+ * the row is left alone, so storing can be retried once ownership is fixed.
  */
 export async function downloadAndStoreVideo(
   sourceUrl: string,
@@ -73,7 +77,48 @@ export async function downloadAndStoreVideo(
   opts: StoreOptions = {},
 ): Promise<string | null> {
   const admin = createAdminClient();
-  const path = `${videoId}.mp4`;
+
+  /**
+   * Whose video this is, taken from the row.
+   *
+   * Not a permission check against a signed-in user — there is no session
+   * here. The webhook is called by HeyGen and the status poll runs on a timer,
+   * so the row is the only statement of ownership either of them has. What it
+   * buys is that the storage path cannot be influenced by a caller: every
+   * entry point passes a videoId and nothing else, and the owner is looked up
+   * rather than supplied.
+   *
+   * Files used to land at the bucket root as <video id>.mp4, with no user
+   * folder at all — which is also why the bucket's own policies, written to
+   * match auth.uid() against the first path segment, could never match
+   * anything.
+   */
+  const { data: ownerRow } = await admin
+    .from("generated_videos")
+    .select("user_id")
+    .eq("id", videoId)
+    .single();
+  const userId = (ownerRow as { user_id: string } | null)?.user_id ?? null;
+
+  if (!userId) {
+    /**
+     * Refuse rather than fall back to an unscoped path.
+     *
+     * A render with no owner is a data-integrity problem, and writing it to
+     * the bucket root would quietly create exactly the unscoped public file
+     * this change exists to stop. Returning null leaves the caller on its
+     * current source URL and leaves the row untouched, so this is retryable —
+     * deliberately checked BEFORE the claim below, so a refusal does not
+     * consume the one attempt and block a later retry.
+     */
+    console.error(
+      `[store-video] ${videoId}: no user_id on the video row — refusing to store an ` +
+      `unscoped file. The source URL is unchanged; fix the row's ownership and store again.`,
+    );
+    return null;
+  }
+
+  const path = `${userId}/${videoId}.mp4`;
 
   // The webhook, the status poll and refresh-url all land here, and all three
   // can fire for the same render within seconds. Unclaimed, they each ran the
