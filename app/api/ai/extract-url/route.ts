@@ -81,20 +81,64 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const res = await fetch(parsedUrl.toString(), {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
-        Accept: "text/html,text/plain,application/xhtml+xml,application/pdf",
-      },
-      // 20s, up from 12s. This is a plain fetch with no rendering, so it does
-      // not need the 45s the listing scraper does — but a shortened link is
-      // resolved on this clock too, and 12s left little room for a slow host
-      // once the redirect had been followed.
-      signal: AbortSignal.timeout(20000),
-    });
+    const accept = "text/html,text/plain,application/xhtml+xml,application/pdf";
+    /**
+     * 20s, up from 12s. This is a plain fetch with no rendering, so it does
+     * not need the 45s the listing scraper does — but a shortened link is
+     * resolved on this clock too, and 12s left little room for a slow host
+     * once the redirect had been followed.
+     */
+    const attempt = (ua: string) =>
+      fetch(parsedUrl.toString(), {
+        headers: {
+          "User-Agent": ua,
+          Accept: accept,
+          // Sent on both attempts: a request with no language preference at
+          // all is itself a signal some hosts filter on.
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(20000),
+      });
+
+    /**
+     * The honest agent first, a browser one only if that is refused.
+     *
+     * Ordered this way deliberately. The listing scraper's note is that a
+     * datacentre IP claiming to be Chrome is the combination bot detection is
+     * tuned for — leading with the browser agent would make us look worse to
+     * the hosts that currently let us in. But plenty of sites, including some
+     * agents' own blog platforms, reject anything that does not look like a
+     * browser at all, and for those the honest agent is the only thing
+     * standing between the user and their own writing.
+     */
+    let res = await attempt("Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)");
+    if (res.status === 403 || res.status === 401 || res.status === 429) {
+      const retry = await attempt(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      ).catch(() => null);
+      if (retry?.ok) res = retry;
+    }
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Could not fetch URL (HTTP ${res.status})` }, { status: 400 });
+      /**
+       * A refusal is not a broken link, and saying "HTTP 403" invites someone
+       * to check a URL that is perfectly correct.
+       *
+       * Some hosts block on IP reputation and TLS fingerprint rather than
+       * headers, which no user agent can talk its way past — so this names the
+       * one route that always works instead of implying a retry might help.
+       */
+      const blocked = res.status === 403 || res.status === 401 || res.status === 429;
+      return NextResponse.json(
+        {
+          error: blocked
+            ? `${parsedUrl.hostname} blocked us from reading the page. Open it, copy the text, and paste it in instead.`
+            : res.status === 404
+              ? "That page could not be found. Check the link and try again."
+              : `Could not fetch that page (HTTP ${res.status}). Try again, or paste the text in instead.`,
+        },
+        { status: 400 },
+      );
     }
 
     const contentType = res.headers.get("content-type") || "";
