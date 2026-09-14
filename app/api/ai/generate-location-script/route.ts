@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import {
   generateLocationScript,
   parseLocationScript,
@@ -293,6 +294,8 @@ export async function POST(req: NextRequest) {
     console.error("Project insert error:", projectError);
     return NextResponse.json({ error: "Failed to save project" }, { status: 500 });
   }
+
+  await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
   await admin.from("api_usage_log").insert({
     user_id: user.id,

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { generateVideoScript, generateSeoData, generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { searchRealEstateContext } from "@/lib/api/yousearch";
 import { targetWords } from "@/lib/utils/video-length";
@@ -143,6 +144,10 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (projectError) throw new Error(projectError.message);
+
+    // Safe inside this try: ensureSparkFor never throws, so it cannot turn a
+    // saved script into the catch below's 500.
+    await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
     await admin.from("api_usage_log").insert({ user_id: user.id, api_provider: "perplexity", endpoint: "generate-script", credits_used: 0, response_status: 200 });
 

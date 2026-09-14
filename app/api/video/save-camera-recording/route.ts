@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
@@ -171,6 +172,15 @@ export async function POST(req: NextRequest) {
     }
     resolvedProjectId = (newProject as { id: string }).id;
   }
+
+  /**
+   * After the branch, not inside it, so both paths are covered.
+   *
+   * A recording saved against an existing project needs its Spark just as much
+   * as a new stub does — and on that path the call also repairs post links for
+   * a project that was filed before its posts were.
+   */
+  await ensureSparkFor(admin, user.id, resolvedProjectId);
 
   const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
 

@@ -14,6 +14,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { searchBackgroundMusic } from "@/lib/api/heygen";
@@ -276,6 +277,9 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (projErr || !project) throw new Error(projErr?.message || "Could not create the project");
+
+    // Never throws, so it cannot cost the reel that was just created.
+    await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
     const { data: videoRow, error: vidErr } = await admin
       .from("generated_videos")

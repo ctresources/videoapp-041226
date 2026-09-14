@@ -20,17 +20,12 @@ import {
   type CampaignsPayload,
   type ItemStatus,
 } from "@/lib/utils/campaigns";
+import { CAMPAIGNS_START, ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 type Admin = ReturnType<typeof createAdminClient>;
-
-/**
- * Sparks begin with projects made from September 2026 — the owner's choice.
- * Older projects stay unfiled and never appear here.
- */
-const CAMPAIGNS_START = "2026-09-01T04:00:00Z";
 
 interface SeriesRow {
   id: string; name: string; cta_text: string | null; destination_url: string | null;
@@ -82,67 +77,13 @@ async function fileNewProjects(admin: Admin, userId: string): Promise<void> {
     .is("campaign_id", null)
     .gte("created_at", CAMPAIGNS_START);
 
-  const unfiled = (data ?? []) as { id: string; title: string; script_title: string | null; blog_body: string | null }[];
-  for (const p of unfiled) {
-    const { data: made } = await admin
-      .from("campaigns")
-      .insert({
-        user_id: userId,
-        name: p.title,
-        blog_project_id: p.id,
-        blog_title: p.script_title?.trim() || p.title,
-        blog_status: p.blog_body?.trim() ? "ready" : "draft",
-      })
-      .select("id")
-      .single();
-    const campaignId = (made as { id: string } | null)?.id;
-    if (!campaignId) continue;
-
-    const { data: filed } = await admin
-      .from("projects")
-      .update({ campaign_id: campaignId, campaign_role: "primary" })
-      .eq("id", p.id)
-      .eq("user_id", userId)
-      .is("campaign_id", null)
-      .select("id");
-    if (!filed?.length) {
-      await admin.from("campaigns").delete().eq("id", campaignId);
-      continue;
-    }
-
-    /**
-     * The project's posts follow it into the Spark.
-     *
-     * Filing set projects.campaign_id and stopped there, so a video published
-     * before its project was filed kept campaign_id NULL on its post — and the
-     * posts query filters `.in("campaign_id", ids)`. The video was on YouTube
-     * and the Spark Card that would show it never did.
-     *
-     * Guarded on campaign_id still being NULL, which is what makes this safe to
-     * run on every page load: a post already filed — including one deliberately
-     * moved to another Spark by /api/campaigns/project — is never re-pointed
-     * here. The id is the one this function just created, never client input.
-     */
-    const { data: vids } = await admin
-      .from("generated_videos")
-      .select("id")
-      .eq("project_id", p.id)
-      .eq("user_id", userId);
-    const videoIds = ((vids ?? []) as { id: string }[]).map((v) => v.id);
-    if (videoIds.length) {
-      const { error: postErr } = await admin
-        .from("social_posts")
-        .update({ campaign_id: campaignId })
-        .eq("user_id", userId)
-        .is("campaign_id", null)
-        .in("video_id", videoIds);
-      // Non-fatal: the project is filed either way, and the next load retries
-      // this for any post still holding a NULL.
-      if (postErr) {
-        console.error(`[campaigns] filing posts for project ${p.id} failed: ${postErr.message}`);
-      }
-    }
-  }
+  const unfiled = (data ?? []) as { id: string }[];
+  // The same helper the create routes call, so this is purely recovery now —
+  // for a project made before Sparks were created inline, or one whose inline
+  // attempt failed or stopped halfway. It repairs post and job links too, so a
+  // project that was linked without its posts is not stranded by having stopped
+  // looking unfiled.
+  for (const p of unfiled) await ensureSparkFor(admin, userId, p.id);
 }
 
 function postStatus(row: PostRow, now: number): ItemStatus {

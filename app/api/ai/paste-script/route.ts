@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { topTerms } from "@/lib/utils/script-keywords";
 import { NextRequest, NextResponse } from "next/server";
@@ -123,6 +124,8 @@ export async function POST(req: NextRequest) {
     console.error("paste-script project insert error:", projectError);
     return NextResponse.json({ error: "Failed to save project" }, { status: 500 });
   }
+
+  await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
   return NextResponse.json({ project });
 }
