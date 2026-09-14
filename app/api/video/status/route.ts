@@ -9,8 +9,10 @@ import { buildStoreOptions } from "@/lib/utils/store-options";
 import { NextRequest, NextResponse } from "next/server";
 
 // Compositing photos + mixing music into a finished render (ffmpeg) can take a
-// while, so the poll that finalizes a Direct video needs headroom.
-export const maxDuration = 300;
+// while, so the poll that finalizes a Direct video needs headroom. This poll
+// races the webhook and either can end up doing the whole job, so it carries
+// the same budget — 800 under Fluid Compute; see the note in the webhook.
+export const maxDuration = 800;
 
 /**
  * Finalize a completed Direct Video: composite the uploaded photos as b-roll,

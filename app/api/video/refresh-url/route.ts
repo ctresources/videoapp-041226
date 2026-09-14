@@ -6,8 +6,10 @@ import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
 import { isExpiredHeygenUrl, isHeygenUrl } from "@/lib/utils/video-url";
 import { NextRequest, NextResponse } from "next/server";
 
-// Matches the webhook: re-storing may also run the ffmpeg b-roll composite.
-export const maxDuration = 300;
+// Matches the webhook: re-storing may also run the ffmpeg b-roll composite,
+// and this is the path someone reaches for when a render came back without it.
+// 800 under Fluid Compute; see the note in the webhook.
+export const maxDuration = 800;
 
 const HEYGEN_API = "https://api.heygen.com";
 

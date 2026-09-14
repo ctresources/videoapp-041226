@@ -106,8 +106,21 @@ function verifyHeygenSignature(rawBody: string, req: NextRequest): { ok: boolean
   return { ok: true };
 }
 
-// Video storage + auto-thumbnail generation can each take ~1 min.
-export const maxDuration = 300;
+/**
+ * Storing the render, then compositing b-roll, mixing music, burning captions
+ * and remuxing it — the longest-running thing this app does.
+ *
+ * 800 rather than 300 because Fluid Compute is enabled and raises the ceiling
+ * on Pro. A measured render composited 2 photos and 4 clips in 234s, which
+ * left 66 seconds of a 300s budget: a slightly longer script or one slow clip
+ * download and the function is killed. That failure is not a slow video, it is
+ * no b-roll at all, because the composite is thrown away and the raw avatar is
+ * what remains.
+ *
+ * This buys headroom, not speed. The wait itself is a CPU question — see the
+ * single-vCPU note in composite-photos.
+ */
+export const maxDuration = 800;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
