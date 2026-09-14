@@ -95,7 +95,38 @@ export async function POST(req: NextRequest) {
     "statistics, prices, dates or facts that are not already there, and do not",
     "invent examples. If the text does not say it, it does not go in the script.",
     "Keep the author's argument and the order they made it in. Keep their",
-    "opinions as theirs. Write in the first person if the source does.",
+    "opinions as theirs.",
+    /**
+     * Always first person, because the avatar IS the author.
+     *
+     * This used to say "write in the first person if the source does", which
+     * is faithful and wrong: an agent's own blog is normally written ABOUT
+     * them in the third person, so a post saying "Carmella has spent 22 years"
+     * produced a video of Carmella describing herself from the outside.
+     *
+     * The boundary matters more than the rule. Everyone who is not the author
+     * stays exactly as written — a quoted client, a named colleague, a lender
+     * — or the summary flattens other people's words into the speaker's mouth.
+     */
+    "This script is spoken aloud by the person who wrote the source, so it is",
+    "always in the first person. Where the source refers to its own author by",
+    "name or in the third person, rewrite that as I, me or my: \"Carmella has",
+    "spent 22 years\" becomes \"I've spent 22 years\". Anyone else named in the",
+    "source stays in the third person exactly as written, and a quote from",
+    "another person stays theirs — never move someone else's words into the",
+    "speaker's voice.",
+    /**
+     * Which rule wins when the source itself is non-compliant.
+     *
+     * The guardrail's correction rule says to silently rewrite offending
+     * source text; the instruction above says to use only what is given and
+     * change nothing. Left unstated, those contradict each other on exactly
+     * the input where being wrong is most expensive.
+     */
+    "Where those two rules disagree — the fair housing rules above, and using",
+    "only what the source says — fair housing wins. If the source contains",
+    "language that would breach it, rewrite that part to comply or leave it",
+    "out. Never carry it through, and never refuse: return a compliant script.",
     "Write for the ear, not the page: short sentences, plain words, no headings,",
     "no bullet points, no lists, nothing that only works when read.",
     "Do not open with a greeting or a hook, and do not close with a call to",
