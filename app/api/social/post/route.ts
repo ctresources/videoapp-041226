@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const { data: videoData } = await admin
     .from("generated_videos")
-    .select("*, projects(title, ai_script, seo_data, thumbnail_url)")
+    .select("*, projects(title, ai_script, seo_data, thumbnail_url, campaign_id)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .single();
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const video = videoData as {
     video_url: string | null;
     project_id: string | null;
-    projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null } | null;
+    projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null; campaign_id: string | null } | null;
   } | null;
 
   if (!video?.video_url) return NextResponse.json({ error: "Video not ready" }, { status: 404 });
@@ -54,6 +54,18 @@ export async function POST(req: NextRequest) {
   const defaultTitle = String(aiScript?.title || video.projects?.title || "");
   const defaultYouTubeDesc = String(seoData?.youtube_description || aiScript?.description || defaultTitle);
   const defaultCaption = String(seoData?.instagram_caption || aiScript?.hook || defaultTitle);
+
+  /**
+   * Which Spark this post belongs to.
+   *
+   * Set here rather than left to a backfill. Only two things ever wrote it:
+   * migration 032, and the move-a-video-between-Sparks branch in
+   * /api/campaigns/project. Nothing filled it in on a new post — so a publish
+   * started from the Spark Card saved a row with campaign_id NULL, and the
+   * card's own query filters posts with `.in("campaign_id", ids)`. The post
+   * went up, and the card that sent it never showed it again.
+   */
+  const campaignId = video.projects?.campaign_id ?? null;
 
   // `error` is its own field rather than riding in `url`. The failure message
   // used to be stuffed into `url`, where the client could not tell a post link
@@ -139,6 +151,7 @@ export async function POST(req: NextRequest) {
       const { error: logErr } = await admin.from("social_posts").insert({
         user_id: user.id,
         video_id: videoId,
+        campaign_id: campaignId,
         platform: "youtube",
         platform_post_id: result.videoId,
         // Snapshotted, not joined: deleting the video nulls video_id, and a
@@ -162,6 +175,42 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "YouTube upload failed";
       console.error("[social/post] YouTube upload failed:", msg);
+
+      /**
+       * The failure is written down, not only returned.
+       *
+       * It used to exist in three places that all expire: this log line, the
+       * toast, and the `results` array in a response nobody keeps. Refresh the
+       * page and there was no trace that the attempt had ever been made — no
+       * reason to act on, and nothing to retry from. `failed` is already a
+       * legal post_status and `error_message` already exists, so the record
+       * has somewhere to go without a schema change.
+       *
+       * `target` is scoped to the try, so the target is read again here.
+       */
+      const failedTarget = nativeYouTubeTargets[0];
+      const { error: failLogErr } = await admin.from("social_posts").insert({
+        user_id: user.id,
+        video_id: videoId,
+        campaign_id: campaignId,
+        platform: "youtube",
+        video_title: failedTarget?.title || defaultTitle,
+        caption: failedTarget?.description ?? defaultYouTubeDesc,
+        scheduled_at: scheduledAt || null,
+        // Nothing was posted, so this stays empty — posted_at is what the
+        // calendar reads to place a published item on a day.
+        posted_at: null,
+        post_status: "failed",
+        // Bounded: some provider errors carry a whole response body, and this
+        // is rendered in a card, not read from a log.
+        error_message: msg.slice(0, 500),
+      });
+      // Recording the failure is itself allowed to fail without changing what
+      // the caller is told — the upload result is the news, not the bookkeeping.
+      if (failLogErr) {
+        console.error(`[social/post] could not record the failure: ${failLogErr.message}`);
+      }
+
       results.push({ platform: "youtube", status: "failed", error: msg });
     }
   }

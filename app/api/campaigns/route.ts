@@ -57,7 +57,7 @@ interface VideoRow {
 interface PostRow {
   id: string; campaign_id: string; video_id: string | null; platform: string; post_status: string;
   scheduled_at: string | null; posted_at: string | null; video_title: string | null;
-  platform_post_id: string | null;
+  platform_post_id: string | null; error_message: string | null;
 }
 interface JobRow {
   id: string; campaign_id: string; project_id: string | null; video_id: string | null;
@@ -182,9 +182,13 @@ export async function GET() {
       .in("campaign_id", ids),
     admin
       .from("social_posts")
-      .select("id, campaign_id, video_id, platform, post_status, scheduled_at, posted_at, video_title, platform_post_id")
+      .select("id, campaign_id, video_id, platform, post_status, scheduled_at, posted_at, video_title, platform_post_id, error_message")
       .eq("user_id", userId)
-      .in("campaign_id", ids),
+      .in("campaign_id", ids)
+      // Oldest first, so "the latest failure" is simply the last one for a
+      // video. A failed row has neither posted_at nor necessarily a
+      // scheduled_at, so there is nothing else to order them by.
+      .order("created_at", { ascending: true }),
     admin
       .from("publish_jobs")
       .select("id, campaign_id, project_id, video_id, platform, status, scheduled_at, published_at, title, platform_url, last_error")
@@ -228,7 +232,9 @@ export async function GET() {
     at: r.posted_at ?? r.scheduled_at,
     title: r.video_title,
     url: r.platform === "youtube" && r.platform_post_id ? `https://youtu.be/${r.platform_post_id}` : null,
-    lastError: null,
+    // Mirrors toJob below. Only carried for a failed row: a stored message on
+    // a post that later succeeded would be read as a current problem.
+    lastError: r.post_status === "failed" ? r.error_message : null,
     projectId: r.video_id ? projectOfVideo.get(r.video_id) ?? null : null,
   });
   const toJob = (r: JobRow): CampaignPost => ({

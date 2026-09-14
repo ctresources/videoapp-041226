@@ -5,8 +5,8 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   ArrowDown, ArrowUp, BarChart3, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Circle, Copy,
-  ExternalLink, Eye, FileText, Image as ImageIcon, Layers, Link2, Loader2, Pencil, PlayCircle, Plus,
-  Radio, Sparkles, Trash2, X,
+  AlertTriangle, ExternalLink, Eye, FileText, Image as ImageIcon, Layers, Link2, Loader2, Pencil,
+  PlayCircle, Plus, Radio, RotateCcw, Sparkles, Trash2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { blogAsHtml } from "@/lib/utils/blog-html";
@@ -459,7 +459,17 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
     const posts = c.posts.filter((x) => x.projectId === p.id && x.platform === "youtube");
     const published = posts.find((x) => x.status === "published");
     const booked = posts.find((x) => x.status === "scheduled" || x.status === "uploading" || x.status === "processing");
-    return { project: p, published, booked, state: videoState(c, p) };
+    /**
+     * The failure worth showing, if there is one.
+     *
+     * Only while nothing has since succeeded or been booked: a failed attempt
+     * sitting beside a published video is history, not something to act on,
+     * and the row exists to be acted on. The API returns posts oldest-first,
+     * so the last failure is the most recent attempt.
+     */
+    const failures = posts.filter((x) => x.status === "failed");
+    const failed = !published && !booked && failures.length ? failures[failures.length - 1] : null;
+    return { project: p, published, booked, failed, state: videoState(c, p) };
   });
 
   return (
@@ -899,7 +909,7 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
             )}
 
             <ul className="divide-y divide-spark-rule-soft">
-              {youtubeRows.map(({ project: p, published, booked, state }) => {
+              {youtubeRows.map(({ project: p, published, booked, failed, state }) => {
                 const v = leadVideo(p);
                 const canSend = !!v?.videoUrl && v.renderStatus === "completed" && !published;
                 const form = scheduling?.projectId === p.id ? scheduling : null;
@@ -926,7 +936,11 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                     </div>
 
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
-                      {canSend && !form && (
+                      {/* Suppressed when the last attempt failed — the retry
+                          lives in the failure note below, with the reason
+                          beside it, rather than as a second identical button
+                          an inch away from it. */}
+                      {canSend && !form && !failed && (
                         <>
                           <button onClick={() => publish(p, null)} disabled={busy !== null} className={quietBtn}>
                             {busy === `publish-${p.id}` ? <Loader2 size={12} className="animate-spin" /> : <PlayCircle size={12} />} Publish now
@@ -945,12 +959,49 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                           {busy === `cancel-${booked.id}` ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Cancel scheduled post
                         </button>
                       )}
-                      {!canSend && !published && (
+                      {!canSend && !published && !failed && (
                         <span className="text-[11px] text-spark-ink-faint">
                           {v ? "Ready to publish once rendering finishes." : "No finished video yet."}
                         </span>
                       )}
                     </div>
+
+                    {/* What went wrong, and the way to try again.
+                        Before this, a failed publish was a toast and a server
+                        log: reload the page and there was nothing to say the
+                        attempt had happened, let alone why it didn't work. */}
+                    {failed && !form && (
+                      <div className="mt-2 ml-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+                        <div className="flex items-start gap-1.5">
+                          <AlertTriangle size={13} className="mt-px shrink-0 text-red-600" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-semibold text-red-800">
+                              Publishing failed{failed.at ? ` · ${when(failed.at)}` : ""}
+                            </p>
+                            <p className="mt-0.5 break-words text-[11.5px] leading-relaxed text-red-700">
+                              {failed.lastError || "No reason was recorded."}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <button onClick={() => publish(p, null)} disabled={busy !== null || !canSend} className={quietBtn}>
+                            {busy === `publish-${p.id}` ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />} Retry
+                          </button>
+                          <button
+                            onClick={() => { const n = toInputs(null, tz, true); setScheduling({ projectId: p.id, date: n.date, time: "09:00" }); }}
+                            disabled={busy !== null || !canSend}
+                            className={quietBtn}
+                          >
+                            <CalendarDays size={12} /> Schedule instead
+                          </button>
+                          {!canSend && (
+                            <span className="text-[11px] text-red-700">
+                              {v ? "Waiting for the render to finish." : "No finished video to retry with."}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {form && (
                       <div className="mt-2 space-y-2 rounded-xl border border-spark-rule bg-white p-3">
