@@ -138,6 +138,11 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Paste a blog post</td>
+                  <td className="py-2 pr-3">An article you&apos;ve already written — summarised into a script you read over first</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My listings/My photos</td>
                   <td className="py-2 pr-3">A scripted listing tour</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
@@ -156,11 +161,22 @@ export default function HelpPage() {
 
           <div className="flex flex-col gap-4">
             <Step n={6} title="Three Questions, Then It Writes" icon={Sparkles}>
-              <Link href="/create" className="text-primary-600 font-medium hover:underline">Create</Link>{" "}
+              <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
               asks three things in order. <strong>1 · What are you sparking?</strong> —{" "}
               <strong>Use My Avatar</strong>, <strong>Film On Camera</strong> or{" "}
               <strong>Blog post</strong>. <strong>2 · Where should the script begin?</strong> — a
-              topic, your own pasted words, or a listing. <strong>3 · What is it about?</strong>
+              topic, your own pasted words, a blog post you&apos;ve already written, or a listing.{" "}
+              <strong>3 · What is it about?</strong>
+              {/* Sparks are named here because everything below refers to them,
+                  and because one now exists the moment a project does — someone
+                  who saves an idea and leaves will find it waiting. */}
+              <span className="block mt-1.5">
+                Whatever you pick, it starts a <strong>Spark</strong> — the folder holding that
+                topic&apos;s script, its videos, its article and where they&apos;ve been published.
+                It&apos;s created the moment you begin, so an idea saved and left half-finished is
+                still there in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
+                marked <strong>Draft</strong>, not lost.
+              </span>
             </Step>
             <Step n={7} title="Speak It Or Type It — Your Choice" icon={Mic}>
               Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
@@ -205,13 +221,26 @@ export default function HelpPage() {
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
+              {/* The recovery behaviour, which was invisible until it fires and
+                  then reads like an error. Worded to match what the notice
+                  itself says, and deliberately not promising the recording
+                  survives closing the page. */}
+              <span className="block mt-1.5">
+                <strong>If the upload doesn&apos;t go through</strong>, the take is kept on this device
+                rather than lost. You&apos;ll see <em>&ldquo;Your recording is safely waiting on this
+                device&rdquo;</em> with <strong>Retry Upload</strong> and <strong>Download</strong>.
+                Retrying is always safe: it checks whether the recording already reached us rather than
+                saving a second copy, so a lost reply can never turn into two videos. Download first if
+                you want your own copy before leaving the page.
+              </span>
             </Step>
             <Step n={11} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
-              holds a <strong>blog article</strong> — around a thousand words, headings written as the
-              questions people actually ask and answered in the first line, which is the shape an AI assistant
-              quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
+              holds a <strong>blog article</strong> — around a thousand words, titled with the question a
+              reader would actually type, headings written the same way and answered in the first line,
+              and two <strong>FAQ sections</strong> at the end. That is the shape an AI assistant quotes —{" "}
+              <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               <strong>Copy as HTML</strong> drops it into your website. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
@@ -228,9 +257,19 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
             <Step n={12} title="Publish To YouTube — One Click" icon={MonitorPlay}>
-              Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Content</Link> and
+              Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
+              {/* Failures used to be a toast and nothing else: gone on refresh,
+                  with no reason and nothing to retry from. Saying so is the
+                  most useful line on this card when something goes wrong. */}
+              <span className="block mt-1.5">
+                <strong>If a publish fails</strong> — an expired YouTube connection, a channel limit, a
+                video still finishing — it isn&apos;t lost in a disappearing message. The attempt is kept
+                with the reason it failed and a <strong>Retry</strong> beside it, so you can see what
+                happened and try again once it&apos;s sorted. The note clears itself once a later attempt
+                goes through.
+              </span>
             </Step>
             <Step n={13} title="Everywhere Else" icon={Upload}>
               Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
@@ -247,8 +286,8 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
             <Step n={14} title="The Everyday Tools" icon={Wand2}>
-              You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">AI Tools</Link> to
-              make a video — Create generates everything automatically. Use these to iterate: brainstorm
+              You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
+              make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
               description or 20 fresh tags for any video (including older ones), and name your channel (one-time).
               From any project&apos;s <strong>Title, Description &amp; Hashtags</strong> card, tap{" "}
@@ -279,6 +318,15 @@ export default function HelpPage() {
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>
+          {/* One line, no link. The Spark Calendar is still behind
+              feature_access, so naming it is useful while sending people to it
+              would be pointing most of them at a 404. It appears in the sidebar
+              by itself for accounts that have it. */}
+          <p className="text-xs text-slate-400 mt-3">
+            Rolling out: a <strong>Spark Calendar</strong> that puts every Spark, its videos and its
+            article on one calendar, with publishing and scheduling in the same place. It appears in your
+            sidebar when your account has it.
+          </p>
           <Link
             href="/create"
             className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 spark-cta-gradient text-white text-sm font-semibold rounded-xl"
