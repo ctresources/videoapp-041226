@@ -23,6 +23,14 @@ import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
  */
 
 export interface BlogArticle {
+  /**
+   * The article's own title, phrased as a question.
+   *
+   * Optional because every article written before this existed has none, and
+   * the callers fall back to the video's title — a missing headline must read
+   * as "not written yet", never as an empty <h1>.
+   */
+  headline?: string;
   intro: string;
   body: string;
   conclusion: string;
@@ -70,6 +78,8 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - SEO (Google and Bing): name ${place} naturally throughout, along with any neighbourhoods, streets or landmarks the script mentions. This is a local search page and the place name is the thing it has to win on.
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting, no rhetorical questions. Build on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it.
 - AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a reader would actually type or say out loud — for example "H2: What is happening to prices in ${place}?" rather than "H2: Market conditions". Answer each heading in the FIRST sentence under it, then support the answer. An answer engine reads the first sentence; a section that warms up before answering is a section it skips.
+- SUBHEADINGS: where a section covers more than one distinct point, break it with lines beginning exactly "H3: ". Write those as questions too, narrower than the H2 above them. Use them where they earn their place — a section with one idea does not need one.
+- FAQ: after the body's sections, add exactly two FAQ sections, each headed with a line beginning exactly "H2: " and then a question a reader would actually ask about ${place}. Under each, put two or three question-and-answer pairs: the question on its own line beginning exactly "H3: ", and the answer directly beneath it, opening with a complete one-sentence answer before any elaboration. These are the paragraphs an answer engine is most likely to quote on their own, so each answer has to make sense with nothing around it — name the place and the specifics rather than saying "this area" or "as mentioned above".
 - Keep every figure, date and proper noun exactly as the script gave it. Do not round, do not invent, and do not add a statistic the script does not contain. Where the script is vague, stay vague — a made-up number is worse than a missing one.
 - Close the conclusion with the single practical next step a reader should take.
 - GENERICITY CHECK, before you finish: reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighbourhoods, streets, price bands and comparisons the script gives you that make it true only here. Do not invent detail to pass this check; where the script is thin on a point, cut the point rather than fake it.
@@ -85,14 +95,16 @@ ${input.unbranded
 
 FORMAT — plain text, no markdown, no asterisks, no bullet characters, no numbered lists, no emoji:
 - Headings are their own line, starting with "H2: ".
+- Subheadings are their own line, starting with "H3: ".
 - Paragraphs are separated by a blank line.
 
 ${PLAIN_COPY_RULES}
 
 Return ONLY a JSON object:
 {
+  "headline": "the article's title, written as the question a reader would type or say out loud, naming ${place}, under 70 characters",
   "intro": "opening ~150 words, no heading",
-  "body": "the H2 sections, ~700 words",
+  "body": "the H2 sections with their H3 subheadings, then the two FAQ sections, ~900 words",
   "conclusion": "closing ~150 words, no heading"
 }`;
 
@@ -129,6 +141,7 @@ Return ONLY a JSON object:
     const parsed = JSON.parse(jsonMatch[0]) as Partial<BlogArticle>;
 
     const article: BlogArticle = {
+      headline: (parsed.headline ?? "").trim() || undefined,
       intro: (parsed.intro ?? "").trim(),
       body: (parsed.body ?? "").trim(),
       conclusion: (parsed.conclusion ?? "").trim(),

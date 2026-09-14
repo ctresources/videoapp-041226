@@ -81,6 +81,9 @@ interface AiScript {
   description: string;
   hashtags: string[];
   keywords: string[];
+  /** The article's own title, a question. Absent on articles written before
+   *  headlines existed, which fall back to the video's title. */
+  blog_headline?: string;
   blog_intro: string;
   blog_body: string;
   blog_conclusion: string;
@@ -1670,9 +1673,11 @@ export default function ProjectEditorPage() {
     router.push("/create?tab=camera");
   }
 
-  /** Strips the "H2: " markers the blog article uses, for on-screen reading. */
+  /** Strips the "H2: " and "H3: " markers the blog article uses, for on-screen
+   *  reading. H3 arrived with the FAQ sections; without it here the marker was
+   *  shown to the reader as literal text. */
   function blogPlainText(text: string): string {
-    return text.replace(/^H2:\s*/gm, "");
+    return text.replace(/^H[23]:\s*/gm, "");
   }
 
   /**
@@ -1681,10 +1686,14 @@ export default function ProjectEditorPage() {
    * website expects, so the whole point of the feature — paste it into your
    * blog — doesn't require the agent to re-add every heading by hand.
    */
-  function blogAsHtml(sections: { intro: string; body: string; conclusion: string }): string {
+  function blogAsHtml(sections: { headline?: string; intro: string; body: string; conclusion: string }): string {
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const blocks: string[] = [];
+    // The one <h1> on the page, and the line a search or answer engine reads
+    // first. Omitted when the article predates headlines rather than emitted
+    // empty — a blank <h1> is worse for the same surfaces than none.
+    if (sections.headline?.trim()) blocks.push(`<h1>${esc(sections.headline.trim())}</h1>`);
     let para: string[] = [];
     const flush = () => {
       if (para.length) blocks.push(`<p>${esc(para.join(" "))}</p>`);
@@ -1701,6 +1710,15 @@ export default function ProjectEditorPage() {
         if (/^H2:\s*/.test(line)) {
           flush();
           blocks.push(`<h2>${esc(line.replace(/^H2:\s*/, ""))}</h2>`);
+          continue;
+        }
+        // H3 came in with the FAQ sections, where each question is its own
+        // subheading. Without this branch the marker went out as literal text
+        // inside a paragraph — visible in the HTML someone pastes into their
+        // site, and no heading where an answer engine looks for one.
+        if (/^H3:\s*/.test(line)) {
+          flush();
+          blocks.push(`<h3>${esc(line.replace(/^H3:\s*/, ""))}</h3>`);
           continue;
         }
         para.push(line);
@@ -1735,11 +1753,12 @@ export default function ProjectEditorPage() {
         if (showTrialLock(data)) return;
         throw new Error(data?.error || "Couldn't write the article.");
       }
-      const blog = data.blog as { intro: string; body: string; conclusion: string };
+      const blog = data.blog as { headline?: string; intro: string; body: string; conclusion: string };
       setProject((p) => p ? {
         ...p,
         ai_script: {
           ...(p.ai_script as Record<string, unknown> | null ?? {}),
+          blog_headline: blog.headline ?? "",
           blog_intro: blog.intro,
           blog_body: blog.body,
           blog_conclusion: blog.conclusion,
@@ -1756,6 +1775,7 @@ export default function ProjectEditorPage() {
   function copyBlogHtml() {
     if (!script) return;
     const html = blogAsHtml({
+      headline: script.blog_headline || "",
       intro: script.blog_intro || "",
       body: script.blog_body || "",
       conclusion: script.blog_conclusion || "",
@@ -3131,7 +3151,10 @@ export default function ProjectEditorPage() {
                       type="button"
                       onClick={() =>
                         copyToClipboard(
-                          [script.blog_intro, script.blog_body, script.blog_conclusion]
+                          // Headline first, as the article's title. Left out of
+                          // the Record on Camera handoff below on purpose — it
+                          // is the page's title, not a line to say out loud.
+                          [script.blog_headline || "", script.blog_intro, script.blog_body, script.blog_conclusion]
                             .filter(Boolean)
                             .map(blogPlainText)
                             .join("\n\n"),
@@ -3170,6 +3193,7 @@ export default function ProjectEditorPage() {
                   </div>
 
                   {[
+                    { label: "Headline", value: script.blog_headline || "" },
                     { label: "Introduction", value: script.blog_intro },
                     { label: "Body", value: script.blog_body },
                     { label: "Conclusion", value: script.blog_conclusion },

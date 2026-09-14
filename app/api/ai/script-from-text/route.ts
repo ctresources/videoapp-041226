@@ -129,6 +129,30 @@ export async function POST(req: NextRequest) {
     "out. Never carry it through, and never refuse: return a compliant script.",
     "Write for the ear, not the page: short sentences, plain words, no headings,",
     "no bullet points, no lists, nothing that only works when read.",
+    /**
+     * Structured for answer engines, spoken rather than marked up.
+     *
+     * A video's transcript and captions are what YouTube indexes and what
+     * answer engines quote, so the structure that helps is real — but it has
+     * to be carried by the words. A literal "H2:" or "FAQ:" would be read out
+     * by the avatar, which is the bug blogPlainText exists to strip elsewhere.
+     *
+     * So: ask the question out loud, then answer it in the first sentence.
+     * That is the same shape a featured snippet wants and the same shape a
+     * person listening wants, which is why it is worth doing in narration and
+     * not only in the article.
+     */
+    "Structure it the way a viewer asks and gets answered. Move through the",
+    "material as a series of spoken questions, each followed immediately by its",
+    "answer in the first sentence — the direct answer first, the detail after.",
+    "Near the end, include two short question-and-answer beats covering the",
+    "things someone would still want to know.",
+    "Speak the questions as a person would say them out loud. Never say a label",
+    "like heading, H2, H3, FAQ, question or answer — those are page furniture",
+    "and the avatar would read them aloud.",
+    "Name the place, the market and the specifics in the answers rather than",
+    "saying this area or the region, so the words stand on their own when they",
+    "are quoted somewhere else without the video around them.",
     "Do not open with a greeting or a hook, and do not close with a call to",
     "action or contact details — both are added separately.",
     /**
@@ -144,8 +168,22 @@ export async function POST(req: NextRequest) {
     "not open with your own name. Start on the subject the source is about.",
     "Anything about who you are belongs later, and only if the source makes a",
     "point of it.",
-    "Return the script as plain prose and nothing else: no preamble, no notes",
-    "about what you left out, no markdown.",
+    /**
+     * A headline comes back with the script, on its own first line.
+     *
+     * Asked for as a question because that is the form an answer engine
+     * matches and a viewer searches with, and the paste screen's own title
+     * field is otherwise left for the user to invent from scratch.
+     *
+     * A prefixed first line rather than JSON: chatText returns prose, and
+     * switching this call to chatJson to carry one extra string would put the
+     * whole script behind a parse that can fail.
+     */
+    "Begin your reply with one line reading TITLE: followed by a headline for",
+    "this video, written as the question a viewer would type or say out loud,",
+    "naming the place, under 70 characters. Then a blank line. Then the script.",
+    "Return the script itself as plain prose and nothing else: no preamble, no",
+    "notes about what you left out, no markdown.",
     PLAIN_COPY_RULES,
   ].join(" ");
 
@@ -169,8 +207,31 @@ export async function POST(req: NextRequest) {
    * read and approved is not what gets spoken — which would make the approval
    * step decorative.
    */
-  const script = clampScript(plainCopy(raw.trim()), cap);
+  /**
+   * Take the headline off the front before anything else touches the text.
+   *
+   * The model is asked for "TITLE: ..." on its own first line. That line is
+   * for the title field, not for the avatar — left in, it would be spoken
+   * aloud, which is the same failure as an H2 marker reaching narration.
+   *
+   * Tolerant of the model not complying: no TITLE line means no headline and
+   * the whole reply is the script, which is exactly how this behaved before.
+   */
+  const replied = raw.trim();
+  const titleMatch = replied.match(/^\s*TITLE:\s*(.+?)\s*(?:\n|$)/i);
+  const headline = titleMatch ? plainCopy(titleMatch[1].trim()).slice(0, 120) : "";
+  // Not `body` — that name is the parsed request body at the top of this route.
+  const spoken = titleMatch ? replied.slice(titleMatch[0].length).trim() : replied;
+
+  const script = clampScript(plainCopy(spoken), cap);
   const words = script.split(/\s+/).length;
 
-  return NextResponse.json({ script, words, minutes: minutesFor(words) });
+  return NextResponse.json({
+    script,
+    // Empty when the model gave none, so the caller can leave a title the user
+    // already typed alone rather than clearing it.
+    title: headline,
+    words,
+    minutes: minutesFor(words),
+  });
 }

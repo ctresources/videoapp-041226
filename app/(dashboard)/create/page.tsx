@@ -1000,6 +1000,11 @@ function CreatePageInner() {
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Couldn't turn that into a script");
       setPasteScript(data.script as string);
+      // The summariser also returns a question-form headline. Only used when
+      // the title field is still empty — a title the user typed themselves is
+      // theirs, and overwriting it would undo work they can't see happening.
+      const suggested = String(data.title ?? "").trim();
+      if (suggested && !pasteTitle.trim()) setPasteTitle(suggested);
       const words = Number(data.words ?? 0);
       setPasteSummarised(words);
       toast.success(`Script ready — ${words.toLocaleString()} words, about ${data.minutes} min. Read it over before you generate.`);

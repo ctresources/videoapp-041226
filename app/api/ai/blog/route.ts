@@ -76,6 +76,10 @@ export async function POST(req: NextRequest) {
   if (existingBody && !force) {
     return NextResponse.json({
       blog: {
+        // Undefined rather than "" for articles written before headlines
+        // existed, so the caller falls back to the video's title instead of
+        // rendering an empty heading.
+        headline: String(script.blog_headline ?? "") || undefined,
         intro: String(script.blog_intro ?? ""),
         body: existingBody,
         conclusion: String(script.blog_conclusion ?? ""),
@@ -151,12 +155,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Merged into ai_script rather than replacing it — everything else on that
-  // object is the script itself, and this endpoint owns three fields of it.
+  // object is the script itself, and this endpoint owns four fields of it.
   const { error: updateErr } = await admin
     .from("projects")
     .update({
       ai_script: {
         ...script,
+        // Written even when empty: a regenerate that produced no headline has
+        // to clear the previous one, or the article carries a question that
+        // belongs to text it no longer contains.
+        blog_headline: article.headline ?? "",
         blog_intro: article.intro,
         blog_body: article.body,
         blog_conclusion: article.conclusion,
