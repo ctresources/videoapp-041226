@@ -19,6 +19,7 @@ import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
 import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
+import { topTerms } from "@/lib/utils/script-keywords";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -1072,12 +1073,35 @@ export async function POST(req: NextRequest) {
       // — roughly 200s, which fits. The same maths on a full 8-minute video is
       // ~325s and would time out. Long videos already tell the user their own
       // photos are the visuals, so that path stays photo-only.
+      /**
+       * What to search stock footage for.
+       *
+       * Deliberately not `aiKeywords`, which is two different problems. On a
+       * pasted or summarised script there are none at all, so the only query
+       * that went out was the town — one search, near-zero hits in a CC0
+       * library that has never heard of Plymouth Meeting, and the same one or
+       * two loose matches cycled over the whole runtime. On an AI-written
+       * script there are five, but they are built from a template — "<city>
+       * real estate", "homes for sale <city>" — so every video in a town
+       * searched for the identical five things.
+       *
+       * Terms counted out of the script itself fix both: they differ per
+       * script, and they name what the script is actually about. `aiKeywords`
+       * follows as a backstop for a script too short to yield any.
+       *
+       * Left alone above at the Video Agent prompt, which uses `aiKeywords`
+       * for emphasis rather than for search and is not what broke.
+       */
+      const brollKeywords = Array.from(
+        new Set([...topTerms(safeScript, 4), ...aiKeywords]),
+      ).slice(0, 5);
+
       const stockClips = await stockBrollFor({
         userPhotoCount: directPhotos.length,
         // Long-form is capped by word count in the helper, so pass a figure
         // that trips that check rather than duplicating the rule here.
         scriptWords: isLongForm ? Number.MAX_SAFE_INTEGER : countWords(safeScript),
-        keywords: aiKeywords,
+        keywords: brollKeywords,
         city,
         state,
         orientation: orientation === "portrait" ? "portrait" : "landscape",

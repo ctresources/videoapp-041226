@@ -56,7 +56,13 @@ export async function searchStockVideos(
     return [];
   }
 
-  const clips: StockClip[] = [];
+  /**
+   * Kept per query, not in one flat list, so the results can be interleaved
+   * below. Flat, the caller's `slice(0, 4)` took the first query's three hits
+   * and one of the second's — so a video's b-roll was mostly one search, which
+   * is the repetition this is meant to avoid.
+   */
+  const perQuery: StockClip[][] = [];
 
   // Search each keyword independently, take top results
   const queries = keywords.length > 0
@@ -64,6 +70,7 @@ export async function searchStockVideos(
     : ["real estate home exterior", "neighborhood aerial view"];
 
   for (const query of queries) {
+    const found: StockClip[] = [];
     try {
       const params = new URLSearchParams({
         key: apiKey,
@@ -79,7 +86,10 @@ export async function searchStockVideos(
 
       const res = await fetch(`${PIXABAY_API}?${params}`);
       if (!res.ok) {
-        console.error(`[stock-video] Search failed for "${query}": ${res.status}`);
+        // A specific place name is a normal miss here, not a fault: Pixabay
+        // AND-matches tags and no CC0 clip is tagged with a township. Logged
+        // at warn so a real outage still shows, without reading as one.
+        console.warn(`[stock-video] No results for "${query}" (${res.status})`);
         continue;
       }
 
@@ -94,7 +104,7 @@ export async function searchStockVideos(
       for (const hit of data.hits) {
         const vid = pickRendition(hit.videos, orientation === "portrait" ? 720 : 1280);
         if (!vid) continue;
-        clips.push({
+        found.push({
           url: vid.url,
           width: vid.width,
           height: vid.height,
@@ -102,8 +112,32 @@ export async function searchStockVideos(
           tags: hit.tags,
         });
       }
+      if (found.length) perQuery.push(found);
     } catch (err) {
       console.error(`[stock-video] Error searching "${query}":`, err);
+    }
+  }
+
+  /**
+   * One from each query, then the seconds, then the thirds.
+   *
+   * The caller takes the first few of whatever comes back, so the order here
+   * decides the variety. Round-robin means four clips are four different
+   * searches rather than one search's top four — which, on footage as
+   * interchangeable as this, is the whole difference between b-roll that
+   * looks chosen and b-roll that looks stuck.
+   */
+  const clips: StockClip[] = [];
+  const seen = new Set<string>();
+  const deepest = Math.max(0, ...perQuery.map((q) => q.length));
+  for (let rank = 0; rank < deepest; rank++) {
+    for (const queryHits of perQuery) {
+      const clip = queryHits[rank];
+      // The same clip can win two related searches; taking it twice would put
+      // the identical footage on screen twice and read as a loop.
+      if (!clip || seen.has(clip.url)) continue;
+      seen.add(clip.url);
+      clips.push(clip);
     }
   }
 

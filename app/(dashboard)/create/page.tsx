@@ -2644,7 +2644,13 @@ function CreatePageInner() {
                 onRemovePhoto={removePastePhoto}
                 onReorderPhotos={(from, to) => setPastePhotos((p) => reorder(p, from, to))}
                 photosUploading={pastePhotoUploading}
-                blurb="Photos become b-roll in the video"
+                // Says plainly what the fallback is. Stock footage is a free
+                // general-purpose library — it has clips of houses, not clips
+                // of your township — so photos are the only b-roll that shows
+                // the actual place the script is about. Left unsaid, the stock
+                // clips read as a broken attempt at local footage rather than
+                // as the generic filler they are.
+                blurb="Photos become b-roll in the video. Your own are the only footage that shows your actual area — without them we fall back to generic stock."
                 // Offered when the AI is writing, and when a blog post is being
                 // summarised — there the URL attach brings the page's own text
                 // and images across. Hidden for your own words, which have

@@ -77,17 +77,53 @@ export async function stockBrollFor(opts: {
     return [];
   }
 
-  // Locality first so the footage at least reads as the right kind of place;
-  // searchStockVideos falls back to generic real-estate terms if this is empty.
+  /**
+   * Three tiers, specific first, each tried only if the ones above it came up
+   * short.
+   *
+   * There used to be one tier and no ladder. A miss was silent: the generic
+   * default inside searchStockVideos only applies when the keyword list is
+   * empty to begin with, not when every search in it returns nothing — so a
+   * script about a named township searched for that township, found one or two
+   * loose matches, and cycled them for the whole runtime.
+   *
+   * The specific tier is still worth asking first — it occasionally hits on a
+   * city with real footage — but the honest position is that a free CC0 library
+   * has nothing of most suburbs, and the fallbacks are what actually fills the
+   * screen. Better four varied generic clips than one repeated specific one.
+   */
   const locality = [opts.city, opts.state].filter(Boolean).join(" ");
-  const queries = [
-    ...(locality ? [`${locality} homes neighborhood`] : []),
-    ...(opts.keywords ?? []).slice(0, 3),
-  ].filter(Boolean);
+  const tiers: string[][] = [
+    // What this script is about, plus the town.
+    [
+      ...(locality ? [`${locality} homes neighborhood`] : []),
+      ...(opts.keywords ?? []).slice(0, 3),
+    ].filter(Boolean),
+    // Still regional, but at a scale stock libraries actually cover.
+    [
+      ...(opts.state ? [`${opts.state} suburban homes`] : []),
+      "suburban neighborhood aerial",
+      "residential street homes",
+    ],
+    // Always returns something.
+    ["real estate home exterior", "neighborhood aerial view", "modern house exterior"],
+  ].filter((t) => t.length > 0);
 
+  const urls: string[] = [];
   try {
-    const clips = await searchStockVideos(queries, opts.orientation);
-    const urls = clips.map((c) => c.url).slice(0, wanted);
+    for (const queries of tiers) {
+      const clips = await searchStockVideos(queries, opts.orientation);
+      for (const clip of clips) {
+        if (urls.length >= wanted) break;
+        // Across tiers as well as within one: a generic term can return a clip
+        // the specific term already found.
+        if (!urls.includes(clip.url)) urls.push(clip.url);
+      }
+      if (urls.length >= wanted) break;
+      console.log(
+        `[stock-broll] tier returned ${urls.length}/${wanted} clip(s) — widening the search`,
+      );
+    }
     console.log(
       `[stock-broll] ${opts.userPhotoCount} photo(s) + ${urls.length} stock clip(s) ` +
       `for ~${Math.round(runtimeSeconds)}s of runtime`,
@@ -95,6 +131,7 @@ export async function stockBrollFor(opts: {
     return urls;
   } catch (err) {
     console.warn("[stock-broll] Lookup failed:", err instanceof Error ? err.message : err);
-    return [];
+    // Whatever the earlier tiers did return is still better than nothing.
+    return urls;
   }
 }
