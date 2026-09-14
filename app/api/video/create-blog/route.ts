@@ -30,7 +30,7 @@ import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextRequest, NextResponse } from "next/server";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
-import { standardMaxWords, clampScript } from "@/lib/utils/video-length";
+import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
 export const maxDuration = 300;
 
@@ -729,6 +729,28 @@ export async function POST(req: NextRequest) {
   const longFormMaxWords = isAdmin ? MAX_LONG_FORM_SCRIPT_WORDS_ADMIN : MAX_LONG_FORM_SCRIPT_WORDS;
   const maxScriptWords = isLongForm ? longFormMaxWords : shortFormMaxWords;
 
+  /**
+   * Whether the closing ask has to come out of the script's own budget.
+   *
+   * It does on the Video Agent, where script and instructions share one prompt:
+   * every word of narration is a word the quality rules do not get.
+   *
+   * It does not on Direct Video. There the script is a separate field with no
+   * prompt budget — the same reason long form is capped at 1,160 rather than
+   * 400 — so the only thing a longer script costs is runtime. A pasted script
+   * renders on Direct Video whatever format it is, and was still being held to
+   * a limit that exists for a renderer it never touches: 400 words minus a
+   * 111-word CTA left 289, and the user was told to cut a script they had
+   * written to fit the number on screen.
+   *
+   * So the body keeps its full allowance and the CTA extends the video, capped
+   * at the slot the plan already advertises — 400 words is ~2.8 minutes and
+   * the standard slot is 4, so there is room for a closing ask without
+   * promising anything new.
+   */
+  const ctaOnTop = engineIsDirect && !isLongForm;
+  const slotWords = Math.round(standardMaxMinutes() * WPM);
+
   // The CTA arrives separately and is appended AFTER the body clamp. It lives
   // at the end of the spoken script, so a plain tail-clamp used to silently
   // delete it whenever the body ran long — the "missing CTA in video" bug.
@@ -742,7 +764,12 @@ export async function POST(req: NextRequest) {
     // for a while; this is the same guard at the other end, and it also
     // repairs drafts written before the prompt was fixed.
     normalizeScriptForTTS(dropDuplicateCta(ctaText, rawScript)),
-    Math.max(50, maxScriptWords - ctaWordCount),
+    // On Direct Video the CTA rides on top of the script's own allowance
+    // rather than eating into it — bounded by the advertised slot so a long
+    // CTA cannot stretch a standard video past what the plan promises.
+    ctaOnTop
+      ? Math.max(50, Math.min(maxScriptWords, slotWords - ctaWordCount))
+      : Math.max(50, maxScriptWords - ctaWordCount),
   );
   const safeScript = ctaText ? `${bodyScript}\n\n${ctaText}` : bodyScript;
 

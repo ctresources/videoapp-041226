@@ -428,8 +428,16 @@ function CreatePageInner() {
     });
     return resolved.trim() ? resolved.trim().split(/\s+/).length : 0;
   })();
-  /** What is actually left for the script itself. */
-  const pasteScriptBudget = Math.max(50, pasteWordCap - pasteCtaWords);
+  /**
+   * What is actually left for the script itself.
+   *
+   * The full allowance. A pasted script renders on Direct Video, where the
+   * script is its own field rather than part of a prompt, so the closing ask
+   * extends the video instead of displacing the words you wrote — see
+   * ctaOnTop in create-blog. Subtracting it here told you to cut a script to
+   * make room for something you could not edit on this screen.
+   */
+  const pasteScriptBudget = pasteWordCap;
 
   // Paste tab uploads
   const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
@@ -979,7 +987,15 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/script-from-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: source, length: pasteScriptLength }),
+        // The budget, not the raw cap. The closing ask is appended to the
+        // narration and counted against the same limit, so summarising to the
+        // cap produced a script that was over the moment it arrived — the
+        // warning fired on words this button had just written.
+        body: JSON.stringify({
+          text: source,
+          length: pasteScriptLength,
+          budget: pasteScriptBudget,
+        }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error((data.error as string) || "Couldn't turn that into a script");
@@ -2604,9 +2620,10 @@ function CreatePageInner() {
                   the video is made, with nothing on screen having said so. */}
               {pasteCtaWords > 0 && (
                 <p className="text-[11px] text-spark-ink-faint mt-1.5">
-                  Your call to action is spoken at the end and counts toward this total:
-                  about {pasteCtaWords.toLocaleString()} words, leaving{" "}
-                  {pasteScriptBudget.toLocaleString()} for the script. You can edit it on the next step.
+                  Your call to action is spoken after this, adding about{" "}
+                  {pasteCtaWords.toLocaleString()} words (~{minutesFor(pasteCtaWords)} min) to the
+                  video. It doesn&apos;t come out of the {pasteWordCap.toLocaleString()} above. You
+                  can edit it on the next step.
                 </p>
               )}
             </div>

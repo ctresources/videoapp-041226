@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const body = (await req.json()) as { text?: string; length?: string };
+  const body = (await req.json()) as { text?: string; length?: string; budget?: number };
   const source = (body.text ?? "").trim();
 
   if (source.length < 200) {
@@ -69,8 +69,22 @@ export async function POST(req: NextRequest) {
   }
 
   const length: VideoLength = body.length === "rendered_long" ? "long" : "standard";
-  const target = targetWords(length, null);
-  const cap = maxWords(length, null);
+  const hardCap = maxWords(length, null);
+  /**
+   * What is left for the script once the closing ask is counted.
+   *
+   * The caller knows the user's own CTA and how long it is; this route does
+   * not. Summarising to the cap and letting the CTA be appended afterwards
+   * produced a script that was over the limit the moment it arrived — the
+   * too-long warning firing on words this route had just written.
+   */
+  const cap = Math.min(
+    hardCap,
+    Math.max(50, Number.isFinite(body.budget) ? Number(body.budget) : hardCap),
+  );
+  // Aim under the cap by the same margin the generation prompts use, so the
+  // overshoot a model makes anyway lands inside the budget rather than past it.
+  const target = Math.min(targetWords(length, null), Math.round(cap * 0.9));
 
   const system = [
     FAIR_HOUSING_GUARDRAIL,
