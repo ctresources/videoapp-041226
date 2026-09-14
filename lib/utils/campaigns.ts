@@ -204,9 +204,25 @@ export function videoState(c: Campaign, p: CampaignProject): VideoState {
   const posts = c.posts.filter((x) => x.projectId === p.id);
   if (posts.some((x) => x.status === "published")) return "published";
   if (posts.some((x) => IN_FLIGHT.includes(x.status))) return "scheduled";
-  if (posts.some((x) => x.status === "failed")) return "failed";
   const v = leadVideo(p);
+  /**
+   * A rendered video is ready, whatever happened at publish time.
+   *
+   * The failed check used to sit above this, which conflated two different
+   * things: the video being made, and the video going out. A finished render
+   * whose upload failed reported as not ready, and sparkProgress counts only
+   * ready items — so a Spark holding one perfectly good video said "Content
+   * ready: 0 of 1" while that video played on the card above the message.
+   *
+   * Nothing showed this until failures started being saved: before that no
+   * post could ever carry the failed status, so the branch never ran.
+   *
+   * The failure is still reported — the channel row has its own Failed chip,
+   * and sparkProgress reads it from the post rather than from here.
+   */
   if (v?.renderStatus === "completed") return "ready";
+  // Below the render check, so this is now "failed with nothing usable yet".
+  if (posts.some((x) => x.status === "failed")) return "failed";
   if (v && (v.renderStatus === "pending" || v.renderStatus === "rendering")) return "rendering";
   return "draft";
 }
@@ -347,11 +363,23 @@ export function sparkProgress(c: Campaign, ctx: SparkContext): SparkProgress {
   type Item = { ready: boolean; dated: boolean; published: boolean; failed: boolean };
   const items: Item[] = c.projects.map((p) => {
     const s = videoState(c, p);
+    /**
+     * Read from the post, not from videoState.
+     *
+     * videoState now calls a rendered video ready even when its upload failed,
+     * which is the point — but the Spark still has to say so at the top of the
+     * card, where it is the first thing read. Suppressed once something has
+     * since succeeded or been booked, matching the card, which hides the
+     * failure note in exactly those cases: a failure already recovered from is
+     * history, not a status.
+     */
+    const failed = s !== "published" && s !== "scheduled"
+      && c.posts.some((x) => x.projectId === p.id && x.status === "failed");
     return {
       ready: s === "ready" || s === "scheduled" || s === "published",
       dated: s === "scheduled" || s === "published",
       published: s === "published",
-      failed: s === "failed",
+      failed,
     };
   });
 

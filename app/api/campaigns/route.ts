@@ -57,7 +57,7 @@ interface VideoRow {
 interface PostRow {
   id: string; campaign_id: string; video_id: string | null; platform: string; post_status: string;
   scheduled_at: string | null; posted_at: string | null; video_title: string | null;
-  platform_post_id: string | null; error_message: string | null;
+  platform_post_id: string | null; error_message: string | null; created_at: string;
 }
 interface JobRow {
   id: string; campaign_id: string; project_id: string | null; video_id: string | null;
@@ -218,7 +218,7 @@ export async function GET() {
       .in("campaign_id", ids),
     admin
       .from("social_posts")
-      .select("id, campaign_id, video_id, platform, post_status, scheduled_at, posted_at, video_title, platform_post_id, error_message")
+      .select("id, campaign_id, video_id, platform, post_status, scheduled_at, posted_at, video_title, platform_post_id, error_message, created_at")
       .eq("user_id", userId)
       .in("campaign_id", ids)
       // Oldest first, so "the latest failure" is simply the last one for a
@@ -265,7 +265,17 @@ export async function GET() {
     kind: "post",
     platform: r.platform,
     status: postStatus(r, now),
-    at: r.posted_at ?? r.scheduled_at,
+    /**
+     * created_at as the last resort, which in practice means failed rows.
+     *
+     * A publish that failed has no posted_at and — unless it was a scheduled
+     * one — no scheduled_at either, so `at` was always null for exactly the
+     * rows added to be looked at later. The card rendered "Publishing failed"
+     * with no date, and the calendar had nothing to place the item on. A
+     * posted or scheduled row already has its own date, so this only ever
+     * fires where there is otherwise nothing.
+     */
+    at: r.posted_at ?? r.scheduled_at ?? r.created_at,
     title: r.video_title,
     url: r.platform === "youtube" && r.platform_post_id ? `https://youtu.be/${r.platform_post_id}` : null,
     // Mirrors toJob below. Only carried for a failed row: a stored message on
