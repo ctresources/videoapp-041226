@@ -116,7 +116,26 @@ export async function GET(req: NextRequest) {
    * YouTube with an English title and description. The translate route writes
    * publish_title / publish_description onto the video row, and they win here.
    */
-  const vidMeta = (video as { metadata?: { publish_title?: string; publish_description?: string; photo_urls?: string[] } | null }).metadata ?? null;
+  const vidMeta = (video as { metadata?: { publish_title?: string; publish_description?: string; photo_urls?: string[]; post_processed?: boolean; music_url?: string; stock_clip_urls?: unknown[] } | null }).metadata ?? null;
+
+  /**
+   * Whether the extras are still being added.
+   *
+   * The render finishing and the video finishing are not the same moment. The
+   * webhook marks the row completed BEFORE it composites b-roll, mixes music
+   * and burns captions — work measured at nearly four minutes — and only then
+   * writes post_processed. So a row that says completed with no post_processed
+   * is a video whose first watchable version is the bare presenter.
+   *
+   * That window is exactly when someone publishes, and what reaches YouTube is
+   * the version without any of it. No new column for this: the absence of the
+   * flag already carries it.
+   */
+  const hadExtras =
+    !!vidMeta?.music_url ||
+    (Array.isArray(vidMeta?.stock_clip_urls) && vidMeta!.stock_clip_urls!.length > 0) ||
+    (Array.isArray(vidMeta?.photo_urls) && vidMeta!.photo_urls!.length > 0);
+  const stillFinishing = hadExtras && !vidMeta?.post_processed;
 
   /**
    * The photos available as a thumbnail backdrop, best first.
@@ -145,6 +164,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     projectId,
     photos,
+    /**
+     * True while b-roll, music or captions are still being composited, so the
+     * window can say so beside the button rather than letting the plain
+     * presenter go out.
+     */
+    stillFinishing,
     /** True when a PNG has been rendered and saved, so the modal leaves it be. */
     hasStoredThumbnail: !!proj?.thumbnail_url,
     // The market the badge prints, so the field beside it opens showing the

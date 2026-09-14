@@ -40,7 +40,20 @@ interface GeneratedVideo {
   duration_seconds: number | null;
   created_at: string;
   project_id: string;
-  metadata?: { render_error?: string; credit_kind?: "short" | "long" } | null;
+  /**
+   * post_processed is written only after b-roll, music and captions are
+   * composited — work that runs AFTER the row is marked completed. Its absence
+   * on a completed video with extras is what "still finishing" means; there is
+   * no separate flag for it.
+   */
+  metadata?: {
+    render_error?: string;
+    credit_kind?: "short" | "long";
+    post_processed?: boolean;
+    music_url?: string;
+    photo_urls?: string[];
+    stock_clip_urls?: string[];
+  } | null;
   projects?: { title: string; ai_script?: { hook?: string; script?: string; cta?: string } | null } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
@@ -691,6 +704,22 @@ function VideosContent() {
                   <p className="font-medium text-sm text-brand-text truncate mb-1">
                     {(video.projects as { title: string } | null)?.title || "Untitled Video"}
                   </p>
+
+                  {/* Completed, but the extras have not landed yet.
+                      The row is marked completed before b-roll, music and
+                      captions are composited, so what plays right now is the
+                      bare presenter — and a card that just says Ready is how
+                      someone ends up publishing that version. */}
+                  {video.render_status === "completed"
+                    && !video.metadata?.post_processed
+                    && (!!video.metadata?.music_url
+                        || (video.metadata?.photo_urls?.length ?? 0) > 0
+                        || (video.metadata?.stock_clip_urls?.length ?? 0) > 0) && (
+                    <p className="mb-2 rounded-lg bg-spark-amber/5 px-2 py-1.5 text-[11px] leading-[1.4] text-amber-700">
+                      Still adding your b-roll, music and captions — give it a few minutes
+                      and refresh before you publish.
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">

@@ -120,6 +120,15 @@ export function PublishModal({
   const [looks, setLooks] = useState<{ id: string; name: string; preview_image_url: string }[]>([]);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
   const [cutout, setCutout] = useState("");
+  /**
+   * The extras are still being composited onto this video.
+   *
+   * The row is marked completed before b-roll, music and captions are added —
+   * work measured at nearly four minutes — so publishing inside that window
+   * sends the bare presenter to YouTube and the finished version never gets
+   * there. Said beside the button, because that is where the cost is paid.
+   */
+  const [stillFinishing, setStillFinishing] = useState(false);
   /** Stops the auto-build from running twice, and from re-running on a swap. */
   const autoBuilt = useRef(false);
 
@@ -181,6 +190,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // Mark the tile this thumbnail was actually built with, so the picker
         // opens showing the truth rather than defaulting to the first tile.
         setCutout(d.thumbnailPhotoUrl || "");
+        setStillFinishing(!!d.stillFinishing);
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });
     return () => { cancelled = true; };
@@ -709,6 +719,24 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Said here rather than on the screen four minutes ago.
+                The row is marked completed before the b-roll, music and
+                captions are composited, so publishing inside that window sends
+                the bare presenter — and the finished version never reaches the
+                platform, because the upload already happened. Not a block:
+                sometimes the plain read is what you want, and this is the one
+                place where knowing costs nothing. */}
+            {stillFinishing && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                <p className="text-sm leading-[1.45] text-amber-700">
+                  Your b-roll, music and captions are still being added — this usually takes
+                  three or four minutes. Publishing now sends the plain presenter version.
+                  Close this, wait, and refresh to get the finished one.
+                </p>
               </div>
             )}
 
