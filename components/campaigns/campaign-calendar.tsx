@@ -142,7 +142,7 @@ export function CampaignCalendar() {
   const [tz, setTz] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [view, setView] = useState<View>("month");
-  const [filters, setFilters] = useState({ campaign: "all", platform: "all", status: "all" });
+  const [filters, setFilters] = useState({ campaign: "all", platform: "all", status: "all", hideDrafts: false });
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -217,13 +217,41 @@ export function CampaignCalendar() {
   const railCampaigns = useMemo(() => campaigns.filter((c) => {
     if (filters.campaign !== "all" && c.id !== filters.campaign) return false;
     if (filters.platform !== "all" && !calendarItems(c).some((i) => i.platform === filters.platform)) return false;
+    const s = data?.series.find((x) => x.id === c.seriesId) ?? null;
     if (filters.status !== "all") {
       const own = [c.blog.status, ...c.posts.map((p) => p.status)] as string[];
-      const s = data?.series.find((x) => x.id === c.seriesId) ?? null;
       if (!own.includes(filters.status) && sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel, series: s }).status !== filters.status) return false;
+    }
+    /**
+     * Hide work barely begun, without hiding work not yet begun.
+     *
+     * Every new project now starts its own Spark the moment it is created, so
+     * an idea saved and left becomes a Draft in this list — which is the point,
+     * and also what would make the list unreadable after a month of them.
+     *
+     * Only "draft" is hidden. "planned" is its own status for a named slot in a
+     * Series with nothing in it yet: those are deliberate placeholders someone
+     * put there on purpose, so they stay whatever this is set to.
+     *
+     * Ignored when Draft is the status being filtered FOR, or the two controls
+     * would cancel out and leave an permanently empty list with no clue why.
+     */
+    if (filters.hideDrafts && filters.status !== "draft") {
+      const status = sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel, series: s }).status;
+      if (status === "draft") return false;
     }
     return true;
   }), [campaigns, filters, data?.youtubeChannel, data?.series]);
+
+  // What the toggle is actually hiding right now, so the count can be named
+  // rather than leaving Sparks to vanish silently.
+  const hiddenDraftCount = useMemo(() => {
+    if (!filters.hideDrafts || filters.status === "draft") return 0;
+    return campaigns.filter((c) => {
+      const s = data?.series.find((x) => x.id === c.seriesId) ?? null;
+      return sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel, series: s }).status === "draft";
+    }).length;
+  }, [campaigns, filters, data?.youtubeChannel, data?.series]);
 
   if (loading && !data) {
     return (
@@ -338,9 +366,22 @@ export function CampaignCalendar() {
           <option value="all">All statuses</option>
           {STATUS_FILTERS.map((s) => <option key={s} value={s}>{ITEM_STATUS_META[s].label}</option>)}
         </select>
-        {(filters.campaign !== "all" || filters.platform !== "all" || filters.status !== "all") && (
+        {/* Not a status option in the select above: that one filters calendar
+            ITEMS by their own status, while this is about whole Sparks. Folding
+            them together would have made "Draft" mean two different things
+            depending on which half of the page you looked at. */}
+        <label className="flex items-center gap-1.5 text-xs text-spark-ink-soft" title="Sparks with nothing ready yet. Planned Series slots stay listed.">
+          <input
+            type="checkbox"
+            checked={filters.hideDrafts}
+            onChange={(e) => setFilters((f) => ({ ...f, hideDrafts: e.target.checked }))}
+            className="h-3.5 w-3.5 rounded border-spark-rule text-spark-amber focus:ring-spark-amber/30"
+          />
+          Hide drafts
+        </label>
+        {(filters.campaign !== "all" || filters.platform !== "all" || filters.status !== "all" || filters.hideDrafts) && (
           <button
-            onClick={() => setFilters({ campaign: "all", platform: "all", status: "all" })}
+            onClick={() => setFilters({ campaign: "all", platform: "all", status: "all", hideDrafts: false })}
             className="text-xs text-spark-ink-faint underline hover:text-spark-ink-muted"
           >
             Clear
@@ -500,9 +541,14 @@ export function CampaignCalendar() {
             </div>
             {railCampaigns.length === 0 ? (
               <p className="px-4 pb-4 pt-1 text-[12px] leading-relaxed text-spark-ink-faint">
-                {campaigns.length
-                  ? "No Spark matches these filters."
-                  : "Every great piece of content starts with a Spark. Each video you make from September on starts its own here."}
+                {/* Three cases, not two. "No Spark matches these filters" was
+                    misleading when the only thing filtering them out was the
+                    drafts toggle — the fix is one click, so name it. */}
+                {!campaigns.length
+                  ? "Every great piece of content starts with a Spark. Each video you make from September on starts its own here."
+                  : hiddenDraftCount
+                    ? `${hiddenDraftCount} draft${hiddenDraftCount === 1 ? "" : "s"} hidden. Untick Hide drafts to see ${hiddenDraftCount === 1 ? "it" : "them"}.`
+                    : "No Spark matches these filters."}
               </p>
             ) : (
               <ul className="max-h-[680px] overflow-y-auto px-2 pb-2">
