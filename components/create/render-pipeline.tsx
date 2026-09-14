@@ -184,9 +184,9 @@ export function RenderPipeline({
               failed render rather than an unfinished one, and is exactly when
               someone publishes it. */}
           <p className="mt-1.5 text-[12px] leading-[1.45] text-spark-ink-muted">
-            Give it another minute before you publish. Your b-roll, music and captions are
-            added after the render, so the first version you see may be the plain
-            presenter. Refresh and it will be there.
+            Give it three or four more minutes before you publish. Your b-roll, music and
+            captions are added after the render, so the first version you see may be the
+            plain presenter. Refresh and it will be there.
           </p>
         </>
       )}

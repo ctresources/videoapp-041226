@@ -131,6 +131,19 @@ export async function POST(req: NextRequest) {
     "no bullet points, no lists, nothing that only works when read.",
     "Do not open with a greeting or a hook, and do not close with a call to",
     "action or contact details — both are added separately.",
+    /**
+     * Open on the subject, not on the speaker.
+     *
+     * A blog post usually introduces its author before it gets to the point,
+     * so a faithful summary inherits that and the video opens with the agent
+     * describing their own credentials. In a script that is the worst possible
+     * first line: the viewer has not been given a reason to care yet, and the
+     * hook and the contact card already carry who this is.
+     */
+    "Do not open by introducing yourself or stating your experience, and do",
+    "not open with your own name. Start on the subject the source is about.",
+    "Anything about who you are belongs later, and only if the source makes a",
+    "point of it.",
     "Return the script as plain prose and nothing else: no preamble, no notes",
     "about what you left out, no markdown.",
     PLAIN_COPY_RULES,
