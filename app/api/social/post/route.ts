@@ -47,7 +47,14 @@ export async function POST(req: NextRequest) {
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null; campaign_id: string | null } | null;
   } | null;
 
-  if (!video?.video_url) return NextResponse.json({ error: "Video not ready" }, { status: 404 });
+  /**
+   * Split from the not-ready case below on purpose.
+   *
+   * A null row means the video does not exist or is not this user's, and there
+   * is nothing to write a record against — inventing a social_posts row for an
+   * id we cannot vouch for would be worse than staying quiet.
+   */
+  if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   const aiScript = video.projects?.ai_script as Record<string, unknown> | null;
   const seoData = video.projects?.seo_data as Record<string, unknown> | null;
@@ -66,6 +73,34 @@ export async function POST(req: NextRequest) {
    * went up, and the card that sent it never showed it again.
    */
   const campaignId = video.projects?.campaign_id ?? null;
+
+  /**
+   * The render has not finished, so there is nothing to upload.
+   *
+   * This used to return before any of the recording below could run, which
+   * made it the one failure the Spark Card could never show — and the obvious
+   * way to exercise the saved-failure path without touching a working YouTube
+   * connection. It is a real failed attempt from the user's side, so it is
+   * written down like any other.
+   */
+  if (!video.video_url) {
+    const reason = "The video hadn't finished rendering yet, so there was nothing to upload.";
+    const { error: notReadyLogErr } = await admin.from("social_posts").insert({
+      user_id: user.id,
+      video_id: videoId,
+      campaign_id: campaignId,
+      platform: targets[0]?.platform || "youtube",
+      video_title: targets[0]?.title || defaultTitle,
+      scheduled_at: scheduledAt || null,
+      posted_at: null,
+      post_status: "failed",
+      error_message: reason,
+    });
+    if (notReadyLogErr) {
+      console.error(`[social/post] could not record the not-ready failure: ${notReadyLogErr.message}`);
+    }
+    return NextResponse.json({ error: reason }, { status: 409 });
+  }
 
   // `error` is its own field rather than riding in `url`. The failure message
   // used to be stuffed into `url`, where the client could not tell a post link
