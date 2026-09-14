@@ -174,7 +174,7 @@ export function RenderPipeline({
       {complete && (
         <>
           <p className="mt-3 text-[12.5px] font-medium leading-[1.45] text-spark-blue">
-            Your video is ready. It&apos;s waiting in My Content.
+            Your video is ready. It&apos;s waiting in My Sparks.
           </p>
           {/* The render finishing is not the video finishing.
               What HeyGen hands back is the bare avatar; the b-roll, the music

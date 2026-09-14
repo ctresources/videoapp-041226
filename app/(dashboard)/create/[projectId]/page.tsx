@@ -1011,7 +1011,7 @@ export default function ProjectEditorPage() {
         const err = await safeJson(res);
         throw new Error((err?.error as string) || "Failed to save draft");
       }
-      toast.success("Draft saved. Find it under Drafts in My Content.");
+      toast.success("Draft saved. Find it under Drafts in My Sparks.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save draft");
     } finally {
@@ -1374,9 +1374,9 @@ export default function ProjectEditorPage() {
       // were written for this video and are needed to post it.
       setRenderedVideoId(video.id);
       if (video.render_status === "completed") {
-        toast.success("Video ready. It's in My Content.", { duration: 4000 });
+        toast.success("Video ready. It's in My Sparks.", { duration: 4000 });
       } else {
-        toast.success("Video is rendering. You'll see it in My Content shortly.", { duration: 5000 });
+        toast.success("Video is rendering. You'll see it in My Sparks shortly.", { duration: 5000 });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start video generation");
@@ -2879,7 +2879,7 @@ export default function ProjectEditorPage() {
               return (
                 <p className="text-xs text-slate-400 text-center mt-2">
                   AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
-                  see it in My Content when ready. You can close this page.
+                  see it in My Sparks when ready. You can close this page.
                 </p>
               );
             })()}
@@ -2921,7 +2921,7 @@ export default function ProjectEditorPage() {
                   // enough that nobody is watching the screen when it lands.
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
-                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Content.`}
+                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Sparks.`}
               />
             );
           })()}

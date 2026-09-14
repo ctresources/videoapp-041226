@@ -442,7 +442,7 @@ export function ClipBrander({ photos = [], title }: {
           });
           setSavedId(videoId);
           setPhase("done");
-          toast.success("Saved to My Content.");
+          toast.success("Saved to My Sparks.");
           // Not awaited: the save is complete and the video is watchable. This
           // fills in the captions and the description behind it.
           void readClipAudio(videoId);
@@ -886,14 +886,14 @@ export function ClipBrander({ photos = [], title }: {
             <div className="flex items-center gap-2">
               <Loader2 size={14} className="shrink-0 animate-spin text-spark-amber" />
               <p className="text-[12px] text-spark-ink-muted">
-                Rendered. Uploading to My Content — this can take a minute on a long clip, and you
+                Rendered. Uploading to My Sparks — this can take a minute on a long clip, and you
                 can switch tabs now.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
-                <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Content</p>
+                <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Sparks</p>
                 {savedId && (
                   <a href={`/videos?highlight=${savedId}`}>
                     <Button variant="outline" size="sm" className="gap-1.5">
@@ -925,7 +925,7 @@ export function ClipBrander({ photos = [], title }: {
                   {transcript.status === "failed" && (
                     <span>
                       Couldn&rsquo;t read the audio this time — the video is saved. Try{" "}
-                      <strong>Edit transcript</strong> on it in My Content.
+                      <strong>Edit transcript</strong> on it in My Sparks.
                     </span>
                   )}
                 </div>

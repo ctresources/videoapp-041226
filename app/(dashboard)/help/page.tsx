@@ -208,7 +208,7 @@ export default function HelpPage() {
               camera instead of rendering. Attach photos or documents as b-roll, and hit{" "}
               <strong>Spark Video</strong>. Rendering time follows the length of the <em>script</em>, not the
               format — typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long
-              one. You can close the page and watch for it in My Content. If a render ever fails, your
+              one. You can close the page and watch for it in My Sparks. If a render ever fails, your
               allowance is refunded automatically.
             </Step>
             <Step n={10} title="Use Camera — The Free Option" icon={Camera}>

@@ -38,8 +38,10 @@ if you find one of those in copy, it is stale.
 
 | Use this | Never this | What it is |
 |---|---|---|
-| **Create** | Create Video | The nav item and the page at `/create` |
-| **My Content** | My Videos | `/videos` — holds videos, blog posts and drafts |
+| **Spark Studio** | Create · Create Video | The nav item and the page at `/create` |
+| **My Sparks** | My Content · My Videos | `/videos` — holds videos, blog posts and drafts |
+| **Spark Tools** | AI Tools | The nav item and the page at `/tools` |
+| **Spark** | Campaign | One topic and everything made from it. Stored as a `campaigns` row; only the user-facing word changed |
 | **Your Share Kit** | Post copy & blog · Content Pack · Titles & captions | Editor step 5. Title, description, hashtags, Instagram caption, LinkedIn post, email blurb **and the blog article** |
 | **Spark Video** | Generate · Generate Video | The button that renders and spends an allowance |
 | **Use My Avatar** | SparkReels makes it · AI avatar | Row 1 tile |

@@ -1168,8 +1168,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
     const done = await preserveThenUpload(rec, false);
     if (done) {
       toast.success(done.alreadySaved
-        ? "Already saved — it reached the server the first time. It's in My Content."
-        : "Uploaded — it's in My Content.");
+        ? "Already saved — it reached the server the first time. It's in My Sparks."
+        : "Uploaded — it's in My Sparks.");
     }
   }
 
@@ -1264,8 +1264,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       const done = await preserveThenUpload(recordFor(videoBlob), false);
       if (done) {
         toast.success(done.alreadySaved
-          ? "This recording was already saved — it's in My Content."
-          : "Saved to My Content.");
+          ? "This recording was already saved — it's in My Sparks."
+          : "Saved to My Sparks.");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2299,9 +2299,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         <div className="flex items-center justify-between gap-3 px-1">
           <p className="text-sm font-semibold text-brand-text">
             {viewedSaved
-              ? "Saved to My Content"
+              ? "Saved to My Sparks"
               : saving
-                ? "Saving to My Content…"
+                ? "Saving to My Sparks…"
                 : viewedRecovery
                   ? "Not saved yet — kept on this device"
                   : "Recording complete"}
@@ -2349,7 +2349,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                 <span>
                   It may already have reached the server — the reply never arrived, so this
                   browser can&apos;t tell. Your recording is safely waiting on this device, and
-                  Save to My Content below will check rather than save it twice.
+                  Save to My Sparks below will check rather than save it twice.
                 </span>
               ) : (
                 <span>
@@ -2378,7 +2378,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> {viewedSaved ? "Share it" : "Save to My Content"}</>
+              <><Share2 size={16} /> {viewedSaved ? "Share it" : "Save to My Sparks"}</>
             )}
           </Button>
         </div>
