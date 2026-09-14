@@ -47,6 +47,18 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path d="M3 10h18M8 3v4M16 3v4" />
     </>
   ),
+  // Same glyph under the new path. This map is keyed by href and read as
+  // NAV_ICONS[href], so once Spark Calendar points at /campaigns for granted
+  // accounts there has to be an entry here — otherwise the lookup returns
+  // undefined and that row renders an empty svg, for the two people who can
+  // see the page and nobody else. Record<string, ReactNode> makes an unknown
+  // key legal, so the compiler says nothing about it.
+  "/campaigns": (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </>
+  ),
   "/analytics": <path d="M5 20V11M12 20V4M19 20v-6" />,
   "/social": (
     <>
@@ -114,7 +126,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   // Role and plan for the sidebar: the Admin link was rendered for everyone
   // (the /admin route bounced them straight back), and the plan label was
   // hardcoded to "Free plan" even for Pro subscribers.
-  const [account, setAccount] = useState<{ isAdmin: boolean; tier: string } | null>(null);
+  const [account, setAccount] = useState<{ isAdmin: boolean; tier: string; campaignCalendar: boolean } | null>(null);
   // Submitted directly rather than by its own button, so the guard can hold
   // the sign-out open while the user retries or downloads.
   const logoutFormRef = useRef<HTMLFormElement>(null);
@@ -123,9 +135,25 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
     if (!user) return;
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, tier: a.tier ?? "free" }))
+      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
       .catch(() => {});
   }, [user]);
+
+  /**
+   * Spark Calendar points at whichever calendar this account can actually open.
+   *
+   * /campaigns is the Spark control centre and is still behind feature_access;
+   * /calendar is the older scheduler everyone has. Sending every user to the
+   * new one would hand a 404 to anyone without the grant — a menu item that
+   * looks live and isn't. Defaults to the old page until the grant is known,
+   * so nothing flashes from one destination to the other on load.
+   *
+   * When the calendar opens to everyone this collapses to changing the href in
+   * navItems and deleting this block.
+   */
+  const items = account?.campaignCalendar
+    ? navItems.map((i) => (i.href === "/calendar" ? { ...i, href: "/campaigns" } : i))
+    : navItems;
 
   return (
     <aside
@@ -152,7 +180,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
 
       {/* Nav */}
       <nav className="flex flex-col gap-px px-2">
-        {navItems.map(({ href, label }) => {
+        {items.map(({ href, label }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
             <Link
