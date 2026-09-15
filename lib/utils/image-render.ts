@@ -193,7 +193,39 @@ export async function renderImage(opts: {
   const subline = (opts.text.subline || "").trim();
 
   const M = Math.round(Math.min(w, h) * 0.07);
-  const maxW = w - 2 * M;
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("logo_url, avatar_url")
+    .eq("id", opts.userId)
+    .single();
+  const prof = profile as { logo_url: string | null; avatar_url: string | null } | null;
+
+  // Logo, bottom right, small, on a light see-through plate. Prepared before the
+  // text is laid out because the two share the bottom edge: the text block is
+  // narrowed by the plate's width so a long headline never runs under it.
+  let logo: { image: Buffer; plate: Buffer; plateW: number; plateH: number; pad: number } | null = null;
+  if (opts.text.showLogo && prof?.logo_url) {
+    try {
+      const res = await fetch(prof.logo_url);
+      if (res.ok) {
+        const image = await sharp(Buffer.from(await res.arrayBuffer()))
+          .resize({ width: Math.round(w * 0.11), height: Math.round(h * (landscape ? 0.06 : 0.04)), fit: "inside" })
+          .png()
+          .toBuffer();
+        const meta = await sharp(image).metadata();
+        const lw = meta.width || 0, lh = meta.height || 0;
+        const pad = Math.round(Math.max(lw, lh) * 0.12) + 6;
+        const plateW = lw + pad * 2, plateH = lh + pad * 2;
+        const plate = Buffer.from(
+          `<svg width="${plateW}" height="${plateH}" xmlns="http://www.w3.org/2000/svg"><rect width="${plateW}" height="${plateH}" rx="${Math.round(pad * 0.9)}" fill="#ffffff" fill-opacity="0.6"/></svg>`,
+        );
+        logo = { image, plate, plateW, plateH, pad };
+      }
+    } catch { /* the image still renders without the logo */ }
+  }
+
+  const maxW = w - 2 * M - (logo ? logo.plateW + Math.round(M * 0.5) : 0);
   const gap = Math.round(M * 0.4);
 
   const kSize = Math.round(w * (landscape ? 0.02 : 0.034));
@@ -255,33 +287,10 @@ export async function renderImage(opts: {
     { input: Buffer.from(overlay), left: 0, top: 0 },
   ];
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("logo_url, avatar_url")
-    .eq("id", opts.userId)
-    .single();
-  const prof = profile as { logo_url: string | null; avatar_url: string | null } | null;
-
-  // Logo, top right, on a light plate so a dark logo survives a dark photo.
-  if (opts.text.showLogo && prof?.logo_url) {
-    try {
-      const res = await fetch(prof.logo_url);
-      if (res.ok) {
-        const logo = await sharp(Buffer.from(await res.arrayBuffer()))
-          .resize({ width: Math.round(w * 0.22), height: Math.round(h * (landscape ? 0.12 : 0.08)), fit: "inside" })
-          .png()
-          .toBuffer();
-        const meta = await sharp(logo).metadata();
-        const lw = meta.width || 0, lh = meta.height || 0;
-        const pad = Math.round(Math.max(lw, lh) * 0.12) + 8;
-        const plateW = lw + pad * 2, plateH = lh + pad * 2;
-        const plate = Buffer.from(
-          `<svg width="${plateW}" height="${plateH}" xmlns="http://www.w3.org/2000/svg"><rect width="${plateW}" height="${plateH}" rx="${Math.round(pad * 0.9)}" fill="#ffffff" fill-opacity="0.92"/></svg>`,
-        );
-        composites.push({ input: plate, left: w - M - plateW, top: M });
-        composites.push({ input: logo, left: w - M - plateW + pad, top: M + pad });
-      }
-    } catch { /* the image still renders without the logo */ }
+  if (logo) {
+    const top = h - M - logo.plateH;
+    composites.push({ input: logo.plate, left: w - M - logo.plateW, top });
+    composites.push({ input: logo.image, left: w - M - logo.plateW + logo.pad, top: top + logo.pad });
   }
 
   // Headshot, top left, in a white ring.
