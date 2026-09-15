@@ -3024,8 +3024,15 @@ export default function ProjectEditorPage() {
               </Button>
             )}
           </div>
-          {/* Social Content Pack */}
-          {seo && (
+          {/* The two cards are built first and placed after, because their
+              order depends on what this project is. After a render the title,
+              description and hashtags are what Publish needs, so they lead. On
+              the blog route the article is the thing that was asked for, and
+              it was sitting a full card below the fold. */}
+          {(() => {
+          const articleFirst = !renderedVideoId && !renderComplete;
+          // Social Content Pack
+          const seoCard = seo && (
             <Card padding="sm">
               <button
                 onClick={() => toggle("seo")}
@@ -3155,17 +3162,17 @@ export default function ProjectEditorPage() {
                 </div>
               )}
             </Card>
-          )}
+          );
 
-          {/* Blog content */}
-          {/* Always on screen now, written or not.
-              It used to render only where a blog already existed, so the three
-              routes that never wrote one — a camera recording, a pasted
-              script, a photo reel — showed no card, no button and nothing
-              saying a blog was even possible. The feature was invisible on
-              exactly the routes where the agent has the most to say and the
-              least of it written down. */}
-          {(
+          // Blog content
+          // Always on screen now, written or not.
+          // It used to render only where a blog already existed, so the three
+          // routes that never wrote one — a camera recording, a pasted
+          // script, a photo reel — showed no card, no button and nothing
+          // saying a blog was even possible. The feature was invisible on
+          // exactly the routes where the agent has the most to say and the
+          // least of it written down.
+          const blogCard = (
             <Card padding="sm">
               {/* A div, not a button. The copy actions moved up into this row
                   and a button cannot contain buttons — so the chevron became
@@ -3305,7 +3312,12 @@ export default function ProjectEditorPage() {
                 </div>
               )}
             </Card>
-          )}
+          );
+
+          return articleFirst
+            ? <>{blogCard}{seoCard}</>
+            : <>{seoCard}{blogCard}</>;
+          })()}
           </>)}
 
           {/* The flow's Back/Next control. Rendered inside the script branch

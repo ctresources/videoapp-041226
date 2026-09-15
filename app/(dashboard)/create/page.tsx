@@ -2146,7 +2146,7 @@ function CreatePageInner() {
                         ? "Press Send to add what you've typed."
                         : `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`)
                     : blogOnly
-                      ? "About a thousand words, with headings, ready to paste into your site."
+                      ? "About a thousand words, with headings, ready to paste into your site. You can turn it into a video afterwards."
                       : "We'll write the script first, then you pick how it looks."
           }
         >

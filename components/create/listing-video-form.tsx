@@ -1047,7 +1047,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           </Button>
           <p className="text-xs text-slate-400 text-center -mt-2">
             You&apos;ll get the article plus a title, description and hashtags, ready to paste into
-            your site.
+            your site. Want a video too? You can turn the article into one afterwards.
           </p>
         </>
       ) : (<>
