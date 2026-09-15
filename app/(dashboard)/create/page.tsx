@@ -1633,7 +1633,7 @@ function CreatePageInner() {
                 five tiles across four leaves one stranded on a row of its
                 own, which reads as a different kind of control. */}
             {([
-              { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Turn a topic into a polished script" },
+              { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Turn a topic into a script" },
               // Not "Upload a PDF": this route takes a link as well, and the
               // kicker already says which two.
               { key: "uploads" as const,   kicker: "PDF or link",      label: "From a document",           desc: "Use a report, guide, or flyer" },
@@ -1675,7 +1675,7 @@ function CreatePageInner() {
         />
         <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
           {([
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a polished script" },
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a script" },
             // Only the two routes that write an article. A pasted script is
             // words you already have, so there is nothing for us to research
             // and nothing to expand — and it is the one route that has never
@@ -1687,19 +1687,23 @@ function CreatePageInner() {
             // mock split it into Add Listing URL and Upload photos, but photos
             // on their own cannot write a script — that is the photo reel,
             // which is a different renderer and free.
-            { mode: "listing" as InputMode, kicker: blogOnly ? "Zillow or MLS" : "Zillow, MLS or photos", label: blogOnly ? "My listings" : "My listings/My photos", desc: blogOnly ? "Turn a listing into a property article" : "Turn a listing into a script, or photos into a reel" },
+            // "Free" is in the description rather than on a pill. The pill sat
+            // beside a two-line kicker and a two-line label in the narrowest
+            // tile on the row, and three stacked things in one corner is what
+            // made this tile read as crowded. The blog-mode kicker keeps its
+            // own wording: there is no photo route on that side.
+            { mode: "listing" as InputMode, kicker: blogOnly ? "Zillow or MLS" : "Zillow, CRM, or photos", label: blogOnly ? "My listings" : "My listings/My photos", desc: blogOnly ? "Turn a listing into a property article" : "Turn a listing into a script, or photos into a reel. Free." },
           ]).map(({ mode, kicker, label, desc }) => (
             <SourceTile
               key={mode}
               kicker={kicker}
               label={label}
               desc={desc}
-              // Listings are the one tile on this side that does not cost what
-              // its row says — the photo reel under it is free — so it is the
-              // one tile that carries a pill of its own.
-              cost={blogOnly
-                ? <CostPill free>Free</CostPill>
-                : mode === "listing" ? <CostPill free>Photo reel free</CostPill> : undefined}
+              // Blog mode only. The listing tile used to carry its own
+              // "Photo reel free" pill here; that now reads as plain "Free."
+              // at the end of its description, which is the same fact without
+              // a third element competing for the same corner.
+              cost={blogOnly ? <CostPill free>Free</CostPill> : undefined}
               active={inputMode === mode}
               onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
             />
