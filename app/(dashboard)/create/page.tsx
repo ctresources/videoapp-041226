@@ -1433,24 +1433,27 @@ function CreatePageInner() {
       {step === "input" && (
         <div className="pt-2">
           <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
-            {/* Ends on the three verbs. "your next video?" made the headline
-                name an output, which meant it had to change when the output
-                did — and a headline that flickers a word as you pick a tile
-                draws the eye to the wrong thing. Without it the sentence is
-                true of all three: a video, a recording, an article. */}
-            How will you{" "}
+            {/* One verb, not the three. "Speak, Spark, Share" is the tagline
+                and still carries the logo, but as a headline it asked how you
+                would do three things at once over a screen whose first
+                question is what you are making. Spark is also a noun now — the
+                folder this page creates — so the verb and the thing it makes
+                are deliberately the same word. */}
+            What will you{" "}
             <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
-              Speak, Spark, Share
+              Spark
             </span>
             ?
           </h1>
-          {/* The subline that was here before pitched the product to someone
-              who has already bought it. This one does a different job: it
-              describes the shape of the screen underneath — several routes in,
-              one set of finished assets out — which is the thing nobody
-              discovers until their third video. */}
+          {/* Two jobs, so two lines: the routes in, then what they are for.
+              Run together at this size it reads as one long breath, and the
+              promise — the half that answers "why bother" — is the half that
+              gets skimmed. */}
           <p className="mt-3 text-[15px] leading-[1.5] text-spark-ink-muted">
-            One idea. Multiple paths. One complete content package.
+            A video with your avatar, or film yourself. A blog post, new or pasted. Or both.
+          </p>
+          <p className="mt-1.5 text-[15px] leading-[1.5] text-spark-ink-muted">
+            Your all-in-one hub — be seen, build trust, become the go-to local expert.
           </p>
         </div>
       )}
