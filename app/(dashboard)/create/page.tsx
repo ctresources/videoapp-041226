@@ -449,6 +449,16 @@ function CreatePageInner() {
    */
   const pasteScriptBudget = pasteWordCap;
 
+  /**
+   * The brief box is holding words that have not been sent.
+   *
+   * Reported up by the panel, because nothing on this page can see it: the
+   * topic only reaches locCustomTopic once a turn has round-tripped, so a
+   * typed-but-unsent topic left the footer telling you to supply the thing
+   * sitting visible in the box above it.
+   */
+  const [briefHasDraft, setBriefHasDraft] = useState(false);
+
   // Paste tab uploads
   const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
   const [pastePhotoUploading, setPastePhotoUploading] = useState(false);
@@ -1826,6 +1836,7 @@ function CreatePageInner() {
               // instance takes a mode — the camera one below is always a
               // script.
               mode={blogOnly ? "blog" : "script"}
+              onDraftChange={setBriefHasDraft}
               seed={sparkSeed}
             />
           </ComposerCard>
@@ -2128,7 +2139,12 @@ function CreatePageInner() {
                 : !locationSet
                   ? "Add the city and state above to carry on."
                   : !locCustomTopic.trim()
-                    ? `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`
+                    ? (briefHasDraft
+                        // The topic is on screen, just not sent. Telling
+                        // someone to supply what they can already see reads as
+                        // the page not working.
+                        ? "Press Send to add what you've typed."
+                        : `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`)
                     : blogOnly
                       ? "About a thousand words, with headings, ready to paste into your site."
                       : "We'll write the script first, then you pick how it looks."

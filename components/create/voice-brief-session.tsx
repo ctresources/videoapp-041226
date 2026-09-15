@@ -74,6 +74,16 @@ interface Props {
    * other caller are untouched.
    */
   mode?: "script" | "blog";
+  /**
+   * Whether the box is holding words that have not been sent yet.
+   *
+   * The page's own state only fills once a turn has round-tripped, so an
+   * unsent draft left the footer saying "say or pick what this is about"
+   * while the topic sat visible in the box above it — the screen telling you
+   * to supply the thing you could see. The panel is the only thing that knows,
+   * so it says.
+   */
+  onDraftChange?: (hasDraft: boolean) => void;
 }
 
 /**
@@ -93,7 +103,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script" }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange }: Props) {
   /** Read in three labels and sent with every turn, so what the panel says and
    *  what the assistant says out loud stay the same answer. */
   const isBlog = mode === "blog";
@@ -166,7 +176,11 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       setThinking(false);
       busyRef.current = false;
     }
-  }, [onSlots, onReady, onSwitchToTyping]);
+    // `mode` goes in the request body, so it belongs here. In practice the
+    // three callbacks above are inline arrows that change identity every
+    // render, which rebuilds this anyway — but relying on that to keep a
+    // captured value fresh is luck, not design.
+  }, [onSlots, onReady, onSwitchToTyping, mode]);
 
   // Everything the script actually needs. Until these are in, saying the wake
   // word would start a render of a brief with no place or no subject.
@@ -303,6 +317,18 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     const el = boxRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [listening, boxValue]);
+
+  /**
+   * Tell the page when the box is holding something unsent.
+   *
+   * Only the typed/heard draft counts, not the live transcript: while the mic
+   * is running the words have not landed anywhere yet, and the footer should
+   * not start talking about Send before Send exists — it appears only once the
+   * mic stops.
+   */
+  useEffect(() => {
+    onDraftChange?.(!!draft.trim());
+  }, [draft, onDraftChange]);
 
   function submitDraft() {
     const text = draft.trim();
