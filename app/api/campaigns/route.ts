@@ -42,7 +42,7 @@ interface ProjectRow {
   id: string; title: string; status: string; project_type: string; thumbnail_url: string | null;
   campaign_id: string; campaign_role: CampaignRole | null; created_at: string;
   cta: string | null; custom_topic: string | null;
-  blog_intro: string | null; blog_conclusion: string | null;
+  blog_intro: string | null; blog_conclusion: string | null; blog_header_url: string | null;
   yt_title: string | null; yt_description: string | null; ig_caption: string | null;
 }
 interface VideoRow {
@@ -154,7 +154,7 @@ export async function GET() {
   const [projectsRes, postsRes, jobsRes] = await Promise.all([
     admin
       .from("projects")
-      .select("id, title, status, project_type, thumbnail_url, campaign_id, campaign_role, created_at, cta:ai_script->>cta, custom_topic:ai_script->>custom_topic, blog_intro:ai_script->>blog_intro, blog_conclusion:ai_script->>blog_conclusion, yt_title:seo_data->>youtube_title, yt_description:seo_data->>youtube_description, ig_caption:seo_data->>instagram_caption")
+      .select("id, title, status, project_type, thumbnail_url, campaign_id, campaign_role, created_at, cta:ai_script->>cta, custom_topic:ai_script->>custom_topic, blog_intro:ai_script->>blog_intro, blog_conclusion:ai_script->>blog_conclusion, blog_header_url:ai_script->>blog_header_url, yt_title:seo_data->>youtube_title, yt_description:seo_data->>youtube_description, ig_caption:seo_data->>instagram_caption")
       .eq("user_id", userId)
       .in("campaign_id", ids),
     admin
@@ -256,6 +256,7 @@ export async function GET() {
         publishedAt: r.blog_published_at,
         platform: r.blog_platform,
         url: r.blog_url,
+        headerUrl: blogProject?.blog_header_url || null,
       },
       projects: projects
         .filter((p) => p.campaign_id === r.id)

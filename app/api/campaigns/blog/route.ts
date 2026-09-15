@@ -36,11 +36,14 @@ export async function GET(req: NextRequest) {
 
   const { data: project } = await admin
     .from("projects")
-    .select("intro:ai_script->>blog_intro, body:ai_script->>blog_body, conclusion:ai_script->>blog_conclusion")
+    .select("intro:ai_script->>blog_intro, body:ai_script->>blog_body, conclusion:ai_script->>blog_conclusion, headline:ai_script->>blog_headline, header_url:ai_script->>blog_header_url")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
-  const row = project as { intro: string | null; body: string | null; conclusion: string | null } | null;
+  const row = project as {
+    intro: string | null; body: string | null; conclusion: string | null;
+    headline: string | null; header_url: string | null;
+  } | null;
 
   if (!row?.body?.trim()) {
     return NextResponse.json(
@@ -50,6 +53,14 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    blog: { intro: row.intro ?? "", body: row.body, conclusion: row.conclusion ?? "" },
+    blog: {
+      intro: row.intro ?? "",
+      body: row.body,
+      conclusion: row.conclusion ?? "",
+      // So Copy as HTML from the Spark card matches the editor's: the <h1> and
+      // the header image, not only the paragraphs.
+      headline: row.headline ?? "",
+      headerUrl: row.header_url ?? "",
+    },
   });
 }

@@ -123,6 +123,8 @@ export interface Campaign {
     publishedAt: string | null;
     platform: string | null;
     url: string | null;
+    /** The article's header image, made in the image generator. */
+    headerUrl: string | null;
   };
   projects: CampaignProject[];
   posts: CampaignPost[];

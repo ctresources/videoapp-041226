@@ -132,7 +132,9 @@ function SubPanel({ title, onClose, children }: { title: string; onClose: () => 
           <X size={16} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+      <div className="flex-1 overflow-y-auto px-5 py-6">
+      <div className="mx-auto max-w-[860px]">{children}</div>
+    </div>
     </div>
   );
 }
@@ -293,10 +295,10 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
     act("publish", () => patchSpark({ blog_status: "ready" }), "Article moved back to Ready.");
   }
 
-  async function loadArticle(): Promise<{ intro: string; body: string; conclusion: string } | null> {
+  async function loadArticle(): Promise<{ intro: string; body: string; conclusion: string; headline: string; headerUrl: string } | null> {
     try {
       const data = await send(`/api/campaigns/blog?campaignId=${encodeURIComponent(c.id)}`, "GET");
-      return data.blog as { intro: string; body: string; conclusion: string };
+      return data.blog as { intro: string; body: string; conclusion: string; headline: string; headerUrl: string };
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't load the article.");
       return null;
@@ -307,7 +309,9 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
     setBusy("copy");
     const blog = await loadArticle();
     if (blog) {
-      await navigator.clipboard.writeText(blogAsHtml(blog));
+      // The Spark's own article title wins, since it is editable here; the
+      // written headline stands in when none has been set.
+      await navigator.clipboard.writeText(blogAsHtml({ ...blog, headline: c.blog.title || blog.headline }));
       toast.success("Blog HTML copied. Paste it into your website or CRM's HTML view.");
     }
     setBusy(null);
@@ -316,14 +320,15 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
   async function openPreview() {
     setBusy("preview");
     const blog = await loadArticle();
-    if (blog) { setPreviewHtml(blogAsHtml(blog)); setSub("preview"); }
+    // Body only: the preview draws the header image and title itself, above it.
+    if (blog) { setPreviewHtml(blogAsHtml({ intro: blog.intro, body: blog.body, conclusion: blog.conclusion })); setSub("preview"); }
     setBusy(null);
   }
 
   async function openArticle() {
     setBusy("article-load");
     const blog = await loadArticle();
-    if (blog) { setArticle({ title: c.blog.title ?? "", ...blog }); setSub("article"); }
+    if (blog) { setArticle({ title: c.blog.title ?? "", intro: blog.intro, body: blog.body, conclusion: blog.conclusion }); setSub("article"); }
     setBusy(null);
   }
 
@@ -473,17 +478,21 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
+    // Full screen, not a 560px drawer on the right. The card holds an article,
+    // captions, a schedule and a Series, and editing any of them in a strip
+    // was the complaint. There is no backdrop to click away on, so a stray
+    // click can't throw away an edit; Escape and the X still close it.
+    <div className="fixed inset-0 z-50 flex bg-[#fffdf9]">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={c.name}
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex h-full w-full max-w-[560px] flex-col bg-[#fffdf9] shadow-brand-lg"
+        className="relative flex h-full w-full flex-col bg-[#fffdf9]"
       >
         <div className="flex-1 overflow-y-auto">
           {/* ── Header ── */}
           <div className="border-b border-spark-rule bg-white px-5 py-4">
+            <div className="mx-auto max-w-[1100px]">
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -587,7 +596,13 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                 <ChevronRight size={15} />
               </button>
             </div>
+            </div>
           </div>
+
+          {/* Two columns once there is room: what was made on the left, how it
+              goes out on the right. One column on phones and tablets. */}
+          <div className="mx-auto grid w-full max-w-[1100px] lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:gap-x-8">
+          <div className="min-w-0">
 
           {/* ── Videos ── */}
           <Section
@@ -698,11 +713,21 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
               </p>
             )}
 
+            {c.blog.hasArticle && c.blog.headerUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={c.blog.headerUrl} alt={c.blog.title || "Blog header"} className="mt-3 w-full max-w-[420px] rounded-lg border border-spark-rule-soft" />
+            )}
+
             {c.blog.hasArticle && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <button onClick={copyHtml} disabled={busy !== null} className={quietBtn}>
                   {busy === "copy" ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />} Copy as HTML
                 </button>
+                {c.blog.projectId && (
+                  <Link href={`/tools?tab=image&project=${c.blog.projectId}&template=blog_header`} className={quietBtn}>
+                    <ImageIcon size={12} /> {c.blog.headerUrl ? "Change header image" : "Header image"}
+                  </Link>
+                )}
                 {blogPublished ? (
                   <button onClick={unpublish} disabled={busy !== null} className={quietBtn}>
                     {busy === "publish" && <Loader2 size={12} className="animate-spin" />} Mark as not published
@@ -759,7 +784,9 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
               </div>
             )}
           </Section>
+          </div>
 
+          <div className="min-w-0">
           {/* ── CTA and destination ── */}
           <Section
             icon={Link2}
@@ -1164,22 +1191,30 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
             </div>
             <p className="mt-2 text-[11.5px] text-spark-ink-faint">Performance appears after a video publishes to a connected channel.</p>
           </Section>
+          </div>
+          </div>
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex justify-end border-t border-spark-rule bg-white px-5 py-3">
-          <button onClick={() => setSub("review")} className={ctaBtn}>
-            <CheckCircle2 size={13} /> Review and Schedule
-          </button>
+        <div className="border-t border-spark-rule bg-white px-5 py-3">
+          <div className="mx-auto flex max-w-[1100px] justify-end">
+            <button onClick={() => setSub("review")} className={ctaBtn}>
+              <CheckCircle2 size={13} /> Review and Schedule
+            </button>
+          </div>
         </div>
 
         {/* ── Panels over the card ── */}
         {sub === "preview" && (
           <SubPanel title="Preview Article" onClose={() => setSub(null)}>
-            <h1 className="text-[20px] font-bold leading-snug text-spark-ink">{c.blog.title || c.name}</h1>
+            {c.blog.headerUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={c.blog.headerUrl} alt={c.blog.title || c.name} className="mb-4 w-full rounded-xl border border-spark-rule-soft" />
+            )}
+            <h1 className="text-[22px] font-bold leading-snug text-spark-ink">{c.blog.title || c.name}</h1>
             {/* blogAsHtml escapes the article text, so this is markup we built, not markup we were given. */}
             <div
-              className="mt-2 text-[14px] leading-relaxed text-spark-ink-soft [&_h2]:mt-6 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:text-spark-ink [&_p]:mt-3"
+              className="mt-2 text-[15px] leading-relaxed text-spark-ink-soft [&_h2]:mt-6 [&_h2]:text-[17px] [&_h2]:font-semibold [&_h2]:text-spark-ink [&_h3]:mt-4 [&_h3]:text-[15px] [&_h3]:font-semibold [&_h3]:text-spark-ink [&_p]:mt-3"
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </SubPanel>
@@ -1197,7 +1232,7 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
                   <label className={labelCls} htmlFor={`art-${k}`}>{k === "intro" ? "Introduction" : k === "body" ? "Body" : "Conclusion"}</label>
                   <textarea
                     id={`art-${k}`}
-                    rows={k === "body" ? 16 : 4}
+                    rows={k === "body" ? 28 : 5}
                     value={article[k]}
                     onChange={(e) => setArticle({ ...article, [k]: e.target.value })}
                     className={cn(inputCls, "leading-relaxed")}
