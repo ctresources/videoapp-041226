@@ -264,6 +264,20 @@ export default function ProjectEditorPage() {
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderFailed, setRenderFailed] = useState(false);
   /**
+   * Whether this project has ever produced a video.
+   *
+   * Read from generated_videos on load, because nothing else on this page can
+   * answer it. renderedVideoId, renderComplete and renderFailed are all
+   * session flags — set when a render starts or finishes on THIS visit — so
+   * they are equally empty for a blog-only project and for a video project
+   * reopened a day later. Telling those two apart is what the Share Kit needs:
+   * on the blog route there is no video, Publish never runs, and copy written
+   * for the video path describes a step that does not exist.
+   *
+   * null while unknown, so nothing renders a guess before the answer arrives.
+   */
+  const [hasVideo, setHasVideo] = useState<boolean | null>(null);
+  /**
    * "I'll record it" — the third answer to who's on screen.
    *
    * Deliberately not a renderMode: nothing server-side accepts it, and it does
@@ -794,6 +808,19 @@ export default function ProjectEditorPage() {
     const p = data as unknown as Project;
     setProject(p);
     seedPhotosFromListing(p);
+
+    // Does this project have a video at all? head+count rather than the rows:
+    // the answer is a yes or no, and nothing on this page needs the videos
+    // themselves. Failure leaves it null, which reads as "unknown" and shows
+    // the neutral copy rather than asserting either way.
+    supabase
+      .from("generated_videos")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", p.id)
+      .then(({ count, error: vErr }) => {
+        if (vErr) return;
+        setHasVideo((count ?? 0) > 0);
+      });
     // Only set for a fresh (not user_edited) load — passed to initContentEdits
     // below so the title matches whichever hook just got auto-selected.
     // Stays undefined on a saved draft, so a title the user deliberately
@@ -3318,7 +3345,16 @@ export default function ProjectEditorPage() {
                     // title, description and hashtags off the project. It
                     // fills them in for you; the copy buttons are for pasting
                     // somewhere Publish does not reach.
-                    : "Publish fills these in for you. Edit here first"
+                    //
+                    // And on a project with no video that sentence describes a
+                    // step that never happens: nothing publishes, so nothing is
+                    // filled in. hasVideo is null until the count returns —
+                    // neither line is shown on a guess.
+                    : hasVideo === false
+                      ? "Copy the article into your site. Nothing here publishes on its own"
+                      : hasVideo
+                        ? "Publish fills these in for you. Edit here first"
+                        : ""
             }
           >
             {editorStep === 2 && (
