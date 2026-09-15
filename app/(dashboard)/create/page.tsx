@@ -2846,10 +2846,21 @@ function CreatePageInner() {
               Zillow import, which is not even mounted in that mode. */}
           <Card padding="sm" className="p-3 min-w-0 lg:sticky lg:top-4 border-t-4 border-t-spark-blue">
             <p className="text-base font-bold text-brand-text mb-3">
-              {listingMode === "reel" ? "What Your Photo Reel Includes" : "What Your Listing Video Includes"}
+              {blogOnly
+                ? "What Your Property Article Includes"
+                : listingMode === "reel" ? "What Your Photo Reel Includes" : "What Your Listing Video Includes"}
             </p>
+            {/* A third list for the blog route, which had been showing the
+                listing video's — b-roll, a narrator, an avatar — beside a card
+                headed "Property Article" and under "No video will be made". */}
             <ul className="text-sm text-spark-ink-soft space-y-2.5">
-              {listingMode === "reel" ? (<>
+              {blogOnly ? (<>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> About 1,000 words with headings, ready to paste into your site</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Written from the listing: price, beds, baths and standout features</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Fair Housing-safe wording</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Nothing spent. Turn it into a video afterwards if you want one</li>
+              </>) : listingMode === "reel" ? (<>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your photos in the shape you pick, with Ken Burns motion and dissolves between them</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Music only, your cloned voice reading a script you write, or a recording of you</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Text cards on the photos you write one for, and captions burned in if you want them</li>
@@ -2867,9 +2878,11 @@ function CreatePageInner() {
               </>)}
             </ul>
             <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">
-              {listingMode === "reel"
-                ? "Tip: photo 1 opens the reel. Use the arrows to put your strongest shot first."
-                : "Tip: Zillow import fills everything in seconds. Just paste the listing URL."}
+              {blogOnly
+                ? "Tip: Zillow import fills in the details in seconds. Just paste the listing URL."
+                : listingMode === "reel"
+                  ? "Tip: photo 1 opens the reel. Use the arrows to put your strongest shot first."
+                  : "Tip: Zillow import fills everything in seconds. Just paste the listing URL."}
             </p>
           </Card>
         </div>

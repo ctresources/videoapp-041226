@@ -429,7 +429,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
             Paste a listing link
           </p>
           <p className="mb-3 text-[12.5px] leading-[1.4] text-spark-ink-muted">
-            We read the address, price, beds, baths and photos, and write the tour for you.
+            We read the address, price, beds, baths and photos, and write the {blogOnly ? "article" : "tour"} for you.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
@@ -504,7 +504,11 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Listing photos{" "}
             <span className="font-normal normal-case tracking-normal text-slate-400">
-              · the b-roll your tour plays over · usually filled by the import above
+              {/* The article is written from the details, not the pictures;
+                  on the blog route they only matter if it becomes a video. */}
+              {blogOnly
+                ? "· optional · only used if you turn the article into a video later"
+                : "· the b-roll your tour plays over · usually filled by the import above"}
             </span>
           </p>
 
@@ -516,7 +520,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt={`Listing photo ${i + 1}`} className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
                   <span className="min-w-0 flex-1 truncate text-[12px] text-slate-400">
-                    {i === 0 ? "Opens the video" : `Photo ${i + 1}`}
+                    {i === 0 ? (blogOnly ? "Cover photo" : "Opens the video") : `Photo ${i + 1}`}
                   </span>
                   <div className="flex shrink-0 flex-col gap-0.5">
                     <button
@@ -596,11 +600,21 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                 scripts moved onto the same word budgets as every other script
                 in the app. Read from RENDERED_SCRIPT_LENGTHS so it cannot go
                 stale again the next time those change. */}
-            <strong>What happens next:</strong> We import the listing details, then use AI to write
-            a property tour voiceover script written to Fair Housing guidelines. Up to{" "}
-            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
-            {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
-            titles, hashtags and blog post that go with it.
+            <strong>What happens next:</strong>{" "}
+            {blogOnly ? (
+              <>
+                We import the listing details, then write a property article to Fair Housing
+                guidelines, plus the title, description and hashtags to go with it.
+              </>
+            ) : (
+              <>
+                We import the listing details, then use AI to write a property tour voiceover script
+                written to Fair Housing guidelines. Up to{" "}
+                {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
+                {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
+                titles, hashtags and blog post that go with it.
+              </>
+            )}
           </p>
         </div>
       </div>
