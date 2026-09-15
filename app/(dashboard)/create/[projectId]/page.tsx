@@ -352,6 +352,21 @@ export default function ProjectEditorPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: true, blog: false,
   });
+  /**
+   * An article that exists is open.
+   *
+   * Collapsed made sense while the card was an offer — a thing you might ask
+   * for on a video project. On the blog route the article IS the deliverable,
+   * and it was arriving folded shut behind a 16px chevron at the bottom of the
+   * page: the one thing that screen exists to hand over was the one thing
+   * hidden. Keyed on the article existing rather than on the route, because
+   * that is the condition that actually matters — written content should not
+   * be behind a disclosure on any route.
+   *
+   * Runs once per project load and does not fight the toggle afterwards: it
+   * only ever opens, and only when the article appeared.
+   */
+  const blogOpenedRef = useRef<string | null>(null);
   const [editedScript, setEditedScript] = useState("");
   const [editedCta, setEditedCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
@@ -509,6 +524,22 @@ export default function ProjectEditorPage() {
     if (searchParams.get("step") === "5") setEditorStep(5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editedScript]);
+
+  /**
+   * Open the article card once there is an article in it.
+   *
+   * Only ever opens, and only once per project — the ref means pressing the
+   * chevron to collapse it afterwards sticks, rather than being reopened on
+   * the next render.
+   */
+  useEffect(() => {
+    if (!project) return;
+    const s = project.ai_script;
+    if (!(s?.blog_intro || s?.blog_body)) return;
+    if (blogOpenedRef.current === project.id) return;
+    blogOpenedRef.current = project.id;
+    setExpandedSections((prev) => ({ ...prev, blog: true }));
+  }, [project]);
 
   // Voice-follow lifecycle: listen whenever the teleprompter is open with Flow
   // on. Previously the follower only started if Flow was already on when
@@ -3094,13 +3125,16 @@ export default function ProjectEditorPage() {
               least of it written down. */}
           {(
             <Card padding="sm">
-              <button
-                onClick={() => toggle("blog")}
-                className="flex items-center justify-between w-full px-2 py-1 mb-2"
-              >
+              {/* A div, not a button. The copy actions moved up into this row
+                  and a button cannot contain buttons — so the chevron became
+                  its own control and the whole header stopped being one big
+                  target. The heading is a size up: on the blog route this card
+                  is the deliverable, and it was set in the same 14px as the
+                  section it is nested beside. */}
+              <div className="flex flex-wrap items-center justify-between gap-2 w-full px-2 py-1 mb-2">
                 <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-slate-500" />
-                  <h3 className="font-semibold text-sm text-brand-text">Blog article</h3>
+                  <FileText size={17} className="text-spark-amber" />
+                  <h3 className="font-bold text-[17px] leading-tight text-brand-text">Blog article</h3>
                   {/* Earned now. The badge used to sit on an article written by
                       a prompt that said nothing about answer engines — the
                       AEO/GEO work was real but it was in the YouTube title and
@@ -3110,8 +3144,74 @@ export default function ProjectEditorPage() {
                       badge was claiming all along. */}
                   <Badge variant="default" className="text-xs">AEO/GEO/SEO</Badge>
                 </div>
-                {expandedSections.blog ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-              </button>
+
+                {/* The actions, in the header rather than buried inside the
+                    disclosure. They are the entire reason the card exists —
+                    Copy as HTML is how the article gets to your site — and
+                    they were only reachable after expanding it. */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {(script.blog_intro || script.blog_body) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={copyBlogHtml}
+                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                      >
+                        <Copy size={12} /> Copy as HTML
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyToClipboard(
+                            [script.blog_headline || "", script.blog_intro, script.blog_body, script.blog_conclusion]
+                              .filter(Boolean)
+                              .map(blogPlainText)
+                              .join("\n\n"),
+                            "Blog post",
+                          )
+                        }
+                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                      >
+                        <Copy size={12} /> Copy as text
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRecordOnCamera(
+                            [script.blog_intro, script.blog_body, script.blog_conclusion]
+                              .filter(Boolean)
+                              .map(blogPlainText)
+                              .join("\n\n"),
+                          )
+                        }
+                        title="Send this blog post to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
+                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
+                      >
+                        <Camera size={12} /> Record on Camera
+                      </button>
+                      <span className="text-xs text-slate-400">
+                        {[script.blog_intro, script.blog_body, script.blog_conclusion]
+                          .filter(Boolean)
+                          .join(" ")
+                          .trim()
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .length.toLocaleString()}{" "}
+                        words
+                      </span>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => toggle("blog")}
+                    aria-expanded={!!expandedSections.blog}
+                    aria-label={expandedSections.blog ? "Hide the article" : "Show the article"}
+                    className="rounded-lg p-1 text-slate-400 transition-colors hover:text-spark-amber"
+                  >
+                    {expandedSections.blog ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  </button>
+                </div>
+              </div>
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
                 <div className="px-2 pb-1">
                   <p className="text-xs leading-[1.5] text-slate-500">
@@ -3136,62 +3236,11 @@ export default function ProjectEditorPage() {
               )}
               {expandedSections.blog && (script.blog_intro || script.blog_body) && (
                 <div className="px-2 space-y-3">
-                  {/* Copy the whole article as markup — the article now carries
-                      headings, and re-adding them by hand after pasting was the
-                      obvious thing this feature was missing. */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={copyBlogHtml}
-                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
-                    >
-                      <Copy size={12} /> Copy as HTML
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyToClipboard(
-                          // Headline first, as the article's title. Left out of
-                          // the Record on Camera handoff below on purpose — it
-                          // is the page's title, not a line to say out loud.
-                          [script.blog_headline || "", script.blog_intro, script.blog_body, script.blog_conclusion]
-                            .filter(Boolean)
-                            .map(blogPlainText)
-                            .join("\n\n"),
-                          "Blog post",
-                        )
-                      }
-                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
-                    >
-                      <Copy size={12} /> Copy as text
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleRecordOnCamera(
-                          [script.blog_intro, script.blog_body, script.blog_conclusion]
-                            .filter(Boolean)
-                            .map(blogPlainText)
-                            .join("\n\n"),
-                        )
-                      }
-                      title="Send this blog post to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
-                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
-                    >
-                      <Camera size={12} /> Record on Camera
-                    </button>
-                    <span className="text-xs text-slate-400">
-                      {[script.blog_intro, script.blog_body, script.blog_conclusion]
-                        .filter(Boolean)
-                        .join(" ")
-                        .trim()
-                        .split(/\s+/)
-                        .filter(Boolean)
-                        .length.toLocaleString()}{" "}
-                      words
-                    </span>
-                  </div>
-
+                  {/* Copy as HTML, Copy as text, Record on Camera and the word
+                      count live in the card header now. They were the point of
+                      this card and were sitting behind the disclosure that hid
+                      it — on the blog route, behind the one chevron between you
+                      and the thing you came for. */}
                   {[
                     { label: "Headline", value: script.blog_headline || "" },
                     { label: "Introduction", value: script.blog_intro },
