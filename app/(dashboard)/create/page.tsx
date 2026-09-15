@@ -168,14 +168,24 @@ function SectionHead({ eyebrow, question, aside, className = "" }: {
 /** Free or not, said on the control that decides it rather than three steps
  *  later. Amber is the app's "this spends something" colour throughout; free
  *  routes get the quiet neutral, so the pair reads at a glance without either
- *  one shouting. */
-function CostPill({ free, children }: { free: boolean; children: React.ReactNode }) {
+ *  one shouting.
+ *
+ *  `emphasis` overrides that on row 1, where all three pills are set in amber
+ *  regardless of cost. There the pills sit in a line across three tiles and
+ *  are read together — one lit and two greyed made the free routes look like
+ *  the lesser options rather than the cheaper ones. Row 2 keeps the default,
+ *  where a lone "Free" or "Photo reel free" appears against tiles that carry
+ *  no pill at all and amber would wrongly signal a cost. */
+function CostPill(
+  { free, emphasis = false, children }:
+  { free: boolean; emphasis?: boolean; children: React.ReactNode },
+) {
   return (
     <span
       className={`inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[9.5px] font-semibold uppercase tracking-[0.1em] ${
-        free
-          ? "bg-spark-rule/50 text-spark-ink-muted"
-          : "bg-spark-amber-tint text-[#A3660F]"
+        emphasis || !free
+          ? "bg-spark-amber-tint text-[#A3660F]"
+          : "bg-spark-rule/50 text-spark-ink-muted"
       }`}
     >
       {children}
@@ -1457,7 +1467,10 @@ function CreatePageInner() {
               #8D580F — the same deep amber the Spark Card uses for the line
               that needs reading. Muted grey at 15px made the half that answers
               "why bother" the quietest thing on the screen. */}
-          <p className="mt-3 text-[17px] leading-[1.5] text-primary-700">
+          {/* A size above the line below it: the routes in are what you act
+              on, the promise underneath is why. Same size for both made them
+              one block to skim past. */}
+          <p className="mt-3 text-[19px] leading-[1.5] text-primary-700">
             A video with your avatar, or film yourself. A blog post, new or pasted. Or both.
           </p>
           <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
@@ -1592,7 +1605,7 @@ function CreatePageInner() {
                       around; here each tile reads top to bottom — what it is,
                       what it does, what it costs. */}
                   <span className="mt-1.5 block">
-                    <CostPill free={free}>{cost}</CostPill>
+                    <CostPill free={free} emphasis>{cost}</CostPill>
                   </span>
                 </span>
               </button>
