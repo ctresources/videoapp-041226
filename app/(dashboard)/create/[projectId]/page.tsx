@@ -388,6 +388,22 @@ export default function ProjectEditorPage() {
   const [editedScript, setEditedScript] = useState("");
   /** "Write an 8-minute script from the article" is running. */
   const [articleScriptWriting, setArticleScriptWriting] = useState(false);
+  /** The article card's Video menu. Closes on a click outside it or Escape. */
+  const [videoMenuOpen, setVideoMenuOpen] = useState(false);
+  const videoMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!videoMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (videoMenuRef.current && !videoMenuRef.current.contains(e.target as Node)) setVideoMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setVideoMenuOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [videoMenuOpen]);
   const [editedCta, setEditedCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
   // Editable AI-generated title/description — persisted to the project on
@@ -3080,38 +3096,13 @@ export default function ProjectEditorPage() {
                 ? <>Written with your video: the title, description and hashtags Publish fills in for
                     you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
                     anything here before you post.</>
-                : <>Written with your script, and nothing was spent on it. The article is below, ready
-                    to paste into your site — with the title, description and hashtags to go with it.</>}
+                : <>Nothing was spent on this. The article is below, ready to paste into your site, with
+                    the title, description and hashtags to go with it.</>}
             </p>
-            {/* Was a sentence telling people to "step back to the script",
-                with nothing saying how. The script is step 2 and the project
-                already has one, so the video is a click away. */}
-            {!renderedVideoId && !renderComplete && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2 gap-1.5"
-                onClick={() => {
-                  setEditorStep(skipScriptStep ? 3 : 2);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                <Video size={14} /> Turn it into a video
-              </Button>
-            )}
-            {/* The script was written alongside the article and never shown on
-                the blog route, so the button led to something nobody knew
-                existed. Saying its length is also the answer to "how long
-                will the video be". */}
-            {!renderedVideoId && !renderComplete && (() => {
-              const n = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
-              return n > 0 ? (
-                <p className="mt-1 text-[11px] leading-[1.45] text-spark-ink-faint">
-                  Your short video script is already written: {n} words, about {mins(n)} minutes. You&rsquo;ll see
-                  it next, and can edit it or write a longer one from the article.
-                </p>
-              ) : null;
-            })()}
+            {/* The way to a video, and its length, now live in one Video menu
+                on the article card. Here they were a button, a sentence and
+                two more buttons further down: five mentions of a video on the
+                one route where nobody asked for one. */}
           </div>
           {/* The two cards are built first and placed after, because their
               order depends on what this project is. After a render the title,
@@ -3312,11 +3303,9 @@ export default function ProjectEditorPage() {
                       >
                         <Copy size={12} /> Copy as text
                       </button>
-                      {/* Two reads, each with its length. This used to be one
-                          Record on Camera that always sent the whole article,
-                          which is three to eleven minutes at the teleprompter,
-                          when the short script written with it was sitting one
-                          step back. */}
+                      {/* Every way from the article to a video, in one menu.
+                          The short script already exists (written with the
+                          article), so each option carries its own length. */}
                       {(() => {
                         const articleText = [script.blog_intro, script.blog_body, script.blog_conclusion]
                           .filter(Boolean)
@@ -3324,28 +3313,62 @@ export default function ProjectEditorPage() {
                           .join("\n\n");
                         const articleWords = articleText.split(/\s+/).filter(Boolean).length;
                         const scriptWords = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
-                        const cls = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber";
+                        const canMakeVideo = !renderedVideoId && !renderComplete;
+                        const row = "flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-spark-amber-tint";
                         return (
-                          <>
-                            {scriptWords > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRecordOnCamera()}
-                                title="Send the short video script to the Camera tab's teleprompter"
-                                className={cls}
-                              >
-                                <Camera size={12} /> Read the script · about {mins(scriptWords)} min
-                              </button>
-                            )}
+                          <div ref={videoMenuRef} className="relative">
                             <button
                               type="button"
-                              onClick={() => handleRecordOnCamera(articleText)}
-                              title="Send the whole article to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
-                              className={cls}
+                              onClick={() => setVideoMenuOpen((o) => !o)}
+                              aria-haspopup="menu"
+                              aria-expanded={videoMenuOpen}
+                              className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
                             >
-                              <Camera size={12} /> Read the whole article · about {mins(articleWords)} min
+                              <Video size={12} /> Video
+                              <ChevronDown size={12} className={`transition-transform ${videoMenuOpen ? "rotate-180" : ""}`} />
                             </button>
-                          </>
+                            {videoMenuOpen && (
+                              <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-xl border border-spark-rule bg-white p-1 shadow-lg">
+                                {canMakeVideo && (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className={row}
+                                    onClick={() => {
+                                      setVideoMenuOpen(false);
+                                      setEditorStep(skipScriptStep ? 3 : 2);
+                                      window.scrollTo({ top: 0, behavior: "smooth" });
+                                    }}
+                                  >
+                                    <span className="text-xs font-semibold text-spark-ink">Make it a video</span>
+                                    <span className="text-[11px] text-spark-ink-faint">
+                                      {scriptWords > 0 ? `Script ready · about ${mins(scriptWords)} min` : "Set up the script first"}
+                                    </span>
+                                  </button>
+                                )}
+                                {scriptWords > 0 && (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className={row}
+                                    onClick={() => { setVideoMenuOpen(false); handleRecordOnCamera(); }}
+                                  >
+                                    <span className="text-xs font-semibold text-spark-ink">Read the script on camera</span>
+                                    <span className="text-[11px] text-spark-ink-faint">About {mins(scriptWords)} min</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className={row}
+                                  onClick={() => { setVideoMenuOpen(false); handleRecordOnCamera(articleText); }}
+                                >
+                                  <span className="text-xs font-semibold text-spark-ink">Read the whole article on camera</span>
+                                  <span className="text-[11px] text-spark-ink-faint">About {mins(articleWords)} min</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         );
                       })()}
                       <span className="text-xs text-slate-400">
