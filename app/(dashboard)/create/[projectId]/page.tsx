@@ -3096,8 +3096,8 @@ export default function ProjectEditorPage() {
                 ? <>Written with your video: the title, description and hashtags Publish fills in for
                     you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
                     anything here before you post.</>
-                : <>Nothing was spent on this. The article is below, ready to paste into your site, with
-                    the title, description and hashtags to go with it.</>}
+                : <>The article is below, ready to paste into your site, with the title, description and
+                    hashtags to go with it.</>}
             </p>
             {/* The way to a video, and its length, now live in one Video menu
                 on the article card. Here they were a button, a sentence and
@@ -3305,9 +3305,19 @@ export default function ProjectEditorPage() {
                       >
                         <Copy size={12} /> Copy as text
                       </button>
+                      {/* In the row with the other actions rather than on a line of
+                          its own under them. */}
+                      <Link
+                        href={`/tools?tab=image&project=${project.id}&template=blog_header`}
+                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                      >
+                        <ImageIcon size={12} /> {script.blog_header_url ? "Change header image" : "Header image"}
+                      </Link>
                       {/* Every way from the article to a video, in one menu.
                           The short script already exists (written with the
-                          article), so each option carries its own length. */}
+                          article), so each option carries its own length, and
+                          what it costs: the avatar render uses a video from the
+                          plan, reading it yourself does not. */}
                       {(() => {
                         const articleText = [script.blog_intro, script.blog_body, script.blog_conclusion]
                           .filter(Boolean)
@@ -3330,7 +3340,7 @@ export default function ProjectEditorPage() {
                               <ChevronDown size={12} className={`transition-transform ${videoMenuOpen ? "rotate-180" : ""}`} />
                             </button>
                             {videoMenuOpen && (
-                              <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-xl border border-spark-rule bg-white p-1 shadow-lg">
+                              <div role="menu" className="absolute left-0 sm:left-auto sm:right-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-xl border border-spark-rule bg-white p-1 shadow-lg">
                                 {canMakeVideo && (
                                   <button
                                     type="button"
@@ -3342,9 +3352,11 @@ export default function ProjectEditorPage() {
                                       window.scrollTo({ top: 0, behavior: "smooth" });
                                     }}
                                   >
-                                    <span className="text-xs font-semibold text-spark-ink">Make it a video</span>
+                                    <span className="text-xs font-semibold text-spark-ink">Make it a short video</span>
                                     <span className="text-[11px] text-spark-ink-faint">
-                                      {scriptWords > 0 ? `Script ready · about ${mins(scriptWords)} min` : "Set up the script first"}
+                                      {scriptWords > 0
+                                        ? `Avatar or cloned voice · about ${mins(scriptWords)} min · Uses 1 video`
+                                        : "Avatar or cloned voice · Uses 1 video"}
                                     </span>
                                   </button>
                                 )}
@@ -3356,7 +3368,7 @@ export default function ProjectEditorPage() {
                                     onClick={() => { setVideoMenuOpen(false); handleRecordOnCamera(); }}
                                   >
                                     <span className="text-xs font-semibold text-spark-ink">Read the script on camera</span>
-                                    <span className="text-[11px] text-spark-ink-faint">About {mins(scriptWords)} min</span>
+                                    <span className="text-[11px] text-spark-ink-faint">About {mins(scriptWords)} min · Free</span>
                                   </button>
                                 )}
                                 <button
@@ -3366,23 +3378,15 @@ export default function ProjectEditorPage() {
                                   onClick={() => { setVideoMenuOpen(false); handleRecordOnCamera(articleText); }}
                                 >
                                   <span className="text-xs font-semibold text-spark-ink">Read the whole article on camera</span>
-                                  <span className="text-[11px] text-spark-ink-faint">About {mins(articleWords)} min</span>
+                                  <span className="text-[11px] text-spark-ink-faint">
+                                    {articleWords.toLocaleString()} words · about {mins(articleWords)} min · Free
+                                  </span>
                                 </button>
                               </div>
                             )}
                           </div>
                         );
                       })()}
-                      <span className="text-xs text-slate-400">
-                        {[script.blog_intro, script.blog_body, script.blog_conclusion]
-                          .filter(Boolean)
-                          .join(" ")
-                          .trim()
-                          .split(/\s+/)
-                          .filter(Boolean)
-                          .length.toLocaleString()}{" "}
-                        words
-                      </span>
                     </>
                   )}
                   <button
@@ -3396,24 +3400,13 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               </div>
-              {/* The header image, or the way to make one. Only once there is an
-                  article, since a header for an article nobody has written is
-                  a picture of nothing. */}
-              {expandedSections.blog && (script.blog_intro || script.blog_body) && (
+              {/* The header image itself, once there is one. The link to make or
+                  change it is a pill in the action row above. */}
+              {expandedSections.blog && (script.blog_intro || script.blog_body) && script.blog_header_url && (
                 <div className="px-2 mb-3">
-                  {script.blog_header_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={script.blog_header_url} alt={script.blog_headline || "Blog header"} className="w-full rounded-xl border border-slate-200" />
-                  )}
-                  <Link
-                    href={`/tools?tab=image&project=${project.id}&template=blog_header`}
-                    className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700"
-                  >
-                    <ImageIcon size={12} /> {script.blog_header_url ? "Change the header image" : "Make a header image"}
-                  </Link>
-                  {script.blog_header_url && (
-                    <p className="mt-0.5 text-[11px] text-slate-400">Copy as HTML puts it above the headline.</p>
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={script.blog_header_url} alt={script.blog_headline || "Blog header"} className="w-full rounded-xl border border-slate-200" />
+                  <p className="mt-1 text-[11px] text-slate-400">Copy as HTML puts it above the headline.</p>
                 </div>
               )}
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
