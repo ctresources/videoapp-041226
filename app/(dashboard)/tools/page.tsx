@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "banner" | "answers";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "image" | "banner" | "answers";
 
 interface Project {
   id: string;
@@ -29,8 +29,11 @@ interface Project {
     hook?: string; script?: string; description?: string; hashtags?: string[];
     audience?: string | null; tone?: string | null;
     cta_preference?: string | null; purpose?: string | null;
+    blog_headline?: string | null;
   } | null;
   seo_data?: { hashtags?: string[]; youtube_title?: string } | null;
+  /** A listing project's imported details, for the image generator's templates. */
+  listing_data?: { address?: string; price?: string; photoUrls?: string[] } | null;
   /** The place this video is actually about — not the profile's home market. */
   location_city?: string | null;
   location_state?: string | null;
@@ -116,6 +119,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "description", label: "Description Generator", icon: FileText },
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
+  { id: "image",       label: "Image Generator",      icon: ImagePlus },
   { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
@@ -1863,6 +1867,424 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── IMAGE GENERATOR ─────────────────────────────────────────────────────────
+//
+// Graphics for posts and articles. The model makes only the picture; every word
+// on it is typed here and drawn as real type on the server, so a price or an
+// address is never misspelled the way an image model spells.
+
+type ImageTemplateId = "just_listed" | "open_house" | "market_update" | "blog_header" | "blank";
+type ImageShapeId = "post_4x5" | "story_9x16" | "wide_16x9";
+type ImageBgSource = "ai" | "listing" | "upload";
+interface MadeImage { id: string; url: string; backgroundUrl: string }
+
+const IMAGE_TEMPLATE_OPTIONS: {
+  id: ImageTemplateId; label: string; note: string; kicker: string; shape: ImageShapeId;
+  headlineHint: string; sublineHint: string; sceneHint: string;
+}[] = [
+  { id: "just_listed", label: "Just listed", note: "Photo and price", kicker: "Just listed", shape: "post_4x5",
+    headlineHint: "$485,000", sublineHint: "24 Shagbark Court, Harleysville", sceneHint: "Bright kitchen, afternoon light" },
+  { id: "open_house", label: "Open house", note: "Date and time", kicker: "Open house", shape: "post_4x5",
+    headlineHint: "Sunday, 1 to 3 PM", sublineHint: "24 Shagbark Court, Harleysville", sceneHint: "Front porch with the door open" },
+  { id: "market_update", label: "Market update", note: "One stat, big", kicker: "Market update", shape: "post_4x5",
+    headlineHint: "Homes sold in 18 days in August", sublineHint: "Harleysville, PA", sceneHint: "Tree-lined street of colonials in autumn" },
+  { id: "blog_header", label: "Blog header", note: "From an article", kicker: "", shape: "wide_16x9",
+    headlineHint: "What does $485,000 buy in Harleysville?", sublineHint: "", sceneHint: "Sunlit living room with big windows" },
+  { id: "blank", label: "Blank", note: "Describe it", kicker: "", shape: "post_4x5",
+    headlineHint: "Your headline", sublineHint: "", sceneHint: "A quiet cul-de-sac at golden hour" },
+];
+
+const IMAGE_SHAPE_OPTIONS: { id: ImageShapeId; label: string; note: string }[] = [
+  { id: "post_4x5", label: "Post 4:5", note: "Instagram, Facebook" },
+  { id: "story_9x16", label: "Story 9:16", note: "Stories, Reels" },
+  { id: "wide_16x9", label: "Wide 16:9", note: "Blog, YouTube" },
+];
+
+const IMAGE_ACCENTS = ["#f59e0b", "#1d4ed8", "#047857", "#be123c", "#111827", "#ffffff"];
+
+/** What a project can fill in for a template. Empty strings mean "nothing to offer". */
+function imageTextFromProject(p: Project | null, t: ImageTemplateId): { headline: string; subline: string } {
+  if (!p) return { headline: "", subline: "" };
+  const place = [p.location_city, p.location_state].filter(Boolean).join(", ");
+  const address = p.listing_data?.address || "";
+  switch (t) {
+    case "just_listed": return { headline: p.listing_data?.price || "", subline: address || place };
+    case "open_house": return { headline: "", subline: address || place };
+    case "market_update": return { headline: "", subline: place };
+    case "blog_header": return { headline: p.ai_script?.blog_headline || p.title || "", subline: "" };
+    default: return { headline: "", subline: "" };
+  }
+}
+
+function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; initialProjectId?: string }) {
+  const [projectId, setProjectId] = useState("");
+  const [template, setTemplate] = useState<ImageTemplateId>("just_listed");
+  const [shape, setShape] = useState<ImageShapeId>("post_4x5");
+  const [scene, setScene] = useState("");
+  const [kicker, setKicker] = useState("Just listed");
+  const [headline, setHeadline] = useState("");
+  const [subline, setSubline] = useState("");
+  const [accent, setAccent] = useState(IMAGE_ACCENTS[0]);
+  const [showLogo, setShowLogo] = useState(true);
+  const [showHeadshot, setShowHeadshot] = useState(false);
+  const [bgSource, setBgSource] = useState<ImageBgSource>("ai");
+  const [listingPhoto, setListingPhoto] = useState("");
+  const [uploadedBg, setUploadedBg] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+  const [results, setResults] = useState<MadeImage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ used: number; limit: number; unlimited: boolean } | null>(null);
+  const seeded = useRef(false);
+
+  const project = projects.find((p) => p.id === projectId) ?? null;
+  const listingPhotos = (project?.listing_data?.photoUrls ?? [])
+    .filter((u) => typeof u === "string" && u.startsWith("http"))
+    .slice(0, 6);
+  const def = IMAGE_TEMPLATE_OPTIONS.find((t) => t.id === template) ?? IMAGE_TEMPLATE_OPTIONS[0];
+
+  useEffect(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setUsage({ used: d.images?.used ?? 0, limit: d.images?.limit ?? 100, unlimited: !!d.unlimited });
+      })
+      .catch(() => {});
+  }, []);
+
+  // Typed text wins: a project only fills a field it has something for.
+  function fill(p: Project | null, t: ImageTemplateId) {
+    const filled = imageTextFromProject(p, t);
+    if (filled.headline) setHeadline(filled.headline);
+    if (filled.subline) setSubline(filled.subline);
+  }
+
+  function chooseTemplate(t: ImageTemplateId, p: Project | null = project) {
+    const next = IMAGE_TEMPLATE_OPTIONS.find((x) => x.id === t) ?? IMAGE_TEMPLATE_OPTIONS[0];
+    setTemplate(t);
+    setKicker(next.kicker);
+    setShape(next.shape);
+    fill(p, t);
+  }
+
+  // Deep link from a project: /tools?tab=image&project=<id>&template=blog_header
+  useEffect(() => {
+    if (seeded.current || !initialProjectId || projects.length === 0) return;
+    const p = projects.find((x) => x.id === initialProjectId);
+    if (!p) return;
+    seeded.current = true;
+    setProjectId(p.id);
+    const wanted = new URLSearchParams(window.location.search).get("template");
+    const t = IMAGE_TEMPLATE_OPTIONS.find((x) => x.id === wanted)?.id;
+    if (t) chooseTemplate(t, p);
+    else fill(p, template);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProjectId, projects]);
+
+  function handleProjectSelect(p: Project | null) {
+    setProjectId(p?.id ?? "");
+    setListingPhoto("");
+    fill(p, template);
+    if (bgSource === "listing" && !(p?.listing_data?.photoUrls ?? []).length) setBgSource("ai");
+  }
+
+  async function handleBgFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Please sign in again.");
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/image-bg-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      setUploadedBg(publicUrl);
+      setBgSource("upload");
+      toast.success("Photo uploaded.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const photoForRequest = bgSource === "listing"
+    ? (listingPhoto || listingPhotos[0] || "")
+    : bgSource === "upload" ? uploadedBg : "";
+
+  function fields() {
+    return {
+      template, shape,
+      scene: scene.trim(),
+      kicker: kicker.trim(),
+      headline: headline.trim(),
+      subline: subline.trim(),
+      accent, showLogo, showHeadshot,
+      projectId: projectId || undefined,
+      city: project?.location_city || undefined,
+      state: project?.location_state || undefined,
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function call(body: Record<string, unknown>): Promise<any | null> {
+    const res = await fetch("/api/tools/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (typeof data.used === "number") setUsage((u) => (u ? { ...u, used: data.used } : u));
+    if (!res.ok) {
+      if (showTrialLock(data)) return null;
+      throw new Error(data.error || "Something went wrong");
+    }
+    return data;
+  }
+
+  async function generate() {
+    if (bgSource === "listing" && !photoForRequest) { toast.error("Pick a project with listing photos, or use another background."); return; }
+    if (bgSource === "upload" && !uploadedBg) { toast.error("Upload a photo first."); return; }
+    if (bgSource === "ai" && !scene.trim() && !headline.trim() && !kicker.trim() && !subline.trim()) {
+      toast.error("Describe the image or type a headline first.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await call({ action: "generate", ...fields(), photoUrl: photoForRequest || undefined });
+      if (!data) return;
+      setResults(data.images as MadeImage[]);
+      if (bgSource === "ai" && !data.aiBackground) {
+        toast("AI backgrounds aren't switched on yet, so this used a plain background.");
+      } else {
+        toast.success(data.images.length > 1 ? "Two options ready." : "Image ready.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "The image could not be made");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rerender(img: MadeImage, newBackground: boolean) {
+    setBusy(`${img.id}:${newBackground ? "bg" : "text"}`);
+    try {
+      const data = await call({ action: "rerender", ...fields(), backgroundUrl: img.backgroundUrl, newBackground });
+      if (!data) return;
+      setResults((prev) => prev.map((r) => (r.id === img.id ? (data.image as MadeImage) : r)));
+      toast.success(newBackground ? "New background ready." : "Text updated.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "The image could not be updated");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function attach(img: MadeImage, target: "blog_header" | "share_kit") {
+    if (!projectId) { toast.error("Pick a project above first, so there's somewhere to save it."); return; }
+    setBusy(`${img.id}:${target}`);
+    try {
+      const data = await call({ action: "attach", imageUrl: img.url, projectId, target });
+      if (!data) return;
+      toast.success(target === "blog_header" ? "Saved as the article's header image." : "Added to the project's Share Kit.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "The image could not be saved");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Storage is another origin, where <a download> is ignored.
+  async function download(img: MadeImage) {
+    try {
+      const res = await fetch(img.url);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${template.replace(/_/g, "-")}-${shape.replace(/_/g, "-")}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(img.url, "_blank");
+    }
+  }
+
+  const pill = (active: boolean) =>
+    `rounded-lg border px-3 py-2 text-left transition-colors ${active ? "border-spark-amber bg-spark-amber-tint" : "border-slate-200 bg-white hover:border-slate-300"}`;
+  const input = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-300";
+  const left = usage && !usage.unlimited ? Math.max(0, usage.limit - usage.used) : null;
+
+  return (
+    <div>
+      <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
+
+      <p className="text-sm font-medium text-slate-700 mb-1.5">Start from</p>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-5">
+        {IMAGE_TEMPLATE_OPTIONS.map((t) => (
+          <button key={t.id} type="button" onClick={() => chooseTemplate(t.id)} aria-pressed={template === t.id} className={pill(template === t.id)}>
+            <span className="block text-sm font-semibold text-slate-800">{t.label}</span>
+            <span className="block text-xs text-slate-500">{t.note}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className="text-sm font-medium text-slate-700 mb-1.5">Background</p>
+      <div className="flex flex-wrap gap-2 mb-3">
+        <button type="button" onClick={() => setBgSource("ai")} aria-pressed={bgSource === "ai"} className={pill(bgSource === "ai")}>
+          <span className="block text-sm font-semibold text-slate-800">AI photo</span>
+          <span className="block text-xs text-slate-500">2 options · counts toward your limit</span>
+        </button>
+        {listingPhotos.length > 0 && (
+          <button type="button" onClick={() => setBgSource("listing")} aria-pressed={bgSource === "listing"} className={pill(bgSource === "listing")}>
+            <span className="block text-sm font-semibold text-slate-800">Listing photo</span>
+            <span className="block text-xs text-slate-500">Free</span>
+          </button>
+        )}
+        <button type="button" onClick={() => (uploadedBg ? setBgSource("upload") : bgFileRef.current?.click())} aria-pressed={bgSource === "upload"} className={pill(bgSource === "upload")}>
+          <span className="block text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} My photo
+          </span>
+          <span className="block text-xs text-slate-500">{uploadedBg ? "Uploaded · free" : "Upload · free"}</span>
+        </button>
+        <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
+      </div>
+
+      {bgSource === "ai" && (
+        <div className="mb-5">
+          <label className="block text-xs text-slate-500 mb-1">Describe the picture</label>
+          <input value={scene} onChange={(e) => setScene(e.target.value)} placeholder={def.sceneHint} className={input} />
+          <p className="mt-1 text-[11px] text-slate-400">No people are ever drawn, and no words. Your text goes on top.</p>
+        </div>
+      )}
+      {bgSource === "listing" && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {listingPhotos.map((u) => (
+            <button key={u} type="button" onClick={() => setListingPhoto(u)} aria-pressed={(listingPhoto || listingPhotos[0]) === u}
+              className={`overflow-hidden rounded-lg border-2 ${(listingPhoto || listingPhotos[0]) === u ? "border-spark-amber" : "border-transparent"}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="Listing photo" className="h-16 w-24 object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+      {bgSource === "upload" && uploadedBg && (
+        <div className="mb-5 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={uploadedBg} alt="Your photo" className="h-16 w-24 rounded-lg object-cover border border-slate-200" />
+          <button type="button" onClick={() => bgFileRef.current?.click()} className="text-xs font-semibold text-primary-600 hover:text-primary-700">Use a different photo</button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Label</label>
+          <input value={kicker} onChange={(e) => setKicker(e.target.value)} placeholder="Just listed" maxLength={30} className={input} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs text-slate-500 mb-1">Headline</label>
+          <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder={def.headlineHint} maxLength={120} className={input} />
+        </div>
+      </div>
+      <div className="mb-1">
+        <label className="block text-xs text-slate-500 mb-1">Second line</label>
+        <input value={subline} onChange={(e) => setSubline(e.target.value)} placeholder={def.sublineHint || "Optional"} maxLength={160} className={input} />
+      </div>
+      <p className="text-[11px] text-slate-400 mb-5">Typed here and set in real type, so the price and address are always spelled right.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+        <div>
+          <p className="text-sm font-medium text-slate-700 mb-1.5">Shape</p>
+          <div className="flex flex-wrap gap-2">
+            {IMAGE_SHAPE_OPTIONS.map((s) => (
+              <button key={s.id} type="button" onClick={() => setShape(s.id)} aria-pressed={shape === s.id} className={pill(shape === s.id)}>
+                <span className="block text-sm font-semibold text-slate-800">{s.label}</span>
+                <span className="block text-xs text-slate-500">{s.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-700 mb-1.5">Brand</p>
+          <div className="flex flex-wrap items-center gap-4 mb-2 text-sm text-slate-700">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} className="accent-spark-amber" /> Logo
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={showHeadshot} onChange={(e) => setShowHeadshot(e.target.checked)} className="accent-spark-amber" /> Headshot
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Label color</span>
+            {IMAGE_ACCENTS.map((c) => (
+              <button key={c} type="button" onClick={() => setAccent(c)} aria-label={`Label color ${c}`} aria-pressed={accent === c}
+                className={`h-6 w-6 rounded-full border ${accent === c ? "ring-2 ring-offset-1 ring-spark-amber border-slate-300" : "border-slate-300"}`}
+                style={{ background: c }} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={generate} disabled={loading}
+          className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white spark-banner-gradient disabled:opacity-60">
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+          {loading ? "Making your images…" : bgSource === "ai" ? "Spark 2 images" : "Make image"}
+        </button>
+        <span className="text-xs text-slate-500">
+          {bgSource !== "ai"
+            ? "Free with your own photo."
+            : usage?.unlimited
+              ? "Unlimited images on your account."
+              : left !== null
+                ? `Uses 2 of your ${usage!.limit} AI images this month · ${left} left`
+                : "Uses 2 of your monthly AI images."}
+        </span>
+      </div>
+
+      {results.length > 0 && (
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {results.map((img) => (
+            <div key={img.id} className="rounded-xl border border-slate-200 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt={headline || "Generated image"} className="w-full rounded-lg border border-slate-100" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  { key: "download", label: "Download", icon: Download, onClick: () => download(img) },
+                  { key: "text", label: "Update text", icon: Type, onClick: () => rerender(img, false) },
+                  ...(bgSource === "ai" ? [{ key: "bg", label: "New background", icon: RefreshCw, onClick: () => rerender(img, true) }] : []),
+                  { key: "blog_header", label: "Use as blog header", icon: Newspaper, onClick: () => attach(img, "blog_header") },
+                  { key: "share_kit", label: "Add to Share Kit", icon: Share2, onClick: () => attach(img, "share_kit") },
+                ].map(({ key, label, icon: Icon, onClick }) => (
+                  <button key={key} type="button" onClick={onClick} disabled={busy !== null}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-spark-amber hover:text-spark-amber disabled:opacity-60">
+                    {busy === `${img.id}:${key}` ? <Loader2 size={12} className="animate-spin" /> : <Icon size={12} />} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {results.length > 0 && (
+        <p className="mt-3 text-[11px] text-slate-400">
+          Update text redraws your words on the same background and costs nothing. New background makes one fresh AI photo.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN PAGE (cont.) ─────────────────────────────────────────────────────────
 
 export default function ToolsPage() {
@@ -1895,7 +2317,7 @@ export default function ToolsPage() {
     const supabase = createClient();
     supabase
       .from("projects")
-      .select("id, title, ai_script, seo_data, location_city, location_state")
+      .select("id, title, ai_script, seo_data, listing_data, location_city, location_state")
       .order("created_at", { ascending: false })
       .limit(50)
       .then(({ data }) => {
@@ -1976,6 +2398,7 @@ export default function ToolsPage() {
         {activeTab === "script"      && <ScriptGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "channel"     && <ChannelNameGenerator />}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
+        {activeTab === "image"       && <ImageGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "banner"      && <BannerGenerator />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
       </div>

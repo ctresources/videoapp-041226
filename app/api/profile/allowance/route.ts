@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { CAMPAIGN_CALENDAR, hasFeature } from "@/lib/utils/feature-access";
+import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 
 /**
  * The caller's remaining short/long videos.
@@ -40,6 +41,10 @@ export async function GET() {
    */
   const campaignCalendar = await hasFeature(user.id, CAMPAIGN_CALENDAR);
 
+  // Read through the caller's session: generated_images lets a user read their
+  // own rows, which is all a count needs.
+  const imagesUsed = await aiImagesUsedThisMonth(supabase, user.id);
+
   // Admins are genuinely uncapped (create-blog neither refuses nor charges
   // them), so report that as a flag rather than inventing a big number — a
   // fake 999 is just a different way of showing something untrue.
@@ -50,6 +55,8 @@ export async function GET() {
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
     campaignCalendar,
+    // AI images made this calendar month, for the image generator's counter.
+    images: { used: imagesUsed, limit: IMAGE_MONTHLY_LIMIT },
     // So the Create screen can mark the Blog post tile locked BEFORE someone
     // picks it, waits a minute for a script, and lands on a Share Kit with no
     // article in it and nothing saying why.

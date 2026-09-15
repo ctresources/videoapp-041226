@@ -84,6 +84,8 @@ interface AiScript {
   /** The article's own title, a question. Absent on articles written before
    *  headlines existed, which fall back to the video's title. */
   blog_headline?: string;
+  /** Made in the Spark Tools image generator ("Use as blog header"). */
+  blog_header_url?: string;
   blog_intro: string;
   blog_body: string;
   blog_conclusion: string;
@@ -113,6 +115,8 @@ interface SeoData {
   instagram_caption: string;
   linkedin_post?: string;
   email_blurb?: string;
+  /** Images saved from the image generator ("Add to Share Kit"), newest first. */
+  share_images?: string[];
 }
 
 interface Project {
@@ -1744,10 +1748,16 @@ export default function ProjectEditorPage() {
    * website expects, so the whole point of the feature — paste it into your
    * blog — doesn't require the agent to re-add every heading by hand.
    */
-  function blogAsHtml(sections: { headline?: string; intro: string; body: string; conclusion: string }): string {
+  function blogAsHtml(sections: { headline?: string; headerUrl?: string; intro: string; body: string; conclusion: string }): string {
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const attr = (s: string) => esc(s).replace(/"/g, "&quot;");
     const blocks: string[] = [];
+    // The header image goes first, above the <h1>, the way an article page
+    // leads with its picture. Alt text is the headline, which is what it shows.
+    if (sections.headerUrl?.startsWith("https://")) {
+      blocks.push(`<img src="${attr(sections.headerUrl)}" alt="${attr(sections.headline?.trim() || "")}">`);
+    }
     // The one <h1> on the page, and the line a search or answer engine reads
     // first. Omitted when the article predates headlines rather than emitted
     // empty — a blank <h1> is worse for the same surfaces than none.
@@ -1834,6 +1844,7 @@ export default function ProjectEditorPage() {
     if (!script) return;
     const html = blogAsHtml({
       headline: script.blog_headline || "",
+      headerUrl: script.blog_header_url || "",
       intro: script.blog_intro || "",
       body: script.blog_body || "",
       conclusion: script.blog_conclusion || "",
@@ -3261,6 +3272,26 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               </div>
+              {/* The header image, or the way to make one. Only once there is an
+                  article, since a header for an article nobody has written is
+                  a picture of nothing. */}
+              {expandedSections.blog && (script.blog_intro || script.blog_body) && (
+                <div className="px-2 mb-3">
+                  {script.blog_header_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={script.blog_header_url} alt={script.blog_headline || "Blog header"} className="w-full rounded-xl border border-slate-200" />
+                  )}
+                  <Link
+                    href={`/tools?tab=image&project=${project.id}&template=blog_header`}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                  >
+                    <ImageIcon size={12} /> {script.blog_header_url ? "Change the header image" : "Make a header image"}
+                  </Link>
+                  {script.blog_header_url && (
+                    <p className="mt-0.5 text-[11px] text-slate-400">Copy as HTML puts it above the headline.</p>
+                  )}
+                </div>
+              )}
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
                 <div className="px-2 pb-1">
                   <p className="text-xs leading-[1.5] text-slate-500">
@@ -3314,9 +3345,38 @@ export default function ProjectEditorPage() {
             </Card>
           );
 
+          // Images saved from the image generator. Downloaded from here and
+          // attached by hand when posting, until posting from the app exists.
+          const shareImages = (project.seo_data?.share_images ?? []).filter((u) => typeof u === "string");
+          const imagesCard = shareImages.length > 0 && (
+            <Card padding="sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1 mb-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon size={16} className="text-spark-amber" />
+                  <h3 className="font-semibold text-sm text-brand-text">Images for your posts</h3>
+                </div>
+                <Link
+                  href={`/tools?tab=image&project=${project.id}`}
+                  className="text-xs font-semibold text-primary-600 hover:text-primary-700"
+                >
+                  Make another →
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-2 pb-1">
+                {shareImages.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="Image for a post" className="w-full" />
+                  </a>
+                ))}
+              </div>
+              <p className="px-2 mt-1.5 text-[11px] text-slate-400">Open one and save it, then add it when you post.</p>
+            </Card>
+          );
+
           return articleFirst
-            ? <>{blogCard}{seoCard}</>
-            : <>{seoCard}{blogCard}</>;
+            ? <>{blogCard}{seoCard}{imagesCard}</>
+            : <>{seoCard}{blogCard}{imagesCard}</>;
           })()}
           </>)}
 

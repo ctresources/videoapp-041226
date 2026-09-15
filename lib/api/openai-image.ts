@@ -60,6 +60,81 @@ STRICT RULES:
   }
 }
 
+/**
+ * What each image-generator template should look like when the agent has not
+ * described a scene. Also sent alongside a described one, as mood.
+ */
+const TEMPLATE_MOOD: Record<string, string> = {
+  just_listed: "an inviting, well-lit photograph of a home's most appealing room or its exterior, the shot a listing leads with",
+  open_house: "a welcoming home exterior or front entry in warm daylight, with the walkway or front door in view",
+  market_update: "a wide, calm view over a residential neighborhood or a small-town main street",
+  blog_header: "an editorial lifestyle photograph of a home that sets the scene for an article",
+  blank: "a clean, premium real estate lifestyle photograph",
+};
+
+/**
+ * A photographic background for the Spark Tools image generator. The words on
+ * the finished image are drawn afterwards as real type, never by the model,
+ * which is why the prompt forbids text outright: an image model misspells, and
+ * a wrong price on a listing graphic is worse than no graphic.
+ *
+ * Returns the raw PNG, or null when OPENAI_API_KEY is missing or the request
+ * fails; the caller falls back to a plain background and does not count it.
+ */
+export async function generateImageBackground(opts: {
+  template: string;
+  scene?: string;
+  city?: string;
+  state?: string;
+  orientation: "portrait" | "landscape";
+  /** 0 for the first option; anything else asks for a different take. */
+  variant: number;
+}): Promise<Buffer | null> {
+  const openai = getOpenAI();
+  if (!openai) {
+    console.log("[openai-image] OPENAI_API_KEY not set — image generator using a plain background");
+    return null;
+  }
+
+  const mood = TEMPLATE_MOOD[opts.template] ?? TEMPLATE_MOOD.blank;
+  const scene = (opts.scene || "").trim().slice(0, 300);
+  const location = [opts.city, opts.state].filter(Boolean).join(", ");
+
+  const prompt = `A photograph for a real estate marketing graphic${location ? ` in ${location}` : ""}.
+
+SUBJECT: ${scene || mood}
+MOOD: ${mood}
+${opts.variant > 0 ? "Make this a clearly different take from the obvious one: another angle, another time of day, or another part of the scene.\n" : ""}
+Style: natural light, true-to-life color, sharp detail, professional real estate photography. Believable, not glossy CGI.
+
+Composition: keep the lower third calmer and less detailed, because headline text will sit over it. Keep the key subject out of the top corners.
+
+STRICT RULES:
+- NO text, words, numbers, letters, signs with writing, logos or watermarks anywhere.
+- NO people, NO faces, NO hands.
+- NO collages, split panels, borders or frames.
+- One photographic scene that fills the frame edge to edge.`;
+
+  try {
+    console.log(`[openai-image] image generator background (${opts.template}, ${opts.orientation}, v${opts.variant})`);
+    const result = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt,
+      size: opts.orientation === "portrait" ? "1024x1536" : "1536x1024",
+      // Medium keeps a background to a few cents. The type drawn on top is what
+      // has to be crisp, and that is rendered at full size afterwards.
+      quality: "medium",
+      n: 1,
+    });
+    const b64 = result.data?.[0]?.b64_json;
+    if (!b64) return null;
+    return Buffer.from(b64, "base64");
+  } catch (err) {
+    console.error("[openai-image] image generator background failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export interface HookThumbnailOptions {
   hookText: string;
   city?: string;
