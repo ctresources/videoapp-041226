@@ -1485,15 +1485,21 @@ function CreatePageInner() {
           {([
             {
               key: "spark" as const,
-              label: "Use My Avatar",
+              // Both video tiles share the "Video —" prefix so they read as two
+              // kinds of one thing, which is what they are. They stay separate
+              // tiles because what differs is cost and gating, not format: this
+              // one spends a video from the plan, the other is free, and the
+              // trial lock hits one and not the other. A single Video tile
+              // would push that choice into a second step and move the price
+              // away from the moment of choosing.
+              label: "Video — My Avatar",
               desc: "Avatar + cloned voice",
-              Icon: Sparkles,
               free: false,
               cost: "Uses 1 video",
             },
             {
               key: "film" as const,
-              label: "Film On Camera",
+              label: "Video — My Camera",
               // Said here because the alternative is finding out at the end.
               // Nothing checks the window before the camera opens, so a locked
               // user could record fifteen minutes, watch the upload succeed,
@@ -1503,7 +1509,6 @@ function CreatePageInner() {
               // by the label, and what actually differs from the other tile is
               // whose voice comes out of the video.
               desc: trialLocked ? "Free trial ended — pick a plan" : "Your voice + teleprompter",
-              Icon: Video,
               free: true,
               cost: trialLocked ? "Locked" : "Free",
             },
@@ -1514,14 +1519,16 @@ function CreatePageInner() {
               // that arrives with no article attached and nothing explaining
               // the gap. The 30-day window is the same one camera recording
               // and the AI Tools run on.
+              // Kept as "Blog post" rather than given a "Video —" prefix: it is
+              // the one output on this row that is not a video, and the odd one
+              // out is the point.
               desc: trialLocked
                 ? "Free trial ended — pick a plan"
-                : "An article for your site",
-              Icon: FileText,
+                : "New article, or paste an existing one",
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },
-          ]).map(({ key, label, desc, Icon, free, cost }) => {
+          ]).map(({ key, label, desc, free, cost }) => {
             const active = key === "blog"
               ? blogOnly
               : blogOnly ? false
@@ -1557,29 +1564,28 @@ function CreatePageInner() {
                   );
                 }}
                 aria-pressed={active}
-                className={`flex min-h-[86px] items-center gap-3 rounded-[14px] px-4 py-3 text-left transition-colors ${
+                className={`flex min-h-[86px] items-center rounded-[14px] px-4 py-3 text-left transition-colors ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
                 }`}
               >
-                <span
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    active
-                      ? "bg-spark-amber-tint text-[#A3660F]"
-                      : "bg-spark-rule/40 text-spark-ink-faint"
-                  }`}
-                >
-                  <Icon size={19} />
-                </span>
+                {/* No icon. Three decorative glyphs competed with the labels
+                    for the same glance without telling you anything the words
+                    did not — and with the longer "Video — …" labels they were
+                    pushing the text into three lines on a narrow column. */}
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-[17px] font-semibold leading-[1.15] text-spark-ink">
-                      {label}
-                    </span>
-                    <CostPill free={free}>{cost}</CostPill>
+                  <span className="block text-[17px] font-semibold leading-[1.15] text-spark-ink">
+                    {label}
                   </span>
                   <span className="mt-0.5 block text-[13px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                  {/* Under the description rather than beside the label. Next
+                      to it, the badge set the width the label had to wrap
+                      around; here each tile reads top to bottom — what it is,
+                      what it does, what it costs. */}
+                  <span className="mt-1.5 block">
+                    <CostPill free={free}>{cost}</CostPill>
+                  </span>
                 </span>
               </button>
             );
