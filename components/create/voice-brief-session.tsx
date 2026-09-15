@@ -64,6 +64,16 @@ interface Props {
    * Carries a nonce because picking the same topic twice must still land.
    */
   seed?: { text: string; n: number };
+  /**
+   * What this brief ends in.
+   *
+   * The conversation is the same either way, but the thing it produces is not,
+   * and this panel said "script" in three places while the button below it said
+   * "Write the blog" — two buttons that call the identical handler, disagreeing
+   * about what they do. Defaults to "script" so the camera instance and every
+   * other caller are untouched.
+   */
+  mode?: "script" | "blog";
 }
 
 /**
@@ -83,7 +93,10 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script" }: Props) {
+  /** Read in three labels and sent with every turn, so what the panel says and
+   *  what the assistant says out loud stay the same answer. */
+  const isBlog = mode === "blog";
   const [turns, setTurns] = useState<Turn[]>([{ role: "assistant", content: OPENING_LINE }]);
   const [thinking, setThinking] = useState(false);
   const [slots, setSlots] = useState<BriefSlots>(EMPTY_SLOTS);
@@ -124,7 +137,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       const res = await fetch("/api/ai/brief-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turns: next }),
+        body: JSON.stringify({ turns: next, mode }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -470,12 +483,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[13px] text-spark-ink">
           <CheckCircle size={14} className="flex-none text-spark-blue" />
           {sparking ? (
-            <span className="font-medium">Sparking your script — this takes about a minute.</span>
+            <span className="font-medium">
+              {isBlog
+                ? "Writing your article — this takes about a minute."
+                : "Sparking your script — this takes about a minute."}
+            </span>
           ) : (
             <>
               <span className="font-medium">That&rsquo;s everything I need.</span>
               <span className="min-w-0 text-spark-ink-muted">
-                Tap Spark Script, or just say it. Keep talking to change anything.
+                Tap {isBlog ? "Write the blog" : "Spark Script"}, or just say it. Keep talking to change anything.
               </span>
               {/* A button, not only a phrase to say. The wake word was written
                   here as a styled pill, which reads as something to press —
@@ -488,7 +505,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                 disabled={disabled}
                 className="ml-auto flex-none rounded-full bg-spark-amber px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
               >
-                Spark Script
+                {isBlog ? "Write the blog" : "Spark Script"}
               </button>
             </>
           )}

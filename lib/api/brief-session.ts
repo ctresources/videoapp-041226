@@ -109,11 +109,21 @@ export { saidGoAhead };
  * Returns null when PERPLEXITY_API_KEY is missing or the call fails; the caller
  * falls back to the typed form rather than stranding the user mid-sentence.
  */
-export async function runBriefTurn(turns: BriefTurn[]): Promise<BriefSessionResult | null> {
+export async function runBriefTurn(
+  turns: BriefTurn[],
+  /**
+   * What the brief is for. The conversation is identical either way — same
+   * fields, same questions — but what it ends in is not, and the assistant
+   * says so out loud. Left as "script" by default so every existing caller
+   * behaves exactly as before.
+   */
+  mode: "script" | "blog" = "script",
+): Promise<BriefSessionResult | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
 
+  const isBlog = mode === "blog";
   const shortWords = standardMaxWords();
-  const system = `You are taking a video brief from a real estate agent, out loud, one short exchange at a time.
+  const system = `You are taking a ${isBlog ? "blog article" : "video"} brief from a real estate agent, out loud, one short exchange at a time.
 
 Collect these fields:
 - city and state (state as a 2-letter abbreviation) — REQUIRED
@@ -143,7 +153,7 @@ Rules for "reply":
 - Ask for ONE missing required field at a time — market first, then topic.
 - When you have both, read the brief back in a single sentence and ask if they want to go ahead.
 - Never ask about audience, tone or length. Take them if offered, but they are optional and asking for them makes the conversation drag.
-- Once city, state and topic are all filled, read the brief back in one sentence and invite them to say "Spark script" to write it, or tell you what to change. Whether they then agree is not your decision to record — just ask.`;
+- Once city, state and topic are all filled, read the brief back in one sentence and invite them to say "${isBlog ? "Write the blog" : "Spark script"}" to ${isBlog ? "write the article" : "write it"}, or tell you what to change. Whether they then agree is not your decision to record — just ask.`;
 
   try {
     const parsed = await chatJson(system, turns, { maxTokens: 400, label: "brief-session" });

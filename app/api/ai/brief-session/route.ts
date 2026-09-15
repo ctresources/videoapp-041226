@@ -50,7 +50,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No usable turns" }, { status: 400 });
   }
 
-  const result = await runBriefTurn(turns);
+  // Narrowed to the two literals rather than passed through. It reaches a
+  // model prompt, so it gets the same distrust the transcript above does.
+  const rawMode = (body as { mode?: unknown })?.mode;
+  const mode = rawMode === "blog" ? "blog" : "script";
+
+  const result = await runBriefTurn(turns, mode);
   if (!result) {
     // The caller drops back to the typed form rather than looping on a mic that
     // will not answer.

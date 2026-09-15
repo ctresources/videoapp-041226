@@ -1821,6 +1821,11 @@ function CreatePageInner() {
                 if (s.length === "long") setLocPlatform("youtube");
               }}
               onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
+              // This panel's button and the one in the footer call the same
+              // handler, so they have to agree on what it does. Only this
+              // instance takes a mode — the camera one below is always a
+              // script.
+              mode={blogOnly ? "blog" : "script"}
               seed={sparkSeed}
             />
           </ComposerCard>
