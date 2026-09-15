@@ -1,5 +1,6 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
+import { expandShortArticle } from "@/lib/api/blog-length";
 
 /**
  * The blog article that accompanies a video — written from the video's own
@@ -60,11 +61,17 @@ export async function generateBlogFromScript(
   const where = [input.city, input.state].filter(Boolean).join(", ");
   const place = where || "the local area";
 
+  const closingRule = input.unbranded
+    ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact."
+    : input.agentName
+      ? `- Close by inviting the reader to get in touch with ${input.agentName}.`
+      : "- Close by inviting the reader to get in touch.";
+
   const prompt = `${FAIR_HOUSING_GUARDRAIL}
 
 ---
 
-Write a blog article for a real estate agent's own website, around 1,000 words total. It accompanies a video on the same subject, so it must stand entirely on its own — never refer to "the video", "this clip", "watch above" or anything the reader cannot see.
+Write a blog article for a real estate agent's own website, between 800 and 1,200 words total. An article under 800 words is unfinished. It accompanies a video on the same subject, so it must stand entirely on its own — never refer to "the video", "this clip", "watch above" or anything the reader cannot see.
 
 SUBJECT: ${input.title}
 ${where ? `LOCATION: ${where}` : ""}
@@ -87,11 +94,7 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 FAIR HOUSING (overrides everything above):
 - Never mention schools, churches, demographics, neighbourhood composition, safety, crime, or who an area would "suit".
 - Write about places and property. Never about the people who live there.
-${input.unbranded
-  ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact."
-  : input.agentName
-    ? `- Close by inviting the reader to get in touch with ${input.agentName}.`
-    : "- Close by inviting the reader to get in touch."}
+${closingRule}
 
 FORMAT — plain text, no markdown, no asterisks, no bullet characters, no numbered lists, no emoji:
 - Headings are their own line, starting with "H2: ".
@@ -103,9 +106,9 @@ ${PLAIN_COPY_RULES}
 Return ONLY a JSON object:
 {
   "headline": "the article's title, written as the question a reader would type or say out loud, naming ${place}, under 70 characters",
-  "intro": "opening ~150 words, no heading",
-  "body": "the H2 sections with their H3 subheadings, then the two FAQ sections, ~900 words",
-  "conclusion": "closing ~150 words, no heading"
+  "intro": "opening, at least 120 words, no heading",
+  "body": "the H2 sections with their H3 subheadings, then the two FAQ sections, each H2 section at least 110 words, 650 to 950 words in all",
+  "conclusion": "closing, at least 100 words, no heading"
 }`;
 
   try {
@@ -124,7 +127,7 @@ Return ONLY a JSON object:
           model: "sonar",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
-          max_tokens: 2600,
+          max_tokens: 3200,
         }),
       });
       if (res.status !== 429 || attempt === 1) break;
@@ -150,7 +153,11 @@ Return ONLY a JSON object:
     // article, and storing one would light up the Share Kit card with nothing
     // worth copying under it.
     if (!article.body) throw new Error("no body in response");
-    return article;
+    return await expandShortArticle(article, {
+      source: `SUBJECT: ${input.title}\n${where ? `LOCATION: ${where}\n` : ""}WHAT WAS SAID:\n${script.slice(0, 6000)}`,
+      closingRule,
+      label: "script",
+    });
   } catch (err) {
     console.error("[blog-writer] failed (non-fatal):", err instanceof Error ? err.message : err);
     return null;

@@ -13,6 +13,12 @@ import { parseCityState } from "@/lib/utils/parse-address";
 import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy, plainCopyAll } from "@/lib/utils/copy-style";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
+import { expandShortArticle } from "@/lib/api/blog-length";
+
+// The script, the YouTube metadata and the article are three Perplexity calls
+// already, and a short article gets a fourth. The platform default is not
+// something to rely on for that.
+export const maxDuration = 300;
 
 /**
  * The SEO/AEO/GEO blog article that goes with a listing video.
@@ -46,21 +52,30 @@ async function generateListingBlog(
     listing.yearBuilt ? `built ${listing.yearBuilt}` : "",
   ].filter(Boolean).join(" · ");
 
-  const prompt = `${FAIR_HOUSING_GUARDRAIL}
-
----
-
-Write a property blog post for this listing — around 1,000 words total, for the agent's own website. It accompanies a video tour, so it must stand on its own rather than describe the video.
-
-LISTING:
-Address: ${listing.address}
+  // Named so the expand pass is held to exactly the facts the first draft was.
+  const listingFacts = `Address: ${listing.address}
 Location: ${where}
 Price: ${listing.price}
 Details: ${details}
 Property Type: ${listing.propertyType}
 Neighborhood: ${listing.neighborhood || "N/A"}
 Description: ${listing.description}
-Key Features: ${listing.features.slice(0, 8).join(", ")}
+Key Features: ${listing.features.slice(0, 8).join(", ")}`;
+
+  const closingRule = unbranded
+    ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact. Close on the property."
+    : `- Close with an invitation to arrange a showing${agentName ? `, naming ${agentName}` : ""}.`;
+
+  const prompt = `${FAIR_HOUSING_GUARDRAIL}
+
+---
+
+Write a property blog post for this listing, between 800 and 1,200 words total, for the agent's own website. An article under 800 words is unfinished. It accompanies a video tour, so it must stand on its own rather than describe the video.
+
+LISTING:
+${listingFacts}
+
+LENGTH comes from depth, never padding: for each feature the listing names, say what it means day to day; walk through the layout in a sensible order; connect the location details given to the home itself. Never repeat a point.
 
 SEO, GEO AND AEO (this is the point of the article — it is written for three surfaces at once):
 - SEO (Google and Bing): name ${where} naturally through the article, along with the neighbourhood and any nearby landmarks. This is a local search page and the place name is what it ranks on.
@@ -72,9 +87,7 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 FAIR HOUSING (overrides everything else here):
 - Never mention schools, churches, demographics, neighborhood composition, safety, or who the home would "suit".
 - Describe the property and its features. Never describe the people who might live there.
-${unbranded
-  ? "- UNBRANDED: do not name an agent, brokerage, team, phone number, email or website anywhere, and do not invite the reader to make contact. Close on the property."
-  : `- Close with an invitation to arrange a showing${agentName ? `, naming ${agentName}` : ""}.`}
+${closingRule}
 
 FORMAT, plain text, no markdown, no asterisks, no numbered lists:
 - Headings are their own line, starting with "H2: ".
@@ -84,9 +97,9 @@ ${PLAIN_COPY_RULES}
 
 Return ONLY a JSON object:
 {
-  "intro": "opening ~150 words, no heading",
-  "body": "the H2 sections, ~700 words",
-  "conclusion": "closing ~150 words, no heading"
+  "intro": "opening, at least 120 words, no heading",
+  "body": "4 to 6 H2 sections, each at least 110 words, 600 to 900 words in all",
+  "conclusion": "closing, at least 100 words, no heading"
 }`;
 
   try {
@@ -105,9 +118,9 @@ Return ONLY a JSON object:
           model: "sonar",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
-          // ~1,000 words of prose across three JSON strings, with the escaped
-          // newlines between paragraphs counting too.
-          max_tokens: 2600,
+          // Up to 1,200 words of prose across three JSON strings, with the
+          // escaped newlines between paragraphs counting too.
+          max_tokens: 3200,
         }),
       });
       if (res.status !== 429 || attempt === 1) break;
@@ -121,11 +134,12 @@ Return ONLY a JSON object:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("no JSON in response");
     const parsed = JSON.parse(jsonMatch[0]) as { intro?: string; body?: string; conclusion?: string };
-    return {
+    const draft = {
       intro: parsed.intro ?? "",
       body: parsed.body ?? "",
       conclusion: parsed.conclusion ?? "",
     };
+    return await expandShortArticle(draft, { source: listingFacts, closingRule, label: "listing" });
   } catch (err) {
     console.error("[listing-video] Blog generation failed:", err instanceof Error ? err.message : err);
     return null;
