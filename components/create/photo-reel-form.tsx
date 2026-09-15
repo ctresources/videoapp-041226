@@ -81,6 +81,14 @@ export function PhotoReelForm({
   const [format, setFormat] = useState<string>("reel_9x16");
   const [seconds, setSeconds] = useState<number>(30);
   const [voice, setVoice] = useState<Voice>("music");
+  /**
+   * Whether a typed script will be read in the agent's own voice.
+   *
+   * The route falls back to a stock voice when there is no clone, so saying
+   * "your voice" without checking promised something the render would not
+   * deliver. null until the profile has been read.
+   */
+  const [hasVoiceClone, setHasVoiceClone] = useState<boolean | null>(null);
   const [script, setScript] = useState("");
   const [musicId, setMusicId] = useState("inspiring");
   /**
@@ -115,6 +123,22 @@ export function PhotoReelForm({
   useEffect(() => () => {
     micRef.current?.getTracks().forEach((t) => t.stop());
     if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("voice_clone_id")
+        .eq("id", user.id)
+        .single();
+      if (!cancelled) setHasVoiceClone(!!data?.voice_clone_id);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   /**
@@ -478,12 +502,20 @@ export function PhotoReelForm({
 
       {/* ── Voice ── */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Sound</p>
+        <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Voiceover</p>
         <div className="grid grid-cols-3 gap-1.5">
           {([
-            { id: "music", label: "Music only", note: "No talking" },
-            { id: "script", label: "Write a script", note: "Read in your voice" },
-            { id: "record", label: "Record my voice", note: "Say it yourself" },
+            { id: "music", label: "None", note: "Music only" },
+            {
+              id: "script",
+              label: "Type it",
+              note: hasVoiceClone === false
+                ? "A stock voice reads it"
+                : hasVoiceClone
+                  ? "Your voice clone reads it"
+                  : "Read aloud for you",
+            },
+            { id: "record", label: "Speak it", note: "Record it yourself live" },
           ] as const).map((v) => (
             <button
               key={v.id}
@@ -506,7 +538,18 @@ export function PhotoReelForm({
       {voice === "script" && (
         <label className="flex flex-col gap-1">
           <span className="text-[11px] text-spark-ink-faint">
-            Read in your cloned voice. The script&rsquo;s length sets the reel&rsquo;s length.
+            {hasVoiceClone === false ? (
+              <>
+                Read by a stock voice, because you haven&rsquo;t set up your voice clone yet.{" "}
+                <a href="/settings#voice" className="font-semibold text-spark-amber underline">
+                  Set it up
+                </a>{" "}
+                to hear yourself.
+              </>
+            ) : (
+              "Read in your voice clone."
+            )}{" "}
+            The script&rsquo;s length sets the reel&rsquo;s length.
           </span>
           <textarea
             value={script}
