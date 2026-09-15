@@ -1575,6 +1575,9 @@ function CreatePageInner() {
                       return;
                     }
                     setBlogOnly(true);
+                    // The format picker is hidden on this route, so a Longform
+                    // pick made before switching must not carry over unseen.
+                    setLocLength("standard");
                     // Neither of the two routes a blog cannot come from. The
                     // camera records rather than writes, and a pasted script
                     // is words you already have — nothing to research, nothing
@@ -2060,6 +2063,10 @@ function CreatePageInner() {
                     vertical (see isLongForm in api/video/create-blog), so a
                     vertical longform tile would quietly clamp the script back
                     to the three-minute short cap. */}
+                {/* Not on the blog route: no video is made there, and this
+                    choice was quietly deciding how long the hidden script got.
+                    A Longform script can be written from the article later. */}
+                {!blogOnly && (
                 <div className="mt-6">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
@@ -2110,6 +2117,7 @@ function CreatePageInner() {
                     </p>
                   )}
                 </div>
+                )}
               </div>
             </div>
           </section>

@@ -386,6 +386,8 @@ export default function ProjectEditorPage() {
    */
   const blogOpenedRef = useRef<string | null>(null);
   const [editedScript, setEditedScript] = useState("");
+  /** "Write an 8-minute script from the article" is running. */
+  const [articleScriptWriting, setArticleScriptWriting] = useState(false);
   const [editedCta, setEditedCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
   // Editable AI-generated title/description — persisted to the project on
@@ -1748,6 +1750,51 @@ export default function ProjectEditorPage() {
    * website expects, so the whole point of the feature — paste it into your
    * blog — doesn't require the agent to re-add every heading by hand.
    */
+  /**
+   * A Longform script written from the article, for a long video.
+   *
+   * The script that comes with an article is always a short one. Picking
+   * Longform afterwards only lifted the cap, so an 8-minute video read the same
+   * two and a half minutes. The article is the long version of the same ground,
+   * so it is the right source: summarised by script-from-text, which uses only
+   * what it is given and adds no facts.
+   */
+  async function writeLongScriptFromArticle() {
+    const s = project?.ai_script;
+    if (!s) return;
+    const articleText = [s.blog_intro, s.blog_body, s.blog_conclusion]
+      .filter(Boolean)
+      .map(blogPlainText)
+      .join("\n\n")
+      .trim();
+    if (!articleText) return;
+    if (editedScript.trim() && !window.confirm("Replace the current script with an 8-minute script written from the article?")) return;
+
+    setArticleScriptWriting(true);
+    try {
+      const ctaWords = editedCta.trim().split(/\s+/).filter(Boolean).length;
+      const res = await fetch("/api/ai/script-from-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: articleText,
+          length: "rendered_long",
+          // Room for the closing line, which is added after the script.
+          budget: LONG_MAX_WORDS - ctaWords,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't write the script. Try again.");
+      setEditedScript(data.script as string);
+      setSelectedVideoType("youtube_long");
+      toast.success(`Longform script ready: ${data.words} words, about ${data.minutes} minutes.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't write the script. Try again.");
+    } finally {
+      setArticleScriptWriting(false);
+    }
+  }
+
   function blogAsHtml(sections: { headline?: string; headerUrl?: string; intro: string; body: string; conclusion: string }): string {
     const esc = (s: string) =>
       s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -2408,6 +2455,24 @@ export default function ProjectEditorPage() {
                     </button>
                   </div>
                 </div>
+                {/* Only where an article exists to write from. */}
+                {(project.ai_script?.blog_intro || project.ai_script?.blog_body) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+                    <button
+                      type="button"
+                      onClick={writeLongScriptFromArticle}
+                      disabled={articleScriptWriting}
+                      className="flex items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
+                    >
+                      {articleScriptWriting
+                        ? <><Loader2 size={12} className="animate-spin" /> Writing from the article…</>
+                        : <><FileText size={12} /> Write an 8-minute script from the article</>}
+                    </button>
+                    <span className="text-[10.5px] text-spark-ink-faint">
+                      For a Longform video. Uses only what the article says, and replaces this script.
+                    </span>
+                  </div>
+                )}
                 <ScriptLengthWarning
                   words={editedScript.trim().split(/\s+/).filter(Boolean).length}
                   isLong={selectedVideoType === "youtube_long"}
@@ -3034,6 +3099,19 @@ export default function ProjectEditorPage() {
                 <Video size={14} /> Turn it into a video
               </Button>
             )}
+            {/* The script was written alongside the article and never shown on
+                the blog route, so the button led to something nobody knew
+                existed. Saying its length is also the answer to "how long
+                will the video be". */}
+            {!renderedVideoId && !renderComplete && (() => {
+              const n = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
+              return n > 0 ? (
+                <p className="mt-1 text-[11px] leading-[1.45] text-spark-ink-faint">
+                  Your short video script is already written: {n} words, about {mins(n)} minutes. You&rsquo;ll see
+                  it next, and can edit it or write a longer one from the article.
+                </p>
+              ) : null;
+            })()}
           </div>
           {/* The two cards are built first and placed after, because their
               order depends on what this project is. After a render the title,
@@ -3234,21 +3312,42 @@ export default function ProjectEditorPage() {
                       >
                         <Copy size={12} /> Copy as text
                       </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRecordOnCamera(
-                            [script.blog_intro, script.blog_body, script.blog_conclusion]
-                              .filter(Boolean)
-                              .map(blogPlainText)
-                              .join("\n\n"),
-                          )
-                        }
-                        title="Send this blog post to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
-                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
-                      >
-                        <Camera size={12} /> Record on Camera
-                      </button>
+                      {/* Two reads, each with its length. This used to be one
+                          Record on Camera that always sent the whole article,
+                          which is three to eleven minutes at the teleprompter,
+                          when the short script written with it was sitting one
+                          step back. */}
+                      {(() => {
+                        const articleText = [script.blog_intro, script.blog_body, script.blog_conclusion]
+                          .filter(Boolean)
+                          .map(blogPlainText)
+                          .join("\n\n");
+                        const articleWords = articleText.split(/\s+/).filter(Boolean).length;
+                        const scriptWords = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
+                        const cls = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber";
+                        return (
+                          <>
+                            {scriptWords > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRecordOnCamera()}
+                                title="Send the short video script to the Camera tab's teleprompter"
+                                className={cls}
+                              >
+                                <Camera size={12} /> Read the script · about {mins(scriptWords)} min
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRecordOnCamera(articleText)}
+                              title="Send the whole article to the Camera tab's teleprompter. Camera recordings run up to 15 minutes"
+                              className={cls}
+                            >
+                              <Camera size={12} /> Read the whole article · about {mins(articleWords)} min
+                            </button>
+                          </>
+                        );
+                      })()}
                       <span className="text-xs text-slate-400">
                         {[script.blog_intro, script.blog_body, script.blog_conclusion]
                           .filter(Boolean)

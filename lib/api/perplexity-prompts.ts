@@ -78,7 +78,7 @@ export interface LocationParams {
 function blogSections(place: string): string {
   return `BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Open with two or three plain declarative sentences that state the subject and ${place} outright, in language an AI assistant can quote back as an answer to a question. No scene-setting and no rhetorical questions.]
 
-BLOG POST BODY: [900-1100 words on the SAME subject the video covers, written to be read rather than heard.
+BLOG POST BODY: [650-900 words on the SAME subject the video covers, written to be read rather than heard. The whole article, intro plus body plus conclusion, must land between 800 and 1,200 words. 1,200 is a ceiling, not a target: stop when the ground is covered.
 
 This article is written for three surfaces at once — SEO, GEO and AEO — and the rules below are how it wins each:
 - SEO (Google and Bing): name ${place} naturally throughout, along with any neighborhoods, streets and landmarks. This is a local search page and the place name is what it has to rank on.
