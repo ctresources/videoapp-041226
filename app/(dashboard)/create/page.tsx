@@ -1757,7 +1757,7 @@ function CreatePageInner() {
       {step === "input" && blogOnly && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
           <strong className="font-semibold text-spark-ink">No video will be made.</strong>{" "}
-          You&rsquo;ll get about a thousand words with headings, ready to paste into your site — plus
+          You&rsquo;ll get an article of usually 800 to 1,200 words with headings, ready to paste into your site — plus
           the title, description and hashtags to go with it.
         </p>
       )}
@@ -2146,7 +2146,7 @@ function CreatePageInner() {
                         ? "Press Send to add what you've typed."
                         : `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`)
                     : blogOnly
-                      ? "About a thousand words, with headings, ready to paste into your site. You can turn it into a video afterwards."
+                      ? "Usually 800 to 1,200 words, with headings, ready to paste into your site. You can turn it into a video afterwards."
                       : "We'll write the script first, then you pick how it looks."
           }
         >
@@ -2855,7 +2855,7 @@ function CreatePageInner() {
                 headed "Property Article" and under "No video will be made". */}
             <ul className="text-sm text-spark-ink-soft space-y-2.5">
               {blogOnly ? (<>
-                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> About 1,000 words with headings, ready to paste into your site</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Usually 800 to 1,200 words with headings, ready to paste into your site</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Written from the listing: price, beds, baths and standout features</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Fair Housing-safe wording</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>

@@ -3264,7 +3264,7 @@ export default function ProjectEditorPage() {
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
                 <div className="px-2 pb-1">
                   <p className="text-xs leading-[1.5] text-slate-500">
-                    A ~1,000-word article on the same subject as this video, written to be read
+                    An article of usually 800 to 1,200 words on the same subject as this video, written to be read
                     rather than heard, with question-shaped headings that search and answer
                     engines can quote. Paste it straight into your website — the copy button
                     gives you the HTML.

@@ -116,7 +116,7 @@ const features = [
     // Was buried at the end of a list about YouTube metadata, as "and a full
     // blog post" — the one deliverable here that lives on the agent's own
     // site, described as a footnote about someone else's platform.
-    description: "Around a thousand words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all.",
+    description: "Usually 800 to 1,200 words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -542,7 +542,7 @@ export default function LandingPage() {
                 <span className="font-semibold text-slate-700">Then, two places to be quoted.</span>{" "}
                 Your video goes out with a description built around a real FAQ block — the format
                 voice search and AI Overviews pull their answers from. And every script also comes
-                with a full blog post for your own site: around a thousand words, headings written as
+                with a full blog post for your own site: usually 800 to 1,200 words, headings written as
                 the questions people actually ask and answered in the first line, which is the shape
                 an assistant lifts and cites. That is{" "}
                 <span className="font-semibold text-slate-700">AEO and GEO</span>, alongside ordinary

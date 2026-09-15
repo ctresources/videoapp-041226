@@ -237,7 +237,7 @@ export default function HelpPage() {
             <Step n={11} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
-              holds a <strong>blog article</strong> — around a thousand words, titled with the question a
+              holds a <strong>blog article</strong> — usually 800 to 1,200 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
               and two <strong>FAQ sections</strong> at the end. That is the shape an AI assistant quotes —{" "}
               <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
