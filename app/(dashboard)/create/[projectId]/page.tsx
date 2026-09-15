@@ -3130,7 +3130,9 @@ export default function ProjectEditorPage() {
                   {/* Title + description are editable — saved when you generate or save a draft */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-medium text-slate-500">Video Title <span className="font-normal text-slate-400">(editable)</span></p>
+                      {/* "Video" only once there is one. On the blog route these are
+                          the article's title and description, and nothing was made. */}
+                      <p className="text-xs font-medium text-slate-500">{articleFirst ? "Title" : "Video Title"} <span className="font-normal text-slate-400">(editable)</span></p>
                       <div className="flex items-center gap-0.5">
                         {/* Publish was the last step with no mic. These two
                             fields are the only editable things on it, and
@@ -3166,7 +3168,7 @@ export default function ProjectEditorPage() {
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-medium text-slate-500">Video Description <span className="font-normal text-slate-400">(editable)</span></p>
+                      <p className="text-xs font-medium text-slate-500">{articleFirst ? "Description" : "Video Description"} <span className="font-normal text-slate-400">(editable)</span></p>
                       <div className="flex items-center gap-0.5">
                         <FieldMic
                           title="Dictate. Adds to the end of the description"
