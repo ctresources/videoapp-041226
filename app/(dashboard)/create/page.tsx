@@ -1524,7 +1524,7 @@ function CreatePageInner() {
               // out is the point.
               desc: trialLocked
                 ? "Free trial ended — pick a plan"
-                : "New article, or paste an existing one",
+                : "New article, or paste an existing",
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },
