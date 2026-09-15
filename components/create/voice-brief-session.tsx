@@ -476,12 +476,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
             rather than the different thing it is: the box is what you are
             about to say, this is what has been taken from everything you have
             said so far. */}
-        {summary && (
+        {/* Only while the brief is still being built. Once it is complete the
+            assistant's own reply has just read it back in a full sentence
+            directly above, and a truncated copy underneath it is the same
+            information said worse. */}
+        {summary && !briefReady && (
           <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
             <span className="font-semibold text-spark-ink-faint">Brief so far:</span> {summary}
           </p>
         )}
-        {!summary && <span className="flex-1" />}
+        {(!summary || briefReady) && <span className="flex-1" />}
 
         {/* Only when it has something to send.
             Speaking commits on its own — you stop talking and the turn goes —
@@ -515,25 +519,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                 : "Sparking your script — this takes about a minute."}
             </span>
           ) : (
-            <>
-              <span className="font-medium">That&rsquo;s everything I need.</span>
-              <span className="min-w-0 text-spark-ink-muted">
-                Tap {isBlog ? "Write the blog" : "Spark Script"}, or just say it. Keep talking to change anything.
-              </span>
-              {/* A button, not only a phrase to say. The wake word was written
-                  here as a styled pill, which reads as something to press —
-                  and pressing it did nothing, so saying it and getting no
-                  answer looked like the same nothing. Whichever way it is
-                  reached now, it fires the identical path. */}
-              <button
-                type="button"
-                onClick={sparkNow}
-                disabled={disabled}
-                className="ml-auto flex-none rounded-full bg-spark-amber px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-              >
-                {isBlog ? "Write the blog" : "Spark Script"}
-              </button>
-            </>
+            /* One line, no button.
+             *
+             * This panel used to carry its own {isBlog ? "Write the blog" : "Spark Script"}
+             * button plus a sentence explaining it — while the page footer
+             * carried the same action, and the assistant's reply above told
+             * you to say the same phrase. Four ways to start one thing, on one
+             * screen. The footer keeps the button because it never scrolls
+             * away; the wake word still works, so saying it does what it
+             * always did. */
+            <span className="font-medium">That&rsquo;s everything I need.</span>
           )}
         </div>
       )}

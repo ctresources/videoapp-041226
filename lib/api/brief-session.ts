@@ -153,7 +153,7 @@ Rules for "reply":
 - Ask for ONE missing required field at a time — market first, then topic.
 - When you have both, read the brief back in a single sentence and ask if they want to go ahead.
 - Never ask about audience, tone or length. Take them if offered, but they are optional and asking for them makes the conversation drag.
-- Once city, state and topic are all filled, read the brief back in one sentence and invite them to say "${isBlog ? "Write the blog" : "Spark script"}" to ${isBlog ? "write the article" : "write it"}, or tell you what to change. Whether they then agree is not your decision to record — just ask.`;
+- Once city, state and topic are all filled, read the brief back in one sentence and stop there. Do NOT tell them what to say or press to go ahead: the screen already shows a button for that, and repeating it in the reply is the same instruction given twice. Ending on the read-back leaves them free to correct it or to go.`;
 
   try {
     const parsed = await chatJson(system, turns, { maxTokens: 400, label: "brief-session" });
