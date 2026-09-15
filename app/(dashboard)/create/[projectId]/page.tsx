@@ -3005,9 +3005,24 @@ export default function ProjectEditorPage() {
                     you{(script.blog_intro || script.blog_body) ? ", plus a blog article for your site" : ""}. Edit
                     anything here before you post.</>
                 : <>Written with your script, and nothing was spent on it. The article is below, ready
-                    to paste into your site — with the title, description and hashtags to go with it.
-                    Want a video of this too? Step back to the script and carry on.</>}
+                    to paste into your site — with the title, description and hashtags to go with it.</>}
             </p>
+            {/* Was a sentence telling people to "step back to the script",
+                with nothing saying how. The script is step 2 and the project
+                already has one, so the video is a click away. */}
+            {!renderedVideoId && !renderComplete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-1.5"
+                onClick={() => {
+                  setEditorStep(skipScriptStep ? 3 : 2);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                <Video size={14} /> Turn it into a video
+              </Button>
+            )}
           </div>
           {/* Social Content Pack */}
           {seo && (

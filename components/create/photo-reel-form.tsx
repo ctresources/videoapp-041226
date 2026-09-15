@@ -20,7 +20,6 @@ const MAX_PHOTOS = 12;
  */
 const FORMATS = [
   { id: "reel_9x16", label: "Reel", ratio: "9:16", note: "Instagram, TikTok, Shorts" },
-  { id: "short_1x1", label: "Square", ratio: "1:1", note: "Feed posts" },
   { id: "youtube_16x9", label: "Wide", ratio: "16:9", note: "YouTube, websites" },
 ] as const;
 
@@ -480,7 +479,7 @@ export function PhotoReelForm({
       {/* ── Shape ── */}
       <div>
         <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Shape</p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {FORMATS.map((f) => (
             <button
               key={f.id}

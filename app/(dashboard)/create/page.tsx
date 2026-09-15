@@ -2753,12 +2753,14 @@ function CreatePageInner() {
               </div>
               <div>
                 <p className="text-base font-bold text-brand-text">
-                  {listingMode === "reel" ? "Photo Reel" : "Listing Video"}
+                  {blogOnly ? "Property Article" : listingMode === "reel" ? "Photo Reel" : "Listing Video"}
                 </p>
                 <p className="text-sm text-spark-ink-muted">
-                  {listingMode === "reel"
-                    ? "Your photos, Ken Burns, and music or your voice · free, nothing from your plan"
-                    : "Upload Photos · Import From Zillow · Enter Manually"}
+                  {blogOnly
+                    ? "Import from Zillow · Upload photos · Enter manually"
+                    : listingMode === "reel"
+                      ? "Your photos, Ken Burns, and music or your voice · free, nothing from your plan"
+                      : "Upload Photos · Import From Zillow · Enter Manually"}
                 </p>
               </div>
             </div>
@@ -2766,7 +2768,10 @@ function CreatePageInner() {
             {/* Two things you can make from the same listing: a scripted tour
                 that renders with your avatar or voice, and a reel built
                 straight out of the photos. They share this tab because they
-                share their input — a set of property pictures. */}
+                share their input — a set of property pictures.
+                Not on the blog route: a reel is a video, and this card sat
+                directly under "No video will be made". */}
+            {!blogOnly && (
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
@@ -2788,6 +2793,7 @@ function CreatePageInner() {
                 </button>
               ))}
             </div>
+            )}
 
             {/* The reel starts from whatever the Listing form has gathered.
                 Both live under this one tab and read as two ways to use the
@@ -2796,7 +2802,7 @@ function CreatePageInner() {
                 built to turn photos into a video unable to see them.
                 Kept mounted only while selected, so each switch is a fresh
                 mount that re-reads the listing's current photos. */}
-            {listingMode === "reel" && (
+            {listingMode === "reel" && !blogOnly && (
               <PhotoReelForm
                 city={locCity || undefined}
                 state={locState || undefined}
@@ -2810,7 +2816,7 @@ function CreatePageInner() {
                 possible at all: a canvas cannot record a third-party image,
                 so scraped listing photos have to be copied into our storage
                 first or the recording fails outright. */}
-            {listingMode === "listing" && (
+            {(listingMode === "listing" || blogOnly) && (
             <ListingVideoForm
               blogOnly={blogOnly}
               onListingPhotos={(photoUrls, address) => {

@@ -948,7 +948,10 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
       {/* Script length. Same two the renderer supports and the same budgets
           the clamp enforces, so the tour is written to the length it will
           actually be spoken at. It used to be a fixed "under 200 words" —
-          about 1:20, barely half the shortest video the app renders. */}
+          about 1:20, barely half the shortest video the app renders.
+          Hidden on the blog route: the article is written by its own call and
+          comes out the same length whichever of these is picked. */}
+      {!blogOnly && (
       <div>
         <p className="text-[11px] font-semibold text-spark-ink-muted mb-1">Script Length</p>
         <div className="grid grid-cols-2 gap-1.5">
@@ -979,6 +982,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           })}
         </div>
       </div>
+      )}
 
       {/* Sits with the script settings, not with the recorder: this changes
           the words that get written, and by the time there is a video to put
@@ -992,12 +996,12 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
         />
         <span className="min-w-0">
           <span className="block text-[12px] font-semibold text-spark-ink">
-            Unbranded script for the MLS
+            {blogOnly ? "Unbranded article" : "Unbranded script for the MLS"}
           </span>
           <span className="block text-[11px] leading-[1.45] text-spark-ink-faint">
-            Writes the tour with no name, brokerage or closing ask. The property still gets its
-            address, price and features. Tick the matching box on the recorder to leave the
-            overlays off too. Check what your board requires; the rules vary.
+            {blogOnly
+              ? "Writes the article with no name, brokerage or closing ask. The property still gets its address, price and features. Check what your board requires; the rules vary."
+              : "Writes the tour with no name, brokerage or closing ask. The property still gets its address, price and features. Tick the matching box on the recorder to leave the overlays off too. Check what your board requires; the rules vary."}
           </span>
         </span>
       </label>
@@ -1008,7 +1012,31 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           pushes to the editor — its own toast says "Listing script ready!".
           The video is rendered by Spark Video, two screens later, and that is
           the click that spends a credit. The line under these buttons had
-          been quietly correcting the label from three inches away. */}
+          been quietly correcting the label from three inches away.
+          On the blog route there is one button: nothing is read aloud and
+          nothing is spent, so neither of the video pair is true there. */}
+      {blogOnly ? (
+        <>
+          <Button
+            onClick={() => handleGenerate()}
+            disabled={!listing.address.trim() || !listing.price.trim()}
+            size="lg"
+            className="w-full gap-2"
+          >
+            <span className="flex flex-col items-center leading-[1.2]">
+              Write my article
+              <span className="text-[12px] font-normal opacity-80">
+                Free · no video is made
+              </span>
+            </span>
+            <ArrowRight size={16} />
+          </Button>
+          <p className="text-xs text-slate-400 text-center -mt-2">
+            You&apos;ll get the article plus a title, description and hashtags, ready to paste into
+            your site.
+          </p>
+        </>
+      ) : (<>
       <Button
         onClick={() => handleGenerate()}
         disabled={!listing.address.trim() || !listing.price.trim()}
@@ -1051,6 +1079,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
         short or long videos, and is spent at Spark Video on the setup screen, where you pick the
         avatar, shape and music.
       </p>
+      </>)}
     </div>
   );
 }
