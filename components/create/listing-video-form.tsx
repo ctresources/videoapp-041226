@@ -452,7 +452,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
               redirect has to be followed before the real page is even
               fetched — worth saying, so a wait looks like a wait. */}
           <p className="mt-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
-            Zillow · Realtor.com · Redfin · Homes.com · Trulia · Compass.
+            Zillow · Realtor.com · Redfin · Homes.com · Trulia.
             Short links (myre.io, bit.ly) work too — they just take a few seconds longer.
           </p>
         </div>
@@ -600,7 +600,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
             a property tour voiceover script written to Fair Housing guidelines. Up to{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
             {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
-            titles, hashtags and blog post that go with it. Takes about a minute.
+            titles, hashtags and blog post that go with it.
           </p>
         </div>
       </div>
