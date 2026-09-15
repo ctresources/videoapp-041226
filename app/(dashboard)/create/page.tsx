@@ -1430,8 +1430,12 @@ function CreatePageInner() {
           Visible." was a slogan sitting above a set of controls it did not
           introduce — and it named the microphone, which is one route in out
           of several. */}
+      {/* Centred as a block, headline and subhead together. Centring the
+          headline alone over left-aligned lines reads as a mistake rather
+          than a choice. The rows below stay left-aligned — a centred hero
+          over left-aligned controls is the ordinary shape. */}
       {step === "input" && (
-        <div className="pt-2">
+        <div className="pt-2 text-center">
           <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
             {/* One verb, not the three. "Speak, Spark, Share" is the tagline
                 and still carries the logo, but as a headline it asked how you
@@ -1449,10 +1453,14 @@ function CreatePageInner() {
               Run together at this size it reads as one long breath, and the
               promise — the half that answers "why bother" — is the half that
               gets skimmed. */}
-          <p className="mt-3 text-[15px] leading-[1.5] text-spark-ink-muted">
+          {/* Dark amber rather than muted grey, and a size up. primary-700 is
+              #8D580F — the same deep amber the Spark Card uses for the line
+              that needs reading. Muted grey at 15px made the half that answers
+              "why bother" the quietest thing on the screen. */}
+          <p className="mt-3 text-[17px] leading-[1.5] text-primary-700">
             A video with your avatar, or film yourself. A blog post, new or pasted. Or both.
           </p>
-          <p className="mt-1.5 text-[15px] leading-[1.5] text-spark-ink-muted">
+          <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
             Your all-in-one hub — be seen, build trust, become the go-to local expert.
           </p>
         </div>
