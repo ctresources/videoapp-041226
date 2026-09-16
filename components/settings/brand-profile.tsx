@@ -19,6 +19,10 @@ export interface BrandProfileInitial {
   company_name: string | null;
   phone: string | null;
   company_phone: string | null;
+  /** The agent's own mobile. Never printed on a video — that is `phone`. */
+  mobile_phone: string | null;
+  /** When they agreed to be texted, or null for no consent. */
+  sms_consent_at: string | null;
   company_address: string | null;
   avatar_url: string | null;
   logo_url: string | null;
@@ -1166,6 +1170,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
     company_name:     initial.company_name    || "",
     phone:            initial.phone           || "",
     company_phone:    initial.company_phone   || "",
+    mobile_phone:     initial.mobile_phone    || "",
     company_address:  initial.company_address || "",
     avatar_url:       initial.avatar_url      || "",
     logo_url:         initial.logo_url        || "",
@@ -1176,6 +1181,8 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
     license_number:   initial.license_number  || "",
   });
   const [saving, setSaving] = useState(false);
+  /** Ticked means "you may text me". Unticking is how someone stops it. */
+  const [smsConsent, setSmsConsent] = useState(!!initial.sms_consent_at);
 
   function set(key: string, value: string) {
     setFields((f) => ({ ...f, [key]: value }));
@@ -1191,6 +1198,14 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         company_name:    fields.company_name.trim()    || null,
         phone:           fields.phone.trim()           || null,
         company_phone:   fields.company_phone.trim()   || null,
+        mobile_phone:    fields.mobile_phone.trim()    || null,
+        // The original date survives a re-save, so consent keeps the day it was
+        // actually given; a fresh tick dates itself; unticking clears it, which
+        // is what stops the texts.
+        sms_consent_at: smsConsent && fields.mobile_phone.trim()
+          ? (initial.sms_consent_at ?? new Date().toISOString())
+          : null,
+        sms_consent_source: smsConsent && fields.mobile_phone.trim() ? "settings" : null,
         company_address: fields.company_address.trim() || null,
         avatar_url:      fields.avatar_url             || null,
         logo_url:        fields.logo_url               || null,
@@ -1240,8 +1255,11 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
             placeholder="Smith Realty Group"
           />
           <div>
+            {/* Labelled "Mobile Phone" until now, which was wrong twice over:
+                this is the number burned onto every video's closing card, and
+                the field below is the actual mobile. */}
             <label className="block text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1">
-              <Phone size={11} /> Mobile Phone
+              <Phone size={11} /> Contact Phone <span className="text-slate-400 font-normal">(shown on your videos)</span>
             </label>
             <input
               type="tel"
@@ -1263,6 +1281,36 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
               className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1">
+              <Phone size={11} /> Your Mobile <span className="text-slate-400 font-normal">(optional — never shown on your videos)</span>
+            </label>
+            <input
+              type="tel"
+              value={fields.mobile_phone}
+              onChange={(e) => set("mobile_phone", e.target.value)}
+              placeholder="+1 (555) 000-0000"
+              autoComplete="tel"
+              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <label className="mt-2 flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                id="settings-sms-consent"
+                checked={smsConsent}
+                onChange={(e) => setSmsConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary-500"
+              />
+              <span className="text-xs leading-relaxed text-slate-500">
+                Text me occasional tips and updates about SparkReels at this number. Message and data
+                rates may apply, frequency varies, and you can reply STOP at any time.{" "}
+                <span className="text-slate-400">
+                  Untick and save to stop texts. Account and billing messages are unaffected.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1">
               <MapPin size={11} /> Company Address <span className="text-slate-400 font-normal">(optional)</span>

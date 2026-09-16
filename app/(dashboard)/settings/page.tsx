@@ -45,13 +45,14 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone")
+      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
         const row = data as {
           full_name: string | null; company_name: string | null; phone: string | null;
-          company_phone: string | null; company_address: string | null;
+          company_phone: string | null; mobile_phone: string | null; sms_consent_at: string | null;
+          company_address: string | null;
           preferred_language: string | null; location_city: string | null; location_state: string | null;
           avatar_url: string | null; logo_url: string | null; voice_clone_id: string | null;
           heygen_voice_id: string | null; heygen_photo_id: string | null;
@@ -78,6 +79,8 @@ export default function SettingsPage() {
             company_name:    row.company_name,
             phone:           row.phone,
             company_phone:   row.company_phone,
+            mobile_phone:    row.mobile_phone,
+            sms_consent_at:  row.sms_consent_at,
             company_address: row.company_address,
             avatar_url:      row.avatar_url,
             logo_url:        row.logo_url,
