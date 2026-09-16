@@ -209,6 +209,8 @@ export async function notifyAffiliateApproved({
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: email,
+      // So the reply button reaches support rather than noreply@.
+      reply_to: NOTIFY_EMAIL,
       subject: "You're approved — welcome to the SparkReels affiliate program",
       html: `
         <p>Hi ${name},</p>
@@ -328,7 +330,9 @@ export async function notifyTrialWindow({
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM_EMAIL, to: email, subject, html }),
+    // Sent from noreply@, so Reply went nowhere. Most people press the reply
+    // button before they read a footer; this makes that button work.
+    body: JSON.stringify({ from: FROM_EMAIL, to: email, subject, html, reply_to: NOTIFY_EMAIL }),
   }).catch(() => null);
 
   // The caller only marks the column when this is true, so a failed send is
