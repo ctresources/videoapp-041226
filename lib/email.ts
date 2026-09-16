@@ -221,6 +221,8 @@ export async function notifyAffiliateApproved({
              <p>To get paid, open the <strong>Affiliate Program</strong> page and connect your bank with Stripe. Payouts are sent monthly.</p>`
           : `<p>To get paid, sign in and open the <strong>Affiliate Program</strong> page, then connect your bank with Stripe. Payouts are sent monthly.</p>`}
         <p>Thanks for helping more agents discover SparkReels.</p>
+        <p>Any questions, please send us an email at
+        <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
       `,
     }),
   }).catch(() => {});
