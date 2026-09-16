@@ -302,6 +302,10 @@ export async function notifyTrialWindow({
     ? `${daysLeft} ${dayWord} left of your camera recording and AI tools`
     : "Your free 30 days have ended";
 
+  // Sent from noreply@, so there was no way to ask a question. Said in both.
+  const contact = `<p>Any questions, please send us an email at
+       <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>`;
+
   const html = stage === "warning"
     ? `<p>${hi}</p>
        <p>Your free video opened 30 days of unlimited camera recording, the AI tools and the
@@ -310,12 +314,14 @@ export async function notifyTrialWindow({
        plan and nothing stops.</p>
        <p><a href="${plans}">See the plans</a></p>
        <p>If you'd rather not, nothing happens — the videos you have made stay yours, and your
-       account stays open.</p>`
+       account stays open.</p>
+       ${contact}`
     : `<p>${hi}</p>
        <p>Your 30 days of unlimited camera recording, AI tools and article writing have ended.</p>
        <p>Everything you made is still in your account and still yours. To record, write or
        generate anything new, pick a plan.</p>
-       <p><a href="${plans}">See the plans</a></p>`;
+       <p><a href="${plans}">See the plans</a></p>
+       ${contact}`;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
