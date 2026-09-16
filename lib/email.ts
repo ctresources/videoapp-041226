@@ -267,6 +267,67 @@ const BILLING_COPY: Record<BillingEventKind, { subject: string; line: string; ur
   },
 };
 
+/**
+ * The free window is closing, or has closed.
+ *
+ * Sent TO THE AGENT, not the owner — one of the few here that is. The 30 days
+ * of camera recording and AI tools that a free video unlocks used to end with
+ * no word at all: the tiles locked, and whoever had drifted away never learned
+ * why. Two emails, each sent once, tracked by the columns in migration 040.
+ *
+ * Deliberately plain. This is the moment someone decides whether to pay, and a
+ * countdown dressed up as a celebration reads as a sales trick.
+ */
+export async function notifyTrialWindow({
+  email,
+  name,
+  stage,
+  daysLeft,
+  appUrl,
+}: {
+  email: string;
+  name: string | null;
+  /** "warning" — a few days left. "ended" — the window has closed. */
+  stage: "warning" | "ended";
+  daysLeft: number;
+  appUrl: string;
+}) {
+  if (!RESEND_API_KEY) return false;
+
+  const hi = name ? `Hi ${name.split(" ")[0]},` : "Hi,";
+  const plans = `${appUrl}/billing`;
+  const dayWord = daysLeft === 1 ? "day" : "days";
+
+  const subject = stage === "warning"
+    ? `${daysLeft} ${dayWord} left of your camera recording and AI tools`
+    : "Your free 30 days have ended";
+
+  const html = stage === "warning"
+    ? `<p>${hi}</p>
+       <p>Your free video opened 30 days of unlimited camera recording, the AI tools and the
+       article writer. <strong>${daysLeft} ${dayWord}</strong> of that is left.</p>
+       <p>If you want to keep recording, writing articles and making videos after that, pick a
+       plan and nothing stops.</p>
+       <p><a href="${plans}">See the plans</a></p>
+       <p>If you'd rather not, nothing happens — the videos you have made stay yours, and your
+       account stays open.</p>`
+    : `<p>${hi}</p>
+       <p>Your 30 days of unlimited camera recording, AI tools and article writing have ended.</p>
+       <p>Everything you made is still in your account and still yours. To record, write or
+       generate anything new, pick a plan.</p>
+       <p><a href="${plans}">See the plans</a></p>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: email, subject, html }),
+  }).catch(() => null);
+
+  // The caller only marks the column when this is true, so a failed send is
+  // retried by tomorrow's run rather than silently counted as delivered.
+  return !!res?.ok;
+}
+
 export async function notifyBillingEvent({
   kind,
   name,
