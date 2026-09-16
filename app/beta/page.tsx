@@ -122,7 +122,9 @@ export default function BetaPage() {
   }, []);
 
   async function handleGoogle() {
-    if (!capacity?.open) return;
+    // Not blocked when the beta is full. The cap decides who gets the free
+    // video, not who may create an account: past 100 the callback keeps the
+    // account and takes the free video back, so a paying customer still gets in.
     setLoading(true);
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
@@ -166,7 +168,22 @@ export default function BetaPage() {
         )}
 
         {isFull ? (
-          <WaitlistForm />
+          <>
+            <WaitlistForm />
+            {/* The other door. The waitlist is for a free spot; this is for
+                someone who would rather start today and pay. */}
+            <div className="mt-5 flex flex-col items-center gap-2 max-w-md w-full">
+              <Link
+                href="/register"
+                className="w-full inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-sm font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-800 transition-colors"
+              >
+                <Mail size={16} /> Create an account and pick a plan
+              </Link>
+              <p className="text-xs text-slate-400">
+                Plans aren&apos;t capped. Your account just won&apos;t include the free AI video.
+              </p>
+            </div>
+          </>
         ) : (
           <>
             {/* Perks */}

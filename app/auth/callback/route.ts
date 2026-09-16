@@ -92,13 +92,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Past the cap the account is kept and the free video is taken back, rather
+  // than the whole signup being deleted. The 100 spots limit who gets a video
+  // free, not who is allowed to pay — deleting the account turned a would-be
+  // customer away at the door with no way back in.
   if (user && isNew && !(await hasCapacityForNewUser(admin, user.id))) {
-    // Their auth user + profile row were already created by the code exchange,
-    // so remove both — otherwise a rejected signup still counts against the cap.
-    await supabase.auth.signOut();
-    await admin.from("profiles").delete().eq("id", user.id);
-    await admin.auth.admin.deleteUser(user.id).catch(() => {});
-    return redirectTo("/beta?full=1");
+    await admin.from("profiles").update({ credits_remaining: 0 }).eq("id", user.id);
   }
 
   // Route returning users based on onboarding and subscription status

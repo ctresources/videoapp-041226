@@ -59,14 +59,6 @@ function RegisterForm() {
     const body = await res.json();
 
     if (!res.ok) {
-      // Beta filled up between page load and submit — show the waitlist
-      // rather than a bare toast the person can't act on.
-      if (body.code === "beta_full") {
-        setBetaFull(true);
-        setLoading(false);
-        router.push("/beta?full=1");
-        return;
-      }
       toast.error(body.error || "Registration failed");
       setLoading(false);
       return;
@@ -98,11 +90,17 @@ function RegisterForm() {
         const { error: codeError } = await codeRes.json();
         toast.error(codeError || "Invite code could not be applied — continuing as free account.");
       }
+    } else if (body.paidOnly) {
+      // Said once, plainly, rather than letting them hunt for a free video the
+      // beta cap already gave away.
+      toast.success("Account created. The free beta is full, so pick a plan to start making videos.");
     } else {
       toast.success("Account created! Let's get you started.");
     }
 
-    router.push("/create");
+    // No free video to spend means nothing to do on Create — the plans are the
+    // next step, not a dead end with an empty allowance.
+    router.push(body.paidOnly && !form.inviteCode.trim() ? "/billing" : "/create");
     router.refresh();
   }
 
@@ -125,10 +123,11 @@ function RegisterForm() {
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
           <Gift size={16} className="text-amber-600 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800">
-            <strong>The free beta is full.</strong> All 100 spots are taken, so new accounts
-            don&apos;t include the free AI video.{" "}
-            <Link href="/beta" className="font-semibold underline">Join the waitlist</Link> or{" "}
-            <Link href="/#pricing" className="font-semibold underline">start on a paid plan</Link>.
+            <strong>The free beta is full.</strong> All 100 spots are taken, so this account
+            won&apos;t include the free AI video — you can still sign up and{" "}
+            <Link href="/#pricing" className="font-semibold underline">pick a plan</Link>, or{" "}
+            <Link href="/beta" className="font-semibold underline">join the waitlist</Link> for a
+            free spot.
           </p>
         </div>
       )}

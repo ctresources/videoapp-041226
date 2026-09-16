@@ -34,6 +34,7 @@ const FREE_VIDEO_STARTING_CREDITS = 1;
 interface CapacityRow {
   subscription_tier: string | null;
   credits_remaining: number | null;
+  first_video_generated_at: string | null;
   created_at: string;
 }
 
@@ -41,6 +42,21 @@ function isDormantUnusedTrial(p: CapacityRow): boolean {
   if (p.subscription_tier !== "free") return false;
   if (p.credits_remaining !== FREE_VIDEO_STARTING_CREDITS) return false; // any usage, or a purchased add-on, disqualifies
   return Date.now() - new Date(p.created_at).getTime() > RECLAIM_MS;
+}
+
+/**
+ * Someone who signed up AFTER the beta filled, so they were never given the
+ * free video. They are paying customers or nothing; either way they never took
+ * one of the 100 marketed spots and must not block the person who would.
+ *
+ * Told apart from an account that USED its free video by the clock: a spent
+ * video leaves first_video_generated_at set, a paid-only signup leaves it null
+ * with no credit to spend.
+ */
+function isPaidOnlySignup(p: CapacityRow): boolean {
+  return p.subscription_tier === "free"
+    && (p.credits_remaining ?? 0) === 0
+    && !p.first_video_generated_at;
 }
 
 /**
@@ -52,13 +68,13 @@ function isDormantUnusedTrial(p: CapacityRow): boolean {
 async function countedProfiles(admin: any, extraFilter?: (q: any) => any): Promise<number> {
   let query = admin
     .from("profiles")
-    .select("subscription_tier, credits_remaining, created_at")
+    .select("subscription_tier, credits_remaining, first_video_generated_at, created_at")
     .neq("role", "admin");
   if (BETA_START_AT) query = query.gte("created_at", BETA_START_AT);
   if (extraFilter) query = extraFilter(query);
   const { data } = await query;
   const rows = (data ?? []) as CapacityRow[];
-  return rows.filter((r) => !isDormantUnusedTrial(r)).length;
+  return rows.filter((r) => !isDormantUnusedTrial(r) && !isPaidOnlySignup(r)).length;
 }
 
 export interface Capacity {

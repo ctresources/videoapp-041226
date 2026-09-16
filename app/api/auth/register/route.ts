@@ -20,16 +20,12 @@ export async function POST(req: NextRequest) {
   const spam = await screenSignup(admin, { name: fullName, email });
   if (spam) return NextResponse.json({ error: spam }, { status: 400 });
 
-  // Beta capacity. This check used to be missing here entirely, so the cap
-  // could be sidestepped by using the email form instead of Google. Checked
-  // BEFORE createUser so a refused signup leaves nothing behind.
-  const { open, max } = await getCapacity(admin);
-  if (!open) {
-    return NextResponse.json(
-      { error: `All ${max} beta spots are taken. Join the waitlist and we'll email you when a spot opens.`, code: "beta_full" },
-      { status: 403 },
-    );
-  }
+  // Beta capacity. The cap governs the FREE VIDEO, not the door: once the 100
+  // spots are gone a new account is still created, just without the free video,
+  // so someone who wants to pay can. Refusing outright shut the only route to a
+  // paying customer the moment the beta filled.
+  const { open } = await getCapacity(admin);
+  const paidOnly = !open;
 
   const { data, error } = await admin.auth.admin.createUser({
     email,
@@ -43,10 +39,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Record the canonical inbox so a later signup under a different spelling
-  // of the same address is recognised as a duplicate.
+  // of the same address is recognised as a duplicate. The free video is taken
+  // back in the same write when the beta is full — the column defaults to 1,
+  // so this is what makes a post-cap account paid-only.
   await admin
     .from("profiles")
-    .update({ email_canonical: canonicalEmail(email) })
+    .update({
+      email_canonical: canonicalEmail(email),
+      ...(paidOnly && { credits_remaining: 0 }),
+    })
     .eq("id", data.user.id);
 
   // Deliberately not awaited — the owner notification must not slow signup.
@@ -60,5 +61,7 @@ export async function POST(req: NextRequest) {
   // Affiliate attribution (best-effort; profile row exists via handle_new_user)
   await attributeReferral(admin, data.user.id, email, refCode);
 
-  return NextResponse.json({ user_id: data.user.id });
+  // paidOnly tells the form to say so before the person goes looking for a free
+  // video that was never granted.
+  return NextResponse.json({ user_id: data.user.id, paidOnly });
 }
