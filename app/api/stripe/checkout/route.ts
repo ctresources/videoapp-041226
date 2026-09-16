@@ -40,9 +40,6 @@ export async function GET(req: NextRequest) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // Only offer trial to users who have never had a subscription
-  const isNewCustomer = !p?.stripe_subscription_id;
-
   /**
    * An existing subscriber belongs in the billing portal, not in checkout.
    *
@@ -73,9 +70,13 @@ export async function GET(req: NextRequest) {
     // customer.subscription.updated and .deleted read it off the subscription
     // object, found none, and returned without writing anything — so no
     // cancellation, and no portal plan change, ever reached the database.
+    //
+    // No trial_period_days: picking a plan charges today. The free offer is the
+    // free AI video on the free tier, not a free week of a paid plan. Nobody
+    // ever reached this checkout while the 7-day trial was set, so no existing
+    // subscriber is affected by dropping it.
     subscription_data: {
       metadata: { supabase_user_id: user.id, plan },
-      ...(isNewCustomer && { trial_period_days: 7 }),
     },
   });
 

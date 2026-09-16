@@ -175,9 +175,7 @@ export default async function BillingPage({
           <div>
             <p className="font-semibold text-sm">You&apos;re all set! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
-              {isTrialing
-                ? `Your 7-day free trial of the ${PLANS.find((p) => p.key === searchParams.plan)?.name ?? "new"} plan has started. No charge until your trial ends.`
-                : `Your ${PLANS.find((p) => p.key === searchParams.plan)?.name ?? "new"} plan is now active. Start creating videos.`}
+              {`Your ${PLANS.find((p) => p.key === searchParams.plan)?.name ?? "new"} plan is now active. Start creating videos.`}
             </p>
           </div>
         </div>
