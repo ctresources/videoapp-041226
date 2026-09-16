@@ -51,6 +51,9 @@ export default function OnboardingPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [phone, setPhone] = useState("");
+  /** The agent's own mobile, and whether they agreed to be texted on it. */
+  const [mobilePhone, setMobilePhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   // Step 3
   const [voiceId, setVoiceId] = useState<string | null>(null);
   const [heygenVoiceId, setHeygenVoiceId] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export default function OnboardingPage() {
       setUserId(user.id);
       const { data } = await supabase
         .from("profiles")
-        .select("onboarding_done, full_name, location_city, location_state, phone, avatar_url, heygen_photo_id, voice_clone_id, heygen_voice_id")
+        .select("onboarding_done, full_name, location_city, location_state, phone, mobile_phone, sms_consent_at, avatar_url, heygen_photo_id, voice_clone_id, heygen_voice_id")
         .eq("id", user.id)
         .single();
       const p = data as Record<string, string | boolean | null> | null;
@@ -75,6 +78,8 @@ export default function OnboardingPage() {
       setCity((p?.location_city as string) ?? "");
       setState((p?.location_state as string) ?? "");
       setPhone((p?.phone as string) ?? "");
+      setMobilePhone((p?.mobile_phone as string) ?? "");
+      setSmsConsent(!!p?.sms_consent_at);
       setAvatarUrl((p?.avatar_url as string) ?? null);
       setPhotoId((p?.heygen_photo_id as string) ?? null);
       setVoiceId((p?.voice_clone_id as string) ?? null);
@@ -97,6 +102,11 @@ export default function OnboardingPage() {
         location_city: city.trim() || null,
         location_state: state.trim() || null,
         phone: phone.trim() || null,
+        mobile_phone: mobilePhone.trim() || null,
+        // Dated when ticked, cleared when unticked, and never stamped without a
+        // number to text. Withdrawing consent has to be as easy as giving it.
+        sms_consent_at: smsConsent && mobilePhone.trim() ? new Date().toISOString() : null,
+        sms_consent_source: smsConsent && mobilePhone.trim() ? "onboarding" : null,
         // The flag this whole page exists to set honestly.
         onboarding_done: true,
       })
@@ -108,7 +118,7 @@ export default function OnboardingPage() {
     }
     if (!opts?.silent) toast.success("You're set up. Let's make a video.");
     router.replace("/create");
-  }, [userId, fullName, city, state, phone, router]);
+  }, [userId, fullName, city, state, phone, mobilePhone, smsConsent, router]);
 
   async function saveMarketAndContinue() {
     setStep("voice");
@@ -252,6 +262,37 @@ export default function OnboardingPage() {
                   placeholder="(215) 555-0142"
                   className="rounded-lg border border-spark-rule px-3 py-2 text-[13.5px] text-spark-ink outline-none focus:border-spark-amber"
                 />
+              </label>
+
+              {/* A second number, deliberately. The one above is published on
+                  every video; this one is the agent's own. */}
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-spark-ink-muted">
+                  Your mobile <span className="font-normal text-spark-ink-faint">· never shown on your videos</span>
+                </span>
+                <input
+                  type="tel"
+                  value={mobilePhone}
+                  onChange={(e) => setMobilePhone(e.target.value)}
+                  placeholder="(215) 555-0199"
+                  autoComplete="tel"
+                  className="rounded-lg border border-spark-rule px-3 py-2 text-[13.5px] text-spark-ink outline-none focus:border-spark-amber"
+                />
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="onboarding-sms-consent"
+                  checked={smsConsent}
+                  onChange={(e) => setSmsConsent(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-spark-amber"
+                />
+                <span className="text-[11.5px] leading-relaxed text-spark-ink-faint">
+                  Text me occasional tips and updates about SparkReels at this number. Message and
+                  data rates may apply, frequency varies, and you can reply STOP at any time. Not
+                  required to use SparkReels.
+                </span>
               </label>
 
               {/* The numbered rail above says this is a sequence, and a

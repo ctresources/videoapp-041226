@@ -6,7 +6,7 @@ import { attributeReferral } from "@/lib/affiliate-attribution";
 import { getCapacity, maybeNotifyCapacity } from "@/lib/capacity";
 
 export async function POST(req: NextRequest) {
-  const { email, password, fullName, refCode } = await req.json();
+  const { email, password, fullName, refCode, mobilePhone, smsConsent } = await req.json();
 
   if (!email || !password || !fullName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -42,11 +42,22 @@ export async function POST(req: NextRequest) {
   // of the same address is recognised as a duplicate. The free video is taken
   // back in the same write when the beta is full — the column defaults to 1,
   // so this is what makes a post-cap account paid-only.
+  // The consent timestamp is set HERE, from the server's clock, rather than
+  // taken from the request: it is the record that the box was ticked on this
+  // form, at this moment, and a client-supplied date would prove nothing.
+  const mobile = typeof mobilePhone === "string" ? mobilePhone.trim().slice(0, 40) : "";
+  const consented = smsConsent === true && !!mobile;
+
   await admin
     .from("profiles")
     .update({
       email_canonical: canonicalEmail(email),
       ...(paidOnly && { credits_remaining: 0 }),
+      ...(mobile && { mobile_phone: mobile }),
+      ...(consented && {
+        sms_consent_at: new Date().toISOString(),
+        sms_consent_source: "register",
+      }),
     })
     .eq("id", data.user.id);
 

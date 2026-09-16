@@ -13,7 +13,10 @@ import { Gift } from "lucide-react";
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [form, setForm] = useState({ fullName: "", email: "", password: "", inviteCode: "" });
+  const [form, setForm] = useState({ fullName: "", email: "", password: "", inviteCode: "", mobilePhone: "" });
+  // Unticked on purpose, and it stays unticked unless the person ticks it: a
+  // pre-ticked box is not consent under US texting rules.
+  const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -54,7 +57,15 @@ function RegisterForm() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.email, password: form.password, fullName: form.fullName, refCode }),
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        refCode,
+        mobilePhone: form.mobilePhone,
+        // Only meaningful with a number to text.
+        smsConsent: smsConsent && !!form.mobilePhone.trim(),
+      }),
     });
     const body = await res.json();
 
@@ -170,6 +181,34 @@ function RegisterForm() {
           hint="At least 8 characters"
           autoComplete="new-password"
         />
+
+        {/* Mobile — the agent's own number, not the one printed on their
+            videos. That one is asked for in onboarding, where it says so. */}
+        <div>
+          <Input
+            label="Mobile Number (optional)"
+            type="tel"
+            placeholder="(215) 555-0142"
+            value={form.mobilePhone}
+            onChange={(e) => set("mobilePhone", e.target.value)}
+            autoComplete="tel"
+            hint="Yours, for account help. It never appears on your videos."
+          />
+          <label className="mt-2 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              id="sms-consent"
+              checked={smsConsent}
+              onChange={(e) => setSmsConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
+            />
+            <span className="text-xs leading-relaxed text-slate-500">
+              Text me occasional tips and updates about SparkReels at this number. Message and data
+              rates may apply, frequency varies, and you can reply STOP at any time. Not required to
+              create an account.
+            </span>
+          </label>
+        </div>
 
         {/* Invite code */}
         <div>
