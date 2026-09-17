@@ -200,11 +200,19 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
           {live || "Go ahead…"}
         </p>
       )}
+      {/* What you can pack into one answer — the thing nobody discovers on
+          their own. It used to sit beside the composer's mic in section 3,
+          which is past two rows of tiles and, on a phone, past the fold: the
+          hint about what to say arrived after the moment you needed it. */}
       {!listening && (
-        <p className="text-[13px] text-spark-ink-faint">
-          Or hold <span className="font-semibold text-spark-ink-muted">Spacebar</span> anywhere. Your
-          words land in the box below, where you can edit them.
-        </p>
+        <div className="flex flex-col items-center gap-0.5">
+          <p className="text-[15px] font-medium text-spark-ink">
+            Topic, town, who it&apos;s for — all at once, or one at a time.
+          </p>
+          <p className="text-[13px] text-spark-ink-faint">
+            Or hold <span className="font-semibold text-spark-ink-muted">Spacebar</span> anywhere.
+          </p>
+        </div>
       )}
     </div>
   );

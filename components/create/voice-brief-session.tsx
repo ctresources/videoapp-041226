@@ -19,7 +19,15 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
  * one sentence. Only the opening state — the moment you speak, this becomes
  * the assistant's real reply and everything below is unchanged.
  */
-const OPENING_LINE = "Topic, town, who it's for — all at once, or one at a time.";
+/**
+ * Moved to the hero mic at the top of the Create page, which is where someone
+ * is deciding what to say. Down here it was the same advice given after two
+ * rows of tiles had already been scrolled past.
+ *
+ * Empty rather than removed: this is still turns[0], the seat the assistant's
+ * real reply takes the moment you speak. Only the opening state is silent.
+ */
+const OPENING_LINE = "";
 
 
 export interface BriefSlots {
@@ -442,7 +450,10 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
             status ? "text-spark-ink-muted" : "font-medium text-spark-ink"
           }`}
         >
-          {status || lastAssistant || "Say it or type it"}
+          {/* No fallback any more: with the opening line moved up, the only
+              thing left to say here was "Say it or type it", which the box
+              directly below already says as its placeholder. */}
+          {status || lastAssistant}
         </p>
       </div>
 
