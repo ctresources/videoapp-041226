@@ -182,7 +182,7 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
         onClick={toggle}
         disabled={disabled}
         aria-pressed={listening}
-        aria-label={listening ? "Stop listening" : "Say what you want to create"}
+        aria-label={listening ? "Stop listening" : "Speak what you want to Spark"}
         className="group relative flex items-center gap-3 rounded-[26px] border border-spark-rule bg-white py-2.5 pl-2.5 pr-5 text-left shadow-sm transition-colors hover:border-spark-amber disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors group-hover:bg-spark-blue">
@@ -196,7 +196,9 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
             the subheads above rather than as part of the control. */}
         <span className="min-w-0">
           <span className="block text-[15px] font-semibold leading-tight text-spark-ink">
-            {listening ? "Listening — tap when you're done" : "Say what you want to create"}
+            {/* The product's own verbs, and the same word the headline above
+                ends on: speak, spark, share. */}
+            {listening ? "Listening — tap when you're done" : "Speak what you want to Spark"}
           </span>
           <span className="mt-0.5 block text-[13px] leading-snug text-spark-ink-muted">
             {listening
