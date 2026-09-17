@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
+  LayoutDashboard, BarChart2, CalendarDays,
 } from "lucide-react";
 
 export const metadata = { title: "How It Works — SparkReels" };
@@ -174,8 +175,8 @@ export default function HelpPage() {
                 Whatever you pick, it starts a <strong>Spark</strong> — the folder holding that
                 topic&apos;s script, its videos, its article and where they&apos;ve been published.
                 It&apos;s created the moment you begin, so an idea saved and left half-finished is
-                still there in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
-                marked <strong>Draft</strong>, not lost.
+                still there marked <strong>Draft</strong>, not lost. Part 5 explains where Sparks
+                live and how they differ from the videos themselves.
               </span>
             </Step>
             <Step n={7} title="Speak It Or Type It — Your Choice" icon={Mic}>
@@ -308,6 +309,60 @@ export default function HelpPage() {
           <VideoPlaceholder label="AI Tools" />
         </Card>
 
+        {/* ── PART 5 ── */}
+        {/* Added because none of this was written down anywhere: "Spark" named
+            two different things in the menu, and the two screens that report
+            on your work had no explanation at all. */}
+        <Card padding="sm">
+          <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
+          <h2 className="text-base font-bold text-brand-text mb-4">Sparks, The Dashboard And Insights</h2>
+          <div className="flex flex-col gap-4">
+            <Step n={16} title="What A Spark Is" icon={Sparkles}>
+              A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
+              video or videos made from it, the article, the captions, and where each has been
+              published. One topic, one Spark — even if you make a short version, a long version and a
+              reel from it.
+              <span className="block mt-1.5">
+                Two places in the menu use the word, and they hold different things.{" "}
+                <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
+                is your <strong>library</strong>: the finished videos and drafts themselves, to watch,
+                download, publish or delete. The <strong>All Sparks</strong> panel inside Spark
+                Calendar lists the <strong>Sparks</strong> — open one and you get its card, holding the
+                article, the captions, the schedule and how it&apos;s performing.
+              </span>
+            </Step>
+            <Step n={17} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
+              <Link href="/dashboard" className="text-primary-600 font-medium hover:underline">Dashboard</Link>{" "}
+              is the starting point, not a report. It shows what you have left — short videos, long
+              videos, and whether camera recording is unlocked with the days remaining — a{" "}
+              <strong>Getting Started</strong> checklist that disappears once you&apos;ve finished it,
+              and your five most recent projects to pick back up.
+            </Step>
+            <Step n={18} title="Spark Insights — What Happened After" icon={BarChart2}>
+              <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
+              is the opposite: it looks backwards. How many videos you&apos;ve made and published, a
+              breakdown by platform and by video shape, and — for anything published to your connected
+              YouTube channel — real <strong>views, likes and comments</strong>, with every video
+              ranked and linked. Those numbers are fetched from YouTube once a day, so they&apos;re
+              yesterday&apos;s picture rather than live, and they only cover videos published from
+              September onwards. The same figures appear on each Spark&apos;s own card, counting just
+              that Spark&apos;s videos.
+              <span className="block mt-1.5">
+                Watch time and click-through aren&apos;t there yet — YouTube keeps those behind a
+                separate permission. Views, likes and comments are what a connected channel gives us
+                today.
+              </span>
+            </Step>
+            <Step n={19} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+              The calendar puts every dated item — published or scheduled — on a month, week or list
+              view, with the <strong>All Sparks</strong> panel beside it for everything that has no
+              date yet. Open any Spark from either side to reach its card. This one is still rolling
+              out: it appears in your sidebar when your account has it.
+            </Step>
+          </div>
+          <VideoPlaceholder label="Finding Your Work" />
+        </Card>
+
         {/* ── Quick reference ── */}
         <Card padding="sm" className="bg-gradient-to-br from-slate-50 to-white">
           <h2 className="text-base font-bold text-brand-text mb-3">The Weekly Rhythm</h2>
@@ -318,13 +373,13 @@ export default function HelpPage() {
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>
-          {/* One line, no link. The Spark Calendar is still behind
-              feature_access, so naming it is useful while sending people to it
-              would be pointing most of them at a 404. It appears in the sidebar
-              by itself for accounts that have it. */}
+          {/* Still no link: the Spark Calendar is behind feature_access, so
+              sending most people to it would be pointing them at a 404. Part 5
+              now explains what it is, so this only has to say where it appears. */}
           <p className="text-xs text-slate-400 mt-3">
-            Rolling out: a <strong>Spark Calendar</strong> that puts every Spark, its videos and its
-            article on one calendar, with publishing and scheduling in the same place. It appears in your
+            Part 5 covers <strong>Sparks</strong>, the <strong>Dashboard</strong> and{" "}
+            <strong>Spark Insights</strong> — where your work lives and how it&apos;s doing. The{" "}
+            <strong>Spark Calendar</strong> described there is still rolling out, and appears in your
             sidebar when your account has it.
           </p>
           <Link
