@@ -102,6 +102,18 @@ export interface CampaignPost {
   lastError: string | null;
   /** The project whose video this post carries, when that is still known. */
   projectId: string | null;
+  /**
+   * The latest figures from the platform, refreshed daily by
+   * /api/cron/youtube-stats. Null on anything not yet published, on a queued
+   * job, and on posts from before the stats cron's start date — which is why
+   * these are nullable rather than zero: "not counted" and "nobody watched"
+   * are different answers.
+   */
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  /** When those figures were fetched. */
+  statsAt: string | null;
 }
 
 export interface Campaign {

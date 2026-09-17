@@ -23,6 +23,7 @@ import {
   videoShape,
   videoState,
   type Campaign,
+  type CampaignPost,
   type CampaignProject,
   type CampaignRole,
   type SparkCaptions,
@@ -1180,17 +1181,50 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
           </Section>
 
           {/* ── Performance ── */}
-          <Section icon={BarChart3} title="Spark Performance" actions={<span className="text-[11px] text-spark-ink-faint">Last updated: —</span>}>
-            <div className="grid grid-cols-3 gap-2">
-              {["Views", "Likes", "Comments"].map((m) => (
-                <div key={m} className="rounded-lg bg-spark-paper/70 px-3 py-2">
-                  <div className="text-[11px] text-spark-ink-muted">{m}</div>
-                  <div className="text-[18px] font-semibold text-spark-ink">—</div>
+          {/* Real figures now, refreshed daily by /api/cron/youtube-stats.
+              Summed across this Spark's published posts, since one Spark can
+              carry several videos. */}
+          {(() => {
+            const counted = c.posts.filter((p) => p.views !== null);
+            const sum = (pick: (p: CampaignPost) => number | null) =>
+              counted.reduce((n, p) => n + (pick(p) ?? 0), 0);
+            const newest = counted
+              .map((p) => p.statsAt)
+              .filter((s): s is string => !!s)
+              .sort()
+              .pop();
+            return (
+              <Section
+                icon={BarChart3}
+                title="Spark Performance"
+                actions={
+                  <span className="text-[11px] text-spark-ink-faint">
+                    {newest ? `Last updated: ${when(newest)}` : "Last updated: —"}
+                  </span>
+                }
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["Views", sum((p) => p.views)],
+                    ["Likes", sum((p) => p.likes)],
+                    ["Comments", sum((p) => p.comments)],
+                  ] as [string, number][]).map(([label, value]) => (
+                    <div key={label} className="rounded-lg bg-spark-paper/70 px-3 py-2">
+                      <div className="text-[11px] text-spark-ink-muted">{label}</div>
+                      <div className="text-[18px] font-semibold tabular-nums text-spark-ink">
+                        {counted.length ? value.toLocaleString() : "—"}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="mt-2 text-[11.5px] text-spark-ink-faint">Performance appears after a video publishes to a connected channel.</p>
-          </Section>
+                <p className="mt-2 text-[11.5px] text-spark-ink-faint">
+                  {counted.length
+                    ? `From ${counted.length} published video${counted.length === 1 ? "" : "s"} on YouTube, counted once a day.`
+                    : "Performance appears after a video publishes to a connected channel."}
+                </p>
+              </Section>
+            );
+          })()}
           </div>
           </div>
         </div>

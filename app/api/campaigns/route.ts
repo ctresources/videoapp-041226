@@ -200,6 +200,26 @@ export async function GET() {
   }
   const projectById = new Map(projects.map((p) => [p.id, p]));
 
+  /**
+   * The latest platform figures, keyed by the post they belong to.
+   *
+   * Fetched after the posts rather than with them: only posted rows can have
+   * stats, and the set is small enough that one extra query beats widening the
+   * posts select with a join the calendar grid does not use.
+   */
+  const statsByPost = new Map<string, { views: number; likes: number; comments: number; fetched_at: string }>();
+  const postIds = posts.map((p) => p.id);
+  if (postIds.length) {
+    const { data: statsData } = await admin
+      .from("video_stats")
+      .select("social_post_id, views, likes, comments, fetched_at")
+      .eq("user_id", userId)
+      .in("social_post_id", postIds);
+    for (const s of (statsData ?? []) as { social_post_id: string; views: number; likes: number; comments: number; fetched_at: string }[]) {
+      statsByPost.set(s.social_post_id, s);
+    }
+  }
+
   const now = Date.now();
   const toPost = (r: PostRow): CampaignPost => ({
     id: r.id,
@@ -223,6 +243,13 @@ export async function GET() {
     // a post that later succeeded would be read as a current problem.
     lastError: r.post_status === "failed" ? r.error_message : null,
     projectId: r.video_id ? projectOfVideo.get(r.video_id) ?? null : null,
+    // Null rather than zero where the cron has never counted this one: a video
+    // published before the stats start date has no row, and "not counted" is
+    // not the same claim as "nobody watched it".
+    views: statsByPost.get(r.id)?.views ?? null,
+    likes: statsByPost.get(r.id)?.likes ?? null,
+    comments: statsByPost.get(r.id)?.comments ?? null,
+    statsAt: statsByPost.get(r.id)?.fetched_at ?? null,
   });
   const toJob = (r: JobRow): CampaignPost => ({
     id: r.id,
@@ -234,6 +261,11 @@ export async function GET() {
     url: r.platform_url,
     lastError: r.status === "failed" ? r.last_error : null,
     projectId: r.project_id ?? (r.video_id ? projectOfVideo.get(r.video_id) ?? null : null),
+    // A job is something waiting to go out. There is nothing published to count.
+    views: null,
+    likes: null,
+    comments: null,
+    statsAt: null,
   });
 
   const campaigns: Campaign[] = rows.map((r) => {
