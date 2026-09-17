@@ -143,6 +143,14 @@ export function CampaignCalendar() {
   const [anchor, setAnchor] = useState<string | null>(null);
   const [view, setView] = useState<View>("month");
   const [filters, setFilters] = useState({ campaign: "all", platform: "all", status: "all", hideDrafts: false });
+  /**
+   * Free-text search over the Spark list.
+   *
+   * Its own state rather than part of `filters`: those three selects and the
+   * drafts tick narrow the CALENDAR as well, and typing a name should not
+   * empty the grid beside it. This only ever touches the rail.
+   */
+  const [sparkSearch, setSparkSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -240,8 +248,16 @@ export function CampaignCalendar() {
       const status = sparkProgress(c, { youtubeConnected: !!data?.youtubeChannel, series: s }).status;
       if (status === "draft") return false;
     }
+    // Names run long here — several are the whole sentence someone typed into
+    // the brief — so the video titles are searched too. Someone hunting for a
+    // listing remembers the address, not which of the two carries it.
+    const q = sparkSearch.trim().toLowerCase();
+    if (q) {
+      const haystack = [c.name, ...c.projects.map((p) => p.title)].join(" ").toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
-  }), [campaigns, filters, data?.youtubeChannel, data?.series]);
+  }), [campaigns, filters, sparkSearch, data?.youtubeChannel, data?.series]);
 
   // What the toggle is actually hiding right now, so the count can be named
   // rather than leaving Sparks to vanish silently.
@@ -533,12 +549,33 @@ export function CampaignCalendar() {
         </div>
 
         {/* Campaigns */}
-        <aside className="w-full shrink-0 xl:w-[320px]">
+        {/* Sticky on wide screens: the list is as tall as the number of Sparks
+            now, so without this the calendar scrolls away from it. */}
+        <aside className="w-full shrink-0 xl:sticky xl:top-4 xl:w-[340px] xl:self-start">
           <div className="rounded-xl border border-spark-rule bg-white">
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
               <h2 className="text-[14px] font-bold text-spark-ink">My Sparks</h2>
-              <span className="text-[11px] text-spark-ink-faint">{railCampaigns.length}</span>
+              <span className="text-[11px] text-spark-ink-faint">
+                {sparkSearch.trim() ? `${railCampaigns.length} of ${campaigns.length}` : railCampaigns.length}
+              </span>
             </div>
+            {/* With dozens of Sparks, most named after the sentence that made
+                them, finding one by eye is the actual problem. The selects
+                above filter by Spark, platform and status — none of them by
+                what it is about. */}
+            {campaigns.length > 5 && (
+              <div className="px-4 pb-2 pt-2">
+                <input
+                  type="search"
+                  id="spark-search"
+                  value={sparkSearch}
+                  onChange={(e) => setSparkSearch(e.target.value)}
+                  placeholder="Search Sparks"
+                  aria-label="Search your Sparks by name"
+                  className="w-full rounded-lg border border-spark-rule px-3 py-2 text-[12.5px] text-spark-ink placeholder:text-spark-ink-faint focus:border-spark-amber focus:outline-none"
+                />
+              </div>
+            )}
             {railCampaigns.length === 0 ? (
               <p className="px-4 pb-4 pt-1 text-[12px] leading-relaxed text-spark-ink-faint">
                 {/* Three cases, not two. "No Spark matches these filters" was
@@ -546,12 +583,19 @@ export function CampaignCalendar() {
                     drafts toggle — the fix is one click, so name it. */}
                 {!campaigns.length
                   ? "Every great piece of content starts with a Spark. Each video you make from September on starts its own here."
-                  : hiddenDraftCount
-                    ? `${hiddenDraftCount} draft${hiddenDraftCount === 1 ? "" : "s"} hidden. Untick Hide drafts to see ${hiddenDraftCount === 1 ? "it" : "them"}.`
-                    : "No Spark matches these filters."}
+                  : sparkSearch.trim()
+                    // Said before the drafts line: someone who has just typed
+                    // is looking at what they typed, not at a tick box above.
+                    ? `Nothing matches “${sparkSearch.trim()}”.`
+                    : hiddenDraftCount
+                      ? `${hiddenDraftCount} draft${hiddenDraftCount === 1 ? "" : "s"} hidden. Untick Hide drafts to see ${hiddenDraftCount === 1 ? "it" : "them"}.`
+                      : "No Spark matches these filters."}
               </p>
             ) : (
-              <ul className="max-h-[680px] overflow-y-auto px-2 pb-2">
+              // No height cap and no inner scrollbar. At 44 Sparks the old
+              // 680px box showed six at a time and put a second scrollbar
+              // inside the page's own.
+              <ul className="px-2 pb-2">
                 {/* Grouped by Series, in running order, with everything else after. */}
                 {data.series
                   .map((s) => ({ series: s, sparks: railCampaigns.filter((c) => c.seriesId === s.id) }))
