@@ -45,11 +45,15 @@
     },
     "app/api/cron/trial-emails/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/youtube-stats/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
     { "path": "/api/cron/affiliate-payouts", "schedule": "0 15 1 * *" },
-    { "path": "/api/cron/trial-emails", "schedule": "0 14 * * *" }
+    { "path": "/api/cron/trial-emails", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/youtube-stats", "schedule": "0 13 * * *" }
   ],
   "headers": [
     {

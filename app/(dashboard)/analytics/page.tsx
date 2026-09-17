@@ -7,7 +7,7 @@ async function getAnalyticsData() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [videosRes, postsRes, profileRes] = await Promise.all([
+  const [videosRes, postsRes, profileRes, statsRes] = await Promise.all([
     supabase
       .from("generated_videos")
       .select("id, video_type, render_status, created_at")
@@ -15,7 +15,7 @@ async function getAnalyticsData() {
       .order("created_at", { ascending: false }),
     supabase
       .from("social_posts")
-      .select("id, platform, post_status, posted_at, created_at")
+      .select("id, platform, post_status, posted_at, created_at, video_title, platform_post_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -23,12 +23,19 @@ async function getAnalyticsData() {
       .select("credits_remaining, subscription_tier, created_at")
       .eq("id", user.id)
       .single(),
+    // The latest figures the daily cron pulled from YouTube. Read through the
+    // caller's session, which RLS limits to their own rows.
+    supabase
+      .from("video_stats")
+      .select("social_post_id, views, likes, comments, fetched_at")
+      .eq("user_id", user.id),
   ]);
 
   return {
     videos: videosRes.data ?? [],
     posts: postsRes.data ?? [],
     profile: profileRes.data,
+    stats: statsRes.data ?? [],
   };
 }
 
@@ -59,7 +66,25 @@ export default async function AnalyticsPage() {
     return <div className="text-slate-500 text-sm">Please log in to view analytics.</div>;
   }
 
-  const { videos, posts } = data;
+  const { videos, posts, stats } = data;
+
+  interface StatRow { social_post_id: string; views: number; likes: number; comments: number; fetched_at: string }
+  interface PostRow { id: string; video_title: string | null; platform_post_id: string | null; posted_at: string | null; post_status: string }
+  const statRows = stats as StatRow[];
+  const totalViews = statRows.reduce((n, s) => n + s.views, 0);
+  const totalLikes = statRows.reduce((n, s) => n + s.likes, 0);
+  const totalComments = statRows.reduce((n, s) => n + s.comments, 0);
+  const lastFetched = statRows.length
+    ? new Date(Math.max(...statRows.map((s) => new Date(s.fetched_at).getTime())))
+    : null;
+
+  // Joined here rather than in the query: one row per post, newest numbers
+  // first, so the table reads as "what is doing well" rather than a list.
+  const postById = new Map((posts as PostRow[]).map((p) => [p.id, p]));
+  const ranked = statRows
+    .map((s) => ({ stat: s, post: postById.get(s.social_post_id) }))
+    .filter((r): r is { stat: StatRow; post: PostRow } => !!r.post)
+    .sort((a, b) => b.stat.views - a.stat.views);
 
   const completedVideos = videos.filter((v: { render_status: string }) => v.render_status === "completed").length;
   const publishedPosts  = posts.filter((p: { post_status: string }) => p.post_status === "posted").length;
@@ -151,23 +176,78 @@ export default async function AnalyticsPage() {
         </Card>
       )}
 
-      {/* Coming soon: social metrics */}
-      <Card className="border-dashed border-slate-200">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex gap-2">
-            <Eye size={16} className="text-slate-300" />
-            <Heart size={16} className="text-slate-300" />
-            <MessageCircle size={16} className="text-slate-300" />
-          </div>
-          <h3 className="font-semibold text-slate-400">Social Performance Metrics</h3>
-          <span className="text-xs bg-primary-100 text-primary-600 font-semibold px-2 py-0.5 rounded-full ml-auto">
-            Coming Soon
+      {/* YouTube performance — real numbers, refreshed daily by the cron. */}
+      <Card>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <h3 className="font-semibold text-brand-text flex items-center gap-2">
+            <Eye size={16} className="text-slate-400" />
+            YouTube Performance
+          </h3>
+          <span className="text-xs text-slate-400 ml-auto">
+            {lastFetched
+              ? `Updated ${lastFetched.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              : "Not fetched yet"}
           </span>
         </div>
-        <p className="text-sm text-slate-400">
-          Views, likes, comments and click-through rates from your connected YouTube channel.
-          More platforms arrive with the publishing that feeds them.
-        </p>
+
+        {statRows.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Numbers appear the day after a video publishes to your connected channel. Videos
+            published before September aren&apos;t counted.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {([
+                ["Views", totalViews, Eye, "text-primary-500"],
+                ["Likes", totalLikes, Heart, "text-spark-amber"],
+                ["Comments", totalComments, MessageCircle, "text-green-600"],
+              ] as [string, number, React.ElementType, string][]).map(([label, value, Icon, color]) => (
+                <div key={label} className="bg-slate-50 rounded-xl p-3">
+                  <Icon size={14} className={`${color} mb-1`} />
+                  <p className="text-xl font-bold text-brand-text tabular-nums">{value.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-slate-400">
+                    <th className="text-left font-medium pb-2">Video</th>
+                    <th className="text-right font-medium pb-2">Views</th>
+                    <th className="text-right font-medium pb-2">Likes</th>
+                    <th className="text-right font-medium pb-2">Comments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ranked.map(({ stat, post }) => (
+                    <tr key={stat.social_post_id} className="border-t border-slate-100">
+                      <td className="py-2 pr-3 text-slate-700">
+                        {post.platform_post_id ? (
+                          <a
+                            href={`https://www.youtube.com/watch?v=${post.platform_post_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-primary-600 hover:underline"
+                          >
+                            {post.video_title || "Untitled video"}
+                          </a>
+                        ) : (
+                          post.video_title || "Untitled video"
+                        )}
+                      </td>
+                      <td className="py-2 text-right tabular-nums text-slate-700">{stat.views.toLocaleString()}</td>
+                      <td className="py-2 text-right tabular-nums text-slate-500">{stat.likes.toLocaleString()}</td>
+                      <td className="py-2 text-right tabular-nums text-slate-500">{stat.comments.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );

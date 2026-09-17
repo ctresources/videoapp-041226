@@ -174,6 +174,54 @@ export async function getValidAccessToken(
   return tokens.access_token;
 }
 
+export interface VideoStats {
+  videoId: string;
+  views: number;
+  likes: number;
+  comments: number;
+}
+
+/**
+ * Views, likes and comments for up to 50 videos in one request.
+ *
+ * Fifty is YouTube's own ceiling on the id parameter, and the whole call costs
+ * a single unit of quota whether it carries one id or fifty — so the batch is
+ * what makes a daily refresh essentially free.
+ *
+ * A video that has been deleted, or made private, simply does not come back in
+ * items. Callers keep whatever they already had for it rather than writing a
+ * zero, which would read as "nobody watched it" instead of "we could not ask".
+ *
+ * likeCount and commentCount are absent when the owner has hidden them, and
+ * every figure arrives as a string. Both are handled here so no caller has to.
+ */
+export async function fetchVideoStats(
+  accessToken: string,
+  videoIds: string[],
+): Promise<VideoStats[]> {
+  const ids = videoIds.filter(Boolean).slice(0, 50);
+  if (ids.length === 0) return [];
+
+  const res = await fetch(
+    `${YOUTUBE_API}/videos?part=statistics&id=${encodeURIComponent(ids.join(","))}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) throw new Error(`YouTube stats failed (${res.status}): ${await res.text()}`);
+
+  const data = await res.json();
+  const num = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  return ((data.items ?? []) as { id: string; statistics?: Record<string, string> }[]).map((item) => ({
+    videoId: item.id,
+    views: num(item.statistics?.viewCount),
+    likes: num(item.statistics?.likeCount),
+    comments: num(item.statistics?.commentCount),
+  }));
+}
+
 /**
  * Delete a video from the connected channel.
  *
