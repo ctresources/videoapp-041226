@@ -116,7 +116,7 @@ const features = [
     // Was buried at the end of a list about YouTube metadata, as "and a full
     // blog post" — the one deliverable here that lives on the agent's own
     // site, described as a footnote about someone else's platform.
-    description: "Usually 800 to 1,200 words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all.",
+    description: "Usually 800 to 1,200 words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Make a header image for it in one click, then copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all — or paste an article you've already written and get a script back from it.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -130,9 +130,29 @@ const features = [
     photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "8 AI Tools, Included",
-    description: "Channel name, banner, thumbnails, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, included on every paid plan. Everything you need to launch a channel and get found, without hiring a designer.",
+    title: "9 AI Tools, Included",
+    description: "Channel name, banner, thumbnails, post graphics, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, included on every paid plan. Everything you need to launch a channel and get found, without hiring a designer.",
     photo: "https://images.unsplash.com/photo-1497048679117-1a29644559e3?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "Graphics Without A Designer",
+    description: "Describe the picture and type the words: a just-listed post, an open house, a market stat, a header for your article. The picture is generated; the price, the address and your logo are set in real type on top, so nothing is ever misspelled. Or skip the AI and use your own listing photos, which costs nothing.",
+    photo: "https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "Photos Into A Reel, Free",
+    description: "Drop in up to twelve listing photos and get a finished reel with Ken Burns motion, captions and a closing card — set to music, your cloned voice reading a script you write, or your own voice over the top. It uses nothing from your monthly plan.",
+    photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "See What's Actually Working",
+    description: "Spark Insights counts what you've made and, for anything published to your connected YouTube channel, pulls back real views, likes and comments — every video ranked, refreshed daily. The same numbers sit on each Spark, so you can see which topic earned the attention rather than guessing.",
+    photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "One Calendar For Everything",
+    description: "Every video and article on a month, week or list view — published, scheduled, or still a draft. Open any Spark to find its script, its article, its captions, its schedule and how it's performing in one place, instead of hunting through folders for what you made in August.",
+    photo: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80",
   },
   {
     title: "49% Faster Revenue Growth",
@@ -204,7 +224,7 @@ const SAMPLE_VIDEOS = [
 // Everything an agent needs to launch a channel, in the order they hit it.
 const channelSteps = [
   { icon: Tv2, step: "Name it", tool: "Channel Name Generator", description: "Don't have a channel yet? Get name ideas built around your market and niche — not \"John Smith Realty 2\"." },
-  { icon: Palette, step: "Brand it", tool: "Banner Generator", description: "Finished banners for your YouTube channel, Facebook cover and LinkedIn profile — your headline, photos, QR codes and call to action, each at the right size. No designer." },
+  { icon: Palette, step: "Brand it", tool: "Banner & Image Generator", description: "Finished banners for your YouTube channel, Facebook cover and LinkedIn profile — your headline, photos, QR codes and call to action, each at the right size. Plus post graphics for a just-listed, an open house or a market stat, with your words set in real type. No designer." },
   { icon: Film, step: "Fill it", tool: "AI Video Generator", description: "Short reels for social and full 8-minute market updates for search — both from one voice recording." },
   { icon: MousePointerClick, step: "Get the click", tool: "Thumbnail Generator", description: "Bold, readable thumbnails that hold up at phone size — the difference between 40 views and 4,000." },
   { icon: Search, step: "Get found", tool: "SEO Metadata + AI Answer Blocks", description: "SEO titles, descriptions and tags for the neighborhood keywords buyers search — plus answer blocks so AI assistants cite you too." },
@@ -775,7 +795,7 @@ export default function LandingPage() {
                 num: "3",
                 color: "bg-blue-500",
                 title: "Publish and share",
-                description: "One click to YouTube with SEO title, description and tags. Your Share Kit is already written — LinkedIn post, Instagram caption, email blurb, and a full blog post for your own site.",
+                description: "One click to YouTube with SEO title, description and tags. Your Share Kit is already written — LinkedIn post, Instagram caption, email blurb, and a full blog post for your own site. Then watch the views, likes and comments come back in Spark Insights.",
                 photo: "https://images.unsplash.com/photo-1726066012749-f81bf4422d4e?auto=format&fit=crop&w=600&q=80",
                 alt: "Published video on social",
               },
