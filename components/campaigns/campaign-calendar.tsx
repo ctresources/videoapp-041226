@@ -554,7 +554,11 @@ export function CampaignCalendar() {
         <aside className="w-full shrink-0 xl:sticky xl:top-4 xl:w-[340px] xl:self-start">
           <div className="rounded-xl border border-spark-rule bg-white">
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
-              <h2 className="text-[14px] font-bold text-spark-ink">My Sparks</h2>
+              {/* Not "My Sparks": that is the sidebar's name for /videos, the
+                  library of finished videos and drafts. This panel lists
+                  Sparks themselves, and two menu-level things sharing one name
+                  meant neither said which you were looking at. */}
+              <h2 className="text-[14px] font-bold text-spark-ink">All Sparks</h2>
               <span className="text-[11px] text-spark-ink-faint">
                 {sparkSearch.trim() ? `${railCampaigns.length} of ${campaigns.length}` : railCampaigns.length}
               </span>
