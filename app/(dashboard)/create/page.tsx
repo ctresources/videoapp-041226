@@ -17,7 +17,7 @@ import { ClipBrander } from "@/components/video/clip-brander";
 import { MediaAndDocs } from "@/components/create/media-and-docs";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -29,6 +29,9 @@ import {
   substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
+// The hero mic listens with the same recogniser as the brief panel and every
+// field mic. A second implementation is how one of them ends up lagging.
+import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard } from "@/components/create/composer-card";
 import { StepFooter } from "@/components/create/step-footer";
@@ -139,6 +142,74 @@ const TRY_LINES = [
  * and says so, and a second 1-2-3-4 running down this one page would be two
  * numbering systems disagreeing in the same eyeline.
  */
+/**
+ * The mic the page opens on.
+ *
+ * The fastest way in was also the least visible: the brief's own mic sits in
+ * section 3, below two rows of tiles and, on a phone, below the fold. The
+ * Spacebar shortcut that does the same thing app-wide renders nothing at all,
+ * so on a touch screen it does not exist.
+ *
+ * This is one control doing one job: say what you want to make, and the words
+ * land in the composer below as an editable draft — the same place a picked
+ * template lands, through the same `seed` prop. It does not send the turn, so
+ * a misheard street name is a keystroke to fix rather than a brief to redo.
+ */
+function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disabled: boolean }) {
+  const heardRef = useRef(onHeard);
+  heardRef.current = onHeard;
+
+  const { listening, interim, transcript, toggle } = useSpeechRecognition({
+    // Long window: this is someone describing a video out loud, and a pause to
+    // think is not the end of the sentence.
+    silenceMs: PROSE_SILENCE_MS,
+    disabled,
+    onSessionEnd: (text) => {
+      if (text.trim()) heardRef.current(text.trim());
+    },
+  });
+
+  const live = [transcript, interim].filter(Boolean).join(" ");
+
+  return (
+    <div className="mt-5 flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={disabled}
+        aria-pressed={listening}
+        aria-label={listening ? "Stop listening" : "Say what you want to create"}
+        className="group relative flex items-center gap-3 rounded-full border border-spark-rule bg-white py-2.5 pl-2.5 pr-5 shadow-sm transition-colors hover:border-spark-amber disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors group-hover:bg-spark-blue">
+          {listening && (
+            <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />
+          )}
+          <Mic size={19} className="relative text-white" />
+        </span>
+        <span className="text-[15px] font-semibold text-spark-ink">
+          {listening ? "Listening — tap when you're done" : "Say what you want to create"}
+        </span>
+      </button>
+
+      {/* What is being heard, while it is being heard. Without this the only
+          feedback is a pulsing ring, and there is no way to tell a misheard
+          word from a mic that is not picking anything up. */}
+      {listening && (
+        <p className="min-h-[1.4em] max-w-xl text-[14px] leading-[1.45] text-spark-ink-muted">
+          {live || "Go ahead…"}
+        </p>
+      )}
+      {!listening && (
+        <p className="text-[13px] text-spark-ink-faint">
+          Or hold <span className="font-semibold text-spark-ink-muted">Spacebar</span> anywhere. Your
+          words land in the box below, where you can edit them.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SectionHead({ eyebrow, question, aside, className = "" }: {
   eyebrow: string; question: string;
   /** Runs on the same line as the question, in muted type. For the one thing
@@ -1486,6 +1557,25 @@ function CreatePageInner() {
           <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
             Your all-in-one hub — be seen, build trust, become the go-to local expert.
           </p>
+
+          {/* Under the subheads, so the page still says what it is before it
+              asks you to talk to it. Feeds the composer in section 3 rather
+              than being a second brief of its own. */}
+          <HeroMic
+            disabled={locGenerating}
+            onHeard={(text) => {
+              setSparkSeed((s) => ({ text, n: s.n + 1 }));
+              // The words land two sections down. Without this they arrive
+              // somewhere the speaker cannot see, which reads as nothing
+              // having happened.
+              requestAnimationFrame(() => {
+                document.getElementById("spark-composer")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              });
+            }}
+          />
         </div>
       )}
 
@@ -1794,6 +1884,8 @@ function CreatePageInner() {
             // and the same one on the button it eventually leads to.
             aside="Spark with a template or idea below."
           />
+          {/* Named so the hero mic can bring what it heard into view. */}
+          <div id="spark-composer" className="scroll-mt-20" />
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
