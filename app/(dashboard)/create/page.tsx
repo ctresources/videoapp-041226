@@ -172,14 +172,18 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
   const live = [transcript, interim].filter(Boolean).join(" ");
 
   return (
-    <div className="mt-5 flex flex-col items-center gap-2">
+    // Left, not centred, and one object rather than four stacked lines. The
+    // headline and its two subheads are centred above; a third centred block
+    // under them made the top of the page a column of things to read before
+    // the first control.
+    <div className="mt-5 flex flex-col items-start gap-1.5 text-left">
       <button
         type="button"
         onClick={toggle}
         disabled={disabled}
         aria-pressed={listening}
         aria-label={listening ? "Stop listening" : "Say what you want to create"}
-        className="group relative flex items-center gap-3 rounded-full border border-spark-rule bg-white py-2.5 pl-2.5 pr-5 shadow-sm transition-colors hover:border-spark-amber disabled:cursor-not-allowed disabled:opacity-50"
+        className="group relative flex items-center gap-3 rounded-[26px] border border-spark-rule bg-white py-2.5 pl-2.5 pr-5 text-left shadow-sm transition-colors hover:border-spark-amber disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors group-hover:bg-spark-blue">
           {listening && (
@@ -187,8 +191,18 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
           )}
           <Mic size={19} className="relative text-white" />
         </span>
-        <span className="text-[15px] font-semibold text-spark-ink">
-          {listening ? "Listening — tap when you're done" : "Say what you want to create"}
+        {/* Both lines inside the button: what it does, and what you can pack
+            into the answer. Outside it they read as page copy competing with
+            the subheads above rather than as part of the control. */}
+        <span className="min-w-0">
+          <span className="block text-[15px] font-semibold leading-tight text-spark-ink">
+            {listening ? "Listening — tap when you're done" : "Say what you want to create"}
+          </span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-spark-ink-muted">
+            {listening
+              ? "Topic, town, who it's for — in any order"
+              : "Topic, town, who it's for — all at once, or one at a time"}
+          </span>
         </span>
       </button>
 
@@ -199,20 +213,6 @@ function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disab
         <p className="min-h-[1.4em] max-w-xl text-[14px] leading-[1.45] text-spark-ink-muted">
           {live || "Go ahead…"}
         </p>
-      )}
-      {/* What you can pack into one answer — the thing nobody discovers on
-          their own. It used to sit beside the composer's mic in section 3,
-          which is past two rows of tiles and, on a phone, past the fold: the
-          hint about what to say arrived after the moment you needed it. */}
-      {!listening && (
-        <div className="flex flex-col items-center gap-0.5">
-          <p className="text-[15px] font-medium text-spark-ink">
-            Topic, town, who it&apos;s for — all at once, or one at a time.
-          </p>
-          <p className="text-[13px] text-spark-ink-faint">
-            Or hold <span className="font-semibold text-spark-ink-muted">Spacebar</span> anywhere.
-          </p>
-        </div>
       )}
     </div>
   );
