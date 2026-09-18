@@ -1565,7 +1565,7 @@ function CreatePageInner() {
             A video with your avatar, or film yourself. A blog post, new or pasted. Or both.
           </p>
           <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
-            Your all-in-one hub — be seen, build trust, become the go-to local expert.
+            Your All-In-One, Done-For-You AI Marketing Hub — Be Seen, Build Trust, Become The Go-To Local Expert.
           </p>
 
           {/* Under the subheads, so the page still says what it is before it
