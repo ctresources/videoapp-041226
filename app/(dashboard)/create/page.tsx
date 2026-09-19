@@ -1562,10 +1562,10 @@ function CreatePageInner() {
               on, the promise underneath is why. Same size for both made them
               one block to skim past. */}
           <p className="mt-3 text-[19px] leading-[1.5] text-primary-700">
-            A video with your avatar, or film yourself. A blog post, new or pasted. Or both.
+            A video with your avatar, record yourself, create a blog—or do both.
           </p>
           <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
-            Your All-In-One, Done-For-You AI Marketing Hub — Be Seen, Build Trust, Become The Go-To Local Expert.
+            Turn your Spark into more ways to connect, build trust, and stay visible.
           </p>
 
           {/* Under the subheads, so the page still says what it is before it
