@@ -70,6 +70,50 @@ function normaliseHeadings(text: string): { text: string; found: number } {
   return { text: lines.join("\n"), found };
 }
 
+/**
+ * Headings that were never marked up as headings.
+ *
+ * Plain text loses whatever made a heading a heading — an email or a paste
+ * keeps the words and drops the markup. What is left is shape: a short line
+ * standing alone as its own paragraph, not ending in a full stop, with a real
+ * paragraph under it. That is a heading, and treating it as body text is what
+ * made this route add a SECOND heading directly above each of the agent's own:
+ *
+ *   H2: Selling Your Longtime Family Home        ← invented
+ *   Thinking about selling your longtime home?   ← theirs, all along
+ *
+ * Conservative by design. The cost of missing one is a heading that reads as a
+ * short paragraph; the cost of a false positive is a sentence of theirs
+ * promoted to a heading, which is a visible edit to writing we promised not to
+ * touch. So it requires every condition, not most of them.
+ */
+const HEADING_MAX_CHARS = 90;
+const HEADING_MAX_WORDS = 14;
+/** What has to sit under it for the short line to be introducing anything. */
+const HEADING_MIN_FOLLOWING_WORDS = 25;
+
+function markPlainHeadings(blocks: string[]): { blocks: string[]; found: number } {
+  let found = 0;
+  const out = blocks.map((block, i) => {
+    if (H2.test(block) || H3.test(block)) { found++; return block; }
+
+    const line = block.trim();
+    if (line.includes("\n")) return block;
+    if (line.length < 3 || line.length > HEADING_MAX_CHARS) return block;
+    if (line.split(/\s+/).length > HEADING_MAX_WORDS) return block;
+    // A full stop means a sentence. A question mark does not — half the
+    // headings in an FAQ-shaped article are questions.
+    if (/[.,;:]$/.test(line)) return block;
+
+    const next = blocks[i + 1];
+    if (!next || next.trim().split(/\s+/).length < HEADING_MIN_FOLLOWING_WORDS) return block;
+
+    found++;
+    return `H2: ${line}`;
+  });
+  return { blocks: out, found };
+}
+
 /** Paragraph blocks, with headings kept attached to the text beneath them. */
 function paragraphs(text: string): string[] {
   return text
@@ -187,11 +231,20 @@ export async function prepareImportedArticle(params: {
   );
   const all = paragraphs(normalised.text);
   const lifted = liftHeadline(all);
-  const blocks = lifted.blocks;
+
+  // Their own headings, whether or not anything marked them as such.
+  const marked = markPlainHeadings(lifted.blocks);
+  const blocks = marked.blocks;
 
   if (blocks.length === 0) throw new Error("There is no article text to import.");
 
-  const needHeadings = normalised.found === 0 && blocks.length >= 4;
+  /**
+   * Headings are written only for an article that has none of its own. One is
+   * enough to leave it alone: a piece that headed some of its sections and not
+   * others made that choice, and interleaving ours with theirs is the surest
+   * way to make an imported article look edited.
+   */
+  const needHeadings = marked.found === 0 && blocks.length >= 4;
 
   const meta = await askForMetadata({
     blocks,
