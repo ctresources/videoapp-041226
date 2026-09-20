@@ -3306,7 +3306,18 @@ export default function ProjectEditorPage() {
                           .map(blogPlainText)
                           .join("\n\n");
                         const articleWords = articleText.split(/\s+/).filter(Boolean).length;
+                        // Everything that gets spoken, for the length shown.
                         const scriptWords = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
+                        /**
+                         * Whether there is a SCRIPT, which is a different
+                         * question. Every project carries a closing CTA whether
+                         * or not anything has been written, so the combined
+                         * count is ~126 words on an imported article with an
+                         * empty script — enough to look written, enough to make
+                         * "write one first" never fire, and enough to offer
+                         * reading a 0.8-minute script that is only the sign-off.
+                         */
+                        const hasScript = editedScript.trim().length > 0;
                         const canMakeVideo = !renderedVideoId && !renderComplete;
                         const row = "flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-spark-amber-tint";
                         return (
@@ -3337,14 +3348,14 @@ export default function ProjectEditorPage() {
                                       // only an 8-minute button under it —
                                       // after asking for a SHORT video. Asking
                                       // for one now writes one.
-                                      if (scriptWords === 0 && articleWords > 0) {
+                                      if (!hasScript && articleWords > 0) {
                                         writeScriptFromArticle("rendered_short");
                                       }
                                     }}
                                   >
                                     <span className="text-xs font-semibold text-spark-ink">Make it a short video</span>
                                     <span className="text-[11px] text-spark-ink-faint">
-                                      {scriptWords > 0
+                                      {hasScript
                                         ? `Avatar or cloned voice · about ${mins(scriptWords)} min · Uses 1 video`
                                         : articleWords > 0
                                           ? "Writes a 3-minute script from the article first · Uses 1 video"
@@ -3352,7 +3363,11 @@ export default function ProjectEditorPage() {
                                     </span>
                                   </button>
                                 )}
-                                {scriptWords > 0 && (
+                                {/* Only where there is a script to read. With
+                                    an empty one this offered a 0.8-minute
+                                    teleprompter session that was the closing
+                                    call to action and nothing else. */}
+                                {hasScript && (
                                   <button
                                     type="button"
                                     role="menuitem"
