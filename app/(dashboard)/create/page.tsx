@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
-import { MediaAndDocs, type DocMode } from "@/components/create/media-and-docs";
+import { ArticleSource, MediaAndDocs, type DocMode } from "@/components/create/media-and-docs";
 import type { PickedEmailArticle } from "@/components/create/email-import-picker";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
@@ -2480,6 +2480,33 @@ function CreatePageInner() {
               </div>
             </div>
 
+            {/* Where the words come from, directly under the choice of how to
+                start — because it is an INPUT to the script, not an accessory
+                to it. It used to live in the media card at the very bottom of
+                the page, below the empty script box it exists to fill and under
+                a heading about photos, which is the last place someone looking
+                for "I already wrote this" would think to look. */}
+            {pasteSource !== "own" && (
+              <ArticleSource
+                doc={{
+                  mode: pastePdfMode,
+                  onModeChange: setPastePdfMode,
+                  attached: !!pastePdfUrl,
+                  attachedName: pastePdfName,
+                  onClear: () => {
+                    setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
+                  },
+                  uploading: pastePdfUploading,
+                  onUploadPdf: handlePastePdfUpload,
+                  urlInput: pastePdfUrlInput,
+                  onUrlInputChange: setPastePdfUrlInput,
+                  onFetchUrl: handlePasteUrlExtract,
+                  fetching: pastePdfUrlExtracting,
+                  onPickEmail: handlePasteEmailPick,
+                }}
+              />
+            )}
+
             {/* Video length, asked once for all three ways in, and before
                 anything that uses it: the summariser and the AI writer both
                 take it as their target, and it used to sit below the buttons
@@ -2619,7 +2646,17 @@ function CreatePageInner() {
                 </Button>
                 {/* The photos are never read — only their COUNT reaches the
                     prompt, as one sentence saying how many exist. */}
-                <p className="text-[11px] text-spark-ink-faint mt-1.5">AI will write a script from your attached PDF.{pastePhotos.length > 0 ? " Your photos become b-roll; they aren't read." : ""}</p>
+                {/* Names the thing actually attached. It said "your attached
+                    PDF" whichever route the text came in by, so an article
+                    brought in from an email or a link was described as a PDF
+                    the user had never uploaded. */}
+                <p className="text-[11px] text-spark-ink-faint mt-1.5">
+                  AI will write a script from {
+                    pastePdfMode === "email" ? "the article you forwarded"
+                      : pastePdfMode === "url" ? "the page you attached"
+                        : "your attached PDF"
+                  }.{pastePhotos.length > 0 ? " Your photos become b-roll; they aren't read." : ""}
+                </p>
               </div>
             )}
 
@@ -2854,10 +2891,10 @@ function CreatePageInner() {
               )}
             </div>
 
-            {/* Optional, so it sits after the script rather than in front of
-                it. The one exception is the URL attach in blog mode, which is
-                a way IN — it fetches the post's text and its images — so the
-                panel says where it leads rather than leaving it to be found. */}
+            {/* Photos only. Optional, and an output rather than an input — they
+                become b-roll over a script that already exists — so they sit
+                after it. The way IN moved to the top of this card, next to the
+                choice of how to start. */}
             <div className="mt-4 pt-4 border-t border-spark-rule-soft">
               <MediaAndDocs
                 photos={pastePhotos}
@@ -2872,33 +2909,7 @@ function CreatePageInner() {
                 // clips read as a broken attempt at local footage rather than
                 // as the generic filler they are.
                 blurb="Photos become b-roll in the video. Your own are the only footage that shows your actual area — without them we fall back to generic stock."
-                // Offered when the AI is writing, and when a blog post is being
-                // summarised — there the URL attach brings the page's own text
-                // and images across. Hidden for your own words, which have
-                // nothing to take from an attachment.
-                doc={pasteSource === "own" ? undefined : {
-                  mode: pastePdfMode,
-                  onModeChange: setPastePdfMode,
-                  attached: !!pastePdfUrl,
-                  attachedName: pastePdfName,
-                  onClear: () => {
-                    setPastePdfUrl(""); setPastePdfText(""); setPastePdfName(""); setPastePdfUrlInput("");
-                  },
-                  uploading: pastePdfUploading,
-                  onUploadPdf: handlePastePdfUpload,
-                  urlInput: pastePdfUrlInput,
-                  onUrlInputChange: setPastePdfUrlInput,
-                  onFetchUrl: handlePasteUrlExtract,
-                  fetching: pastePdfUrlExtracting,
-                  onPickEmail: handlePasteEmailPick,
-                }}
               />
-              {pasteSource === "blog" && (
-                <p className="mt-1.5 text-[11px] text-spark-ink-faint">
-                  Attaching your blog&apos;s URL fills the box above with its text, and brings its
-                  images across as b-roll.
-                </p>
-              )}
             </div>
           </Card>
 
@@ -3258,6 +3269,29 @@ function CreatePageInner() {
             {/* Photos & docs. Sits above the script because it feeds it — the AI
                   writes from these, and they become the b-roll. */}
             <div className="mb-4 rounded-xl border border-spark-rule p-3.5">
+              {/* First in the box, above the photos. On this route the
+                  attachment IS the script — the button below writes from it —
+                  while the photos are what plays behind you afterwards. */}
+              {cameraSource === "uploads" && (
+                <ArticleSource
+                  doc={{
+                    mode: cameraPdfMode,
+                    onModeChange: setCameraPdfMode,
+                    attached: !!cameraPdfUrl,
+                    attachedName: cameraPdfName,
+                    onClear: () => {
+                      setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput("");
+                    },
+                    uploading: cameraPdfUploading,
+                    onUploadPdf: handleCameraPdfUpload,
+                    urlInput: cameraPdfUrlInput,
+                    onUrlInputChange: setCameraPdfUrlInput,
+                    onFetchUrl: handleCameraUrlExtract,
+                    fetching: cameraPdfUrlExtracting,
+                    onPickEmail: handleCameraEmailPick,
+                  }}
+                />
+              )}
               <MediaAndDocs
                 photos={cameraPhotos}
                 onAddPhotos={handleCameraPhotosUpload}
@@ -3269,26 +3303,6 @@ function CreatePageInner() {
                 // — so this says where to find it rather than leaving someone
                 // to conclude it does not exist.
                 blurb="Photos fill the screen as b-roll while you record. You stay on camera in the corner. To play a video behind you instead, use Branded Look further down."
-                // Only on the doc route. Photos are b-roll on every route, but
-                // an attachment is a script source, and offering one beside a
-                // script you are about to type yourself is the clutter the
-                // chooser above exists to remove.
-                doc={cameraSource !== "uploads" ? undefined : {
-                  mode: cameraPdfMode,
-                  onModeChange: setCameraPdfMode,
-                  attached: !!cameraPdfUrl,
-                  attachedName: cameraPdfName,
-                  onClear: () => {
-                    setCameraPdfUrl(""); setCameraPdfText(""); setCameraPdfName(""); setCameraPdfUrlInput("");
-                  },
-                  uploading: cameraPdfUploading,
-                  onUploadPdf: handleCameraPdfUpload,
-                  urlInput: cameraPdfUrlInput,
-                  onUrlInputChange: setCameraPdfUrlInput,
-                  onFetchUrl: handleCameraUrlExtract,
-                  fetching: cameraPdfUrlExtracting,
-                  onPickEmail: handleCameraEmailPick,
-                }}
               />
 
               {/* A sub-action of this card, styled like one. Full-width and

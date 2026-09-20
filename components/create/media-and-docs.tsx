@@ -269,11 +269,36 @@ export function MediaAndDocs({
       </div>
 
       {/* ── Doc / URL ──────────────────────────────────────────────────── */}
-      {doc && (
+      {doc && <ArticleSource doc={doc} />}
+    </>
+  );
+}
+
+/**
+ * Where source material comes in: a PDF, a link, or an email you forwarded.
+ *
+ * Its own export because it belongs at the TOP of a card, not the bottom.
+ * Sitting inside the media block it came after the script box it feeds — so
+ * the way to avoid writing a script by hand was below the empty box you were
+ * being asked to write in, under a heading about photos. Photos are output
+ * (b-roll); this is input, and the order on screen now says so.
+ *
+ * MediaAndDocs still renders it when given a `doc`, so a caller that wants
+ * both in one block is unchanged.
+ */
+export function ArticleSource({
+  doc,
+  /** Sets the heading and the one line under it — what this feeds, in context. */
+  purpose = "script",
+}: {
+  doc: DocAttachment;
+  purpose?: "script" | "article";
+}) {
+  return (
         <div className="mb-4 pb-4 border-b border-spark-rule-soft">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
             <p className="text-sm font-bold text-spark-ink-soft">
-              {doc.onPickEmail ? "Bring in an article" : "Attach PDF / URL"}{" "}
+              {doc.onPickEmail ? "Start from something you already have" : "Attach PDF / URL"}{" "}
               <span className="font-normal text-spark-ink-faint">(optional)</span>
             </p>
             <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
@@ -297,6 +322,18 @@ export function MediaAndDocs({
               ))}
             </div>
           </div>
+
+          {/* Says what the three buttons are FOR before you press one. Without
+              it the row read as three file-upload options rather than as three
+              ways to avoid writing from scratch. */}
+          {doc.onPickEmail && (
+            <p className="text-[11px] leading-[1.5] text-spark-ink-muted mb-2">
+              Already have the piece written? Attach a <strong>PDF</strong>, paste its{" "}
+              <strong>link</strong>, or forward it to your own SparkReels{" "}
+              <strong>email address</strong> — we&apos;ll turn it into
+              {purpose === "article" ? " your article" : " your script"}.
+            </p>
+          )}
 
           {doc.attached ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
@@ -364,7 +401,5 @@ export function MediaAndDocs({
             </p>
           )}
         </div>
-      )}
-    </>
   );
 }

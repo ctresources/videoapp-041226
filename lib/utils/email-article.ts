@@ -67,6 +67,18 @@ export function decodeBodyIfDataUri(body: string): string {
  * dropped: newsletters lay their whole body out in tables.
  */
 export function htmlToText(html: string): string {
+  // Twice, because an email can carry markup that is itself escaped —
+  // &lt;h1&gt; rather than <h1> — which is exactly what arrives when someone
+  // pastes an article out of this app's own "Copy as HTML" button. Stripping
+  // tags and THEN decoding entities turned that escaped markup back into
+  // visible tags in the finished text. The second pass runs only when the
+  // decoded result still looks like markup, so ordinary prose about HTML is
+  // left alone.
+  const once = stripMarkupOnce(html);
+  return /<\/?[a-z][a-z0-9]*(\s[^<>]*)?>/i.test(once) ? stripMarkupOnce(once) : once;
+}
+
+function stripMarkupOnce(html: string): string {
   let out = html;
 
   // Nothing inside these is ever prose.
@@ -166,6 +178,37 @@ export function stripEmailChrome(text: string): string {
       start++;
     }
     body = lines.slice(start).join("\n");
+  }
+
+  /**
+   * A header block with no marker above it.
+   *
+   * Not every client announces a forward. Verizon's webmail simply drops
+   * "From: … Sent: … To: … Subject: …" at the top, and that block was being
+   * read as the first paragraph of the article. Two or more header lines
+   * together are the signal — one "From:" on its own could be a sentence in a
+   * quoted letter — and only near the top, so a header line mentioned halfway
+   * through a piece cannot truncate it.
+   */
+  const head = body.split(/\r?\n/);
+  const SCAN = Math.min(head.length, 15);
+  let runStart = -1;
+  let runEnd = -1;
+  for (let i = 0; i < SCAN; i++) {
+    if (!HEADER_LINE.test(head[i])) continue;
+    if (runStart < 0) runStart = i;
+    runEnd = i;
+    // Blank lines inside the block are part of it; anything else ends the run.
+    let j = i + 1;
+    while (j < SCAN && !head[j].trim()) j++;
+    if (j < SCAN && HEADER_LINE.test(head[j])) i = j - 1;
+  }
+  if (runStart >= 0 && runEnd > runStart) {
+    // Everything above the block goes too — it is the covering note, not the
+    // article, the same reasoning as the marker case above.
+    let after = runEnd + 1;
+    while (after < head.length && !head[after].trim()) after++;
+    body = head.slice(after).join("\n");
   }
 
   // A quoted reply below the article, and the ">"-prefixed text under it.
