@@ -2586,9 +2586,12 @@ function CreatePageInner() {
                       // What this button is about to do, which is now two
                       // different things: publish what they attached, or write
                       // something new.
+                      // Shorter than they were: the bar is a status line beside
+                      // a button, not a paragraph, and the detail is already on
+                      // the cards above.
                       ? (importingAsIs
-                          ? "Saved as you wrote it, with the headline, description and hashtags added. Nothing is rewritten."
-                          : "Usually 800 to 1,200 words, with headings, ready to paste into your site. You can turn it into a video afterwards.")
+                          ? "Saved as you wrote it. We add the headline, description and hashtags."
+                          : "800 to 1,200 words with headings, ready to paste into your site.")
                       : "We'll write the script first, then you pick how it looks."
           }
         >

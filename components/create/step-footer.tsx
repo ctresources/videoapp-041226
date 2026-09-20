@@ -38,8 +38,14 @@ export function StepFooter({ onBack, backLabel = "Back", hint, children }: StepF
         {/* Hidden on phones. Squeezed between Back and the primary button there
             is no room for it to say anything — it collapses to two words and an
             ellipsis, which is worse than the space it costs. */}
+        {/* Two lines, not one.
+            `truncate` cut every hint at whatever width was left beside the
+            button — "…ready to paste into your site. You can t…" — so the
+            sentence that says what pressing the button produces was the one
+            thing on the bar nobody could read. Still clamped, because a hint
+            that grows without limit would push the action off a small screen. */}
         {hint && (
-          <p className="hidden min-w-0 flex-1 truncate text-[13px] text-spark-ink-faint sm:block">
+          <p className="hidden min-w-0 flex-1 text-[12.5px] leading-[1.35] text-spark-ink-faint line-clamp-2 sm:block">
             {hint}
           </p>
         )}
