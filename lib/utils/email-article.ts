@@ -140,6 +140,112 @@ const QUOTE_ATTRIBUTION =
 const FOOTER_LINE =
   /^\s*(?:unsubscribe|manage (?:your )?(?:email )?preferences|view (?:this|it) in (?:your )?browser|update your profile|you(?:'re| are) receiving this|sent to \S+@\S+|©\s*\d{4}|copyright\s*©|privacy policy|terms of (?:use|service)|all rights reserved|confidentiality notice|this (?:e-?mail|message) (?:and any attachments )?(?:is|are|may be) (?:confidential|intended)|sent from my \w+)\b.{0,120}$/i;
 
+/**
+ * The compliance block an agent's mail and blog platform append.
+ *
+ * Distinct from FOOTER_LINE because these wrap across several lines, so no
+ * single line matches and the bottom-up trim walks straight past them. Left in,
+ * this becomes the article's closing paragraph — a piece about downsizing that
+ * ends on wire-fraud warnings and "may be deemed an advertisement".
+ *
+ * Matched only near the end, and only when what follows is short. An article
+ * ABOUT wire fraud will mention these words in its body, where this must not
+ * touch them.
+ */
+const LEGAL_BOILERPLATE =
+  /(?:this (?:may be deemed|is) an advertisement|not intended to solicit|never trust wiring instructions|information (?:is )?deemed reliable but (?:is )?not guaranteed|equal housing opportunity|each office is independently owned)/i;
+
+/** Where the tail can begin, as a fraction of the whole. */
+const BOILERPLATE_ZONE = 0.65;
+/** How much text may follow the marker and still count as a tail. */
+const BOILERPLATE_MAX_WORDS = 180;
+
+export function stripLegalBoilerplate(text: string): string {
+  const match = LEGAL_BOILERPLATE.exec(text);
+  if (!match) return text;
+  if (match.index < text.length * BOILERPLATE_ZONE) return text;
+
+  // From the start of the sentence it sits in, so half a sentence is not left
+  // hanging off the end of the article.
+  const before = text.slice(0, match.index);
+  const sentenceStart = Math.max(
+    before.lastIndexOf("\n"),
+    before.lastIndexOf(". "),
+    before.lastIndexOf("! "),
+    before.lastIndexOf("? "),
+  );
+  const cutAt = sentenceStart > 0 ? sentenceStart + 1 : match.index;
+
+  const tailWords = text.slice(cutAt).trim().split(/\s+/).filter(Boolean).length;
+  if (tailWords > BOILERPLATE_MAX_WORDS) return text;
+
+  return text.slice(0, cutAt).trim();
+}
+
+/**
+ * Contact details that only ever appear in a sign-off.
+ *
+ * Deliberately narrow — an email address, a link, a phone number, a street
+ * address with a ZIP. These are the anchors; the lines around them are found by
+ * shape, below.
+ */
+const STRONG_CONTACT = [
+  /\b[\w.+-]+@[\w-]+\.[\w.]{2,}\b/,
+  /(?:https?:\/\/|www\.)\S+/i,
+  /\b(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/,
+  /\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\s*$/,
+];
+
+/** Longer than this and a line is prose, not a signature line. */
+const SIGNATURE_LINE_MAX = 80;
+
+/**
+ * The sign-off block at the end, with or without a delimiter above it.
+ *
+ * SIG_DELIMITER handles the polite case. This handles the common one: a name,
+ * a job title, a brokerage, two phone numbers, three calls to action, a
+ * website, an email and an office address, each on its own short line, with
+ * nothing marking where they begin. The bottom-up trim above walks straight
+ * past all of it, because it stops at the first line it does not recognise —
+ * and it recognises none of these.
+ *
+ * Found by anchoring on the last real contact detail and walking UP through
+ * short lines until prose starts. Two anchors are required so that an article
+ * ending in a short list with one link in it is left alone, and the tail is
+ * capped so this can never eat the piece.
+ */
+const SIGNATURE_MAX_WORDS = 200;
+
+export function stripTrailingSignature(text: string): string {
+  const lines = text.split(/\r?\n/);
+  const isShort = (l: string) => l.trim().length <= SIGNATURE_LINE_MAX;
+  const hasContact = (l: string) => STRONG_CONTACT.some((re) => re.test(l));
+
+  let anchor = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].trim() && hasContact(lines[i]) && isShort(lines[i])) { anchor = i; break; }
+    // Keep looking past blank lines only — a line of prose below the contact
+    // details means this is not a sign-off.
+    if (lines[i].trim()) break;
+  }
+  if (anchor < 0) return text;
+
+  let start = anchor;
+  while (start - 1 >= 0 && (!lines[start - 1].trim() || isShort(lines[start - 1]))) start--;
+
+  const tail = lines.slice(start);
+  const tailText = tail.join("\n").trim();
+  const anchors = tail.filter((l) => l.trim() && hasContact(l)).length;
+  const words = tailText.split(/\s+/).filter(Boolean).length;
+
+  if (anchors < 2 || words > SIGNATURE_MAX_WORDS) return text;
+  // Never everything: an email that IS a signature keeps whatever it has, and
+  // the word floor upstream decides it was not an article.
+  if (start === 0) return text;
+
+  return lines.slice(0, start).join("\n").trim();
+}
+
 /** A signature delimiter line: the RFC one, or a row of dashes/underscores. */
 const SIG_DELIMITER = /^\s*(?:--\s*|[-_=*]{3,}|—{2,})\s*$/;
 
@@ -252,6 +358,14 @@ export function stripEmailChrome(text: string): string {
     .split(/\r?\n/)
     .filter((line) => !FOOTER_LINE.test(line))
     .join("\n");
+
+  // Last, because both measure where they sit in the text and that has to be
+  // the text as it will be kept. Signature first: the compliance block usually
+  // sits under it, and removing the sign-off brings the boilerplate into the
+  // zone where the other one looks.
+  body = stripTrailingSignature(body);
+  body = stripLegalBoilerplate(body);
+  body = stripTrailingSignature(body);
 
   return body.replace(/\n{3,}/g, "\n\n").trim();
 }

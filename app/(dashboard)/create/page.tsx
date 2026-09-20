@@ -557,6 +557,20 @@ function CreatePageInner() {
   const [blogSrcUrlInput, setBlogSrcUrlInput] = useState("");
   const [blogSrcUploading, setBlogSrcUploading] = useState(false);
   const [blogSrcFetching, setBlogSrcFetching] = useState(false);
+  /**
+   * What to do with the material once it is attached.
+   *
+   * "asis" publishes it unchanged — the article is finished, and what SparkReels
+   * adds is the headline, description, hashtags, the header image and a place
+   * for it to live. "rewrite" researches the subject and writes a new piece,
+   * which is what somebody else's newsletter is for.
+   *
+   * Defaults to "asis" because the two routes that people actually forward
+   * things through — their own paste, their own email — are nearly always their
+   * own finished writing, and regenerating that is work nobody asked for.
+   */
+  const [blogSrcUse, setBlogSrcUse] = useState<"asis" | "rewrite">("asis");
+  const [blogImporting, setBlogImporting] = useState(false);
 
   // Paste tab uploads
   const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
@@ -1167,6 +1181,44 @@ function CreatePageInner() {
    * the pill says what it is and the topic is left to them: a paste carries no
    * subject line to borrow.
    */
+  /**
+   * Publish the attached article as it stands.
+   *
+   * Deliberately not routed through the writer: nothing is researched and no
+   * sentence of theirs is touched. It lands on the same Share Kit a generated
+   * article does, so the only difference is who wrote the words.
+   */
+  async function handleImportArticleAsIs() {
+    const article = blogSrcText.trim();
+    if (!article) return;
+    setBlogImporting(true);
+    try {
+      const res = await fetch("/api/ai/import-article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: article,
+          title: locCustomTopic.trim() || blogSrcName,
+          city: locCity.trim(),
+          state: locState.trim(),
+        }),
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error((data.error as string) || "Could not import that article");
+      const projectId = (data.project as { id: string }).id;
+      toast.success(
+        data.headingsAdded
+          ? "Article saved, with headings added. Your text is unchanged."
+          : "Article saved exactly as you wrote it.",
+      );
+      router.push(`/create/${projectId}?source=location&step=5`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not import that article");
+    } finally {
+      setBlogImporting(false);
+    }
+  }
+
   function handleBlogSrcText(text: string) {
     setBlogSrcText(text);
     const words = text.trim().split(/\s+/).length;
@@ -1557,7 +1609,10 @@ function CreatePageInner() {
   // asking someone to summarise in a sentence what they just handed over is
   // asking twice.
   const blogSourceReady = blogOnly && !!blogSrcText.trim();
-  const canContinue = locationSet && (!!locCustomTopic.trim() || blogSourceReady) && !locGenerating;
+  /** Publishing what they attached, rather than writing something new from it. */
+  const importingAsIs = blogSourceReady && blogSrcUse === "asis";
+  const canContinue = locationSet && (!!locCustomTopic.trim() || blogSourceReady)
+    && !locGenerating && !blogImporting;
 
   // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
   // paste, listing and camera all move through the same processing states, and
@@ -2174,17 +2229,75 @@ function CreatePageInner() {
                   writer is told to keep the source's facts and angle and to
                   write its own sentences — this is that promise, in the words
                   an agent would use for it. */}
+              {/* The question the attachment raises and the page used to answer
+                  for you: an article already written does not need a second one
+                  writing about it. Asked here, once something is attached,
+                  because before that it is a choice about nothing. */}
               {blogSrcText && (
-                <p className="-mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
-                  Your article will cover what this covers, written for{" "}
-                  {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"}
-                  {/* Somebody else's piece and your own draft need different
-                      promises. "Not a copy of the original" is reassurance
-                      about a newsletter and an insult about your own writing. */}
-                  {blogSrcMode === "text"
-                    ? " — built out into a full article with headings, not just tidied up."
-                    : " in your voice — not a copy of the original."}
-                </p>
+                <div className="-mt-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {([
+                      {
+                        key: "asis" as const,
+                        label: "Use it as it is",
+                        desc: "Published unchanged. We add the headline, description, hashtags and header image.",
+                        note: "Seconds",
+                      },
+                      {
+                        key: "rewrite" as const,
+                        label: "Write a new article from it",
+                        desc: `Covers the same ground, researched and written fresh for ${locCity.trim() || "your market"}.`,
+                        note: "About a minute",
+                      },
+                    ]).map(({ key, label, desc, note }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setBlogSrcUse(key)}
+                        aria-pressed={blogSrcUse === key}
+                        className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                          blogSrcUse === key
+                            ? "border-spark-amber bg-spark-amber-tint"
+                            : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                        }`}
+                      >
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="text-[12.5px] font-bold text-brand-text">{label}</span>
+                          <span className="text-[10px] uppercase tracking-[0.08em] text-spark-ink-faint">{note}</span>
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-[1.45] text-spark-ink-muted">{desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {blogSrcUse === "asis" ? (
+                    /* The one way this feature could put an agent in real
+                       trouble, said where the decision is made rather than in
+                       terms nobody reads. Quiet on purpose: most of what lands
+                       here is their own writing. The button is the footer's —
+                       two primaries for one action is how a page gets pressed
+                       twice. */
+                    <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-faint">
+                      Your words are kept exactly as they are
+                      {blogSrcMode === "text" ? "" : ", and headings are added only if it has none"}.
+                      Publish it as your own only if you wrote it — a newsletter someone else
+                      wrote is theirs, and <strong>Write a new article from it</strong> is the
+                      option for those. Press <strong>Save the article</strong> below.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
+                      Your article will cover what this covers, written for{" "}
+                      {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"}
+                      {/* Somebody else's piece and your own draft need different
+                          promises. "Not a copy of the original" is reassurance
+                          about a newsletter and an insult about your own writing. */}
+                      {blogSrcMode === "text"
+                        ? " — built out into a full article with headings, not just tidied up."
+                        : " in your voice — not a copy of the original."}
+                      {" "}Press <strong>Write the blog</strong> below when the rest is set.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -2470,23 +2583,34 @@ function CreatePageInner() {
                         ? "Press Send to add what you've typed."
                         : `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`)
                     : blogOnly
-                      ? "Usually 800 to 1,200 words, with headings, ready to paste into your site. You can turn it into a video afterwards."
+                      // What this button is about to do, which is now two
+                      // different things: publish what they attached, or write
+                      // something new.
+                      ? (importingAsIs
+                          ? "Saved as you wrote it, with the headline, description and hashtags added. Nothing is rewritten."
+                          : "Usually 800 to 1,200 words, with headings, ready to paste into your site. You can turn it into a video afterwards.")
                       : "We'll write the script first, then you pick how it looks."
           }
         >
           <Button
             // Wrapped: bare, the click event would arrive as the spoken overrides.
-            onClick={() => handleGenerateScript()}
-            loading={locGenerating}
+            // On the blog route with an article attached and "use it as it is"
+            // chosen, the primary action is saving that article — the footer
+            // has to do what the panel above says, or the two disagree about
+            // what pressing the big button means.
+            onClick={() => (importingAsIs ? handleImportArticleAsIs() : handleGenerateScript())}
+            loading={locGenerating || blogImporting}
             disabled={!canContinue}
             size="lg"
             className="gap-2"
           >
-            {locGenerating
+            {locGenerating || blogImporting
               ? <>Sparking<span className="hidden sm:inline"> your {blogOnly ? "article" : "script"}</span>…</>
-              : blogOnly
-                ? <>Write<span className="hidden sm:inline"> the blog</span> <ArrowRight size={18} /></>
-                : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
+              : importingAsIs
+                ? <>Save<span className="hidden sm:inline"> the article</span> <ArrowRight size={18} /></>
+                : blogOnly
+                  ? <>Write<span className="hidden sm:inline"> the blog</span> <ArrowRight size={18} /></>
+                  : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
           </Button>
           {/* The way out, beside the thing they cannot do. Sending someone to
               billing as a redirect is a worse welcome than offering it here. */}
