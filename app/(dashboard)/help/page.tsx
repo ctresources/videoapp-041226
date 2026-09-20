@@ -139,7 +139,7 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Paste a blog post</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Shorten my article</td>
                   <td className="py-2 pr-3">An article you&apos;ve already written — summarised into a script you read over first</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>

@@ -30,7 +30,7 @@ export interface MediaPhoto {
  * finding a file or a link, which is how an article usually arrives in the first
  * place.
  */
-export type DocMode = "upload" | "url" | "email";
+export type DocMode = "upload" | "url" | "email" | "text";
 
 export interface DocAttachment {
   mode: DocMode;
@@ -51,6 +51,13 @@ export interface DocAttachment {
    * on any screen that has nothing to do with it.
    */
   onPickEmail?: (article: PickedEmailArticle) => void;
+  /**
+   * Called with writing the agent pasted in directly. Omit and the "Paste
+   * text" way in is not offered — it belongs where the result is an article
+   * (there the paste IS the source), not where a pasted script would simply be
+   * spoken, which the script box already handles.
+   */
+  onPasteText?: (text: string) => void;
 }
 
 interface Props {
@@ -303,6 +310,9 @@ export function ArticleSource({
             </p>
             <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
               {([
+                // First where it exists: pasting your own writing is the
+                // shortest route of the four and needs nothing set up.
+                ...(doc.onPasteText ? [{ key: "text" as const, label: "Paste text" }] : []),
                 { key: "upload" as const, label: "Upload PDF" },
                 { key: "url" as const, label: "Add URL" },
                 // Last, and only where the caller handles it.
@@ -328,9 +338,10 @@ export function ArticleSource({
               ways to avoid writing from scratch. */}
           {doc.onPickEmail && (
             <p className="text-[11px] leading-[1.5] text-spark-ink-muted mb-2">
-              Already have the piece written? Attach a <strong>PDF</strong>, paste its{" "}
-              <strong>link</strong>, or forward it to your own SparkReels{" "}
-              <strong>email address</strong> — we&apos;ll turn it into
+              Already have the piece written?{" "}
+              {doc.onPasteText ? <><strong>Paste it in</strong>, attach a </> : <>Attach a </>}
+              <strong>PDF</strong>, paste its <strong>link</strong>, or forward it to your own
+              SparkReels <strong>email address</strong> — we&apos;ll turn it into
               {purpose === "article" ? " your article" : " your script"}.
             </p>
           )}
@@ -367,6 +378,8 @@ export function ArticleSource({
             </label>
           ) : doc.mode === "email" && doc.onPickEmail ? (
             <EmailImportPicker onPick={doc.onPickEmail} />
+          ) : doc.mode === "text" && doc.onPasteText ? (
+            <PasteTextSource onUse={doc.onPasteText} purpose={purpose} />
           ) : (
             <div className="flex gap-2">
               <input
@@ -401,5 +414,60 @@ export function ArticleSource({
             </p>
           )}
         </div>
+  );
+}
+
+/**
+ * Writing the agent already has, pasted straight in.
+ *
+ * Held locally until Use, so the draft can be edited without the page around
+ * it reacting to every keystroke — and so what gets committed is one deliberate
+ * act rather than a field that quietly became the source of an article.
+ *
+ * The floor is characters rather than words because it is only there to stop an
+ * empty or one-line paste becoming the brief; anything real clears it easily.
+ */
+const MIN_PASTE_CHARS = 200;
+
+function PasteTextSource({
+  onUse,
+  purpose,
+}: {
+  onUse: (text: string) => void;
+  purpose: "script" | "article";
+}) {
+  const [draft, setDraft] = useState("");
+  const words = draft.trim() ? draft.trim().split(/\s+/).length : 0;
+  const short = draft.trim().length > 0 && draft.trim().length < MIN_PASTE_CHARS;
+
+  return (
+    <div>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={6}
+        placeholder={
+          purpose === "article"
+            ? "Paste anything you've already written — a draft, a past post, your notes, a script. We'll turn it into a full article."
+            : "Paste the writing you want this built from."
+        }
+        className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
+      />
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          disabled={draft.trim().length < MIN_PASTE_CHARS}
+          onClick={() => onUse(draft.trim())}
+          className="whitespace-nowrap"
+        >
+          Use this text
+        </Button>
+        {words > 0 && (
+          <span className="text-[11px] text-spark-ink-faint">
+            {words.toLocaleString()} words{short ? " · paste a little more to use it" : ""}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

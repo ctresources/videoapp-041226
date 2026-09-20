@@ -549,7 +549,9 @@ function CreatePageInner() {
    * script and no photo b-roll, and mixing them would mean one Clear button
    * emptying an attachment on a screen the user is not looking at.
    */
-  const [blogSrcMode, setBlogSrcMode] = useState<DocMode>("email");
+  // Opens on Paste text: it is the one of the four that needs nothing set up,
+  // and seeing a box rather than three buttons says what the panel is for.
+  const [blogSrcMode, setBlogSrcMode] = useState<DocMode>("text");
   const [blogSrcText, setBlogSrcText] = useState("");
   const [blogSrcName, setBlogSrcName] = useState("");
   const [blogSrcUrlInput, setBlogSrcUrlInput] = useState("");
@@ -976,7 +978,9 @@ function CreatePageInner() {
           // What the agent brought with them, when they brought something. The
           // writer covers its ground in their voice rather than copying it —
           // see buildCustomRequest for the rules it is handed with.
-          ...(attached && { sourceText: attached }),
+          // Their own draft is edited and expanded; someone else's piece is
+          // covered and rewritten. The writer is told which it is.
+          ...(attached && { sourceText: attached, sourceIsOwn: blogSrcMode === "text" }),
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -1155,6 +1159,19 @@ function CreatePageInner() {
     } finally {
       setBlogSrcFetching(false);
     }
+  }
+
+  /**
+   * Writing the agent pasted in — a draft, an old post, notes, a script they
+   * wrote for something else. The one route where there is no name to show, so
+   * the pill says what it is and the topic is left to them: a paste carries no
+   * subject line to borrow.
+   */
+  function handleBlogSrcText(text: string) {
+    setBlogSrcText(text);
+    const words = text.trim().split(/\s+/).length;
+    setBlogSrcName(`Your text · ${words.toLocaleString()} words`);
+    toast.success("Saved. Your article will be written from this.");
   }
 
   function handleBlogSrcEmail(article: PickedEmailArticle) {
@@ -2145,6 +2162,10 @@ function CreatePageInner() {
                   onFetchUrl: handleBlogSrcUrl,
                   fetching: blogSrcFetching,
                   onPickEmail: handleBlogSrcEmail,
+                  // Only on this route. Pasting into the script tab means
+                  // "speak these words"; pasting here means "make an article
+                  // out of this", which is a different job for the same gesture.
+                  onPasteText: handleBlogSrcText,
                 }}
               />
               {/* Said where it is decided, not discovered in the output. The
@@ -2153,9 +2174,14 @@ function CreatePageInner() {
                   an agent would use for it. */}
               {blogSrcText && (
                 <p className="-mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
-                  Your article will cover what this covers, written fresh in your voice for{" "}
-                  {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"} —
-                  not a copy of the original.
+                  Your article will cover what this covers, written for{" "}
+                  {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"}
+                  {/* Somebody else's piece and your own draft need different
+                      promises. "Not a copy of the original" is reassurance
+                      about a newsletter and an insult about your own writing. */}
+                  {blogSrcMode === "text"
+                    ? " — built out into a full article with headings, not just tidied up."
+                    : " in your voice — not a copy of the original."}
                 </p>
               )}
             </div>
@@ -2588,8 +2614,13 @@ function CreatePageInner() {
             <div className="mb-4">
               <div className="grid grid-cols-3 gap-1.5">
                 {([
-                  { key: "own" as const, label: "I'll paste or type it", sub: "spoken exactly as written" },
-                  { key: "blog" as const, label: "Paste a blog post", sub: "summarised into a script" },
+                  // Named by what happens to the words, not by the action. Both
+                  // of these begin with pasting, so labels that both said
+                  // "paste" described the same gesture twice and left the
+                  // difference — spoken as written, versus cut down to fit — to
+                  // be worked out from the small print underneath.
+                  { key: "own" as const, label: "My script, word for word", sub: "nothing is rewritten" },
+                  { key: "blog" as const, label: "Shorten my article into a script", sub: "too long to read aloud — AI condenses it" },
                   { key: "ai" as const, label: "Let AI draft it", sub: "then edit it yourself" },
                 ]).map(({ key, label, sub }) => (
                   <button

@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     year,
     customTopic,
     sourceText,
+    sourceIsOwn,
     audience,
     tone,
     ctaPreference,
@@ -66,6 +67,8 @@ export async function POST(req: NextRequest) {
      * given, including that text arriving this way is never instructions.
      */
     sourceText?: string;
+    /** True when that material is the agent's own draft rather than someone else's piece. */
+    sourceIsOwn?: boolean;
     audience?: string;
     tone?: string;
     ctaPreference?: string;
@@ -151,6 +154,7 @@ export async function POST(req: NextRequest) {
   const params: LocationParams = {
     city, state, zip, month, year, customTopic,
     sourceText: typeof sourceText === "string" ? sourceText : undefined,
+    sourceIsOwn: sourceIsOwn === true,
     audience, tone, ctaPreference, purpose,
     targetWords: words,
     maxWords: cap,
