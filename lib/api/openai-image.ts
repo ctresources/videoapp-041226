@@ -10,6 +10,44 @@ function getOpenAI(): OpenAI | null {
 }
 
 /**
+ * The image model, in one place and overridable.
+ *
+ * `flare` is the current generation's everyday generator — one-shot images
+ * rather than the editing workflows `sunburst` is tuned for, which is exactly
+ * what this file asks for three times. It also bills image output at $30 per
+ * million tokens against gpt-image-1's $40.
+ *
+ * Env-overridable because a model name is somebody else's to retire, and a
+ * redeploy is a poor way to react to that: if flare misbehaves, or something
+ * newer lands, this moves without a code change. Every caller here already
+ * falls back to a plain background when a request fails, so the worst case of
+ * a bad value is graphics that look like they did before the key was added.
+ */
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-flare";
+
+/**
+ * The bytes of a generated image, however this model chose to return them.
+ *
+ * gpt-image-1 always answers with base64 inline. A different model — which the
+ * variable above now makes easy to switch to — may answer with a URL instead,
+ * and reading only `b64_json` would turn that into a silent fall back to a
+ * plain background: the most expensive kind of bug, because it looks like the
+ * feature working badly rather than not running.
+ */
+async function imageBytes(
+  item: { b64_json?: string | null; url?: string | null } | undefined,
+): Promise<Buffer | null> {
+  if (!item) return null;
+  if (item.b64_json) return Buffer.from(item.b64_json, "base64");
+  if (item.url) {
+    const res = await fetch(item.url, { signal: AbortSignal.timeout(20000) }).catch(() => null);
+    if (!res?.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  }
+  return null;
+}
+
+/**
  * Generate a bright, vibrant YouTube-thumbnail background that looks like a
  * still frame from the video. Returns the raw PNG buffer (caller composites
  * headline + headshot and uploads), or null when OPENAI_API_KEY is missing or
@@ -46,14 +84,12 @@ STRICT RULES:
   try {
     console.log(`[openai-image] generating thumbnail background for: "${(opts.topic || "").slice(0, 60)}"`);
     const result = await openai.images.generate({
-      model: "gpt-image-1",
+      model: IMAGE_MODEL,
       prompt,
       size: "1536x1024",
       n: 1,
     });
-    const b64 = result.data?.[0]?.b64_json;
-    if (!b64) return null;
-    return Buffer.from(b64, "base64");
+    return await imageBytes(result.data?.[0]);
   } catch (err) {
     console.error("[openai-image] thumbnail background failed:", err instanceof Error ? err.message : err);
     return null;
@@ -118,7 +154,7 @@ STRICT RULES:
   try {
     console.log(`[openai-image] image generator background (${opts.template}, ${opts.orientation}, v${opts.variant})`);
     const result = await openai.images.generate({
-      model: "gpt-image-1",
+      model: IMAGE_MODEL,
       prompt,
       size: opts.orientation === "portrait" ? "1024x1536" : "1536x1024",
       // Medium keeps a background to a few cents. The type drawn on top is what
@@ -126,9 +162,7 @@ STRICT RULES:
       quality: "medium",
       n: 1,
     });
-    const b64 = result.data?.[0]?.b64_json;
-    if (!b64) return null;
-    return Buffer.from(b64, "base64");
+    return await imageBytes(result.data?.[0]);
   } catch (err) {
     console.error("[openai-image] image generator background failed:", err instanceof Error ? err.message : err);
     return null;
@@ -207,19 +241,18 @@ Subject matter should evoke the headline concept and location: e.g. inviting hom
   try {
     console.log(`[openai-image] generating thumbnail (${size}) for hook: "${hook.slice(0, 60)}..."`);
     const result = await openai.images.generate({
-      model: "gpt-image-1",
+      model: IMAGE_MODEL,
       prompt,
       size: size as "1024x1024" | "1024x1536" | "1536x1024",
       n: 1,
     });
 
-    const b64 = result.data?.[0]?.b64_json;
-    if (!b64) {
+    const buffer = await imageBytes(result.data?.[0]);
+    if (!buffer) {
       console.warn("[openai-image] no image data returned");
       return null;
     }
 
-    const buffer = Buffer.from(b64, "base64");
     const admin = createAdminClient();
     const path = `${opts.userId}/thumbnails/${opts.projectId}-${Date.now()}.png`;
 
