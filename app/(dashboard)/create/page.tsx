@@ -1945,7 +1945,9 @@ function CreatePageInner() {
         <SectionHead
           className="mt-7"
           eyebrow={blogOnly ? "2 · Source" : "2 · Script source"}
-          question={blogOnly ? "What should the article come from?" : "How should your script begin?"}
+          // "Where", not "What": the answers are origins — the writer, your
+          // listings — and "come from" already carries the what.
+          question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
         />
         <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
           {([
