@@ -262,6 +262,8 @@ export default function ProjectEditorPage() {
   // the URL already identifies the project, and putting the step there would
   // mean the back button walked steps instead of leaving the editor.
   const [editorStep, setEditorStep] = useState<2 | 3 | 4 | 5>(2);
+  /** Whether the step named in the URL has already been honoured — see below. */
+  const landingStepApplied = useRef(false);
   // Set once a render has been accepted, so the last steps can link straight
   // to the video rather than the whole My Content list.
   const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
@@ -553,12 +555,33 @@ export default function ProjectEditorPage() {
   // straight away: re-recording usually means changing something first, and a
   // permission prompt firing on page load is startling.
   useEffect(() => {
-    if (skipScriptStep && editedScript) setEditorStep(3);
-    if (searchParams.get("record") === "1" && editedScript) setEditorStep(3);
+    /**
+     * Once, on arrival — not on every change to the script.
+     *
+     * This runs when `editedScript` changes, which is how it waits for the
+     * script to load. But the URL does not change with it, so every later
+     * edit re-applied the same landing step: writing a script from the
+     * article set editedScript, this fired again, saw `step=5` still sitting
+     * in the URL and threw the agent back to the Share Kit they had just
+     * left — with the script written and no sign of it.
+     */
+    if (landingStepApplied.current) return;
+
+    if (skipScriptStep && editedScript) {
+      landingStepApplied.current = true;
+      setEditorStep(3);
+    }
+    if (searchParams.get("record") === "1" && editedScript) {
+      landingStepApplied.current = true;
+      setEditorStep(3);
+    }
     // Arriving from the camera's done step, which has already produced the
     // video. Step 5 is the only one that means anything there — the setup and
     // render steps are behind it, not ahead.
-    if (searchParams.get("step") === "5") setEditorStep(5);
+    if (searchParams.get("step") === "5") {
+      landingStepApplied.current = true;
+      setEditorStep(5);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editedScript]);
 
