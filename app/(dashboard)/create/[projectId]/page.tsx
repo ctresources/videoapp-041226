@@ -1776,7 +1776,7 @@ export default function ProjectEditorPage() {
    * so it is the right source: summarised by script-from-text, which uses only
    * what it is given and adds no facts.
    */
-  async function writeLongScriptFromArticle() {
+  async function writeScriptFromArticle(length: "rendered_short" | "rendered_long") {
     const s = project?.ai_script;
     if (!s) return;
     const articleText = [s.blog_intro, s.blog_body, s.blog_conclusion]
@@ -1785,26 +1785,39 @@ export default function ProjectEditorPage() {
       .join("\n\n")
       .trim();
     if (!articleText) return;
-    if (editedScript.trim() && !window.confirm("Replace the current script with an 8-minute script written from the article?")) return;
+    const isLong = length === "rendered_long";
+    const minutes = isLong ? "8-minute" : "3-minute";
+    // Only when there is something to lose. An imported article arrives with
+    // no script at all, and asking permission to replace nothing is a dialog
+    // that can only be answered one way.
+    if (editedScript.trim()
+      && !window.confirm(`Replace the current script with a ${minutes} script written from the article?`)) return;
 
     setArticleScriptWriting(true);
     try {
       const ctaWords = editedCta.trim().split(/\s+/).filter(Boolean).length;
+      const cap = isLong ? LONG_MAX_WORDS : standardMaxWords();
       const res = await fetch("/api/ai/script-from-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: articleText,
-          length: "rendered_long",
+          length,
           // Room for the closing line, which is added after the script.
-          budget: LONG_MAX_WORDS - ctaWords,
+          budget: cap - ctaWords,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't write the script. Try again.");
       setEditedScript(data.script as string);
-      setSelectedVideoType("youtube_long");
-      toast.success(`Longform script ready: ${data.words} words, about ${data.minutes} minutes.`);
+      // A long script needs the long format. A short one only has to stop the
+      // project sitting on Longform — there are two short shapes and which one
+      // is right is the agent's choice, so only Longform is corrected.
+      if (isLong) setSelectedVideoType("youtube_long");
+      else if (selectedVideoType === "youtube_long") setSelectedVideoType("youtube_16x9");
+      toast.success(
+        `${isLong ? "Longform" : "Short"} script ready: ${data.words} words, about ${data.minutes} minute${data.minutes === 1 ? "" : "s"}.`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't write the script. Try again.");
     } finally {
@@ -2426,20 +2439,36 @@ export default function ProjectEditorPage() {
                 </div>
                 {/* Only where an article exists to write from. */}
                 {(project.ai_script?.blog_intro || project.ai_script?.blog_body) && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
-                    <button
-                      type="button"
-                      onClick={writeLongScriptFromArticle}
-                      disabled={articleScriptWriting}
-                      className="flex items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
-                    >
-                      {articleScriptWriting
-                        ? <><Loader2 size={12} className="animate-spin" /> Writing from the article…</>
-                        : <><FileText size={12} /> Write an 8-minute script from the article</>}
-                    </button>
-                    <span className="text-[10.5px] text-spark-ink-faint">
-                      For a Longform video. Uses only what the article says, and replaces this script.
-                    </span>
+                  <div className="mt-2 px-1">
+                    {/* Both lengths, not just the long one.
+                        An article imported as it is arrives with no script at
+                        all, so this is the only way to get one — and offering
+                        8 minutes alone left anyone who wanted a short video
+                        looking at an empty box with no way to fill it. */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {([
+                        { key: "rendered_short" as const, label: "3-minute script", note: "Shorts" },
+                        { key: "rendered_long" as const, label: "8-minute script", note: "Longform" },
+                      ]).map(({ key, label, note }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => writeScriptFromArticle(key)}
+                          disabled={articleScriptWriting}
+                          className="flex items-center gap-1.5 rounded-nav border border-spark-rule px-2.5 py-1 text-[11px] font-medium text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
+                        >
+                          {articleScriptWriting
+                            ? <><Loader2 size={12} className="animate-spin" /> Writing…</>
+                            : <><FileText size={12} /> Write a {label}</>}
+                          <span className="text-spark-ink-faint">· {note}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10.5px] text-spark-ink-faint">
+                      {editedScript.trim()
+                        ? "Uses only what the article says, and replaces this script."
+                        : "This article has no script yet. Either button writes one from it, using only what it says."}
+                    </p>
                   </div>
                 )}
                 <ScriptLengthWarning
@@ -3303,13 +3332,23 @@ export default function ProjectEditorPage() {
                                       setVideoMenuOpen(false);
                                       setEditorStep(skipScriptStep ? 3 : 2);
                                       window.scrollTo({ top: 0, behavior: "smooth" });
+                                      // An imported article has no script, so
+                                      // this used to land on an empty box with
+                                      // only an 8-minute button under it —
+                                      // after asking for a SHORT video. Asking
+                                      // for one now writes one.
+                                      if (scriptWords === 0 && articleWords > 0) {
+                                        writeScriptFromArticle("rendered_short");
+                                      }
                                     }}
                                   >
                                     <span className="text-xs font-semibold text-spark-ink">Make it a short video</span>
                                     <span className="text-[11px] text-spark-ink-faint">
                                       {scriptWords > 0
                                         ? `Avatar or cloned voice · about ${mins(scriptWords)} min · Uses 1 video`
-                                        : "Avatar or cloned voice · Uses 1 video"}
+                                        : articleWords > 0
+                                          ? "Writes a 3-minute script from the article first · Uses 1 video"
+                                          : "Avatar or cloned voice · Uses 1 video"}
                                     </span>
                                   </button>
                                 )}
@@ -3515,7 +3554,15 @@ export default function ProjectEditorPage() {
             }
           >
             {editorStep === 2 && (
-              <Button onClick={() => setEditorStep(3)} size="lg" className="gap-2">
+              // Nothing to speak, nothing to set up. An imported article
+              // reaches this step with an empty box, and carrying on from
+              // there only moves the dead end one screen along.
+              <Button
+                onClick={() => setEditorStep(3)}
+                disabled={!editedScript.trim()}
+                size="lg"
+                className="gap-2"
+              >
                 Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={17} />
               </Button>
             )}
