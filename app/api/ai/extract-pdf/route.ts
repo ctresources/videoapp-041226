@@ -16,6 +16,14 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
+  /**
+   * How much of the PDF to return, matching the URL import's reasoning: 5,000
+   * characters for a reference doc that feeds a script prompt, up to 20,000 when
+   * the PDF *is* the article about to be summarised. At the old flat 5,000 a
+   * forwarded market report was cut off around 800 words, so the summary ended
+   * wherever the truncation happened to land.
+   */
+  const textLimit = Math.min(Math.max(Number(formData.get("maxChars")) || 5000, 500), 20000);
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
   if (file.size > 20 * 1024 * 1024) {
     return NextResponse.json({ error: "PDF must be under 20MB" }, { status: 413 });
@@ -60,7 +68,7 @@ export async function POST(req: NextRequest) {
   const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(path);
 
   return NextResponse.json({
-    text: text.slice(0, 5000),
+    text: text.slice(0, textLimit),
     url: publicUrl,
     name: file.name,
   });

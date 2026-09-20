@@ -1,0 +1,258 @@
+/**
+ * Turn a forwarded email into the article that was inside it.
+ *
+ * An email carrying an article is mostly not the article: there is a forwarding
+ * header block above it, a signature below it, an unsubscribe footer below that,
+ * and — if it was forwarded twice — the whole lot again, quoted. None of it is
+ * worth summarising into a script, and a signature block in particular reads as
+ * content to the summariser, which will happily write a video about the sender's
+ * phone number.
+ *
+ * Everything here is pattern work on what the major clients actually emit. It is
+ * deliberately conservative: when a rule is unsure it keeps the text, because a
+ * stray signature line costs the user one edit and an over-trimmed article costs
+ * them the article. What comes back lands in a box they read and edit before
+ * anything is generated, which is what makes that trade the right way round.
+ */
+
+/** Length cap, matching what the URL import hands the summariser. */
+export const EMAIL_TEXT_LIMIT = 20000;
+
+const ENTITIES: Record<string, string> = {
+  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+  ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’",
+  mdash: "—", ndash: "–", hellip: "…", middot: "·",
+  bull: "•", trade: "™", copy: "©", reg: "®",
+  deg: "°", frac12: "½", zwnj: "", shy: "",
+};
+
+function decodeEntities(input: string): string {
+  return input
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+      String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) =>
+      String.fromCodePoint(Number(dec)))
+    .replace(/&([a-z][a-z0-9]*);/gi, (whole, name: string) => {
+      const hit = ENTITIES[name.toLowerCase()];
+      return hit === undefined ? whole : hit;
+    });
+}
+
+/**
+ * Some providers hand back the body as a `data:` URI rather than as markup.
+ * Resend's received-email payload carries an `html_format` field whose values
+ * are undocumented, so both shapes are handled rather than guessed at: a string
+ * that does not start with `data:` is already the markup.
+ */
+export function decodeBodyIfDataUri(body: string): string {
+  if (!/^data:/i.test(body)) return body;
+  const comma = body.indexOf(",");
+  if (comma < 0) return body;
+  const meta = body.slice(5, comma);
+  const payload = body.slice(comma + 1);
+  try {
+    if (/;base64/i.test(meta)) return Buffer.from(payload, "base64").toString("utf8");
+    return decodeURIComponent(payload);
+  } catch {
+    return body;
+  }
+}
+
+/**
+ * Markup to readable text, keeping the shape of the piece.
+ *
+ * Paragraph and heading breaks are kept as blank lines because they are what
+ * makes the box readable when the agent checks it, and because the summariser
+ * reads a wall of text as one thought. Tables become lines rather than being
+ * dropped: newsletters lay their whole body out in tables.
+ */
+export function htmlToText(html: string): string {
+  let out = html;
+
+  // Nothing inside these is ever prose.
+  out = out
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(script|style|head|noscript|svg)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
+
+  // Quoted chains that clients mark up rather than prefix with ">".
+  out = out.replace(/<blockquote\b[^>]*>[\s\S]*?<\/blockquote>/gi, " ");
+
+  // A link becomes its text. The href is dropped deliberately — a script read
+  // aloud cannot use a URL, and newsletter links are tracking redirects.
+  out = out.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, "$1");
+
+  out = out
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6]|blockquote|section|article|table)\s*>/gi, "\n\n")
+    .replace(/<li\b[^>]*>/gi, "\n• ")
+    .replace(/<\/t[dh]\s*>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+
+  out = decodeEntities(out);
+
+  return out
+    // Zero-width and layout characters newsletters pad cells with.
+    .replace(/[​-‍⁠﻿]/g, "")
+    .replace(/ /g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    // Per line, because stripping tags leaves a space where each one was —
+    // which on its own would indent every paragraph in the box by one space.
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** The header block a client inserts above a forward, in the common clients. */
+const FORWARD_MARKER =
+  /^\s*(?:-{2,}\s*)?(?:Forwarded message|Original Message|Begin forwarded message)\b[:\s-]*$/im;
+
+/** A single header line from that block, wherever it ends up. */
+const HEADER_LINE =
+  /^\s*(?:From|To|Cc|Bcc|Sent|Date|Subject|Reply-To)\s*:\s?.*$/i;
+
+/**
+ * Where a quoted reply starts. Anchored to a line of its own and required to
+ * end in "wrote:" or "sent:", so a sentence that merely begins with "On" is not
+ * mistaken for one.
+ */
+const QUOTE_ATTRIBUTION =
+  /^\s*(?:On\b.{0,200}\b(?:wrote|sent)\s*:|.{0,80}\bwrote\s*:)\s*$/im;
+
+/**
+ * Footer boilerplate. Matching the LINE, not the text anywhere in it — "you can
+ * unsubscribe from this at any time" inside an article about email marketing is
+ * prose, and the footer version is always its own short line.
+ */
+const FOOTER_LINE =
+  /^\s*(?:unsubscribe|manage (?:your )?(?:email )?preferences|view (?:this|it) in (?:your )?browser|update your profile|you(?:'re| are) receiving this|sent to \S+@\S+|©\s*\d{4}|copyright\s*©|privacy policy|terms of (?:use|service)|all rights reserved|confidentiality notice|this (?:e-?mail|message) (?:and any attachments )?(?:is|are|may be) (?:confidential|intended)|sent from my \w+)\b.{0,120}$/i;
+
+/** A signature delimiter line: the RFC one, or a row of dashes/underscores. */
+const SIG_DELIMITER = /^\s*(?:--\s*|[-_=*]{3,}|—{2,})\s*$/;
+
+/**
+ * Contact-detail lines that make up a signature. Used only below a delimiter or
+ * in the last few lines, never to cut into the body.
+ */
+const CONTACT_LINE =
+  /^\s*(?:(?:mobile|cell|direct|office|tel|phone|fax|e-?mail|web|www|licen[cs]e|dre|brokerage?)\s*[:#]?\s*\S|\+?\d[\d\s().-]{8,}$|\S+@\S+\.\S+$|(?:https?:\/\/|www\.)\S+$)/i;
+
+/**
+ * Strip the wrapper an email puts around an article.
+ *
+ * Order matters: the forward header block is removed first so that the header
+ * lines it contains cannot be confused with a signature further down.
+ */
+export function stripEmailChrome(text: string): string {
+  let body = text;
+
+  /**
+   * Everything above the LAST forward marker goes.
+   *
+   * The last one, not the first: an article forwarded twice has two blocks, and
+   * the article itself sits under the innermost. Anything the agent typed above
+   * the marker ("thought this was useful") is wrapper too, not the piece.
+   */
+  const lines = body.split(/\r?\n/);
+  let lastMarker = -1;
+  lines.forEach((line, i) => {
+    if (FORWARD_MARKER.test(line)) lastMarker = i;
+  });
+  if (lastMarker >= 0) {
+    let start = lastMarker + 1;
+    // The header lines under the marker, plus the blank lines between them.
+    while (start < lines.length && (HEADER_LINE.test(lines[start]) || !lines[start].trim())) {
+      start++;
+    }
+    body = lines.slice(start).join("\n");
+  }
+
+  // A quoted reply below the article, and the ">"-prefixed text under it.
+  const quoteAt = body.search(QUOTE_ATTRIBUTION);
+  if (quoteAt > 200) body = body.slice(0, quoteAt);
+  body = body
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*>/.test(line))
+    .join("\n");
+
+  // Below a signature delimiter, if what follows is short enough to be one.
+  // Long text under a row of dashes is a section break in the article.
+  const sigLines = body.split(/\r?\n/);
+  for (let i = sigLines.length - 1; i >= 0; i--) {
+    if (!SIG_DELIMITER.test(sigLines[i])) continue;
+    const below = sigLines.slice(i + 1);
+    const words = below.join(" ").trim().split(/\s+/).filter(Boolean).length;
+    if (below.length <= 12 && words < 60) {
+      sigLines.length = i;
+      break;
+    }
+  }
+  body = sigLines.join("\n");
+
+  // Footer and contact lines, from the bottom up, stopping at the first line
+  // that reads as prose — so this can only ever trim the tail.
+  const tail = body.split(/\r?\n/);
+  while (tail.length > 0) {
+    const line = tail[tail.length - 1];
+    if (!line.trim() || FOOTER_LINE.test(line) || CONTACT_LINE.test(line) || SIG_DELIMITER.test(line)) {
+      tail.pop();
+      continue;
+    }
+    break;
+  }
+  body = tail.join("\n");
+
+  // Footer lines that sit in the middle, which is where a newsletter's
+  // unsubscribe row lands when the article continues below it.
+  body = body
+    .split(/\r?\n/)
+    .filter((line) => !FOOTER_LINE.test(line))
+    .join("\n");
+
+  return body.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Subject lines carry the client's forward prefixes; the headline underneath
+ * them is what the agent recognises in a list.
+ */
+export function cleanSubject(subject: string | null | undefined): string {
+  return (subject ?? "")
+    .replace(/^(?:\s*(?:re|fw|fwd|forward|aw|wg|tr|rv)\s*:\s*)+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function countWords(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+/**
+ * The whole job: pick the best body an email offers, clean it, cap it.
+ *
+ * HTML is preferred when both are present because it keeps the paragraph and
+ * heading structure — the plain-text alternative newsletters generate is often
+ * a link dump. A plain-text-only email is used as it stands.
+ */
+export function articleFromEmail({
+  html,
+  text,
+}: {
+  html?: string | null;
+  text?: string | null;
+}): string {
+  const plain = (text ?? "").trim();
+  const markup = (html ?? "").trim();
+
+  let body = "";
+  if (markup) body = stripEmailChrome(htmlToText(decodeBodyIfDataUri(markup)));
+  // Falls back when the markup yielded almost nothing — an email whose body is
+  // one big image, or markup this stripped too hard.
+  if (countWords(body) < 40 && plain) {
+    const fromPlain = stripEmailChrome(decodeBodyIfDataUri(plain));
+    if (countWords(fromPlain) > countWords(body)) body = fromPlain;
+  }
+
+  return body.slice(0, EMAIL_TEXT_LIMIT).trim();
+}

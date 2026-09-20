@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Image as ImageIcon, Plus, X, Loader2, Paperclip, FileText, Globe,
+  Image as ImageIcon, Plus, X, Loader2, Paperclip, FileText, Globe, Mail,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { EmailImportPicker, type PickedEmailArticle } from "@/components/create/email-import-picker";
 
 export interface MediaPhoto {
   url: string;
@@ -23,9 +24,17 @@ export interface MediaPhoto {
  * They look alike and do different jobs, which is exactly why they are not
  * being merged into one control.
  */
+/**
+ * Which way the source material is coming in. "email" is the same idea as the
+ * other two — text from somewhere else — reached by forwarding rather than by
+ * finding a file or a link, which is how an article usually arrives in the first
+ * place.
+ */
+export type DocMode = "upload" | "url" | "email";
+
 export interface DocAttachment {
-  mode: "upload" | "url";
-  onModeChange: (mode: "upload" | "url") => void;
+  mode: DocMode;
+  onModeChange: (mode: DocMode) => void;
   /** Set once something is attached — the name shown in the confirmed state. */
   attachedName: string;
   attached: boolean;
@@ -36,6 +45,12 @@ export interface DocAttachment {
   onUrlInputChange: (value: string) => void;
   onFetchUrl: () => void;
   fetching: boolean;
+  /**
+   * Called with an article the agent forwarded to their import address. Omit
+   * and the "From email" way in is not offered at all — which is what happens
+   * on any screen that has nothing to do with it.
+   */
+  onPickEmail?: (article: PickedEmailArticle) => void;
 }
 
 interface Props {
@@ -258,27 +273,28 @@ export function MediaAndDocs({
         <div className="mb-4 pb-4 border-b border-spark-rule-soft">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-bold text-spark-ink-soft">
-              Attach PDF / URL <span className="font-normal text-spark-ink-faint">(optional)</span>
+              {doc.onPickEmail ? "Bring in an article" : "Attach PDF / URL"}{" "}
+              <span className="font-normal text-spark-ink-faint">(optional)</span>
             </p>
             <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
-              <button
-                type="button"
-                onClick={() => doc.onModeChange("upload")}
-                className={`px-2.5 py-1 transition-colors ${
-                  doc.mode === "upload" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"
-                }`}
-              >
-                Upload PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => doc.onModeChange("url")}
-                className={`px-2.5 py-1 transition-colors ${
-                  doc.mode === "url" ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"
-                }`}
-              >
-                Add URL
-              </button>
+              {([
+                { key: "upload" as const, label: "Upload PDF" },
+                { key: "url" as const, label: "Add URL" },
+                // Last, and only where the caller handles it.
+                ...(doc.onPickEmail ? [{ key: "email" as const, label: "From email" }] : []),
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => doc.onModeChange(key)}
+                  aria-pressed={doc.mode === key}
+                  className={`px-2.5 py-1 transition-colors ${
+                    doc.mode === key ? "bg-spark-amber text-white" : "bg-white text-spark-ink-muted hover:bg-spark-paper"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -286,7 +302,9 @@ export function MediaAndDocs({
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
               {doc.mode === "upload"
                 ? <FileText size={16} className="text-green-600 shrink-0" />
-                : <Globe size={16} className="text-green-600 shrink-0" />}
+                : doc.mode === "email"
+                  ? <Mail size={16} className="text-green-600 shrink-0" />
+                  : <Globe size={16} className="text-green-600 shrink-0" />}
               <span className="text-sm text-green-800 flex-1 truncate">{doc.attachedName}</span>
               <button type="button" onClick={doc.onClear} aria-label="Remove attachment" className="p-0.5 rounded hover:bg-green-100">
                 <X size={14} className="text-green-700" />
@@ -310,6 +328,8 @@ export function MediaAndDocs({
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) doc.onUploadPdf(f); }}
               />
             </label>
+          ) : doc.mode === "email" && doc.onPickEmail ? (
+            <EmailImportPicker onPick={doc.onPickEmail} />
           ) : (
             <div className="flex gap-2">
               <input
@@ -334,11 +354,15 @@ export function MediaAndDocs({
             </div>
           )}
 
-          <p className="text-[11px] text-spark-ink-faint mt-1">
-            {doc.mode === "upload"
-              ? "PDF content will be extracted and used to enrich your video."
-              : "Web page content will be extracted and used to enrich your video."}
-          </p>
+          {/* The email picker says its own piece — the address, the 30 days, and
+              what to forward — so a line here would only repeat it. */}
+          {doc.mode !== "email" && (
+            <p className="text-[11px] text-spark-ink-faint mt-1">
+              {doc.mode === "upload"
+                ? "PDF content will be extracted and used to enrich your video."
+                : "Web page content will be extracted and used to enrich your video."}
+            </p>
+          )}
         </div>
       )}
     </>

@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
-import { MediaAndDocs } from "@/components/create/media-and-docs";
+import { MediaAndDocs, type DocMode } from "@/components/create/media-and-docs";
+import type { PickedEmailArticle } from "@/components/create/email-import-picker";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -547,7 +548,7 @@ function CreatePageInner() {
   const [pastePdfText, setPastePdfText] = useState("");
   const [pastePdfUrl, setPastePdfUrl] = useState("");
   const [pastePdfName, setPastePdfName] = useState("");
-  const [pastePdfMode, setPastePdfMode] = useState<"upload" | "url">("upload");
+  const [pastePdfMode, setPastePdfMode] = useState<DocMode>("upload");
   const [pastePdfUrlInput, setPastePdfUrlInput] = useState("");
   const [pastePdfUrlExtracting, setPastePdfUrlExtracting] = useState(false);
 
@@ -601,7 +602,7 @@ function CreatePageInner() {
   const [cameraPdfText, setCameraPdfText] = useState("");
   const [cameraPdfUrl, setCameraPdfUrl] = useState("");
   const [cameraPdfName, setCameraPdfName] = useState("");
-  const [cameraPdfMode, setCameraPdfMode] = useState<"upload" | "url">("upload");
+  const [cameraPdfMode, setCameraPdfMode] = useState<DocMode>("upload");
   const [cameraPdfUrlInput, setCameraPdfUrlInput] = useState("");
   const [cameraPdfUrlExtracting, setCameraPdfUrlExtracting] = useState(false);
   const [cameraGeneratedScript, setCameraGeneratedScript] = useState("");
@@ -1015,18 +1016,73 @@ function CreatePageInner() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      // The whole article when it is the thing being summarised, rather than the
+      // 5,000-character reference-doc extract. Same figure the URL import asks
+      // for on this route.
+      if (pasteSource === "blog") formData.append("maxChars", "20000");
       const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
       setPastePdfText(body.text as string);
+      // In blog mode the PDF IS the source material, so it fills the box about
+      // to be summarised — the same thing fetching a URL does. Without this the
+      // PDF attached silently and the box stayed empty.
+      if (pasteSource === "blog") setPasteBlogText(body.text as string);
       setPastePdfUrl(body.url as string);
       setPastePdfName(body.name as string);
-      toast.success("PDF attached and content extracted!");
+      toast.success(
+        pasteSource === "blog"
+          ? "PDF read — its text is in the box below."
+          : "PDF attached and content extracted!",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to process PDF");
     } finally {
       setPastePdfUploading(false);
     }
+  }
+
+  /**
+   * An article the agent forwarded to their import address.
+   *
+   * Lands in the same two places the URL import does: the article box in blog
+   * mode, where it is the source material about to be summarised, and the
+   * attachment slot, where it is background for the AI writer. Its images join
+   * the b-roll — they were copied into our own storage when the email arrived,
+   * so unlike scraped photos they need no rehosting here.
+   */
+  function handlePasteEmailPick(article: PickedEmailArticle) {
+    setPastePdfText(article.text);
+    // Not a real URL — nothing fetches this. It is how the attachment slot
+    // knows something is attached, and it names what that something is.
+    setPastePdfUrl(`email:${article.id}`);
+    setPastePdfName(article.subject);
+    if (pasteSource === "blog") setPasteBlogText(article.text);
+    if (article.imageUrls.length > 0) {
+      setPastePhotos((prev) => {
+        const room = 12 - prev.length;
+        const add = article.imageUrls.slice(0, room).map((url) => ({ url, name: "From email", preview: url }));
+        return [...prev, ...add];
+      });
+    }
+    const withPhotos = article.imageUrls.length > 0
+      ? `, ${article.imageUrls.length} image${article.imageUrls.length === 1 ? "" : "s"} attached`
+      : "";
+    toast.success(`Brought in "${article.subject}" — ${article.words.toLocaleString()} words${withPhotos}.`);
+  }
+
+  function handleCameraEmailPick(article: PickedEmailArticle) {
+    setCameraPdfText(article.text);
+    setCameraPdfUrl(`email:${article.id}`);
+    setCameraPdfName(article.subject);
+    if (article.imageUrls.length > 0) {
+      setCameraPhotos((prev) => {
+        const room = 12 - prev.length;
+        const add = article.imageUrls.slice(0, room).map((url) => ({ url, name: "From email", preview: url }));
+        return [...prev, ...add];
+      });
+    }
+    toast.success(`Brought in "${article.subject}" — ${article.words.toLocaleString()} words.`);
   }
 
   async function handlePasteUrlExtract() {
@@ -2834,6 +2890,7 @@ function CreatePageInner() {
                   onUrlInputChange: setPastePdfUrlInput,
                   onFetchUrl: handlePasteUrlExtract,
                   fetching: pastePdfUrlExtracting,
+                  onPickEmail: handlePasteEmailPick,
                 }}
               />
               {pasteSource === "blog" && (
@@ -3230,6 +3287,7 @@ function CreatePageInner() {
                   onUrlInputChange: setCameraPdfUrlInput,
                   onFetchUrl: handleCameraUrlExtract,
                   fetching: cameraPdfUrlExtracting,
+                  onPickEmail: handleCameraEmailPick,
                 }}
               />
 

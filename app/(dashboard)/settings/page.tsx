@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock } from "lucide-react";
+import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
+import { EmailImportAddress } from "@/components/settings/email-import-address";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
@@ -456,6 +457,22 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </Card>
+
+      {/* Import by email */}
+      <Card>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
+            <Mail size={18} className="text-spark-amber" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-brand-text">Import Articles By Email</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Your private address for forwarding articles into SparkReels
+            </p>
+          </div>
+        </div>
+        <EmailImportAddress />
       </Card>
 
       {/* CRM Integrations */}
