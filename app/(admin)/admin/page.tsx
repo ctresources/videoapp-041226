@@ -25,6 +25,40 @@ interface InviteCode {
   profiles?: { email: string; full_name: string | null } | null;
 }
 
+/** Dollars, with a minus sign rather than brackets — this table has negatives. */
+function money(n: number): string {
+  return `${n < 0 ? "-" : ""}$${Math.abs(n).toFixed(2)}`;
+}
+
+interface CostRow {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  tier: string;
+  role: string | null;
+  videosPriced: number;
+  videoUsdMeasured: number;
+  videosEstimated: number;
+  videoUsdEstimated: number;
+  images: number;
+  imageUsd: number;
+  aiCalls: number;
+  aiTextUsd: number;
+  totalUsd: number;
+  revenueUsd: number;
+  marginUsd: number;
+}
+
+interface CostsResponse {
+  scope: "month" | "all";
+  rows: CostRow[];
+  totals: {
+    cost: number; revenue: number; videoCost: number; imageCost: number; aiCost: number;
+    videos: number; measuredVideos: number; payingUsers: number; activeUsers: number; underwater: number;
+  };
+  rates: { fallbackPerRenderSecond: number; blendedPerVideo: number; blendedFrom: number };
+}
+
 interface AffiliateRow {
   id: string;
   full_name: string;
@@ -72,7 +106,12 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Invite codes state
-  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist">("users");
+  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist" | "costs">("users");
+
+  // ── Cost per user ────────────────────────────────────────────────────────
+  const [costs, setCosts] = useState<CostsResponse | null>(null);
+  const [costsLoading, setCostsLoading] = useState(false);
+  const [costScope, setCostScope] = useState<"month" | "all">("month");
   const [waitlist, setWaitlist] = useState<{ id: string; email: string; full_name: string | null; source: string | null; created_at: string }[]>([]);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [capacity, setCapacity] = useState<{ open: boolean; count: number; max: number; remaining: number } | null>(null);
@@ -231,6 +270,16 @@ export default function AdminPage() {
 
   useEffect(() => { if (adminTab === "waitlist") loadWaitlist(); }, [adminTab, loadWaitlist]);
 
+  const loadCosts = useCallback(async (scope: "month" | "all") => {
+    setCostsLoading(true);
+    const res = await fetch(`/api/admin/costs?scope=${scope}`);
+    if (res.ok) setCosts(await res.json());
+    else toast.error("Could not load costs");
+    setCostsLoading(false);
+  }, []);
+
+  useEffect(() => { if (adminTab === "costs") loadCosts(costScope); }, [adminTab, costScope, loadCosts]);
+
   async function updateAffiliate(id: string, status: "approved" | "rejected") {
     if (status === "rejected" && !confirm("Reject this affiliate application?")) return;
     setAffiliateBusy((p) => ({ ...p, [id]: true }));
@@ -285,7 +334,7 @@ export default function AdminPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-5">
-        {([["users", Users, "Users"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"]] as const).map(([tab, Icon, label]) => (
+        {([["users", Users, "Users"], ["costs", Coins, "Costs"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"]] as const).map(([tab, Icon, label]) => (
           <button key={tab} onClick={() => setAdminTab(tab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
@@ -407,6 +456,167 @@ export default function AdminPage() {
       )}
 
       {/* ── WAITLIST TAB ── */}
+      {/* ── Cost per user ──
+          What each account actually cost to serve, against what it pays. The
+          users table answers "who is here"; this answers "who is expensive",
+          which no amount of plan names and video counts could. */}
+      {adminTab === "costs" && (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-sm font-semibold text-brand-text">Cost Per User</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Video costs are what each render actually billed. Images and AI writing are
+                priced per use.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg overflow-hidden border border-slate-200 text-xs font-semibold">
+                {([["month", "This month"], ["all", "All time"]] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setCostScope(key)}
+                    className={`px-3 py-1.5 transition-colors ${
+                      costScope === key ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => loadCosts(costScope)} className="p-2 text-slate-400 hover:text-slate-600" title="Refresh">
+                <RefreshCw size={14} className={costsLoading ? "animate-spin" : ""} />
+              </button>
+            </div>
+          </div>
+
+          {costsLoading && !costs ? (
+            <Skeleton className="h-40 w-full" />
+          ) : !costs ? null : (
+            <>
+              {/* The four numbers worth knowing before any row is read. */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                {([
+                  ["Spent", money(costs.totals.cost), `${costs.totals.videos} video${costs.totals.videos === 1 ? "" : "s"}`],
+                  ["Subscriptions", money(costs.totals.revenue), `${costs.totals.payingUsers} paying`],
+                  [
+                    "Left over",
+                    money(costs.totals.revenue - costs.totals.cost),
+                    costs.totals.revenue > 0
+                      ? `${Math.round(((costs.totals.revenue - costs.totals.cost) / costs.totals.revenue) * 100)}% of takings`
+                      : "no subscriptions yet",
+                  ],
+                  [
+                    "Costing more than they pay",
+                    String(costs.totals.underwater),
+                    costs.totals.underwater === 0 ? "nobody, this period" : "accounts",
+                  ],
+                ] as const).map(([label, value, sub]) => (
+                  <div key={label} className="rounded-xl border border-slate-200 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                    <p className={`text-lg font-bold ${
+                      label === "Left over" && costs.totals.revenue - costs.totals.cost < 0
+                        ? "text-red-600"
+                        : "text-brand-text"
+                    }`}>{value}</p>
+                    <p className="text-[11px] text-slate-400">{sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Where the money goes. Video is the whole story and the bar says
+                  so at a glance, which stops anyone optimising image costs. */}
+              <div className="mb-4 rounded-xl border border-slate-200 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">What it went on</p>
+                {costs.totals.cost > 0 ? (
+                  <>
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      {([
+                        ["bg-blue-500", costs.totals.videoCost],
+                        ["bg-amber-500", costs.totals.imageCost],
+                        ["bg-emerald-500", costs.totals.aiCost],
+                      ] as const).map(([colour, value]) => (
+                        <div key={colour} className={colour} style={{ width: `${(value / costs.totals.cost) * 100}%` }} />
+                      ))}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                      <span><span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1" />Videos {money(costs.totals.videoCost)}</span>
+                      <span><span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1" />Images {money(costs.totals.imageCost)}</span>
+                      <span><span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-1" />AI writing {money(costs.totals.aiCost)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400">Nothing spent in this period.</p>
+                )}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[720px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left">
+                      {["Account", "Plan", "Videos", "Images", "AI", "Cost", "Pays", "Left over"].map((h) => (
+                        <th key={h} className="py-2 px-3 text-xs font-semibold text-slate-500">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costs.rows.filter((r) => r.totalUsd > 0 || r.revenueUsd > 0).map((r) => (
+                      <tr key={r.userId} className="border-b border-slate-100">
+                        <td className="py-2 px-3">
+                          <p className="font-medium text-brand-text">{r.name || r.email || "—"}</p>
+                          {r.name && <p className="text-[11px] text-slate-400">{r.email}</p>}
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className="text-xs text-slate-600">
+                            {r.role === "admin" ? "Admin" : r.tier === "free" ? "Free" : r.tier}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">
+                          {r.videosPriced + r.videosEstimated}
+                          {/* Says which figures are invoices and which are
+                              arithmetic, because only one of those is worth
+                              arguing with a supplier about. */}
+                          {r.videosEstimated > 0 && (
+                            <span className="text-[11px] text-slate-400" title={`${r.videosEstimated} render${r.videosEstimated === 1 ? "" : "s"} predate cost recording and are estimated from length`}>
+                              {" "}({r.videosEstimated} est.)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">{r.images || "—"}</td>
+                        <td className="py-2 px-3 text-slate-600">{r.aiCalls || "—"}</td>
+                        <td className="py-2 px-3 font-semibold text-brand-text">{money(r.totalUsd)}</td>
+                        <td className="py-2 px-3 text-slate-600">{r.revenueUsd ? money(r.revenueUsd) : "—"}</td>
+                        <td className={`py-2 px-3 font-semibold ${r.marginUsd < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                          {money(r.marginUsd)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {costs.rows.filter((r) => r.totalUsd > 0 || r.revenueUsd > 0).length === 0 && (
+                <p className="text-sm text-slate-400 py-6 text-center">
+                  Nothing spent and nothing billed in this period.
+                </p>
+              )}
+
+              {/* What the numbers are, said once, under them. */}
+              <p className="mt-3 text-[11px] leading-[1.5] text-slate-400">
+                Each finished render records what it actually cost, so{" "}
+                <strong>{costs.totals.measuredVideos}</strong> of these are real invoice figures.
+                Renders made before that recording shipped are marked <strong>est.</strong> —
+                priced from their length where it was kept, otherwise at{" "}
+                {money(costs.rates.blendedPerVideo)}, the average of the{" "}
+                {costs.rates.blendedFrom} we do have invoices for. Images are 6.3c each and AI
+                writing about 6c a call, both estimates and both small enough beside video that
+                being wrong about them changes little. Admin accounts show no subscription income.
+              </p>
+            </>
+          )}
+        </Card>
+      )}
+
       {adminTab === "waitlist" && (
         <Card>
           <div className="flex items-center justify-between mb-4">
