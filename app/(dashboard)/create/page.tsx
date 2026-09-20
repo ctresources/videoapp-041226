@@ -541,6 +541,21 @@ function CreatePageInner() {
    */
   const [briefHasDraft, setBriefHasDraft] = useState(false);
 
+  /**
+   * Source material for the article writer — a forwarded email, a PDF, a link.
+   *
+   * Separate from the paste tab's attachment even though both end up as text:
+   * this one is read by the article writer on the blog route, where there is no
+   * script and no photo b-roll, and mixing them would mean one Clear button
+   * emptying an attachment on a screen the user is not looking at.
+   */
+  const [blogSrcMode, setBlogSrcMode] = useState<DocMode>("email");
+  const [blogSrcText, setBlogSrcText] = useState("");
+  const [blogSrcName, setBlogSrcName] = useState("");
+  const [blogSrcUrlInput, setBlogSrcUrlInput] = useState("");
+  const [blogSrcUploading, setBlogSrcUploading] = useState(false);
+  const [blogSrcFetching, setBlogSrcFetching] = useState(false);
+
   // Paste tab uploads
   const [pastePhotos, setPastePhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
   const [pastePhotoUploading, setPastePhotoUploading] = useState(false);
@@ -928,7 +943,12 @@ function CreatePageInner() {
   async function handleGenerateScript(spoken?: { city?: string | null; state?: string | null; topic?: string | null }) {
     const city = (spoken?.city ?? locCity).trim();
     const state = (spoken?.state ?? locState).trim();
-    const topic = (spoken?.topic ?? locCustomTopic).trim();
+    const attached = blogOnly ? blogSrcText.trim() : "";
+    // An attached article stands in for a typed topic — its own subject is
+    // what the piece is about. Falls back to the file or page name, and then to
+    // a plain description, because the writer needs a subject line either way.
+    const topic = (spoken?.topic ?? locCustomTopic).trim()
+      || (attached ? (blogSrcName.trim() || "the attached article") : "");
     // No market gate any more — the topic carries its own location, and the
     // saved market is only a fallback for topics that name no place.
     if (!topic) {
@@ -953,6 +973,10 @@ function CreatePageInner() {
             ? substitutePlaceholders(topicTemplateRaw, city, state)
             : topic
           ).trim(),
+          // What the agent brought with them, when they brought something. The
+          // writer covers its ground in their voice rather than copying it —
+          // see buildCustomRequest for the rules it is handed with.
+          ...(attached && { sourceText: attached }),
           audience: locAudience || undefined,
           tone: locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -1083,6 +1107,66 @@ function CreatePageInner() {
       });
     }
     toast.success(`Brought in "${article.subject}" — ${article.words.toLocaleString()} words.`);
+  }
+
+  /**
+   * The three ways material reaches the article writer.
+   *
+   * All three land in the same place — blogSrcText, sent as sourceText when the
+   * article is written. The name is what the pill shows, and doubles as the
+   * topic when the agent never typed one: a forwarded piece already has a
+   * subject line saying what it is about.
+   */
+  async function handleBlogSrcPdf(file: File) {
+    setBlogSrcUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("maxChars", "20000");
+      const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
+      setBlogSrcText(body.text as string);
+      setBlogSrcName(body.name as string);
+      toast.success("PDF read — your article will be written from it.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process PDF");
+    } finally {
+      setBlogSrcUploading(false);
+    }
+  }
+
+  async function handleBlogSrcUrl() {
+    if (!blogSrcUrlInput.trim()) return;
+    setBlogSrcFetching(true);
+    try {
+      const res = await fetch("/api/ai/extract-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: blogSrcUrlInput.trim(), maxChars: 20000 }),
+      });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      setBlogSrcText(body.text as string);
+      try { setBlogSrcName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setBlogSrcName("Web page"); }
+      toast.success("Page read — your article will be written from it.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
+    } finally {
+      setBlogSrcFetching(false);
+    }
+  }
+
+  function handleBlogSrcEmail(article: PickedEmailArticle) {
+    setBlogSrcText(article.text);
+    setBlogSrcName(article.subject);
+    // The subject becomes the topic when there isn't one, so the brief is
+    // complete the moment something is picked. Never overwrites a typed topic.
+    if (!locCustomTopic.trim()) {
+      setLocCustomTopic(article.subject);
+      setTopicTemplateRaw(null);
+    }
+    toast.success(`"${article.subject}" will be the source for your article.`);
   }
 
   async function handlePasteUrlExtract() {
@@ -1451,8 +1535,12 @@ function CreatePageInner() {
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
-  // The two things step 1 actually needs before it can hand over.
-  const canContinue = locationSet && !!locCustomTopic.trim() && !locGenerating;
+  // The two things step 1 actually needs before it can hand over. An attached
+  // article counts as the topic: it already says what the piece is about, and
+  // asking someone to summarise in a sentence what they just handed over is
+  // asking twice.
+  const blogSourceReady = blogOnly && !!blogSrcText.trim();
+  const canContinue = locationSet && (!!locCustomTopic.trim() || blogSourceReady) && !locGenerating;
 
   // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
   // paste, listing and camera all move through the same processing states, and
@@ -1844,7 +1932,11 @@ function CreatePageInner() {
         />
         <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
           {([
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "Turn a topic into a full article" : "Turn a topic into a script" },
+            // The blog description names both ways in. This tile is the only
+            // route to the article writer, and since it now takes material the
+            // agent already has — a forwarded email, a PDF, a link — a label
+            // that says only "a topic" hides half of what it does.
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "From a topic, or from an article you already have" : "Turn a topic into a script" },
             // Only the two routes that write an article. A pasted script is
             // words you already have, so there is nothing for us to research
             // and nothing to expand — and it is the one route that has never
@@ -2030,6 +2122,44 @@ function CreatePageInner() {
             }}
           />
           </div>
+
+          {/* The blog route's way in for material the agent already has.
+              Until now this path could only write from a topic or from a
+              listing — so an agent who had forwarded an article, saved a market
+              report or had a link to one had no way to use any of it on the one
+              screen whose whole job is writing an article. */}
+          {blogOnly && (
+            <div className="rounded-[18px] border border-spark-rule bg-white px-5 py-4">
+              <ArticleSource
+                purpose="article"
+                doc={{
+                  mode: blogSrcMode,
+                  onModeChange: setBlogSrcMode,
+                  attached: !!blogSrcText,
+                  attachedName: blogSrcName,
+                  onClear: () => { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); },
+                  uploading: blogSrcUploading,
+                  onUploadPdf: handleBlogSrcPdf,
+                  urlInput: blogSrcUrlInput,
+                  onUrlInputChange: setBlogSrcUrlInput,
+                  onFetchUrl: handleBlogSrcUrl,
+                  fetching: blogSrcFetching,
+                  onPickEmail: handleBlogSrcEmail,
+                }}
+              />
+              {/* Said where it is decided, not discovered in the output. The
+                  writer is told to keep the source's facts and angle and to
+                  write its own sentences — this is that promise, in the words
+                  an agent would use for it. */}
+              {blogSrcText && (
+                <p className="-mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
+                  Your article will cover what this covers, written fresh in your voice for{" "}
+                  {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"} —
+                  not a copy of the original.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

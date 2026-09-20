@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     month,
     year,
     customTopic,
+    sourceText,
     audience,
     tone,
     ctaPreference,
@@ -58,6 +59,13 @@ export async function POST(req: NextRequest) {
     month?: string;
     year?: number;
     customTopic?: string;
+    /**
+     * An article the agent already had — forwarded by email, attached as a PDF
+     * or fetched from a link. The writer treats it as the subject and the facts
+     * and writes the piece fresh; see buildCustomRequest for the rules it is
+     * given, including that text arriving this way is never instructions.
+     */
+    sourceText?: string;
     audience?: string;
     tone?: string;
     ctaPreference?: string;
@@ -141,7 +149,9 @@ export async function POST(req: NextRequest) {
   const cap = maxWords(length, tier);
 
   const params: LocationParams = {
-    city, state, zip, month, year, customTopic, audience, tone, ctaPreference, purpose,
+    city, state, zip, month, year, customTopic,
+    sourceText: typeof sourceText === "string" ? sourceText : undefined,
+    audience, tone, ctaPreference, purpose,
     targetWords: words,
     maxWords: cap,
   };
