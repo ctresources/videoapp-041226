@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { Check, Copy, Loader2, Send } from "lucide-react";
 import toast from "react-hot-toast";
 
 /**
@@ -14,6 +14,7 @@ export function EmailImportAddress() {
   const [address, setAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
+  const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -32,6 +33,29 @@ export function EmailImportAddress() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Couldn't copy — select the address and copy it by hand.");
+    }
+  }
+
+  /**
+   * Puts the address where forwarding actually happens. After this their mail
+   * client autocompletes it, and Reply on that email goes straight to it — on a
+   * phone that removes the copy-from-another-app step entirely.
+   */
+  async function sendToInbox() {
+    setSending(true);
+    try {
+      const res = await fetch("/api/email/imports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send" }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || "Couldn't send that email");
+      toast.success(`Sent to ${body.to}. Keep it — replying to it goes to your import address.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send that email");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -89,14 +113,28 @@ export function EmailImportAddress() {
         for 30 days.
       </p>
 
-      <button
-        type="button"
-        onClick={reset}
-        disabled={resetting || !address}
-        className="mt-2 text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50"
-      >
-        {resetting ? "Resetting…" : "Give me a new address"}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center gap-4">
+        {/* The primary of the two: saving the address into their own inbox is
+            what makes it usable, where resetting is a once-in-a-lifetime fix. */}
+        <button
+          type="button"
+          onClick={sendToInbox}
+          disabled={sending || !address}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:opacity-50"
+        >
+          {sending
+            ? <><Loader2 size={12} className="animate-spin" /> Sending…</>
+            : <><Send size={12} /> Email this address to me</>}
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          disabled={resetting || !address}
+          className="text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50"
+        >
+          {resetting ? "Resetting…" : "Give me a new address"}
+        </button>
+      </div>
     </div>
   );
 }

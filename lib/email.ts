@@ -340,6 +340,59 @@ export async function notifyTrialWindow({
   return !!res?.ok;
 }
 
+/**
+ * Send someone their own import address.
+ *
+ * The point is not the message — it is that afterwards the address exists in
+ * their mail client, where forwarding actually happens. Their autocomplete
+ * learns it, Reply goes to it, and on a phone that removes the only awkward
+ * step: copying an address out of a settings screen in another app.
+ *
+ * Reply-To is the import address itself rather than support@, which is the one
+ * place in this app where that is right: replying to this email is the thing we
+ * are asking them to do.
+ */
+export async function sendImportAddress({
+  email,
+  name,
+  address,
+}: {
+  email: string;
+  name: string | null;
+  address: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+
+  const hi = name ? `Hi ${name.split(" ")[0]},` : "Hi,";
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: address,
+      subject: "Your SparkReels import address",
+      html: `
+        <p>${hi}</p>
+        <p>This is the address that turns an email into an article you can use:</p>
+        <p style="font-size:17px"><strong><a href="mailto:${address}">${address}</a></strong></p>
+        <p>Forward anything to it — a newsletter, a market report, an article someone sent
+        you. It appears in SparkReels within a minute, under <strong>From email</strong>,
+        with the signatures, forwarding headers and unsubscribe footers taken out.</p>
+        <p>Two things worth doing once: save this address to your contacts, and keep this
+        email — replying to it goes straight to your import address.</p>
+        <p>It is private to your account. Anyone who has it can send articles into your
+        list, so treat it like a password; you can replace it any time in Settings.</p>
+        <p>Any questions, please send us an email at
+        <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
+      `,
+    }),
+  }).catch(() => null);
+
+  return !!res?.ok;
+}
+
 export async function notifyBillingEvent({
   kind,
   name,

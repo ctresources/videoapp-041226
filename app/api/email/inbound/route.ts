@@ -5,7 +5,7 @@ import {
   countWords,
   decodeBodyIfDataUri,
 } from "@/lib/utils/email-article";
-import { tokenFromRecipients } from "@/lib/utils/import-address";
+import { tokensFromRecipients } from "@/lib/utils/import-address";
 import { extractImageUrls } from "@/lib/utils/listing-photos";
 import { rehostImageUrls, storeDataUriImages, storeImageBuffer } from "@/lib/utils/rehost-images";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -223,21 +223,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not retrieve email" }, { status: 500 });
   }
 
-  const token = tokenFromRecipients([
+  const candidates = tokensFromRecipients([
     ...(email.received_for ?? []),
     ...(email.to ?? []),
     ...(email.cc ?? []),
   ]);
-  if (!token) return NextResponse.json({ ok: true, ignored: "no import token in recipients" });
+  if (candidates.length === 0) {
+    return NextResponse.json({ ok: true, ignored: "no address at the inbound domain" });
+  }
 
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
     .select("id")
-    .eq("import_token", token)
+    .in("import_token", candidates)
     .maybeSingle();
   const userId = (profile as { id: string } | null)?.id;
-  if (!userId) return NextResponse.json({ ok: true, ignored: "unknown import token" });
+  if (!userId) return NextResponse.json({ ok: true, ignored: "unknown import address" });
 
   // Retention sweep, here rather than on a schedule: deliveries are the only
   // thing that grows this table, so they are the right moment to trim it.

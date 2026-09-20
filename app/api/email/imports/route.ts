@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateImportToken, importAddressFor, INBOUND_DOMAIN } from "@/lib/utils/import-address";
+import { sendImportAddress } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -25,21 +26,22 @@ interface ImportRow {
 }
 
 /** Mints the address on first use rather than in a migration backfill. */
-async function addressFor(userId: string): Promise<string | null> {
+async function addressFor(userId: string, email: string | null): Promise<string | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select("import_token")
+    .select("import_token, full_name")
     .eq("id", userId)
     .maybeSingle();
+  const profile = data as { import_token?: string | null; full_name?: string | null } | null;
 
-  const existing = (data as { import_token?: string | null } | null)?.import_token;
-  if (existing) return importAddressFor(existing);
+  if (profile?.import_token) return importAddressFor(profile.import_token);
 
-  // Retried on collision, which at 60 bits will not happen — but a UNIQUE
-  // violation here would otherwise leave the user with no address at all.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const token = generateImportToken();
+  // Retried on collision — two people called Dave drawing the same six
+  // characters is unlikely rather than impossible, and a UNIQUE violation here
+  // would otherwise leave someone with no address at all.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const token = generateImportToken(profile?.full_name, email);
     const { error } = await admin
       .from("profiles")
       .update({ import_token: token })
@@ -84,7 +86,7 @@ export async function GET(req: NextRequest) {
     .limit(LIST_LIMIT);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const address = await addressFor(user.id);
+  const address = await addressFor(user.id, user.email ?? null);
 
   return NextResponse.json({
     address,
@@ -117,12 +119,15 @@ export async function DELETE(req: NextRequest) {
 }
 
 /**
- * Reset the address.
+ * Two things that act on the address itself.
  *
- * For when the old one has been given out too widely — a new token means mail
- * to the old address no longer matches an account and is ignored. Existing
- * imports are kept: they are already-delivered text, and deleting someone's
- * saved articles is not what "give me a new address" asks for.
+ * "reset" — for when the old one has been given out too widely. A new token
+ * means mail to the old address no longer matches an account and is ignored.
+ * Existing imports are kept: they are already-delivered text, and deleting
+ * someone's saved articles is not what "give me a new address" asks for.
+ *
+ * "send" — puts the address in their own inbox, which is where forwarding
+ * happens.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -135,15 +140,38 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (action !== "reset") return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 
   const admin = createAdminClient();
-  const token = generateImportToken();
-  const { error } = await admin
+  const { data } = await admin
     .from("profiles")
-    .update({ import_token: token })
-    .eq("id", user.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+  const fullName = (data as { full_name?: string | null } | null)?.full_name ?? null;
 
-  return NextResponse.json({ address: importAddressFor(token) });
+  if (action === "reset") {
+    const token = generateImportToken(fullName, user.email ?? null);
+    const { error } = await admin
+      .from("profiles")
+      .update({ import_token: token })
+      .eq("id", user.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ address: importAddressFor(token) });
+  }
+
+  if (action === "send") {
+    if (!user.email) {
+      return NextResponse.json({ error: "Your account has no email address" }, { status: 400 });
+    }
+    const address = await addressFor(user.id, user.email);
+    if (!address) return NextResponse.json({ error: "No import address yet" }, { status: 500 });
+
+    const sent = await sendImportAddress({ email: user.email, name: fullName, address });
+    if (!sent) {
+      return NextResponse.json({ error: "Could not send that email — try again shortly" }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, to: user.email });
+  }
+
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
