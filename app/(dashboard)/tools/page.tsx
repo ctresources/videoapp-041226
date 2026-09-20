@@ -2064,7 +2064,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       if (bgSource === "ai" && !data.aiBackground) {
         toast("AI backgrounds aren't switched on yet, so this used a plain background.");
       } else {
-        toast.success(data.images.length > 1 ? "Two options ready." : "Image ready.");
+        toast.success("Image ready. Not the right photo? Press New background.");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "The image could not be made");
@@ -2143,7 +2143,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       <div className="flex flex-wrap gap-2 mb-3">
         <button type="button" onClick={() => setBgSource("ai")} aria-pressed={bgSource === "ai"} className={pill(bgSource === "ai")}>
           <span className="block text-sm font-semibold text-slate-800">AI photo</span>
-          <span className="block text-xs text-slate-500">2 options · counts toward your limit</span>
+          <span className="block text-xs text-slate-500">One photo · counts toward your limit</span>
         </button>
         {listingPhotos.length > 0 && (
           <button type="button" onClick={() => setBgSource("listing")} aria-pressed={bgSource === "listing"} className={pill(bgSource === "listing")}>
@@ -2239,7 +2239,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
         <button type="button" onClick={generate} disabled={loading}
           className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white spark-banner-gradient disabled:opacity-60">
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {loading ? "Making your images…" : bgSource === "ai" ? "Spark 2 images" : "Make image"}
+          {loading ? "Making your image…" : bgSource === "ai" ? "Spark an image" : "Make image"}
         </button>
         <span className="text-xs text-slate-500">
           {bgSource !== "ai"
@@ -2247,13 +2247,15 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
             : usage?.unlimited
               ? "Unlimited images on your account."
               : left !== null
-                ? `Uses 2 of your ${usage!.limit} AI images this month · ${left} left`
-                : "Uses 2 of your monthly AI images."}
+                ? `Uses 1 of your ${usage!.limit} AI images this month · ${left} left`
+                : "Uses 1 of your monthly AI images."}
         </span>
       </div>
 
+      {/* One up when there is one, which is now the normal case — a lone card
+          in a two-column grid sat in the left half with a hole beside it. */}
       {results.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className={`mt-6 grid grid-cols-1 gap-4 ${results.length > 1 ? "sm:grid-cols-2" : "sm:max-w-md"}`}>
           {results.map((img) => (
             <div key={img.id} className="rounded-xl border border-slate-200 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2278,7 +2280,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       )}
       {results.length > 0 && (
         <p className="mt-3 text-[11px] text-slate-400">
-          Update text redraws your words on the same background and costs nothing. New background makes one fresh AI photo.
+          Update text redraws your words on the same background and costs nothing. New background makes another AI photo, and counts as one.
         </p>
       )}
     </div>

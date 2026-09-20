@@ -48,7 +48,7 @@ const isHttp = (u: unknown): u is string => typeof u === "string" && /^https?:\/
 /**
  * POST /api/tools/image
  *
- * generate: two options over AI backgrounds, or one over the agent's photo.
+ * generate: one image, over an AI background or the agent's own photo.
  * rerender: the same background with the current text, or one new background.
  * attach:   save an image as a project's blog header or into its Share Kit.
  */
@@ -187,7 +187,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Describe the image or type a headline first." }, { status: 400 });
     }
 
-    const variants = photoUrl ? [0] : [0, 1];
+    /**
+     * One image, not two.
+     *
+     * Two takes to choose between sounds generous and is not: each one is a
+     * separate AI image, so every press cost two of the monthly hundred and
+     * twice the money — including the half of them nobody looked at twice.
+     * New background makes another for the price of one, which is the same
+     * choice paid for only when it is wanted.
+     */
+    const variants = [0];
     if (!photoUrl) {
       const refused = await limitResponse(variants.length);
       if (refused) return refused;
