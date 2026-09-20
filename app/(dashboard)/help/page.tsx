@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
-  LayoutDashboard, BarChart2, CalendarDays,
+  LayoutDashboard, BarChart2, CalendarDays, Mail, Image as ImageIcon,
 } from "lucide-react";
 
 export const metadata = { title: "How It Works — SparkReels" };
@@ -99,6 +99,22 @@ export default function HelpPage() {
               connect the Google account that owns your channel. One-time tip: verify your account by phone at
               youtube.com/verify so videos up to 15 minutes always upload smoothly.
             </Step>
+            {/* Setup rather than creating, because the useful half is done once:
+                saving the address. After that it is a Forward button in whatever
+                mail app you already live in. */}
+            <Step n={6} title="Save Your Import Address" icon={Mail}>
+              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Import Articles By Email</Link>{" "}
+              you have a private address that looks like{" "}
+              <strong>yourname-k7m3qz@in.sparkreels.ai</strong>. Forward anything to it — a newsletter, a
+              market report, an article someone sent you, or a post you wrote yourself — and it appears
+              inside SparkReels within a minute, with the signatures, forwarding headers and unsubscribe
+              footers already stripped out. Press <strong>Email this address to me</strong> and save it to
+              your contacts; after that, forwarding is the whole of it.
+              <span className="block mt-1.5">
+                It is private to your account, so treat it like a password. Anyone who has it can send
+                articles into your list, and you can replace it any time from the same screen.
+              </span>
+            </Step>
           </div>
           <VideoPlaceholder label="Getting Set Up" />
         </Card>
@@ -144,6 +160,14 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Something you already have</td>
+                  <td className="py-2 pr-3">
+                    An article forwarded by email, a PDF, a link, or text you paste in — published as
+                    it is, or used as the basis of a new one
+                  </td>
+                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
+                </tr>
+                <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My listings/My photos</td>
                   <td className="py-2 pr-3">A scripted listing tour</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
@@ -161,7 +185,7 @@ export default function HelpPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Step n={6} title="Three Questions, Then It Writes" icon={Sparkles}>
+            <Step n={7} title="Three Questions, Then It Writes" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
               asks three things in order. <strong>1 · What are you sparking?</strong> —{" "}
               <strong>Use My Avatar</strong>, <strong>Film On Camera</strong> or{" "}
@@ -178,8 +202,22 @@ export default function HelpPage() {
                 still there marked <strong>Draft</strong>, not lost. Part 5 explains where Sparks
                 live and how they differ from the videos themselves.
               </span>
+              {/* The way in for people who did not start from nothing, which is
+                  most people with an existing blog. */}
+              <span className="block mt-1.5">
+                <strong>Already written it?</strong> Under those questions,{" "}
+                <strong>Start from something you already have</strong> takes it four ways:{" "}
+                <strong>Paste text</strong>, <strong>Upload PDF</strong>, <strong>Add URL</strong>, or{" "}
+                <strong>From email</strong> — the last one listing everything you have forwarded to
+                your import address (step 6). On the <strong>Blog post</strong> route you then choose
+                what happens to it: <strong>Use it as it is</strong>, which publishes your words
+                unchanged and takes seconds, or <strong>Write a new article from it</strong>, which
+                covers the same ground in your voice for your market. Use the first for your own
+                writing and the second for someone else&apos;s — a newsletter another person wrote
+                is theirs, not yours to publish.
+              </span>
             </Step>
-            <Step n={7} title="Speak It Or Type It — Your Choice" icon={Mic}>
+            <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
               Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
               <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
               anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
@@ -192,14 +230,14 @@ export default function HelpPage() {
               Either way, AI researches live market data for your city and writes a
               broadcast-quality script with real stats.
             </Step>
-            <Step n={8} title="Review & Edit The Script" icon={Wand2}>
+            <Step n={9} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
               disagree. Edit the script freely; a live word counter keeps you inside the cap. Set your{" "}
               <strong>Call To Action</strong>, or choose <strong>None</strong> if this one shouldn&apos;t ask
               for anything. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
               it discards your edits.
             </Step>
-            <Step n={9} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
+            <Step n={10} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
               <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes with automatic
               b-roll — or <strong>Longform 16:9</strong> (up to 8 minutes, using your own photos for visuals;
@@ -212,7 +250,7 @@ export default function HelpPage() {
               one. You can close the page and watch for it in My Sparks. If a render ever fails, your
               allowance is refunded automatically.
             </Step>
-            <Step n={10} title="Use Camera — The Free Option" icon={Camera}>
+            <Step n={11} title="Use Camera — The Free Option" icon={Camera}>
               The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
               market, how long the script should be, and where the words come from: a topic, a PDF or link, a
               recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
@@ -235,14 +273,17 @@ export default function HelpPage() {
                 you want your own copy before leaving the page.
               </span>
             </Step>
-            <Step n={11} title="Your Share Kit — And A Blog Post" icon={FileText}>
+            <Step n={12} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
               holds a <strong>blog article</strong> — usually 800 to 1,200 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
               and two <strong>FAQ sections</strong> at the end. That is the shape an AI assistant quotes —{" "}
               <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
-              <strong>Copy as HTML</strong> drops it into your website. That gives one recording two places to
+              <strong>Header image</strong> makes the picture that sits above the headline — a real
+              photograph of the kind of place the article is about, with no words drawn into it —
+              and <strong>Copy as HTML</strong> then carries it across with the text, so what you
+              paste into your site arrives with its image already in place. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
               you can write one without making a video at all — pick <strong>Blog post</strong> on the first
@@ -257,7 +298,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={12} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={13} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
@@ -272,7 +313,7 @@ export default function HelpPage() {
                 goes through.
               </span>
             </Step>
-            <Step n={13} title="Everywhere Else" icon={Upload}>
+            <Step n={14} title="Everywhere Else" icon={Upload}>
               Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
               <strong> Instagram caption, LinkedIn post, and email blurb</strong> from the project&apos;s
               Title, Description &amp; Hashtags card.
@@ -286,7 +327,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={14} title="The Everyday Tools" icon={Wand2}>
+            <Step n={15} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
@@ -295,7 +336,26 @@ export default function HelpPage() {
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.
             </Step>
-            <Step n={15} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            {/* The graphics tools, which were not described anywhere — and the
+                counting rule, which is the thing people actually need to know
+                before they press a button that spends something. */}
+            <Step n={16} title="Graphics Without A Designer" icon={ImageIcon}>
+              The <strong>Image Generator</strong> makes a finished graphic: pick{" "}
+              <strong>Just listed</strong>, <strong>Open house</strong>, <strong>Market update</strong>,{" "}
+              <strong>Blog header</strong> or <strong>Blank</strong>, describe the picture you want, and
+              type your own headline. The photograph is generated; <em>your words are drawn as real
+              type on top</em>, never by the AI — so a price or an address is always spelled right.
+              Choose 4:5 for Instagram and Facebook, 9:16 for Stories and Reels, or 16:9 for a blog or
+              YouTube, and it carries your logo and headshot.
+              <span className="block mt-1.5">
+                Each press makes <strong>one</strong> AI photo and counts one against your monthly
+                allowance of 100. <strong>Update text</strong> redraws your words on the same picture
+                and costs nothing, and using <strong>My photo</strong> or one of your listing photos is
+                free. <strong>New background</strong> makes another photo, and counts as one.{" "}
+                <strong>Use as blog header</strong> sends it straight to the article it belongs to.
+              </span>
+            </Step>
+            <Step n={17} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
               <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
@@ -303,7 +363,7 @@ export default function HelpPage() {
               teleprompter — and a short ready-to-paste <strong>answer</strong> for your website, written the
               way AI assistants extract and cite answers. Think of it as the step before everything else:
               Answer Blocks decides <em>what</em> is worth saying, and the Share Kit&apos;s blog article (step
-              11) is the long version of whatever you then make.
+              12) is the long version of whatever you then make.
             </Step>
           </div>
           <VideoPlaceholder label="AI Tools" />
@@ -317,7 +377,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Sparks, The Dashboard And Insights</h2>
           <div className="flex flex-col gap-4">
-            <Step n={16} title="What A Spark Is" icon={Sparkles}>
+            <Step n={18} title="What A Spark Is" icon={Sparkles}>
               A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
               video or videos made from it, the article, the captions, and where each has been
               published. One topic, one Spark — even if you make a short version, a long version and a
@@ -331,14 +391,14 @@ export default function HelpPage() {
                 article, the captions, the schedule and how it&apos;s performing.
               </span>
             </Step>
-            <Step n={17} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
+            <Step n={19} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
               <Link href="/dashboard" className="text-primary-600 font-medium hover:underline">Dashboard</Link>{" "}
               is the starting point, not a report. It shows what you have left — short videos, long
               videos, and whether camera recording is unlocked with the days remaining — a{" "}
               <strong>Getting Started</strong> checklist that disappears once you&apos;ve finished it,
               and your five most recent projects to pick back up.
             </Step>
-            <Step n={18} title="Spark Insights — What Happened After" icon={BarChart2}>
+            <Step n={20} title="Spark Insights — What Happened After" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
               is the opposite: it looks backwards. How many videos you&apos;ve made and published, a
               breakdown by platform and by video shape, and — for anything published to your connected
@@ -353,7 +413,7 @@ export default function HelpPage() {
                 today.
               </span>
             </Step>
-            <Step n={19} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+            <Step n={21} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
@@ -367,7 +427,7 @@ export default function HelpPage() {
         <Card padding="sm" className="bg-gradient-to-br from-slate-50 to-white">
           <h2 className="text-base font-bold text-brand-text mb-3">The Weekly Rhythm</h2>
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
-            <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, and YouTube (Part 1)</li>
+            <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
             <li><strong>Weekly:</strong> tap a topic chip → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
