@@ -1828,22 +1828,22 @@ export default function ProjectEditorPage() {
    * so it is the right source: summarised by script-from-text, which uses only
    * what it is given and adds no facts.
    */
-  async function writeScriptFromArticle(length: "rendered_short" | "rendered_long") {
+  async function writeScriptFromArticle(length: "rendered_short" | "rendered_long"): Promise<string | null> {
     const s = project?.ai_script;
-    if (!s) return;
+    if (!s) return null;
     const articleText = [s.blog_intro, s.blog_body, s.blog_conclusion]
       .filter(Boolean)
       .map(blogPlainText)
       .join("\n\n")
       .trim();
-    if (!articleText) return;
+    if (!articleText) return null;
     const isLong = length === "rendered_long";
     const minutes = isLong ? "8-minute" : "3-minute";
     // Only when there is something to lose. An imported article arrives with
     // no script at all, and asking permission to replace nothing is a dialog
     // that can only be answered one way.
     if (editedScript.trim()
-      && !window.confirm(`Replace the current script with a ${minutes} script written from the article?`)) return;
+      && !window.confirm(`Replace the current script with a ${minutes} script written from the article?`)) return null;
 
     setArticleScriptWriting(true);
     try {
@@ -1870,8 +1870,13 @@ export default function ProjectEditorPage() {
       toast.success(
         `${isLong ? "Longform" : "Short"} script ready: ${data.words} words, about ${data.minutes} minute${data.minutes === 1 ? "" : "s"}.`,
       );
+      // Returned as well as stored, for the caller that hands it straight to
+      // the camera: setState is not readable until the next render, and that
+      // caller navigates away before one happens.
+      return data.script as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't write the script. Try again.");
+      return null;
     } finally {
       setArticleScriptWriting(false);
     }
@@ -3428,6 +3433,42 @@ export default function ProjectEditorPage() {
                                   >
                                     <span className="text-xs font-semibold text-spark-ink">Read the script on camera</span>
                                     <span className="text-[11px] text-spark-ink-faint">About {mins(scriptWords)} min · Free</span>
+                                  </button>
+                                )}
+                                {/* The same one press, for an article that has
+                                    no script yet.
+                                    Without it the only route to the camera ran
+                                    through the avatar setup — two screens about
+                                    who appears on screen and which look to use,
+                                    neither of which happens when you record it
+                                    yourself. Writes the script, waits for it,
+                                    and hands it straight over. */}
+                                {!hasScript && articleWords > 0 && (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className={row}
+                                    disabled={articleScriptWriting}
+                                    onClick={async () => {
+                                      setVideoMenuOpen(false);
+                                      const script = await writeScriptFromArticle("rendered_short");
+                                      // Passed rather than read back from
+                                      // state: this navigates away before the
+                                      // render that would publish it.
+                                      if (script) {
+                                        handleRecordOnCamera(
+                                          [joinHookAndScript(selectedHook, script), editedCta.trim()]
+                                            .filter(Boolean).join("\n\n").trim(),
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <span className="text-xs font-semibold text-spark-ink">
+                                      {articleScriptWriting ? "Writing the script…" : "Record it on camera"}
+                                    </span>
+                                    <span className="text-[11px] text-spark-ink-faint">
+                                      Writes a 3-minute script from the article, then opens the camera · Free
+                                    </span>
                                   </button>
                                 )}
                                 <button

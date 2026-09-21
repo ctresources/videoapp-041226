@@ -2358,7 +2358,12 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                 {openingVideo ? "Opening…" : "View it →"}
               </a>
             )}
-            <span className="text-xs text-slate-400 font-mono">{formatTime(seconds)}</span>
+            {/* Said as a length, not left bare. A lone 00:24 beside a live
+                "View it" link reads as a clock still running on a take that
+                has already finished. */}
+            <span className="text-xs text-slate-400">
+              <span className="font-mono">{formatTime(seconds)}</span> long
+            </span>
           </div>
         </div>
 
@@ -2415,7 +2420,10 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             {saving ? (
               <><Loader2 size={16} className="animate-spin" /> Saving…</>
             ) : (
-              <><Share2 size={16} /> {viewedSaved ? "Share it" : "Save to My Sparks"}</>
+              // "Publish it", because that is the panel it opens: title,
+              // description, tags, and publish now or schedule it. "Share it"
+              // promised a share sheet and produced a YouTube uploader.
+              <><Share2 size={16} /> {viewedSaved ? "Publish it" : "Save to My Sparks"}</>
             )}
           </Button>
         </div>

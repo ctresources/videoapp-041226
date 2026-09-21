@@ -1664,14 +1664,20 @@ function CreatePageInner() {
         : inputMode === "paste" ? !!pasteScript.trim()
           : false;
 
+  /**
+   * A finished take never moves `step` — it stays "input" for the whole camera
+   * flow — so the rail sat at "Step 1 · 10%" beside a recording that was saved
+   * and on screen. cameraPhase is the thing that knows.
+   */
+  const cameraDone = inputMode === "camera" && cameraPhase === "done";
   const railLabel =
     step === "uploading" ? "Uploading"
       : step === "transcribing" ? "Transcribing"
-        : step === "done" ? "Ready"
+        : step === "done" || cameraDone ? "Ready"
           : anyGenerating ? "Sparking"
             : "Step 1";
   const railPercent =
-    step === "done" ? 100
+    step === "done" || cameraDone ? 100
       : step === "transcribing" ? 75
         : anyGenerating ? 60
           : step === "uploading" ? 50
@@ -2707,7 +2713,12 @@ function CreatePageInner() {
             // Uploading footage is the one route with no script and no Open
             // Camera, so every hint below it was wrong there — the bar told
             // you to type a script and press a button that isn't on screen.
-            cameraMode === "brand" && canBrandClips
+            // Recorded already. Every hint below names something still to do,
+            // so the bar was telling someone to press Open Camera underneath
+            // the video they had just made with it.
+            cameraPhase === "done"
+              ? "Saved to My Sparks. Download it, share it, or record another take."
+              : cameraMode === "brand" && canBrandClips
               ? "Pick a clip above, choose what gets burned in, then render it."
               // Nothing to write and nothing to wait for — the only hint this
               // route needs is that the button below is already the next step.
@@ -3411,7 +3422,7 @@ function CreatePageInner() {
           {/* The way back to the questions this mode hides. Without it, an
               agent who arrived by mistake — or changed their mind about what
               they were making — has no route to the rest of the page. */}
-          {cameraHandoff && (
+          {cameraHandoff && cameraPhase !== "done" && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-spark-rule bg-spark-paper px-3 py-2">
               <p className="text-[12.5px] text-spark-ink-soft">
                 Recording a script you already have.{" "}
@@ -3440,7 +3451,11 @@ function CreatePageInner() {
                     it — including the clip brander, which has no teleprompter
                     and, on the keep-the-audio route, no script at all. */}
                 <p className="text-base font-bold text-brand-text">
-                  {cameraMode === "brand" && canBrandClips ? "Your footage" : "Your script"}
+                  {cameraMode === "brand" && canBrandClips
+                    ? "Your footage"
+                    // Once it is filmed, the card is about the take rather
+                    // than about the words it was read from.
+                    : cameraPhase === "done" ? "Your take" : "Your script"}
                 </p>
                 <p className="text-sm text-spark-ink-muted">
                   {/* The subtitle promised the script while the first control
@@ -3448,12 +3463,14 @@ function CreatePageInner() {
                       screen: write it, then set up the take. */}
                   {cameraMode === "brand" && canBrandClips
                     ? "Add your branding to a clip you already shot"
-                    : cameraHandoff
-                      // Written elsewhere and carried here. Saying "first we
-                      // write it" over a full teleprompter describes a step
-                      // that already happened.
-                      ? "Your script came with you — set up the take and record it"
-                      : "First we write it, then you set up the take"}
+                    : cameraPhase === "done"
+                      ? "Recorded and saved to My Sparks"
+                      : cameraHandoff
+                        // Written elsewhere and carried here. Saying "first we
+                        // write it" over a full teleprompter describes a step
+                        // that already happened.
+                        ? "Your script came with you — set up the take and record it"
+                        : "First we write it, then you set up the take"}
                 </p>
               </div>
             </div>
