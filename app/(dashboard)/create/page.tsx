@@ -1787,7 +1787,11 @@ function CreatePageInner() {
           headline alone over left-aligned lines reads as a mistake rather
           than a choice. The rows below stay left-aligned — a centred hero
           over left-aligned controls is the ordinary shape. */}
-      {step === "input" && (
+      {/* Not when a script arrived with the agent. The hero asks what they
+          will make and offers a mic to say it — a question already answered,
+          and a second brief that would overwrite the script they came to
+          record. */}
+      {step === "input" && !cameraHandoff && (
         <div className="pt-2 text-center">
           <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
             {/* One verb, not the three. "Speak, Spark, Share" is the tagline
@@ -2099,8 +2103,10 @@ function CreatePageInner() {
           video allowance, counted separately — so the only place the word
           appeared was the one place it would set the wrong expectation. */}
       {/* Nothing on the blog route uses a video, so the line explaining what
-          "uses 1 video" means has nothing to explain there. */}
-      {step === "input" && !blogOnly && (
+          "uses 1 video" means has nothing to explain there. Nor on a handed-off
+          take: the pills it explains are hidden, recording is free, and the
+          banner above already says so. */}
+      {step === "input" && !blogOnly && !cameraHandoff && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
           {/* The pills above now carry which route costs what, so this line
               stops repeating them and says the thing they cannot: that the
@@ -3523,8 +3529,12 @@ function CreatePageInner() {
                 "Your teleprompter" — so the script was written to whatever
                 the default was and the picker you scrolled past afterwards
                 did nothing until you regenerated it. */}
+            {/* The numbers continue the page's own count, so they only mean
+                something when sections 1 and 2 are on screen. On a handed-off
+                take those are hidden, and a page that opens at "3" reads as
+                one you have lost your place in. */}
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-              3 · What we&rsquo;re writing
+              {cameraHandoff ? "Where it's set" : "3 · What we're writing"}
             </p>
 
             {/* Market for THIS video. Without it the CTA and end card silently
@@ -3686,7 +3696,7 @@ function CreatePageInner() {
                 eleven equally urgent things rather than two halves. */}
             {cameraPhase === "script" && (
               <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-                4 · How it records
+                {cameraHandoff ? "How it records" : "4 · How it records"}
               </p>
             )}
 
