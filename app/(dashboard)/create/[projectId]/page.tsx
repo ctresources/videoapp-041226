@@ -1774,7 +1774,22 @@ export default function ProjectEditorPage() {
         );
       }
     } catch { /* sessionStorage unavailable */ }
-    router.push("/create?tab=camera");
+    /**
+     * The market travels too.
+     *
+     * The camera screen asks for it and starts empty, so recording a Blue Bell
+     * article from here arrived with no town — and that field is not a label:
+     * it sets the spoken channel CTA and the end card. Left blank it falls
+     * back to the profile's home city, which is how a listing in one town went
+     * out naming another. The camera tab already fills the field from ?city=
+     * and ?state=; this is the half that never sent them.
+     */
+    const city = (project?.location_city ?? "").trim();
+    const state = (project?.location_state ?? "").trim();
+    const market = city && state
+      ? `&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`
+      : "";
+    router.push(`/create?tab=camera${market}`);
   }
 
   /** Strips the "H2: " and "H3: " markers the blog article uses, for on-screen
