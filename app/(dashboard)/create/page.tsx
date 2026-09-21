@@ -613,6 +613,16 @@ function CreatePageInner() {
    */
   const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own" | "freestyle">("speak");
   /**
+   * Arrived from an existing Spark with the script already written.
+   *
+   * The whole first half of this page asks what to make and where the words
+   * should come from. Both were answered before the agent got here — they
+   * pressed "Set Up The Take" on a finished script — so re-asking them reads
+   * as having lost the work, and the one thing they came to do sits below two
+   * screens of settled questions.
+   */
+  const [cameraHandoff, setCameraHandoff] = useState(false);
+  /**
    * Record here, or brand a clip already shot.
    *
    * Branding an existing clip re-records it in real time from a foreground
@@ -702,6 +712,11 @@ function CreatePageInner() {
       if (handoff) {
         setCameraGeneratedScript(handoff);
         sessionStorage.removeItem("camera-record-script");
+        // Arriving to record something already written, not to start
+        // something. The questions above — what are you making, where should
+        // the words come from — were answered on the screen that sent us
+        // here, and asking them again makes the take look unsaved.
+        setCameraHandoff(true);
         // A script that arrived already written is not one we are about to
         // write. Left on "speak", the tab lit up "AI writes it · Say a topic"
         // and put a live voice-brief mic above a full teleprompter.
@@ -1841,8 +1856,8 @@ function CreatePageInner() {
           out among three answers to "where do the words come from". */}
       {/* "Sparking", not "making" — the product's own verb, the one in the
           headline above and on the button at the end. */}
-      {step === "input" && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you sparking?" />}
-      {step === "input" && (
+      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you sparking?" />}
+      {step === "input" && !cameraHandoff && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
@@ -1970,7 +1985,7 @@ function CreatePageInner() {
           tab that had already been chosen — up here it stops reading as the
           same question asked twice. Once you are recording it dims instead of
           disappearing — see cameraSourceLocked. */}
-      {step === "input" && inputMode === "camera" && (
+      {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
           <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
           <div
@@ -3387,6 +3402,24 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "camera" && step === "input" && (
         <div className="mt-7 max-w-3xl">
+          {/* The way back to the questions this mode hides. Without it, an
+              agent who arrived by mistake — or changed their mind about what
+              they were making — has no route to the rest of the page. */}
+          {cameraHandoff && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-spark-rule bg-spark-paper px-3 py-2">
+              <p className="text-[12.5px] text-spark-ink-soft">
+                Recording a script you already have.{" "}
+                <span className="text-spark-ink-faint">Nothing here uses a video from your plan.</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setCameraHandoff(false)}
+                className="text-[11.5px] font-semibold text-spark-amber hover:text-spark-blue"
+              >
+                Start something else instead
+              </button>
+            </div>
+          )}
           {/* No eyebrow of its own. This tab's card carries two numbered
               sections inside it — 3 and 4, continuing the page's count — so a
               third amber label above them naming the tab and the step would
@@ -3409,7 +3442,12 @@ function CreatePageInner() {
                       screen: write it, then set up the take. */}
                   {cameraMode === "brand" && canBrandClips
                     ? "Add your branding to a clip you already shot"
-                    : "First we write it, then you set up the take"}
+                    : cameraHandoff
+                      // Written elsewhere and carried here. Saying "first we
+                      // write it" over a full teleprompter describes a step
+                      // that already happened.
+                      ? "Your script came with you — set up the take and record it"
+                      : "First we write it, then you set up the take"}
                 </p>
               </div>
             </div>
@@ -3422,7 +3460,7 @@ function CreatePageInner() {
                 AI-writes-it tab — the brief is the same brief. */}
             {/* Record here, or brand something already shot. Only offered on
                 a desktop — see canBrandClips. */}
-            {canBrandClips && cameraPhase === "script" && (
+            {canBrandClips && cameraPhase === "script" && !cameraHandoff && (
               <div className="mb-4">
                 {/* Labelled, because this row sits directly under a heading
                     about the script and is not about the script at all. */}
