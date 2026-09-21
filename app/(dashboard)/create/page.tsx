@@ -3712,6 +3712,11 @@ function CreatePageInner() {
               // "Spark with AI" panel underneath them — a second topic box for
               // the same script.
               scriptSourceAbove={cameraSource === "speak" || cameraSource === "uploads"}
+              // A script carried here from a Spark is the one thing on this
+              // screen that cannot be written again — there is no writer on
+              // this page to redo it, and the Share Kit it came from is two
+              // navigations away.
+              noRewrite={cameraHandoff}
               scriptLength={cameraScriptLength}
               onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}

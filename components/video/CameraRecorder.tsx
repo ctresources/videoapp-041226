@@ -118,7 +118,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -146,6 +146,16 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * sets the length the page's own writer uses.
    */
   scriptSourceAbove?: boolean;
+  /**
+   * The script came from somewhere else and must not be written over.
+   *
+   * Distinct from scriptSourceAbove, which says the page above owns a writer.
+   * Here there is no writer anywhere: the agent pressed "Set Up The Take" on a
+   * finished script and crossed to this screen to record it. A "Spark with AI"
+   * link beside that script is a trapdoor — one press replaces the thing they
+   * came here with, and nothing on this screen would bring it back.
+   */
+  noRewrite?: boolean;
   /**
    * Start with the MLS unbranded cut already on, because the editor's
    * checkbox said so. Without it that choice died at the tab boundary and the
@@ -1468,7 +1478,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
                   second one to fill in. */}
               {scriptSourceAbove ? "Your teleprompter" : "Your Script"}
             </label>
-            {!scriptSourceAbove && (
+            {!scriptSourceAbove && !noRewrite && (
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowSpark((v) => !v)}
@@ -1496,7 +1506,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
               below keeps its own copy, because there the button and the
               picker are in the same box. */}
 
-          {showSpark && !scriptSourceAbove && (
+          {showSpark && !scriptSourceAbove && !noRewrite && (
             <div className="mb-3 p-3 bg-primary-50 border border-primary-100 rounded-xl">
               <TopicRadar city={city} state={state} onSelect={(t) => setSparkTopic(t)} />
 
