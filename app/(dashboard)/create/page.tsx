@@ -3717,6 +3717,12 @@ function CreatePageInner() {
               // this page to redo it, and the Share Kit it came from is two
               // navigations away.
               noRewrite={cameraHandoff}
+              // The shape chosen on the screen that sent the script. This
+              // picker belongs to the recorder, so the page's own format state
+              // never reached it — which is why a 16:9 take arrived vertical.
+              initialShape={
+                cameraHandoff ? (locPlatform === "reel" ? "vertical" : "horizontal") : undefined
+              }
               scriptLength={cameraScriptLength}
               onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}

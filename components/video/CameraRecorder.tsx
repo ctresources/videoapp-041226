@@ -118,7 +118,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /**
    * No script at all — you talk, we keep what you said.
@@ -156,6 +156,15 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * came here with, and nothing on this screen would bring it back.
    */
   noRewrite?: boolean;
+  /**
+   * The shape chosen before this component rendered.
+   *
+   * This picker is the recorder's own, not the page's, so setting the page's
+   * format state does nothing to it — which is how a take set up as Shorts
+   * 16:9 in the editor arrived here on the 9:16 default. Only the starting
+   * value: the picker below still changes it.
+   */
+  initialShape?: "vertical" | "horizontal";
   /**
    * Start with the MLS unbranded cut already on, because the editor's
    * checkbox said so. Without it that choice died at the tab boundary and the
@@ -247,9 +256,27 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
    * Nothing used to choose this: the canvas copied whatever the camera gave
    * it, so a phone held upright produced 9:16 and a laptop 16:9, and the
    * format was a by-product of how you happened to be holding the device.
-   * Vertical by default because that is where a property reel goes.
+   * Vertical by default because that is where a property reel goes — unless
+   * the screen that sent us here already chose. A take set up as Shorts 16:9
+   * in the editor and then recorded 9:16 here is only discovered after it has
+   * been filmed, because both formats are called Shorts.
    */
-  const [shape, setShape] = useState<"vertical" | "horizontal">("vertical");
+  const [shape, setShape] = useState<"vertical" | "horizontal">(initialShape ?? "vertical");
+  /**
+   * And again if it arrives late.
+   *
+   * The initial value above is only read on the first render, and the page
+   * that sends the shape reads it from the URL in an effect — so whether it is
+   * in place by then depends on mount order, which is exactly the kind of
+   * thing that works in development and fails once. Applied once, so the
+   * picker below stays the agent's to change.
+   */
+  const shapeFromCaller = useRef(false);
+  useEffect(() => {
+    if (!initialShape || shapeFromCaller.current) return;
+    shapeFromCaller.current = true;
+    setShape(initialShape);
+  }, [initialShape]);
   /** What the camera is actually handing us, so we can tell you to rotate. */
   const [camLandscape, setCamLandscape] = useState<boolean | null>(null);
   /**
