@@ -673,6 +673,27 @@ function CreatePageInner() {
     else if (tab === "paste" || tab === "script") { setInputMode(tab); setLastSparkTab(tab); }
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); setLastSparkTab("script"); }
 
+    /**
+     * The shape, when something elsewhere already decided it.
+     *
+     * The editor's "Set Up The Take" sends the format chosen on its own setup
+     * step, because otherwise this screen started on its default and silently
+     * changed a 16:9 Shorts into a 9:16 one — both are called Shorts, so the
+     * swap is invisible until the take is recorded in the wrong shape.
+     * Counted as touched, so it is treated as a real choice rather than a
+     * default waiting to be made.
+     */
+    const urlPlatform = searchParams.get("platform");
+    const urlLength = searchParams.get("length");
+    if (urlPlatform === "reel" || urlPlatform === "youtube") {
+      setLocPlatform(urlPlatform);
+      setFormatTouched(true);
+    }
+    if (urlLength === "standard" || urlLength === "long") {
+      setLocLength(urlLength);
+      setFormatTouched(true);
+    }
+
     // Handed off from the editor's "Record on Camera" button — the hook,
     // script and CTA it already generated, pre-filling the teleprompter
     // instead of the user copying each field over by hand.

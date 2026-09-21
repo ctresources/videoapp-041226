@@ -1789,7 +1789,21 @@ export default function ProjectEditorPage() {
     const market = city && state
       ? `&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`
       : "";
-    router.push(`/create?tab=camera${market}`);
+    /**
+     * And the shape, for the same reason.
+     *
+     * The format was chosen on the setup step that this button leaves, and the
+     * camera screen then started on its own default — so picking Shorts 16:9
+     * and pressing through arrived set to Vertical 9:16. Both are called
+     * Shorts, which makes the swap easy to miss until the take is recorded in
+     * the wrong shape.
+     */
+    const format = selectedVideoType === "reel_9x16"
+      ? "&platform=reel&length=standard"
+      : selectedVideoType === "youtube_long"
+        ? "&platform=youtube&length=long"
+        : "&platform=youtube&length=standard";
+    router.push(`/create?tab=camera${market}${format}`);
   }
 
   /** Strips the "H2: " and "H3: " markers the blog article uses, for on-screen
@@ -2998,8 +3012,8 @@ export default function ProjectEditorPage() {
                 the button would do. */}
             {selfRecord && (
             <p className="mb-1 text-[22px] font-semibold leading-[1.3] text-spark-ink-soft">
-              Click <span className="text-spark-ink">Open Camera</span> when you&rsquo;re ready to
-              record. It costs nothing, and you can retake it as many times as you like.
+              Click <span className="text-spark-ink">Set Up The Take</span> to choose how it records,
+              then open the camera. It costs nothing, and you can retake it as many times as you like.
             </p>
             )}
 
@@ -3630,8 +3644,13 @@ export default function ProjectEditorPage() {
               // brought your photos, this one silently dropped them. One
               // recorder now, the one that can do the whole job, with the
               // photos carried across beside the script.
+              // Named for what it does. It hands the script to the camera
+              // screen, where the take is set up and the camera is opened by a
+              // button of that name — so calling this one Open Camera promised
+              // something one screen early, and the real Open Camera read as a
+              // second attempt at the same thing.
               <Button onClick={() => handleRecordOnCamera()} size="lg" className="gap-2">
-                <Camera size={17} /> Open Camera
+                <Camera size={17} /> Set Up The Take
               </Button>
             )}
             {editorStep === 3 && !selfRecord && (
