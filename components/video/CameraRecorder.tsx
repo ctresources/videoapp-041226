@@ -47,7 +47,7 @@ import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hoo
 import { BrandedComposite } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
-import { FieldMic } from "@/components/ui/field-mic";
+import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
 
 type CamStep = "script" | "camera" | "done";
@@ -207,6 +207,8 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
 }) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
+  /** Live dictation, shown under the box until the turn settles into `script`. */
+  const [scriptInterim, setScriptInterim] = useState("");
 
   useEffect(() => {
     if (initialScript) setScript(initialScript);
@@ -1583,11 +1585,27 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
             <div className="absolute bottom-2 right-2">
               <FieldMic
                 size="md"
+                // A whole script, dictated — the same two settings every other
+                // prose mic in the app passes, and this one did not.
+                //
+                // The default window is 1.5s, meant for "Blue Bell" or "PA".
+                // Dictating a script, that is shorter than the gap between two
+                // sentences: the turn ended while the agent was still talking
+                // and everything after it was lost. And with no interim text
+                // there was nothing on screen while speaking, so a mic that had
+                // already closed looked the same as one still listening.
+                silenceMs={PROSE_SILENCE_MS}
+                onInterim={setScriptInterim}
                 onTranscript={(t) => setScript((s) => s ? `${s} ${t}` : t)}
                 title="Hit the Mic — Speak Your Script"
               />
             </div>
           </div>
+          {/* What is being heard, before it settles into the box. Greyed and
+              italic so it reads as not-yet-yours. */}
+          {scriptInterim && (
+            <p className="mt-1 text-sm italic leading-relaxed text-slate-400">{scriptInterim}</p>
+          )}
           <p className="text-xs text-slate-400 mt-1 mb-2">
             {script.trim().split(/\s+/).filter(Boolean).length} words
           </p>
