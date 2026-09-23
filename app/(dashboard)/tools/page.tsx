@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { uploadImage } from "@/lib/utils/upload-image";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 
@@ -1084,19 +1085,12 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
 
     setPhotoUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please sign in again.");
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/thumb-photo-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-      if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Uploaded by the server, with the session it already trusts — see
+      // lib/utils/upload-image.ts for why this stopped being a browser write.
+      const publicUrl = await uploadImage(file, "thumb");
       setCustomPhoto(publicUrl);
       setPhotoUrl(publicUrl);
       toast.success("Photo uploaded! Click Generate (or Update) to use it.");
@@ -1137,19 +1131,12 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
 
     setBgUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please sign in again.");
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/thumb-bg-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-      if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Uploaded by the server, with the session it already trusts — see
+      // lib/utils/upload-image.ts for why this stopped being a browser write.
+      const publicUrl = await uploadImage(file, "thumbBg");
       setCustomBg(publicUrl);
       toast.success("Background photo uploaded!");
     } catch (err) {
@@ -1558,19 +1545,12 @@ function BannerGenerator() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
 
     setPhotoUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please sign in again.");
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/banner-photo-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-      if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Uploaded by the server, with the session it already trusts — see
+      // lib/utils/upload-image.ts for why this stopped being a browser write.
+      const publicUrl = await uploadImage(file, "banner");
       setPhotos((p) => [...p, publicUrl].slice(0, 2));
       toast.success("Photo added!");
     } catch (err) {
@@ -1993,18 +1973,11 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
     setUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Please sign in again.");
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/image-bg-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-      if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Uploaded by the server, with the session it already trusts — see
+      // lib/utils/upload-image.ts for why this stopped being a browser write.
+      const publicUrl = await uploadImage(file, "imageBg");
       setUploadedBg(publicUrl);
       setBgSource("upload");
       toast.success("Photo uploaded.");

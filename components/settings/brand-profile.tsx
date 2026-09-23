@@ -7,6 +7,7 @@ import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
+import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
 import {
@@ -45,9 +46,11 @@ interface BrandProfileProps {
 
 // ── Reusable image uploader ──────────────────────────────────────────────────
 function ImageUploader({
-  label, hint, bucket, path, currentUrl, onUploaded, shape = "square", icon: Icon = ImageIcon,
+  label, hint, kind, currentUrl, onUploaded, shape = "square", icon: Icon = ImageIcon,
 }: {
-  label: string; hint: string; bucket: string; path: string;
+  label: string; hint: string;
+  /** Which picture this is — the server maps it to a bucket, a name and a size limit. */
+  kind: ImageUploadKind;
   currentUrl: string | null; onUploaded: (url: string) => void;
   shape?: "circle" | "square"; icon?: React.ElementType;
 }) {
@@ -58,20 +61,20 @@ function ImageUploader({
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
-
+    // Type and size are the server's to judge now — it knows the limit for
+    // each kind of picture, and it accepts a JPEG whose type the browser
+    // failed to report rather than refusing it on the spot.
     setUploading(true);
-    const supabase = createClient();
-    const ext = file.name.split(".").pop();
-    const filePath = `${path}.${ext}?t=${Date.now()}`;
-    const { error } = await supabase.storage.from(bucket).upload(filePath, file, { upsert: true });
-    if (error) { toast.error(error.message); setUploading(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
-    setPreview(publicUrl);
-    onUploaded(publicUrl);
-    setUploading(false);
-    toast.success(`${label} uploaded!`);
+    try {
+      const publicUrl = await uploadImage(file, kind);
+      setPreview(publicUrl);
+      onUploaded(publicUrl);
+      toast.success(`${label} uploaded!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The upload didn't go through.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -168,17 +171,16 @@ export function TalkingAvatarUploader({
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
-
-    // Step 1 — upload to Supabase Storage
+    // Step 1 — hand it to the server, which stores it
     setUploadingPhoto(true);
-    const supabase = createClient();
-    const ext = file.name.split(".").pop();
-    const filePath = `${userId}/headshot.${ext}?t=${Date.now()}`;
-    const { error: upErr } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
-    if (upErr) { toast.error(upErr.message); setUploadingPhoto(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    let publicUrl: string;
+    try {
+      publicUrl = await uploadImage(file, "headshot");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The upload didn't go through.");
+      setUploadingPhoto(false);
+      return;
+    }
     setPreview(publicUrl);
     setUploadingPhoto(false);
 
@@ -1351,8 +1353,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
             <ImageUploader
               label="Brokerage Logo"
               hint="Appears as a watermark on your videos. PNG with transparent background recommended."
-              bucket="assets"
-              path={`${userId}/logo`}
+              kind="logo"
               currentUrl={fields.logo_url || null}
               onUploaded={(url) => set("logo_url", url)}
               shape="square"
