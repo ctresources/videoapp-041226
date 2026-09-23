@@ -1915,7 +1915,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [results, setResults] = useState<MadeImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [usage, setUsage] = useState<{ used: number; limit: number; unlimited: boolean } | null>(null);
+  const [usage, setUsage] = useState<{ used: number; limit: number; unlimited: boolean; beforeVideo: boolean } | null>(null);
   const seeded = useRef(false);
 
   const project = projects.find((p) => p.id === projectId) ?? null;
@@ -1928,7 +1928,14 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d) setUsage({ used: d.images?.used ?? 0, limit: d.images?.limit ?? 100, unlimited: !!d.unlimited });
+        if (d) setUsage({
+          used: d.images?.used ?? 0,
+          limit: d.images?.limit ?? 100,
+          unlimited: !!d.unlimited,
+          // Two free images before the video, a hundred a month after it —
+          // and "this month" is the wrong sentence for the first of those.
+          beforeVideo: d.trialStarted === false && !d.unlimited,
+        });
       })
       .catch(() => {});
   }, []);
@@ -2220,7 +2227,9 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
             : usage?.unlimited
               ? "Unlimited images on your account."
               : left !== null
-                ? `Uses 1 of your ${usage!.limit} AI images this month · ${left} left`
+                ? usage!.beforeVideo
+                  ? `${left} of your ${usage!.limit} free AI images left — your free video unlocks 100 a month`
+                  : `Uses 1 of your ${usage!.limit} AI images this month · ${left} left`
                 : "Uses 1 of your monthly AI images."}
         </span>
       </div>
@@ -2277,6 +2286,8 @@ export default function ToolsPage() {
    * ten-minute-old signup gets sent to billing.
    */
   const [trialStarted, setTrialStarted] = useState(true);
+  /** Free tries left before the video; null once there is nothing to count. */
+  const [freeRunsLeft, setFreeRunsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/profile/allowance")
@@ -2285,6 +2296,7 @@ export default function ToolsPage() {
         if (!d) return;
         setTrialLocked(!!d.trialLocked);
         setTrialStarted(d.trialStarted !== false);
+        setFreeRunsLeft(typeof d.freeRunsLeft === "number" ? d.freeRunsLeft : null);
       })
       .catch(() => { /* the tools still say so on the 403 */ });
   }, []);
@@ -2332,7 +2344,7 @@ export default function ToolsPage() {
         <p className="text-sm text-primary-100 mt-1">Supercharge your content creation with AI</p>
       </div>
 
-      {trialLocked && (
+      {(trialLocked || (freeRunsLeft !== null && freeRunsLeft >= 0)) && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
           <p className="text-sm text-amber-900">
             {trialStarted ? (
@@ -2340,11 +2352,24 @@ export default function ToolsPage() {
                 <span className="font-semibold">Your free trial has ended.</span>{" "}
                 Spark Tools are included on every paid plan.
               </>
+            ) : freeRunsLeft && freeRunsLeft > 0 ? (
+              // Still has tries left. An invitation, not a wall — and it says
+              // what a try IS, because a countdown with no unit is a thing to
+              // worry about rather than a thing to spend.
+              <>
+                <span className="font-semibold">
+                  {freeRunsLeft} free {freeRunsLeft === 1 ? "try" : "tries"} left,
+                  plus 2 free AI images.
+                </span>{" "}
+                Every tool here — titles, descriptions, tags, scripts — uses one try.
+                Your free video unlocks all of them, unlimited, for 30 days. It costs
+                nothing and takes a few minutes.
+              </>
             ) : (
               <>
-                <span className="font-semibold">Make your free video first.</span>{" "}
-                It unlocks Spark Tools, camera recording and articles for 30 days — and it
-                costs nothing.
+                <span className="font-semibold">That&apos;s your 2 free tries used.</span>{" "}
+                Make your free video and every tool here is unlimited for 30 days, along with
+                the camera and articles — it costs nothing.
               </>
             )}
           </p>

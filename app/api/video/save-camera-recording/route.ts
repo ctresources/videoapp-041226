@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   // generated video, not forever — paid plans are unaffected. Checked here,
   // not just in the UI, since this is the actual point a recording gets
   // persisted.
-  const gate = await freeTrialGateResponse(user.id);
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "block" });
   if (gate) return gate;
 
   const admin = createAdminClient();

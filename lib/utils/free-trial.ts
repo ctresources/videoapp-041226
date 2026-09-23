@@ -19,6 +19,24 @@ import { NextResponse } from "next/server";
  */
 export const FREE_TRIAL_DAYS = 30;
 
+/**
+ * What an account may do BEFORE it makes its free video.
+ *
+ * The gate used to be absolute: no video, no tools. It is a reasonable rule
+ * and a poor welcome — somebody who signs up to look around meets a wall on
+ * the first screen they open, before anything has shown them the thing works.
+ *
+ * Two of each is enough to see that it does, costs pennies against the ~$6 the
+ * free video itself costs, and runs out at the moment they want more — which
+ * is the moment to ask for the video. Images are counted separately because
+ * they are the half that costs real money.
+ */
+export const FREE_RUNS_BEFORE_VIDEO = 2;
+export const FREE_IMAGES_BEFORE_VIDEO = 2;
+
+/** api_usage_log endpoint that marks one of those free runs. */
+const FREE_RUN_ENDPOINT = "free_tool_run";
+
 const TRIAL_MS = FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000;
 
 /**
@@ -50,7 +68,31 @@ export function freeTrialDaysLeft(firstVideoGeneratedAt: string | null | undefin
  * makes the same one-line call instead of re-deriving the fetch-and-check
  * itself.
  */
-export async function freeTrialGateResponse(userId: string): Promise<NextResponse | null> {
+/**
+ * How a route treats an account that has not made its free video yet.
+ *
+ * "consume" — an AI tool: allowed while free runs remain, and spends one.
+ * "allow"   — the image generator, which counts its own five and must not
+ *             also burn a text run for the same press.
+ * "block"   — camera recording and its uploads, which stay behind the video.
+ */
+export type PreVideoMode = "consume" | "allow" | "block";
+
+/** How many of the free pre-video runs this account has spent. */
+export async function freeRunsUsed(userId: string): Promise<number> {
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("api_usage_log")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("endpoint", FREE_RUN_ENDPOINT);
+  return count ?? 0;
+}
+
+export async function freeTrialGateResponse(
+  userId: string,
+  { preVideo = "consume" }: { preVideo?: PreVideoMode } = {},
+): Promise<NextResponse | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
@@ -62,13 +104,40 @@ export async function freeTrialGateResponse(userId: string): Promise<NextRespons
   if (!p || p.role === "admin") return null;
   if (!freeTrialLocked(p.first_video_generated_at, p.subscription_tier)) return null;
 
-  const locked = !p.first_video_generated_at;
+  const notStarted = !p.first_video_generated_at;
+
+  // The window before the free video, where a few runs are allowed.
+  if (notStarted && preVideo !== "block") {
+    const used = await freeRunsUsed(userId);
+    if (used < FREE_RUNS_BEFORE_VIDEO) {
+      if (preVideo === "consume") {
+        // Recorded here rather than in each route, so the count and the
+        // decision can never disagree about what a run is.
+        await admin.from("api_usage_log").insert({
+          user_id: userId,
+          api_provider: "sparkreels",
+          endpoint: FREE_RUN_ENDPOINT,
+          credits_used: 0,
+          response_status: 200,
+        });
+      }
+      return null;
+    }
+    return NextResponse.json(
+      {
+        error: `You've used your ${FREE_RUNS_BEFORE_VIDEO} free tries. Make your free video — it costs nothing and unlocks everything for 30 days.`,
+        code: "free_runs_spent",
+      },
+      { status: 403 },
+    );
+  }
+
   return NextResponse.json(
     {
-      error: locked
+      error: notStarted
         ? "Generate your free video first to unlock 30 days of camera recording and AI Tools."
         : "Your 30-day free trial has ended. Pick a plan to keep using this.",
-      code: locked ? "free_trial_not_started" : "free_trial_expired",
+      code: notStarted ? "free_trial_not_started" : "free_trial_expired",
     },
     { status: 403 },
   );

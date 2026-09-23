@@ -15,7 +15,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const gate = await freeTrialGateResponse(user.id);
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "block" });
   if (gate) return gate;
 
   return NextResponse.json({ ok: true });

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
-import { freeTrialLocked } from "@/lib/utils/free-trial";
+import { FREE_IMAGES_BEFORE_VIDEO, FREE_RUNS_BEFORE_VIDEO, freeRunsUsed, freeTrialLocked } from "@/lib/utils/free-trial";
 import { CAMPAIGN_CALENDAR, hasFeature } from "@/lib/utils/feature-access";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 
@@ -56,7 +56,15 @@ export async function GET() {
     isAdmin,
     campaignCalendar,
     // AI images made this calendar month, for the image generator's counter.
-    images: { used: imagesUsed, limit: IMAGE_MONTHLY_LIMIT },
+    // Two before the free video, a hundred after it — the same ceiling the
+    // image route enforces, so the counter on the page and the refusal from
+    // the server can never disagree.
+    images: {
+      used: imagesUsed,
+      limit: profile.first_video_generated_at || isAdmin
+        ? IMAGE_MONTHLY_LIMIT
+        : FREE_IMAGES_BEFORE_VIDEO,
+    },
     // So the Create screen can mark the Blog post tile locked BEFORE someone
     // picks it, waits a minute for a script, and lands on a Share Kit with no
     // article in it and nothing saying why.
@@ -76,5 +84,12 @@ export async function GET() {
      * false when it has not begun, true when it has and has run out.
      */
     trialStarted: !!profile.first_video_generated_at,
+    /**
+     * Free tries left before the video. Null once the video exists, or for an
+     * admin — there is nothing to count down to.
+     */
+    freeRunsLeft: isAdmin || profile.first_video_generated_at
+      ? null
+      : Math.max(0, FREE_RUNS_BEFORE_VIDEO - (await freeRunsUsed(user.id))),
   });
 }

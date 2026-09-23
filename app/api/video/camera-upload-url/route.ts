@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   // Checked here too, not just at save time — otherwise a trial-expired
   // user would upload the whole recording (sometimes 100+ MB) before
   // finding out it can't be saved.
-  const gate = await freeTrialGateResponse(user.id);
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "block" });
   if (gate) return gate;
 
   const admin = createAdminClient();

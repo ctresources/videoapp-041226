@@ -181,6 +181,9 @@ export default function HelpPage() {
             </table>
             <p className="text-xs text-slate-400 mt-1.5">
               * Unlimited on any paid plan. On the free 100-agent beta, camera recording, blog posts and every AI Tool are unlimited for 30 days starting the day you generate your free video.
+              {" "}Before that video, you get <strong>2 free tries</strong> of the AI Tools and{" "}
+              <strong>2 free AI images</strong> to see how they work — one try per tool run.
+              Making the video is free and lifts both limits.
             </p>
           </div>
 

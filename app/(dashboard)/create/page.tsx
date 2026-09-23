@@ -1945,6 +1945,22 @@ function CreatePageInner() {
                 onClick={() => {
                   if (key === "blog") {
                     if (trialLocked) {
+                      /**
+                       * Where the lock actually points.
+                       *
+                       * Billing is the answer to "my 30 days ran out". To an
+                       * account that has not started them it is the wrong
+                       * shop: the thing that unlocks this is the free video,
+                       * which is the tile immediately to the left of the one
+                       * they just pressed.
+                       */
+                      if (trialNotStarted) {
+                        toast("Make your free video first — it unlocks articles, tools and the camera for 30 days.");
+                        setBlogOnly(false);
+                        setInputMode("script");
+                        setLastSparkTab("script");
+                        return;
+                      }
                       router.push("/billing");
                       return;
                     }
@@ -1963,6 +1979,13 @@ function CreatePageInner() {
                     return;
                   }
                   if (key === "film" && trialLocked) {
+                    if (trialNotStarted) {
+                      toast("Make your free video first — it unlocks the camera for 30 days.");
+                      setBlogOnly(false);
+                      setInputMode("script");
+                      setLastSparkTab("script");
+                      return;
+                    }
                     router.push("/billing");
                     return;
                   }

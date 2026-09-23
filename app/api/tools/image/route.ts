@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import { FREE_IMAGES_BEFORE_VIDEO, freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import {
   IMAGE_SHAPES, IMAGE_TEMPLATES, makeBackground, renderImage,
@@ -57,14 +57,29 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const gate = await freeTrialGateResponse(user.id);
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "allow" });
   if (gate) return gate;
 
   const body = (await req.json()) as Body;
   const admin = createAdminClient();
 
-  const { data: profileRow } = await admin.from("profiles").select("role").eq("id", user.id).single();
-  const unlimited = (profileRow as { role?: string } | null)?.role === "admin";
+  const { data: profileRow } = await admin
+    .from("profiles")
+    .select("role, first_video_generated_at")
+    .eq("id", user.id)
+    .single();
+  const profile = profileRow as { role?: string; first_video_generated_at?: string | null } | null;
+  const unlimited = profile?.role === "admin";
+  /**
+   * Two before the free video, a hundred after it.
+   *
+   * The gate above lets an account this new through — this is the ceiling it
+   * is let through to. Counted the same way as the monthly hundred, from rows
+   * in generated_images, so there is one definition of "an AI image used".
+   */
+  const imageLimit = profile?.first_video_generated_at
+    ? IMAGE_MONTHLY_LIMIT
+    : FREE_IMAGES_BEFORE_VIDEO;
 
   let project: ProjectRow | null = null;
   if (body.projectId) {
@@ -131,12 +146,18 @@ export async function POST(req: NextRequest) {
   async function limitResponse(needed: number) {
     if (unlimited) return null;
     const used = await aiImagesUsedThisMonth(admin, user!.id);
-    if (used + needed > IMAGE_MONTHLY_LIMIT) {
+    if (used + needed > imageLimit) {
+      const beforeVideo = imageLimit === FREE_IMAGES_BEFORE_VIDEO;
       return NextResponse.json(
         {
-          error: `You've used ${used} of your ${IMAGE_MONTHLY_LIMIT} AI images this month. They reset on the 1st. Images over your own photos are still free.`,
+          // Two different facts, and the second is not a smaller version of
+          // the first: one is "come back on the 1st", the other is "the thing
+          // that lifts this is free and takes a minute".
+          error: beforeVideo
+            ? `You've used your ${FREE_IMAGES_BEFORE_VIDEO} free AI images. Make your free video — it costs nothing and unlocks ${IMAGE_MONTHLY_LIMIT} a month for 30 days.`
+            : `You've used ${used} of your ${IMAGE_MONTHLY_LIMIT} AI images this month. They reset on the 1st. Images over your own photos are still free.`,
           used,
-          limit: IMAGE_MONTHLY_LIMIT,
+          limit: imageLimit,
         },
         { status: 402 },
       );
@@ -179,7 +200,7 @@ export async function POST(req: NextRequest) {
       }
       const url = await renderImage({ userId: user.id, shape, backgroundUrl: bg.url, text });
       const image = await record(url, bg);
-      return NextResponse.json({ image, used: await usedNow(), limit: IMAGE_MONTHLY_LIMIT, aiBackground: bg.ai });
+      return NextResponse.json({ image, used: await usedNow(), limit: imageLimit, aiBackground: bg.ai });
     }
 
     const photoUrl = isHttp(body.photoUrl) ? body.photoUrl : undefined;
@@ -212,7 +233,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       images,
       used: await usedNow(),
-      limit: IMAGE_MONTHLY_LIMIT,
+      limit: imageLimit,
       aiBackground: backgrounds.some((b) => b.ai),
     });
   } catch (err) {
