@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
@@ -650,12 +651,13 @@ export async function POST(req: NextRequest) {
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
     heygen_voice_id: string | null;
+    voice_sample_url: string | null;
     heygen_photo_id: string | null;
     heygen_look_wide: string | null;
     heygen_look_tall: string | null;
@@ -1051,7 +1053,11 @@ export async function POST(req: NextRequest) {
       // Direct Video needs a HeyGen voice_id. Only the user's OWN clone, or a
       // neutral public voice — never another account's private clone. See the
       // note on resolveVoiceId.
-      const directVoiceId = await resolveVoiceId(profile.heygen_voice_id);
+      const directVoiceId = await ensureVoiceForRender({
+        id: user.id,
+        heygen_voice_id: profile.heygen_voice_id,
+        voice_sample_url: profile.voice_sample_url,
+      });
       if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
       // Photos to composite as b-roll behind the avatar (up to 12) — uploaded
@@ -1271,7 +1277,19 @@ export async function POST(req: NextRequest) {
 
     // ── Video Agent path (v3): the presenter + listing photos + b-roll are
     // composed by HeyGen's Video Agent using the user's cloned HeyGen voice. ───
-    const voiceId = await resolveVoiceId(profile.heygen_voice_id);
+    /**
+     * Their own voice, rebuilt first if its slot was given up.
+     *
+     * A retired clone is a pause, not a loss — the sample is kept, and this is
+     * the one place that knows how to bring the voice back. Falls through to a
+     * neutral public voice if it cannot, because a video in the wrong voice
+     * beats a video that never renders.
+     */
+    const voiceId = await ensureVoiceForRender({
+      id: user.id,
+      heygen_voice_id: profile.heygen_voice_id,
+      voice_sample_url: profile.voice_sample_url,
+    });
 
     if (!voiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 

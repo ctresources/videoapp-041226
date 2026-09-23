@@ -956,6 +956,13 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
             <p className="text-xs text-green-600 mt-0.5">
               Your cloned voice is ready for AI video generation.
             </p>
+            {/* Said plainly, because a voice recording is the one upload a
+                person should know we still hold — and because it is what lets
+                the clone be rebuilt without asking them to record again. */}
+            <p className="text-xs text-green-600/80 mt-1 leading-relaxed">
+              Your recording is kept privately so your voice can be restored if it&apos;s ever
+              rebuilt. Remove deletes both the voice and the recording.
+            </p>
           </div>
           <div className="flex gap-3 shrink-0">
             <button

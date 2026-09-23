@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { retireVoiceClone } from "@/lib/utils/voice-slot";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
@@ -274,6 +275,30 @@ export async function POST(req: NextRequest) {
       // The plan comes off the subscription, not the profile: updateProfile
       // has already set the tier to "free" by this line, so reading it back
       // would report what they are now rather than what they just left.
+      /**
+       * The voice slot goes back with the plan.
+       *
+       * Slots are an account-wide allowance, and a departed customer holding
+       * one is capacity taken from a present one. Their sample is kept, so
+       * coming back costs them nothing: the voice is rebuilt by the first
+       * render they make. Awaited rather than fired off — a slot released
+       * only when a background promise happens to finish is a slot that
+       * sometimes is not.
+       */
+      {
+        const { data: voiceRow } = await admin
+          .from("profiles")
+          .select("heygen_voice_id")
+          .eq("id", userId)
+          .single();
+        const voiceId = (voiceRow as { heygen_voice_id: string | null } | null)?.heygen_voice_id;
+        if (voiceId) {
+          await retireVoiceClone(userId, voiceId, "subscription canceled").catch((e) =>
+            console.error("[stripe] voice retire failed:", e),
+          );
+        }
+      }
+
       await notifyBilling(admin, userId, "canceled", {
         tier: tierFromPriceId(sub.items.data[0]?.price.id ?? "")?.tier ?? null,
       });

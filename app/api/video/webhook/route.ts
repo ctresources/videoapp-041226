@@ -7,6 +7,7 @@ import { buildStoreOptions } from "@/lib/utils/store-options";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
+import { maybeRetireVoiceAfterRender } from "@/lib/utils/voice-slot";
 import { getVideoTranslationStatus } from "@/lib/api/heygen";
 
 /** Constant-time string compare that tolerates differing lengths. */
@@ -522,6 +523,21 @@ export async function POST(req: NextRequest) {
   // own in AI Tools. Failures never affect the render result.
   if (success && video.project_id && video.user_id) {
     await ensureProjectThumbnail(video.project_id, video.user_id);
+  }
+
+  /**
+   * Give the voice slot back, now the video is safely stored.
+   *
+   * Here rather than at submit time, and only on success: a clone deleted
+   * before the render finished would take a retry down with it, and a refunded
+   * render leaves the agent with a credit they can spend — so the voice has to
+   * outlive both. Restored automatically the next time one is needed, from the
+   * sample they recorded once.
+   */
+  if (success && video.user_id && finalVideoUrl) {
+    await maybeRetireVoiceAfterRender(video.user_id).catch((e) =>
+      console.error("[webhook] voice retire failed:", e),
+    );
   }
 
   console.log(`[webhook] Processed ${eventType}: row ${video.id} → ${renderStatus}`);

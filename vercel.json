@@ -53,7 +53,8 @@
   "crons": [
     { "path": "/api/cron/affiliate-payouts", "schedule": "0 15 1 * *" },
     { "path": "/api/cron/trial-emails", "schedule": "0 14 * * *" },
-    { "path": "/api/cron/youtube-stats", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/youtube-stats", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/voice-slots", "schedule": "0 4 * * *" }
   ],
   "headers": [
     {

@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice, deleteVoice } from "@/lib/api/heygen";
+import { saveVoiceSample } from "@/lib/utils/voice-slot";
 import { notifyVoiceCloneUnavailable } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -97,11 +98,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save to profile
+    /**
+     * Keep the recording, not just the clone.
+     *
+     * Clone slots are an account-wide allowance, so a clone held by somebody
+     * who is not rendering is capacity taken from somebody who is. Keeping the
+     * sample is what lets the clone be given up later and rebuilt on demand —
+     * without it, freeing a slot would mean asking this agent to record again.
+     */
     const admin = createAdminClient();
+    const samplePath = await saveVoiceSample(user.id, audioBuffer, contentType);
+
     await admin
       .from("profiles")
-      .update({ heygen_voice_id: voiceId })
+      .update({
+        heygen_voice_id: voiceId,
+        voice_clone_retired_at: null,
+        ...(samplePath && {
+          voice_sample_url: samplePath,
+          voice_sample_at: new Date().toISOString(),
+        }),
+      })
       .eq("id", user.id);
 
     console.log(`[heygen-voice] Saved voice ${voiceId} for user ${user.id}`);
@@ -125,10 +142,11 @@ export async function DELETE(req: NextRequest) {
     const admin = createAdminClient();
     const { data } = await admin
       .from("profiles")
-      .select("heygen_voice_id")
+      .select("heygen_voice_id, voice_sample_url")
       .eq("id", user.id)
       .single();
-    const voiceId = (data as { heygen_voice_id: string | null } | null)?.heygen_voice_id ?? null;
+    const row = data as { heygen_voice_id: string | null; voice_sample_url: string | null } | null;
+    const voiceId = row?.heygen_voice_id ?? null;
 
     /**
      * Delete it THERE, not just here.
@@ -148,9 +166,30 @@ export async function DELETE(req: NextRequest) {
       if (!removed) console.error(`[heygen-voice] slot not freed for ${user.id} (voice ${voiceId})`);
     }
 
+    /**
+     * The recording goes with it.
+     *
+     * Retiring a clone keeps the sample, because the voice is coming back.
+     * "Remove" is the opposite request — the agent is withdrawing their voice
+     * from the app — and keeping a recording of somebody's voice after they
+     * asked for it to be gone is not a thing to do quietly. The Settings card
+     * promises both are deleted; this is that promise.
+     */
+    if (row?.voice_sample_url) {
+      const { error: sampleErr } = await admin.storage
+        .from("voice-recordings")
+        .remove([row.voice_sample_url]);
+      if (sampleErr) console.error(`[heygen-voice] sample not deleted for ${user.id}: ${sampleErr.message}`);
+    }
+
     await admin
       .from("profiles")
-      .update({ heygen_voice_id: null })
+      .update({
+        heygen_voice_id: null,
+        voice_sample_url: null,
+        voice_sample_at: null,
+        voice_clone_retired_at: null,
+      })
       .eq("id", user.id);
 
     return NextResponse.json({ ok: true, slotFreed: removed });
