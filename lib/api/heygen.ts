@@ -1134,6 +1134,35 @@ export async function searchBackgroundMusic(
  * person who recorded it; anyone without one gets a public voice until they
  * record their own.
  */
+/**
+ * Delete a cloned voice, freeing the slot it occupies.
+ *
+ * This endpoint exists and always has — the app believed otherwise. "Remove
+ * voice clone" cleared the id from the profile and left the clone on the
+ * account, so seven dead voices accumulated against an allowance of two, and
+ * the next agent to record was told the plan was full. Forgetting a voice is
+ * not the same as deleting it.
+ *
+ * A 404 is success: the voice is gone, which is the whole point, and a delete
+ * that has already happened must not read as a failure to the caller.
+ */
+export async function deleteVoice(voiceId: string): Promise<boolean> {
+  if (!voiceId) return true;
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/voices/${encodeURIComponent(voiceId)}`, {
+      method: "DELETE",
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (res.ok || res.status === 404) return true;
+    const body = await res.text().catch(() => "");
+    console.error(`[heygen] voice delete ${voiceId} failed (${res.status}): ${body.slice(0, 200)}`);
+    return false;
+  } catch (err) {
+    console.error("[heygen] voice delete threw:", err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
 export async function resolveVoiceId(
   userVoiceId: string | null | undefined,
 ): Promise<string | null> {

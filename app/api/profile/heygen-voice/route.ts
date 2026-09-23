@@ -10,7 +10,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cloneVoice } from "@/lib/api/heygen";
+import { cloneVoice, deleteVoice } from "@/lib/api/heygen";
 import { notifyVoiceCloneUnavailable } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -122,14 +122,38 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // HeyGen doesn't expose a voice delete endpoint in v3 yet — just clear from profile
     const admin = createAdminClient();
+    const { data } = await admin
+      .from("profiles")
+      .select("heygen_voice_id")
+      .eq("id", user.id)
+      .single();
+    const voiceId = (data as { heygen_voice_id: string | null } | null)?.heygen_voice_id ?? null;
+
+    /**
+     * Delete it THERE, not just here.
+     *
+     * This used to clear the column and stop, on the belief that no delete
+     * endpoint existed. It does, and the consequence of not calling it was
+     * seven abandoned clones holding an allowance of two — so the next agent
+     * to record their voice was told the account was full.
+     *
+     * The column is cleared either way. A voice the service would not let go
+     * of is still one this user has finished with, and leaving the id on the
+     * profile would put a dead voice in their next video.
+     */
+    let removed = true;
+    if (voiceId) {
+      removed = await deleteVoice(voiceId);
+      if (!removed) console.error(`[heygen-voice] slot not freed for ${user.id} (voice ${voiceId})`);
+    }
+
     await admin
       .from("profiles")
       .update({ heygen_voice_id: null })
       .eq("id", user.id);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, slotFreed: removed });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to remove HeyGen voice" },
