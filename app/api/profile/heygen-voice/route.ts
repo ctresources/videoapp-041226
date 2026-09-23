@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice } from "@/lib/api/heygen";
+import { notifyVoiceCloneUnavailable } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
 // Cloning uploads the sample then polls /v3/voices/{id} until the clone finishes.
@@ -59,9 +60,41 @@ export async function POST(req: NextRequest) {
     try {
       voiceId = await cloneVoice(audioBuffer, `${name} — ${user.id.slice(0, 8)}`, contentType);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "HeyGen voice clone failed";
+      const msg = err instanceof Error ? err.message : "Voice clone failed";
       console.error("[heygen-voice] clone error:", msg);
-      return NextResponse.json({ error: msg }, { status: 422 });
+
+      /**
+       * Out of voice slots on OUR account — not a fault in their recording.
+       *
+       * The supplier's own words were handed straight to the agent: "Your plan
+       * includes two voice clones. Upgrade to create more." On a new signup's
+       * second screen that reads as THEIR plan being short, and invites them
+       * to buy something that would not help — while naming a supplier this
+       * app mentions nowhere else. One agent read it and recorded four samples
+       * before giving up.
+       *
+       * Nothing they do can clear it, so they are told what is true for them:
+       * the feature is off, their videos still work, the voice can come later.
+       */
+      if (/resource_limit_reached|voice clones|upgrade to create more/i.test(msg)) {
+        notifyVoiceCloneUnavailable({ userEmail: user.email, detail: msg }).catch((e) =>
+          console.error("[heygen-voice] owner notification failed:", e),
+        );
+        return NextResponse.json(
+          {
+            error: "Voice cloning isn't available on your account right now — there's nothing wrong with your recording. Your videos will use a natural stock voice, and you can add your own voice later.",
+            code: "voice_cloning_unavailable",
+          },
+          { status: 503 },
+        );
+      }
+
+      // Anything else is about this sample, and its own words are the most
+      // useful thing we have — minus the supplier's name.
+      return NextResponse.json(
+        { error: msg.replace(/heygen/gi, "the voice service") },
+        { status: 422 },
+      );
     }
 
     // Save to profile

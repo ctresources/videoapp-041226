@@ -144,6 +144,45 @@ export async function notifyRenderBalanceLow({
   }).catch(() => {});
 }
 
+/**
+ * Voice cloning was refused because the account has no slots left.
+ *
+ * Sent because the alternative is what happened the first time: an agent tries
+ * four times in a row, gives up, and the owner hears about it by chance. The
+ * agent's own message says nothing about plans or slots — this is the half
+ * that goes to whoever can act on it.
+ */
+export async function notifyVoiceCloneUnavailable({
+  userEmail,
+  detail,
+}: {
+  userEmail?: string | null;
+  detail: string;
+}) {
+  if (!RESEND_API_KEY) return;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: "Voice cloning refused — the account is out of voice slots",
+      html: `<p>Someone recorded a voice sample and the clone was <strong>refused</strong>:
+             the render account has no voice-clone slots left. Slots come from the web
+             plan tier, not from API credits, so this affects every user until the plan
+             changes.</p>
+             <ul>
+               ${userEmail ? `<li>Affected user: ${userEmail}</li>` : ""}
+               <li>Supplier said: ${detail.slice(0, 300)}</li>
+             </ul>
+             <p>They were told voice cloning is not available right now and that their
+             videos will use a natural stock voice — nothing was charged and nothing is
+             broken for them beyond this one feature.</p>`,
+    }),
+  }).catch(() => {});
+}
+
 /** Notifies the owner that a new affiliate application came in for review. */
 export async function notifyNewAffiliateApplication({
   name,

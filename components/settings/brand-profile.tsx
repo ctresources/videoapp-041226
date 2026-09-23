@@ -766,6 +766,8 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   const [recBlob, setRecBlob] = useState<Blob | null>(null);
   const [recUrl, setRecUrl] = useState<string | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+  /** Set when the service has no voice slots left — a standing notice, not an error. */
+  const [voiceUnavailable, setVoiceUnavailable] = useState<string | null>(null);
   /** What was actually recorded, so the file is named honestly. */
   const [recType, setRecType] = useState("");
 
@@ -880,9 +882,22 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
       // single source of truth — the returned voice_id drives every AI video.
       const res = await fetch("/api/profile/heygen-voice", { method: "POST", body: form });
       const text = await res.text();
-      let data: { voice_id?: string; error?: string } = {};
+      let data: { voice_id?: string; error?: string; code?: string } = {};
       try { data = JSON.parse(text); } catch {
         throw new Error(res.ok ? "Unexpected server response." : `Server error ${res.status}`);
+      }
+      /**
+       * Not their fault, and not a failed attempt to retry.
+       *
+       * Shown as a standing notice rather than a red toast that fades: a toast
+       * says "that went wrong, try again", and trying again is exactly what
+       * cannot help here — the last agent to see this recorded four samples.
+       * The recording is left in place so nothing they did is thrown away.
+       */
+      if (!res.ok && data.code === "voice_cloning_unavailable") {
+        setVoiceUnavailable(data.error || "Voice cloning isn't available right now.");
+        setSubmitting(false);
+        return;
       }
       if (!res.ok) throw new Error(data.error || "Voice clone failed");
       if (!data.voice_id) throw new Error("No voice ID returned from server.");
@@ -986,6 +1001,23 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
           {micError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-xs text-red-700">{micError}</p>
+            </div>
+          )}
+
+          {/* The service has no voice slots left. Amber rather than red, and
+              it stays: this is a fact about the account, not a failed attempt
+              that a second try would clear. */}
+          {voiceUnavailable && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-xs font-semibold text-amber-900 mb-1">
+                Voice cloning is switched off right now
+              </p>
+              <p className="text-xs leading-relaxed text-amber-800">{voiceUnavailable}</p>
+              <p className="text-xs leading-relaxed text-amber-800 mt-1.5">
+                Everything else works as normal — you can film yourself on camera in your own
+                voice, and your avatar videos use a natural stock voice until this is back on.
+                We&apos;ve been told it happened.
+              </p>
             </div>
           )}
 
