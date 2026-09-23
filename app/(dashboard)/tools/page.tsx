@@ -2297,11 +2297,22 @@ export default function ToolsPage() {
   // Every tool on this page runs behind the free-trial gate. Without this the
   // page looked entirely open: fill in the topic, press generate, get a 403.
   const [trialLocked, setTrialLocked] = useState(false);
+  /**
+   * Whether the 30 days ever started. Locked-and-not-started is a different
+   * sentence from locked-and-expired: one is "do the free thing first", the
+   * other is "buy something". Telling a new account the second is how a
+   * ten-minute-old signup gets sent to billing.
+   */
+  const [trialStarted, setTrialStarted] = useState(true);
 
   useEffect(() => {
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setTrialLocked(!!d.trialLocked); })
+      .then((d) => {
+        if (!d) return;
+        setTrialLocked(!!d.trialLocked);
+        setTrialStarted(d.trialStarted !== false);
+      })
       .catch(() => { /* the tools still say so on the 403 */ });
   }, []);
 
@@ -2351,14 +2362,24 @@ export default function ToolsPage() {
       {trialLocked && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
           <p className="text-sm text-amber-900">
-            <span className="font-semibold">Your free trial has ended.</span>{" "}
-            Spark Tools are included on every paid plan.
+            {trialStarted ? (
+              <>
+                <span className="font-semibold">Your free trial has ended.</span>{" "}
+                Spark Tools are included on every paid plan.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">Make your free video first.</span>{" "}
+                It unlocks Spark Tools, camera recording and articles for 30 days — and it
+                costs nothing.
+              </>
+            )}
           </p>
           <Link
-            href="/billing"
+            href={trialStarted ? "/billing" : "/create"}
             className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
           >
-            See plans
+            {trialStarted ? "See plans" : "Make my free video"}
           </Link>
         </div>
       )}

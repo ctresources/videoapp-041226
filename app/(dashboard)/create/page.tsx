@@ -360,7 +360,7 @@ function CreatePageInner() {
    * and nothing called it. A zero balance was discovered at Generate, after
    * the market, the topic, the recording and the style had all been chosen.
    */
-  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -665,7 +665,7 @@ function CreatePageInner() {
   useEffect(() => {
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited, trialLocked: !!d.trialLocked }); })
+      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited, trialLocked: !!d.trialLocked, trialStarted: d.trialStarted !== false }); })
       .catch(() => { /* the screen still works; it just cannot warn early */ });
   }, []);
 
@@ -1716,6 +1716,14 @@ function CreatePageInner() {
    * "locked" at a paying customer on every page load.
    */
   const trialLocked = !!allowance?.trialLocked;
+  /**
+   * Locked because the 30 days ran out, or because they have not begun.
+   *
+   * The same boolean said both, and every tile read it as the first — so an
+   * account minutes old was told its trial had ended and sent to billing,
+   * past the free video that would have unlocked everything.
+   */
+  const trialNotStarted = trialLocked && allowance?.trialStarted === false;
 
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
@@ -1901,7 +1909,9 @@ function CreatePageInner() {
               // "Your voice" rather than "your camera": the camera is implied
               // by the label, and what actually differs from the other tile is
               // whose voice comes out of the video.
-              desc: trialLocked ? "Free trial ended — pick a plan" : "Your voice + teleprompter",
+              desc: trialNotStarted
+                ? "Unlocked by your free video"
+                : trialLocked ? "Free trial ended — pick a plan" : "Your voice + teleprompter",
               free: true,
               cost: trialLocked ? "Locked" : "Free",
             },
@@ -1915,9 +1925,11 @@ function CreatePageInner() {
               // Kept as "Blog post" rather than given a "Video —" prefix: it is
               // the one output on this row that is not a video, and the odd one
               // out is the point.
-              desc: trialLocked
-                ? "Free trial ended — pick a plan"
-                : "New article, or paste your own",
+              desc: trialNotStarted
+                ? "Unlocked by your free video"
+                : trialLocked
+                  ? "Free trial ended — pick a plan"
+                  : "New article, or paste your own",
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },

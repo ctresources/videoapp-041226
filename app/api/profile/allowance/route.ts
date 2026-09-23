@@ -64,5 +64,17 @@ export async function GET() {
       profile.first_video_generated_at as string | null,
       profile.subscription_tier as string | null,
     ),
+    /**
+     * WHICH lock it is, which `trialLocked` alone could never say.
+     *
+     * One boolean covered two opposite situations: an account whose 30 days
+     * have run out, and one that has not started them yet. Every screen read
+     * it as the first, so somebody who signed up ten minutes ago was told
+     * their free trial had ended and sent to billing — while the thing that
+     * unlocks it, the free video, sat one click away and cost nothing.
+     *
+     * false when it has not begun, true when it has and has run out.
+     */
+    trialStarted: !!profile.first_video_generated_at,
   });
 }
