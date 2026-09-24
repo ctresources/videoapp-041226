@@ -167,12 +167,12 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[15px] font-semibold text-spark-ink">
-          {open ? "All topics, ideas & templates" : "Need an idea?"}
+          {open ? "All topics, ideas & templates" : "Need an Idea for a Topic?"}
         </p>
         <button
           type="button"
           onClick={() => { setOpen((v) => !v); setQuery(""); }}
-          className="text-[12.5px] font-semibold text-spark-amber hover:text-spark-blue"
+          className="text-[14px] font-semibold text-spark-amber hover:text-spark-blue"
         >
           {open ? "Show fewer" : `More ideas (${CONTENT_TEMPLATES.length})`}
         </button>
@@ -195,9 +195,9 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
             // a broken button.
             onClick={() => setSeed((n) => n + 1 + Math.floor(Math.random() * 7))}
             title="Show me five more"
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
+            className="flex items-center gap-1.5 rounded-full px-2 py-1 text-[14px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
           >
-            <Shuffle size={12} /> Shuffle
+            <Shuffle size={14} /> Shuffle
           </button>
         </div>
       )}
