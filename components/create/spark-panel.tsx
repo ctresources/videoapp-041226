@@ -163,7 +163,7 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
     // write, paper where you choose.
     <section
       id="spark-panel"
-      className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-3.5 sm:px-5"
+      className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-3 sm:px-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-3">

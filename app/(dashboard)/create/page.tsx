@@ -2101,7 +2101,7 @@ function CreatePageInner() {
           they are other ways to fill the same field, not part of the composer,
           and folding them in would have made the card the whole page. */}
       {inputMode === "script" && step === "input" && (
-        <div className="mt-7 flex flex-col gap-4">
+        <div className="mt-7 flex flex-col gap-3">
           {/* Just the section and its number.
               It read "Topic details · AI writes it · Step 1 of 5", which was
               three claims where one was wanted. The step count was true of the
@@ -2120,7 +2120,7 @@ function CreatePageInner() {
             aside="Spark with a template or idea below."
           />
           {/* Named so the hero mic can bring what it heard into view. */}
-          <div id="spark-composer" className="scroll-mt-20" />
+          <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
@@ -2188,12 +2188,12 @@ function CreatePageInner() {
               points at them. */}
 
           {/* ── Spark an idea ──
-              Flush against the composer above it. The -mt-4 cancels this
+              Flush against the composer above it. The -mt-3 cancels this
               column's gap: the card rounds at the top, the panel rounds at the
               bottom, and between them there is a single shared rule. They fill
               the same field, so a gap made choosing an idea look like a
               different exercise from typing one. */}
-          <div className="-mt-4">
+          <div className="-mt-3">
           <SparkPanel
             city={locCity || undefined}
             state={locState || undefined}

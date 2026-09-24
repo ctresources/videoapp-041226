@@ -486,7 +486,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         }}
         // Ringed while it holds words that have just been heard and not yet
         // sent, so the thing needing a look is the thing that looks different.
-        className={`w-full resize-none rounded-[12px] border bg-white px-3.5 py-3 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
+        className={`w-full resize-none rounded-[12px] border bg-white px-3.5 py-2.5 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
           justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
         }`}
       />

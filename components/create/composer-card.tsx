@@ -91,7 +91,7 @@ export function ComposerCard({
               <span className="font-display text-balance text-[21px] font-semibold leading-[1.28] tracking-[-0.01em] text-spark-ink underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-spark-amber sm:text-[24px]">
                 &ldquo;{tryLines[tryIdx % tryLines.length]}&rdquo;
               </span>
-              <span className="mt-0.5 block text-[11.5px] font-medium text-spark-amber opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="block text-[11.5px] font-medium leading-[1.2] text-spark-amber opacity-0 transition-opacity group-hover:opacity-100">
                 Tap to use it
               </span>
             </button>
@@ -111,13 +111,13 @@ export function ComposerCard({
           write, paper where you choose — rather than two cards with a gap,
           which made picking an idea look like a different exercise from
           typing one when they fill the same field. */}
-      <div className="rounded-t-[22px] border-[1.5px] border-b-0 border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
+      <div className="rounded-t-[22px] border-[1.5px] border-b-0 border-spark-rule bg-white px-4 py-3 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
         {children}
 
         {/* One bottom row: what is still missing, and the way in. The chips are
             a checklist rather than field labels, so they sit under the input
             with the controls, not above it as headings. */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           {chips.map((chip) => (
             <span
               key={chip.label}
