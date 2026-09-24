@@ -445,16 +445,27 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           )}
           <Mic size={18} className="relative text-white" />
         </button>
-        <p
-          className={`min-w-0 flex-1 text-[15px] leading-[1.4] ${
-            status ? "text-spark-ink-muted" : "font-medium text-spark-ink"
-          }`}
-        >
-          {/* No fallback any more: with the opening line moved up, the only
-              thing left to say here was "Say it or type it", which the box
-              directly below already says as its placeholder. */}
-          {status || lastAssistant}
-        </p>
+        {/* At rest this row carries what the mic is FOR — the two lines that
+            used to sit in a pill at the top of the page. Up there they were a
+            third block to read before reaching the first control, and the mic
+            they described was a different mic from the one beside the box.
+            Once a session is running, the session's own words replace them. */}
+        <div className="min-w-0 flex-1">
+          {status || lastAssistant ? (
+            <p className={`text-[15px] leading-[1.4] ${status ? "text-spark-ink-muted" : "font-medium text-spark-ink"}`}>
+              {status || lastAssistant}
+            </p>
+          ) : (
+            <>
+              <p className="text-[15px] font-semibold leading-tight text-spark-ink">
+                Speak what you want to Spark
+              </p>
+              <p className="mt-0.5 text-[13px] leading-tight text-spark-ink-muted">
+                Topic, town, who it&rsquo;s for — all at once, or one at a time
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
       <textarea

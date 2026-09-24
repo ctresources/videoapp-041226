@@ -32,7 +32,6 @@ import {
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
-import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard } from "@/components/create/composer-card";
 import { StepFooter } from "@/components/create/step-footer";
@@ -156,71 +155,6 @@ const TRY_LINES = [
  * template lands, through the same `seed` prop. It does not send the turn, so
  * a misheard street name is a keystroke to fix rather than a brief to redo.
  */
-function HeroMic({ onHeard, disabled }: { onHeard: (text: string) => void; disabled: boolean }) {
-  const heardRef = useRef(onHeard);
-  heardRef.current = onHeard;
-
-  const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    // Long window: this is someone describing a video out loud, and a pause to
-    // think is not the end of the sentence.
-    silenceMs: PROSE_SILENCE_MS,
-    disabled,
-    onSessionEnd: (text) => {
-      if (text.trim()) heardRef.current(text.trim());
-    },
-  });
-
-  const live = [transcript, interim].filter(Boolean).join(" ");
-
-  return (
-    // Left, not centred, and one object rather than four stacked lines. The
-    // headline and its two subheads are centred above; a third centred block
-    // under them made the top of the page a column of things to read before
-    // the first control.
-    <div className="mt-5 flex flex-col items-start gap-1.5 text-left">
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={disabled}
-        aria-pressed={listening}
-        aria-label={listening ? "Stop listening" : "Speak what you want to Spark"}
-        className="group relative flex items-center gap-3 rounded-[26px] border border-spark-rule bg-white py-2.5 pl-2.5 pr-5 text-left shadow-sm transition-colors hover:border-spark-amber disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors group-hover:bg-spark-blue">
-          {listening && (
-            <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />
-          )}
-          <Mic size={19} className="relative text-white" />
-        </span>
-        {/* Both lines inside the button: what it does, and what you can pack
-            into the answer. Outside it they read as page copy competing with
-            the subheads above rather than as part of the control. */}
-        <span className="min-w-0">
-          <span className="block text-[15px] font-semibold leading-tight text-spark-ink">
-            {/* The product's own verbs, and the same word the headline above
-                ends on: speak, spark, share. */}
-            {listening ? "Listening — tap when you're done" : "Speak what you want to Spark"}
-          </span>
-          <span className="mt-0.5 block text-[13px] leading-snug text-spark-ink-muted">
-            {listening
-              ? "Topic, town, who it's for — in any order"
-              : "Topic, town, who it's for — all at once, or one at a time"}
-          </span>
-        </span>
-      </button>
-
-      {/* What is being heard, while it is being heard. Without this the only
-          feedback is a pulsing ring, and there is no way to tell a misheard
-          word from a mic that is not picking anything up. */}
-      {listening && (
-        <p className="min-h-[1.4em] max-w-xl text-[14px] leading-[1.45] text-spark-ink-muted">
-          {live || "Go ahead…"}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function SectionHead({ eyebrow, question, aside, className = "" }: {
   eyebrow: string; question: string;
   /** Runs on the same line as the question, in muted type. For the one thing
@@ -1838,24 +1772,10 @@ function CreatePageInner() {
             Turn your Spark into more ways to connect, build trust, and stay visible.
           </p>
 
-          {/* Under the subheads, so the page still says what it is before it
-              asks you to talk to it. Feeds the composer in section 3 rather
-              than being a second brief of its own. */}
-          <HeroMic
-            disabled={locGenerating}
-            onHeard={(text) => {
-              setSparkSeed((s) => ({ text, n: s.n + 1 }));
-              // The words land two sections down. Without this they arrive
-              // somewhere the speaker cannot see, which reads as nothing
-              // having happened.
-              requestAnimationFrame(() => {
-                document.getElementById("spark-composer")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
-              });
-            }}
-          />
+          {/* The mic that used to sit here is now the one beside the
+              composer in section 3. Two mics for one job — a pill up here and
+              a button down there — meant the page asked to be spoken to twice
+              before it asked anything else. */}
         </div>
       )}
 
