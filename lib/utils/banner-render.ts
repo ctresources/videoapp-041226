@@ -4,6 +4,9 @@ import { readFileSync } from "fs";
 import path from "path";
 import * as opentypeNs from "opentype.js";
 import { glyphPathData } from "@/lib/utils/glyph-path-data";
+import {
+  alignedX, isHidden, offsetOf, scaleOf, type BannerLayout,
+} from "@/lib/utils/banner-layout";
 
 // opentype.js is an old UMD package — depending on how the server bundle
 // resolves it, its functions land on the namespace itself or on .default.
@@ -162,6 +165,12 @@ export interface RenderBannerOptions {
   photoUrls?: string[];
   /** Color palette key (see BANNER_PALETTES); defaults to "ocean". */
   palette?: string;
+  /**
+   * Per-block alignment, vertical nudge, size and visibility. Absent means the
+   * template's own arrangement, which is what every banner made before this
+   * existed used.
+   */
+  layout?: BannerLayout;
 }
 
 const DEFAULTS = {
@@ -235,6 +244,14 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const photoUrls = (opts.photoUrls || []).filter((u) => typeof u === "string" && u.trim()).slice(0, 2);
   const pal = BANNER_PALETTES[opts.palette ?? DEFAULT_PALETTE] ?? BANNER_PALETTES[DEFAULT_PALETTE];
 
+  /**
+   * The arrangement, per block. Every position below starts from the
+   * template's own coordinate and is moved from there, so a banner with no
+   * layout renders exactly as it always did.
+   */
+  const L = opts.layout ?? {};
+  const MARGIN = 200;
+
   // @ts-ignore -- sharp types unresolvable in some tsconfig setups; runtime import is fine
   const sharp = (await import("sharp")).default;
 
@@ -255,23 +272,36 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const composites: { input: Buffer; left: number; top: number }[] = [];
 
   // Photos — left cluster, side by side. box 340×300 at y=600.
-  const PBW = 340, PBH = 300, PY = 600, PGAP = 30;
-  const photoX = [250, 250 + PBW + PGAP];
-  for (let i = 0; i < photoUrls.length; i++) {
-    const buf = await roundedPhoto(sharp, photoUrls[i], PBW, PBH);
-    if (buf) composites.push({ input: buf, left: photoX[i], top: PY });
+  const photoScale = scaleOf(L.photos);
+  const PBW = Math.round(340 * photoScale), PBH = Math.round(300 * photoScale), PGAP = 30;
+  const PY = 600 + offsetOf(L.photos);
+  // Aligned as one cluster, so two photos stay side by side wherever they go.
+  const clusterW = photoUrls.length > 1 ? PBW * 2 + PGAP : PBW;
+  const clusterX = alignedX(L.photos, 250, clusterW, W, MARGIN);
+  const photoX = [clusterX, clusterX + PBW + PGAP];
+  if (!isHidden(L.photos)) {
+    for (let i = 0; i < photoUrls.length; i++) {
+      const buf = await roundedPhoto(sharp, photoUrls[i], PBW, PBH);
+      if (buf) composites.push({ input: buf, left: photoX[i], top: PY });
+    }
   }
 
   // QR #1 — top area, right of the headline.
-  const QR1 = 300, QR1X = 1650, QR1Y = 110;
-  if (qr1Link) {
+  const qr1Shown = !!qr1Link && !isHidden(L.qr1);
+  const QR1 = Math.round(300 * scaleOf(L.qr1));
+  const QR1X = alignedX(L.qr1, 1650, QR1, W, MARGIN);
+  const QR1Y = 110 + offsetOf(L.qr1);
+  if (qr1Shown) {
     const q = await makeQr(qr1Link, QR1, pal.qrDark);
     if (q) composites.push({ input: q, left: QR1X, top: QR1Y });
   }
 
   // QR #2 — middle-right, beside the SUBSCRIBE block.
-  const QR2 = 290, QR2X = 1900, QR2Y = 640;
-  if (qr2Link) {
+  const qr2Shown = !!qr2Link && !isHidden(L.qr2);
+  const QR2 = Math.round(290 * scaleOf(L.qr2));
+  const QR2X = alignedX(L.qr2, 1900, QR2, W, MARGIN);
+  const QR2Y = 640 + offsetOf(L.qr2);
+  if (qr2Shown) {
     const q = await makeQr(qr2Link, QR2, pal.qrDark);
     if (q) composites.push({ input: q, left: QR2X, top: QR2Y });
   }
@@ -279,12 +309,26 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   // ── Vector overlay (text + arrows) ──
   const parts: string[] = [];
 
-  // Headline "WATCHING ON TV?" — big navy, top-left, sized to clear QR1.
-  const headlineSize = fitFont(headline.toUpperCase(), QR1X - 200 - 40, 150, 60);
-  parts.push(textBlock([headline.toUpperCase()], 200, 290, headlineSize, pal.navy));
+  // Headline "WATCHING ON TV?" — big navy, top-left, sized to clear QR1 when
+  // QR1 is still up there. A hidden or moved QR gives the headline the width
+  // back, rather than leaving it shrunk to clear something that is not there.
+  if (!isHidden(L.headline)) {
+    const headRoom = qr1Shown && QR1Y < 500 ? QR1X - MARGIN - 40 : W - MARGIN * 2;
+    const headlineSize = Math.round(
+      fitFont(headline.toUpperCase(), headRoom, 150, 60) * scaleOf(L.headline),
+    );
+    const headlineW = textWidth(headline.toUpperCase(), headlineSize);
+    parts.push(textBlock(
+      [headline.toUpperCase()],
+      alignedX(L.headline, MARGIN, headlineW, W, MARGIN),
+      290 + offsetOf(L.headline),
+      headlineSize,
+      pal.navy,
+    ));
+  }
 
   // QR1 caption + arrow (only when QR1 is present).
-  if (qr1Link && qr1Caption) {
+  if (qr1Shown && qr1Caption) {
     const capSize = 48;
     const capLines = wrapLines(qr1Caption.toUpperCase(), capSize, W - 40 - (QR1X + QR1 + 40));
     const blockH = (capLines.length - 1) * capSize * 1.14;
@@ -296,31 +340,45 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
 
   // Subscribe block — kicker / big main / sub, then up to two extra lines,
   // stacked at x=1080.
-  const SX = 1080;
-  if (subscribeKicker) {
-    parts.push(textBlock(wrapLines(subscribeKicker.toUpperCase(), 46, 720), SX, 640, 46, pal.navy));
+  const subHidden = isHidden(L.subscribe);
+  const subScale = scaleOf(L.subscribe);
+  const subDy = offsetOf(L.subscribe);
+  /**
+   * The stack aligns as a unit, measured by its widest line — the big
+   * SUBSCRIBE word in every real banner. Aligning each line on its own would
+   * ragged the block, which is the one thing this layout gets right by
+   * default.
+   */
+  const kickSize = Math.round(46 * subScale);
+  const mainSize = Math.round(fitFont(subscribeMain.toUpperCase(), 700, 150, 60) * subScale);
+  const stackW = Math.max(
+    subscribeMain ? textWidth(subscribeMain.toUpperCase(), mainSize) : 0,
+    subscribeKicker ? Math.min(720, textWidth(subscribeKicker.toUpperCase(), kickSize)) : 0,
+  );
+  const SX = alignedX(L.subscribe, 1080, stackW, W, MARGIN);
+  if (!subHidden && subscribeKicker) {
+    parts.push(textBlock(wrapLines(subscribeKicker.toUpperCase(), kickSize, 720), SX, 640 + subDy, kickSize, pal.navy));
   }
-  if (subscribeMain) {
-    const mainSize = fitFont(subscribeMain.toUpperCase(), 700, 150, 60);
-    parts.push(textBlock([subscribeMain.toUpperCase()], SX, 770, mainSize, pal.royal));
+  if (!subHidden && subscribeMain) {
+    parts.push(textBlock([subscribeMain.toUpperCase()], SX, 770 + subDy, mainSize, pal.royal));
   }
   // Baseline walks down as each optional line below the main word is added.
-  let subY = 850;
-  if (subscribeSub) {
+  let subY = 850 + subDy;
+  if (!subHidden && subscribeSub) {
     // Single line (like the template), shrunk to clear QR2 if the user types more.
     const subSize = fitFont(subscribeSub.toUpperCase(), QR2X - SX - 40, 60, 34);
     parts.push(textBlock([subscribeSub.toUpperCase()], SX, subY, subSize, pal.navy));
     subY += 66;
   }
   for (const extra of [extraLine1, extraLine2]) {
-    if (!extra) continue;
+    if (!extra || subHidden) continue;
     const exSize = fitFont(extra.toUpperCase(), QR2X - SX - 40, 48, 28);
     parts.push(textBlock([extra.toUpperCase()], SX, subY, exSize, pal.navy));
     subY += 62;
   }
 
   // QR2 caption + arrow (above/left of QR2, arrow pointing down into it).
-  if (qr2Link && qr2Caption) {
+  if (qr2Shown && qr2Caption) {
     const capSize = 42;
     const capLines = wrapLines(qr2Caption.toUpperCase(), capSize, 700);
     const blockH = (capLines.length - 1) * capSize * 1.14;

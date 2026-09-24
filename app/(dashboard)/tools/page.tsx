@@ -10,6 +10,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { uploadImage } from "@/lib/utils/upload-image";
+import {
+  BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
+  type BannerBlock, type BannerLayout, type BlockAdjust,
+} from "@/lib/utils/banner-layout";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 
@@ -1519,7 +1523,22 @@ function BannerGenerator() {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [bannerUrl, setBannerUrl] = useState("");
+  /**
+   * Where each block sits. Empty means the template's own arrangement, which
+   * is what every banner used before this existed — so an agent who never
+   * opens the arrangement panel sees no change at all.
+   */
+  const [layout, setLayout] = useState<BannerLayout>({});
   const photoFileRef = useRef<HTMLInputElement>(null);
+
+  function adjust(block: BannerBlock, patch: Partial<BlockAdjust>) {
+    setLayout((l) => ({ ...l, [block]: { ...l[block], ...patch } }));
+  }
+  function nudge(block: BannerBlock, direction: -1 | 1) {
+    const current = layout[block]?.dy ?? 0;
+    const next = Math.max(-NUDGE_LIMIT, Math.min(NUDGE_LIMIT, current + direction * NUDGE_STEP));
+    adjust(block, { dy: next });
+  }
 
   const setField = (k: keyof typeof BANNER_DEFAULTS, v: string) =>
     setFields((f) => ({ ...f, [k]: v }));
@@ -1566,7 +1585,7 @@ function BannerGenerator() {
       const res = await fetch("/api/tools/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fields, palette, photoUrls: photos, platform }),
+        body: JSON.stringify({ ...fields, palette, photoUrls: photos, platform, layout }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1748,6 +1767,106 @@ function BannerGenerator() {
         </div>
         <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
       </div>
+
+      {/* ── Arrangement ──
+          Only on the YouTube canvas. The social banners are a single centred
+          stack by design — an alignment control there would be a button that
+          does nothing, which is worse than not offering it. */}
+      {platform === "youtube" && (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+            <p className="text-sm font-semibold text-slate-700">Arrangement</p>
+            <button
+              type="button"
+              onClick={() => setLayout({})}
+              className="text-xs font-medium text-slate-400 hover:text-slate-600"
+            >
+              Reset to the template
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mb-3">
+            Move each piece around, resize it, or leave it out. Nothing can land in the
+            edges YouTube crops on phones and TVs.
+          </p>
+
+          <div className="flex flex-col gap-2">
+            {BANNER_BLOCKS.map((block) => {
+              const a = layout[block] ?? {};
+              const off = a.dy ?? 0;
+              const hidden = a.hidden === true;
+              const pill = (on: boolean) =>
+                `px-2 py-1 text-[11px] font-semibold transition-colors ${
+                  on ? "bg-primary-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+                }`;
+              return (
+                <div
+                  key={block}
+                  className={`flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 ${hidden ? "opacity-50" : ""}`}
+                >
+                  <span className="w-32 shrink-0 text-xs font-medium text-slate-700">
+                    {BANNER_BLOCK_LABELS[block]}
+                  </span>
+
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                    {(["left", "center", "right"] as const).map((al) => (
+                      <button
+                        key={al}
+                        type="button"
+                        disabled={hidden}
+                        onClick={() => adjust(block, { align: al })}
+                        className={pill((a.align ?? "left") === al)}
+                        title={`Align ${al}`}
+                      >
+                        {al === "left" ? "◀" : al === "center" ? "▬" : "▶"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                    <button type="button" disabled={hidden || off <= -NUDGE_LIMIT}
+                      onClick={() => nudge(block, -1)} className={pill(false)} title="Move up">↑</button>
+                    <button type="button" disabled={hidden || off >= NUDGE_LIMIT}
+                      onClick={() => nudge(block, 1)} className={pill(false)} title="Move down">↓</button>
+                  </div>
+
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
+                    {(["s", "m", "l"] as const).map((sz) => (
+                      <button
+                        key={sz}
+                        type="button"
+                        disabled={hidden}
+                        onClick={() => adjust(block, { size: sz })}
+                        className={pill((a.size ?? "m") === sz)}
+                        title={sz === "s" ? "Smaller" : sz === "l" ? "Bigger" : "Template size"}
+                      >
+                        {sz.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => adjust(block, { hidden: !hidden })}
+                    className="ml-auto text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+                  >
+                    {hidden ? "Show" : "Hide"}
+                  </button>
+
+                  {/* Said in words, because two arrows and a number of pixels
+                      is not something anyone should have to hold in their head
+                      between presses. */}
+                  {off !== 0 && !hidden && (
+                    <span className="w-full text-[11px] text-slate-400">
+                      Moved {Math.abs(off / NUDGE_STEP)} step{Math.abs(off) === NUDGE_STEP ? "" : "s"}{" "}
+                      {off < 0 ? "up" : "down"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={generate}

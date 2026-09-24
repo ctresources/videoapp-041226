@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { renderAndSaveBanner } from "@/lib/utils/banner-render";
 import { isSocialPlatform, renderAndSaveSocialBanner } from "@/lib/utils/social-banner-render";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import type { BannerLayout } from "@/lib/utils/banner-layout";
 import { NextRequest, NextResponse } from "next/server";
 
 // QR generation + multi-photo compositing at 2560×1440 can take a bit.
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
     photoUrls?: string[];
     palette?: string;
     platform?: string;
+    /** Per-block alignment, nudge, size and visibility — YouTube canvas only. */
+    layout?: BannerLayout;
   };
 
   try {
@@ -53,6 +56,11 @@ export async function POST(req: NextRequest) {
       qr2Link: body.qr2Link,
       photoUrls: Array.isArray(body.photoUrls) ? body.photoUrls : undefined,
       palette: body.palette,
+      // Only the YouTube canvas is a spatial template with blocks to move;
+      // the social ones are a single centred stack, where an alignment would
+      // mean nothing. Passed through regardless — the social renderer ignores
+      // what it has no use for.
+      layout: body.layout,
     };
     const result = isSocialPlatform(body.platform)
       ? await renderAndSaveSocialBanner({ ...fields, platform: body.platform })
