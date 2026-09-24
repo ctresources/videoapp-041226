@@ -2124,6 +2124,14 @@ function CreatePageInner() {
           <ComposerCard
             showTryLine={!locCustomTopic.trim()}
             tryLines={TRY_LINES}
+            // Straight into the box, through the same channel a topic chip
+            // uses — so it arrives as a sentence to edit rather than a brief
+            // already sent.
+            onUseTryLine={(text) => {
+              setLocCustomTopic(text);
+              setTopicTemplateRaw(null);
+              setSparkSeed((s) => ({ text, n: s.n + 1 }));
+            }}
             // Four nouns. "What's it about?" here was the third asking of the
             // section's own question, and "Which town?" was a question in both
             // of its states.

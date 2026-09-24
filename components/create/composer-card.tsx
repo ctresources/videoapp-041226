@@ -25,6 +25,11 @@ interface ComposerCardProps {
   /** Rotating example lines, shown only while the brief is still empty. */
   tryLines?: string[];
   showTryLine?: boolean;
+  /**
+   * Fills the box with the example being shown. Omit and the line stays the
+   * decoration it was.
+   */
+  onUseTryLine?: (text: string) => void;
   disabled?: boolean;
   children: React.ReactNode;
 }
@@ -48,6 +53,7 @@ export function ComposerCard({
   chips,
   tryLines = [],
   showTryLine = false,
+  onUseTryLine,
   children,
 }: ComposerCardProps) {
   const [tryIdx, setTryIdx] = useState(0);
@@ -70,12 +76,33 @@ export function ComposerCard({
           <span className="mt-1.5 flex-none text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A3660F]">
             Try
           </span>
-          <p
-            key={tryIdx}
-            className="min-w-0 animate-slideDown font-display text-balance text-[21px] font-semibold leading-[1.28] tracking-[-0.01em] text-spark-ink sm:text-[24px]"
-          >
-            &ldquo;{tryLines[tryIdx % tryLines.length]}&rdquo;
-          </p>
+          {/* Tappable, because it is already the one thing on screen phrased
+              as a finished brief. As a label it asked someone to read a good
+              sentence and then type their own; as a button it is the shortest
+              way into the page. */}
+          {onUseTryLine ? (
+            <button
+              key={tryIdx}
+              type="button"
+              onClick={() => onUseTryLine(tryLines[tryIdx % tryLines.length])}
+              title="Use this — you can edit it after"
+              className="group min-w-0 animate-slideDown text-left"
+            >
+              <span className="font-display text-balance text-[21px] font-semibold leading-[1.28] tracking-[-0.01em] text-spark-ink underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-spark-amber sm:text-[24px]">
+                &ldquo;{tryLines[tryIdx % tryLines.length]}&rdquo;
+              </span>
+              <span className="mt-0.5 block text-[11.5px] font-medium text-spark-amber opacity-0 transition-opacity group-hover:opacity-100">
+                Tap to use it
+              </span>
+            </button>
+          ) : (
+            <p
+              key={tryIdx}
+              className="min-w-0 animate-slideDown font-display text-balance text-[21px] font-semibold leading-[1.28] tracking-[-0.01em] text-spark-ink sm:text-[24px]"
+            >
+              &ldquo;{tryLines[tryIdx % tryLines.length]}&rdquo;
+            </p>
+          )}
         </div>
       )}
 
