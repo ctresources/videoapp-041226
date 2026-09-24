@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, Shuffle, X } from "lucide-react";
 import {
   CONTENT_TEMPLATES,
   substitutePlaceholders,
@@ -49,32 +49,57 @@ const GROUPS: { keys: TemplateCategory[]; label: string }[] = [
 const SHORTLIST = 5;
 
 /**
- * Five ideas, chosen rather than shuffled.
+ * Five ideas, freshly drawn each visit.
  *
  * Thirty-two chips on screen is a catalogue, and a catalogue is the wrong
  * answer to "what should I make?" — it asks someone to read everything before
- * choosing anything. Five is small enough to read in a glance.
+ * choosing anything. Five is small enough to read in a glance, and drawing a
+ * new five each time means the panel stays worth looking at on the tenth visit
+ * rather than becoming five words the eye skips.
  *
- * Which five is decided by the month, so the panel is not the same every visit
- * but is the same all day: a list that reshuffles on every render is one you
- * cannot point at, walk away from and come back to. Local ideas come first
- * when a market is set, because a video about where you work is the one nobody
- * else can make.
+ * Seeded rather than shuffled live: the seed is held in state, so the set is
+ * stable while the page is open and changes when the agent asks or when they
+ * come back. A list that reorders under the cursor is one nobody can point at.
  *
- * What it deliberately does NOT do is claim to know what this agent has
- * already made. That needs their history, and a shortlist that quietly repeats
- * last week's topic would be worse than one that admits it is a rotation.
+ * Formats are excluded. "Listicle (Top 5)" and "Pros & Cons" answer HOW a
+ * video is told, not what it is about — offered among subjects they read as
+ * alternatives to them, and picking one still leaves the page not knowing what
+ * the video is for. They live under More ideas, where someone looking for a
+ * shape will find them.
+ *
+ * What this deliberately does NOT do is claim to know what this agent has
+ * already made. That needs their history, and quietly repeating last week's
+ * topic would be worse than an honest draw.
  */
-function shortlistFor(city: string | undefined, monthIndex: number): ContentTemplate[] {
-  const local = CONTENT_TEMPLATES.filter((t) => t.category === "location" || t.category === "community");
-  const rest = CONTENT_TEMPLATES.filter((t) => t.category !== "location" && t.category !== "community");
-  // Decisions first among the rest: they name a conflict somebody is actually
-  // having, where the others name a subject.
-  rest.sort((a, b) => Number(b.category === "decision") - Number(a.category === "decision"));
+function shortlistFor(city: string | undefined, seed: number): ContentTemplate[] {
+  const pool = CONTENT_TEMPLATES.filter((t) => t.category !== "format");
+  const local = pool.filter((t) => t.category === "location" || t.category === "community");
+  const rest = pool.filter((t) => t.category !== "location" && t.category !== "community");
 
-  const pool = city?.trim() ? [...local, ...rest] : [...rest, ...local];
-  const start = monthIndex % pool.length;
-  return Array.from({ length: Math.min(SHORTLIST, pool.length) }, (_, i) => pool[(start + i) % pool.length]);
+  // A video about where you work is the one nobody else can make, so those
+  // lead once a market is set — but only two of the five, or the panel becomes
+  // a local-events list.
+  const ordered = city?.trim() ? [...draw(local, 2, seed), ...draw(rest, SHORTLIST, seed)] : draw(rest, SHORTLIST, seed);
+  return dedupe(ordered).slice(0, SHORTLIST);
+}
+
+/** `count` items from `items`, starting somewhere the seed decides and striding
+ *  through so a draw is spread across the list rather than a run of neighbours. */
+function draw(items: ContentTemplate[], count: number, seed: number): ContentTemplate[] {
+  if (items.length === 0) return [];
+  const stride = 1 + (seed % Math.max(1, items.length - 1));
+  const start = seed % items.length;
+  const out: ContentTemplate[] = [];
+  for (let i = 0; out.length < Math.min(count, items.length); i++) {
+    const next = items[(start + i * stride) % items.length];
+    if (!out.includes(next)) out.push(next);
+  }
+  return out;
+}
+
+function dedupe(items: ContentTemplate[]): ContentTemplate[] {
+  const seen = new Set<string>();
+  return items.filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
 }
 
 interface SparkPanelProps {
@@ -86,26 +111,29 @@ interface SparkPanelProps {
 }
 
 /**
- * Every topic, on screen, one tap away.
+ * Five ideas, with the whole library one press behind them.
  *
  * This was three tabs over a grid of six cards with a dropdown underneath
- * holding the rest — a design that showed you a sixth of what it had and made
- * the other twenty-four a hunt through two controls. The tabs are gone, and
- * with them the cards, the Shuffle that reordered which six appeared, and the
- * "Browse more sparks" picker that existed only to reach what the cards were
- * hiding. All thirty are chips now, grouped rather than in one flat wall so
- * that Pros & Cons does not sit next to Farmers Markets with nothing between
- * them.
+ * holding the rest, then thirty-two chips in groups — a sixth of the library
+ * behind two controls, or all of it at once. Both asked the same wrong thing:
+ * read everything before choosing anything. Somebody who came here to make a
+ * video today does not want a catalogue, they want a suggestion.
  *
- * Nothing is lost by showing everything: these are short labels, not cards,
- * and the whole set costs about the vertical space the six cards did.
+ * So five chips and a Shuffle, with More ideas holding the search and the full
+ * grouped library for anyone who does want to browse. Nothing is hidden that
+ * was reachable before; it is one press further away and the press is labelled.
  */
 export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  /**
+   * Drawn once per visit, and again whenever Shuffle is pressed. In state
+   * rather than computed inline so the five hold still while the page is being
+   * read — a set that changes on every render cannot be pointed at.
+   */
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9973));
 
-  // Same five all day, different five next month — see shortlistFor.
-  const shortlist = useMemo(() => shortlistFor(city, new Date().getMonth()), [city]);
+  const shortlist = useMemo(() => shortlistFor(city, seed), [city, seed]);
 
   /**
    * Searching beats scanning past about a dozen options, and the library only
@@ -151,12 +179,26 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       </div>
 
       {!open && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {shortlist.map((t) => (
             <button key={t.id} type="button" onClick={() => pick(t)} title={t.description} className={chip}>
               {SHORT_LABELS[t.id] ?? t.label}
             </button>
           ))}
+          {/* Another five, for when none of these is it. Cheaper than reading
+              the whole library, and the reason the draw is random in the first
+              place. */}
+          <button
+            type="button"
+            // Stepped rather than re-rolled, so a press always lands on a
+            // different draw — a Shuffle that can return the same five reads as
+            // a broken button.
+            onClick={() => setSeed((n) => n + 1 + Math.floor(Math.random() * 7))}
+            title="Show me five more"
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-[12px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
+          >
+            <Shuffle size={12} /> Shuffle
+          </button>
         </div>
       )}
 
