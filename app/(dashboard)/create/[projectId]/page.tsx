@@ -103,6 +103,11 @@ interface AiScript {
   /** Chosen before the script was written — currently only by the listing
    *  form, where "voice only" gives the property photos the whole frame. */
   render_mode?: "voice_only" | "avatar_voice";
+  /** Written by the article importer, and by nothing else: this project's
+   *  article came from a PDF, a URL, an email or a paste rather than being
+   *  written here alongside a script. Article text alone does not mean this —
+   *  every AI-written script produces a blog on the same pass. */
+  imported?: boolean;
 }
 
 interface SeoData {
@@ -2494,8 +2499,17 @@ export default function ProjectEditorPage() {
                     </button>
                   </div>
                 </div>
-                {/* Only where an article exists to write from. */}
-                {(project.ai_script?.blog_intro || project.ai_script?.blog_body) && (
+                {/* Only on an imported article.
+                    This asked whether the project HAD article text, which is
+                    true of almost everything: generate-location-script writes
+                    a blog on the same pass as the script. So a perfectly good
+                    AI-written script sat above two buttons offering to replace
+                    it "using only what the article says" — an article the
+                    agent never imported — next to a Regenerate that already
+                    does the rewriting. Only a project made FROM an article has
+                    a source to rewrite from. */}
+                {project.ai_script?.imported &&
+                  (project.ai_script?.blog_intro || project.ai_script?.blog_body) && (
                   <div className="mt-2 px-1">
                     {/* Both lengths, not just the long one.
                         An article imported as it is arrives with no script at
