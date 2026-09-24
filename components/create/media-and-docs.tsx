@@ -406,11 +406,14 @@ export function ArticleSource({
 
           {/* The email picker says its own piece — the address, the 30 days, and
               what to forward — so a line here would only repeat it. */}
-          {doc.mode !== "email" && (
+          {/* Says what THIS way in does, on the route it is actually on.
+              Paste text showed "Web page content will be extracted" — nothing
+              is fetched, and on the blog route no video is made either. */}
+          {(doc.mode === "upload" || doc.mode === "url") && (
             <p className="text-[11px] text-spark-ink-faint mt-1">
               {doc.mode === "upload"
-                ? "PDF content will be extracted and used to enrich your video."
-                : "Web page content will be extracted and used to enrich your video."}
+                ? `PDF content will be extracted${purpose === "article" ? " and used to write your article." : " and used to enrich your video."}`
+                : `Web page content will be extracted${purpose === "article" ? " and used to write your article." : " and used to enrich your video."}`}
             </p>
           )}
         </div>
