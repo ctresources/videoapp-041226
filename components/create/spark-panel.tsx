@@ -165,10 +165,29 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
       id="spark-panel"
       className="scroll-mt-6 rounded-b-[22px] border border-t-0 border-spark-rule bg-[#f4f2e8] px-4 py-3.5 sm:px-5"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[15px] font-semibold text-spark-ink">
-          {open ? "All topics, ideas & templates" : "Need an Idea for a Topic?"}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex items-center gap-3">
+          <p className="text-[15px] font-semibold text-spark-ink">
+            {open ? "All topics, ideas & templates" : "Need an Idea for a Topic?"}
+          </p>
+          {/* Beside the heading rather than at the end of the chips, where it
+              wrapped onto the same line as More ideas and the two read as a
+              pair — they do opposite jobs. Here it belongs to the five it
+              redraws, and the row below is nothing but ideas. */}
+          {!open && (
+            <button
+              type="button"
+              // Stepped rather than re-rolled, so a press always lands on a
+              // different draw — a Shuffle that can return the same five reads
+              // as a broken button.
+              onClick={() => setSeed((n) => n + 1 + Math.floor(Math.random() * 7))}
+              title="Show me five more"
+              className="flex items-center gap-1.5 text-[14px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
+            >
+              <Shuffle size={14} /> Shuffle
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => { setOpen((v) => !v); setQuery(""); }}
@@ -185,20 +204,6 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
               {SHORT_LABELS[t.id] ?? t.label}
             </button>
           ))}
-          {/* Another five, for when none of these is it. Cheaper than reading
-              the whole library, and the reason the draw is random in the first
-              place. */}
-          <button
-            type="button"
-            // Stepped rather than re-rolled, so a press always lands on a
-            // different draw — a Shuffle that can return the same five reads as
-            // a broken button.
-            onClick={() => setSeed((n) => n + 1 + Math.floor(Math.random() * 7))}
-            title="Show me five more"
-            className="flex items-center gap-1.5 rounded-full px-2 py-1 text-[14px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
-          >
-            <Shuffle size={14} /> Shuffle
-          </button>
         </div>
       )}
 
