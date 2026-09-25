@@ -17,6 +17,25 @@ export type ImageUploadKind =
   | "thumbBg"
   | "imageBg";
 
+/**
+ * What each upload is cropped to fill, said next to the button.
+ *
+ * Every picture here is centre-cropped to fill its frame and never stretched,
+ * so a photo smaller than these is upscaled and goes soft — and one of the
+ * wrong shape loses its edges. Nobody can guess either of those from an Upload
+ * button, and the sizes were only ever written down in the renderers.
+ *
+ * Bigger is always fine: it is scaled down. The image generator is absent
+ * because its target changes with the shape chosen on screen.
+ */
+export const UPLOAD_TARGET: Record<Exclude<ImageUploadKind, "imageBg">, string> = {
+  logo: "Any size · PNG with a transparent background",
+  headshot: "480 × 640 or larger · head and shoulders, plain background",
+  banner: "800 × 700 or larger",
+  thumb: "480 × 640 or larger · head and shoulders, plain background",
+  thumbBg: "1280 × 720 or larger · landscape",
+};
+
 export async function uploadImage(file: File, kind: ImageUploadKind): Promise<string> {
   const form = new FormData();
   form.append("file", file);

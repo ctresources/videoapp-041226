@@ -9,7 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { uploadImage } from "@/lib/utils/upload-image";
+import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import {
   BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
   type BannerBlock, type BannerLayout, type BlockAdjust,
@@ -1295,6 +1295,9 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             <span className="text-[10px] text-slate-500">{photoUploading ? "Uploading…" : "Upload"}</span>
           </button>
         </div>
+        {/* The size it is cropped to. A photo below this is upscaled and goes
+            soft, which is only ever discovered after the image is made. */}
+        <p className="mt-1 text-[10.5px] text-slate-400">{UPLOAD_TARGET.thumb}</p>
         <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
       </div>
 
@@ -1338,6 +1341,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
               <span className="text-[10px] text-slate-500 font-medium">
                 {bgUploading ? "Uploading…" : "Upload Photo"}
               </span>
+              <span className="text-[9.5px] leading-tight text-slate-400">{UPLOAD_TARGET.thumbBg}</span>
             </button>
           )}
         </div>
@@ -1762,6 +1766,7 @@ function BannerGenerator() {
             >
               {photoUploading ? <Loader2 size={16} className="text-primary-500 animate-spin" /> : <Upload size={16} className="text-slate-400" />}
               <span className="text-[10px] text-slate-500 font-medium">{photoUploading ? "Uploading…" : "Add Photo"}</span>
+              <span className="text-[9.5px] leading-tight text-slate-400">{UPLOAD_TARGET.banner}</span>
             </button>
           )}
         </div>
@@ -1973,6 +1978,13 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
 // address is never misspelled the way an image model spells.
 
 type ImageTemplateId = "just_listed" | "open_house" | "market_update" | "blog_header" | "blank";
+
+/** What each shape is cropped to fill — see IMAGE_SHAPES in image-render.ts. */
+const IMAGE_SHAPE_PX: Record<string, string> = {
+  post_4x5: "1080 × 1350",
+  story_9x16: "1080 × 1920",
+  wide_16x9: "1920 × 1080",
+};
 type ImageShapeId = "post_4x5" | "story_9x16" | "wide_16x9";
 type ImageBgSource = "ai" | "listing" | "upload";
 interface MadeImage { id: string; url: string; backgroundUrl: string }
@@ -2268,7 +2280,12 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
           <span className="block text-sm font-semibold text-slate-800 flex items-center gap-1.5">
             {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} My photo
           </span>
-          <span className="block text-xs text-slate-500">{uploadedBg ? "Uploaded · free" : "Upload · free"}</span>
+          {/* Read off the chosen shape rather than written down: the three
+              shapes are three different crops, and a fixed number here would
+              be wrong two times out of three. */}
+          <span className="block text-xs text-slate-500">
+            {uploadedBg ? "Uploaded · free" : `Upload · ${IMAGE_SHAPE_PX[shape]} or larger`}
+          </span>
         </button>
         <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
       </div>
@@ -2301,7 +2318,17 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
         <div className="mb-5 flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={uploadedBg} alt="Your photo" className="h-16 w-24 rounded-lg object-cover border border-slate-200" />
-          <button type="button" onClick={() => bgFileRef.current?.click()} className="text-xs font-semibold text-primary-600 hover:text-primary-700">Use a different photo</button>
+          <div className="min-w-0">
+            <button type="button" onClick={() => bgFileRef.current?.click()} className="text-xs font-semibold text-primary-600 hover:text-primary-700">Use a different photo</button>
+            {/* Said after the upload as well as before it, because this is when
+                it matters: the photo is centre-cropped to FILL the shape, so a
+                portrait report in a 16:9 frame loses its top and bottom, and
+                the only clue is the picture itself. */}
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              Cropped from the centre to fill {IMAGE_SHAPE_PX[shape]}. A tall photo in a wide
+              shape loses its top and bottom — crop it first, or pick a shape that matches it.
+            </p>
+          </div>
         </div>
       )}
 

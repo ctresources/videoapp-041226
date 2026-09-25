@@ -247,6 +247,10 @@ export function TalkingAvatarUploader({
           <p className="text-xs text-slate-400 mt-0.5">
             Appears as a talking avatar in your videos · Front-facing, plain background
           </p>
+          {/* The size, beside the button that asks for it. This photo is
+              cropped and composited in several places; below 480x640 it is
+              upscaled, and a soft face is the one flaw people notice. */}
+          <p className="text-xs text-slate-400 mt-0.5">1000 x 1000 or larger works everywhere · 480 x 640 is the minimum</p>
           <p className="text-xs text-slate-400 mt-1">
             📐 We auto-crop to a square so one photo works for YouTube (16:9) and Reels (9:16).
             Mostly making widescreen videos? Add a look from a <strong>horizontal (landscape)</strong> photo
@@ -1391,7 +1395,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
           <div className="sm:col-span-2">
             <ImageUploader
               label="Brokerage Logo"
-              hint="Appears as a watermark on your videos. PNG with transparent background recommended."
+              hint="Appears as a watermark on your videos. PNG with transparent background recommended. Any size."
               kind="logo"
               currentUrl={fields.logo_url || null}
               onUploaded={(url) => set("logo_url", url)}
