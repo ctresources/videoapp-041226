@@ -1977,7 +1977,7 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
 // on it is typed here and drawn as real type on the server, so a price or an
 // address is never misspelled the way an image model spells.
 
-type ImageTemplateId = "just_listed" | "open_house" | "market_update" | "blog_header" | "blank";
+type ImageTemplateId = "just_listed" | "open_house" | "market_update" | "market_report" | "blog_header" | "blank";
 
 /** What each shape is cropped to fill — see IMAGE_SHAPES in image-render.ts. */
 const IMAGE_SHAPE_PX: Record<string, string> = {
@@ -1999,6 +1999,9 @@ const IMAGE_TEMPLATE_OPTIONS: {
     headlineHint: "Sunday, 1 to 3 PM", sublineHint: "24 Shagbark Court, Harleysville", sceneHint: "Front porch with the door open" },
   { id: "market_update", label: "Market update", note: "One stat, big", kicker: "Market update", shape: "post_4x5",
     headlineHint: "Homes sold in 18 days in August", sublineHint: "Harleysville, PA", sceneHint: "Tree-lined street of colonials in autumn" },
+  { id: "market_report", label: "Market report", note: "Four stats, from your article", kicker: "Market report", shape: "post_4x5",
+    headlineHint: "Market Update — Blue Bell, PA", sublineHint: "",
+    sceneHint: "Leave empty — a calm scene suits four numbers" },
   { id: "blog_header", label: "Blog header", note: "From an article", kicker: "", shape: "wide_16x9",
     // Not a room. The header should be about the article, and the hint is
     // half of how anyone learns that this box takes a subject rather than a
@@ -2025,6 +2028,9 @@ function imageTextFromProject(p: Project | null, t: ImageTemplateId): { headline
     case "just_listed": return { headline: p.listing_data?.price || "", subline: address || place };
     case "open_house": return { headline: "", subline: address || place };
     case "market_update": return { headline: "", subline: place };
+    // The card names the market and the piece it came from; the figures
+    // arrive separately, from the article's own words.
+    case "market_report": return { headline: p.ai_script?.blog_headline || (place ? `Market Update — ${place}` : p.title || ""), subline: "" };
     case "blog_header": return { headline: p.ai_script?.blog_headline || p.title || "", subline: "" };
     default: return { headline: "", subline: "" };
   }
@@ -2052,6 +2058,18 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
    * the edges and a choice there would be a control that does nothing.
    */
   const [fitWhole, setFitWhole] = useState(false);
+  /**
+   * The four figures, and where they came from.
+   *
+   * Always four rows on screen, filled or not: a card with three stats is a
+   * fine card, and an empty row makes it obvious that the fourth was not found
+   * rather than silently dropped. Nothing is drawn from a row nobody has seen.
+   */
+  const [stats, setStats] = useState<{ label: string; value: string }[]>(
+    [0, 1, 2, 3].map(() => ({ label: "", value: "" })),
+  );
+  const [statsBusy, setStatsBusy] = useState(false);
+  const [statSource, setStatSource] = useState("");
   const [uploading, setUploading] = useState(false);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<MadeImage[]>([]);
@@ -2191,6 +2209,8 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       subline: subline.trim(),
       accent, showLogo, showHeadshot,
       fit: fitWhole ? "whole" : "fill",
+      stats: stats.filter((st) => st.label.trim() && st.value.trim()),
+      source: statSource.trim(),
       projectId: projectId || undefined,
       city: project?.location_city || undefined,
       state: project?.location_state || undefined,
@@ -2213,9 +2233,41 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     return data;
   }
 
+  /**
+   * Read the article's figures into the boxes.
+   *
+   * Into the boxes, not onto an image: these are market claims, and the person
+   * publishing them gets to see each one before it is set in type. A figure
+   * the article does not state comes back empty rather than estimated.
+   */
+  async function readStats() {
+    if (!projectId) { toast.error("Pick a project above first."); return; }
+    setStatsBusy(true);
+    try {
+      const data = await call({ action: "stats", ...fields() });
+      if (!data) return;
+      const found: { label: string; value: string }[] = Array.isArray(data.stats) ? data.stats : [];
+      setStats([0, 1, 2, 3].map((i) => found[i] ?? { label: "", value: "" }));
+      if (data.period && !kicker.trim()) setKicker(String(data.period));
+      toast.success(
+        found.length
+          ? `Found ${found.length} figure${found.length === 1 ? "" : "s"} — check them before making the image.`
+          : "No figures found in this article. Type them in.",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not read the article");
+    } finally {
+      setStatsBusy(false);
+    }
+  }
+
   async function generate() {
     if (bgSource === "listing" && !photoForRequest) { toast.error("Pick a project with listing photos, or use another background."); return; }
     if (bgSource === "upload" && !uploadedBg) { toast.error("Upload a photo first."); return; }
+    if (template === "market_report" && !stats.some((st) => st.label.trim() && st.value.trim())) {
+      toast.error("Add at least one figure — press Read the article, or type one in.");
+      return;
+    }
     if (bgSource === "ai" && !scene.trim() && !headline.trim() && !kicker.trim() && !subline.trim()) {
       toast.error("Describe the image or type a headline first.");
       return;
@@ -2377,6 +2429,57 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
                 the only clue is the picture itself. */}
             {fitPicker}
           </div>
+        </div>
+      )}
+
+      {template === "market_report" && (
+        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-700">The four figures</p>
+            <button
+              type="button"
+              onClick={readStats}
+              disabled={statsBusy || !projectId}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
+            >
+              {statsBusy ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+              {statsBusy ? "Reading…" : "Read the article"}
+            </button>
+          </div>
+          {/* Said plainly, because these go out as market claims under the
+              agent's name: nothing reaches the card that is not in one of
+              these boxes, and nothing fills a box but the article or them. */}
+          <p className="mt-1 text-[11px] leading-[1.5] text-slate-400">
+            Only figures the article actually states are filled in — nothing is estimated.
+            Check each one, edit anything, and leave a row empty to drop it.
+          </p>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {stats.map((st, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <input
+                  value={st.label}
+                  onChange={(e) => setStats((prev) => prev.map((row, j) => (j === i ? { ...row, label: e.target.value } : row)))}
+                  placeholder={["Median sold price", "Months of inventory", "Days on market", "Sold-to-list price"][i]}
+                  maxLength={28}
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+                <input
+                  value={st.value}
+                  onChange={(e) => setStats((prev) => prev.map((row, j) => (j === i ? { ...row, value: e.target.value } : row)))}
+                  placeholder={["$732,500", "1.69", "5 days", "101.7%"][i]}
+                  maxLength={14}
+                  className="w-28 flex-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+              </div>
+            ))}
+          </div>
+          <input
+            value={statSource}
+            onChange={(e) => setStatSource(e.target.value)}
+            placeholder="Source (optional) — e.g. Bright MLS, September 2026"
+            maxLength={80}
+            className="mt-2 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
+          />
         </div>
       )}
 

@@ -29,8 +29,14 @@ export const IMAGE_SHAPES = {
 };
 export type ImageShape = keyof typeof IMAGE_SHAPES;
 
-export const IMAGE_TEMPLATES = ["just_listed", "open_house", "market_update", "blog_header", "blank"] as const;
+export const IMAGE_TEMPLATES = ["just_listed", "open_house", "market_update", "market_report", "blog_header", "blank"] as const;
 export type ImageTemplate = (typeof IMAGE_TEMPLATES)[number];
+
+/** One figure on a market-report card: what it is, and what it says. */
+export interface ImageStat {
+  label: string;
+  value: string;
+}
 
 export interface ImageText {
   kicker?: string;
@@ -40,6 +46,17 @@ export interface ImageText {
   accent?: string;
   showLogo?: boolean;
   showHeadshot?: boolean;
+  /**
+   * Figures for the market-report card, drawn as real type.
+   *
+   * Never generated, never inferred: these are whatever the agent has in the
+   * boxes on screen, which start from what the article itself said. A number
+   * on one of these cards is a market claim going out under their name, so the
+   * only thing that may put one there is a person.
+   */
+  stats?: ImageStat[];
+  /** Optional attribution under the figures, e.g. "Bright MLS, September 2026". */
+  source?: string;
 }
 
 let _font: opentypeNs.Font | null = null;
@@ -209,6 +226,74 @@ export async function makeBackground(opts: {
   return { url: publicUrl(admin, p), ai };
 }
 
+/**
+ * The figures block on a market-report card.
+ *
+ * Each stat is its own light card — a label in small grey type and the value
+ * large above it — with a bar of the accent colour down its left edge. Two
+ * across on a wide frame, stacked on a tall one, because four rows of numbers
+ * in a 16:9 header would be four thin lines nobody reads at thumbnail size.
+ *
+ * Every size is derived from the frame rather than fixed, so the same code
+ * draws a 1920x1080 header, a 1080x1350 post and a 1080x1920 story without
+ * three layouts to keep in step.
+ */
+function statCards(
+  stats: ImageStat[],
+  opts: { x: number; y: number; w: number; maxH: number; landscape: boolean; accent: string },
+): { svg: string; height: number } {
+  const { x, y, w, landscape, accent } = opts;
+  const cols = landscape ? 2 : 1;
+  const rows = Math.ceil(stats.length / cols);
+  const gapX = Math.round(w * 0.025);
+  const gapY = Math.round(w * (landscape ? 0.022 : 0.018));
+  const cardW = Math.round((w - (cols - 1) * gapX) / cols);
+  /**
+   * Proportional to the card's width, unless the frame is the tighter
+   * constraint — a 16:9 header with a title above the figures has room for
+   * two rows, not two rows of whatever height looks right in isolation.
+   * Without this the fourth stat is drawn off the bottom edge, which is the
+   * kind of thing that only shows up in the finished picture.
+   */
+  const cardH = Math.max(
+    Math.round(cardW * 0.12),
+    Math.min(
+      Math.round(cardW * (landscape ? 0.26 : 0.19)),
+      Math.floor((opts.maxH - (rows - 1) * gapY) / rows),
+    ),
+  );
+  const pad = Math.round(cardH * 0.17);
+  const bar = Math.max(5, Math.round(cardW * 0.012));
+
+  const labelSize = Math.round(cardH * 0.18);
+  const valueMax = Math.round(cardH * 0.42);
+
+  const parts: string[] = [];
+  stats.forEach((stat, i) => {
+    const cx = x + (i % cols) * (cardW + gapX);
+    const cy = y + Math.floor(i / cols) * (cardH + gapY);
+    const inner = cardW - pad * 2 - bar;
+    // The value sets its own size: "$1,245,000" cannot be the same size as
+    // "5" without one of them either overflowing or looking lost.
+    const value = fitWrapped(stat.value, inner, valueMax, Math.round(valueMax * 0.55), 1);
+    const label = fitWrapped(stat.label.toUpperCase(), inner, labelSize, Math.round(labelSize * 0.7), 1);
+
+    parts.push(
+      `<rect x="${cx}" y="${cy}" width="${cardW}" height="${cardH}" rx="${Math.round(cardH * 0.16)}" fill="#ffffff" fill-opacity="0.93"/>`,
+      `<rect x="${cx}" y="${cy}" width="${bar}" height="${cardH}" rx="${Math.round(bar / 2)}" fill="${accent}"/>`,
+    );
+    const tx = cx + bar + pad;
+    if (label.lines[0]) {
+      parts.push(lineToPaths(label.lines[0], tx, cy + pad + label.size, label.size, "#64748b"));
+    }
+    if (value.lines[0]) {
+      parts.push(lineToPaths(value.lines[0], tx, cy + cardH - pad - Math.round(value.size * 0.12), value.size, "#0f172a"));
+    }
+  });
+
+  return { svg: parts.join("\n"), height: rows * cardH + (rows - 1) * gapY };
+}
+
 /** Draws the words, logo and headshot over a background and uploads the result. */
 export async function renderImage(opts: {
   userId: string;
@@ -230,6 +315,8 @@ export async function renderImage(opts: {
   const kicker = (opts.text.kicker || "").trim().toUpperCase();
   const headline = (opts.text.headline || "").trim();
   const subline = (opts.text.subline || "").trim();
+  const stats = (opts.text.stats ?? []).filter((s) => s.label.trim() && s.value.trim()).slice(0, 4);
+  const source = (opts.text.source || "").trim();
 
   const M = Math.round(Math.min(w, h) * 0.07);
 
@@ -281,6 +368,94 @@ export async function renderImage(opts: {
     : { size: 0, lines: [] as string[] };
   const subLH = Math.round(sub.size * 1.3);
 
+  /**
+   * A card of figures reads top-down, not bottom-up.
+   *
+   * Everything else this renderer draws is a caption on a photograph, so it
+   * sits at the bottom with a scrim under it. A market report is the opposite:
+   * the title says what these numbers are and has to come first, the figures
+   * are the subject rather than an overlay, and the whole thing wants an even
+   * dark ground rather than a gradient that fades out where the numbers are.
+   */
+  if (stats.length) {
+    const parts: string[] = [];
+    /**
+     * The title sits BESIDE the headshot, not under it.
+     *
+     * Under it costs two hundred pixels of a 1080-tall frame before a single
+     * figure is drawn, and the figures are the point. Beside it, the ring and
+     * the title read as one masthead across the top.
+     */
+    const ringD = opts.text.showHeadshot && prof?.avatar_url
+      ? Math.round(Math.min(w, h) * 0.17) + Math.max(6, Math.round(Math.min(w, h) * 0.17 * 0.035)) * 2
+      : 0;
+    const tx = M + (ringD ? ringD + Math.round(M * 0.4) : 0);
+    const titleW = w - tx - M;
+    let ty = M;
+
+    if (kicker) {
+      const pillW = Math.round(textWidth(kicker, kSize) + kPadX * 2);
+      parts.push(`<rect x="${tx}" y="${ty}" width="${pillW}" height="${kH}" rx="${Math.round(kH / 2)}" fill="${accent}"/>`);
+      parts.push(lineToPaths(kicker, tx + kPadX, ty + Math.round(kH * 0.68), kSize, inkFor(accent)));
+      ty += kH + Math.round(gap * 0.6);
+    }
+    /**
+     * Smaller than a photo caption's headline, and at most two lines.
+     *
+     * Here it is a title over a set of figures rather than the thing being
+     * read, and a three-line hero headline would push the numbers off the
+     * frame — which is precisely what a market card cannot afford.
+     */
+    const title = headline
+      ? fitWrapped(headline, titleW, Math.round(w * (landscape ? 0.038 : 0.06)), Math.round(w * (landscape ? 0.024 : 0.038)), 2)
+      : { size: 0, lines: [] as string[] };
+    if (title.lines.length) {
+      const lh = Math.round(title.size * 1.14);
+      title.lines.forEach((line, i) => {
+        parts.push(lineToPaths(line, tx, ty + Math.round(title.size * 0.92) + i * lh, title.size, "#ffffff"));
+      });
+      ty += title.lines.length * lh;
+    }
+
+    // Never above the headshot's own bottom edge, or two stats would sit
+    // beside a face on a wide frame.
+    ty = Math.max(ty, M + ringD) + Math.round(gap * 1.1);
+
+    const sourceSize = source ? Math.round(w * (landscape ? 0.014 : 0.022)) : 0;
+    const sourceH = source ? Math.round(sourceSize * 2.6) : 0;
+    const room = h - M - ty - sourceH;
+    const cards = statCards(stats, { x: M, y: ty, w: w - 2 * M, maxH: room, landscape, accent });
+    // Left-over height shared rather than pooled at the bottom: on a 9:16
+    // story the figures would otherwise cling to the title with a third of the
+    // frame empty beneath them.
+    const slack = Math.max(0, room - cards.height);
+    if (slack > 0) {
+      ty += Math.round(slack * 0.45);
+      const shifted = statCards(stats, { x: M, y: ty, w: w - 2 * M, maxH: cards.height, landscape, accent });
+      parts.push(shifted.svg);
+      ty += shifted.height;
+    } else {
+      parts.push(cards.svg);
+      ty += cards.height;
+    }
+
+    if (source) {
+      // Small, grey, under the figures: an attribution, not a claim of its own.
+      parts.push(lineToPaths(`Source: ${source}`, M, ty + Math.round(sourceSize * 1.9), sourceSize, "#cbd5e1"));
+    }
+
+    const overlaySvg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${w}" height="${h}" fill="#0b1220" fill-opacity="0.62"/>
+  ${parts.join("\n")}
+</svg>`;
+
+    return await composeAndUpload({
+      admin, sharp, base, w, h, M, overlay: Buffer.from(overlaySvg),
+      userId: opts.userId, logo,
+      headshot: opts.text.showHeadshot ? prof?.avatar_url ?? null : null,
+    });
+  }
+
   const blocks: number[] = [];
   if (kicker) blocks.push(kH);
   if (hl.lines.length) blocks.push(hl.lines.length * hlLH);
@@ -322,20 +497,48 @@ export async function renderImage(opts: {
   ${parts.join("\n")}
 </svg>`;
 
+  return await composeAndUpload({
+    admin, sharp, base, w, h, M, overlay: Buffer.from(overlay),
+    userId: opts.userId, logo,
+    headshot: opts.text.showHeadshot ? prof?.avatar_url ?? null : null,
+  });
+}
+
+/**
+ * The last step both layouts share: overlay, brand marks, upload.
+ *
+ * Extracted when the market-report card arrived. Everything above it differs
+ * between a caption on a photograph and a card of figures; everything from
+ * here down — the logo plate bottom right, the ringed headshot top left, the
+ * JPEG, the storage path — is the same picture furniture either way, and two
+ * copies of it would have drifted apart by the second change.
+ */
+async function composeAndUpload(o: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharp: any;
+  base: Buffer;
+  w: number; h: number; M: number;
+  overlay: Buffer;
+  userId: string;
+  logo: { image: Buffer; plate: Buffer; plateW: number; plateH: number; pad: number } | null;
+  headshot: string | null;
+}): Promise<string> {
+  const { admin, sharp, base, w, h, M } = o;
   const composites: { input: Buffer; left: number; top: number }[] = [
-    { input: Buffer.from(overlay), left: 0, top: 0 },
+    { input: o.overlay, left: 0, top: 0 },
   ];
 
-  if (logo) {
-    const top = h - M - logo.plateH;
-    composites.push({ input: logo.plate, left: w - M - logo.plateW, top });
-    composites.push({ input: logo.image, left: w - M - logo.plateW + logo.pad, top: top + logo.pad });
+  if (o.logo) {
+    const top = h - M - o.logo.plateH;
+    composites.push({ input: o.logo.plate, left: w - M - o.logo.plateW, top });
+    composites.push({ input: o.logo.image, left: w - M - o.logo.plateW + o.logo.pad, top: top + o.logo.pad });
   }
 
   // Headshot, top left, in a white ring.
-  if (opts.text.showHeadshot && prof?.avatar_url) {
+  if (o.headshot) {
     try {
-      const res = await fetch(prof.avatar_url);
+      const res = await fetch(o.headshot);
       if (res.ok) {
         const d = Math.round(Math.min(w, h) * 0.17);
         const ring = Math.max(6, Math.round(d * 0.035));
@@ -354,8 +557,8 @@ export async function renderImage(opts: {
   }
 
   const out = await sharp(base).composite(composites).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
-  const p = `images/${opts.userId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const { error } = await admin.storage.from("assets").upload(p, out, { contentType: "image/jpeg", upsert: false });
+  const path = `images/${o.userId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await admin.storage.from("assets").upload(path, out, { contentType: "image/jpeg", upsert: false });
   if (error) throw new Error(error.message);
-  return publicUrl(admin, p);
+  return publicUrl(admin, path);
 }

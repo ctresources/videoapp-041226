@@ -122,6 +122,9 @@ const TEMPLATE_MOOD: Record<string, string> = {
   just_listed: "an inviting, well-lit photograph of a home's most appealing room or its exterior, the shot a listing leads with",
   open_house: "a welcoming home exterior or front entry in warm daylight, with the walkway or front door in view",
   market_update: "a wide, calm view over a residential neighborhood or a small-town main street",
+  // Quiet on purpose: four white cards of figures sit over this, and a busy
+  // scene behind them turns the whole card into noise.
+  market_report: "a calm, uncluttered photograph with large plain areas — a wide sky over rooftops, a quiet street, a still table — that will sit behind large numbers",
   blog_header: "an editorial lifestyle photograph of a home that sets the scene for an article",
   blank: "a clean, premium real estate lifestyle photograph",
 };

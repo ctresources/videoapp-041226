@@ -8,12 +8,13 @@ import {
 } from "@/lib/utils/image-render";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 import { photoBriefFor } from "@/lib/api/photo-brief";
+import { marketStatsFrom } from "@/lib/api/market-stats";
 
 // Two AI backgrounds in parallel, each up to a minute, then two renders.
 export const maxDuration = 180;
 
 interface Body {
-  action?: "generate" | "rerender" | "attach";
+  action?: "generate" | "rerender" | "attach" | "stats";
   template?: string;
   shape?: string;
   scene?: string;
@@ -37,6 +38,10 @@ interface Body {
   /** attach */
   imageUrl?: string;
   target?: "blog_header" | "share_kit";
+  /** market_report: the four figures, as they appear in the boxes on screen. */
+  stats?: { label?: string; value?: string }[];
+  /** market_report: optional attribution under the figures. */
+  source?: string;
 }
 
 interface ProjectRow {
@@ -130,6 +135,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── stats ─────────────────────────────────────────────────────────────────
+  //
+  // Reads the project's article and hands back the figures it states, for the
+  // boxes on screen. Deliberately its own action rather than part of generate:
+  // they are offered for checking BEFORE an image exists, and nothing is drawn
+  // from them until the agent presses the button.
+  if (body.action === "stats") {
+    if (!project) return NextResponse.json({ error: "Pick a project first." }, { status: 400 });
+    const ai = (project.ai_script ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    const result = await marketStatsFrom({
+      headline: str(ai.blog_headline) || str(ai.title) || "",
+      body: [str(ai.blog_intro), str(ai.blog_body), str(ai.blog_conclusion), str(ai.script)]
+        .filter(Boolean)
+        .join(" "),
+      city: body.city,
+      state: body.state,
+    });
+    return NextResponse.json(result);
+  }
+
   // ── generate / rerender ───────────────────────────────────────────────────
   const template: ImageTemplate = (IMAGE_TEMPLATES as readonly string[]).includes(body.template ?? "")
     ? (body.template as ImageTemplate)
@@ -142,6 +168,14 @@ export async function POST(req: NextRequest) {
     accent: body.accent,
     showLogo: body.showLogo !== false,
     showHeadshot: !!body.showHeadshot,
+    // Whatever is in the boxes, trimmed to what a card can hold. Nothing here
+    // is filled in on the server: a figure nobody typed is a figure nobody
+    // checked, and these go out as market claims.
+    stats: (body.stats ?? [])
+      .map((s) => ({ label: String(s?.label ?? "").slice(0, 28).trim(), value: String(s?.value ?? "").slice(0, 14).trim() }))
+      .filter((s) => s.label && s.value)
+      .slice(0, 4),
+    source: (body.source || "").slice(0, 80).trim(),
   };
   /**
    * What the picture is of.
