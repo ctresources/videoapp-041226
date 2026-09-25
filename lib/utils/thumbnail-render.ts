@@ -343,6 +343,9 @@ export async function renderAndSaveThumbnail(
       const res = await fetch(opts.backgroundUrl);
       if (res.ok) {
         baseBuffer = await sharp(Buffer.from(await res.arrayBuffer()))
+          // EXIF first: a phone portrait is a landscape buffer plus a tag, so
+          // cropping without this crops the sideways frame.
+          .rotate()
           .resize(W, H, { fit: "cover" })
           .png()
           .toBuffer();
@@ -523,6 +526,7 @@ export async function renderAndSaveThumbnail(
 
       if (photoInput) {
         const photo = await sharp(photoInput)
+          .rotate()
           .resize({ width: 480, height: 640, fit: "inside" })
           .png()
           .toBuffer();

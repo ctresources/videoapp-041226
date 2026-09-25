@@ -45,6 +45,9 @@ export async function makeFormatCrops(
 
     const upload = async (size: { width: number; height: number }, label: string) => {
       const out = await sharp(buf)
+        // EXIF orientation, before "attention" picks where to crop — it was
+        // choosing the interesting part of a sideways picture.
+        .rotate()
         .resize({ ...size, fit: "cover", position: "attention" })
         .jpeg({ quality: 92 })
         .toBuffer();

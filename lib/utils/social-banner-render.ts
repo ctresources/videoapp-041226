@@ -201,7 +201,8 @@ async function fetchImage(sharp: any, url: string): Promise<Buffer | null> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function roundedPhoto(sharp: any, src: Buffer, bw: number, bh: number, radius: number): Promise<Buffer | null> {
   try {
-    const filled = await sharp(src).resize(bw, bh, { fit: "cover" }).png().toBuffer();
+    // See banner-render: EXIF orientation, applied before the crop.
+    const filled = await sharp(src).rotate().resize(bw, bh, { fit: "cover" }).png().toBuffer();
     const mask = Buffer.from(
       `<svg width="${bw}" height="${bh}"><rect width="${bw}" height="${bh}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`,
     );

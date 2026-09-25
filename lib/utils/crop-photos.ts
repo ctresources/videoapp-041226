@@ -67,8 +67,15 @@ export async function cropPhotosToAspect(
   return Promise.all(
     photoUrls.map(async (src) => {
       try {
-        // Deterministic destination: identical source + aspect reuses the crop.
-        const key = createHash("sha1").update(`${src}|${targetAspect.toFixed(4)}`).digest("hex").slice(0, 16);
+        /**
+         * Deterministic destination: identical source + aspect reuses the crop.
+         *
+         * The "v2" is the EXIF fix below. Every photo cropped before it was
+         * measured sideways, and the wrong result is sitting at the old path —
+         * where the HEAD check below would happily go on serving it. A new key
+         * is how a fix reaches photos that have already been through here.
+         */
+        const key = createHash("sha1").update(`${src}|${targetAspect.toFixed(4)}|v2`).digest("hex").slice(0, 16);
         const path = `${userId}/video-photos/crop/${key}.jpg`;
         const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
 
@@ -80,7 +87,21 @@ export async function cropPhotosToAspect(
         if (!res.ok) throw new Error(`fetch ${res.status}`);
         const input = Buffer.from(await res.arrayBuffer());
 
-        const meta = await sharp(input).metadata();
+        /**
+         * Measured as the eye sees it, not as the file stores it.
+         *
+         * A phone portrait photo is a LANDSCAPE pixel buffer plus an EXIF
+         * orientation tag, and sharp honours that tag only when asked. So this
+         * measured 4032x3024, concluded a vertical photo was already 4:3 wide,
+         * found it close enough to 16:9 and returned it uncropped — a vertical
+         * photo in a horizontal video, untouched by the one function whose job
+         * was to stop exactly that.
+         *
+         * .rotate() with no argument applies the tag and drops it, so every
+         * measurement and crop below works on the upright image.
+         */
+        const upright = await sharp(input).rotate().toBuffer();
+        const meta = await sharp(upright).metadata();
         if (!meta.width || !meta.height) throw new Error("no dimensions");
 
         const srcAspect = meta.width / meta.height;
@@ -89,7 +110,7 @@ export async function cropPhotosToAspect(
 
         const { width: cropW, height: cropH } = cropBox(meta.width, meta.height, targetAspect);
 
-        const output = await sharp(input)
+        const output = await sharp(upright)
           .resize(cropW, cropH, { fit: "cover", position: "centre" })
           .jpeg({ quality: 85 })
           .toBuffer();

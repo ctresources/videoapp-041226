@@ -532,6 +532,36 @@ ${hashes.join(" ")}` : hashes.join(" ");
               ))}
             </div>
 
+            {/* Directly under the tab that reveals it.
+                This sat below the thumbnail panel and the YouTube fields — the
+                best part of a screen down — so pressing Schedule looked like a
+                button that did nothing, and the date it was waiting for was
+                somewhere the eye never went. The choice and what the choice
+                asks for are one thing. */}
+            {tab === "schedule" && (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    min={minDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div className="w-28">
+                  <label className="text-xs font-medium text-slate-500 block mb-1">Time</label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Thumbnail — shown whatever is selected. It was inside the
                 YouTube-only block, which made a good thumbnail invisible to
                 anyone posting to Instagram, and hid the photo picker with
@@ -832,31 +862,6 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   className="w-full text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
                 <p className="text-xs text-slate-400 mt-0.5 text-right">{caption.length}/2200</p>
-              </div>
-            )}
-
-            {/* Schedule datetime */}
-            {tab === "schedule" && (
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-slate-500 block mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={scheduleDate}
-                    min={minDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div className="w-28">
-                  <label className="text-xs font-medium text-slate-500 block mb-1">Time</label>
-                  <input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
               </div>
             )}
 

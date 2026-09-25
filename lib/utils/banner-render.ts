@@ -210,7 +210,9 @@ async function roundedPhoto(
     const res = await fetch(url);
     if (!res.ok) return null;
     const src = Buffer.from(await res.arrayBuffer());
-    const filled = await sharp(src).resize(bw, bh, { fit: "cover" }).png().toBuffer();
+    // .rotate() applies the EXIF orientation a phone photo carries, which
+    // sharp otherwise ignores — without it a portrait shot is cropped sideways.
+    const filled = await sharp(src).rotate().resize(bw, bh, { fit: "cover" }).png().toBuffer();
     const mask = Buffer.from(
       `<svg width="${bw}" height="${bh}"><rect width="${bw}" height="${bh}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`,
     );
