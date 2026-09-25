@@ -282,6 +282,15 @@ function CreatePageInner() {
    * script call, and it lands on the Share Kit instead of the setup step.
    */
   const [blogOnly, setBlogOnly] = useState(false);
+  /**
+   * The blog route's third source: a piece the agent already has.
+   *
+   * Not an InputMode of its own, because it is not a different route — an
+   * import is written and saved through the same one "AI writes it" uses. What
+   * it changes is where the words come from, which is exactly what this row
+   * asks, so it is a tile here and a boolean underneath.
+   */
+  const [blogSrcOpen, setBlogSrcOpen] = useState(false);
   // The MLS unbranded cut, handed over from the editor's checkbox. Seeds the
   // recorder and is sent to the script writers, which are told to leave the
   // spoken call to action out — the half of "unbranded" that is not overlays.
@@ -2005,13 +2014,13 @@ function CreatePageInner() {
           // listings — and "come from" already carries the what.
           question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
         />
-        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {([
-            // The blog description names both ways in. This tile is the only
-            // route to the article writer, and since it now takes material the
-            // agent already has — a forwarded email, a PDF, a link — a label
-            // that says only "a topic" hides half of what it does.
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "From a topic, or from an article you already have" : "Turn a topic into a script" },
+            // Its blog subtitle used to read "From a topic, or from an
+            // article you already have" — back when the second half had no
+            // tile of its own. It has one now, two across, so the subtitle
+            // stops describing its neighbour.
+            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "From a topic you pick or say" : "Turn a topic into a script" },
             // Only the two routes that write an article. A pasted script is
             // words you already have, so there is nothing for us to research
             // and nothing to expand — and it is the one route that has never
@@ -2029,9 +2038,28 @@ function CreatePageInner() {
             // made this tile read as crowded. The blog-mode kicker keeps its
             // own wording: there is no photo route on that side.
             { mode: "listing" as InputMode, kicker: blogOnly ? "Zillow or MLS" : "Zillow, CRM, or photos", label: blogOnly ? "My listings" : "My listings/My photos", desc: blogOnly ? "Turn a listing into a property article" : "Turn a listing into a script, or photos into a reel. Free." },
-          ]).map(({ mode, kicker, label, desc }) => (
+            // The third answer to "where should the article come from", which
+            // for months was true of the page and absent from the row. It runs
+            // the same route as the first tile — hence the shared mode — and
+            // differs only in what it starts from.
+            ...(blogOnly ? [{
+              mode: "script" as InputMode,
+              kicker: "PDF, link or email",
+              label: "Something I already have",
+              desc: "Paste it, upload it, or forward it in",
+              source: true,
+            }] : []),
+          ]).map(({ mode, kicker, label, desc, ...rest }) => {
+            // Two tiles share a mode on the blog route, so `active` cannot be
+            // the mode alone: without this, picking either lights both.
+            const isSource = "source" in rest;
+            const active = blogOnly && mode === "script"
+              ? inputMode === "script" && blogSrcOpen === isSource
+              : inputMode === mode;
+            return (
             <SourceTile
-              key={mode}
+              // Not the mode: two blog tiles share one.
+              key={label}
               kicker={kicker}
               label={label}
               desc={desc}
@@ -2040,10 +2068,20 @@ function CreatePageInner() {
               // at the end of its description, which is the same fact without
               // a third element competing for the same corner.
               cost={blogOnly ? <CostPill free>Free</CostPill> : undefined}
-              active={inputMode === mode}
-              onClick={() => { setInputMode(mode); setLastSparkTab(mode); }}
+              active={active}
+              onClick={() => {
+                setInputMode(mode);
+                setLastSparkTab(mode);
+                if (!blogOnly) return;
+                setBlogSrcOpen(isSource);
+                // Leaving this route puts the attachment away with it.
+                // Attached-but-hidden is the worst of both: the page would
+                // still write from a document nobody can see or clear.
+                if (!isSource) { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); }
+              }}
             />
-          ))}
+            );
+          })}
           {/* The blog tile lived here for one commit. It is in row 1 now,
               beside the two videos: this row answers where the WORDS come
               from, and "a blog post" is not an answer to that — it is what
@@ -2090,6 +2128,115 @@ function CreatePageInner() {
         </p>
       )}
 
+      {/* What the third tile opens.
+          It used to sit at the bottom of the topic section, six hundred
+          pixels below the row that asks where the article comes from — so
+          the answer "from something I already have" was not among the
+          answers, it was a footnote under a question about topics. It is a
+          tile now, and this is what that tile reveals, directly under it. */}
+      {blogOnly && blogSrcOpen && (
+        <div className="mt-2 rounded-[18px] border border-spark-rule bg-white px-5 py-4">
+          <ArticleSource
+            purpose="article"
+            // The tile above already made this offer by name, so the block
+            // does not make it again.
+            heading={false}
+            doc={{
+              mode: blogSrcMode,
+              onModeChange: setBlogSrcMode,
+              attached: !!blogSrcText,
+              attachedName: blogSrcName,
+              onClear: () => { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); },
+              uploading: blogSrcUploading,
+              onUploadPdf: handleBlogSrcPdf,
+              urlInput: blogSrcUrlInput,
+              onUrlInputChange: setBlogSrcUrlInput,
+              onFetchUrl: handleBlogSrcUrl,
+              fetching: blogSrcFetching,
+              onPickEmail: handleBlogSrcEmail,
+              // Only on this route. Pasting into the script tab means
+              // "speak these words"; pasting here means "make an article
+              // out of this", which is a different job for the same gesture.
+              onPasteText: handleBlogSrcText,
+            }}
+          />
+          {/* Said where it is decided, not discovered in the output. The
+              writer is told to keep the source's facts and angle and to
+              write its own sentences — this is that promise, in the words
+              an agent would use for it. */}
+          {/* The question the attachment raises and the page used to answer
+              for you: an article already written does not need a second one
+              writing about it. Asked here, once something is attached,
+              because before that it is a choice about nothing. */}
+          {blogSrcText && (
+            <div className="mt-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {([
+                  {
+                    key: "asis" as const,
+                    label: "Use it as it is",
+                    desc: "Published unchanged. We add the headline, description, hashtags and header image.",
+                    note: "Seconds",
+                  },
+                  {
+                    key: "rewrite" as const,
+                    label: "Write a new article from it",
+                    desc: `Covers the same ground, researched and written fresh for ${locCity.trim() || "your market"}.`,
+                    note: "About a minute",
+                  },
+                ]).map(({ key, label, desc, note }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setBlogSrcUse(key)}
+                    aria-pressed={blogSrcUse === key}
+                    className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                      blogSrcUse === key
+                        ? "border-spark-amber bg-spark-amber-tint"
+                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="text-[12.5px] font-bold text-brand-text">{label}</span>
+                      <span className="text-[10px] uppercase tracking-[0.08em] text-spark-ink-faint">{note}</span>
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-[1.45] text-spark-ink-muted">{desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {blogSrcUse === "asis" ? (
+                /* The one way this feature could put an agent in real
+                   trouble, said where the decision is made rather than in
+                   terms nobody reads. Quiet on purpose: most of what lands
+                   here is their own writing. The button is the footer's —
+                   two primaries for one action is how a page gets pressed
+                   twice. */
+                <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-faint">
+                  Your words are kept exactly as they are
+                  {blogSrcMode === "text" ? "" : ", and headings are added only if it has none"}.
+                  Publish it as your own only if you wrote it — a newsletter someone else
+                  wrote is theirs, and <strong>Write a new article from it</strong> is the
+                  option for those. Press <strong>Save the article</strong> below.
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
+                  Your article will cover what this covers, written for{" "}
+                  {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"}
+                  {/* Somebody else's piece and your own draft need different
+                      promises. "Not a copy of the original" is reassurance
+                      about a newsletter and an insult about your own writing. */}
+                  {blogSrcMode === "text"
+                    ? " — built out into a full article with headings, not just tidied up."
+                    : " in your voice — not a copy of the original."}
+                  {" "}Press <strong>Write the blog</strong> below when the rest is set.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Your topic ──
           One card, per the v2 composer. The speak-or-type choice used to be
           two large tiles in a section of their own, above a second section
@@ -2100,7 +2247,11 @@ function CreatePageInner() {
           Trending and templates stay below the card rather than inside it:
           they are other ways to fill the same field, not part of the composer,
           and folding them in would have made the card the whole page. */}
-      {inputMode === "script" && step === "input" && (
+      {/* Hidden on the import route: the piece already says what it is about,
+          which is why an attachment counts as the topic further down. Asking
+          someone to summarise in a sentence what they just handed over is
+          asking twice. The market below stays — a rewrite needs it. */}
+      {inputMode === "script" && step === "input" && !(blogOnly && blogSrcOpen) && (
         <div className="mt-7 flex flex-col gap-3">
           {/* Just the section and its number.
               It read "Topic details · AI writes it · Step 1 of 5", which was
@@ -2208,110 +2359,6 @@ function CreatePageInner() {
           />
           </div>
 
-          {/* The blog route's way in for material the agent already has.
-              Until now this path could only write from a topic or from a
-              listing — so an agent who had forwarded an article, saved a market
-              report or had a link to one had no way to use any of it on the one
-              screen whose whole job is writing an article. */}
-          {blogOnly && (
-            <div className="rounded-[18px] border border-spark-rule bg-white px-5 py-4">
-              <ArticleSource
-                purpose="article"
-                doc={{
-                  mode: blogSrcMode,
-                  onModeChange: setBlogSrcMode,
-                  attached: !!blogSrcText,
-                  attachedName: blogSrcName,
-                  onClear: () => { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); },
-                  uploading: blogSrcUploading,
-                  onUploadPdf: handleBlogSrcPdf,
-                  urlInput: blogSrcUrlInput,
-                  onUrlInputChange: setBlogSrcUrlInput,
-                  onFetchUrl: handleBlogSrcUrl,
-                  fetching: blogSrcFetching,
-                  onPickEmail: handleBlogSrcEmail,
-                  // Only on this route. Pasting into the script tab means
-                  // "speak these words"; pasting here means "make an article
-                  // out of this", which is a different job for the same gesture.
-                  onPasteText: handleBlogSrcText,
-                }}
-              />
-              {/* Said where it is decided, not discovered in the output. The
-                  writer is told to keep the source's facts and angle and to
-                  write its own sentences — this is that promise, in the words
-                  an agent would use for it. */}
-              {/* The question the attachment raises and the page used to answer
-                  for you: an article already written does not need a second one
-                  writing about it. Asked here, once something is attached,
-                  because before that it is a choice about nothing. */}
-              {blogSrcText && (
-                <div className="-mt-2">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {([
-                      {
-                        key: "asis" as const,
-                        label: "Use it as it is",
-                        desc: "Published unchanged. We add the headline, description, hashtags and header image.",
-                        note: "Seconds",
-                      },
-                      {
-                        key: "rewrite" as const,
-                        label: "Write a new article from it",
-                        desc: `Covers the same ground, researched and written fresh for ${locCity.trim() || "your market"}.`,
-                        note: "About a minute",
-                      },
-                    ]).map(({ key, label, desc, note }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setBlogSrcUse(key)}
-                        aria-pressed={blogSrcUse === key}
-                        className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                          blogSrcUse === key
-                            ? "border-spark-amber bg-spark-amber-tint"
-                            : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                        }`}
-                      >
-                        <span className="flex items-baseline justify-between gap-2">
-                          <span className="text-[12.5px] font-bold text-brand-text">{label}</span>
-                          <span className="text-[10px] uppercase tracking-[0.08em] text-spark-ink-faint">{note}</span>
-                        </span>
-                        <span className="mt-0.5 block text-[11px] leading-[1.45] text-spark-ink-muted">{desc}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {blogSrcUse === "asis" ? (
-                    /* The one way this feature could put an agent in real
-                       trouble, said where the decision is made rather than in
-                       terms nobody reads. Quiet on purpose: most of what lands
-                       here is their own writing. The button is the footer's —
-                       two primaries for one action is how a page gets pressed
-                       twice. */
-                    <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-faint">
-                      Your words are kept exactly as they are
-                      {blogSrcMode === "text" ? "" : ", and headings are added only if it has none"}.
-                      Publish it as your own only if you wrote it — a newsletter someone else
-                      wrote is theirs, and <strong>Write a new article from it</strong> is the
-                      option for those. Press <strong>Save the article</strong> below.
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-[11px] leading-[1.5] text-spark-ink-muted">
-                      Your article will cover what this covers, written for{" "}
-                      {locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "your market"}
-                      {/* Somebody else's piece and your own draft need different
-                          promises. "Not a copy of the original" is reassurance
-                          about a newsletter and an insult about your own writing. */}
-                      {blogSrcMode === "text"
-                        ? " — built out into a full article with headings, not just tidied up."
-                        : " in your voice — not a copy of the original."}
-                      {" "}Press <strong>Write the blog</strong> below when the rest is set.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -2586,6 +2633,11 @@ function CreatePageInner() {
                 ? "Researching the area and writing. This takes about a minute."
                 : !locationSet
                   ? "Add the city and state above to carry on."
+                  // The import route has no topic field on screen — the
+                  // attachment is the topic — so the line has to ask for the
+                  // thing that is actually missing.
+                  : blogOnly && blogSrcOpen && !blogSourceReady
+                    ? "Paste, upload, link or forward the piece above to carry on."
                   : !locCustomTopic.trim()
                     ? (briefHasDraft
                         // The topic is on screen, just not sent. Telling

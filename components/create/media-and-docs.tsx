@@ -297,17 +297,29 @@ export function ArticleSource({
   doc,
   /** Sets the heading and the one line under it — what this feeds, in context. */
   purpose = "script",
+  /**
+   * Whether this block introduces itself.
+   *
+   * False where the choice to bring something has already been made and named
+   * — the blog route's own source tile — so the block is the answer to that
+   * tile rather than a second, optional offer of the same thing. The tabs are
+   * always the point; only the heading and the rule above it are in question.
+   */
+  heading = true,
 }: {
   doc: DocAttachment;
   purpose?: "script" | "article";
+  heading?: boolean;
 }) {
   return (
-        <div className="mb-4 pb-4 border-b border-spark-rule-soft">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-            <p className="text-sm font-bold text-spark-ink-soft">
-              {doc.onPickEmail ? "Start from something you already have" : "Attach PDF / URL"}{" "}
-              <span className="font-normal text-spark-ink-faint">(optional)</span>
-            </p>
+        <div className={heading ? "mb-4 pb-4 border-b border-spark-rule-soft" : undefined}>
+          <div className={`flex flex-wrap items-center gap-2 mb-1 ${heading ? "justify-between" : "justify-start"}`}>
+            {heading && (
+              <p className="text-sm font-bold text-spark-ink-soft">
+                {doc.onPickEmail ? "Start from something you already have" : "Attach PDF / URL"}{" "}
+                <span className="font-normal text-spark-ink-faint">(optional)</span>
+              </p>
+            )}
             <div className="flex rounded-lg overflow-hidden border border-spark-rule text-[11px] font-semibold">
               {([
                 // First where it exists: pasting your own writing is the
