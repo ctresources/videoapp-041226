@@ -79,6 +79,12 @@ export async function generateThumbnailBackground(opts: {
   const location = [opts.city, opts.state].filter(Boolean).join(", ");
   const scene = (opts.scene || "").trim().slice(0, 300);
 
+  /**
+   * A thumbnail makes no claim either, so the same relaxation applies here as
+   * on an article header: an absolute ban on figures made a market-stats video
+   * impossible to illustrate, and the model answered with generic property.
+   * Legible text stays banned — the headline is drawn in real type on top.
+   */
   const prompt = `A scroll-stopping YouTube thumbnail background photo that looks like a real still frame from a video${location ? ` shot in ${location}` : ""}.
 
 SUBJECT: ${scene || `the subject of this video — "${(opts.topic || "").trim().slice(0, 140)}" — photographed literally, not a generic property shot`}
@@ -89,7 +95,7 @@ Composition: leave the right ~40% of the frame relatively clean and uncluttered 
 
 STRICT RULES:
 - NO people, NO faces, NO hands. A cutout of the presenter is composited into this frame afterwards.
-- NO text, NO words, NO numbers, NO letters, NO logos, NO watermarks anywhere.
+- NO READABLE text. Charts, screens and printed pages may appear, but every letter and figure must be out of focus, cropped, or far too small to read. No logos, no watermarks, no captions.
 - NO collages, NO split panels, NO borders or frames.
 - One cohesive photographic scene that fills the entire frame edge to edge.`;
 
