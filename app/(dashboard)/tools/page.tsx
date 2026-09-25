@@ -2281,7 +2281,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
               show a figure from behind, a listing graphic may not. */}
           <p className="mt-1 text-[11px] text-slate-400">
             {template === "blog_header"
-              ? "Left empty, we read the article and pick the scene. Never any faces or words — your text goes on top."
+              ? "Left empty, we read the article and pick the scene. Charts and pages can appear, but never faces and never readable words — your text goes on top."
               : "No people are ever drawn, and no words. Your text goes on top."}
           </p>
         </div>

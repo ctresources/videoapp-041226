@@ -173,13 +173,31 @@ export async function generateImageBackground(opts: {
     ? "- NO faces: people may appear only from behind, at a distance, blurred, or cropped below the chin. No close-up hands."
     : "- NO people, NO faces, NO hands.";
 
+  /**
+   * Readable text, on the article side only.
+   *
+   * The blanket ban is there for listing graphics: an AI-drawn price or street
+   * name goes out under the agent's name, and a subtly wrong one is worse than
+   * no graphic. But it also made whole subjects impossible. Asked for "a market
+   * stats report with graphs and data" the model was told in the same prompt
+   * that it may not draw numbers or letters — so it dropped the subject, kept
+   * the two words it could still act on, and drew a house.
+   *
+   * An article header claims nothing, and a chart with unreadable axis labels
+   * is what a magazine would run. The headline is still set in real type
+   * afterwards, so nothing legible in the photograph competes with it.
+   */
+  const textRule = editorial
+    ? "- NO READABLE text. Charts, screens, printed pages and documents may appear, but every letter and figure must be out of focus, cropped, or far too small to read. No logos, no watermarks, no captions."
+    : "- NO text, words, numbers, letters, signs with writing, logos or watermarks anywhere.";
+
   const prompt = `${editorial
     ? `An editorial photograph to head an article${location ? `, set in ${location}` : ""}.`
     : `A photograph for a real estate marketing graphic${location ? ` in ${location}` : ""}.`}
 
 SUBJECT: ${scene || mood}
-MOOD: ${mood}
-${opts.variant > 0 ? "Make this a clearly different take from the obvious one: another angle, another time of day, or another part of the scene.\n" : ""}
+${scene ? "" : `MOOD: ${mood}
+`}${opts.variant > 0 ? "Make this a clearly different take from the obvious one: another angle, another time of day, or another part of the scene.\n" : ""}
 Style: natural light, true-to-life color, sharp detail, ${editorial
     ? "editorial magazine photography. Photograph the SUBJECT of the article — a house belongs in frame only if the article is about a house."
     : "professional real estate photography."} Believable, not glossy CGI.
@@ -187,7 +205,7 @@ Style: natural light, true-to-life color, sharp detail, ${editorial
 Composition: keep the lower third calmer and less detailed, because headline text will sit over it. Keep the key subject out of the top corners.
 
 STRICT RULES:
-- NO text, words, numbers, letters, signs with writing, logos or watermarks anywhere.
+${textRule}
 ${peopleRule}
 - NO collages, split panels, borders or frames.
 - One photographic scene that fills the frame edge to edge.`;
