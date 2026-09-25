@@ -122,6 +122,16 @@ export async function makeBackground(opts: {
   state?: string;
   variant: number;
   photoUrl?: string;
+  /**
+   * What to do when the photo is not the frame's shape.
+   *
+   * "fill" crops from the centre, which is right for a photograph — a room, a
+   * street, a face — where the edges are context and the middle is the point.
+   * It is wrong for a picture that IS its edges: a market report, a flyer, a
+   * chart, anything whose numbers live at the top and whose name lives at the
+   * bottom. Cropping one of those to 16:9 throws away the half that mattered.
+   */
+  fit?: "fill" | "whole";
 }): Promise<{ url: string; ai: boolean }> {
   const admin = createAdminClient();
   const { w, h, orientation } = IMAGE_SHAPES[opts.shape];
@@ -134,11 +144,40 @@ export async function makeBackground(opts: {
   if (opts.photoUrl) {
     const res = await fetch(opts.photoUrl);
     if (!res.ok) throw new Error("That photo could not be loaded. Try another one.");
-    buffer = await sharp(Buffer.from(await res.arrayBuffer()))
-      .rotate()
-      .resize(w, h, { fit: "cover" })
-      .jpeg({ quality: 90, mozjpeg: true })
-      .toBuffer();
+    const source = Buffer.from(await res.arrayBuffer());
+    if (opts.fit === "whole") {
+      /**
+       * The whole picture, on a bed made of itself.
+       *
+       * Plain bars would be the obvious way to pad, and they look like a
+       * mistake — a black-edged graphic posted to Instagram reads as something
+       * that went wrong. A blurred, darkened copy of the same photo fills the
+       * gap with the photo's own colours, so the result looks composed rather
+       * than letterboxed, and the headline still has somewhere quiet to sit.
+       */
+      const bed = await sharp(source)
+        .rotate()
+        .resize(w, h, { fit: "cover" })
+        .blur(40)
+        .modulate({ brightness: 0.75 })
+        .toBuffer();
+      const whole = await sharp(source)
+        .rotate()
+        // "inside" never enlarges past the frame and never crops: the longest
+        // edge meets the frame and the other is centred on the bed.
+        .resize(w, h, { fit: "inside", withoutEnlargement: false })
+        .toBuffer();
+      buffer = await sharp(bed)
+        .composite([{ input: whole, gravity: "center" }])
+        .jpeg({ quality: 90, mozjpeg: true })
+        .toBuffer();
+    } else {
+      buffer = await sharp(source)
+        .rotate()
+        .resize(w, h, { fit: "cover" })
+        .jpeg({ quality: 90, mozjpeg: true })
+        .toBuffer();
+    }
   } else {
     const generated = await generateImageBackground({
       template: opts.template,

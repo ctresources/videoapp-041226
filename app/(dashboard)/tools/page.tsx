@@ -2044,6 +2044,14 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [bgSource, setBgSource] = useState<ImageBgSource>("ai");
   const [listingPhoto, setListingPhoto] = useState("");
   const [uploadedBg, setUploadedBg] = useState("");
+  /**
+   * Crop the photo, or keep all of it.
+   *
+   * Only asked once there is a photo of the agent's own on screen: an AI
+   * background is generated at the frame's shape, so it has nothing to lose at
+   * the edges and a choice there would be a control that does nothing.
+   */
+  const [fitWhole, setFitWhole] = useState(false);
   const [uploading, setUploading] = useState(false);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<MadeImage[]>([]);
@@ -2143,6 +2151,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       headline: headline.trim(),
       subline: subline.trim(),
       accent, showLogo, showHeadshot,
+      fit: fitWhole ? "whole" : "fill",
       projectId: projectId || undefined,
       city: project?.location_city || undefined,
       state: project?.location_state || undefined,
@@ -2324,9 +2333,30 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
                 it matters: the photo is centre-cropped to FILL the shape, so a
                 portrait report in a 16:9 frame loses its top and bottom, and
                 the only clue is the picture itself. */}
-            <p className="mt-0.5 text-[11px] text-slate-400">
-              Cropped from the centre to fill {IMAGE_SHAPE_PX[shape]}. A tall photo in a wide
-              shape loses its top and bottom — crop it first, or pick a shape that matches it.
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {([
+                { key: false, label: "Fill the frame" },
+                { key: true, label: "Fit whole photo" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setFitWhole(key)}
+                  aria-pressed={fitWhole === key}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    fitWhole === key
+                      ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {fitWhole
+                ? `The whole photo fits inside ${IMAGE_SHAPE_PX[shape]}, on a blurred copy of itself — nothing is cut off.`
+                : `Cropped from the centre to fill ${IMAGE_SHAPE_PX[shape]}. A tall photo in a wide shape loses its top and bottom.`}
             </p>
           </div>
         </div>

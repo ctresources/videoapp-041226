@@ -28,6 +28,8 @@ interface Body {
   projectId?: string;
   /** The agent's own photo as the background. Free, and never counted. */
   photoUrl?: string;
+  /** "whole" pads the photo instead of cropping it — see makeBackground. */
+  fit?: "fill" | "whole";
   /** rerender: the background to draw over again. */
   backgroundUrl?: string;
   /** rerender: make a fresh AI background instead (counted). */
@@ -169,7 +171,12 @@ export async function POST(req: NextRequest) {
     suggestedScene = brief || headline || null;
     if (suggestedScene) scene = suggestedScene.slice(0, 300);
   }
-  const common = { userId: user.id, template, shape, scene, city: body.city, state: body.state };
+  const common = {
+    userId: user.id, template, shape, scene, city: body.city, state: body.state,
+    // Only ever consulted for a photo the agent supplied. An AI background is
+    // generated at the frame's own shape, so there is nothing to pad.
+    fit: body.fit === "whole" ? ("whole" as const) : ("fill" as const),
+  };
 
   async function limitResponse(needed: number) {
     if (unlimited) return null;
