@@ -7,6 +7,7 @@ import {
   type ImageShape, type ImageTemplate, type ImageText,
 } from "@/lib/utils/image-render";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
+import { articlePhotoBrief } from "@/lib/api/photo-brief";
 
 // Two AI backgrounds in parallel, each up to a minute, then two renders.
 export const maxDuration = 180;
@@ -140,7 +141,34 @@ export async function POST(req: NextRequest) {
     showLogo: body.showLogo !== false,
     showHeadshot: !!body.showHeadshot,
   };
-  const scene = (body.scene || "").slice(0, 300);
+  /**
+   * What the picture is of.
+   *
+   * Typed always wins. When nothing is typed and this is an article header,
+   * the article decides: the generator only ever knew the template, so every
+   * blog header came out a house whatever the piece was about. The brief is a
+   * text call, not an image one — it costs a fraction of a cent and is skipped
+   * for every other template.
+   */
+  let scene = (body.scene || "").slice(0, 300);
+  let suggestedScene: string | null = null;
+  if (!scene.trim() && template === "blog_header" && project) {
+    const ai = (project.ai_script ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    const headline = str(ai.blog_headline) || str(ai.title) || (body.headline || "");
+    const brief = headline
+      ? await articlePhotoBrief({
+          headline,
+          body: [str(ai.blog_intro), str(ai.blog_body)].filter(Boolean).join(" "),
+          city: body.city,
+          state: body.state,
+        })
+      : null;
+    // The headline itself beats the template's fallback even when the brief
+    // fails: it is at least what the article is about.
+    suggestedScene = brief || headline || null;
+    if (suggestedScene) scene = suggestedScene.slice(0, 300);
+  }
   const common = { userId: user.id, template, shape, scene, city: body.city, state: body.state };
 
   async function limitResponse(needed: number) {
@@ -235,6 +263,10 @@ export async function POST(req: NextRequest) {
       used: await usedNow(),
       limit: imageLimit,
       aiBackground: backgrounds.some((b) => b.ai),
+      // Handed back so the Describe box can show what was asked for. A brief
+      // the agent cannot see is one they cannot correct, and the next press of
+      // New background would quietly ask for something else.
+      scene: suggestedScene,
     });
   } catch (err) {
     console.error("[tools/image] failed:", err);

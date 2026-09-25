@@ -136,18 +136,47 @@ export async function generateImageBackground(opts: {
   const scene = (opts.scene || "").trim().slice(0, 300);
   const location = [opts.city, opts.state].filter(Boolean).join(", ");
 
-  const prompt = `A photograph for a real estate marketing graphic${location ? ` in ${location}` : ""}.
+  /**
+   * An article header is not a listing graphic.
+   *
+   * The framing and the style line both said "real estate", which dragged
+   * every subject back toward property however the scene was described — ask
+   * for a kitchen table of paperwork and the model still reached for the house
+   * it imagined that table was in. Just Listed and Open House keep that
+   * framing, because they genuinely are about a property.
+   */
+  const editorial = opts.template === "blog_header";
+
+  /**
+   * People, on the article side only.
+   *
+   * The blanket ban exists because image models ruin faces, and a warped face
+   * on a listing graphic is unusable. But an empty room is the wrong picture
+   * for a piece about a family deciding whether to move, and "no people at
+   * all" is a good part of why these headers read as stock furniture. Faces
+   * stay banned; a figure from behind or at a distance is what a magazine
+   * would have shot anyway.
+   */
+  const peopleRule = editorial
+    ? "- NO faces: people may appear only from behind, at a distance, blurred, or cropped below the chin. No close-up hands."
+    : "- NO people, NO faces, NO hands.";
+
+  const prompt = `${editorial
+    ? `An editorial photograph to head an article${location ? `, set in ${location}` : ""}.`
+    : `A photograph for a real estate marketing graphic${location ? ` in ${location}` : ""}.`}
 
 SUBJECT: ${scene || mood}
 MOOD: ${mood}
 ${opts.variant > 0 ? "Make this a clearly different take from the obvious one: another angle, another time of day, or another part of the scene.\n" : ""}
-Style: natural light, true-to-life color, sharp detail, professional real estate photography. Believable, not glossy CGI.
+Style: natural light, true-to-life color, sharp detail, ${editorial
+    ? "editorial magazine photography. Photograph the SUBJECT of the article — a house belongs in frame only if the article is about a house."
+    : "professional real estate photography."} Believable, not glossy CGI.
 
 Composition: keep the lower third calmer and less detailed, because headline text will sit over it. Keep the key subject out of the top corners.
 
 STRICT RULES:
 - NO text, words, numbers, letters, signs with writing, logos or watermarks anywhere.
-- NO people, NO faces, NO hands.
+${peopleRule}
 - NO collages, split panels, borders or frames.
 - One photographic scene that fills the frame edge to edge.`;
 

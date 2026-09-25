@@ -1988,7 +1988,10 @@ const IMAGE_TEMPLATE_OPTIONS: {
   { id: "market_update", label: "Market update", note: "One stat, big", kicker: "Market update", shape: "post_4x5",
     headlineHint: "Homes sold in 18 days in August", sublineHint: "Harleysville, PA", sceneHint: "Tree-lined street of colonials in autumn" },
   { id: "blog_header", label: "Blog header", note: "From an article", kicker: "", shape: "wide_16x9",
-    headlineHint: "What does $485,000 buy in Harleysville?", sublineHint: "", sceneHint: "Sunlit living room with big windows" },
+    // Not a room. The header should be about the article, and the hint is
+    // half of how anyone learns that this box takes a subject rather than a
+    // property. Leaving it empty reads the piece and suggests one.
+    headlineHint: "What does $485,000 buy in Harleysville?", sublineHint: "", sceneHint: "Leave empty and we'll read the article" },
   { id: "blank", label: "Blank", note: "Describe it", kicker: "", shape: "post_4x5",
     headlineHint: "Your headline", sublineHint: "", sceneHint: "A quiet cul-de-sac at golden hour" },
 ];
@@ -2034,6 +2037,8 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [results, setResults] = useState<MadeImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  /** The last save, so the page can point at where the image landed. */
+  const [savedTo, setSavedTo] = useState<{ projectId: string; target: "blog_header" | "share_kit" } | null>(null);
   const [usage, setUsage] = useState<{ used: number; limit: number; unlimited: boolean; beforeVideo: boolean } | null>(null);
   const seeded = useRef(false);
 
@@ -2160,6 +2165,10 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       const data = await call({ action: "generate", ...fields(), photoUrl: photoForRequest || undefined });
       if (!data) return;
       setResults(data.images as MadeImage[]);
+      // What the article asked for, when the box was left empty. Shown rather
+      // than kept server-side: it is a suggestion, and the next press of New
+      // background should build on the words on screen.
+      if (typeof data.scene === "string" && data.scene && !scene.trim()) setScene(data.scene);
       if (bgSource === "ai" && !data.aiBackground) {
         toast("AI backgrounds aren't switched on yet, so this used a plain background.");
       } else {
@@ -2192,6 +2201,11 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     try {
       const data = await call({ action: "attach", imageUrl: img.url, projectId, target });
       if (!data) return;
+      // Where this went, so the page can offer the way back. Saving was the
+      // end of the road: a toast said it worked, the toast left, and the
+      // screen looked exactly as it had before — with the article it belongs
+      // to two navigations away and no link to it anywhere.
+      setSavedTo({ projectId, target });
       toast.success(target === "blog_header" ? "Saved as the article's header image." : "Added to the project's Share Kit.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "The image could not be saved");
@@ -2263,7 +2277,13 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
         <div className="mb-5">
           <label className="block text-xs text-slate-500 mb-1">Describe the picture</label>
           <input value={scene} onChange={(e) => setScene(e.target.value)} placeholder={def.sceneHint} className={input} />
-          <p className="mt-1 text-[11px] text-slate-400">No people are ever drawn, and no words. Your text goes on top.</p>
+          {/* The people rule differs by template now: an article header may
+              show a figure from behind, a listing graphic may not. */}
+          <p className="mt-1 text-[11px] text-slate-400">
+            {template === "blog_header"
+              ? "Left empty, we read the article and pick the scene. Never any faces or words — your text goes on top."
+              : "No people are ever drawn, and no words. Your text goes on top."}
+          </p>
         </div>
       )}
       {bgSource === "listing" && (
@@ -2379,6 +2399,26 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
           ))}
         </div>
       )}
+      {/* Where it went, and how to get there.
+          Saving showed a toast and then nothing: the image was on the article
+          and the agent was still on this page, with no sign that anything had
+          moved and no link to the piece it now belongs to. */}
+      {savedTo && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5">
+          <p className="text-[12.5px] font-medium text-spark-ink">
+            {savedTo.target === "blog_header"
+              ? "Saved as the header image on your article."
+              : "Added to this project's Share Kit."}
+          </p>
+          <Link
+            href={`/create/${savedTo.projectId}${savedTo.target === "blog_header" ? "?step=5" : ""}`}
+            className="flex-none text-[12.5px] font-semibold text-spark-amber hover:text-spark-blue"
+          >
+            {savedTo.target === "blog_header" ? "Back to the article →" : "Back to the project →"}
+          </Link>
+        </div>
+      )}
+
       {results.length > 0 && (
         <p className="mt-3 text-[11px] text-slate-400">
           Update text redraws your words on the same background and costs nothing. New background makes another AI photo, and counts as one.
