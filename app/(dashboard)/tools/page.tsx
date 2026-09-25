@@ -2143,6 +2143,45 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     ? (listingPhoto || listingPhotos[0] || "")
     : bgSource === "upload" ? uploadedBg : "";
 
+  /**
+   * Crop or pad, asked wherever the picture is the agent's own.
+   *
+   * A listing photo is usually landscape and usually wants cropping — but "MLS
+   * photo" is not a promise about shape, and a portrait shot of a staircase
+   * loses its top and bottom in a 16:9 header exactly as an uploaded report
+   * does. One control, both places, rather than a rule about which sources are
+   * allowed to have the problem.
+   */
+  const fitPicker = (
+    <>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        {([
+          { key: false, label: "Fill the frame" },
+          { key: true, label: "Fit whole photo" },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setFitWhole(key)}
+            aria-pressed={fitWhole === key}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              fitWhole === key
+                ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1 text-[11px] text-slate-400">
+        {fitWhole
+          ? `The whole photo fits inside ${IMAGE_SHAPE_PX[shape]}, on a blurred copy of itself — nothing is cut off.`
+          : `Cropped from the centre to fill ${IMAGE_SHAPE_PX[shape]}. A tall photo in a wide shape loses its top and bottom.`}
+      </p>
+    </>
+  );
+
   function fields() {
     return {
       template, shape,
@@ -2313,14 +2352,17 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
         </div>
       )}
       {bgSource === "listing" && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          {listingPhotos.map((u) => (
-            <button key={u} type="button" onClick={() => setListingPhoto(u)} aria-pressed={(listingPhoto || listingPhotos[0]) === u}
-              className={`overflow-hidden rounded-lg border-2 ${(listingPhoto || listingPhotos[0]) === u ? "border-spark-amber" : "border-transparent"}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u} alt="Listing photo" className="h-16 w-24 object-cover" />
-            </button>
-          ))}
+        <div className="mb-5">
+          <div className="flex flex-wrap gap-2">
+            {listingPhotos.map((u) => (
+              <button key={u} type="button" onClick={() => setListingPhoto(u)} aria-pressed={(listingPhoto || listingPhotos[0]) === u}
+                className={`overflow-hidden rounded-lg border-2 ${(listingPhoto || listingPhotos[0]) === u ? "border-spark-amber" : "border-transparent"}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u} alt="Listing photo" className="h-16 w-24 object-cover" />
+              </button>
+            ))}
+          </div>
+          {fitPicker}
         </div>
       )}
       {bgSource === "upload" && uploadedBg && (
@@ -2333,31 +2375,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
                 it matters: the photo is centre-cropped to FILL the shape, so a
                 portrait report in a 16:9 frame loses its top and bottom, and
                 the only clue is the picture itself. */}
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {([
-                { key: false, label: "Fill the frame" },
-                { key: true, label: "Fit whole photo" },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setFitWhole(key)}
-                  aria-pressed={fitWhole === key}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                    fitWhole === key
-                      ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-[11px] text-slate-400">
-              {fitWhole
-                ? `The whole photo fits inside ${IMAGE_SHAPE_PX[shape]}, on a blurred copy of itself — nothing is cut off.`
-                : `Cropped from the centre to fill ${IMAGE_SHAPE_PX[shape]}. A tall photo in a wide shape loses its top and bottom.`}
-            </p>
+            {fitPicker}
           </div>
         </div>
       )}
