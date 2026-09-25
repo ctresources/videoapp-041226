@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { generateThumbnailBackground } from "@/lib/api/openai-image";
+import { photoBriefFor } from "@/lib/api/photo-brief";
 import { removeImageBackground } from "@/lib/utils/remove-background";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { readFileSync } from "fs";
@@ -263,6 +264,7 @@ export async function renderAndSaveThumbnail(
   let projectSeoData: Record<string, unknown> | null = null;
   let projCity: string | null = null;
   let projState: string | null = null;
+  let scriptText = "";
   if (opts.projectId) {
     const { data: proj } = await admin
       .from("projects")
@@ -275,6 +277,11 @@ export async function renderAndSaveThumbnail(
     }
     projectTitle = pr.title || "";
     projectSeoData = pr.seo_data;
+    // The words of the video, for the photo brief below. The hook first: it is
+    // the sentence the video opens on and the one the thumbnail sits beside.
+    scriptText = [pr.ai_script?.hook, pr.ai_script?.script]
+      .filter((v): v is string => typeof v === "string" && !!v.trim())
+      .join(" ");
     // Older projects stored the typed market only inside ai_script.location —
     // use it before falling back to the profile's home market.
     //
@@ -334,8 +341,28 @@ export async function renderAndSaveThumbnail(
   }
 
   if (!baseBuffer) {
+    /**
+     * What this video is actually about, read from the video.
+     *
+     * The title alone was all the prompt ever had, and it was handed over as
+     * "visual mood" rather than as a subject — so a thumbnail for a probate
+     * explainer and one for a listing tour were the same house. The script is
+     * the part that knows; the brief turns it into a scene.
+     *
+     * Skipped when a scene cannot be written: the prompt still falls back to
+     * the title, which is at least this video rather than any video.
+     */
+    const scene = await photoBriefFor({
+      headline: sourceTitle || headlineText,
+      body: scriptText,
+      city,
+      state,
+      kind: "thumbnail",
+    });
+
     const aiBg = await generateThumbnailBackground({
       topic: sourceTitle || headlineText,
+      scene: scene || undefined,
       city,
       state,
     });

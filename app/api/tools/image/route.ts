@@ -7,7 +7,7 @@ import {
   type ImageShape, type ImageTemplate, type ImageText,
 } from "@/lib/utils/image-render";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
-import { articlePhotoBrief } from "@/lib/api/photo-brief";
+import { photoBriefFor } from "@/lib/api/photo-brief";
 
 // Two AI backgrounds in parallel, each up to a minute, then two renders.
 export const maxDuration = 180;
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
     const str = (v: unknown) => (typeof v === "string" ? v : "");
     const headline = str(ai.blog_headline) || str(ai.title) || (body.headline || "");
     const brief = headline
-      ? await articlePhotoBrief({
+      ? await photoBriefFor({
           headline,
           body: [str(ai.blog_intro), str(ai.blog_body)].filter(Boolean).join(" "),
           city: body.city,

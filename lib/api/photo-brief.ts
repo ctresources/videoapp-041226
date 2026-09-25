@@ -1,13 +1,13 @@
 import { perplexityChat } from "@/lib/api/perplexity";
 
 /**
- * What an article should be a picture OF.
+ * What a piece of work should be a picture OF.
  *
- * The image generator only ever knew the template, the market and the headline
- * it was about to draw on top — so every blog header came out a house, whatever
- * the piece was about. An article on probate, on rates, on school catchments
- * and on when to downsize all got the same sunlit colonial, because the only
- * subject the prompt had was the one baked into the template.
+ * Both image paths only ever knew a template or a title and the market — so
+ * every blog header and every video thumbnail came out a house, whatever the
+ * piece was about. Probate, rates, school catchments, when to downsize: all
+ * the same sunlit colonial, because the only subject either prompt had was the
+ * one baked into it.
  *
  * An image model cannot read an article and decide what to show; it draws the
  * nouns it is given. So a cheap text pass reads the piece and writes the one
@@ -17,11 +17,19 @@ import { perplexityChat } from "@/lib/api/perplexity";
  * of the agent in the Describe box, where a word can be changed before another
  * background is made.
  */
-export async function articlePhotoBrief(opts: {
+export async function photoBriefFor(opts: {
+  /** The headline or video title — what this piece is called. */
   headline: string;
+  /** The article or script, as much of it as matters. Trimmed here. */
   body?: string;
   city?: string;
   state?: string;
+  /**
+   * Where the picture goes. A thumbnail is glanced at on a phone and has a
+   * cutout standing in it; an article header is looked at. Same subject, two
+   * different photographs of it.
+   */
+  kind?: "article" | "thumbnail";
 }): Promise<string | null> {
   const headline = opts.headline.trim();
   if (!headline) return null;
@@ -31,24 +39,27 @@ export async function articlePhotoBrief(opts: {
   const body = (opts.body || "").replace(/\s+/g, " ").trim().slice(0, 900);
 
   try {
+    const thumb = opts.kind === "thumbnail";
     const raw = await perplexityChat([
       {
         role: "system",
-        content:
-          "You brief photographers for editorial article headers. You answer with one concrete scene and nothing else. Return only valid JSON.",
+        content: thumb
+          ? "You brief photographers for video thumbnails. You answer with one concrete scene and nothing else. Return only valid JSON."
+          : "You brief photographers for editorial article headers. You answer with one concrete scene and nothing else. Return only valid JSON.",
       },
       {
         role: "user",
-        content: `Describe the photograph that should head this article.
+        content: `Describe the photograph that should ${thumb ? "sit behind the title of this video" : "head this article"}.
 
-HEADLINE: "${headline}"
+${thumb ? "TITLE" : "HEADLINE"}: "${headline}"
 ${body ? `OPENING: "${body}"\n` : ""}${where ? `PLACE: ${where}\n` : ""}
 RULES:
 - One sentence, under 25 words, describing a single real scene a photographer could shoot.
-- It must be about what the ARTICLE is about. Do not default to a house exterior unless the article is genuinely about buying, selling or touring a property.
+- It must be about what the ${thumb ? "VIDEO" : "ARTICLE"} is about. Do not default to a house exterior unless it is genuinely about buying, selling or touring a property.
+${thumb ? "- It will be seen small and scrolled past: one clear subject, strong shapes, nothing fussy or crowded." : ""}
 - Concrete nouns and light, no abstractions: "a kitchen table with a calculator, spread paperwork and a cooling mug in morning light", not "financial planning".
 - No text, signs, logos or readable writing in the scene.
-- No faces. People may appear only from behind, at a distance, or cropped below the chin.
+- No faces. ${thumb ? "No people at all — a cutout of the presenter is composited into this frame." : "People may appear only from behind, at a distance, or cropped below the chin."}
 
 Return ONLY this JSON: {"scene": "YOUR SENTENCE"}`,
       },
