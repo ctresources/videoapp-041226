@@ -110,6 +110,20 @@ export function PublishModal({
   const [badgeCity, setBadgeCity] = useState("");
   const [badgeState, setBadgeState] = useState("");
   /**
+   * The words printed across the image — the biggest thing on it, and the last
+   * thing here that could not be changed.
+   *
+   * Empty means "let the AI write one", which is what every thumbnail built
+   * from this window used to get. It is seeded with whatever the current image
+   * actually says, so editing starts from the truth rather than a blank box
+   * beside a picture with words on it.
+   */
+  const [headline, setHeadline] = useState("");
+  const headlineWords = headline.trim() ? headline.trim().split(/\s+/).length : 0;
+  /** Set once the video is on YouTube, so its thumbnail can be replaced there. */
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
+  const [reapplying, setReapplying] = useState(false);
+  /**
    * Who appears on the thumbnail.
    *
    * "" means "whoever this project already used, else the profile headshot" —
@@ -190,6 +204,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // Mark the tile this thumbnail was actually built with, so the picker
         // opens showing the truth rather than defaulting to the first tile.
         setCutout(d.thumbnailPhotoUrl || "");
+        setHeadline(d.thumbnailHeadline || "");
+        setYoutubeVideoId(d.youtubeVideoId || null);
         setStillFinishing(!!d.stillFinishing);
       })
       .catch(() => { /* the boxes stay as they are; publishing still works */ });
@@ -209,7 +225,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
    *   state here would send the previous pick — the tile would highlight and
    *   the image would not change.
    */
-  async function buildPhotoThumb(photo: string, quiet = false, nextCutout?: string) {
+  async function buildPhotoThumb(photo: string, quiet = false, nextCutout?: string, nextHeadline?: string) {
     if (!projectId || thumbBusy) return;
     setThumbBusy(true);
     setActivePhoto(photo || null);
@@ -217,10 +233,11 @@ ${hashes.join(" ")}` : hashes.join(" ");
       const res = await fetch("/api/tools/thumbnail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // No headline on purpose. The generator writes a 3-4 word curiosity
-        // hook when none is given ("INSIDE TRANSFORMATION!"); handing it the
-        // YouTube title instead gets clamped to that title's first four words
-        // ("A FULLY REMODELED ONE-LEVEL"), which is a caption, not a hook.
+        // The headline is sent only when it was typed. What must never be sent
+        // is the YouTube TITLE: the generator clamps to four words, so a title
+        // arrives as its own first four ("A FULLY REMODELED ONE-LEVEL") — a
+        // caption, not a hook. Left empty, the generator writes the 3-4 word
+        // curiosity line it always did ("INSIDE TRANSFORMATION!").
         body: JSON.stringify({
           projectId,
           // Empty means "paint a scene" — the generator's own default.
@@ -229,6 +246,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
           // instead of reverting to what the project used to say.
           ...(badgeCity.trim() ? { city: badgeCity.trim() } : {}),
           ...(badgeState.trim() ? { state: badgeState.trim() } : {}),
+          // Sent on every build for the same reason the market is: a backdrop
+          // swap should change the backdrop, not quietly rewrite the words
+          // someone chose.
+          ...((nextHeadline ?? headline).trim() ? { headline: (nextHeadline ?? headline).trim() } : {}),
           // Omitted when empty on purpose: the render then keeps whoever this
           // project last used rather than resetting to the headshot.
           ...((nextCutout ?? cutout) ? { photoUrl: nextCutout ?? cutout } : {}),
@@ -237,6 +258,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Couldn't build the thumbnail");
       setPhotoThumb(data.url);
+      // What the image says, including when the generator wrote it — so the
+      // box stops saying "AI writes it" about words that now exist.
+      if (data.headline) setHeadline(data.headline);
       if (!quiet) toast.success("Thumbnail updated");
     } catch (err) {
       // On the automatic pass this is silent by design: the plain card is
@@ -246,6 +270,36 @@ ${hashes.join(" ")}` : hashes.join(" ");
       setActivePhoto(null);
     } finally {
       setThumbBusy(false);
+    }
+  }
+
+  /**
+   * Put the current thumbnail on the video that is already live.
+   *
+   * Everything above changes the image in the app. For a video that has been
+   * published, that is the half nobody sees — YouTube keeps whatever was sent
+   * at upload time, and the only way to correct it was to publish the whole
+   * video again. The server sends the project's own saved thumbnail; nothing
+   * here chooses the image, only when to push it.
+   */
+  async function reapplyThumbnail() {
+    if (reapplying) return;
+    setReapplying(true);
+    try {
+      const res = await fetch("/api/social/youtube/thumbnail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't update the thumbnail");
+      setThumbnailSet(true);
+      toast.success("Thumbnail updated on YouTube");
+    } catch (err) {
+      setThumbnailSet(false);
+      toast.error(err instanceof Error ? err.message : "Couldn't update the thumbnail");
+    } finally {
+      setReapplying(false);
     }
   }
 
@@ -499,6 +553,41 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       className="w-full h-full object-cover"
                     />
                   </div>
+                  {/* The words on the image, edited where they are read.
+                      This panel could change the market, the backdrop and the
+                      person on it, but not the largest thing on the picture —
+                      the one control that lived in another tool entirely. */}
+                  {projectId && (
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={headline}
+                          onChange={(e) => setHeadline(e.target.value)}
+                          placeholder="Words on the image — AI writes them if you leave this empty"
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => buildPhotoThumb(activePhoto || photos[0] || "")}
+                          disabled={thumbBusy}
+                          className="flex-none rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {thumbBusy ? "…" : "Update"}
+                        </button>
+                      </div>
+                      {/* Said before the fifth word is lost rather than after:
+                          the renderer keeps four and drops the rest, which is
+                          silent and looks like a bug. */}
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {headlineWords > 4
+                          ? `Four words fit — only the first four will print ("${headline.trim().split(/\s+/).slice(0, 4).join(" ").toUpperCase()}").`
+                          : headlineWords > 0
+                            ? `${headlineWords} of 4 words · printed in capitals`
+                            : "Three or four short words read best on a thumbnail."}
+                      </p>
+                    </div>
+                  )}
+
                   {/* The market printed on the badge, fixed where it is read.
                       Saving rebuilds the thumbnail AND corrects the project, so
                       titles and descriptions stop disagreeing with it. */}
@@ -619,6 +708,21 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     >
                       <Sparkles size={11} />
                       {thumbBusy ? "Designing…" : "Design a bolder thumbnail"}
+                    </button>
+                  )}
+
+                  {/* Only once it is live. Before that the thumbnail goes up
+                      with the video, so an extra button would be a second way
+                      to do what Publish is about to do anyway. */}
+                  {youtubeVideoId && (
+                    <button
+                      type="button"
+                      onClick={reapplyThumbnail}
+                      disabled={reapplying || thumbBusy}
+                      className="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-700 disabled:opacity-50"
+                    >
+                      <Image size={11} />
+                      {reapplying ? "Updating…" : "Update it on YouTube"}
                     </button>
                   )}
 

@@ -29,6 +29,7 @@ type Seo = {
   keywords?: string[];
   instagram_caption?: string;
   thumbnail_url?: string;
+  thumbnail_headline?: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -161,6 +162,25 @@ export async function GET(req: NextRequest) {
     `photos=${photos.length} (video ${usedPhotos.length}, listing ${listingPhotos.length})`,
   );
 
+  /**
+   * Already on YouTube? One indexed read on the audit log the upload writes.
+   *
+   * Newest first because a video can be posted more than once — a re-publish
+   * after a fix — and the thumbnail belongs on the copy people are watching.
+   */
+  const { data: postRow } = await admin
+    .from("social_posts")
+    .select("metadata")
+    .eq("video_id", videoId)
+    .eq("user_id", user.id)
+    .eq("platform", "youtube")
+    .eq("status", "published")
+    .order("posted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ytId = (postRow as { metadata?: { youtube_video_id?: unknown } } | null)?.metadata?.youtube_video_id;
+  const youtubeVideoId = typeof ytId === "string" && ytId ? ytId : null;
+
   return NextResponse.json({
     projectId,
     photos,
@@ -182,6 +202,19 @@ export async function GET(req: NextRequest) {
     thumbnailPhotoUrl: typeof (seo as { thumbnail_photo_url?: unknown }).thumbnail_photo_url === "string"
       ? (seo as { thumbnail_photo_url: string }).thumbnail_photo_url
       : null,
+    // The words printed on it, so the box that edits them opens showing what
+    // is actually on the image. Empty on thumbnails rendered before this was
+    // stored — the field then reads as "AI writes it", which is what happens.
+    thumbnailHeadline: seo.thumbnail_headline ?? "",
+    /**
+     * The YouTube id, when this video has already been posted there.
+     *
+     * A published video's thumbnail can be replaced without re-uploading it,
+     * but only if we know which video to replace it on. Without this the
+     * window cannot tell a draft from something already public, and rebuilding
+     * the image quietly changed it everywhere except on YouTube.
+     */
+    youtubeVideoId,
     title: vidMeta?.publish_title || seo.youtube_title || proj?.title || "Untitled Video",
     description: vidMeta?.publish_description || description,
     // The short social blurb — ai_script.description is written to be exactly

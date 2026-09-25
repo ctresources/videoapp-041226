@@ -522,6 +522,10 @@ export async function renderAndSaveThumbnail(
           // profile headshot and silently replaced a look the user had chosen
           // by hand. A backdrop swap should change the backdrop.
           ...(photoSrc ? { thumbnail_photo_url: photoSrc } : {}),
+          // The words on the image, for the same reason: without them stored,
+          // the field that edits them can only open empty, and every rebuild
+          // has to let the AI write new ones over a headline someone chose.
+          thumbnail_headline: headlineText,
         },
       })
       .eq("id", opts.projectId)
