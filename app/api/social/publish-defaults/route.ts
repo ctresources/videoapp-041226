@@ -30,6 +30,7 @@ type Seo = {
   instagram_caption?: string;
   thumbnail_url?: string;
   thumbnail_headline?: string;
+  thumbnail_scene?: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -206,6 +207,9 @@ export async function GET(req: NextRequest) {
     // is actually on the image. Empty on thumbnails rendered before this was
     // stored — the field then reads as "AI writes it", which is what happens.
     thumbnailHeadline: seo.thumbnail_headline ?? "",
+    // What the generated background was asked to show, so the box that edits
+    // it opens on the last answer rather than empty.
+    thumbnailScene: seo.thumbnail_scene ?? "",
     /**
      * The YouTube id, when this video has already been posted there.
      *

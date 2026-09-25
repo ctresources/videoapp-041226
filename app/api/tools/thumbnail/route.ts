@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 120;
 
 /**
- * POST /api/tools/thumbnail — { headline?, topic?, projectId?, photoUrl? }
+ * POST /api/tools/thumbnail — { headline?, topic?, projectId?, photoUrl?, scene? }
  * Renders an HD 1280×720 YouTube thumbnail (AI 3–4 word curiosity headline,
  * AI bright-sky background, chosen photo composited). When projectId is
  * given the result is saved to the project so Publish shows it.
@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state } = (await req.json()) as {
+  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state, scene } = (await req.json()) as {
     headline?: string; topic?: string; projectId?: string; photoUrl?: string; backgroundUrl?: string; photoSide?: string;
-    city?: string; state?: string;
+    city?: string; state?: string; scene?: string;
   };
 
   try {
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       photoSide: photoSide === "left" ? "left" : "right",
       city: city || undefined,
       state: state || undefined,
+      scene: scene || undefined,
     });
     return NextResponse.json(result);
   } catch (err) {

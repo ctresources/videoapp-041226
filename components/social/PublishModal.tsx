@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Sparkles, User
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, User
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -120,6 +120,15 @@ export function PublishModal({
    */
   const [headline, setHeadline] = useState("");
   const headlineWords = headline.trim() ? headline.trim().split(/\s+/).length : 0;
+  /**
+   * What the generated picture shows.
+   *
+   * The words were editable here and the picture was not: it came from a
+   * sentence written off the script, which nobody could see and nobody could
+   * correct. Only consulted when a background is being generated — with a
+   * photo chosen, the photo is the answer.
+   */
+  const [scene, setScene] = useState("");
   /** Set once the video is on YouTube, so its thumbnail can be replaced there. */
   const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
   const [reapplying, setReapplying] = useState(false);
@@ -205,6 +214,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // opens showing the truth rather than defaulting to the first tile.
         setCutout(d.thumbnailPhotoUrl || "");
         setHeadline(d.thumbnailHeadline || "");
+        setScene(d.thumbnailScene || "");
         setYoutubeVideoId(d.youtubeVideoId || null);
         setStillFinishing(!!d.stillFinishing);
       })
@@ -250,6 +260,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
           // swap should change the backdrop, not quietly rewrite the words
           // someone chose.
           ...((nextHeadline ?? headline).trim() ? { headline: (nextHeadline ?? headline).trim() } : {}),
+          // Ignored by the server when a backdrop photo is sent, which is why
+          // this can be passed on every build without a second thought.
+          ...(scene.trim() ? { scene: scene.trim() } : {}),
           // Omitted when empty on purpose: the render then keeps whoever this
           // project last used rather than resetting to the headshot.
           ...((nextCutout ?? cutout) ? { photoUrl: nextCutout ?? cutout } : {}),
@@ -261,6 +274,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
       // What the image says, including when the generator wrote it — so the
       // box stops saying "AI writes it" about words that now exist.
       if (data.headline) setHeadline(data.headline);
+      // What it was asked to show, including the sentence written from the
+      // script — so the next New background builds on words on screen.
+      if (data.scene) setScene(data.scene);
       if (!quiet) toast.success("Thumbnail updated");
     } catch (err) {
       // On the automatic pass this is silent by design: the plain card is
@@ -588,6 +604,41 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     </div>
                   )}
 
+                  {/* What the picture shows — only where one is being drawn.
+                      With listing photos on the project the backdrop strip
+                      below already answers this, and a box that changed
+                      nothing would be worse than no box. */}
+                  {projectId && photos.length === 0 && (
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={scene}
+                          onChange={(e) => setScene(e.target.value)}
+                          placeholder="What the picture shows — left empty, we read your script"
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => buildPhotoThumb("")}
+                          disabled={thumbBusy}
+                          className="flex-none rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-primary-400 hover:text-primary-700 disabled:opacity-50"
+                        >
+                          {thumbBusy ? "…" : photoThumb ? "New picture" : "Design it"}
+                        </button>
+                      </div>
+                      {/* Why the button is a button. Generating costs real
+                          money and one of the monthly images, so it never
+                          happens just because this window opened — which is
+                          what the standalone "Design a bolder thumbnail" link
+                          that used to sit below was saying, less clearly. */}
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        A scene, not a slogan — &ldquo;a desk of paperwork and house keys in
+                        morning light&rdquo;. Never any people or words: your face and your
+                        headline go on top.
+                      </p>
+                    </div>
+                  )}
+
                   {/* The market printed on the badge, fixed where it is read.
                       Saving rebuilds the thumbnail AND corrects the project, so
                       titles and descriptions stop disagreeing with it. */}
@@ -692,23 +743,6 @@ ${hashes.join(" ")}` : hashes.join(" ");
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* No photos means an AI b-roll video, which has no picture
-                      of its own to borrow. The generator can still paint a
-                      scene, but that is an image generation with a real cost,
-                      so it is a button rather than something that happens on
-                      every open. One click, and no trip to AI Tools. */}
-                  {photos.length === 0 && projectId && !photoThumb && (
-                    <button
-                      type="button"
-                      onClick={() => buildPhotoThumb("")}
-                      disabled={thumbBusy}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:opacity-50"
-                    >
-                      <Sparkles size={11} />
-                      {thumbBusy ? "Designing…" : "Design a bolder thumbnail"}
-                    </button>
                   )}
 
                   {/* Only once it is live. Before that the thumbnail goes up

@@ -219,6 +219,14 @@ export interface RenderThumbnailOptions {
    */
   backgroundUrl?: string;
   /**
+   * What the picture should show, typed by the agent.
+   *
+   * Overrides the brief written from the script. Only ever consulted when a
+   * background is being generated: a chosen photo is already the answer to
+   * this question.
+   */
+  scene?: string;
+  /**
    * The market to print on the badge, typed by the user.
    *
    * Everything else in the chain is inferred — the project's stored market, a
@@ -245,7 +253,7 @@ export interface RenderThumbnailOptions {
  */
 export async function renderAndSaveThumbnail(
   opts: RenderThumbnailOptions,
-): Promise<{ url: string; headline: string; backgroundUrl: string }> {
+): Promise<{ url: string; headline: string; backgroundUrl: string; scene: string }> {
   const admin = createAdminClient();
 
   const { data: profile } = await admin
@@ -265,6 +273,9 @@ export async function renderAndSaveThumbnail(
   let projCity: string | null = null;
   let projState: string | null = null;
   let scriptText = "";
+  /** What the background was asked to show — reported back so the box that
+   *  edits it can open on the truth. Empty when a photo was used instead. */
+  let sceneUsed = "";
   if (opts.projectId) {
     const { data: proj } = await admin
       .from("projects")
@@ -352,17 +363,17 @@ export async function renderAndSaveThumbnail(
      * Skipped when a scene cannot be written: the prompt still falls back to
      * the title, which is at least this video rather than any video.
      */
-    const scene = await photoBriefFor({
+    sceneUsed = (opts.scene || "").trim() || (await photoBriefFor({
       headline: sourceTitle || headlineText,
       body: scriptText,
       city,
       state,
       kind: "thumbnail",
-    });
+    })) || "";
 
     const aiBg = await generateThumbnailBackground({
       topic: sourceTitle || headlineText,
-      scene: scene || undefined,
+      scene: sceneUsed || undefined,
       city,
       state,
     });
@@ -553,11 +564,15 @@ export async function renderAndSaveThumbnail(
           // the field that edits them can only open empty, and every rebuild
           // has to let the AI write new ones over a headline someone chose.
           thumbnail_headline: headlineText,
+          // And what the picture shows. Only written when one was generated —
+          // a rebuild over a chosen photo has no scene and must not erase the
+          // last one, which is still what the box should offer.
+          ...(sceneUsed ? { thumbnail_scene: sceneUsed } : {}),
         },
       })
       .eq("id", opts.projectId)
       .eq("user_id", opts.userId);
   }
 
-  return { url: publicUrl, headline: headlineText, backgroundUrl };
+  return { url: publicUrl, headline: headlineText, backgroundUrl, scene: sceneUsed };
 }
