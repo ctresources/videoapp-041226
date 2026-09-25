@@ -23,6 +23,8 @@ interface ImportRow {
   received_at: string;
   body_text: string;
   image_urls: string[];
+  /** Set when the words came out of a PDF — attached, or behind a link. */
+  pdf_source: string | null;
 }
 
 /** Mints the address on first use rather than in a migration backfill. */
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
   // keeps one account's forwards out of another's.
   const { data, error } = await supabase
     .from("email_imports")
-    .select("id, subject, from_address, word_count, received_at, body_text")
+    .select("id, subject, from_address, word_count, received_at, body_text, pdf_source")
     .order("received_at", { ascending: false })
     .limit(LIST_LIMIT);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -97,6 +99,9 @@ export async function GET(req: NextRequest) {
       from: row.from_address,
       words: row.word_count,
       receivedAt: row.received_at,
+      // Named rather than a bare flag: "Q3-market-report.pdf" tells you which
+      // of three forwarded reports this row is.
+      pdfSource: row.pdf_source,
       // Enough to recognise the piece without sending every article down for a
       // list the agent may only glance at.
       preview: (row.body_text ?? "").slice(0, 160),

@@ -172,25 +172,139 @@ async function imagesFromEmail(userId: string, email: ReceivedEmail, html: strin
  * forwards a market report as a PDF with an empty covering note. Used to fill
  * the body when the email itself carried nothing, and appended when it did.
  */
-async function textFromPdfAttachments(email: ReceivedEmail): Promise<string> {
+/** What a PDF read produced, and which PDF it was — the row stores the name. */
+interface PdfRead { text: string; source: string }
+
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+/** The shared parse. Too little text means a scanned page, which is nothing. */
+async function pdfTextFrom(bytes: ArrayBuffer): Promise<string> {
+  const proxy = await getDocumentProxy(new Uint8Array(Buffer.from(bytes)));
+  const { text } = await extractText(proxy, { mergePages: true });
+  const merged = (Array.isArray(text) ? text.join(" ") : text).replace(/\s{3,}/g, "  ").trim();
+  return merged.length > 100 ? merged : "";
+}
+
+async function textFromPdfAttachments(email: ReceivedEmail): Promise<PdfRead> {
   const pdfs = (email.attachments ?? []).filter(
-    (a) => (a.content_type ?? "").includes("pdf") && (a.size ?? 0) < 20 * 1024 * 1024,
+    (a) => (a.content_type ?? "").includes("pdf") && (a.size ?? 0) < MAX_PDF_BYTES,
   );
   const parts: string[] = [];
+  let source = "";
   for (const pdf of pdfs.slice(0, 2)) {
     if (!pdf.download_url) continue;
     try {
       const res = await fetch(pdf.download_url, { signal: AbortSignal.timeout(20000) });
       if (!res.ok) continue;
-      const proxy = await getDocumentProxy(new Uint8Array(Buffer.from(await res.arrayBuffer())));
-      const { text } = await extractText(proxy, { mergePages: true });
-      const merged = (Array.isArray(text) ? text.join(" ") : text).replace(/\s{3,}/g, "  ").trim();
-      if (merged.length > 100) parts.push(merged);
+      const merged = await pdfTextFrom(await res.arrayBuffer());
+      if (merged) {
+        parts.push(merged);
+        source ||= pdf.filename || "PDF attachment";
+      }
     } catch {
       // A scanned or broken PDF is not a reason to lose the email.
     }
   }
-  return parts.join("\n\n");
+  return { text: parts.join("\n\n"), source };
+}
+
+/**
+ * Whether a URL may be fetched at all.
+ *
+ * This is the one place in the app that follows a link chosen by whoever sent
+ * the email rather than by the agent reading it. An import address is private,
+ * but privacy is not a permission check: anything that learns the address can
+ * post a link, and a server that fetches arbitrary URLs is a server that can
+ * be pointed at its own network. Public http(s) hosts only.
+ */
+function fetchableUrl(raw: string): URL | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".internal") ||
+    host === "::1" ||
+    host === "0.0.0.0" ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  ) return null;
+  return u;
+}
+
+/**
+ * A PDF the email LINKED to rather than attached.
+ *
+ * A market report arrives as a link as often as an attachment — "here are this
+ * month's numbers" and a URL — and everything behind that link used to be
+ * thrown away, leaving a two-line covering note where a 2,000-word report
+ * should be.
+ *
+ * Candidates come from the markup's hrefs and from bare URLs in the plain-text
+ * part, because a forwarded email may carry either. A link counts as a PDF if
+ * its path says so, or if the server says so when asked. Anything behind a
+ * login, a viewer page or a download interstitial answers with HTML and is
+ * left alone: that is this feature's honest edge, not a bug to work around.
+ */
+async function textFromPdfLinks(html: string, text: string): Promise<PdfRead> {
+  // Array.from rather than for..of: this file compiles to a target where a
+  // RegExp iterator is not directly iterable.
+  const found: string[] = [
+    ...Array.from(html.match(/href\s*=\s*["'][^"']+["']/gi) ?? [], (h) => h.replace(/^href\s*=\s*["']|["']$/g, "")),
+    ...Array.from((text || "").match(/https?:\/\/[^\s<>"')]+/gi) ?? []),
+  ];
+
+  const seen = new Set<string>();
+  const urls: URL[] = [];
+  for (const candidate of found) {
+    const u = fetchableUrl(candidate.replace(/&amp;/g, "&").trim());
+    if (!u || seen.has(u.href)) continue;
+    seen.add(u.href);
+    urls.push(u);
+    // Enough for a report and its appendix, without turning one email into a
+    // crawl of every link in a newsletter footer.
+    if (urls.length >= 8) break;
+  }
+
+  const parts: string[] = [];
+  let source = "";
+  for (const u of urls) {
+    if (parts.length >= 2) break;
+    const looksPdf = /\.pdf($|[?#])/i.test(u.pathname + u.search);
+    try {
+      // Unknown links are asked what they are before being downloaded, so a
+      // newsletter full of article links costs a few HEADs, not a few bodies.
+      if (!looksPdf) {
+        const head = await fetch(u, { method: "HEAD", signal: AbortSignal.timeout(8000) }).catch(() => null);
+        const type = (head?.headers.get("content-type") ?? "").toLowerCase();
+        if (!head?.ok || !type.includes("pdf")) continue;
+      }
+      const res = await fetch(u, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) continue;
+      const type = (res.headers.get("content-type") ?? "").toLowerCase();
+      if (!looksPdf && !type.includes("pdf")) continue;
+      if (Number(res.headers.get("content-length") ?? 0) > MAX_PDF_BYTES) continue;
+      const bytes = await res.arrayBuffer();
+      if (bytes.byteLength > MAX_PDF_BYTES) continue;
+      const merged = await pdfTextFrom(bytes);
+      if (merged) {
+        parts.push(merged);
+        source ||= decodeURIComponent(u.pathname.split("/").pop() || "") || u.hostname;
+      }
+    } catch {
+      // A dead link, a slow host, a scanned report: the email still arrives.
+    }
+  }
+  return { text: parts.join("\n\n"), source };
 }
 
 export async function POST(req: NextRequest) {
@@ -259,11 +373,19 @@ export async function POST(req: NextRequest) {
   const html = email.html ? decodeBodyIfDataUri(email.html) : "";
   let body = articleFromEmail({ html: email.html, text: email.text });
 
-  const pdfText = await textFromPdfAttachments(email);
-  if (pdfText) {
-    // The covering note above an attached report is not the report. Under the
-    // floor it is replaced rather than prepended.
-    body = countWords(body) < MIN_WORDS ? pdfText : `${body}\n\n${pdfText}`;
+  /**
+   * Attachments first, then links — a PDF is the article either way.
+   *
+   * The link pass only runs when nothing was attached: an email carrying both
+   * is carrying the report twice, and the attachment is the copy that cannot
+   * expire behind someone else's redirect.
+   */
+  let pdf = await textFromPdfAttachments(email);
+  if (!pdf.text) pdf = await textFromPdfLinks(html, email.text ?? "");
+  if (pdf.text) {
+    // The covering note above a report is not the report. Under the floor it
+    // is replaced rather than prepended.
+    body = countWords(body) < MIN_WORDS ? pdf.text : `${body}\n\n${pdf.text}`;
   }
 
   if (countWords(body) < MIN_WORDS) {
@@ -286,6 +408,10 @@ export async function POST(req: NextRequest) {
     body_text: body,
     word_count: countWords(body),
     image_urls: images,
+    // Which PDF these words came out of, so the list can say the report itself
+    // arrived rather than leaving a 2,000-word row looking like a forwarded
+    // note that happened to be long.
+    pdf_source: pdf.source || null,
   });
 
   // 23505 is a duplicate key: the same delivery arriving twice, which is a

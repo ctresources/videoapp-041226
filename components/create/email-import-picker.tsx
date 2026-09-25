@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Copy, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export interface EmailImportItem {
@@ -12,6 +12,14 @@ export interface EmailImportItem {
   words: number;
   receivedAt: string;
   preview: string;
+  /**
+   * The PDF these words came from, attached or linked, else null.
+   *
+   * Worth saying on the row: a report that arrived as a link used to import as
+   * the two-line note above it, so "2,400 words" on its own could not be told
+   * apart from a long forward. Now it can say where the words are from.
+   */
+  pdfSource?: string | null;
 }
 
 export interface PickedEmailArticle {
@@ -177,6 +185,12 @@ export function EmailImportPicker({
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12.5px] font-bold text-brand-text">{item.subject}</p>
+                {item.pdfSource && (
+                  <p className="mt-0.5 flex items-center gap-1 text-[10.5px] font-semibold text-spark-amber">
+                    <FileText size={10} />
+                    <span className="truncate">PDF read &middot; {item.pdfSource}</span>
+                  </p>
+                )}
                 <p className="text-[10.5px] text-spark-ink-faint">
                   {item.words.toLocaleString()} words · {whenShort(item.receivedAt)}
                   {item.from ? ` · from ${senderName(item.from)}` : ""}

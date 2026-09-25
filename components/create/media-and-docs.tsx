@@ -425,7 +425,19 @@ export function ArticleSource({
             <p className="text-[11px] text-spark-ink-faint mt-1">
               {doc.mode === "upload"
                 ? `PDF content will be extracted${purpose === "article" ? " and used to write your article." : " and used to enrich your video."}`
-                : `Web page content will be extracted${purpose === "article" ? " and used to write your article." : " and used to enrich your video."}`}
+                : `A link to a PDF works here too — ${purpose === "article" ? "the PDF is read and your article written from it." : "the PDF is read and used to enrich your video."}`}
+            </p>
+          )}
+
+          {/* Where an emailed PDF went.
+              Attaching is one of three ways a PDF reaches this app — the other
+              two are a link, which Add URL already reads, and an email, where
+              the PDF is read on arrival. Someone standing at the upload box
+              having already sent one has no way to know either. */}
+          {doc.mode === "upload" && doc.onPickEmail && (
+            <p className="text-[11px] text-spark-ink-faint mt-0.5">
+              Emailed it instead, or have a link to it? A PDF sent or linked to your
+              import address is read for you — look under <strong>From email</strong>.
             </p>
           )}
         </div>
