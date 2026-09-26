@@ -60,37 +60,58 @@ export interface ImageText {
 }
 
 let _font: opentypeNs.Font | null = null;
-function getFont(): opentypeNs.Font {
-  if (!_font) {
-    const buf = readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
-    _font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-  }
-  return _font;
+/**
+ * Two faces.
+ *
+ * Everything here was set in Archivo Black, which is right for a headline over
+ * a photograph and wrong for a row of labels: at small sizes a heavy display
+ * face turns a label into a second headline competing with the figure beside
+ * it. Montserrat carries the small text — labels, the month, the source line —
+ * and the display face keeps the title and the numbers.
+ *
+ * Both are already in the repo. No third file, and nothing fetched at render
+ * time: a font that has to be downloaded is a picture that fails at midnight.
+ */
+type FaceName = "display" | "text";
+const FACE_FILES: Record<FaceName, [string, string]> = {
+  display: ["fonts", "ArchivoBlack-Regular.ttf"],
+  text: ["public/fonts", "Montserrat-SemiBold.ttf"],
+};
+const _faces: Partial<Record<FaceName, opentypeNs.Font>> = {};
+
+function getFont(face: FaceName = "display"): opentypeNs.Font {
+  const cached = _faces[face];
+  if (cached) return cached;
+  const [dir, file] = FACE_FILES[face];
+  const buf = readFileSync(path.join(process.cwd(), ...dir.split("/"), file));
+  const parsed = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  _faces[face] = parsed;
+  return parsed;
 }
 
-function textWidth(text: string, size: number): number {
-  return getFont().getAdvanceWidth(text, size);
+function textWidth(text: string, size: number, face: FaceName = "display"): number {
+  return getFont(face).getAdvanceWidth(text, size);
 }
 
 /** One path per word, laid out by advance width. */
-function lineToPaths(line: string, x: number, y: number, size: number, fill: string): string {
-  const space = textWidth(" ", size);
+function lineToPaths(line: string, x: number, y: number, size: number, fill: string, face: FaceName = "display"): string {
+  const space = textWidth(" ", size, face);
   let cx = x;
   const out: string[] = [];
   for (const word of line.split(" ")) {
-    if (word) out.push(`<path d="${glyphPathData(getFont().getPath(word, cx, y, size))}" fill="${fill}"/>`);
-    cx += textWidth(word, size) + space;
+    if (word) out.push(`<path d="${glyphPathData(getFont(face).getPath(word, cx, y, size))}" fill="${fill}"/>`);
+    cx += textWidth(word, size, face) + space;
   }
   return out.join("");
 }
 
-function wrapLines(text: string, size: number, maxWidth: number): string[] {
+function wrapLines(text: string, size: number, maxWidth: number, face: FaceName = "display"): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let cur = "";
   for (const w of words) {
     const t = cur ? `${cur} ${w}` : w;
-    if (cur && textWidth(t, size) > maxWidth) {
+    if (cur && textWidth(t, size, face) > maxWidth) {
       lines.push(cur);
       cur = w;
     } else {
@@ -102,11 +123,11 @@ function wrapLines(text: string, size: number, maxWidth: number): string[] {
 }
 
 /** Largest size (down to `min`) at which the text wraps into `maxLines` that all fit. */
-function fitWrapped(text: string, maxWidth: number, start: number, min: number, maxLines: number) {
+function fitWrapped(text: string, maxWidth: number, start: number, min: number, maxLines: number, face: FaceName = "display") {
   let size = start;
   for (;;) {
-    const lines = wrapLines(text, size, maxWidth);
-    const fits = lines.length <= maxLines && lines.every((l) => textWidth(l, size) <= maxWidth);
+    const lines = wrapLines(text, size, maxWidth, face);
+    const fits = lines.length <= maxLines && lines.every((l) => textWidth(l, size, face) <= maxWidth);
     if (fits || size <= min) return { size, lines: lines.slice(0, maxLines) };
     size -= 2;
   }
@@ -259,82 +280,163 @@ function statPanel(
     accent: string;
     kicker: string;
     title: string;
+    strap: string;
     source: string;
   },
 ): string {
   const { x, y, w, h, accent } = opts;
-  // Tighter than a poster margin: every pixel the chrome takes is a pixel off
-  // the figures, which are the only reason this card exists.
-  const pad = Math.round(w * 0.055);
+  const pad = Math.round(w * 0.062);
   const inner = w - pad * 2;
+  // Ink, not black. A printed market report is navy on cream, and near-black
+  // on white is the thing that made the first version look like a web page.
+  const INK = "#14375c";
+  const MUTED = "#3f6184";
+
   const parts: string[] = [
-    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.round(w * 0.035)}" fill="#ffffff" fill-opacity="0.96"/>`,
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#f8f5ef"/>`,
   ];
+
+  /**
+   * The figures are given their share of the panel FIRST.
+   *
+   * Laying the header out top-down and letting the rows have the remainder is
+   * how the first attempt ended up with 22px numbers: a long title wrapped to
+   * three lines at display size and quietly ate two thirds of the sheet. A
+   * market report exists to show figures, so they take a little over half the
+   * panel by right, and the masthead is fitted into what is left — shrinking
+   * the title, which can afford it, rather than the numbers, which cannot.
+   */
+  const sourceSize = opts.source ? Math.round(w * 0.026) : 0;
+  const sourceH = opts.source ? Math.round(sourceSize * 2.6) : 0;
+  const rowsH = Math.round(h * 0.47);
+  const rowsTop = y + h - pad - sourceH - rowsH;
+  const rowH = Math.floor(rowsH / stats.length);
 
   let ty = y + pad;
 
-  // The month, in the accent colour: small, spaced, the way a report dates
-  // itself. Not a pill here — a pill on a white panel is a second object.
-  if (opts.kicker) {
-    const kSize = Math.round(w * 0.032);
-    const k = fitWrapped(opts.kicker.toUpperCase(), inner, kSize, Math.round(kSize * 0.7), 1);
-    if (k.lines[0]) {
-      parts.push(lineToPaths(k.lines[0], x + pad, ty + k.size, k.size, accent));
-      ty += Math.round(k.size * 1.7);
-    }
-  }
+  // Month, rule and strap are small and fixed; the title takes what remains.
+  const kSize = opts.kicker ? Math.round(w * 0.05) : 0;
+  const kH = opts.kicker ? Math.round(kSize * 1.35) : 0;
+  const strapSize = Math.round(w * 0.028);
+  const strapH = Math.round(strapSize * 2.1) + Math.round(pad * 0.42);
+  const titleRoom = Math.max(Math.round(h * 0.08), rowsTop - ty - kH - strapH - Math.round(pad * 0.35));
 
   if (opts.title) {
-    const tSize = Math.round(w * 0.062);
-    const t = fitWrapped(opts.title, inner, tSize, Math.round(tSize * 0.5), 2);
-    const lh = Math.round(t.size * 1.16);
+    // Two lines at most. "Market Update — Blue Bell, PA" over three lines is a
+    // headline where a masthead belongs.
+    const start = Math.min(Math.round(w * 0.1), Math.round(titleRoom * 0.86));
+    let t = fitWrapped(opts.title, inner, start, Math.round(w * 0.035), 2);
+    // fitWrapped only knows about width. A title that wraps to two lines can
+    // still be taller than the room above the rule, and a masthead running
+    // over its own strap line is the one flaw nobody would forgive.
+    if (t.lines.length * Math.round(t.size * 1.08) > titleRoom) {
+      const capped = Math.floor(titleRoom / (t.lines.length * 1.08));
+      t = fitWrapped(opts.title, inner, Math.max(Math.round(w * 0.03), capped), Math.round(w * 0.03), 2);
+    }
+    const lh = Math.round(t.size * 1.08);
     t.lines.forEach((line, i) => {
-      parts.push(lineToPaths(line, x + pad, ty + Math.round(t.size * 0.9) + i * lh, t.size, "#0f172a"));
+      parts.push(lineToPaths(line, x + pad, ty + Math.round(t.size * 0.86) + i * lh, t.size, INK));
     });
-    ty += t.lines.length * lh + Math.round(pad * 0.42);
+    ty += t.lines.length * lh + Math.round(pad * 0.35);
   }
 
-  const sourceSize = opts.source ? Math.round(w * 0.028) : 0;
-  const sourceH = opts.source ? Math.round(sourceSize * 2.4) : 0;
-  const rowsTop = ty;
-  const rowsH = y + h - pad - sourceH - rowsTop;
-  const rowH = Math.floor(rowsH / stats.length);
+  if (opts.kicker) {
+    const k = fitWrapped(opts.kicker, inner, kSize, Math.round(kSize * 0.6), 1, "text");
+    if (k.lines[0]) {
+      parts.push(lineToPaths(k.lines[0], x + pad, ty + k.size, k.size, INK, "text"));
+      ty += kH;
+    }
+  }
+  parts.push(`<rect x="${x + pad}" y="${ty}" width="${Math.round(inner * 0.5)}" height="3" fill="${accent}"/>`);
+  ty += Math.round(pad * 0.42);
+  if (opts.strap) {
+    const st = fitWrapped(opts.strap.toUpperCase(), inner, strapSize, Math.round(strapSize * 0.6), 1, "text");
+    if (st.lines[0]) {
+      // Letter-spaced by hand: the renderer lays out whole words, and a market
+      // report's strap line has to breathe.
+      let cx = x + pad;
+      const extra = Math.round(st.size * 0.22);
+      for (const ch of st.lines[0]) {
+        if (ch !== " ") parts.push(lineToPaths(ch, cx, ty + st.size, st.size, MUTED, "text"));
+        cx += textWidth(ch, st.size, "text") + extra;
+      }
+    }
+  }
 
   stats.forEach((stat, i) => {
     const cy = rowsTop + i * rowH;
     const mid = cy + Math.round(rowH / 2);
-    const dot = Math.max(5, Math.round(rowH * 0.085));
-    parts.push(`<circle cx="${x + pad + dot}" cy="${mid}" r="${dot}" fill="${accent}"/>`);
 
-    const labelX = x + pad + dot * 2 + Math.round(pad * 0.55);
-    // The value is sized first and the label gets what is left: a figure that
-    // has to shrink to fit is the one thing on this card that must not.
-    const valueSize = Math.round(rowH * 0.46);
-    const value = fitWrapped(stat.value, Math.round(inner * 0.46), valueSize, Math.round(valueSize * 0.6), 1);
+    // The badge: a filled disc in the accent colour, the size of the label
+    // beside it. No glyph inside — a shape nobody can name beats a wrong icon.
+    const r = Math.round(rowH * 0.17);
+    parts.push(`<circle cx="${x + pad + r}" cy="${mid}" r="${r}" fill="${accent}" fill-opacity="0.9"/>`);
+
+    const labelX = x + pad + r * 2 + Math.round(pad * 0.5);
+    const valueSize = Math.round(rowH * 0.5);
+    const value = fitWrapped(stat.value, Math.round(inner * 0.44), valueSize, Math.round(valueSize * 0.55), 1);
     const valueW = value.lines[0] ? textWidth(value.lines[0], value.size) : 0;
-    const labelMax = x + w - pad - valueW - Math.round(pad * 0.6) - labelX;
 
+    // Two lines for the label, as on a printed sheet: "Months of / inventory"
+    // reads better than one long line squeezed to fit beside a figure.
+    const labelMax = Math.max(60, x + w - pad - valueW - Math.round(pad * 0.5) - labelX);
     const labelSize = Math.round(rowH * 0.2);
-    const label = fitWrapped(stat.label.toUpperCase(), Math.max(40, labelMax), labelSize, Math.round(labelSize * 0.62), 1);
-    if (label.lines[0]) {
-      parts.push(lineToPaths(label.lines[0], labelX, mid + Math.round(label.size * 0.36), label.size, "#475569"));
-    }
+    const label = fitWrapped(stat.label, labelMax, labelSize, Math.round(labelSize * 0.62), 2, "text");
+    const labelLH = Math.round(label.size * 1.15);
+    const labelTop = mid - Math.round((label.lines.length * labelLH) / 2) + Math.round(label.size * 0.85);
+    label.lines.forEach((line, j) => {
+      parts.push(lineToPaths(line, labelX, labelTop + j * labelLH, label.size, MUTED, "text"));
+    });
+
     if (value.lines[0]) {
-      parts.push(lineToPaths(value.lines[0], x + w - pad - valueW, mid + Math.round(value.size * 0.36), value.size, "#0f172a"));
+      parts.push(lineToPaths(value.lines[0], x + w - pad - valueW, mid + Math.round(value.size * 0.36), value.size, INK));
     }
-    // A hairline between figures, never under the last one: a rule along the
-    // bottom edge of a panel reads as the panel being cut off.
     if (i < stats.length - 1) {
-      const ly = cy + rowH;
-      parts.push(`<rect x="${x + pad}" y="${ly}" width="${inner}" height="2" fill="#e2e8f0"/>`);
+      parts.push(`<rect x="${x + pad}" y="${cy + rowH}" width="${inner}" height="2" fill="#dfd8cc"/>`);
     }
   });
 
   if (opts.source) {
-    parts.push(lineToPaths(`Source: ${opts.source}`, x + pad, y + h - pad, sourceSize, "#94a3b8"));
+    parts.push(lineToPaths(`Source: ${opts.source}`, x + pad, y + h - pad, sourceSize, MUTED, "text"));
   }
 
   return parts.join("\n");
+}
+
+/**
+ * The plate the agent's name sits on, over the photograph.
+ *
+ * The sample this follows puts the name in white on a deep block at the foot
+ * of the picture, and it is the difference between a graphic with a face on it
+ * and one that says who is speaking. Drawn from the profile, so nobody types
+ * their own name into a box that already knows it.
+ */
+function namePlate(opts: {
+  x: number; y: number; w: number;
+  name: string; strap: string;
+}): { svg: string; height: number } {
+  const { x, y, w } = opts;
+  const pad = Math.round(w * 0.075);
+  const nameSize = Math.round(w * 0.11);
+  const name = fitWrapped(opts.name, w - pad * 2, nameSize, Math.round(nameSize * 0.45), 2);
+  const lh = Math.round(name.size * 1.06);
+  const strapSize = Math.round(w * 0.036);
+  const strap = opts.strap
+    ? fitWrapped(opts.strap, w - pad * 2, strapSize, Math.round(strapSize * 0.6), 2, "text")
+    : { size: 0, lines: [] as string[] };
+  const strapLH = Math.round(strap.size * 1.25);
+  const h = pad + name.lines.length * lh + (strap.lines.length ? Math.round(pad * 0.25) + strap.lines.length * strapLH : 0) + pad;
+
+  const parts = [`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#14375c" fill-opacity="0.94"/>`];
+  let ty = y + pad;
+  name.lines.forEach((line, i) => {
+    parts.push(lineToPaths(line, x + pad, ty + Math.round(name.size * 0.86) + i * lh, name.size, "#ffffff"));
+  });
+  ty += name.lines.length * lh + Math.round(pad * 0.25);
+  strap.lines.forEach((line, i) => {
+    parts.push(lineToPaths(line, x + pad, ty + strap.size + i * strapLH, strap.size, "#c9d8e8", "text"));
+  });
+  return { svg: parts.join("\n"), height: h };
 }
 
 /** Draws the words, logo and headshot over a background and uploads the result. */
@@ -365,10 +467,15 @@ export async function renderImage(opts: {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("logo_url, avatar_url")
+    // Name and brokerage for the market-report plate: the same on every card
+    // this account makes, so they are read rather than typed.
+    .select("logo_url, avatar_url, full_name, company_name")
     .eq("id", opts.userId)
     .single();
-  const prof = profile as { logo_url: string | null; avatar_url: string | null } | null;
+  const prof = profile as {
+    logo_url: string | null; avatar_url: string | null;
+    full_name: string | null; company_name: string | null;
+  } | null;
 
   // Logo, bottom right, small, on a light see-through plate. Prepared before the
   // text is laid out because the two share the bottom edge: the text block is
@@ -422,54 +529,74 @@ export async function renderImage(opts: {
    */
   if (stats.length) {
     /**
-     * A report, not a caption.
+     * A market report sheet: panel on one side, the agent on the other.
      *
-     * The photograph becomes the setting and the panel carries everything
-     * else: on a wide frame the panel takes the left and the picture keeps the
-     * right, where the agent's face goes; on a tall one the picture is a band
-     * across the top with the panel below it. Either way the figures live on
-     * white, which is what makes this read as a market report rather than as a
-     * post with numbers on it.
+     * Flush to the edges rather than floating with a margin — the sample this
+     * follows is a printed sheet, and a rounded card with the photograph
+     * showing around all four sides reads as a social post instead. The panel
+     * owns its side of the frame completely, the picture owns the rest.
      */
-    const panelW = landscape ? Math.round(w * 0.6) : w - 2 * M;
-    const panelX = M;
-    const panelY = landscape ? M : Math.round(h * 0.3);
-    const panelH = h - panelY - M;
+    const panelW = landscape ? Math.round(w * 0.62) : w;
+    const panelX = 0;
+    const panelY = landscape ? 0 : Math.round(h * 0.26);
+    const panelH = h - panelY;
 
-    const panel = statPanel(stats, {
+    // Sits under the month, saying what the sheet is. The Second line box when
+    // it has been filled; this phrase when it has not, because every one of
+    // these sheets says it and nobody should have to type it.
+    const strap = subline || "Real Estate Market Report";
+
+    const parts = [statPanel(stats, {
       x: panelX, y: panelY, w: panelW, h: panelH,
-      accent, kicker, title: headline, source,
-    });
+      accent, kicker, title: headline, strap, source,
+    })];
 
-    // Darkened only where the panel is not: the picture behind a 96% white
-    // card gains nothing from a scrim, and the agent's face loses by it.
-    const openX = landscape ? panelX + panelW : 0;
-    const openW = landscape ? w - openX : w;
-    const openH = landscape ? h : panelY;
+    /**
+     * Who this is from, on the picture rather than in the panel.
+     *
+     * Name and brokerage come from the profile: they are the same on every
+     * card this account will ever make, and a box for them would be a box
+     * nobody should have to fill twice.
+     */
+    const plateW = landscape ? w - panelW : Math.round(w * 0.62);
+    const plateX = landscape ? panelW : w - plateW;
+    if (prof?.full_name && opts.text.showHeadshot) {
+      const plate = namePlate({
+        x: plateX,
+        y: 0,
+        w: plateW,
+        name: prof.full_name,
+        strap: [prof.company_name].filter(Boolean).join(" · "),
+      });
+      // Pinned to the bottom of the picture area: the panel's foot on a wide
+      // frame, the band's foot on a tall one.
+      // Laid out at y=0 and moved as a group: the plate's height is only
+      // known once its name has wrapped, and a transform beats threading an
+      // offset back through every path in it.
+      const plateY = (landscape ? h : panelY) - plate.height;
+      parts.push(`<g transform="translate(0, ${plateY})">${plate.svg}</g>`);
+    }
+
     const overlaySvg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="${openX}" y="0" width="${openW}" height="${openH}" fill="#0b1220" fill-opacity="0.25"/>
-  ${panel}
+  ${parts.join("\n")}
 </svg>`;
 
     /**
-     * The face, big, in the space the panel left.
+     * The photograph of the agent fills the open side, not a circle in it.
      *
-     * A 17%-wide ring in a corner is a byline. On a report that someone is
-     * meant to recognise at a glance in a feed, the agent IS half the point,
-     * so it takes the open side of the frame at the size that space allows.
+     * A ringed thumbnail is a byline. On a sheet somebody is meant to
+     * recognise at a glance, the agent is half the design, so the headshot is
+     * cover-cropped into the whole open area — the same crop the renderer
+     * gives every other background photo.
      */
-    const faceD = landscape
-      ? Math.min(Math.round(w * 0.3), Math.round(h * 0.62))
-      : Math.round(Math.min(w, h) * 0.26);
-    const headshotAt = landscape
-      ? { x: Math.round(openX + (openW - faceD) / 2), y: Math.round((h - faceD) / 2), d: faceD }
-      : { x: w - M - faceD, y: Math.round(panelY - faceD * 0.62), d: faceD };
+    const faceW = landscape ? w - panelW : w;
+    const faceH = landscape ? h : panelY;
 
     return await composeAndUpload({
       admin, sharp, base, w, h, M, overlay: Buffer.from(overlaySvg),
       userId: opts.userId, logo,
       headshot: opts.text.showHeadshot ? prof?.avatar_url ?? null : null,
-      headshotAt,
+      headshotFill: { x: landscape ? panelW : 0, y: 0, w: faceW, h: faceH },
     });
   }
 
@@ -542,11 +669,35 @@ async function composeAndUpload(o: {
   headshot: string | null;
   /** Where and how big, when a layout has somewhere better than the corner. */
   headshotAt?: { x: number; y: number; d: number };
+  /**
+   * A rectangle for the headshot to fill, cover-cropped, drawn UNDER the
+   * overlay rather than over it — the market-report sheet gives the picture a
+   * whole side of the frame, and a name plate has to sit on top of it.
+   */
+  headshotFill?: { x: number; y: number; w: number; h: number };
 }): Promise<string> {
   const { admin, sharp, base, w, h, M } = o;
-  const composites: { input: Buffer; left: number; top: number }[] = [
-    { input: o.overlay, left: 0, top: 0 },
-  ];
+  const composites: { input: Buffer; left: number; top: number }[] = [];
+
+  // First, so the overlay's panel and plate land on top of it.
+  if (o.headshot && o.headshotFill) {
+    try {
+      const res = await fetch(o.headshot);
+      if (res.ok) {
+        const fill = o.headshotFill;
+        const img = await sharp(Buffer.from(await res.arrayBuffer()))
+          .rotate()
+          // "attention" keeps the face when a square portrait has to become a
+          // tall strip, which is the usual shape of the space left here.
+          .resize(fill.w, fill.h, { fit: "cover", position: "attention" })
+          .png()
+          .toBuffer();
+        composites.push({ input: img, left: fill.x, top: fill.y });
+      }
+    } catch { /* the sheet still renders on its background */ }
+  }
+
+  composites.push({ input: o.overlay, left: 0, top: 0 });
 
   if (o.logo) {
     const top = h - M - o.logo.plateH;
@@ -554,8 +705,8 @@ async function composeAndUpload(o: {
     composites.push({ input: o.logo.image, left: w - M - o.logo.plateW + o.logo.pad, top: top + o.logo.pad });
   }
 
-  // Headshot, top left, in a white ring.
-  if (o.headshot) {
+  // Headshot, top left, in a white ring — the caption layouts' version.
+  if (o.headshot && !o.headshotFill) {
     try {
       const res = await fetch(o.headshot);
       if (res.ok) {
