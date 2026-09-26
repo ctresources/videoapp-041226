@@ -411,7 +411,7 @@ function VideosContent() {
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-10 w-36" />
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-52" />)}
         </div>
       </div>
@@ -510,8 +510,8 @@ function VideosContent() {
           deleteTitle: "Delete draft",
         },
       ].filter((s) => s.items.length > 0).map((s) => (
-        <div key={s.key} className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
+        <div key={s.key} className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
             {s.key === "blogs"
               ? <FileText size={15} className={s.iconClass} />
               : <Pencil size={15} className={s.iconClass} />}
@@ -520,21 +520,21 @@ function VideosContent() {
               {s.items.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {s.items.map((d) => (
-              <Card key={d.id} padding="sm" className={`border-t-4 ${s.accent}`}>
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className="font-medium text-sm text-brand-text line-clamp-2">
+              <Card key={d.id} padding="sm" className={`border-t-2 ${s.accent}`}>
+                <div className="flex items-start justify-between gap-1.5 mb-1">
+                  <p className="font-medium text-[13px] leading-snug text-brand-text line-clamp-2">
                     {d.title || (s.key === "blogs" ? "Untitled Article" : "Untitled Draft")}
                   </p>
                   <Badge variant={s.key === "blogs" ? "default" : "warning"} className="text-xs shrink-0">
                     {s.badge}
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-400 mb-3">
+                <p className="text-[11px] text-slate-400 mb-2">
                   Saved {new Date(d.created_at).toLocaleDateString()} · {s.note}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <Link href={s.href(d.id)} className="flex-1">
                     <Button size="sm" variant="outline" className="w-full gap-1.5">
                       {s.key === "blogs" ? <FileText size={12} /> : <Pencil size={12} />} {s.cta}
@@ -578,14 +578,14 @@ function VideosContent() {
             got a heading when they were split apart, which left the videos as
             a bare grid under two labelled lists — so it read as the drafts
             spilling downwards rather than as the third thing on the page. */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Film size={15} className="text-spark-amber" />
           <h3 className="font-semibold text-brand-text">Videos — rendered and recorded</h3>
           <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
             {videos.length}
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {videos.map((video) => {
             const status = statusConfig[video.render_status] || statusConfig.pending;
             const StatusIcon = status.icon;
@@ -711,7 +711,7 @@ function VideosContent() {
                   </div>
                 </div>
 
-                <div className="p-4">
+                <div className="p-2.5">
                   <p className="font-medium text-sm text-brand-text truncate mb-1">
                     {(video.projects as { title: string } | null)?.title || "Untitled Video"}
                   </p>
@@ -754,7 +754,7 @@ function VideosContent() {
 
                   {/* Actions */}
                   {video.render_status === "completed" && video.video_url && (
-                    <div className="flex flex-col gap-2 mt-3">
+                    <div className="flex flex-col gap-1.5 mt-2">
                       {/* Preview is the primary CTA — publish/download live inside the preview modal */}
                       <Button
                         size="sm"
@@ -1028,7 +1028,7 @@ function VideosContent() {
 export default function VideosPage() {
   return (
     <Suspense fallback={
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-52" />)}
       </div>
     }>
