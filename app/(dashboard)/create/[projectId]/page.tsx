@@ -2497,6 +2497,23 @@ export default function ProjectEditorPage() {
                     >
                       <Copy size={12} /> Copy
                     </button>
+                    {/* The way on, where the eye already is.
+                        The step's only exit was the fixed bar at the foot of
+                        the window — which on a tall screen sits several
+                        hundred pixels below a script that ended a third of the
+                        way down, with nothing in between. It is on screen the
+                        whole time and still reads as "nothing follows this".
+                        Same handler as the bar, so there is one behaviour and
+                        two places to find it. */}
+                    {editorStep === 2 && (
+                      <button
+                        onClick={() => setEditorStep(3)}
+                        disabled={!editedScript.trim()}
+                        className="flex flex-none items-center gap-1.5 rounded-lg bg-spark-amber px-3 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-spark-amber-glow disabled:opacity-40"
+                      >
+                        Set the video up <ArrowRight size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 {/* Only on an imported article.
