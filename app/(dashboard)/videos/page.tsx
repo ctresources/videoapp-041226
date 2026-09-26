@@ -406,12 +406,12 @@ function VideosContent() {
 
   if (loading) {
     return (
-      <div>
+      <div className="mx-auto w-full max-w-[1400px]">
         <div className="flex items-center justify-between mb-6">
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-10 w-36" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-52" />)}
         </div>
       </div>
@@ -419,7 +419,18 @@ function VideosContent() {
   }
 
   return (
-    <div>
+    /**
+     * A width, at last.
+     *
+     * This page had none: three columns across whatever the window happened to
+     * be. On a wide monitor each card grew to fill a third of it, and zooming
+     * out made it worse rather than better — browser zoom widens the CSS
+     * viewport, so the three columns simply took twice as much room each.
+     *
+     * Capped here and given a fourth column below, so a card stays the size of
+     * a card and the extra width buys more of them instead.
+     */
+    <div className="mx-auto w-full max-w-[1400px]">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -509,7 +520,7 @@ function VideosContent() {
               {s.items.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {s.items.map((d) => (
               <Card key={d.id} padding="sm" className={`border-t-4 ${s.accent}`}>
                 <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -574,7 +585,7 @@ function VideosContent() {
             {videos.length}
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {videos.map((video) => {
             const status = statusConfig[video.render_status] || statusConfig.pending;
             const StatusIcon = status.icon;
@@ -1017,7 +1028,7 @@ function VideosContent() {
 export default function VideosPage() {
   return (
     <Suspense fallback={
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-52" />)}
       </div>
     }>

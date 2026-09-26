@@ -23,14 +23,17 @@ ffmpeg.setFfmpegPath(ffmpegPath.path);
  * the open moments — correctly mixed, and inaudible, which is the same as
  * absent to the person watching. It was reported as "no music".
  *
- * 0.70 with the duck below measures -26.5 dB in those moments, +8.2 dB on what
- * shipped, while putting no more under the narration than a flat 0.55 would.
- * Measured on the bundled ffmpeg with volumedetect, not estimated.
+ * 0.70 fixed that and overshot it: reported as too loud under an avatar
+ * render, which is the case with the least headroom — a single voice, no
+ * ambience of its own, talking continuously.
  *
- * Env-overridable so the level can be tuned against a real video without a
- * code change.
+ * 0.45 sits between the two, about -4 dB on 0.70 and still some 12 dB above
+ * the level that read as silence. Where exactly it should sit is a judgement
+ * about a particular voice over a particular track, which is why this stays
+ * env-overridable: MUSIC_LEVEL can be moved against a real video without a
+ * deploy, and this constant is only the starting point.
  */
-const MUSIC_LEVEL = Number(process.env.MUSIC_LEVEL || "") || 0.7;
+const MUSIC_LEVEL = Number(process.env.MUSIC_LEVEL || "") || 0.45;
 
 /**
  * How hard the voiceover pushes the music down while it is speaking.
