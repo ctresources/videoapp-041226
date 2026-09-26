@@ -56,7 +56,7 @@ interface GeneratedVideo {
   } | null;
   projects?: {
     title: string;
-    ai_script?: { hook?: string; script?: string; cta?: string } | null;
+    ai_script?: { hook?: string; script?: string; cta?: string; blog_body?: string } | null;
     /** A real saved PNG, when one has been made. Cheaper than a frame of video
      *  by orders of magnitude — see CardPoster. */
     thumbnail_url?: string | null;
@@ -823,6 +823,23 @@ function VideosContent() {
 
                   {/* Render progress bar */}
                   {isRendering && <RenderProgressBar video={video} />}
+
+                  {/* The article this video was written alongside.
+                      Outside the completed branch on purpose. The article is
+                      finished the moment the script is — it is saved with it —
+                      while the render takes another twenty minutes, so the one
+                      time somebody most wants the words is exactly when this
+                      card has nothing on it but a progress bar. It is also the
+                      only way to reach them: the Blog posts list above skips
+                      any project that has a video, by design, which left an
+                      article belonging to a video with no button anywhere. */}
+                  {video.project_id && video.projects?.ai_script?.blog_body?.trim() && (
+                    <Link href={`/create/${video.project_id}?step=5`} className="mt-2 block">
+                      <Button variant="outline" size="sm" className="w-full gap-1.5">
+                        <FileText size={13} /> Open the article
+                      </Button>
+                    </Link>
+                  )}
 
                   {/* Actions */}
                   {video.render_status === "completed" && video.video_url && (
