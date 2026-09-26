@@ -48,6 +48,27 @@ const MUSIC_LEVEL = Number(process.env.MUSIC_LEVEL || "") || 0.45;
 const DUCK_RATIO = Number(process.env.MUSIC_DUCK_RATIO || "") || 12;
 
 /**
+ * Flattens the track's own dynamics before it goes under the voice.
+ *
+ * A level is a constant; "the music got louder as it went on" is not a level
+ * problem. Library beds are written to build — sparse for the first sixteen
+ * bars, then drums, then everything — so a bed set by its opening is a wall by
+ * the last minute, and the voice appears to fade while it is in fact holding
+ * still. Reported exactly that way on a voice-only render.
+ *
+ * A slow compressor on the music alone holds the swell down: the quiet opening
+ * passes untouched and the loud second half is pulled back toward it. Attack
+ * and release are long on purpose — this is meant to flatten an arrangement
+ * over tens of seconds, not to react to a snare.
+ *
+ * Applied only in the ducked chain. If this build of ffmpeg lacks
+ * acompressor, that chain fails and the flat fallback below — which does not
+ * use it — still delivers music, which is the outcome this whole file exists
+ * to protect.
+ */
+const MUSIC_EVEN = "acompressor=threshold=0.1:ratio=4:attack=200:release=1000";
+
+/**
  * The flat fallback runs without a duck, so the same number would sit on top
  * of the narration all the way through. Measured equivalent: flat 0.49 puts
  * about as much music under speech as ducked 0.70 does, and simply gives up
@@ -79,7 +100,7 @@ const MIX_BOOST = "volume=2.0,alimiter=limit=0.95[a]";
  */
 const DUCKED_FILTER = [
   "[0:a]aformat=channel_layouts=stereo:sample_rates=44100,asplit=2[voice][key]",
-  `[1:a]aformat=channel_layouts=stereo:sample_rates=44100,volume=${MUSIC_LEVEL}[music]`,
+  `[1:a]aformat=channel_layouts=stereo:sample_rates=44100,${MUSIC_EVEN},volume=${MUSIC_LEVEL}[music]`,
   `[music][key]sidechaincompress=threshold=0.04:ratio=${DUCK_RATIO}:attack=12:release=350[duck]`,
   `[voice][duck]${MIX_TAIL}`,
   `[mix]${MIX_BOOST}`,
@@ -156,7 +177,7 @@ export async function mixBackgroundMusic(
     console.log(
       `[mix-music] Mixed ${(musicUrl.split("?")[0] || "").slice(-40)} into video ` +
       `(${(mixed.length / 1024 / 1024).toFixed(1)} MB, level=${MUSIC_LEVEL}, ` +
-      `${ducked ? `ducked ${DUCK_RATIO}:1` : `flat at ${FLAT_LEVEL}`})`,
+      `${ducked ? `evened + ducked ${DUCK_RATIO}:1` : `flat at ${FLAT_LEVEL}`})`,
     );
     return mixed;
   } catch (err) {

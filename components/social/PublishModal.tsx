@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, User
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Upload, User
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { uploadImage } from "@/lib/utils/upload-image";
 
 interface SocialAccount {
   id: string;
@@ -132,6 +133,34 @@ export function PublishModal({
   /** Set once the video is on YouTube, so its thumbnail can be replaced there. */
   const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
   const [reapplying, setReapplying] = useState(false);
+  /**
+   * A photograph of the agent's own, as the thumbnail's backdrop.
+   *
+   * The panel could already use a listing photo or paint an AI scene, and the
+   * one thing it could not take was a picture the agent has — the shot from
+   * the open house, the sign in front of the house, a photo somebody sent
+   * them. Nothing downstream needed to change for it: the renderer has always
+   * accepted any image URL as the backdrop.
+   */
+  const bgFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
+
+  async function handleBgFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !projectId) return;
+    setUploadingBg(true);
+    try {
+      const url = await uploadImage(file, "thumbBg");
+      // Straight into a rebuild: an uploaded photo that sat there waiting for
+      // another press would look like the upload had failed.
+      await buildPhotoThumb(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "That photo could not be uploaded");
+    } finally {
+      setUploadingBg(false);
+    }
+  }
   /**
    * Who appears on the thumbnail.
    *
@@ -666,6 +695,35 @@ ${hashes.join(" ")}` : hashes.join(" ");
                         morning light&rdquo;. Never any people or words: your face and your
                         headline go on top.
                       </p>
+                    </div>
+                  )}
+
+                  {/* Your own photograph, alongside the two backdrops this
+                      panel already offered. Always available, unlike the
+                      backdrop strip below, which only exists when the project
+                      came with listing photos. */}
+                  {projectId && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => bgFileRef.current?.click()}
+                        disabled={uploadingBg || thumbBusy}
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-700 disabled:opacity-50"
+                      >
+                        <Upload size={12} />
+                        {uploadingBg ? "Uploading…" : "Upload a photo"}
+                      </button>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Your own picture as the backdrop · 1280 × 720 or larger, cropped from the
+                        centre · free, and it doesn&apos;t use an AI image.
+                      </p>
+                      <input
+                        ref={bgFileRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleBgFile}
+                      />
                     </div>
                   )}
 
