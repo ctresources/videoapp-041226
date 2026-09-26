@@ -6,6 +6,11 @@ const nextConfig = {
     // fonts) — make sure the file ships with every route that renders one.
     outputFileTracingIncludes: {
       "/api/tools/thumbnail": ["./fonts/**"],
+      // The image generator draws in two faces — Archivo Black for titles and
+      // figures, Montserrat for labels — and both live in ./fonts. Named here
+      // for the same reason the thumbnail route is: a font that is traced away
+      // fails at render time, not at build time.
+      "/api/tools/image": ["./fonts/**"],
       "/api/video/webhook": ["./fonts/**"],
       // The FFmpeg binary is resolved from inside node_modules at runtime,
       // which is the shape of dependency Next's tracing is worst at following

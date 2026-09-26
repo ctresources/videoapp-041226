@@ -73,17 +73,26 @@ let _font: opentypeNs.Font | null = null;
  * time: a font that has to be downloaded is a picture that fails at midnight.
  */
 type FaceName = "display" | "text";
-const FACE_FILES: Record<FaceName, [string, string]> = {
-  display: ["fonts", "ArchivoBlack-Regular.ttf"],
-  text: ["public/fonts", "Montserrat-SemiBold.ttf"],
-};
 const _faces: Partial<Record<FaceName, opentypeNs.Font>> = {};
 
+/**
+ * Literal paths, one per face, and both under /fonts.
+ *
+ * Built once with the directory split out of a table — path.join(cwd(),
+ * ...dir.split("/"), file) — which the deployment's file tracer cannot
+ * resolve. Unable to tell which file is read, it pulled in enough of the
+ * project to take this function from well under the limit to 375MB, and the
+ * build refused it. A traced path has to be visible as a string right here.
+ *
+ * Montserrat therefore lives beside Archivo Black in /fonts rather than being
+ * read out of /public, which is served rather than bundled.
+ */
 function getFont(face: FaceName = "display"): opentypeNs.Font {
   const cached = _faces[face];
   if (cached) return cached;
-  const [dir, file] = FACE_FILES[face];
-  const buf = readFileSync(path.join(process.cwd(), ...dir.split("/"), file));
+  const buf = face === "text"
+    ? readFileSync(path.join(process.cwd(), "fonts", "Montserrat-SemiBold.ttf"))
+    : readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
   const parsed = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
   _faces[face] = parsed;
   return parsed;
