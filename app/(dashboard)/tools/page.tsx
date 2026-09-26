@@ -2434,25 +2434,26 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
 
       {template === "market_report" && (
         <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-700">The four figures</p>
-            <button
-              type="button"
-              onClick={readStats}
-              disabled={statsBusy || !projectId}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-spark-amber hover:text-spark-amber disabled:opacity-50"
-            >
-              {statsBusy ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-              {statsBusy ? "Reading…" : "Read the article"}
-            </button>
-          </div>
+          <p className="text-sm font-semibold text-slate-700">The four figures</p>
           {/* Said plainly, because these go out as market claims under the
               agent's name: nothing reaches the card that is not in one of
               these boxes, and nothing fills a box but the article or them. */}
-          <p className="mt-1 text-[11px] leading-[1.5] text-slate-400">
+          <p className="mt-1 text-[12px] leading-[1.5] text-slate-500">
             Only figures the article actually states are filled in — nothing is estimated.
             Check each one, edit anything, and leave a row empty to drop it.
           </p>
+          {/* Its own row, left, and the size of the thing it is: this was a
+              small grey outline in the top-right corner, where it read as a
+              label on the box rather than the button that fills it. */}
+          <button
+            type="button"
+            onClick={readStats}
+            disabled={statsBusy || !projectId}
+            className="mt-2 flex items-center gap-2 rounded-xl bg-spark-amber px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-spark-amber-glow disabled:opacity-50"
+          >
+            {statsBusy ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+            {statsBusy ? "Reading the article…" : "Read the article"}
+          </button>
           <div className="mt-2 flex flex-col gap-1.5">
             {stats.map((st, i) => (
               <div key={i} className="flex items-center gap-1.5">

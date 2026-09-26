@@ -238,60 +238,103 @@ export async function makeBackground(opts: {
  * draws a 1920x1080 header, a 1080x1350 post and a 1080x1920 story without
  * three layouts to keep in step.
  */
-function statCards(
+/**
+ * The market-report panel: a light card of figures, as a report looks.
+ *
+ * The first attempt made each figure its own floating tile over the
+ * photograph. It read as four labels scattered on a picture rather than as a
+ * report — the thing agents actually circulate is a single light panel with
+ * the month at the top and the numbers listed down it, one per line, label on
+ * the left and figure on the right, with a rule between them.
+ *
+ * So: one panel, one column, right-aligned values, a small accent dot marking
+ * each line. Every dimension is derived from the panel, so the same code draws
+ * the left-hand panel of a 16:9 header and the full-width panel of a 9:16
+ * story.
+ */
+function statPanel(
   stats: ImageStat[],
-  opts: { x: number; y: number; w: number; maxH: number; landscape: boolean; accent: string },
-): { svg: string; height: number } {
-  const { x, y, w, landscape, accent } = opts;
-  const cols = landscape ? 2 : 1;
-  const rows = Math.ceil(stats.length / cols);
-  const gapX = Math.round(w * 0.025);
-  const gapY = Math.round(w * (landscape ? 0.022 : 0.018));
-  const cardW = Math.round((w - (cols - 1) * gapX) / cols);
-  /**
-   * Proportional to the card's width, unless the frame is the tighter
-   * constraint — a 16:9 header with a title above the figures has room for
-   * two rows, not two rows of whatever height looks right in isolation.
-   * Without this the fourth stat is drawn off the bottom edge, which is the
-   * kind of thing that only shows up in the finished picture.
-   */
-  const cardH = Math.max(
-    Math.round(cardW * 0.12),
-    Math.min(
-      Math.round(cardW * (landscape ? 0.26 : 0.19)),
-      Math.floor((opts.maxH - (rows - 1) * gapY) / rows),
-    ),
-  );
-  const pad = Math.round(cardH * 0.17);
-  const bar = Math.max(5, Math.round(cardW * 0.012));
+  opts: {
+    x: number; y: number; w: number; h: number;
+    accent: string;
+    kicker: string;
+    title: string;
+    source: string;
+  },
+): string {
+  const { x, y, w, h, accent } = opts;
+  // Tighter than a poster margin: every pixel the chrome takes is a pixel off
+  // the figures, which are the only reason this card exists.
+  const pad = Math.round(w * 0.055);
+  const inner = w - pad * 2;
+  const parts: string[] = [
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.round(w * 0.035)}" fill="#ffffff" fill-opacity="0.96"/>`,
+  ];
 
-  const labelSize = Math.round(cardH * 0.18);
-  const valueMax = Math.round(cardH * 0.42);
+  let ty = y + pad;
 
-  const parts: string[] = [];
+  // The month, in the accent colour: small, spaced, the way a report dates
+  // itself. Not a pill here — a pill on a white panel is a second object.
+  if (opts.kicker) {
+    const kSize = Math.round(w * 0.032);
+    const k = fitWrapped(opts.kicker.toUpperCase(), inner, kSize, Math.round(kSize * 0.7), 1);
+    if (k.lines[0]) {
+      parts.push(lineToPaths(k.lines[0], x + pad, ty + k.size, k.size, accent));
+      ty += Math.round(k.size * 1.7);
+    }
+  }
+
+  if (opts.title) {
+    const tSize = Math.round(w * 0.062);
+    const t = fitWrapped(opts.title, inner, tSize, Math.round(tSize * 0.5), 2);
+    const lh = Math.round(t.size * 1.16);
+    t.lines.forEach((line, i) => {
+      parts.push(lineToPaths(line, x + pad, ty + Math.round(t.size * 0.9) + i * lh, t.size, "#0f172a"));
+    });
+    ty += t.lines.length * lh + Math.round(pad * 0.42);
+  }
+
+  const sourceSize = opts.source ? Math.round(w * 0.028) : 0;
+  const sourceH = opts.source ? Math.round(sourceSize * 2.4) : 0;
+  const rowsTop = ty;
+  const rowsH = y + h - pad - sourceH - rowsTop;
+  const rowH = Math.floor(rowsH / stats.length);
+
   stats.forEach((stat, i) => {
-    const cx = x + (i % cols) * (cardW + gapX);
-    const cy = y + Math.floor(i / cols) * (cardH + gapY);
-    const inner = cardW - pad * 2 - bar;
-    // The value sets its own size: "$1,245,000" cannot be the same size as
-    // "5" without one of them either overflowing or looking lost.
-    const value = fitWrapped(stat.value, inner, valueMax, Math.round(valueMax * 0.55), 1);
-    const label = fitWrapped(stat.label.toUpperCase(), inner, labelSize, Math.round(labelSize * 0.7), 1);
+    const cy = rowsTop + i * rowH;
+    const mid = cy + Math.round(rowH / 2);
+    const dot = Math.max(5, Math.round(rowH * 0.085));
+    parts.push(`<circle cx="${x + pad + dot}" cy="${mid}" r="${dot}" fill="${accent}"/>`);
 
-    parts.push(
-      `<rect x="${cx}" y="${cy}" width="${cardW}" height="${cardH}" rx="${Math.round(cardH * 0.16)}" fill="#ffffff" fill-opacity="0.93"/>`,
-      `<rect x="${cx}" y="${cy}" width="${bar}" height="${cardH}" rx="${Math.round(bar / 2)}" fill="${accent}"/>`,
-    );
-    const tx = cx + bar + pad;
+    const labelX = x + pad + dot * 2 + Math.round(pad * 0.55);
+    // The value is sized first and the label gets what is left: a figure that
+    // has to shrink to fit is the one thing on this card that must not.
+    const valueSize = Math.round(rowH * 0.46);
+    const value = fitWrapped(stat.value, Math.round(inner * 0.46), valueSize, Math.round(valueSize * 0.6), 1);
+    const valueW = value.lines[0] ? textWidth(value.lines[0], value.size) : 0;
+    const labelMax = x + w - pad - valueW - Math.round(pad * 0.6) - labelX;
+
+    const labelSize = Math.round(rowH * 0.2);
+    const label = fitWrapped(stat.label.toUpperCase(), Math.max(40, labelMax), labelSize, Math.round(labelSize * 0.62), 1);
     if (label.lines[0]) {
-      parts.push(lineToPaths(label.lines[0], tx, cy + pad + label.size, label.size, "#64748b"));
+      parts.push(lineToPaths(label.lines[0], labelX, mid + Math.round(label.size * 0.36), label.size, "#475569"));
     }
     if (value.lines[0]) {
-      parts.push(lineToPaths(value.lines[0], tx, cy + cardH - pad - Math.round(value.size * 0.12), value.size, "#0f172a"));
+      parts.push(lineToPaths(value.lines[0], x + w - pad - valueW, mid + Math.round(value.size * 0.36), value.size, "#0f172a"));
+    }
+    // A hairline between figures, never under the last one: a rule along the
+    // bottom edge of a panel reads as the panel being cut off.
+    if (i < stats.length - 1) {
+      const ly = cy + rowH;
+      parts.push(`<rect x="${x + pad}" y="${ly}" width="${inner}" height="2" fill="#e2e8f0"/>`);
     }
   });
 
-  return { svg: parts.join("\n"), height: rows * cardH + (rows - 1) * gapY };
+  if (opts.source) {
+    parts.push(lineToPaths(`Source: ${opts.source}`, x + pad, y + h - pad, sourceSize, "#94a3b8"));
+  }
+
+  return parts.join("\n");
 }
 
 /** Draws the words, logo and headshot over a background and uploads the result. */
@@ -378,81 +421,55 @@ export async function renderImage(opts: {
    * dark ground rather than a gradient that fades out where the numbers are.
    */
   if (stats.length) {
-    const parts: string[] = [];
     /**
-     * The title sits BESIDE the headshot, not under it.
+     * A report, not a caption.
      *
-     * Under it costs two hundred pixels of a 1080-tall frame before a single
-     * figure is drawn, and the figures are the point. Beside it, the ring and
-     * the title read as one masthead across the top.
+     * The photograph becomes the setting and the panel carries everything
+     * else: on a wide frame the panel takes the left and the picture keeps the
+     * right, where the agent's face goes; on a tall one the picture is a band
+     * across the top with the panel below it. Either way the figures live on
+     * white, which is what makes this read as a market report rather than as a
+     * post with numbers on it.
      */
-    const ringD = opts.text.showHeadshot && prof?.avatar_url
-      ? Math.round(Math.min(w, h) * 0.17) + Math.max(6, Math.round(Math.min(w, h) * 0.17 * 0.035)) * 2
-      : 0;
-    const tx = M + (ringD ? ringD + Math.round(M * 0.4) : 0);
-    const titleW = w - tx - M;
-    let ty = M;
+    const panelW = landscape ? Math.round(w * 0.6) : w - 2 * M;
+    const panelX = M;
+    const panelY = landscape ? M : Math.round(h * 0.3);
+    const panelH = h - panelY - M;
 
-    if (kicker) {
-      const pillW = Math.round(textWidth(kicker, kSize) + kPadX * 2);
-      parts.push(`<rect x="${tx}" y="${ty}" width="${pillW}" height="${kH}" rx="${Math.round(kH / 2)}" fill="${accent}"/>`);
-      parts.push(lineToPaths(kicker, tx + kPadX, ty + Math.round(kH * 0.68), kSize, inkFor(accent)));
-      ty += kH + Math.round(gap * 0.6);
-    }
-    /**
-     * Smaller than a photo caption's headline, and at most two lines.
-     *
-     * Here it is a title over a set of figures rather than the thing being
-     * read, and a three-line hero headline would push the numbers off the
-     * frame — which is precisely what a market card cannot afford.
-     */
-    const title = headline
-      ? fitWrapped(headline, titleW, Math.round(w * (landscape ? 0.038 : 0.06)), Math.round(w * (landscape ? 0.024 : 0.038)), 2)
-      : { size: 0, lines: [] as string[] };
-    if (title.lines.length) {
-      const lh = Math.round(title.size * 1.14);
-      title.lines.forEach((line, i) => {
-        parts.push(lineToPaths(line, tx, ty + Math.round(title.size * 0.92) + i * lh, title.size, "#ffffff"));
-      });
-      ty += title.lines.length * lh;
-    }
+    const panel = statPanel(stats, {
+      x: panelX, y: panelY, w: panelW, h: panelH,
+      accent, kicker, title: headline, source,
+    });
 
-    // Never above the headshot's own bottom edge, or two stats would sit
-    // beside a face on a wide frame.
-    ty = Math.max(ty, M + ringD) + Math.round(gap * 1.1);
-
-    const sourceSize = source ? Math.round(w * (landscape ? 0.014 : 0.022)) : 0;
-    const sourceH = source ? Math.round(sourceSize * 2.6) : 0;
-    const room = h - M - ty - sourceH;
-    const cards = statCards(stats, { x: M, y: ty, w: w - 2 * M, maxH: room, landscape, accent });
-    // Left-over height shared rather than pooled at the bottom: on a 9:16
-    // story the figures would otherwise cling to the title with a third of the
-    // frame empty beneath them.
-    const slack = Math.max(0, room - cards.height);
-    if (slack > 0) {
-      ty += Math.round(slack * 0.45);
-      const shifted = statCards(stats, { x: M, y: ty, w: w - 2 * M, maxH: cards.height, landscape, accent });
-      parts.push(shifted.svg);
-      ty += shifted.height;
-    } else {
-      parts.push(cards.svg);
-      ty += cards.height;
-    }
-
-    if (source) {
-      // Small, grey, under the figures: an attribution, not a claim of its own.
-      parts.push(lineToPaths(`Source: ${source}`, M, ty + Math.round(sourceSize * 1.9), sourceSize, "#cbd5e1"));
-    }
-
+    // Darkened only where the panel is not: the picture behind a 96% white
+    // card gains nothing from a scrim, and the agent's face loses by it.
+    const openX = landscape ? panelX + panelW : 0;
+    const openW = landscape ? w - openX : w;
+    const openH = landscape ? h : panelY;
     const overlaySvg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${w}" height="${h}" fill="#0b1220" fill-opacity="0.62"/>
-  ${parts.join("\n")}
+  <rect x="${openX}" y="0" width="${openW}" height="${openH}" fill="#0b1220" fill-opacity="0.25"/>
+  ${panel}
 </svg>`;
+
+    /**
+     * The face, big, in the space the panel left.
+     *
+     * A 17%-wide ring in a corner is a byline. On a report that someone is
+     * meant to recognise at a glance in a feed, the agent IS half the point,
+     * so it takes the open side of the frame at the size that space allows.
+     */
+    const faceD = landscape
+      ? Math.min(Math.round(w * 0.3), Math.round(h * 0.62))
+      : Math.round(Math.min(w, h) * 0.26);
+    const headshotAt = landscape
+      ? { x: Math.round(openX + (openW - faceD) / 2), y: Math.round((h - faceD) / 2), d: faceD }
+      : { x: w - M - faceD, y: Math.round(panelY - faceD * 0.62), d: faceD };
 
     return await composeAndUpload({
       admin, sharp, base, w, h, M, overlay: Buffer.from(overlaySvg),
       userId: opts.userId, logo,
       headshot: opts.text.showHeadshot ? prof?.avatar_url ?? null : null,
+      headshotAt,
     });
   }
 
@@ -523,6 +540,8 @@ async function composeAndUpload(o: {
   userId: string;
   logo: { image: Buffer; plate: Buffer; plateW: number; plateH: number; pad: number } | null;
   headshot: string | null;
+  /** Where and how big, when a layout has somewhere better than the corner. */
+  headshotAt?: { x: number; y: number; d: number };
 }): Promise<string> {
   const { admin, sharp, base, w, h, M } = o;
   const composites: { input: Buffer; left: number; top: number }[] = [
@@ -540,7 +559,7 @@ async function composeAndUpload(o: {
     try {
       const res = await fetch(o.headshot);
       if (res.ok) {
-        const d = Math.round(Math.min(w, h) * 0.17);
+        const d = o.headshotAt?.d ?? Math.round(Math.min(w, h) * 0.17);
         const ring = Math.max(6, Math.round(d * 0.035));
         const mask = Buffer.from(`<svg width="${d}" height="${d}"><circle cx="${d / 2}" cy="${d / 2}" r="${d / 2}" fill="#fff"/></svg>`);
         const face = await sharp(Buffer.from(await res.arrayBuffer()))
@@ -550,8 +569,12 @@ async function composeAndUpload(o: {
           .toBuffer();
         const outer = d + ring * 2;
         const ringSvg = Buffer.from(`<svg width="${outer}" height="${outer}"><circle cx="${outer / 2}" cy="${outer / 2}" r="${outer / 2}" fill="#ffffff"/></svg>`);
-        composites.push({ input: ringSvg, left: M, top: M });
-        composites.push({ input: face, left: M + ring, top: M + ring });
+        // Clamped to the frame: a layout can ask for a face half off the edge,
+        // and sharp refuses a composite that does not fit rather than cropping.
+        const left = Math.max(0, Math.min(w - outer, (o.headshotAt?.x ?? M) - ring));
+        const top = Math.max(0, Math.min(h - outer, (o.headshotAt?.y ?? M) - ring));
+        composites.push({ input: ringSvg, left, top });
+        composites.push({ input: face, left: left + ring, top: top + ring });
       }
     } catch { /* the image still renders without the headshot */ }
   }
