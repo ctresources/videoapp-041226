@@ -54,7 +54,13 @@ interface GeneratedVideo {
     photo_urls?: string[];
     stock_clip_urls?: string[];
   } | null;
-  projects?: { title: string; ai_script?: { hook?: string; script?: string; cta?: string } | null } | null;
+  projects?: {
+    title: string;
+    ai_script?: { hook?: string; script?: string; cta?: string } | null;
+    /** A real saved PNG, when one has been made. Cheaper than a frame of video
+     *  by orders of magnitude — see CardPoster. */
+    thumbnail_url?: string | null;
+  } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
 }
@@ -65,9 +71,16 @@ interface RenderProgress {
   url?: string | null;
 }
 
-/** How many videos the library loads. Raised from 50, which a working agent
- *  reaches inside a few months — and there was no way to see past it. */
-const VIDEO_PAGE_SIZE = 200;
+/**
+ * How many videos the library loads.
+ *
+ * Was 200, on the reasoning that a working agent passes 50 within months and
+ * should not hit a wall. True, but every completed row without a saved
+ * thumbnail brings a media element with it, and a hundred of those hung the
+ * tab outright (Chrome's RESULT_CODE_HUNG). Sixty is still a year of steady
+ * work on one screen, and the poster below caps what any of it costs.
+ */
+const VIDEO_PAGE_SIZE = 60;
 
 const statusConfig: Record<string, { label: string; variant: "default" | "warning" | "success" | "error"; icon: React.ElementType }> = {
   pending:   { label: "In queue",     variant: "default",  icon: Clock },
@@ -102,6 +115,71 @@ function useElapsedSeconds(startedAt: string, active: boolean) {
     return () => clearInterval(id);
   }, [startedAt, active]);
   return elapsed;
+}
+
+/**
+ * The still on a video card.
+ *
+ * Every completed card used to mount `<video preload="metadata">` to show a
+ * frame. One is nothing; a hundred is a hundred open connections and a hundred
+ * decoders, and the tab stops responding — which is exactly what happened at
+ * 102 videos.
+ *
+ * Two things fix it. A saved thumbnail is an ordinary image and is used
+ * whenever one exists, which is most of the time now that publishing writes
+ * one. Where none exists the media element is still the only way to see a
+ * frame, so it is mounted only while the card is near the viewport and taken
+ * down again when it leaves: live decoders are capped at what is on screen,
+ * whatever the size of the library.
+ *
+ * Deliberately NOT the derived /api/thumbnail address, which renders a card
+ * server-side on request. Swapping a hundred media elements for a hundred
+ * server renders moves the cost rather than removing it.
+ */
+function CardPoster({ video, alt }: { video: GeneratedVideo; alt: string }) {
+  const saved = video.projects?.thumbnail_url || null;
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+
+  useEffect(() => {
+    if (saved || near) return;
+    const el = ref.current;
+    if (!el) return;
+    // No IntersectionObserver (old browser, jsdom) means falling back to the
+    // old behaviour rather than showing nothing.
+    if (typeof IntersectionObserver === "undefined") { setNear(true); return; }
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => setNear(e.isIntersecting)),
+      // A screen's margin either way, so a card is ready by the time it
+      // arrives rather than popping in under the cursor.
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [saved, near]);
+
+  if (saved) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={saved} alt={alt} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+    );
+  }
+
+  return (
+    <div ref={ref} className="w-full h-full">
+      {near && video.video_url ? (
+        <video
+          src={posterFrameUrl(video.video_url)}
+          className="w-full h-full object-cover"
+          preload="metadata"
+          muted
+          playsInline
+        />
+      ) : (
+        <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />
+      )}
+    </div>
+  );
 }
 
 function RenderProgressBar({ video }: { video: GeneratedVideo }) {
@@ -621,13 +699,7 @@ function VideosContent() {
                 >
                   {video.render_status === "completed" && video.video_url ? (
                     <>
-                      <video
-                        src={posterFrameUrl(video.video_url)}
-                        className="w-full h-full object-cover"
-                        preload="metadata"
-                        muted
-                        playsInline
-                      />
+                      <CardPoster video={video} alt={video.projects?.title || "Video"} />
                       {/* Play overlay on hover */}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-all">
                         <div className="w-14 h-14 rounded-full bg-white/0 group-hover:bg-white/90 flex items-center justify-center transition-all scale-75 group-hover:scale-100">
