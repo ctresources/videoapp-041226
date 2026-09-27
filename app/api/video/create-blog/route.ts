@@ -538,7 +538,19 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout } = await req.json();
+  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode } = await req.json();
+
+  /**
+   * "Nobody on screen" is a decision, not an omission.
+   *
+   * This route used to read voice-only out of a missing lookId, which made the
+   * absence of a field carry the whole meaning: any path that still had a look
+   * in hand — a stale piece of state, a screen that forgot to clear it —
+   * produced a face in a video that had asked for none, and there was nothing
+   * here that could tell the difference. When the request says voice_only, the
+   * look is dropped whatever else arrived with it.
+   */
+  const voiceOnly = renderMode === "voice_only";
   // Long videos (up to 8 min) are landscape-only and draw 3x from the allowance.
   const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
   // engine "direct" routes to HeyGen's v3 Direct Video API (single talking-head)
@@ -616,7 +628,19 @@ export async function POST(req: NextRequest) {
    * project now carries the answer itself.
    */
   const isVerbatimProject = (aiScript as { verbatim?: boolean } | null)?.verbatim === true;
-  const useDirectVideo = engineIsDirect || isVerbatimProject;
+  /**
+   * Never for a voice-only video.
+   *
+   * Direct Video is the talking-head renderer: below, it falls back to the
+   * account's own avatar when no look was requested, which is exactly the
+   * substitution voice-only exists to prevent. A verbatim project that asks
+   * for no presenter is better served by the agent reading it over b-roll
+   * than by a face nobody asked for.
+   */
+  const useDirectVideo = (engineIsDirect || isVerbatimProject) && !voiceOnly;
+  if (voiceOnly && (engineIsDirect || isVerbatimProject)) {
+    console.log(`[create-blog] project=${projectId} asked for voice only — not using Direct Video, which would supply a face`);
+  }
   if (isVerbatimProject && !engineIsDirect) {
     console.log(`[create-blog] project=${projectId} is verbatim — Direct Video, whatever the request asked for`);
   }
@@ -864,7 +888,7 @@ export async function POST(req: NextRequest) {
     // Voice Only, where the whole point is that nobody is on screen —
     // resolving a default here would put a presenter into a video that asked
     // for none.
-    const avatarId: string | undefined = !requestedLook
+    const avatarId: string | undefined = voiceOnly || !requestedLook
       ? undefined
       : pickedAFormatVariant
         ? (formatLook || requestedLook)
@@ -958,12 +982,13 @@ export async function POST(req: NextRequest) {
       isShortForm,
       isSquare: videoType === "short_1x1",
       isLongForm,
-      // lookId is what avatarId is derived from below, so this is the same
-      // condition that decides whether avatar_id is sent at all — the prompt
-      // and the payload cannot disagree about whether there is a presenter.
-      // They did: the payload said no avatar, the prompt demanded one on
-      // screen half the time, and HeyGen resolved it with a stock one.
-      hasAvatar: !!lookId,
+      // avatarId, not lookId. This is the value that actually becomes
+      // avatar_id in the payload, so keying the prompt off the raw request
+      // field left the two able to disagree — and when they did, the payload
+      // said no avatar while the prompt demanded one on screen, and HeyGen
+      // resolved the contradiction with a presenter of its own. Voice-only
+      // clears avatarId, so the prompt now clears with it.
+      hasAvatar: !!avatarId,
       avatarMatchesCanvas,
       burnCaptions: captions !== false,
       hookText,

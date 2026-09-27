@@ -1445,6 +1445,15 @@ export default function ProjectEditorPage() {
           // FULL script verbatim — the Video Agent summarizes long scripts
           // (an 2900-char story came out as an 8-second teaser).
           ...(source === "paste" && { engine: "direct" }),
+          /**
+           * Who is on screen, stated rather than implied.
+           *
+           * The only signal used to be the ABSENCE of lookId, so voice-only
+           * was expressed by leaving a field out — and the moment anything
+           * put the look back, the server had no way to know a face had been
+           * refused. It is said plainly now and the server enforces it.
+           */
+          renderMode: selfRecord ? "avatar_voice" : renderMode,
           // Pass the selected look for Direct Video (paste) or Avatar+Voice mode.
           // For paste with no explicit pick, the server resolves the default avatar.
           ...((renderMode === "avatar_voice" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
@@ -1582,6 +1591,27 @@ export default function ProjectEditorPage() {
                 if (mode === "self") { setSelfRecord(true); return; }
                 setSelfRecord(false);
                 setRenderMode(mode);
+                /**
+                 * Written to the project, not just to this component.
+                 *
+                 * It was React state alone, defaulting to the avatar, and the
+                 * editor restores this field on load — so any remount (a
+                 * refresh, a trip to the article and back, a second tab)
+                 * returned the tiles to Avatar + Voice with nothing said, and
+                 * the next render put a face on a video somebody had asked to
+                 * keep off. Saved on the press, so the choice outlives the
+                 * page that made it.
+                 *
+                 * Fire and forget: a failed save is not worth interrupting a
+                 * choice for, and the render sends the mode itself.
+                 */
+                if (project) {
+                  fetch("/api/project/save-draft", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ projectId: project.id, renderMode: mode }),
+                  }).catch(() => { /* the render still carries the mode */ });
+                }
               }}
               aria-pressed={mode === "self" ? selfRecord : !selfRecord && renderMode === mode}
               className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
