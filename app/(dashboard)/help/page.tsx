@@ -335,6 +335,9 @@ export default function HelpPage() {
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
               description or 20 fresh tags for any video (including older ones), and name your channel (one-time).
+              <strong>LinkedIn Profile</strong> is one-time too: it writes your headline, About, current position,
+              top skills, custom URL and a post announcing your channel, each with where to paste it, and can
+              write a Company Page for your team.
               From any project&apos;s <strong>Title, Description &amp; Hashtags</strong> card, tap{" "}
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.

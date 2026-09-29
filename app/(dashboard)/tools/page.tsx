@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -16,8 +16,9 @@ import {
 } from "@/lib/utils/banner-layout";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
+import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "thumbnail" | "image" | "banner" | "answers";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers";
 
 interface Project {
   id: string;
@@ -117,7 +118,7 @@ function BriefFields({ value, onChange }: { value: BriefContext; onChange: (b: B
 }
 
 // Ordered to match the video workflow: title & script BEFORE rendering,
-// description, tags & thumbnail AFTER — channel name is a one-time setup tool.
+// description, tags & thumbnail AFTER — channel name and LinkedIn are one-time setup tools.
 const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[] = [
   { id: "title",       label: "Title Generator",      icon: Heading },
   { id: "script",      label: "Script Generator",     icon: ScrollText },
@@ -127,6 +128,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "image",       label: "Image Generator",      icon: ImagePlus },
   { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
+  { id: "linkedin",    label: "LinkedIn Profile",     icon: BriefcaseBusiness },
   { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
 ];
 
@@ -861,6 +863,404 @@ function ChannelNameGenerator() {
   );
 }
 
+// ─── LINKEDIN PROFILE ─────────────────────────────────────────────────────────
+
+interface LinkedInResult {
+  headlines: string[];
+  about: string;
+  position: { title: string; description: string };
+  skills: string[];
+  customUrls: string[];
+  post: string;
+  company: { tagline: string; about: string; specialties: string[] } | null;
+}
+
+/** "184 / 220", turning red past the limit so an over-long paste is caught here, not by LinkedIn. */
+function CharCount({ text, max }: { text: string; max: number }) {
+  const over = text.length > max;
+  return (
+    <span className={`text-[11px] tabular-nums ${over ? "text-red-600 font-semibold" : "text-slate-400"}`}>
+      {text.length.toLocaleString()} / {max.toLocaleString()}
+    </span>
+  );
+}
+
+/** One result: a label, where it goes on LinkedIn, the text, and a copy button. */
+function LinkedInField({ label, where, text, max }: { label: string; where: string; text: string; max: number }) {
+  if (!text) return null;
+  return (
+    <div className="border border-slate-200 rounded-xl p-4">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
+        <div className="flex items-center gap-2">
+          <CharCount text={text} max={max} />
+          <CopyButton text={text} />
+        </div>
+      </div>
+      <p className="text-xs text-slate-400 mb-2.5">{where}</p>
+      <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">{text}</pre>
+    </div>
+  );
+}
+
+function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: () => void }) {
+  const [name, setName] = useState("");
+  const [brokerage, setBrokerage] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [niche, setNiche] = useState("");
+  const [years, setYears] = useState("");
+  const [designations, setDesignations] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [website, setWebsite] = useState("");
+  const [story, setStory] = useState("");
+  const [audience, setAudience] = useState("");
+  const [tone, setTone] = useState("");
+  const [company, setCompany] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [result, setResult] = useState<LinkedInResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Start from what the profile already knows, so the agent types only what
+  // it doesn't. Anything typed before the fetch lands is left alone.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, company_name, location_city, location_state, website, youtube_channel_id")
+        .eq("id", user.id)
+        .single();
+      const p = data as {
+        full_name: string | null; company_name: string | null;
+        location_city: string | null; location_state: string | null;
+        website: string | null; youtube_channel_id: string | null;
+      } | null;
+      if (!p) return;
+      setName((v) => v || p.full_name || "");
+      setBrokerage((v) => v || p.company_name || "");
+      setCity((v) => v || p.location_city || "");
+      setState((v) => v || p.location_state || "");
+      setWebsite((v) => v || p.website || "");
+      if (p.youtube_channel_id) {
+        setYoutubeUrl((v) => v || `https://www.youtube.com/channel/${p.youtube_channel_id}`);
+      }
+    });
+  }, []);
+
+  const generate = async () => {
+    if (!name.trim()) { toast.error("Enter your name"); return; }
+    if (company && !teamName.trim()) { toast.error("Enter your team's name for the Company Page"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tools/linkedin-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name, brokerage, city, state, niche, years, designations,
+          story, audience, tone, youtubeUrl, website, company, teamName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data.error);
+      }
+      setResult(data);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to write your profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const input = "w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400";
+  const select = "w-full appearance-none border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white text-slate-700 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300";
+
+  return (
+    <div>
+      <div className="bg-primary-50/50 border border-primary-100 rounded-xl p-4 mb-5">
+        <p className="text-sm font-semibold text-slate-800 mb-1">Your LinkedIn, ready in five minutes</p>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Relocation referrals, investors, other agents and past clients look you up on LinkedIn.
+          Fill in what you can and we&apos;ll write every part of your profile: headline, About,
+          current position, top skills, a custom URL, and a post announcing your video channel.
+          Each one says exactly where to paste it.
+        </p>
+      </div>
+
+      <div className="space-y-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Your name</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sarah Johnson" className={input} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Brokerage or team <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={brokerage} onChange={(e) => setBrokerage(e.target.value)} placeholder="Keller Williams" className={input} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">City <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Charlotte" className={input} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">State <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={state} onChange={(e) => setState(e.target.value)} placeholder="NC" className={input} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Niche <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="first-time buyers, luxury…" className={input} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Years in real estate <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={years} onChange={(e) => setYears(e.target.value)} placeholder="12" className={input} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Designations <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={designations} onChange={(e) => setDesignations(e.target.value)} placeholder="ABR, CRS, SRES" className={input} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">YouTube channel link <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="url" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/@sarahsellscharlotte" className={input} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Website <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://sarahsellscharlotte.com" className={input} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Who you mostly help</label>
+            <div className="relative">
+              <select value={audience} onChange={(e) => setAudience(e.target.value)} className={select}>
+                <option value="">Any</option>
+                {TOOL_AUDIENCES.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Tone</label>
+            <div className="relative">
+              <select value={tone} onChange={(e) => setTone(e.target.value)} className={select}>
+                <option value="">Any</option>
+                {TOOL_TONES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700">
+              Tell us about you <span className="text-slate-400 font-normal">(optional, but it&apos;s what makes it sound like you)</span>
+            </label>
+            <FieldMic
+              title="Dictate. Adds to the end of what's there"
+              silenceMs={PROSE_SILENCE_MS}
+              onTranscript={(t) => setStory((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t))}
+            />
+          </div>
+          <textarea
+            value={story}
+            onChange={(e) => setStory(e.target.value)}
+            rows={4}
+            placeholder="How you got into real estate, a client win you're proud of, what past clients say about you, what you do when you're not working…"
+            className={`${input} resize-none`}
+          />
+        </div>
+        <label className="flex items-start gap-2.5 text-sm text-slate-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={company}
+            onChange={(e) => setCompany(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-300"
+          />
+          <span>
+            I run a team or brokerage. <span className="text-slate-500">Also write a LinkedIn Company Page for it.</span>
+          </span>
+        </label>
+        {company && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Team or company name</label>
+            <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="e.g. The Johnson Group" className={input} />
+            <p className="text-xs text-slate-400 mt-1">The page is written for your team, not your brokerage&apos;s brand.</p>
+          </div>
+        )}
+      </div>
+
+      <button onClick={generate} disabled={loading}
+        className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+        {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {loading ? "Writing your profile…" : "Generate My LinkedIn"}
+      </button>
+
+      {/* Without their own words the model has only a name and a market, and
+          every agent with a name and a market gets the same profile. */}
+      {!story.trim() && (
+        <p className="mt-2 text-xs text-slate-500">
+          Tip: a few sentences in &ldquo;Tell us about you&rdquo; is the difference between a profile
+          that sounds like you and one that sounds like every agent.
+        </p>
+      )}
+
+      {result && (
+        <div className="mt-6 space-y-4">
+          {result.headlines.length > 0 && (
+            <div className="border border-slate-200 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Headline: pick one</p>
+              <p className="text-xs text-slate-400 mb-2.5">On your profile, click the pencil next to your name and paste it into Headline.</p>
+              <div className="space-y-2">
+                {result.headlines.map((h, i) => (
+                  <div key={i} className="flex items-start gap-3 border border-slate-100 rounded-lg px-3 py-2.5">
+                    <span className="text-xs font-bold text-slate-300 w-4 mt-0.5 shrink-0">{i + 1}</span>
+                    <p className="text-sm text-slate-700 flex-1">{h}</p>
+                    <CharCount text={h} max={LINKEDIN_LIMITS.headline} />
+                    <CopyButton text={h} small />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <LinkedInField
+            label="About"
+            where="On your profile, click Add profile section, then About. Replace what's there."
+            text={result.about}
+            max={LINKEDIN_LIMITS.about}
+          />
+
+          {(result.position.title || result.position.description) && (
+            <div className="border border-slate-200 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Current position</p>
+              <p className="text-xs text-slate-400 mb-3">
+                In Experience, click + then Add position (or the pencil on your current one). Paste the title into Title and the rest into Description.
+              </p>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <p className="text-sm font-semibold text-slate-800">{result.position.title}</p>
+                <div className="flex items-center gap-2">
+                  <CharCount text={result.position.title} max={LINKEDIN_LIMITS.positionTitle} />
+                  <CopyButton text={result.position.title} small />
+                </div>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed flex-1">{result.position.description}</pre>
+                <div className="flex items-center gap-2 shrink-0">
+                  <CharCount text={result.position.description} max={LINKEDIN_LIMITS.positionDescription} />
+                  <CopyButton text={result.position.description} small />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {result.skills.length > 0 && (
+            <div className="border border-slate-200 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Top skills</p>
+              <p className="text-xs text-slate-400 mb-2.5">
+                Click Add profile section, then Skills, and add these five. Then open your About section and pick them as your top skills.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {result.skills.map((s, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-800 text-xs font-medium px-3 py-1.5 rounded-full border border-orange-200">
+                    {s}
+                    <CopyButton text={s} small />
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result.customUrls.length > 0 && (
+            <div className="border border-slate-200 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Custom profile URL</p>
+              <p className="text-xs text-slate-400 mb-2.5">
+                On your profile, click Public profile &amp; URL (top right), then the pencil under Edit your custom URL. Paste only the last part. If it&apos;s taken, try the next one.
+              </p>
+              <div className="space-y-1.5">
+                {result.customUrls.map((slug) => (
+                  <div key={slug} className="flex items-center gap-2 text-sm">
+                    <span className="text-slate-400">linkedin.com/in/</span>
+                    <span className="font-semibold text-slate-800">{slug}</span>
+                    <CopyButton text={slug} small />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <LinkedInField
+            label="Post: announce your video channel"
+            where="Click Start a post, paste this, and attach your newest SparkReels video. A post with a video reaches more people than one with only a link."
+            text={result.post}
+            max={LINKEDIN_LIMITS.post}
+          />
+
+          {result.company && (
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-800">Company Page</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Click For Business (top right on LinkedIn), then Create a Company Page. Paste the tagline while you set it up, and the rest under Edit page.
+                </p>
+              </div>
+              <div className="p-4 space-y-4">
+                <LinkedInField label="Tagline" where="Asked for while you create the page." text={result.company.tagline} max={LINKEDIN_LIMITS.companyTagline} />
+                <LinkedInField label="About (Overview)" where="Edit page, then Details, then Description." text={result.company.about} max={LINKEDIN_LIMITS.companyAbout} />
+                {result.company.specialties.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Specialties</p>
+                      <CopyButton text={result.company.specialties.join(", ")} />
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2.5">Edit page, then Details, then Specialties. Add them one at a time.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {result.company.specialties.map((s, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 bg-spark-blue/10 text-spark-blue text-xs font-medium px-3 py-1.5 rounded-full border border-spark-blue/20">
+                          {s}
+                          <CopyButton text={s} small />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-primary-100 bg-primary-50/40 rounded-xl p-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Finish it with a banner</p>
+              <p className="text-xs text-slate-500">A 1584×396 LinkedIn background with your headline, photo and QR code.</p>
+            </div>
+            <button
+              onClick={onOpenBanner}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold"
+            >
+              <Megaphone size={13} /> Make my LinkedIn banner
+            </button>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-xs text-amber-900 leading-relaxed">
+              <span className="font-semibold">Read it before you paste.</span> Everything here is written
+              from what you typed, so make sure each line is true and sounds like you. Many states treat
+              your profile as advertising, so check whether your brokerage needs its name or your license
+              number on it.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AI ANSWER BLOCKS ─────────────────────────────────────────────────────────
 
 interface AnswerBlock {
@@ -1516,11 +1916,12 @@ const BANNER_PALETTE_SWATCHES: { key: string; name: string; left: string; right:
   { key: "slate",    name: "Slate",    left: "#e2e8f0", right: "#c7d2e0", text: "#1e293b" },
 ];
 
-function BannerGenerator() {
-  const [platform, setPlatform] = useState<BannerPlatform>("youtube");
+/** initialPlatform: which banner to open on, for the LinkedIn tool's "Make my LinkedIn banner". */
+function BannerGenerator({ initialPlatform = "youtube" }: { initialPlatform?: BannerPlatform }) {
+  const [platform, setPlatform] = useState<BannerPlatform>(initialPlatform);
   const spec = BANNER_PLATFORMS.find((p) => p.id === platform)!;
   const mainLabel = platform === "youtube" ? "SUBSCRIBE" : "main word";
-  const [fields, setFields] = useState({ ...BANNER_DEFAULTS });
+  const [fields, setFields] = useState({ ...BANNER_PLATFORM_DEFAULTS[initialPlatform] });
   const [palette, setPalette] = useState("ocean");
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -1964,8 +2365,8 @@ function HowToUsePanel({ onClose }: { onClose: () => void }) {
 
       <p className="text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100">
         <strong>Rule of thumb:</strong> titles &amp; scripts <em>before</em> you render, descriptions &amp; tags{" "}
-        <em>after</em> — so the metadata matches what the video actually says. The Channel Name Generator is
-        one-time: use it when setting up or rebranding your YouTube channel.
+        <em>after</em> — so the metadata matches what the video actually says. The Channel Name Generator and
+        LinkedIn Profile are one-time: use them when setting up or rebranding your YouTube channel or LinkedIn.
       </p>
     </div>
   );
@@ -2611,6 +3012,9 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
 
 export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("title");
+  // Which banner the Banners tab opens on. Only the LinkedIn tool's banner
+  // button and a ?platform= deep link change it; picking the tab resets it.
+  const [bannerPlatform, setBannerPlatform] = useState<BannerPlatform>("youtube");
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
@@ -2645,6 +3049,8 @@ export default function ToolsPage() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as Tab | null;
     if (tab && TABS.some((t) => t.id === tab && !t.soon)) setActiveTab(tab);
+    const platform = params.get("platform") as BannerPlatform | null;
+    if (platform && BANNER_PLATFORMS.some((p) => p.id === platform)) setBannerPlatform(platform);
     const project = params.get("project");
     if (project) setInitialProjectId(project);
   }, []);
@@ -2728,7 +3134,7 @@ export default function ToolsPage() {
         {TABS.map(({ id, label, icon: Icon, soon }) => (
           <button
             key={id}
-            onClick={() => !soon && setActiveTab(id)}
+            onClick={() => { if (soon) return; setActiveTab(id); setBannerPlatform("youtube"); }}
             disabled={soon}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
               activeTab === id
@@ -2756,9 +3162,18 @@ export default function ToolsPage() {
         {activeTab === "title"       && <TitleGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "script"      && <ScriptGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "channel"     && <ChannelNameGenerator />}
+        {activeTab === "linkedin"    && (
+          <LinkedInProfileGenerator
+            onOpenBanner={() => {
+              setBannerPlatform("linkedin");
+              setActiveTab("banner");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        )}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
         {activeTab === "image"       && <ImageGenerator projects={projects} initialProjectId={initialProjectId} />}
-        {activeTab === "banner"      && <BannerGenerator />}
+        {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
       </div>
     </div>
