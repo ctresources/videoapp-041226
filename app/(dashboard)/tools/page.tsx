@@ -903,7 +903,7 @@ function LinkedInField({ label, where, text, max }: { label: string; where: stri
   );
 }
 
-function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: () => void }) {
+function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: (prefill: BannerPrefill) => void }) {
   const [name, setName] = useState("");
   const [brokerage, setBrokerage] = useState("");
   const [city, setCity] = useState("");
@@ -973,6 +973,25 @@ function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: () => void }
     } finally {
       setLoading(false);
     }
+  };
+
+  // What this form already knows, handed to the banner so the agent doesn't
+  // type their name, brokerage and links a second time. A QR is drawn only
+  // with a link, so a missing channel or website simply leaves that one off.
+  const openBanner = () => {
+    const site = website.trim();
+    const siteUrl = site && !/^https?:\/\//i.test(site) ? `https://${site}` : site;
+    const siteLabel = site.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+    const prefill: BannerPrefill = {};
+    const who = [name.trim(), brokerage.trim()].filter(Boolean).join(" · ");
+    if (who) prefill.extraLine1 = who.toUpperCase();
+    if (siteLabel) prefill.extraLine2 = siteLabel.toUpperCase();
+    if (youtubeUrl.trim()) prefill.qr1Link = youtubeUrl.trim();
+    if (siteUrl) {
+      prefill.qr2Link = siteUrl;
+      prefill.qr2Caption = "SCAN TO VISIT MY WEBSITE";
+    }
+    onOpenBanner(prefill);
   };
 
   const input = "w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400";
@@ -1237,10 +1256,10 @@ function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: () => void }
           <div className="flex flex-wrap items-center justify-between gap-3 border border-primary-100 bg-primary-50/40 rounded-xl p-4">
             <div>
               <p className="text-sm font-semibold text-slate-800">Finish it with a banner</p>
-              <p className="text-xs text-slate-500">A 1584×396 LinkedIn background with your headline, photo and QR code.</p>
+              <p className="text-xs text-slate-500">A 1584×396 LinkedIn background, with your name, website and video channel already filled in.</p>
             </div>
             <button
-              onClick={onOpenBanner}
+              onClick={openBanner}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold"
             >
               <Megaphone size={13} /> Make my LinkedIn banner
@@ -1867,9 +1886,28 @@ type BannerPlatform = "youtube" | "facebook" | "linkedin";
 // lib/utils/social-banner-render.ts (YouTube's with banner-render.ts).
 const BANNER_PLATFORM_DEFAULTS: Record<BannerPlatform, typeof BANNER_DEFAULTS> = {
   youtube: BANNER_DEFAULTS,
-  facebook: { ...BANNER_DEFAULTS, headline: "YOUR LOCAL REAL ESTATE GUIDE", subscribeMain: "FOLLOW" },
-  linkedin: { ...BANNER_DEFAULTS, headline: "YOUR LOCAL REAL ESTATE GUIDE", subscribeMain: "CONNECT" },
+  facebook: {
+    ...BANNER_DEFAULTS,
+    headline: "YOUR LOCAL REAL ESTATE GUIDE",
+    qr1Caption: "SCAN TO WATCH MY VIDEOS",
+    subscribeKicker: "HOMES · TOWNS · MARKET UPDATES",
+    subscribeMain: "FOLLOW",
+    subscribeSub: "FOR THE LOCAL INSIDE SCOOP",
+    qr2Caption: "SCAN TO BOOK A CALL",
+  },
+  linkedin: {
+    ...BANNER_DEFAULTS,
+    headline: "YOUR LOCAL REAL ESTATE GUIDE",
+    qr1Caption: "SCAN TO WATCH MY VIDEOS",
+    subscribeKicker: "MOVING IN OR MOVING ON?",
+    subscribeMain: "LET'S TALK",
+    subscribeSub: "BUYERS · SELLERS · RELOCATION",
+    qr2Caption: "SCAN TO BOOK A CALL",
+  },
 };
+
+/** Fields another tool already knows, laid over the platform's wording when the Banners tab opens. */
+type BannerPrefill = Partial<typeof BANNER_DEFAULTS>;
 
 const BANNER_PLATFORMS: {
   id: BannerPlatform;
@@ -1916,12 +1954,15 @@ const BANNER_PALETTE_SWATCHES: { key: string; name: string; left: string; right:
   { key: "slate",    name: "Slate",    left: "#e2e8f0", right: "#c7d2e0", text: "#1e293b" },
 ];
 
-/** initialPlatform: which banner to open on, for the LinkedIn tool's "Make my LinkedIn banner". */
-function BannerGenerator({ initialPlatform = "youtube" }: { initialPlatform?: BannerPlatform }) {
+/**
+ * initialPlatform and prefill: which banner to open on and what to fill in,
+ * for the LinkedIn tool's "Make my LinkedIn banner".
+ */
+function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlatform?: BannerPlatform; prefill?: BannerPrefill }) {
   const [platform, setPlatform] = useState<BannerPlatform>(initialPlatform);
   const spec = BANNER_PLATFORMS.find((p) => p.id === platform)!;
   const mainLabel = platform === "youtube" ? "SUBSCRIBE" : "main word";
-  const [fields, setFields] = useState({ ...BANNER_PLATFORM_DEFAULTS[initialPlatform] });
+  const [fields, setFields] = useState({ ...BANNER_PLATFORM_DEFAULTS[initialPlatform], ...prefill });
   const [palette, setPalette] = useState("ocean");
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -3015,6 +3056,7 @@ export default function ToolsPage() {
   // Which banner the Banners tab opens on. Only the LinkedIn tool's banner
   // button and a ?platform= deep link change it; picking the tab resets it.
   const [bannerPlatform, setBannerPlatform] = useState<BannerPlatform>("youtube");
+  const [bannerPrefill, setBannerPrefill] = useState<BannerPrefill | undefined>(undefined);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
@@ -3134,7 +3176,7 @@ export default function ToolsPage() {
         {TABS.map(({ id, label, icon: Icon, soon }) => (
           <button
             key={id}
-            onClick={() => { if (soon) return; setActiveTab(id); setBannerPlatform("youtube"); }}
+            onClick={() => { if (soon) return; setActiveTab(id); setBannerPlatform("youtube"); setBannerPrefill(undefined); }}
             disabled={soon}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
               activeTab === id
@@ -3164,7 +3206,8 @@ export default function ToolsPage() {
         {activeTab === "channel"     && <ChannelNameGenerator />}
         {activeTab === "linkedin"    && (
           <LinkedInProfileGenerator
-            onOpenBanner={() => {
+            onOpenBanner={(prefill) => {
+              setBannerPrefill(prefill);
               setBannerPlatform("linkedin");
               setActiveTab("banner");
               window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3173,7 +3216,7 @@ export default function ToolsPage() {
         )}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
         {activeTab === "image"       && <ImageGenerator projects={projects} initialProjectId={initialProjectId} />}
-        {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} />}
+        {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} prefill={bannerPrefill} />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
       </div>
     </div>

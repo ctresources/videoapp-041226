@@ -76,21 +76,25 @@ const DEFAULTS: Record<SocialPlatform, {
   headline: string; qr1Caption: string; subscribeKicker: string;
   subscribeMain: string; subscribeSub: string; qr2Caption: string;
 }> = {
+  // Each platform's own words. These started as the YouTube banner's with
+  // only the headline and main word swapped, which left "NEW VIDEOS EVERY
+  // WEEK! / CONNECT / TO LEARN ALL ABOUT" on a LinkedIn profile: a subscribe
+  // banner at LinkedIn's size.
   facebook: {
     headline: "YOUR LOCAL REAL ESTATE GUIDE",
-    qr1Caption: "SCAN TO CHAT WITH US!",
-    subscribeKicker: "NEW VIDEOS EVERY WEEK!",
+    qr1Caption: "SCAN TO WATCH MY VIDEOS",
+    subscribeKicker: "HOMES · TOWNS · MARKET UPDATES",
     subscribeMain: "FOLLOW",
-    subscribeSub: "TO LEARN ALL ABOUT",
-    qr2Caption: "CALL, TEXT OR MEET US ON ZOOM!!",
+    subscribeSub: "FOR THE LOCAL INSIDE SCOOP",
+    qr2Caption: "SCAN TO BOOK A CALL",
   },
   linkedin: {
     headline: "YOUR LOCAL REAL ESTATE GUIDE",
-    qr1Caption: "SCAN TO CHAT WITH US!",
-    subscribeKicker: "NEW VIDEOS EVERY WEEK!",
-    subscribeMain: "CONNECT",
-    subscribeSub: "TO LEARN ALL ABOUT",
-    qr2Caption: "CALL, TEXT OR MEET US ON ZOOM!!",
+    qr1Caption: "SCAN TO WATCH MY VIDEOS",
+    subscribeKicker: "MOVING IN OR MOVING ON?",
+    subscribeMain: "LET'S TALK",
+    subscribeSub: "BUYERS · SELLERS · RELOCATION",
+    qr2Caption: "SCAN TO BOOK A CALL",
   },
 };
 
