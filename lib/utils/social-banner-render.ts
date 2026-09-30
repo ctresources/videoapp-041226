@@ -5,6 +5,9 @@ import { readFileSync } from "fs";
 import path from "path";
 import * as opentypeNs from "opentype.js";
 import { glyphPathData } from "@/lib/utils/glyph-path-data";
+import {
+  emptyScene, sceneToPdf, type BannerScene, type SceneImage, type SceneText,
+} from "@/lib/utils/banner-pdf";
 
 // Facebook covers and LinkedIn banners. This is a separate renderer from the
 // YouTube one on purpose: banner-render.ts is positioned by hand to match a
@@ -260,7 +263,9 @@ export interface RenderSocialBannerOptions extends RenderBannerOptions {
  * others leave, and the text shrinks until the stack fits the box, so any mix
  * of optional inputs still lands inside the area every device shows.
  */
-export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promise<{ png: Buffer; width: number; height: number }> {
+export async function renderSocialBanner(
+  opts: RenderSocialBannerOptions,
+): Promise<{ png: Buffer; width: number; height: number; scene: BannerScene }> {
   const L = LAYOUTS[opts.platform];
   const D = DEFAULTS[opts.platform];
   const { W, H, box } = L;
@@ -392,11 +397,18 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   }
 
   const parts: string[] = [];
+  // Everything drawn, recorded as live parts for the Canva PDF (banner-pdf.ts).
+  const texts: SceneText[] = [];
+  const images: SceneImage[] = [];
+  const drawCentered = (lines: string[], cx: number, y: number, size: number, fill: string, lineH = LINE_H) => {
+    lines.forEach((l, i) => texts.push({ text: l, x: cx - textWidth(l, size) / 2, baseline: y + i * size * lineH, size, color: fill }));
+    return centeredBlock(lines, cx, y, size, fill, lineH);
+  };
   let y = midY - total / 2;
   laid.forEach((it, i) => {
     if (i) y += gapBetween(laid[i - 1], it);
     const baseline = y + capHeight(it.size);
-    parts.push(centeredBlock(it.lines, colCx, baseline, it.size, it.fill, TEXT_LINE_H));
+    parts.push(drawCentered(it.lines, colCx, baseline, it.size, it.fill, TEXT_LINE_H));
     y = baseline + (it.lines.length - 1) * it.size * TEXT_LINE_H;
   });
 
@@ -405,16 +417,22 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   const photoTop = Math.round(midY - photoSize.h / 2);
   for (let i = 0; i < photoSrcs.length; i++) {
     const buf = await roundedPhoto(sharp, photoSrcs[i], photoSize.w, photoSize.h, L.photo.radius);
-    if (buf) composites.push({ input: buf, left: Math.round(photoX0 + i * (photoSize.w + L.photo.gap)), top: photoTop });
+    if (!buf) continue;
+    const left = Math.round(photoX0 + i * (photoSize.w + L.photo.gap));
+    composites.push({ input: buf, left, top: photoTop });
+    images.push({ png: buf, x: left, y: photoTop, w: photoSize.w, h: photoSize.h });
   }
 
   // Caption sits directly above its QR, centred on it.
   const placeQr = async (g: (typeof groups)[number], cx: number, qrTop: number) => {
     const q = await makeQr(g.link, qrSize, pal.qrDark);
-    if (q) composites.push({ input: q, left: Math.round(cx - qrSize / 2), top: qrTop });
+    if (q) {
+      composites.push({ input: q, left: Math.round(cx - qrSize / 2), top: qrTop });
+      images.push({ png: q, x: Math.round(cx - qrSize / 2), y: qrTop, w: qrSize, h: qrSize });
+    }
     if (g.lines.length) {
       const firstBaseline = qrTop - CAP_GAP - (g.lines.length - 1) * capSize * LINE_H;
-      parts.push(centeredBlock(g.lines, cx, firstBaseline, capSize, pal.navy));
+      parts.push(drawCentered(g.lines, cx, firstBaseline, capSize, pal.navy));
     }
   };
   if (L.qrStack === "row") {
@@ -450,20 +468,38 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
     .png({ compressionLevel: 6 })
     .toBuffer();
 
-  return { png, width: W, height: H };
+  const bgPng = await sharp(Buffer.from(bgSvg)).png().toBuffer();
+  const scene = { ...emptyScene(W, H, pal.gradLeft, pal.gradRight, bgPng), texts, images };
+
+  return { png, width: W, height: H, scene };
 }
 
-/** Renders, uploads to the public `assets` bucket, and returns the URL. */
-export async function renderAndSaveSocialBanner(opts: RenderSocialBannerOptions): Promise<{ url: string }> {
-  const { png } = await renderSocialBanner(opts);
+/**
+ * Renders, uploads the PNG and its Canva PDF to the public `assets` bucket,
+ * and returns both URLs. The PDF is the extra: if it fails, the banner still
+ * returns without one rather than failing the whole generate.
+ */
+export async function renderAndSaveSocialBanner(opts: RenderSocialBannerOptions): Promise<{ url: string; pdfUrl?: string }> {
+  const { png, scene } = await renderSocialBanner(opts);
   const admin = createAdminClient();
 
-  const storagePath = `banners/${opts.userId}/${opts.platform}_${Date.now()}.png`;
+  const base = `banners/${opts.userId}/${opts.platform}_${Date.now()}`;
   const { error: uploadErr } = await admin.storage
     .from("assets")
-    .upload(storagePath, png, { contentType: "image/png", upsert: false });
+    .upload(`${base}.png`, png, { contentType: "image/png", upsert: false });
   if (uploadErr) throw new Error(uploadErr.message);
+  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(`${base}.png`);
 
-  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
-  return { url: publicUrl };
+  let pdfUrl: string | undefined;
+  try {
+    const pdf = await sceneToPdf(scene, `${opts.platform === "linkedin" ? "LinkedIn" : "Facebook"} banner`);
+    const { error } = await admin.storage
+      .from("assets")
+      .upload(`${base}.pdf`, pdf, { contentType: "application/pdf", upsert: false });
+    if (error) throw error;
+    pdfUrl = admin.storage.from("assets").getPublicUrl(`${base}.pdf`).data.publicUrl;
+  } catch (e) {
+    console.error("[social-banner] Canva PDF failed:", e instanceof Error ? e.message : e);
+  }
+  return { url: publicUrl, pdfUrl };
 }

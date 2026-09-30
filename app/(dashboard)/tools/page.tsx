@@ -1979,6 +1979,9 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [bannerUrl, setBannerUrl] = useState("");
+  /** The same banner as a PDF with live text and separate images, for Canva. */
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   /**
    * Where each block sits. Empty means the template's own arrangement, which
    * is what every banner used before this existed — so an agent who never
@@ -2014,6 +2017,7 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
     });
     setPlatform(next);
     setBannerUrl("");
+    setPdfUrl("");
   }
 
   async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2052,6 +2056,7 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         throw new Error(data.error);
       }
       setBannerUrl(data.url);
+      setPdfUrl(data.pdfUrl ?? "");
       toast.success("Banner generated!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate banner");
@@ -2060,26 +2065,30 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
     }
   };
 
-  async function downloadBanner() {
-    if (!bannerUrl) return;
-    setDownloading(true);
+  // Both files live on the storage origin, where <a download> is ignored, so
+  // each is fetched as a blob and saved under its own name.
+  async function downloadBanner(kind: "png" | "pdf" = "png") {
+    const src = kind === "pdf" ? pdfUrl : bannerUrl;
+    if (!src) return;
+    const setBusy = kind === "pdf" ? setDownloadingPdf : setDownloading;
+    setBusy(true);
     try {
-      const res = await fetch(bannerUrl);
+      const res = await fetch(src);
       if (!res.ok) throw new Error("Download failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = spec.fileName;
+      a.download = kind === "pdf" ? spec.fileName.replace(/\.png$/, "-for-canva.pdf") : spec.fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Banner downloaded!");
+      toast.success(kind === "pdf" ? "Canva file downloaded!" : "Banner downloaded!");
     } catch {
-      window.open(bannerUrl, "_blank");
+      window.open(src, "_blank");
     } finally {
-      setDownloading(false);
+      setBusy(false);
     }
   }
 
@@ -2431,15 +2440,31 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
           <p className="text-[11px] text-slate-400 mt-1">{spec.safeNote}</p>
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button
-              onClick={downloadBanner}
+              onClick={() => downloadBanner("png")}
               disabled={downloading}
               className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
               {downloading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
               {downloading ? "Downloading…" : `Download PNG (${spec.size})`}
             </button>
+            {pdfUrl && (
+              <button
+                onClick={() => downloadBanner("pdf")}
+                disabled={downloadingPdf}
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              >
+                {downloadingPdf ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                {downloadingPdf ? "Downloading…" : "Download for Canva (PDF)"}
+              </button>
+            )}
             <p className="text-xs text-slate-400">{spec.uploadHint}</p>
           </div>
+          {pdfUrl && (
+            <p className="text-xs text-slate-400 mt-2">
+              Want to edit it yourself? Upload the Canva file on canva.com (Uploads, then Upload files) and it opens as a
+              design: every line of text is editable, and your photo and QR codes move on their own.
+            </p>
+          )}
         </div>
       )}
     </div>

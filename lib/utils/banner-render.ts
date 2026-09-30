@@ -10,6 +10,9 @@ import {
 import {
   customPalette, type BannerCustomColors, type BannerPaletteColors,
 } from "@/lib/utils/banner-colors";
+import {
+  emptyScene, sceneToPdf, type BannerScene, type SceneImage, type SceneShape, type SceneText,
+} from "@/lib/utils/banner-pdf";
 
 // opentype.js is an old UMD package — depending on how the server bundle
 // resolves it, its functions land on the namespace itself or on .default.
@@ -241,9 +244,7 @@ async function roundedPhoto(
  * Every text field falls back to the template default when omitted; QR groups
  * and photo slots are skipped when their input is absent.
  */
-export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ url: string }> {
-  const admin = createAdminClient();
-
+export async function renderBanner(opts: RenderBannerOptions): Promise<{ png: Buffer; scene: BannerScene }> {
   const headline = (opts.headline ?? DEFAULTS.headline).trim() || DEFAULTS.headline;
   const qr1Caption = (opts.qr1Caption ?? DEFAULTS.qr1Caption).trim();
   const subscribeKicker = (opts.subscribeKicker ?? DEFAULTS.subscribeKicker).trim();
@@ -284,6 +285,31 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   // ── Raster composites (photos + QR images) collected first ──
   const composites: { input: Buffer; left: number; top: number }[] = [];
 
+  // Everything drawn, recorded as live parts for the Canva PDF (banner-pdf.ts).
+  const texts: SceneText[] = [];
+  const images: SceneImage[] = [];
+  const shapes: SceneShape[] = [];
+  const drawText = (lines: string[], x: number, y: number, size: number, fill: string) => {
+    lines.forEach((l, i) => texts.push({ text: l, x, baseline: y + i * size * 1.14, size, color: fill }));
+    return textBlock(lines, x, y, size, fill);
+  };
+  const drawArrow = (...args: Parameters<typeof curvedArrow>) => {
+    const svg = curvedArrow(...args);
+    const re = /<path d="([^"]+)"([^>]*)\/>/g;
+    for (let m = re.exec(svg); m; m = re.exec(svg)) {
+      const attrs = m[2];
+      const attr = (name: string) => attrs.match(new RegExp(`${name}="([^"]+)"`))?.[1];
+      const fill = attr("fill");
+      shapes.push({
+        d: m[1],
+        fill: fill && fill !== "none" ? fill : undefined,
+        stroke: attr("stroke"),
+        strokeWidth: Number(attr("stroke-width")) || undefined,
+      });
+    }
+    return svg;
+  };
+
   // Photos — left cluster, side by side. box 340×300 at y=600.
   const photoScale = scaleOf(L.photos);
   const PBW = Math.round(340 * photoScale), PBH = Math.round(300 * photoScale), PGAP = 30;
@@ -295,7 +321,9 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   if (!isHidden(L.photos)) {
     for (let i = 0; i < photoUrls.length; i++) {
       const buf = await roundedPhoto(sharp, photoUrls[i], PBW, PBH);
-      if (buf) composites.push({ input: buf, left: photoX[i], top: PY });
+      if (!buf) continue;
+      composites.push({ input: buf, left: photoX[i], top: PY });
+      images.push({ png: buf, x: photoX[i], y: PY, w: PBW, h: PBH });
     }
   }
 
@@ -306,7 +334,10 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const QR1Y = 110 + offsetOf(L.qr1);
   if (qr1Shown) {
     const q = await makeQr(qr1Link, QR1, pal.qrDark);
-    if (q) composites.push({ input: q, left: QR1X, top: QR1Y });
+    if (q) {
+      composites.push({ input: q, left: QR1X, top: QR1Y });
+      images.push({ png: q, x: QR1X, y: QR1Y, w: QR1, h: QR1 });
+    }
   }
 
   // QR #2 — middle-right, beside the SUBSCRIBE block.
@@ -316,7 +347,10 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const QR2Y = 640 + offsetOf(L.qr2);
   if (qr2Shown) {
     const q = await makeQr(qr2Link, QR2, pal.qrDark);
-    if (q) composites.push({ input: q, left: QR2X, top: QR2Y });
+    if (q) {
+      composites.push({ input: q, left: QR2X, top: QR2Y });
+      images.push({ png: q, x: QR2X, y: QR2Y, w: QR2, h: QR2 });
+    }
   }
 
   // ── Vector overlay (text + arrows) ──
@@ -331,7 +365,7 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
       fitFont(headline.toUpperCase(), headRoom, 150, 60) * scaleOf(L.headline),
     );
     const headlineW = textWidth(headline.toUpperCase(), headlineSize);
-    parts.push(textBlock(
+    parts.push(drawText(
       [headline.toUpperCase()],
       alignedX(L.headline, MARGIN, headlineW, W, MARGIN),
       290 + offsetOf(L.headline),
@@ -346,9 +380,9 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
     const capLines = wrapLines(qr1Caption.toUpperCase(), capSize, W - 40 - (QR1X + QR1 + 40));
     const blockH = (capLines.length - 1) * capSize * 1.14;
     const capBaseline = QR1Y + QR1 / 2 - blockH / 2 + capSize * 0.35;
-    parts.push(textBlock(capLines, QR1X + QR1 + 40, capBaseline, capSize, pal.navy));
+    parts.push(drawText(capLines, QR1X + QR1 + 40, capBaseline, capSize, pal.navy));
     // Arrow from the caption curving up-left into QR1's right edge.
-    parts.push(curvedArrow(QR1X + QR1 + 60, QR1Y + QR1 / 2 + 55, QR1X + QR1 + 25, QR1Y + QR1 / 2 + 40, QR1X + QR1 - 12, QR1Y + QR1 / 2));
+    parts.push(drawArrow(QR1X + QR1 + 60, QR1Y + QR1 / 2 + 55, QR1X + QR1 + 25, QR1Y + QR1 / 2 + 40, QR1X + QR1 - 12, QR1Y + QR1 / 2));
   }
 
   // Subscribe block — kicker / big main / sub, then up to two extra lines,
@@ -370,23 +404,23 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   );
   const SX = alignedX(L.subscribe, 1080, stackW, W, MARGIN);
   if (!subHidden && subscribeKicker) {
-    parts.push(textBlock(wrapLines(subscribeKicker.toUpperCase(), kickSize, 720), SX, 640 + subDy, kickSize, pal.navy));
+    parts.push(drawText(wrapLines(subscribeKicker.toUpperCase(), kickSize, 720), SX, 640 + subDy, kickSize, pal.navy));
   }
   if (!subHidden && subscribeMain) {
-    parts.push(textBlock([subscribeMain.toUpperCase()], SX, 770 + subDy, mainSize, pal.royal));
+    parts.push(drawText([subscribeMain.toUpperCase()], SX, 770 + subDy, mainSize, pal.royal));
   }
   // Baseline walks down as each optional line below the main word is added.
   let subY = 850 + subDy;
   if (!subHidden && subscribeSub) {
     // Single line (like the template), shrunk to clear QR2 if the user types more.
     const subSize = fitFont(subscribeSub.toUpperCase(), QR2X - SX - 40, 60, 34);
-    parts.push(textBlock([subscribeSub.toUpperCase()], SX, subY, subSize, pal.navy));
+    parts.push(drawText([subscribeSub.toUpperCase()], SX, subY, subSize, pal.navy));
     subY += 66;
   }
   for (const extra of [extraLine1, extraLine2]) {
     if (!extra || subHidden) continue;
     const exSize = fitFont(extra.toUpperCase(), QR2X - SX - 40, 48, 28);
-    parts.push(textBlock([extra.toUpperCase()], SX, subY, exSize, pal.navy));
+    parts.push(drawText([extra.toUpperCase()], SX, subY, exSize, pal.navy));
     subY += 62;
   }
 
@@ -397,9 +431,9 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
     const blockH = (capLines.length - 1) * capSize * 1.14;
     // Sit the block so its last line ends ~40px above the QR.
     const capBaseline = QR2Y - 40 - blockH;
-    parts.push(textBlock(capLines, QR2X - 40, capBaseline, capSize, pal.navy));
+    parts.push(drawText(capLines, QR2X - 40, capBaseline, capSize, pal.navy));
     // Arrow starts just below the caption and curves down into QR2's top edge.
-    parts.push(curvedArrow(QR2X - 20, QR2Y - 28, QR2X + 10, QR2Y - 12, QR2X + 55, QR2Y + 12));
+    parts.push(drawArrow(QR2X - 20, QR2Y - 28, QR2X + 10, QR2Y - 12, QR2X + 55, QR2Y + 12));
   }
 
   const overlaySvg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("\n")}</svg>`;
@@ -411,12 +445,36 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
     .png({ compressionLevel: 6 })
     .toBuffer();
 
-  const storagePath = `banners/${opts.userId}/banner_${Date.now()}.png`;
+  const scene = { ...emptyScene(W, H, pal.gradLeft, pal.gradRight, baseBuffer), texts, images, shapes };
+  return { png, scene };
+}
+
+/**
+ * Renders, uploads the PNG and its Canva PDF to the public `assets` bucket,
+ * and returns both URLs. The PDF is the extra: if it fails, the banner still
+ * returns without one rather than failing the whole generate.
+ */
+export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ url: string; pdfUrl?: string }> {
+  const { png, scene } = await renderBanner(opts);
+  const admin = createAdminClient();
+
+  const base = `banners/${opts.userId}/banner_${Date.now()}`;
   const { error: uploadErr } = await admin.storage
     .from("assets")
-    .upload(storagePath, png, { contentType: "image/png", upsert: false });
+    .upload(`${base}.png`, png, { contentType: "image/png", upsert: false });
   if (uploadErr) throw new Error(uploadErr.message);
+  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(`${base}.png`);
 
-  const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
-  return { url: publicUrl };
+  let pdfUrl: string | undefined;
+  try {
+    const pdf = await sceneToPdf(scene, "YouTube banner");
+    const { error } = await admin.storage
+      .from("assets")
+      .upload(`${base}.pdf`, pdf, { contentType: "application/pdf", upsert: false });
+    if (error) throw error;
+    pdfUrl = admin.storage.from("assets").getPublicUrl(`${base}.pdf`).data.publicUrl;
+  } catch (e) {
+    console.error("[banner] Canva PDF failed:", e instanceof Error ? e.message : e);
+  }
+  return { url: publicUrl, pdfUrl };
 }
