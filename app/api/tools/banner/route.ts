@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
     qr2Link?: string;
     photoUrls?: string[];
     palette?: string;
+    /** The agent's own colors when palette is "custom"; checked by customPalette. */
+    customColors?: { bgLeft?: string; bgRight?: string; text?: string; accent?: string };
+    /** LinkedIn and Facebook only: which side of the text the photos sit. */
+    photoSide?: string;
     platform?: string;
     /** Per-block alignment, nudge, size and visibility — YouTube canvas only. */
     layout?: BannerLayout;
@@ -56,6 +60,7 @@ export async function POST(req: NextRequest) {
       qr2Link: body.qr2Link,
       photoUrls: Array.isArray(body.photoUrls) ? body.photoUrls : undefined,
       palette: body.palette,
+      customColors: body.customColors && typeof body.customColors === "object" ? body.customColors : undefined,
       // Only the YouTube canvas is a spatial template with blocks to move;
       // the social ones are a single centred stack, where an alignment would
       // mean nothing. Passed through regardless — the social renderer ignores
@@ -63,7 +68,11 @@ export async function POST(req: NextRequest) {
       layout: body.layout,
     };
     const result = isSocialPlatform(body.platform)
-      ? await renderAndSaveSocialBanner({ ...fields, platform: body.platform })
+      ? await renderAndSaveSocialBanner({
+          ...fields,
+          platform: body.platform,
+          photoSide: body.photoSide === "right" ? "right" : "left",
+        })
       : await renderAndSaveBanner(fields);
     return NextResponse.json(result);
   } catch (err) {

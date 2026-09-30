@@ -7,6 +7,9 @@ import { glyphPathData } from "@/lib/utils/glyph-path-data";
 import {
   alignedX, isHidden, offsetOf, scaleOf, type BannerLayout,
 } from "@/lib/utils/banner-layout";
+import {
+  customPalette, type BannerCustomColors, type BannerPaletteColors,
+} from "@/lib/utils/banner-colors";
 
 // opentype.js is an old UMD package — depending on how the server bundle
 // resolves it, its functions land on the namespace itself or on .default.
@@ -130,13 +133,7 @@ function curvedArrow(
 // ── Color palettes ───────────────────────────────────────────────────────────
 // Each is a light left→right gradient with dark, readable text (the template's
 // aesthetic), so the design holds up whichever the user picks.
-interface Palette {
-  gradLeft: string;
-  gradRight: string;
-  navy: string;   // headline / captions / sub lines
-  royal: string;  // SUBSCRIBE main word (accent)
-  qrDark: string; // QR module color
-}
+type Palette = BannerPaletteColors;
 
 export const BANNER_PALETTES: Record<string, Palette> = {
   ocean:    { gradLeft: "#c9f2d4", gradRight: "#9fb8ef", navy: "#1e3a8a", royal: "#1d4ed8", qrDark: "#1a4ba8" },
@@ -147,6 +144,18 @@ export const BANNER_PALETTES: Record<string, Palette> = {
   slate:    { gradLeft: "#e2e8f0", gradRight: "#c7d2e0", navy: "#1e293b", royal: "#2563eb", qrDark: "#334155" },
 };
 const DEFAULT_PALETTE = "ocean";
+
+/**
+ * The palette to draw with: the agent's own colors when palette is "custom"
+ * and they are valid, otherwise the named preset, otherwise the default.
+ */
+export function resolvePalette(opts: { palette?: string; customColors?: Partial<BannerCustomColors> | null }): Palette {
+  if (opts.palette === "custom") {
+    const custom = customPalette(opts.customColors);
+    if (custom) return custom;
+  }
+  return BANNER_PALETTES[opts.palette ?? DEFAULT_PALETTE] ?? BANNER_PALETTES[DEFAULT_PALETTE];
+}
 
 export interface RenderBannerOptions {
   userId: string;
@@ -163,8 +172,10 @@ export interface RenderBannerOptions {
   qr2Link?: string;
   /** 0–2 photo URLs; laid out into the left photo slot(s). */
   photoUrls?: string[];
-  /** Color palette key (see BANNER_PALETTES); defaults to "ocean". */
+  /** Color palette key (see BANNER_PALETTES) or "custom"; defaults to "ocean". */
   palette?: string;
+  /** The agent's own colors, used when palette is "custom". */
+  customColors?: Partial<BannerCustomColors> | null;
   /**
    * Per-block alignment, vertical nudge, size and visibility. Absent means the
    * template's own arrangement, which is what every banner made before this
@@ -244,7 +255,7 @@ export async function renderAndSaveBanner(opts: RenderBannerOptions): Promise<{ 
   const qr1Link = opts.qr1Link?.trim() || "";
   const qr2Link = opts.qr2Link?.trim() || "";
   const photoUrls = (opts.photoUrls || []).filter((u) => typeof u === "string" && u.trim()).slice(0, 2);
-  const pal = BANNER_PALETTES[opts.palette ?? DEFAULT_PALETTE] ?? BANNER_PALETTES[DEFAULT_PALETTE];
+  const pal = resolvePalette(opts);
 
   /**
    * The arrangement, per block. Every position below starts from the

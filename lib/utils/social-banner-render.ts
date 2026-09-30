@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BANNER_PALETTES, type RenderBannerOptions } from "@/lib/utils/banner-render";
+import { resolvePalette, type RenderBannerOptions } from "@/lib/utils/banner-render";
 import QRCode from "qrcode";
 import { readFileSync } from "fs";
 import path from "path";
@@ -26,6 +26,12 @@ interface Layout {
   H: number;
   /** Everything that matters stays inside this box. */
   box: { x0: number; y0: number; x1: number; y1: number };
+  /**
+   * The right edge of what a phone shows, where it is narrower than the box
+   * (LinkedIn). A photo placed right of the text stops here, so phones still
+   * show it, and the QR codes take the desktop-only strip beyond.
+   */
+  phoneX1?: number;
   /** The text column never extends past this x, even with nothing to its right. */
   textMaxX: number;
   /** Starting text sizes; the stack shrinks from these until it fits the box. */
@@ -48,6 +54,7 @@ const LAYOUTS: Record<SocialPlatform, Layout> = {
   linkedin: {
     W: 1584, H: 396,
     box: { x0: 420, y0: 36, x1: 1552, y1: 360 },
+    phoneX1: 1267,
     textMaxX: 1250,
     sizes: { headline: 54, kicker: 26, main: 84, sub: 30, extra: 24, qrCaption: 20 },
     qrMax: 170,
@@ -220,6 +227,12 @@ async function roundedPhoto(sharp: any, src: Buffer, bw: number, bh: number, rad
 
 export interface RenderSocialBannerOptions extends RenderBannerOptions {
   platform: SocialPlatform;
+  /**
+   * Which side of the text the photos sit. "right" puts them between the text
+   * and the QR codes, clear of the LinkedIn profile photo that covers the
+   * banner's bottom-left. Absent means "left", the original arrangement.
+   */
+  photoSide?: "left" | "right";
 }
 
 /**
@@ -246,7 +259,7 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   const qr1Link = opts.qr1Link?.trim() || "";
   const qr2Link = opts.qr2Link?.trim() || "";
   const photoUrls = (opts.photoUrls || []).filter((u) => typeof u === "string" && u.trim()).slice(0, 2);
-  const pal = BANNER_PALETTES[opts.palette ?? "ocean"] ?? BANNER_PALETTES.ocean;
+  const pal = resolvePalette(opts);
 
   // @ts-ignore -- sharp types unresolvable in some tsconfig setups; runtime import is fine
   const sharp = (await import("sharp")).default;
@@ -259,9 +272,22 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
 
   // QR groups — a caption is drawn only alongside a QR, as on the YouTube banner.
   const capSize = L.sizes.qrCaption;
-  const capW = L.qrStack === "row" ? L.qrMax + 20 : L.qrMax + 90;
   const CAP_GAP = 14;
   const QR_GAP = L.qrStack === "row" ? 24 : 30;
+  const photoRight = opts.photoSide === "right" && photoSrcs.length > 0;
+  // Photo right of the text on a canvas with a phone edge: the photo ends at
+  // that edge and the QR codes get only the strip beyond it, so they narrow to
+  // fit rather than push the photo back inside.
+  // That strip runs to the canvas edge less a hairline rather than to the
+  // box, because every pixel of width there is QR size, and it is desktop-only
+  // anyway: nothing can crop it.
+  const qrStripX0 = photoRight && L.phoneX1 && L.qrStack === "row" ? L.phoneX1 + 12 : null;
+  const qrRight = qrStripX0 !== null ? W - 16 : box.x1;
+  const qrCount = [qr1Link, qr2Link].filter(Boolean).length;
+  let capW = L.qrStack === "row" ? L.qrMax + 20 : L.qrMax + 90;
+  if (qrStripX0 !== null && qrCount) {
+    capW = Math.min(capW, Math.floor((qrRight - qrStripX0 - (qrCount - 1) * QR_GAP) / qrCount));
+  }
   const groups = [
     { link: qr1Link, caption: pick(opts.qr1Caption, D.qr1Caption) },
     { link: qr2Link, caption: pick(opts.qr2Caption, D.qr2Caption) },
@@ -280,12 +306,25 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
     const fixed = groups.reduce((s, g) => s + g.above, 0) + (groups.length - 1) * QR_GAP;
     qrSize = Math.min(L.qrMax, (boxH - fixed) / groups.length);
   }
+  // A QR never wider than its column, which only binds once the strip above narrows it.
+  if (L.qrStack === "row") qrSize = Math.min(qrSize, capW - 20);
   qrSize = Math.floor(qrSize);
   const qrW = !groups.length ? 0 : L.qrStack === "row" ? groups.length * capW + (groups.length - 1) * QR_GAP : capW;
 
+  // Photos on the right end at the phone edge, or just short of the QR codes
+  // when those come first; on the left they start the box, as they always did.
+  const qrX0 = qrRight - qrW;
+  const photoX1 = !photoRight ? box.x0 + photoW
+    : qrStripX0 !== null ? L.phoneX1!
+    : qrW ? qrX0 - L.gap : box.x1;
+  const photoX0 = photoX1 - photoW;
+
   // Text column: whatever the photos and QR codes leave.
-  const colX0 = box.x0 + (photoW ? photoW + L.gap : 0);
-  const colX1 = Math.min(box.x1 - (qrW ? qrW + L.gap : 0), L.textMaxX);
+  const colX0 = photoW && !photoRight ? photoX1 + L.gap : box.x0;
+  const colX1 = Math.min(
+    photoRight ? photoX0 - L.gap : box.x1 - (qrW ? qrW + L.gap : 0),
+    L.textMaxX,
+  );
   const colW = colX1 - colX0;
   const colCx = (colX0 + colX1) / 2;
 
@@ -337,11 +376,10 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   const photoTop = Math.round(midY - photoSize.h / 2);
   for (let i = 0; i < photoSrcs.length; i++) {
     const buf = await roundedPhoto(sharp, photoSrcs[i], photoSize.w, photoSize.h, L.photo.radius);
-    if (buf) composites.push({ input: buf, left: box.x0 + i * (photoSize.w + L.photo.gap), top: photoTop });
+    if (buf) composites.push({ input: buf, left: Math.round(photoX0 + i * (photoSize.w + L.photo.gap)), top: photoTop });
   }
 
   // Caption sits directly above its QR, centred on it.
-  const qrX0 = box.x1 - qrW;
   const placeQr = async (g: (typeof groups)[number], cx: number, qrTop: number) => {
     const q = await makeQr(g.link, qrSize, pal.qrDark);
     if (q) composites.push({ input: q, left: Math.round(cx - qrSize / 2), top: qrTop });

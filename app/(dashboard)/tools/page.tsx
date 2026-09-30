@@ -17,6 +17,7 @@ import {
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
+import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers";
 
@@ -1964,6 +1965,15 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
   const mainLabel = platform === "youtube" ? "SUBSCRIBE" : "main word";
   const [fields, setFields] = useState({ ...BANNER_PLATFORM_DEFAULTS[initialPlatform], ...prefill });
   const [palette, setPalette] = useState("ocean");
+  // The Custom swatch. Text and main-word colors follow the background until
+  // the agent picks one themselves, so a dark background never starts with
+  // dark text on it.
+  const [custom, setCustom] = useState<BannerCustomColors>(() => ({
+    bgLeft: "#fff7ed", bgRight: "#fdba74", ...suggestTextColors("#fff7ed", "#fdba74"),
+  }));
+  const [customTextPicked, setCustomTextPicked] = useState(false);
+  /** LinkedIn and Facebook: which side of the text the photos sit. */
+  const [photoSide, setPhotoSide] = useState<"left" | "right">("left");
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -2031,7 +2041,10 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
       const res = await fetch("/api/tools/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fields, palette, photoUrls: photos, platform, layout }),
+        body: JSON.stringify({
+          ...fields, palette, photoUrls: photos, platform, layout, photoSide,
+          customColors: palette === "custom" ? custom : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -2117,7 +2130,59 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
               <span className="text-[10px] text-slate-500">{p.name}</span>
             </button>
           ))}
+          <button
+            onClick={() => setPalette("custom")}
+            title="Custom colors"
+            className={`flex flex-col items-center gap-1 p-1 rounded-xl border-2 transition-colors ${
+              palette === "custom" ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <span
+              className="w-16 h-9 rounded-lg flex items-center justify-center"
+              style={{ background: `linear-gradient(to right, ${custom.bgLeft}, ${custom.bgRight})` }}
+            >
+              <span className="text-[11px] font-extrabold" style={{ color: custom.text }}>Aa</span>
+            </span>
+            <span className="text-[10px] text-slate-500">Custom</span>
+          </button>
         </div>
+        {palette === "custom" && (
+          <div className="mt-3 rounded-xl border border-slate-200 p-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {([
+                { k: "bgLeft" as const,  label: "Background left" },
+                { k: "bgRight" as const, label: "Background right" },
+                { k: "text" as const,    label: "Text" },
+                { k: "accent" as const,  label: "Main word" },
+              ]).map(({ k, label }) => (
+                <label key={k} className="flex items-center gap-2 text-xs text-slate-600">
+                  <input
+                    type="color"
+                    value={custom[k]}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (k === "text" || k === "accent") {
+                        setCustomTextPicked(true);
+                        setCustom((c) => ({ ...c, [k]: v }));
+                      } else {
+                        setCustom((c) => {
+                          const next = { ...c, [k]: v };
+                          return customTextPicked ? next : { ...next, ...suggestTextColors(next.bgLeft, next.bgRight) };
+                        });
+                      }
+                    }}
+                    className="h-8 w-10 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Same color on both sides for a solid background. Text colors follow the background until you pick your own.
+              QR codes stay dark on their white square so phones can always scan them.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Headline */}
@@ -2213,12 +2278,39 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
           )}
         </div>
         <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
+        {/* Only with a photo to place: a switch that moves nothing is worse
+            than no switch. */}
+        {platform !== "youtube" && photos.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-slate-600 mb-1">Photo position</p>
+            <div className="flex flex-wrap gap-2">
+              {([["left", "Left of text"], ["right", "Right of text"]] as const).map(([side, label]) => (
+                <button
+                  key={side}
+                  onClick={() => setPhotoSide(side)}
+                  className={`px-3 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors ${
+                    photoSide === side ? "border-primary-500 bg-primary-50 text-slate-800" : "border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {platform === "linkedin" && (
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Right of text keeps your photo clear of your LinkedIn profile picture, which covers the banner&apos;s bottom-left.
+                The QR codes move over and get a little smaller to make room.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Arrangement ──
           Only on the YouTube canvas. The social banners are a single centred
           stack by design — an alignment control there would be a button that
-          does nothing, which is worse than not offering it. */}
+          does nothing, which is worse than not offering it. Their one real
+          choice, which side the photo sits, is under Photos. */}
       {platform === "youtube" && (
         <div className="rounded-xl border border-slate-200 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
