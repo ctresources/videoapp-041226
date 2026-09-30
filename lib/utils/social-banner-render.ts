@@ -40,6 +40,14 @@ interface Layout {
   /** Two QR codes side by side (short canvas) or stacked (taller canvas). */
   qrStack: "row" | "column";
   photo: { one: { w: number; h: number }; two: { w: number; h: number }; gap: number; radius: number };
+  /**
+   * Photo sizes and photo-to-text space when the photo sits right of the
+   * text. Only LinkedIn has one: there the QR codes move out to the
+   * desktop-only strip, which frees the width for a bigger photo and more
+   * air. On the left, with both QR codes full size, the same photo would
+   * squeeze the text into a column too narrow for the main word.
+   */
+  photoRight?: { one: { w: number; h: number }; two: { w: number; h: number }; textGap: number };
   /** Space between the photo cluster, the text column and the QR cluster. */
   gap: number;
 }
@@ -60,6 +68,8 @@ const LAYOUTS: Record<SocialPlatform, Layout> = {
     qrMax: 170,
     qrStack: "row",
     photo: { one: { w: 200, h: 270 }, two: { w: 140, h: 230 }, gap: 16, radius: 18 },
+    // One photo fills the box's full height (324 = 360 - 36).
+    photoRight: { one: { w: 240, h: 324 }, two: { w: 160, h: 300 }, textGap: 64 },
     gap: 40,
   },
   // Facebook cover, uploaded at 2× (1640×720) for sharpness. Desktop trims
@@ -106,6 +116,14 @@ const DEFAULTS: Record<SocialPlatform, {
 };
 
 const LINE_H = 1.14;
+/**
+ * Baseline to baseline for a wrapped line in the main text stack. Looser than
+ * LINE_H (still used for QR captions, where every pixel of height is QR size):
+ * a stack of bold capitals at 1.14 read as one block of ink.
+ */
+const TEXT_LINE_H = 1.25;
+/** Space between separate lines of the stack, as a share of the larger size. */
+const STACK_GAP = 0.5;
 
 // ── Text as vector outlines ─────────────────────────────────────────────────
 // Same approach as banner-render.ts (see there for the full reasoning): the
@@ -172,9 +190,9 @@ function lineToPaths(line: string, startX: number, y: number, fontSize: number, 
 }
 
 /** Lines centred on `cx`; `y` is the first line's baseline. */
-function centeredBlock(lines: string[], cx: number, y: number, fontSize: number, fill: string): string {
+function centeredBlock(lines: string[], cx: number, y: number, fontSize: number, fill: string, lineH = LINE_H): string {
   return lines
-    .map((l, i) => lineToPaths(l, cx - textWidth(l, fontSize) / 2, y + i * fontSize * LINE_H, fontSize, fill))
+    .map((l, i) => lineToPaths(l, cx - textWidth(l, fontSize) / 2, y + i * fontSize * lineH, fontSize, fill))
     .join("\n");
 }
 
@@ -267,14 +285,16 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   // Photos are fetched before layout: the layout depends on how many actually
   // loaded, so a dead link leaves no empty gap.
   const photoSrcs = (await Promise.all(photoUrls.map((u) => fetchImage(sharp, u)))).filter((b): b is Buffer => !!b);
-  const photoSize = photoSrcs.length === 2 ? L.photo.two : L.photo.one;
+  const photoRight = opts.photoSide === "right" && photoSrcs.length > 0;
+  const sizes = photoRight && L.photoRight ? L.photoRight : L.photo;
+  const photoSize = photoSrcs.length === 2 ? sizes.two : sizes.one;
+  const photoTextGap = photoRight && L.photoRight ? L.photoRight.textGap : L.gap;
   const photoW = photoSrcs.length ? photoSrcs.length * photoSize.w + (photoSrcs.length - 1) * L.photo.gap : 0;
 
   // QR groups — a caption is drawn only alongside a QR, as on the YouTube banner.
   const capSize = L.sizes.qrCaption;
   const CAP_GAP = 14;
   const QR_GAP = L.qrStack === "row" ? 24 : 30;
-  const photoRight = opts.photoSide === "right" && photoSrcs.length > 0;
   // Photo right of the text on a canvas with a phone edge: the photo ends at
   // that edge and the QR codes get only the strip beyond it, so they narrow to
   // fit rather than push the photo back inside.
@@ -320,42 +340,51 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   const photoX0 = photoX1 - photoW;
 
   // Text column: whatever the photos and QR codes leave.
-  const colX0 = photoW && !photoRight ? photoX1 + L.gap : box.x0;
+  const colX0 = photoW && !photoRight ? photoX1 + photoTextGap : box.x0;
   const colX1 = Math.min(
-    photoRight ? photoX0 - L.gap : box.x1 - (qrW ? qrW + L.gap : 0),
+    photoRight ? photoX0 - photoTextGap : box.x1 - (qrW ? qrW + L.gap : 0),
     L.textMaxX,
   );
   const colW = colX1 - colX0;
   const colCx = (colX0 + colX1) / 2;
 
   const S = L.sizes;
-  const items: { text: string; size: number; min: number; maxLines: number; fill: string; after?: number }[] = [
+  const items: { text: string; size: number; min: number; maxLines: number; fill: string; after?: number; before?: number; accent?: boolean }[] = [
     // `after` opens extra space below the headline so it reads as its own group.
     { text: headline, size: S.headline, min: 22, maxLines: 2, fill: pal.navy, after: 0.35 },
   ];
   if (kicker) items.push({ text: kicker, size: S.kicker, min: 14, maxLines: 2, fill: pal.navy });
-  if (main) items.push({ text: main, size: S.main, min: 28, maxLines: 1, fill: pal.royal });
+  if (main) items.push({ text: main, size: S.main, min: 28, maxLines: 1, fill: pal.royal, accent: true });
   if (sub) items.push({ text: sub, size: S.sub, min: 14, maxLines: 2, fill: pal.navy });
-  for (const extra of [extra1, extra2]) {
-    if (extra) items.push({ text: extra, size: S.extra, min: 12, maxLines: 1, fill: pal.navy });
-  }
+  // `before` on the first extra line breaks the name and contact details away
+  // from the message above, so they read as a sign-off rather than more message.
+  [extra1, extra2].filter(Boolean).forEach((extra, i) => {
+    items.push({ text: extra, size: S.extra, min: 12, maxLines: 1, fill: pal.navy, before: i === 0 && items.length > 1 ? 0.9 : 0 });
+  });
 
-  const gapBetween = (prev: { size: number; after: number }, cur: { size: number }) =>
-    0.32 * Math.max(prev.size, cur.size) + prev.after * prev.size;
+  const gapBetween = (prev: { size: number; after: number }, cur: { size: number; before: number }) =>
+    STACK_GAP * Math.max(prev.size, cur.size) + prev.after * prev.size + cur.before * cur.size;
 
   // Fit each line to the column, then shrink the whole stack until it fits the box.
   let scale = 1;
-  let laid: { lines: string[]; size: number; fill: string; after: number }[] = [];
+  let laid: { lines: string[]; size: number; fill: string; after: number; before: number }[] = [];
   let total = 0;
   for (let attempt = 0; attempt < 12; attempt++) {
-    laid = items.map((it) => {
-      const { size, lines } = fitWrapped(
-        it.text.toUpperCase(), colW, Math.max(it.min, Math.round(it.size * scale)), it.min, it.maxLines,
-      );
-      return { lines, size, fill: it.fill, after: it.after ?? 0 };
-    });
+    laid = [];
+    for (const it of items) {
+      // Nothing but the main word outranks the headline. A short supporting
+      // line fits a narrow column at a bigger size than a long headline does,
+      // and would otherwise come out larger than it.
+      let start = Math.max(it.min, Math.round(it.size * scale));
+      if (laid.length && !it.accent) start = Math.max(it.min, Math.min(start, laid[0].size));
+      const { size, lines } = fitWrapped(it.text.toUpperCase(), colW, start, it.min, it.maxLines);
+      // A list like "BUYERS · SELLERS · RELOCATION" can wrap at a separator;
+      // the dot left hanging at a line's end (or start) goes.
+      const clean = lines.map((l) => l.replace(/\s*·\s*$/, "").replace(/^\s*·\s*/, ""));
+      laid.push({ lines: clean, size, fill: it.fill, after: it.after ?? 0, before: it.before ?? 0 });
+    }
     total = laid.reduce(
-      (s, it, i) => s + capHeight(it.size) + (it.lines.length - 1) * it.size * LINE_H + (i ? gapBetween(laid[i - 1], it) : 0),
+      (s, it, i) => s + capHeight(it.size) + (it.lines.length - 1) * it.size * TEXT_LINE_H + (i ? gapBetween(laid[i - 1], it) : 0),
       0,
     );
     if (total <= boxH) break;
@@ -367,8 +396,8 @@ export async function renderSocialBanner(opts: RenderSocialBannerOptions): Promi
   laid.forEach((it, i) => {
     if (i) y += gapBetween(laid[i - 1], it);
     const baseline = y + capHeight(it.size);
-    parts.push(centeredBlock(it.lines, colCx, baseline, it.size, it.fill));
-    y = baseline + (it.lines.length - 1) * it.size * LINE_H;
+    parts.push(centeredBlock(it.lines, colCx, baseline, it.size, it.fill, TEXT_LINE_H));
+    y = baseline + (it.lines.length - 1) * it.size * TEXT_LINE_H;
   });
 
   const composites: { input: Buffer; left: number; top: number }[] = [];
