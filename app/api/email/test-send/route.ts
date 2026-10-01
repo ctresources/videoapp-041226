@@ -38,15 +38,29 @@ export async function POST(req: NextRequest) {
   }
 
   const from = process.env.NOTIFY_FROM_EMAIL || "SparkReels <noreply@sparkreels.ai>";
+
+  /*
+   * Said at the top, in the test only. A marketing-looking email from a
+   * no-reply address is what Yahoo-run inboxes (Verizon, AOL) file as spam;
+   * saying plainly that this is a preview, and letting a reply go back to the
+   * agent, makes it read as the message to themselves that it is. The copy
+   * they paste is untouched.
+   */
+  const note = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:12px 8px 0;font-family:Arial, Helvetica, sans-serif;font-size:13px;line-height:1.5;color:#64748b;">Test from SparkReels. This is how your email will look. Paste it into your email tool to send it.</td></tr></table>`;
+  const testHtml = /<body[^>]*>/i.test(html) ? html.replace(/(<body[^>]*>)/i, `$1${note}`) : note + html;
+  const testText = text?.trim()
+    ? `Test from SparkReels. This is how your email will look. Paste it into your email tool to send it.\n\n${text}`
+    : "";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from,
       to: user.email,
+      reply_to: user.email,
       subject: `[Test] ${subject.trim().slice(0, 150)}`,
-      html,
-      ...(text?.trim() ? { text } : {}),
+      html: testHtml,
+      ...(testText ? { text: testText } : {}),
     }),
   });
   if (!res.ok) {

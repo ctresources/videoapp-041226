@@ -64,8 +64,12 @@ export function emailAsHtml(e: EmailVersion, opts: {
         .join("")}</table>`
     : "";
 
+  // Email apps recolour links (a test in Verizon's mail turned this purple on
+  // navy), so the colour is set again on a span inside the link, which they
+  // leave alone. Outlook ignores padding on a link, so the cell carries it
+  // too, as mso-padding-alt, which only Outlook reads.
   const button = hasUrl
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;"><tr><td bgcolor="${INK}" style="border-radius:8px;"><a href="${esc(url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">${esc(e.button)}</a></td></tr></table>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;"><tr><td bgcolor="${INK}" style="border-radius:8px;mso-padding-alt:14px 28px;"><a href="${esc(url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;"><span style="color:#ffffff;text-decoration:none;">${esc(e.button)}</span></a></td></tr></table>`
     : "";
 
   const s = opts.signature;

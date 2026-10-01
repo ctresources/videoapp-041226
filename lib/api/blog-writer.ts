@@ -118,7 +118,8 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - GENERICITY CHECK, before you finish: reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighbourhoods, streets, price bands and comparisons the script gives you that make it true only here. Do not invent detail to pass this check; where the script is thin on a point, cut the point rather than fake it.
 
 FAIR HOUSING (overrides everything above):
-- Never mention schools, churches, demographics, neighbourhood composition, safety, crime, or who an area would "suit".
+- Never mention churches, demographics, neighbourhood composition, safety, crime, or who an area would "suit".
+- Schools: only a school district or school rating the script itself gives, with any rating credited to GreatSchools or Niche. Never describe a school by who attends it, and never use schools to say who an area is for.
 - Write about places and property. Never about the people who live there.
 ${closingRule}
 

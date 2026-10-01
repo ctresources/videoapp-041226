@@ -85,7 +85,8 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - GENERICITY CHECK, before you finish: reread the article and ask whether it could describe a different property by changing only the address. If it could, it is too generic — go back and use the specifics this listing actually gives you. Do not invent detail to pass this check.
 
 FAIR HOUSING (overrides everything else here):
-- Never mention schools, churches, demographics, neighborhood composition, safety, or who the home would "suit".
+- Never mention churches, demographics, neighborhood composition, safety, or who the home would "suit".
+- Schools: only a school district or school rating the listing itself gives, with any rating credited to GreatSchools or Niche. Never describe a school by who attends it, and never use schools to say who the home is for.
 - Describe the property and its features. Never describe the people who might live there.
 ${closingRule}
 
