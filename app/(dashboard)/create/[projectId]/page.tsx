@@ -2818,21 +2818,24 @@ export default function ProjectEditorPage() {
                 thrown away. */}
             {!selfRecord && (<>
             {/* Avatar look selector.
-                Only Avatar + Voice puts a look on screen — lookId is dropped at
-                submit in Voice Only mode. The picker used to render identically
-                in both, so a look could be selected, show its blue ring, and be
-                silently discarded: the render came back full of stock footage
-                with nothing explaining why. Now Voice Only says so, and picking
-                a look switches the mode rather than being ignored. */}
-            {(looksLoading || looks.length > 0) && (
+                Only Avatar + Voice puts a look on screen; the server drops the
+                look for Voice Only whatever arrives (create-blog, voiceOnly).
+                The picker once rendered the same in both modes, so a look could
+                be picked, show its ring, and be silently discarded. The next
+                fix kept the grid in Voice Only under an amber warning, which
+                nagged everyone who chose Voice Only on purpose, from a blog
+                article most of all. So Voice Only now shows no grid at all,
+                just one line saying how to get on screen. The selected look
+                stays in state, and switching back brings it back as it was. */}
+            {(looksLoading || looks.length > 0) && renderMode === "voice_only" && (
+              <p className="text-xs text-slate-500 mb-5">
+                <span className="font-medium text-slate-600">Voice only:</span> no one on screen.
+                Want to appear in this one? Pick <strong>Avatar + voice</strong> above.
+              </p>
+            )}
+            {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
-                {renderMode === "voice_only" && (
-                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 mb-2">
-                    Voice Only doesn&apos;t put an avatar on screen. The AI fills it with its own
-                    b-roll. Pick a look below and we&apos;ll switch you to <strong>Avatar + Voice</strong>.
-                  </p>
-                )}
                 <p className="text-xs text-slate-400 mb-1">
                   <span className="font-medium">Photo Avatar</span>: from your headshot &nbsp;·&nbsp;
                   <span className="font-medium">Digital Twin</span>: from your video
@@ -2856,10 +2859,6 @@ export default function ProjectEditorPage() {
                           onClick={() => {
                             if (isProcessing) return;
                             setSelectedLookId(look.id);
-                            // Choosing a look means you want to be on screen.
-                            // Voice Only would drop it at submit, so switch
-                            // rather than accept a pick we intend to ignore.
-                            if (renderMode === "voice_only") setRenderMode("avatar_voice");
                           }}
                           title={look.name}
                           disabled={isProcessing}
