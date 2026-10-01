@@ -1355,6 +1355,7 @@ function CreatePageInner() {
           length: pasteScriptLength,
           city: pasteCity.trim() || undefined,
           state: pasteState.trim() || undefined,
+          ...briefFields(),
         }),
       });
       const data = await safeJson(res);
@@ -1451,6 +1452,7 @@ function CreatePageInner() {
           // two page-level routes did not, so a ticked box suppressed the
           // overlays and still produced a script ending in "give me a call".
           unbranded: cameraUnbranded,
+          ...briefFields(),
         }),
       });
       const data = await safeJson(res);
@@ -1477,6 +1479,7 @@ function CreatePageInner() {
           city: locCity.trim() || undefined,
           state: locState.trim() || undefined,
           unbranded: cameraUnbranded,
+          ...briefFields(),
         }),
       });
       const data = await safeJson(res);
@@ -1518,6 +1521,7 @@ function CreatePageInner() {
           // 1,100-word pasted script landed on a 400-word format that would
           // trim it — the choice made on this screen reaching nothing.
           length: pasteScriptLength,
+          ...briefFields(),
         }),
       });
       const data = await safeJson(res);
@@ -1542,6 +1546,7 @@ function CreatePageInner() {
           length: pasteScriptLength,
           city: pasteCity.trim() || undefined,
           state: pasteState.trim() || undefined,
+          ...briefFields(),
         }),
       });
       const data = await safeJson(res);
@@ -1673,6 +1678,92 @@ function CreatePageInner() {
     && inputMode !== "camera";
 
   const showActionBar = inputMode === "script" && step === "input";
+
+  /**
+   * Who it is for, how it sounds, what it is for: one row, three tabs.
+   *
+   * It lived only on the AI-writes-it tab, so a camera recording or a pasted
+   * script was saved with no brief, and everything written about it later
+   * (the blog, the Spark Tools) was written for nobody in particular. The
+   * values are page state, so a choice made on one tab carries to the others.
+   * The call to action stays on the AI tab: the camera has its own unbranded
+   * switch, and a pasted script's ending is the agent's own.
+   */
+  function renderBriefPickers(withCta: boolean) {
+    return (
+      <div className={`grid grid-cols-1 gap-2.5 ${withCta ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
+          {[
+            {
+              // Custom audiences join the list. Saying "people
+              // relocating" used to land nowhere: the value was not one
+              // of the six, so the select showed blank and the answer
+              // was silently lost. Anything spoken or saved is an
+              // option here, and persists for next time.
+              label: "Audience", value: locAudience, set: setLocAudience,
+              options: [
+                ["", "Any"],
+                ...BASE_AUDIENCES.map((a) => [a, a] as [string, string]),
+                ...customAudiences.map((a) => [a, a] as [string, string]),
+              ] as [string, string][],
+            },
+            {
+              // "Tone" is what the field is — the voice the script is
+              // written in. "Style" reads as a visual setting on a
+              // screen whose other controls are all visual.
+              label: "Tone", value: locTone, set: setLocTone,
+              options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
+            },
+            {
+              label: "Why", value: locPurpose, set: setLocPurpose,
+              options: [
+                ["", "Any"],
+                ["found", "Get found"],
+                ["answer", "Answer a question they keep asking"],
+                ["appointment", "Win the appointment"],
+                ["topofmind", "Stay top of mind"],
+                ["announce", "Announce something"],
+              ] as [string, string][],
+            },
+            {
+              label: "Call to action", value: locCta, set: setLocCta,
+              // "None" is a real choice now, not just an unset dropdown
+              // — it tells the script to skip the CTA section entirely
+              // rather than fall back to a generic "reach out today".
+              options: [["", "Default"], ["none", "None"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
+            },
+          ].filter(({ label }) => withCta || label !== "Call to action").map(({ label, value, set, options }) => (
+            <div key={label}>
+              {/* All three are optional and every one of them defaults
+                  to a usable answer. Saying so on the label is what
+                  stops the row reading as three more things to fill
+                  in before the button will work. */}
+              <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">
+                {label} <span className="font-normal text-spark-ink-faint">(optional)</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                >
+                  {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
+              </div>
+            </div>
+          ))}
+        </div>
+    );
+  }
+
+  /** The brief as request fields, sent with every script write and save. */
+  function briefFields() {
+    return {
+      audience: locAudience || undefined,
+      tone: locTone || undefined,
+      purpose: locPurpose || undefined,
+    };
+  }
   // Listings keep their own submit inside ListingVideoForm, which owns that
   // form's validity; the other three tabs put their primary action on the bar.
   const anyActionBar =
@@ -2476,68 +2567,7 @@ function CreatePageInner() {
               with Where, so the page asks its questions in one place. */}
           <div className="mt-6">
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-                  {[
-                    {
-                      // Custom audiences join the list. Saying "people
-                      // relocating" used to land nowhere: the value was not one
-                      // of the six, so the select showed blank and the answer
-                      // was silently lost. Anything spoken or saved is an
-                      // option here, and persists for next time.
-                      label: "Audience", value: locAudience, set: setLocAudience,
-                      options: [
-                        ["", "Any"],
-                        ...BASE_AUDIENCES.map((a) => [a, a] as [string, string]),
-                        ...customAudiences.map((a) => [a, a] as [string, string]),
-                      ] as [string, string][],
-                    },
-                    {
-                      // "Tone" is what the field is — the voice the script is
-                      // written in. "Style" reads as a visual setting on a
-                      // screen whose other controls are all visual.
-                      label: "Tone", value: locTone, set: setLocTone,
-                      options: [["", "Any"], ["Friendly", "Friendly"], ["Modern", "Modern"], ["Luxury", "Luxury"], ["High-Energy", "High-Energy"], ["Educational", "Educational"]],
-                    },
-                    {
-                      label: "Why", value: locPurpose, set: setLocPurpose,
-                      options: [
-                        ["", "Any"],
-                        ["found", "Get found"],
-                        ["answer", "Answer a question they keep asking"],
-                        ["appointment", "Win the appointment"],
-                        ["topofmind", "Stay top of mind"],
-                        ["announce", "Announce something"],
-                      ] as [string, string][],
-                    },
-                    {
-                      label: "Call to action", value: locCta, set: setLocCta,
-                      // "None" is a real choice now, not just an unset dropdown
-                      // — it tells the script to skip the CTA section entirely
-                      // rather than fall back to a generic "reach out today".
-                      options: [["", "Default"], ["none", "None"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
-                    },
-                  ].map(({ label, value, set, options }) => (
-                    <div key={label}>
-                      {/* All three are optional and every one of them defaults
-                          to a usable answer. Saying so on the label is what
-                          stops the row reading as three more things to fill
-                          in before the button will work. */}
-                      <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">
-                        {label} <span className="font-normal text-spark-ink-faint">(optional)</span>
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                          className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
-                        >
-                          {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
-                        <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {renderBriefPickers(true)}
 
                 {/* ── What? · Shorts or Longform ──
                     Shape and length together, because they are one decision
@@ -2797,6 +2827,14 @@ function CreatePageInner() {
               choose how the script gets written, give it what it needs, read
               what came back. */}
           <div className="flex flex-col gap-3 min-w-0 mt-2">
+          <div className="rounded-xl border border-spark-rule bg-spark-paper px-3 py-3">
+            <p className="mb-2.5 text-[12.5px] text-spark-ink-soft">
+              <span className="font-semibold text-spark-ink">Who&apos;s it for?</span>{" "}
+              Used for your blog article, titles and descriptions, and for any script you ask AI to write.
+              Your own script stays word for word.
+            </p>
+            {renderBriefPickers(false)}
+          </div>
           <Card padding="sm" className="p-3 border-t-4 border-t-spark-amber">
             <div className="flex items-center gap-2.5 mb-3">
               <span className="w-9 h-9 rounded-full bg-gradient-to-br from-spark-amber to-spark-amber-glow text-white flex items-center justify-center text-base font-bold shrink-0 shadow-sm">1</span>
@@ -3456,6 +3494,15 @@ function CreatePageInner() {
               sections inside it — 3 and 4, continuing the page's count — so a
               third amber label above them naming the tab and the step would
               have been a heading for a heading. */}
+          {cameraPhase !== "done" && !cameraHandoff && (
+            <div className="mb-3 rounded-xl border border-spark-rule bg-spark-paper px-3 py-3">
+              <p className="mb-2.5 text-[12.5px] text-spark-ink-soft">
+                <span className="font-semibold text-spark-ink">Who&apos;s it for?</span>{" "}
+                Shapes any script we write for you, plus your blog article, titles and descriptions.
+              </p>
+              {renderBriefPickers(false)}
+            </div>
+          )}
           <Card padding="sm" className="p-3 min-w-0 border-t-4 border-t-emerald-500">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 bg-gradient-to-br from-spark-amber to-spark-amber-glow rounded-xl flex items-center justify-center shadow-sm">
@@ -3541,6 +3588,7 @@ function CreatePageInner() {
               <ClipBrander
                 photos={cameraPhotos.map((p) => p.url)}
                 title={locCity ? `${locCity} clip` : "Camera clip"}
+                brief={briefFields()}
               />
             ) : (<>
 
@@ -3733,6 +3781,7 @@ function CreatePageInner() {
             )}
 
             <CameraRecorder
+              brief={briefFields()}
               onPhaseChange={setCameraPhase}
               city={locCity || undefined}
               state={locState || undefined}

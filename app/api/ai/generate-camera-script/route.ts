@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
+import { scriptBriefGuidance } from "@/lib/api/perplexity-prompts";
 import {
   cameraTargetWords, minutesFor,
   type CameraLength, type RenderedScriptLength,
@@ -16,7 +17,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic, pdfText, photoCount, length, city, state, unbranded } = await req.json();
+  const { topic, pdfText, photoCount, length, city, state, unbranded, audience, tone, purpose } = await req.json();
+  // Who it is for, how it sounds, what it is for: the same brief, and the same
+  // guidance text, a market script is written under. Absent means as before.
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const briefGuidance = scriptBriefGuidance({ audience: str(audience), tone: str(tone), purpose: str(purpose) });
   const hasTopic = !!(topic?.trim());
   const hasDocs = !!(pdfText?.trim());
 
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Script generation is not configured" }, { status: 500 });
   }
 
-  const systemPrompt = `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.
+  const systemPrompt = `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.${briefGuidance ? `\n${briefGuidance}` : ""}
 ${isUnbranded ? `
 This script is for an UNBRANDED video and must contain no agent identification of any kind: no names, no brokerage, no team, no licence number, no phone number, no email, no website, and no invitation to contact anyone. This is a compliance requirement, not a style preference — it outranks any instruction elsewhere in this request about how to close the script.
 ` : ""}

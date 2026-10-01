@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
     city?: string;
     state?: string;
     length?: string;
+    audience?: string;
+    tone?: string;
+    purpose?: string;
   };
 
   const { script, city = "", state = "" } = body;
@@ -93,6 +96,13 @@ export async function POST(req: NextRequest) {
      * nothing on screen saying the promise had been dropped.
      */
     verbatim: true,
+    // The brief from the paste screen. The script is spoken as written either
+    // way; these are for what is written ABOUT it afterwards: the blog, the
+    // titles and descriptions, the Spark Tools. Same keys and the same nulls
+    // as generate-location-script, so every reader finds them in one place.
+    audience: body.audience?.trim() || null,
+    tone: body.tone?.trim() || null,
+    purpose: body.purpose?.trim() || null,
   };
 
   const { data: project, error: projectError } = await admin

@@ -83,6 +83,10 @@ export async function uploadCameraRecording(
     /** The agent's sign-off, appended to the post copy verbatim. Not spoken —
      *  the end card is what carries the ask on screen. */
     cta?: string;
+    /** The brief picked on the Create page, saved on a new project. */
+    audience?: string;
+    tone?: string;
+    purpose?: string;
   } = {},
 ): Promise<{ videoId: string; title: string; projectId: string | null; alreadySaved?: boolean }> {
   const ext = videoExtensionForType(blob.type);

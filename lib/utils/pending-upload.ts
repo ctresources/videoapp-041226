@@ -80,6 +80,10 @@ export interface RecoveryRecord {
    * different things, and the second one is the case worth recognising.
    */
   lastStage?: string | null;
+  /** The brief the take was made under, so a retry saves it as the first try would have. */
+  audience?: string;
+  tone?: string;
+  purpose?: string;
 }
 
 /** What is stored: the blob lives beside the rest rather than inside it. */

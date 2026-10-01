@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
    */
   let idempotencyKey: string | null;
   let uploadedInline = false;
+  /** Audience, tone and purpose from the Create page; empty on the legacy inline path. */
+  let brief = { audience: "", tone: "", purpose: "" };
 
   const contentType = req.headers.get("content-type") || "";
 
@@ -60,6 +62,14 @@ export async function POST(req: NextRequest) {
       state?: string;
       cta?: string;
       idempotencyKey?: string;
+      audience?: string;
+      tone?: string;
+      purpose?: string;
+    };
+    brief = {
+      audience: body.audience?.trim().slice(0, 120) || "",
+      tone: body.tone?.trim().slice(0, 40) || "",
+      purpose: body.purpose?.trim().slice(0, 40) || "",
     };
 
     if (!body.storagePath) {
@@ -343,6 +353,32 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       console.error("[save-camera-recording] metadata write failed (non-fatal):", err);
+    }
+  }
+
+  // The brief this take was made under, for the blog, the Spark Tools and the
+  // post copy to write to. Fills only what the project does not already say:
+  // a recording made from inside a project keeps that project's brief.
+  if (brief.audience || brief.tone || brief.purpose) {
+    try {
+      const { data: row } = await admin
+        .from("projects")
+        .select("ai_script")
+        .eq("id", resolvedProjectId)
+        .single();
+      const ai = ((row as { ai_script: Record<string, unknown> | null } | null)?.ai_script ?? null);
+      const patch: Record<string, string> = {};
+      for (const k of ["audience", "tone", "purpose"] as const) {
+        if (brief[k] && !ai?.[k]) patch[k] = brief[k];
+      }
+      if (Object.keys(patch).length) {
+        await admin
+          .from("projects")
+          .update({ ai_script: { ...(ai ?? { title, script: spokenScript, hook, cta, keywords: [] }), ...patch } })
+          .eq("id", resolvedProjectId);
+      }
+    } catch (err) {
+      console.error("[save-camera-recording] brief write failed (non-fatal):", err);
     }
   }
 

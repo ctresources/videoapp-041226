@@ -621,6 +621,24 @@ const CTA_PREFERENCE_GUIDANCE: Record<string, string> = {
   consultation: "Ask the viewer to book a consultation — the CTA should invite them to schedule time, not just call or text.",
 };
 
+/**
+ * Audience, purpose and tone as script guidance: the exact text the market
+ * scripts are written under, shared so a camera or pasted-route script written
+ * for the same brief gets the same instructions rather than a paraphrase.
+ * Each part is empty when its value is, so no brief means no change.
+ */
+export function scriptBriefGuidance(p: { audience?: string | null; tone?: string | null; purpose?: string | null }): string {
+  const audienceGuidance = audienceClause(p.audience ?? undefined);
+  const purposeGuidance = p.purpose && PURPOSE_SCRIPT_GUIDANCE[p.purpose]
+    ? `
+Purpose: ${PURPOSE_SCRIPT_GUIDANCE[p.purpose]}`
+    : "";
+  const toneGuidance = p.tone && TONE_SCRIPT_GUIDANCE[p.tone]
+    ? `\nBrand Tone: ${p.tone}. ${TONE_SCRIPT_GUIDANCE[p.tone]}`
+    : "";
+  return `${audienceGuidance}${purposeGuidance}${toneGuidance}`;
+}
+
 export async function generateLocationScript(
   videoType: LocationVideoType,
   params: LocationParams,
@@ -644,16 +662,7 @@ export async function generateLocationScript(
         ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".${preferenceGuidance}`
         : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".${preferenceGuidance}`;
 
-    const audienceGuidance = audienceClause(params.audience);
-    const purposeGuidance = params.purpose && PURPOSE_SCRIPT_GUIDANCE[params.purpose]
-      ? `
-Purpose: ${PURPOSE_SCRIPT_GUIDANCE[params.purpose]}`
-      : "";
-    const toneGuidance = params.tone && TONE_SCRIPT_GUIDANCE[params.tone]
-      ? `\nBrand Tone: ${params.tone}. ${TONE_SCRIPT_GUIDANCE[params.tone]}`
-      : "";
-
-    systemMsg.content += `\n\n${nameClause}${audienceGuidance}${purposeGuidance}${toneGuidance}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
+    systemMsg.content += `\n\n${nameClause}${scriptBriefGuidance(params)}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
 
     // Length control for the structured types (market_update, why_live_here,
     // community_events). The custom type states its own target inline, so it's

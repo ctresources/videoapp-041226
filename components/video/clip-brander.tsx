@@ -47,10 +47,12 @@ type TranscriptState =
   | { status: "silent" }
   | { status: "failed" };
 
-export function ClipBrander({ photos = [], title }: {
+export function ClipBrander({ photos = [], title, brief }: {
   /** CORS-clean URLs — see /api/photos/rehost. */
   photos?: string[];
   title: string;
+  /** Audience, tone and purpose from the Create page, saved with the clip. */
+  brief?: { audience?: string; tone?: string; purpose?: string };
 }) {
   // Loaded here rather than passed in: the Create page has never needed the
   // logo, licence or headshot, and CameraRecorder already fetches its own the
@@ -427,6 +429,7 @@ export function ClipBrander({ photos = [], title }: {
             hook: hook.trim(),
             city: city.trim(),
             state: state.trim(),
+            ...brief,
             // An unbranded cut may not carry the ask anywhere, including the
             // caption it gets published with.
             cta: addCta && !unbranded ? resolvedCta : "",

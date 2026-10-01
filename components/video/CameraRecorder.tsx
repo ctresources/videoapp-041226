@@ -118,8 +118,10 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
+  /** Audience, tone and purpose from the Create page: shapes a sparked script and is saved with the take. */
+  brief?: { audience?: string; tone?: string; purpose?: string };
   /**
    * No script at all — you talk, we keep what you said.
    *
@@ -997,7 +999,7 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: sparkTopic.trim(), length: sparkLength, unbranded }),
+        body: JSON.stringify({ topic: sparkTopic.trim(), length: sparkLength, unbranded, ...brief }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
@@ -1086,6 +1088,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
       status: "pending",
       attempts: 0,
       lastError: null,
+      audience: brief?.audience,
+      tone: brief?.tone,
+      purpose: brief?.purpose,
     };
   }
 
@@ -1159,6 +1164,9 @@ export function CameraRecorder({ city, state, initialScript, initialUnbranded = 
         title: record.title,
         script: record.script,
         videoType: record.videoType,
+        audience: record.audience,
+        tone: record.tone,
+        purpose: record.purpose,
         // Same id on every attempt, so a retry of a save that already worked
         // returns that video rather than making another one.
         idempotencyKey: record.id,
