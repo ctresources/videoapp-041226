@@ -444,6 +444,8 @@ export default function ProjectEditorPage() {
   const [emailSubjectIdx, setEmailSubjectIdx] = useState(0);
   const [emailWriting, setEmailWriting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  /** The email panel under the blog card's button row. */
+  const [emailOpen, setEmailOpen] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -3450,6 +3452,130 @@ export default function ProjectEditorPage() {
           // saying a blog was even possible. The feature was invisible on
           // exactly the routes where the agent has the most to say and the
           // least of it written down.
+          // The blog post as an email: written on request from the article,
+          // copied into whatever the agent already sends email with. Only
+          // where there is an article, because that is what it summarises.
+          //
+          // A panel under the blog card's button row, opened by its Email
+          // button, not a card of its own. As a card it sat below the article,
+          // which opens expanded, so it was off screen under a long post and
+          // only found by collapsing the article first.
+          const hasArticle = !!(script.blog_intro || script.blog_body);
+          const emailNow = emailParts();
+          const emailUrlValue = emailUrlDraft ?? seo?.email_blog_url ?? "";
+          const emailSubjectAt = emailNow ? Math.min(emailSubjectIdx, emailNow.email.subjects.length - 1) : 0;
+          const emailBtn = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50";
+          const emailPanel = hasArticle && emailOpen && (
+            <div className="mx-2 mb-3 rounded-xl border border-spark-rule bg-white p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Mail size={16} className="text-spark-amber" />
+                  <h4 className="font-semibold text-sm text-brand-text">Email version</h4>
+                </div>
+                {emailNow && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className={emailBtn} onClick={() => { navigator.clipboard.writeText(emailNow.html); toast.success("Email HTML copied. Paste it into your email tool's HTML or code view."); }}>
+                      <Copy size={12} /> Copy as HTML
+                    </button>
+                    <button type="button" className={emailBtn} onClick={() => copyToClipboard(emailNow.text, "Email")}>
+                      <Copy size={12} /> Copy as text
+                    </button>
+                    <button type="button" className={emailBtn} onClick={sendEmailTest} disabled={emailSending}>
+                      {emailSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Send me a test
+                    </button>
+                    <button type="button" onClick={() => setEmailOpen(false)} aria-label="Close the email" className="rounded-lg p-1 text-slate-400 hover:text-spark-amber">
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                {!emailNow && (
+                  <button type="button" onClick={() => setEmailOpen(false)} aria-label="Close the email" className="rounded-lg p-1 text-slate-400 hover:text-spark-amber">
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              <div>
+                {!emailNow ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate-600">
+                      Turn this post into a short email for your past clients and contacts: subject lines, a quick
+                      summary and a button to the full post.
+                    </p>
+                    <button type="button" onClick={writeEmail} disabled={emailWriting}
+                      className="flex items-center gap-1.5 px-4 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                      {emailWriting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      {emailWriting ? "Writing…" : "Write the email"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Link to the full post (for the button)</p>
+                      <input
+                        type="url"
+                        value={emailUrlValue}
+                        onChange={(e) => setEmailUrlDraft(e.target.value)}
+                        onBlur={saveEmailUrl}
+                        placeholder={`https://yoursite.com/blog/${seo?.slug || "this-post"}`}
+                        className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                      />
+                      {!/^https?:\/\//i.test(emailNow.blogUrl) && (
+                        <p className="text-[11px] text-amber-700 mt-1">
+                          Post the article on your site first, then paste its link here. Until then the email has no button.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Subject line: pick one</p>
+                      <div className="space-y-1.5">
+                        {emailNow.email.subjects.map((subj, i) => (
+                          <label key={i} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${i === emailSubjectAt ? "border-spark-amber bg-spark-amber-tint" : "border-slate-100 bg-slate-50"}`}>
+                            <input type="radio" name="email-subject" checked={i === emailSubjectAt} onChange={() => setEmailSubjectIdx(i)} className="mt-1" />
+                            <span className="flex-1 text-slate-700">{subj}</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); copyToClipboard(subj, "Subject line"); }} className="shrink-0 mt-0.5">
+                              <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    {emailNow.email.preview && (
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 mb-1">Preview text (the line after the subject in the inbox)</p>
+                        <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 flex items-start justify-between gap-2">
+                          <span className="flex-1">{emailNow.email.preview}</span>
+                          <button type="button" onClick={() => copyToClipboard(emailNow.email.preview, "Preview text")} className="shrink-0 mt-0.5">
+                            <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Preview</p>
+                      {/* The real HTML, sandboxed: what the reader gets, not a
+                          re-drawing of it that could drift. */}
+                      <iframe
+                        title="Email preview"
+                        srcDoc={emailNow.html}
+                        sandbox=""
+                        className="w-full h-[520px] rounded-lg border border-slate-200 bg-slate-100"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] text-slate-400 max-w-md">
+                        Paste it into Mailchimp, Constant Contact, your CRM or Gmail. Your email tool adds the unsubscribe
+                        link and your mailing address, which the law requires on every marketing email.
+                      </p>
+                      <button type="button" onClick={writeEmail} disabled={emailWriting} className={emailBtn}>
+                        {emailWriting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Rewrite
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+
           const blogCard = (
             <Card padding="sm">
               {/* A div, not a button. The copy actions moved up into this row
@@ -3644,6 +3770,18 @@ export default function ProjectEditorPage() {
                           </div>
                         );
                       })()}
+                      <button
+                        type="button"
+                        onClick={() => setEmailOpen((o) => !o)}
+                        aria-expanded={emailOpen}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          emailOpen
+                            ? "border-spark-amber bg-spark-amber-tint text-spark-amber"
+                            : "border-spark-rule bg-white text-spark-ink hover:border-spark-amber hover:text-spark-amber"
+                        }`}
+                      >
+                        <Mail size={12} /> Email
+                      </button>
                     </>
                   )}
                   <button
@@ -3657,6 +3795,7 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               </div>
+              {emailPanel}
               {/* The header image itself, once there is one. The link to make or
                   change it is a pill in the action row above. */}
               {expandedSections.blog && (script.blog_intro || script.blog_body) && script.blog_header_url && (
@@ -3719,117 +3858,6 @@ export default function ProjectEditorPage() {
             </Card>
           );
 
-          // The blog post as an email: written on request from the article,
-          // copied into whatever the agent already sends email with. Only
-          // where there is an article, because that is what it summarises.
-          const hasArticle = !!(script.blog_intro || script.blog_body);
-          const emailNow = emailParts();
-          const emailUrlValue = emailUrlDraft ?? seo?.email_blog_url ?? "";
-          const emailSubjectAt = emailNow ? Math.min(emailSubjectIdx, emailNow.email.subjects.length - 1) : 0;
-          const emailBtn = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50";
-          const emailCard = hasArticle && (
-            <Card padding="sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1 mb-2">
-                <div className="flex items-center gap-2">
-                  <Mail size={17} className="text-spark-amber" />
-                  <h3 className="font-bold text-[17px] leading-tight text-brand-text">Email version</h3>
-                </div>
-                {emailNow && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button type="button" className={emailBtn} onClick={() => { navigator.clipboard.writeText(emailNow.html); toast.success("Email HTML copied. Paste it into your email tool's HTML or code view."); }}>
-                      <Copy size={12} /> Copy as HTML
-                    </button>
-                    <button type="button" className={emailBtn} onClick={() => copyToClipboard(emailNow.text, "Email")}>
-                      <Copy size={12} /> Copy as text
-                    </button>
-                    <button type="button" className={emailBtn} onClick={sendEmailTest} disabled={emailSending}>
-                      {emailSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Send me a test
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="px-2 pb-1">
-                {!emailNow ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm text-slate-600">
-                      Turn this post into a short email for your past clients and contacts: subject lines, a quick
-                      summary and a button to the full post.
-                    </p>
-                    <button type="button" onClick={writeEmail} disabled={emailWriting}
-                      className="flex items-center gap-1.5 px-4 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold disabled:opacity-50">
-                      {emailWriting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                      {emailWriting ? "Writing…" : "Write the email"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1">Link to the full post (for the button)</p>
-                      <input
-                        type="url"
-                        value={emailUrlValue}
-                        onChange={(e) => setEmailUrlDraft(e.target.value)}
-                        onBlur={saveEmailUrl}
-                        placeholder={`https://yoursite.com/blog/${seo?.slug || "this-post"}`}
-                        className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
-                      />
-                      {!/^https?:\/\//i.test(emailNow.blogUrl) && (
-                        <p className="text-[11px] text-amber-700 mt-1">
-                          Post the article on your site first, then paste its link here. Until then the email has no button.
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1">Subject line: pick one</p>
-                      <div className="space-y-1.5">
-                        {emailNow.email.subjects.map((subj, i) => (
-                          <label key={i} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${i === emailSubjectAt ? "border-spark-amber bg-spark-amber-tint" : "border-slate-100 bg-slate-50"}`}>
-                            <input type="radio" name="email-subject" checked={i === emailSubjectAt} onChange={() => setEmailSubjectIdx(i)} className="mt-1" />
-                            <span className="flex-1 text-slate-700">{subj}</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); copyToClipboard(subj, "Subject line"); }} className="shrink-0 mt-0.5">
-                              <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                            </button>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    {emailNow.email.preview && (
-                      <div>
-                        <p className="text-xs font-medium text-slate-500 mb-1">Preview text (the line after the subject in the inbox)</p>
-                        <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 flex items-start justify-between gap-2">
-                          <span className="flex-1">{emailNow.email.preview}</span>
-                          <button type="button" onClick={() => copyToClipboard(emailNow.email.preview, "Preview text")} className="shrink-0 mt-0.5">
-                            <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1">Preview</p>
-                      {/* The real HTML, sandboxed: what the reader gets, not a
-                          re-drawing of it that could drift. */}
-                      <iframe
-                        title="Email preview"
-                        srcDoc={emailNow.html}
-                        sandbox=""
-                        className="w-full h-[520px] rounded-lg border border-slate-200 bg-slate-100"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[11px] text-slate-400 max-w-md">
-                        Paste it into Mailchimp, Constant Contact, your CRM or Gmail. Your email tool adds the unsubscribe
-                        link and your mailing address, which the law requires on every marketing email.
-                      </p>
-                      <button type="button" onClick={writeEmail} disabled={emailWriting} className={emailBtn}>
-                        {emailWriting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Rewrite
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-
           // Images saved from the image generator. Downloaded from here and
           // attached by hand when posting, until posting from the app exists.
           const shareImages = (project.seo_data?.share_images ?? []).filter((u) => typeof u === "string");
@@ -3860,8 +3888,8 @@ export default function ProjectEditorPage() {
           );
 
           return articleFirst
-            ? <>{blogCard}{emailCard}{seoCard}{imagesCard}</>
-            : <>{seoCard}{blogCard}{emailCard}{imagesCard}</>;
+            ? <>{blogCard}{seoCard}{imagesCard}</>
+            : <>{seoCard}{blogCard}{imagesCard}</>;
           })()}
           </>)}
 
