@@ -16,6 +16,7 @@ import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { blogAsHtml } from "@/lib/utils/blog-html";
+import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-html";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -24,7 +25,7 @@ import { RenderPipeline } from "@/components/create/render-pipeline";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
-  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin,
+  User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin, Mail, Send,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -121,6 +122,10 @@ interface SeoData {
   instagram_caption: string;
   linkedin_post?: string;
   email_blurb?: string;
+  /** The blog post's email version, written on request from the Share Kit. */
+  email?: EmailVersion;
+  /** Where the agent published the post; the email's button links here. */
+  email_blog_url?: string;
   /** Images saved from the image generator ("Add to Share Kit"), newest first. */
   share_images?: string[];
 }
@@ -424,12 +429,21 @@ export default function ProjectEditorPage() {
     phone: string | null;
     company_phone: string | null;
     company_address: string | null;
+    website?: string | null;
+    avatar_url?: string | null;
   } | null>(null);
 
   // Photo uploads
   const [uploadedPhotos, setUploadedPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
   const [matchingPhotos, setMatchingPhotos] = useState(false);
   const [blogWriting, setBlogWriting] = useState(false);
+  // The Share Kit's email version. Each starts null and falls back to what
+  // the project has saved, so a reload shows the last email written.
+  const [emailWritten, setEmailWritten] = useState<EmailVersion | null>(null);
+  const [emailUrlDraft, setEmailUrlDraft] = useState<string | null>(null);
+  const [emailSubjectIdx, setEmailSubjectIdx] = useState(0);
+  const [emailWriting, setEmailWriting] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -768,7 +782,7 @@ export default function ProjectEditorPage() {
       // never needed them because its recorder composited nothing.
       // The last four decide whether the "add your photos and voice" nudge is
       // still worth showing — an agent who did both was being told to do them.
-      .select("full_name, company_name, phone, company_phone, company_address, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state, heygen_photo_id, heygen_digital_twin_group_id, voice_clone_id, heygen_voice_id")
+      .select("full_name, company_name, phone, company_phone, company_address, website, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state, heygen_photo_id, heygen_digital_twin_group_id, voice_clone_id, heygen_voice_id")
       .eq("id", user.id)
       .single();
     if (data) {
@@ -1972,6 +1986,87 @@ export default function ProjectEditorPage() {
     });
     navigator.clipboard.writeText(html);
     toast.success("Blog HTML copied. Paste into your site's HTML view.");
+  }
+
+  // ── Email version ───────────────────────────────────────────────
+  // What the email is built from: the saved or just-written copy, the post's
+  // link, and the sign-off from the profile. Both copy buttons and the test
+  // send build from this, so all three give the same email.
+  function emailParts() {
+    const seoNow = (project?.seo_data ?? null) as SeoData | null;
+    const ai = project?.ai_script as AiScript | null;
+    const email = emailWritten ?? seoNow?.email ?? null;
+    if (!email || !project) return null;
+    const blogUrl = (emailUrlDraft ?? seoNow?.email_blog_url ?? "").trim();
+    const opts = {
+      headline: ai?.blog_headline || project.title,
+      blogUrl,
+      headerUrl: ai?.blog_header_url || "",
+      signature: {
+        name: contactInfo?.full_name,
+        company: contactInfo?.company_name,
+        phone: contactInfo?.phone || contactInfo?.company_phone,
+        website: contactInfo?.website,
+        headshotUrl: contactInfo?.avatar_url,
+      },
+    };
+    const subject = email.subjects[Math.min(emailSubjectIdx, email.subjects.length - 1)] ?? "";
+    return { email, subject, html: emailAsHtml(email, opts), text: emailAsText(email, opts), blogUrl };
+  }
+
+  async function writeEmail() {
+    if (!project) return;
+    setEmailWriting(true);
+    try {
+      const res = await fetch("/api/ai/email-version", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, action: "write" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data?.error || "Couldn't write the email.");
+      }
+      setEmailWritten(data.email);
+      setEmailSubjectIdx(0);
+      toast.success("Email ready.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't write the email.");
+    } finally {
+      setEmailWriting(false);
+    }
+  }
+
+  async function saveEmailUrl() {
+    if (!project || emailUrlDraft === null) return;
+    const res = await fetch("/api/ai/email-version", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, action: "save_url", blogUrl: emailUrlDraft }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) toast.error(data?.error || "Couldn't save the link.");
+  }
+
+  async function sendEmailTest() {
+    const parts = emailParts();
+    if (!parts) return;
+    setEmailSending(true);
+    try {
+      const res = await fetch("/api/email/test-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: parts.subject, html: parts.html, text: parts.text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Couldn't send the test email.");
+      toast.success(`Test sent to ${data.to}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send the test email.");
+    } finally {
+      setEmailSending(false);
+    }
   }
 
   function toggle(section: string) {
@@ -3307,7 +3402,9 @@ export default function ProjectEditorPage() {
                   {[
                     { label: "Instagram Caption", value: seo.instagram_caption },
                     ...(seo.linkedin_post ? [{ label: "LinkedIn Post", value: seo.linkedin_post }] : []),
-                    ...(seo.email_blurb ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
+                    // Superseded by the Email card wherever there is an
+                    // article to write it from; kept for the projects without one.
+                    ...(seo.email_blurb && !(script.blog_intro || script.blog_body) ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
                     { label: "Meta Description", value: seo.meta_description },
                     { label: "URL Slug", value: seo.slug },
                   ].filter(({ value }) => !!value?.trim()).map(({ label, value }) => (
@@ -3623,6 +3720,117 @@ export default function ProjectEditorPage() {
             </Card>
           );
 
+          // The blog post as an email: written on request from the article,
+          // copied into whatever the agent already sends email with. Only
+          // where there is an article, because that is what it summarises.
+          const hasArticle = !!(script.blog_intro || script.blog_body);
+          const emailNow = emailParts();
+          const emailUrlValue = emailUrlDraft ?? seo?.email_blog_url ?? "";
+          const emailSubjectAt = emailNow ? Math.min(emailSubjectIdx, emailNow.email.subjects.length - 1) : 0;
+          const emailBtn = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50";
+          const emailCard = hasArticle && (
+            <Card padding="sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1 mb-2">
+                <div className="flex items-center gap-2">
+                  <Mail size={17} className="text-spark-amber" />
+                  <h3 className="font-bold text-[17px] leading-tight text-brand-text">Email version</h3>
+                </div>
+                {emailNow && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className={emailBtn} onClick={() => { navigator.clipboard.writeText(emailNow.html); toast.success("Email HTML copied. Paste it into your email tool's HTML or code view."); }}>
+                      <Copy size={12} /> Copy as HTML
+                    </button>
+                    <button type="button" className={emailBtn} onClick={() => copyToClipboard(emailNow.text, "Email")}>
+                      <Copy size={12} /> Copy as text
+                    </button>
+                    <button type="button" className={emailBtn} onClick={sendEmailTest} disabled={emailSending}>
+                      {emailSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Send me a test
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="px-2 pb-1">
+                {!emailNow ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate-600">
+                      Turn this post into a short email for your past clients and contacts: subject lines, a quick
+                      summary and a button to the full post.
+                    </p>
+                    <button type="button" onClick={writeEmail} disabled={emailWriting}
+                      className="flex items-center gap-1.5 px-4 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                      {emailWriting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      {emailWriting ? "Writing…" : "Write the email"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Link to the full post (for the button)</p>
+                      <input
+                        type="url"
+                        value={emailUrlValue}
+                        onChange={(e) => setEmailUrlDraft(e.target.value)}
+                        onBlur={saveEmailUrl}
+                        placeholder={`https://yoursite.com/blog/${seo?.slug || "this-post"}`}
+                        className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                      />
+                      {!/^https?:\/\//i.test(emailNow.blogUrl) && (
+                        <p className="text-[11px] text-amber-700 mt-1">
+                          Post the article on your site first, then paste its link here. Until then the email has no button.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Subject line: pick one</p>
+                      <div className="space-y-1.5">
+                        {emailNow.email.subjects.map((subj, i) => (
+                          <label key={i} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${i === emailSubjectAt ? "border-spark-amber bg-spark-amber-tint" : "border-slate-100 bg-slate-50"}`}>
+                            <input type="radio" name="email-subject" checked={i === emailSubjectAt} onChange={() => setEmailSubjectIdx(i)} className="mt-1" />
+                            <span className="flex-1 text-slate-700">{subj}</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); copyToClipboard(subj, "Subject line"); }} className="shrink-0 mt-0.5">
+                              <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                            </button>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    {emailNow.email.preview && (
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 mb-1">Preview text (the line after the subject in the inbox)</p>
+                        <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-700 flex items-start justify-between gap-2">
+                          <span className="flex-1">{emailNow.email.preview}</span>
+                          <button type="button" onClick={() => copyToClipboard(emailNow.email.preview, "Preview text")} className="shrink-0 mt-0.5">
+                            <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 mb-1">Preview</p>
+                      {/* The real HTML, sandboxed: what the reader gets, not a
+                          re-drawing of it that could drift. */}
+                      <iframe
+                        title="Email preview"
+                        srcDoc={emailNow.html}
+                        sandbox=""
+                        className="w-full h-[520px] rounded-lg border border-slate-200 bg-slate-100"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] text-slate-400 max-w-md">
+                        Paste it into Mailchimp, Constant Contact, your CRM or Gmail. Your email tool adds the unsubscribe
+                        link and your mailing address, which the law requires on every marketing email.
+                      </p>
+                      <button type="button" onClick={writeEmail} disabled={emailWriting} className={emailBtn}>
+                        {emailWriting ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Rewrite
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+
           // Images saved from the image generator. Downloaded from here and
           // attached by hand when posting, until posting from the app exists.
           const shareImages = (project.seo_data?.share_images ?? []).filter((u) => typeof u === "string");
@@ -3653,8 +3861,8 @@ export default function ProjectEditorPage() {
           );
 
           return articleFirst
-            ? <>{blogCard}{seoCard}{imagesCard}</>
-            : <>{seoCard}{blogCard}{imagesCard}</>;
+            ? <>{blogCard}{emailCard}{seoCard}{imagesCard}</>
+            : <>{seoCard}{blogCard}{emailCard}{imagesCard}</>;
           })()}
           </>)}
 
