@@ -145,6 +145,11 @@ export async function POST(req: NextRequest) {
     agentName: (profileRow as { full_name: string | null } | null)?.full_name ?? null,
     // The unbranded cut's own rule follows the script it was written for.
     unbranded: script.cta === "",
+    // Saved on the project by generate-location-script; absent on routes that
+    // never asked, which then write exactly as before.
+    audience: typeof script.audience === "string" ? script.audience : null,
+    tone: typeof script.tone === "string" ? script.tone : null,
+    purpose: typeof script.purpose === "string" ? script.purpose : null,
   });
 
   if (!article) {

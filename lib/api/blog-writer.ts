@@ -1,6 +1,7 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
 import { expandShortArticle } from "@/lib/api/blog-length";
+import { briefBlock } from "@/lib/api/brief-context";
 
 /**
  * The blog article that accompanies a video — written from the video's own
@@ -47,6 +48,16 @@ export interface BlogFromScriptInput {
   agentName?: string | null;
   /** MLS unbranded: no agent, no brokerage, no contact ask. */
   unbranded?: boolean;
+  /**
+   * The brief the video was written to: who it is for, how it sounds, what it
+   * is for. A market video's blog is written in the same call as its script
+   * and has always had these; this writer, which every other route and the
+   * "Write the article" button use, had none, so the article was written for
+   * nobody in particular even when the project said who.
+   */
+  audience?: string | null;
+  tone?: string | null;
+  purpose?: string | null;
 }
 
 export async function generateBlogFromScript(
@@ -67,6 +78,21 @@ export async function generateBlogFromScript(
       ? `- Close by inviting the reader to get in touch with ${input.agentName}.`
       : "- Close by inviting the reader to get in touch.";
 
+  const brief = briefBlock({
+    audience: input.audience ?? undefined,
+    tone: input.tone ?? undefined,
+    purpose: input.purpose ?? undefined,
+  });
+  // The audience shapes which questions the headings answer and what gets
+  // explained; it must never turn into a claim about who an area suits, which
+  // is the fair-housing line this prompt already draws below.
+  const briefSection = brief
+    ? `
+WHO IT IS FOR AND WHY (the same brief the video was written to):${brief}
+- Let the audience decide which questions the headings answer, what to explain and what to skip, and the words you use. It never becomes a statement about who an area suits or who lives there.
+`
+    : "";
+
   const prompt = `${FAIR_HOUSING_GUARDRAIL}
 
 ---
@@ -80,7 +106,7 @@ WHAT WAS SAID IN THE VIDEO — cover this same ground, in writing, with the deta
 """
 ${script.slice(0, 6000)}
 """
-
+${briefSection}
 SEO, GEO AND AEO (this is the point of the article — it is written for three surfaces at once):
 - SEO (Google and Bing): name ${place} naturally throughout, along with any neighbourhoods, streets or landmarks the script mentions. This is a local search page and the place name is the thing it has to win on.
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting, no rhetorical questions. Build on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it.
