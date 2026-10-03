@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Upload, User
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Upload, User, MapPin
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +16,10 @@ interface SocialAccount {
   platform: string;
   name: string;
   username?: string;
+  /** "native" is our own YouTube connection; "partner" is every other platform. */
+  source?: "native" | "partner";
+  /** Its sign-in expired; it cannot be posted to until it is connected again. */
+  needsReconnect?: boolean;
 }
 
 interface PublishModalProps {
@@ -39,6 +43,8 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
   threads:   { label: "Threads",   icon: Share2,     color: "text-slate-700" },
   bluesky:   { label: "Bluesky",   icon: Globe,      color: "text-spark-blue" },
   pinterest: { label: "Pinterest", icon: Globe,      color: "text-red-600" },
+  x:         { label: "X",         icon: AtSign,     color: "text-slate-700" },
+  google_business: { label: "Google Business", icon: MapPin, color: "text-spark-blue" },
 };
 
 type Tab = "now" | "schedule";
@@ -84,6 +90,12 @@ export function PublishModal({
   const [loading, setLoading] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [posted, setPosted] = useState(false);
+  /** How many platforms besides YouTube this plan posts one video to; null is all of them. */
+  const [otherLimit, setOtherLimit] = useState<number | null>(null);
+  // The check on posts handed to other platforms, which land minutes later.
+  // Cleared when the window closes; the webhook settles them either way.
+  const statusTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => { if (statusTimer.current) clearInterval(statusTimer.current); }, []);
   /** null = not attempted (no YouTube target), true/false = the real outcome. */
   const [thumbnailSet, setThumbnailSet] = useState<boolean | null>(null);
   /** Resolved for callers that pass no thumbnail — see the defaults fetch. */
@@ -375,17 +387,73 @@ ${hashes.join(" ")}` : hashes.join(" ");
   useEffect(() => {
     fetch("/api/social/accounts")
       .then((r) => r.json())
-      .then(({ accounts: data }) => {
-        const accs = data || [];
+      .then(({ accounts: data, more }) => {
+        const accs: SocialAccount[] = data || [];
         setAccounts(accs);
-        setSelectedIds(accs.map((a: SocialAccount) => a.id));
+        const limit: number | null = typeof more?.limit === "number" ? more.limit : null;
+        setOtherLimit(limit);
+        // Everything ready to post to, up to what the plan allows. An account
+        // whose sign-in expired starts unselected: it would only fail.
+        let others = 0;
+        setSelectedIds(accs.filter((a) => {
+          if (a.source !== "partner") return true;
+          if (a.needsReconnect) return false;
+          if (limit !== null && others >= limit) return false;
+          others += 1;
+          return true;
+        }).map((a) => a.id));
         setLoadingAccounts(false);
       })
       .catch(() => setLoadingAccounts(false));
   }, []);
 
   function toggleAccount(id: string) {
+    const account = accounts.find((a) => a.id === id);
+    const adding = !selectedIds.includes(id);
+    if (adding && account?.needsReconnect) {
+      toast.error(`${account.name} needs to be reconnected first. Open Settings, then Social Accounts.`);
+      return;
+    }
+    if (adding && account?.source === "partner" && otherLimit !== null) {
+      const chosen = accounts.filter((a) => a.source === "partner" && selectedIds.includes(a.id)).length;
+      if (chosen >= otherLimit) {
+        toast.error(`Your plan posts each video to YouTube plus ${otherLimit} more. Unselect one first, or move up a plan to post everywhere.`);
+        return;
+      }
+    }
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
+  }
+
+  /**
+   * Follows posts handed to other platforms until each has landed or failed.
+   *
+   * Those are not finished when the request returns: each platform fetches and
+   * processes the video in its own time. Saying "Published" at that point
+   * would be a guess, so the first message says they are on their way and
+   * this reports each one as its real result comes in. It gives up after a few
+   * minutes; the post itself carries on and shows up in My Content.
+   */
+  function followPosts(refs: string[]) {
+    if (!refs.length) return;
+    const told = new Set<string>();
+    let checks = 0;
+    const label = (platform: string) => PLATFORM_META[platform]?.label || platform;
+    statusTimer.current = setInterval(async () => {
+      checks += 1;
+      try {
+        const res = await fetch(`/api/social/status?${refs.map((r) => `ref=${encodeURIComponent(r)}`).join("&")}`);
+        const data = await res.json();
+        for (const post of (data.posts || []) as { platform: string; status: string; error?: string }[]) {
+          if (told.has(post.platform)) continue;
+          if (post.status === "posted") { told.add(post.platform); toast.success(`${label(post.platform)}: posted`); }
+          if (post.status === "failed") { told.add(post.platform); toast.error(`${label(post.platform)}: ${post.error || "couldn't be posted"}`, { duration: 9000 }); }
+        }
+        if (!data.pending || checks >= 30) {
+          if (statusTimer.current) clearInterval(statusTimer.current);
+          statusTimer.current = null;
+        }
+      } catch { /* try again on the next tick */ }
+    }, 6000);
   }
 
   async function handleSubmit() {
@@ -436,9 +504,16 @@ ${hashes.join(" ")}` : hashes.join(" ");
         toast.success(`Scheduled for ${new Date(scheduledAt).toLocaleString()} 📅`);
       } else {
         // Count what actually went out, not what was selected — claiming
-        // "2 platforms" when one failed is how the original bug read.
-        const okCount = selectedIds.length - failed.length;
-        toast.success(`Published to ${okCount} platform${okCount === 1 ? "" : "s"}! 🚀`);
+        // "2 platforms" when one failed is how the original bug read. And
+        // only what is really live: a post handed to another platform is on
+        // its way, not published, and is reported as each one lands.
+        const sending = (data.results || []).filter((r: { status: string }) => r.status === "posting").length;
+        const okCount = selectedIds.length - failed.length - sending;
+        if (okCount > 0) toast.success(`Published to ${okCount} platform${okCount === 1 ? "" : "s"}! 🚀`);
+        if (sending > 0) {
+          toast(`Sending to ${sending} more platform${sending === 1 ? "" : "s"}. That takes a few minutes; we'll tell you as each one lands.`, { icon: "📤", duration: 7000 });
+          followPosts(data.pendingRefs || []);
+        }
         // Surfaced as its own message: the upload succeeded, so a failed
         // thumbnail is a follow-up task, not an error.
         if (data.thumbnailSet === false) {
@@ -920,6 +995,15 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   className="w-full text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
                 <p className="text-xs text-slate-400 mt-0.5 text-right">{caption.length}/2200</p>
+                {/* Google Business takes 30 seconds of video at most and no
+                    phone numbers, so what goes there is not what goes
+                    everywhere else. Said here so the post is not a surprise. */}
+                {accounts.some((a) => selectedIds.includes(a.id) && a.platform === "google_business") && (
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Google Business gets this caption with any phone number left out, and a Learn more button
+                    to your blog post or the video. Videos over 30 seconds go up there as a photo post.
+                  </p>
+                )}
               </div>
             )}
 

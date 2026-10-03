@@ -485,3 +485,35 @@ export async function notifyBillingEvent({
     // profile write for the sake of an email that did not send.
   }).catch(() => {});
 }
+
+/**
+ * Tells the owner the publishing plan is running out of customer slots.
+ *
+ * The plan holds a fixed number of connected customers and refuses the next
+ * one outright: no overage, no automatic upgrade. A customer who hits that
+ * sees "at capacity" and can do nothing about it, so the owner hears at 80%,
+ * while there is still room to move up a tier, and again if it ever fills.
+ */
+export async function notifySocialCapacity({ used, limit }: { used: number; limit: number }) {
+  if (!RESEND_API_KEY) return;
+  const full = used >= limit;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: full
+        ? `Social publishing is FULL: ${used} of ${limit} customer slots used`
+        : `Social publishing is ${Math.round((used / limit) * 100)}% full: ${used} of ${limit} slots`,
+      html: full
+        ? `<p>All <strong>${limit}</strong> Upload-Post profiles are in use. The next customer who tries to
+           connect their accounts will be told we're at capacity.</p>
+           <p>Move up a tier at <a href="https://app.upload-post.com/pricing">app.upload-post.com/pricing</a>.
+           No code change is needed.</p>`
+        : `<p><strong>${used}</strong> of ${limit} Upload-Post profiles are in use.</p>
+           <p>When they run out, new customers can't connect their accounts. Move up a tier before then at
+           <a href="https://app.upload-post.com/pricing">app.upload-post.com/pricing</a>.</p>`,
+    }),
+  }).catch(() => {});
+}

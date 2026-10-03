@@ -3,6 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes } from "@/lib/api/youtube";
 import { thumbnailCardPng } from "@/lib/api/thumbnail-card";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  SocialPublishError, profileUsername, publishPhoto, publishVideo, uploadPostConfigured,
+  type PublishAccepted,
+} from "@/lib/api/upload-post";
+import { storeRef } from "@/lib/api/social-settle";
+import {
+  deliveryFor, fitCaption, partnerPlatformLimit, platformFromAccountId, withoutPhoneNumbers,
+  type PartnerPlatform,
+} from "@/lib/utils/social-platforms";
+import { randomUUID } from "node:crypto";
 
 export const maxDuration = 300;
 
@@ -13,7 +23,7 @@ interface PostRequestTarget {
   title?: string;
   description?: string;
   privacy?: "public" | "unlisted" | "private";
-  source?: "native";
+  source?: "native" | "partner";
 }
 
 export async function POST(req: NextRequest) {
@@ -44,6 +54,9 @@ export async function POST(req: NextRequest) {
   const video = videoData as {
     video_url: string | null;
     project_id: string | null;
+    duration_seconds: number | null;
+    video_type: string | null;
+    render_provider: string | null;
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null; campaign_id: string | null } | null;
   } | null;
 
@@ -105,7 +118,9 @@ export async function POST(req: NextRequest) {
   // `error` is its own field rather than riding in `url`. The failure message
   // used to be stuffed into `url`, where the client could not tell a post link
   // apart from an error string — so it surfaced neither.
-  const results: Array<{ platform: string; status: string; url?: string; error?: string }> = [];
+  // `ref` is set on a post handed to another platform, which finishes later:
+  // it is what the Publish window asks /api/social/status about.
+  const results: Array<{ platform: string; status: string; url?: string; error?: string; ref?: string }> = [];
 
   // Whether the project's generated thumbnail actually landed on YouTube.
   // Reported back rather than promised up front: setting a custom thumbnail
@@ -251,24 +266,182 @@ export async function POST(req: NextRequest) {
   }
 
   /**
-   * Anything that is not native YouTube.
+   * Everything that is not native YouTube goes through the publishing partner.
    *
-   * These used to go through Blotato, which no account has ever been
-   * configured with — and that branch is also why "Published to 3 platforms"
-   * overcounted, since it returned ONE result covering every target it was
-   * given. Upload-Post replaces it; until that lands, a request naming a
-   * platform we cannot post to is refused rather than silently dropped.
+   * These are handed off, not posted: each platform fetches and transcodes the
+   * video in its own time, so the rows are written as "posting" and settled
+   * when the result arrives (the webhook, or the status check the Publish
+   * window makes). One result per platform, always. The integration this
+   * replaced returned one result covering every target, which is how
+   * "Published to 3 platforms" came to be said about one.
    */
-  const unsupportedTargets = targets.filter(
-    (t) => t.accountId !== "native_youtube" && t.source !== "native",
-  );
+  const partnerTargets = targets
+    .filter((t) => t.accountId !== "native_youtube" && t.source !== "native")
+    .map((t) => ({ target: t, platform: platformFromAccountId(t.accountId) }));
 
-  for (const t of unsupportedTargets) {
-    results.push({
-      platform: t.platform,
-      status: "failed",
-      error: "Only YouTube can be published to right now. More platforms are coming.",
-    });
+  // A platform this app has never heard of: refused by name rather than dropped.
+  for (const { target } of partnerTargets.filter((x) => !x.platform)) {
+    results.push({ platform: target.platform, status: "failed", error: "That platform can't be published to yet." });
+  }
+
+  const wanted = partnerTargets.filter((x): x is { target: PostRequestTarget; platform: PartnerPlatform } => !!x.platform);
+
+  if (wanted.length > 0) {
+    const failAll = async (reason: string, record: boolean) => {
+      for (const { platform, target } of wanted) {
+        if (record) {
+          await admin.from("social_posts").insert({
+            user_id: user.id, video_id: videoId, campaign_id: campaignId, platform,
+            video_title: target.title || defaultTitle, caption: target.caption ?? defaultCaption,
+            scheduled_at: scheduledAt || null, posted_at: null, post_status: "failed", error_message: reason,
+          });
+        }
+        results.push({ platform, status: "failed", error: reason });
+      }
+    };
+
+    const { data: ownerRow } = await admin
+      .from("profiles")
+      .select("subscription_tier, role, full_name, social_profile_created_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    const owner = ownerRow as {
+      subscription_tier: string | null; role: string | null; full_name: string | null; social_profile_created_at: string | null;
+    } | null;
+    const limit = partnerPlatformLimit(owner?.subscription_tier, owner?.role);
+
+    if (!uploadPostConfigured()) {
+      await failAll("Only YouTube can be published to right now. More platforms are coming.", false);
+    } else if (limit <= 0) {
+      await failAll("Posting to more platforms comes with a paid plan.", false);
+    } else if (wanted.length > limit) {
+      // Refused whole rather than trimmed: which three is the agent's choice,
+      // and posting to a subset they did not pick is worse than asking.
+      await failAll(`Your plan posts each video to YouTube plus ${limit} more. Pick ${limit}, or move up a plan to post everywhere.`, false);
+    } else if (!owner?.social_profile_created_at) {
+      await failAll("Connect your accounts in Settings first, then post again.", false);
+    } else {
+      const username = profileUsername(user.id);
+      const caption = wanted[0].target.caption ?? defaultCaption;
+      const postTitle = wanted[0].target.title ?? defaultTitle;
+      const vertical = video.video_type === "reel_9x16";
+      const seconds = video.duration_seconds;
+
+      // Where "Learn more" leads: the blog post if the agent has said where it
+      // lives, else the video on YouTube, from this publish or an earlier one.
+      let learnMoreUrl = typeof seoData?.email_blog_url === "string" && /^https?:\/\//.test(seoData.email_blog_url)
+        ? seoData.email_blog_url
+        : results.find((r) => r.platform === "youtube" && r.status === "published")?.url ?? "";
+      if (!learnMoreUrl) {
+        const { data: earlier } = await admin
+          .from("social_posts")
+          .select("platform_post_id")
+          .eq("video_id", videoId).eq("user_id", user.id).eq("platform", "youtube")
+          .not("platform_post_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const ytId = (earlier as { platform_post_id: string | null } | null)?.platform_post_id;
+        if (ytId) learnMoreUrl = `https://www.youtube.com/watch?v=${ytId}`;
+      }
+
+      const asVideo: PartnerPlatform[] = [];
+      let google: "video" | "photo" | null = null;
+      for (const { platform, target } of wanted) {
+        const delivery = deliveryFor(platform, seconds);
+        if (delivery.kind === "skip") {
+          await admin.from("social_posts").insert({
+            user_id: user.id, video_id: videoId, campaign_id: campaignId, platform,
+            video_title: target.title || defaultTitle, caption,
+            scheduled_at: scheduledAt || null, posted_at: null, post_status: "failed", error_message: delivery.reason,
+          });
+          results.push({ platform, status: "failed", error: delivery.reason });
+        } else if (platform === "google_business") {
+          google = delivery.kind;
+        } else {
+          asVideo.push(platform);
+        }
+      }
+
+      /** Sends one group, then writes a row per platform: waiting on success, failed on refusal. */
+      const handOff = async (platforms: PartnerPlatform[], text: string, send: (requestId: string) => Promise<PublishAccepted>) => {
+        const requestId = randomUUID();
+        let ref: string | null = null;
+        let reason: string | null = null;
+        try {
+          ref = storeRef(await send(requestId));
+        } catch (err) {
+          reason = err instanceof SocialPublishError ? err.message : "The post couldn't be sent. Try again in a moment.";
+          if (!(err instanceof SocialPublishError)) console.error("[social/post] hand-off failed:", err);
+        }
+        for (const platform of platforms) {
+          const { error: rowErr } = await admin.from("social_posts").insert({
+            user_id: user.id, video_id: videoId, campaign_id: campaignId, platform,
+            video_title: postTitle, caption: text,
+            scheduled_at: scheduledAt || null, posted_at: null,
+            post_status: ref ? (scheduledAt ? "scheduled" : "posting") : "failed",
+            upload_request_id: ref,
+            error_message: reason,
+          });
+          if (rowErr) console.error(`[social/post] could not record the ${platform} post: ${rowErr.message}`);
+          results.push(ref
+            ? { platform, status: scheduledAt ? "scheduled" : "posting", ref }
+            : { platform, status: "failed", error: reason ?? undefined });
+        }
+      };
+
+      if (asVideo.length > 0) {
+        // A Reel is 90 seconds at most. Sent as a Reel only when the video is
+        // known to fit; anything else goes up as a normal Page video, which
+        // takes any length and any shape.
+        const reel = vertical && typeof seconds === "number" && seconds > 0 && seconds <= 90;
+        const extra: Record<string, string> = {
+          facebook_media_type: reel ? "REELS" : "VIDEO",
+          facebook_title: fitCaption(postTitle, 250),
+          facebook_description: caption,
+          linkedin_title: fitCaption(postTitle, 200),
+          // The LinkedIn post written for this video, when there is one: it is
+          // longer and reads differently from a caption.
+          linkedin_description: typeof seoData?.linkedin_post === "string" && seoData.linkedin_post.trim()
+            ? seoData.linkedin_post
+            : caption,
+          x_title: fitCaption(caption, 280),
+          threads_title: fitCaption(caption, 500),
+          // Said plainly where the platform asks: an avatar video is AI-made.
+          ...(video.render_provider?.startsWith("heygen") ? { is_ai_generated: "true" } : {}),
+        };
+        await handOff(asVideo, caption, (requestId) => publishVideo({
+          username, platforms: asVideo, requestId, title: fitCaption(caption, 2200),
+          description: caption, scheduledAt: scheduledAt || null, extra, videoUrl: video.video_url!,
+        }));
+      }
+
+      if (google) {
+        const text = fitCaption(withoutPhoneNumbers(caption) || postTitle, 1500);
+        const extra: Record<string, string> = learnMoreUrl
+          ? { gbp_cta_type: "LEARN_MORE", gbp_cta_url: learnMoreUrl }
+          : {};
+        const common = { username, platforms: ["google_business" as const], title: text, scheduledAt: scheduledAt || null, extra };
+        if (google === "video") {
+          await handOff(["google_business"], text, (requestId) => publishVideo({ ...common, requestId, videoUrl: video.video_url! }));
+        } else {
+          // The thumbnail already in storage, or the generated card when there
+          // is none. Rendered here because the card's own URL sits behind a
+          // signed-in route no platform can fetch.
+          const stored = video.projects?.thumbnail_url;
+          const photo = stored && /^https?:\/\//.test(stored)
+            ? stored
+            : {
+                bytes: await thumbnailCardPng({
+                  hook: String(aiScript?.hook || aiScript?.title || "") || null,
+                  agent: owner?.full_name ?? null,
+                }),
+                filename: "post.png",
+              };
+          await handOff(["google_business"], text, (requestId) => publishPhoto({ ...common, requestId, photo }));
+        }
+      }
+    }
   }
 
   // Update project status
@@ -297,6 +470,8 @@ export async function POST(req: NextRequest) {
     results,
     scheduledAt,
     youtubeUrl: results.find((r) => r.platform === "youtube" && r.status === "published")?.url,
+    // Hand-offs still in flight, for the Publish window to check on.
+    pendingRefs: Array.from(new Set(results.map((r) => r.ref).filter((r): r is string => !!r))),
     // Only meaningful when YouTube was actually published to; null elsewhere so
     // the client can tell "didn't apply" apart from "wasn't attempted".
     thumbnailSet: youtubePublished ? thumbnailSet : null,

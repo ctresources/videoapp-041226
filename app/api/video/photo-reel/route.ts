@@ -87,6 +87,8 @@ export async function POST(req: NextRequest) {
   try {
     // ── Audio, from whichever of the three routes was chosen ────────────────
     let audioBuffer: Buffer;
+    /** Known only for a music-only reel, whose length was chosen. Lets a 7, 12 or 30 second reel post as video where 30 seconds is the limit. */
+    let reelSeconds: number | null = null;
     let wordTimestamps: WordTimestamp[] = [];
     let spokenScript = "";
 
@@ -134,6 +136,7 @@ export async function POST(req: NextRequest) {
       // can: a music track is however long it is, and the reel is not.
       const seconds = Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Math.round(body.seconds ?? 30)));
       audioBuffer = await generateSilentAudio(seconds);
+      reelSeconds = seconds;
     }
 
     // ── Music bed ───────────────────────────────────────────────────────────
@@ -290,6 +293,7 @@ export async function POST(req: NextRequest) {
         video_type: videoType,
         render_provider: "ffmpeg",
         render_status: "completed",
+        ...(reelSeconds ? { duration_seconds: reelSeconds } : {}),
         metadata: { source: "photo-reel", photos: photoUrls.length },
       })
       .select("id")
