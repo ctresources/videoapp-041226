@@ -714,6 +714,12 @@ export default function LandingPage() {
               Make My First Video Free <ArrowRight size={15} />
             </a>
             <p className="text-lg text-slate-400 mt-3">No credit card · Takes about 5 minutes</p>
+            {/* What the free video includes, said before signup rather than
+                found out after it. "Coming to" until the other platforms are
+                live; then it becomes "come with a paid plan". */}
+            <p className="text-base text-slate-400 mt-1.5">
+              Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more are coming to paid plans.
+            </p>
           </div>
         </div>
       </section>
@@ -1066,6 +1072,9 @@ export default function LandingPage() {
               View Pricing <ChevronRight size={15} />
             </a>
           </div>
+          <p className="text-base text-blue-200 -mt-4 mb-8">
+            Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more are coming to paid plans.
+          </p>
           <p className="text-blue-300 text-xl">First 100 agents · 1 free AI video · No credit card · Cancel anytime</p>
         </div>
       </section>

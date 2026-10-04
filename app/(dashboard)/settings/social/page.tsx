@@ -271,8 +271,8 @@ function SocialSettingsContent() {
                 <Badge variant="default" className="text-xs">Coming soon</Badge>
               </div>
               <p className="text-sm text-slate-500">
-                Instagram, TikTok, LinkedIn, Facebook and more are on the way. YouTube publishes
-                from here today.
+                Your free video publishes to YouTube, and YouTube publishes from here today.
+                Instagram, Facebook, LinkedIn, TikTok and more are coming to paid plans.
               </p>
             </div>
           </div>
@@ -289,7 +289,7 @@ function SocialSettingsContent() {
           </div>
           <p className="text-sm text-slate-500 mb-4">
             {!more.allowed
-              ? "Posting to these comes with a paid plan."
+              ? "Your free video publishes to YouTube. Posting to these comes with a paid plan."
               : more.limit
                 ? `Connect as many as you like. Your plan posts each video to YouTube plus ${more.limit} of these.`
                 : "Connect as many as you like. Your plan posts each video to all of them."}

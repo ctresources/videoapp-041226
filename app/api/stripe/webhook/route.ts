@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { retireVoiceClone } from "@/lib/utils/voice-slot";
+import { releaseSocialSlot } from "@/lib/api/social-slot";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
@@ -298,6 +299,11 @@ export async function POST(req: NextRequest) {
           );
         }
       }
+
+      // The publishing slot goes back for the same reason, and the same way:
+      // awaited, and unable to fail the cancellation (it never throws). Their
+      // connected accounts go with it; coming back means connecting again.
+      await releaseSocialSlot(admin, userId, "subscription canceled");
 
       await notifyBilling(admin, userId, "canceled", {
         tier: tierFromPriceId(sub.items.data[0]?.price.id ?? "")?.tier ?? null,
