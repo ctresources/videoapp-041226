@@ -135,6 +135,43 @@ export { saidGoAhead };
  * Returns null when PERPLEXITY_API_KEY is missing or the call fails; the caller
  * falls back to the typed form rather than stranding the user mid-sentence.
  */
+// A full stop after one of these is part of a name, not the end of a
+// sentence: "St. Davids", "Mt. Airy", "N. Wales".
+const NOT_A_SENTENCE_END = /^(?:St|Mt|Ft|Dr|Mr|Mrs|Ms|Jr|Sr|vs|No|Ave|Rd|Blvd|[A-Z])$/i;
+
+/**
+ * A complete brief ends on its read-back.
+ *
+ * The model is told never to ask about audience, tone or length, and told to
+ * stop after reading the brief back. Now and then it adds one anyway: "Got it,
+ * a market update for Plymouth Meeting, PA. What audience should we aim it
+ * at?". Nothing is waiting on the answer, the piece is already being written,
+ * and the question reads as one more thing required. So when nothing is
+ * missing, a question tacked on the end is dropped.
+ *
+ * Only a question that FOLLOWS the read-back. A reply that is nothing but a
+ * question is left alone, and so is one where dropping it would leave only a
+ * word or two ("Got it!"), because then the question was the read-back.
+ */
+export function withoutTrailingQuestion(reply: string): string {
+  let out = reply.trim();
+  while (out.endsWith("?")) {
+    // The last place a sentence ends and another begins.
+    const boundary = /(\S+?)([.!?…])["”’)]?\s+(?=["“‘(]?[A-Z0-9])/g;
+    let cut = -1;
+    let m: RegExpExecArray | null;
+    while ((m = boundary.exec(out))) {
+      if (m[2] === "." && NOT_A_SENTENCE_END.test(m[1])) continue;
+      cut = m.index + m[0].length;
+    }
+    if (cut < 0) break;
+    const head = out.slice(0, cut).trim();
+    if (head.length < 25) break;
+    out = head;
+  }
+  return out;
+}
+
 export async function runBriefTurn(
   turns: BriefTurn[],
   /**
@@ -206,9 +243,12 @@ Rules for "reply":
     const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
     const ready = hasRequired && saidGoAhead(lastUser);
 
+    // Nothing is missing, so the reply is a read-back and ends there.
+    const said = hasRequired ? withoutTrailingQuestion(reply) : reply;
+
     return {
       slots,
-      reply: reply || (hasRequired ? "Ready when you are — say go ahead." : "Which market is this for?"),
+      reply: said || (hasRequired ? "Ready when you are — say go ahead." : "Which market is this for?"),
       ready,
     };
   } catch (e) {
