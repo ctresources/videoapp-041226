@@ -182,6 +182,7 @@ Rules for the fields:
 - "Shorts", "a Shorts", "Reels" and "TikToks" name a format that is BOTH: set length to "standard" AND platform to "reel". They are vertical — the word "Shorts" must never be read as the platform "youtube" just because YouTube is where Shorts live.
 - A standard video can be either shape, but longform is horizontal only — so if length is long, platform is always youtube, whatever shape they asked for.
 - Keep topic close to their words. Don't expand it into a script brief.
+- A named kind of content IS the topic. "A market update", "a neighborhood tour", "just listed", "buyer tips", "an open house", "a year in review": each of these is a complete topic on its own, and "a video market update for Plymouth Meeting" has topic "market update". Never ask what the topic is when one of these was said. Only ask when nothing at all says what it is about.
 - Anything about length or shape is a format instruction, never part of the topic. "Make it a Shorts" sets the format; it is not something the video is about, and it must not be appended to what they said the video covers.
 - The same goes for what is being made and who is on screen. "Create a blog about downsizing in Ambler" has topic "downsizing" and output "blog"; "a short YouTube video with my avatar and voice about the market" has output "video", onScreen "avatar", and topic "the market". None of those words belong in the topic.
 - output, onScreen and purpose are only what they said. If they did not say it, it is null. A blog has no one on screen: leave onScreen null for a blog.

@@ -1944,17 +1944,21 @@ export default function ProjectEditorPage() {
    * was slow. It also means nothing is spent writing articles for the videos
    * nobody wanted one for.
    */
-  async function writeBlog() {
+  async function writeBlog(opts?: { auto?: boolean }) {
     if (!project || blogWriting) return;
     setBlogWriting(true);
     try {
       const res = await fetch("/api/ai/blog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
+        body: JSON.stringify({ projectId: project.id, ...(opts?.auto ? { auto: true } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
+        // Written on arrival and refused: say nothing. Nobody asked, so a
+        // plan prompt or an error would be an answer to a question they never
+        // put. The button is still there for when they do.
+        if (opts?.auto) return;
         if (showTrialLock(data)) return;
         throw new Error(data?.error || "Couldn't write the article.");
       }
@@ -1971,7 +1975,7 @@ export default function ProjectEditorPage() {
       } : p);
       toast.success("Article ready — Copy as HTML drops it into your site.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't write the article.");
+      if (!opts?.auto) toast.error(err instanceof Error ? err.message : "Couldn't write the article.");
     } finally {
       setBlogWriting(false);
     }
@@ -2074,6 +2078,31 @@ export default function ProjectEditorPage() {
   function toggle(section: string) {
     setExpandedSections((p) => ({ ...p, [section]: !p[section] }));
   }
+
+  /**
+   * The article, written on arrival at the Share Kit.
+   *
+   * A script written by the AI brings its article with it. A camera recording,
+   * a pasted script and a photo reel do not: they reached this screen with a
+   * "Write the article" button and nothing else, so the blog that goes with
+   * every video was the one thing still waiting to be asked for. It is free
+   * and takes half a minute, so it starts by itself.
+   *
+   * Once per project per visit, and only from words already written down. A
+   * take with no script would need transcribing off the video first, which is
+   * slow enough to stay a deliberate press.
+   */
+  const autoBlogFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!project || editorStep !== 5 || blogWriting) return;
+    if (autoBlogFor.current === project.id) return;
+    const ai = project.ai_script as AiScript | null;
+    if (!ai || ai.blog_intro || ai.blog_body) return;
+    if ((ai.script ?? "").trim().length < 200) return;
+    autoBlogFor.current = project.id;
+    void writeBlog({ auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, editorStep, blogWriting]);
 
   // ── Teleprompter ────────────────────────────────────────────────
   useEffect(() => {
@@ -3818,7 +3847,7 @@ export default function ProjectEditorPage() {
                     variant="outline"
                     className="mt-2.5 gap-1.5"
                     loading={blogWriting}
-                    onClick={writeBlog}
+                    onClick={() => writeBlog()}
                   >
                     {blogWriting ? "Writing…" : <><Sparkles size={13} /> Write the article</>}
                   </Button>

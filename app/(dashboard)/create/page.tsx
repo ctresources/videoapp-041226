@@ -3773,8 +3773,28 @@ function CreatePageInner() {
                     // four lengths. Map onto the nearest and leave the
                     // four-way picker for anything finer.
                     if (sl.length) setCameraScriptLength(sl.length === "long" ? "full" : "standard");
+                    // The same brief the row above this card shows, so what was
+                    // said and what is picked stay one answer.
+                    if (sl.audience) { setLocAudience(sl.audience); rememberAudience(sl.audience); }
+                    if (sl.tone) setLocTone(sl.tone);
+                    if (sl.purpose) setLocPurpose(sl.purpose);
                   }}
-                  onReady={(sl) => handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic, sl)}
+                  onReady={(sl) => {
+                    // This mic only knew how to write a teleprompter script, so
+                    // "create a blog about…" said here came back as a script to
+                    // read on camera, and the blog that was asked for was never
+                    // written. What was asked for wins over which route the
+                    // page happened to be on: a blog, or a video with the
+                    // avatar or voice only, leaves the camera route and is made.
+                    if (sl.output === "blog" || sl.onScreen === "avatar" || sl.onScreen === "voice_only") {
+                      setInputMode("script");
+                      setLastSparkTab("script");
+                      setBlogOnly(sl.output === "blog");
+                      void handleGenerateScript({ ...sl, topic: sl.topic ?? cameraVoiceTopic });
+                      return;
+                    }
+                    void handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic, sl);
+                  }}
                 />
             </div>
             )}

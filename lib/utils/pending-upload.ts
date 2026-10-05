@@ -80,6 +80,13 @@ export interface RecoveryRecord {
    * different things, and the second one is the case worth recognising.
    */
   lastStage?: string | null;
+  /**
+   * The market the take is about. Recordings made from the Create page sent no
+   * place at all, so each one arrived asking for its market to be set, even
+   * when the town had just been said out loud.
+   */
+  city?: string;
+  state?: string;
   /** The brief the take was made under, so a retry saves it as the first try would have. */
   audience?: string;
   tone?: string;

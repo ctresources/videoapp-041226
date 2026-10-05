@@ -41,10 +41,15 @@ export async function POST(req: NextRequest) {
   // which is closed in generate-location-script and listing-video by dropping
   // the blog fields rather than by refusing the request, because those routes
   // have to stay open for the free video that starts the clock.
-  const gate = await freeTrialGateResponse(user.id);
+  const { projectId, force, auto } = (await req.json()) as { projectId?: string; force?: boolean; auto?: boolean };
+
+  // `auto` is the Share Kit writing the article on arrival, with nobody
+  // having pressed anything. That must never spend one of a new account's
+  // free tries, so it is refused outright there ("block") and the button is
+  // left for them to press on purpose. Everyone else is gated as before.
+  const gate = await freeTrialGateResponse(user.id, auto ? { preVideo: "block" } : undefined);
   if (gate) return gate;
 
-  const { projectId, force } = (await req.json()) as { projectId?: string; force?: boolean };
   if (!projectId) {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
