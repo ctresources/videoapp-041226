@@ -17,6 +17,8 @@ import {
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
+import { BASE_AUDIENCES } from "@/lib/utils/audiences";
+import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers";
@@ -64,10 +66,6 @@ function briefFrom(p: Project | null): BriefContext {
   };
 }
 
-const TOOL_AUDIENCES = [
-  "Move-up (keeping a low rate)", "Downsizing", "Relocating in", "First-time buyers",
-  "Sellers deciding when", "Investors", "Luxury", "Mixed",
-];
 const TOOL_TONES = ["Friendly", "Modern", "Luxury", "High-Energy", "Educational"];
 const TOOL_PURPOSES: [string, string][] = [
   ["found", "Get found"],
@@ -87,10 +85,15 @@ const TOOL_PURPOSES: [string, string][] = [
  */
 function BriefFields({ value, onChange }: { value: BriefContext; onChange: (b: BriefContext) => void }) {
   const cell = "w-full appearance-none border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-slate-700 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300";
+  // The audiences they named themselves on the Create page are offered here
+  // too. A tool that only knew the built-in ones could not be pointed at the
+  // audience the video was made for unless a project happened to carry it.
+  const { audiences: custom } = useCustomAudiences();
+  const audiences = [...BASE_AUDIENCES, ...custom];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
       {([
-        { k: "audience" as const, label: "Audience", opts: TOOL_AUDIENCES.map((a) => [a, a] as [string, string]) },
+        { k: "audience" as const, label: "Audience", opts: audiences.map((a) => [a, a] as [string, string]) },
         { k: "tone" as const,     label: "Tone",     opts: TOOL_TONES.map((t) => [t, t] as [string, string]) },
         { k: "purpose" as const,  label: "Why",      opts: TOOL_PURPOSES },
       ]).map(({ k, label, opts }) => (
@@ -919,6 +922,7 @@ function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: (prefill: Ba
   const [tone, setTone] = useState("");
   const [company, setCompany] = useState(false);
   const [teamName, setTeamName] = useState("");
+  const { audiences: customAudiences } = useCustomAudiences();
   const [result, setResult] = useState<LinkedInResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -1061,7 +1065,7 @@ function LinkedInProfileGenerator({ onOpenBanner }: { onOpenBanner: (prefill: Ba
             <div className="relative">
               <select value={audience} onChange={(e) => setAudience(e.target.value)} className={select}>
                 <option value="">Any</option>
-                {TOOL_AUDIENCES.map((a) => <option key={a} value={a}>{a}</option>)}
+                {[...BASE_AUDIENCES, ...customAudiences].map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>

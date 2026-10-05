@@ -38,6 +38,8 @@ import { ComposerCard } from "@/components/create/composer-card";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
+import { BASE_AUDIENCES, MAX_AUDIENCE_LENGTH } from "@/lib/utils/audiences";
+import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import {
   RENDERED_SCRIPT_LENGTHS,
   ceilMinutesFor,
@@ -91,30 +93,8 @@ type InputMode = "script" | "camera" | "listing" | "paste";
 // field's placeholder, and a three-word example there taught people to type
 // three words and stop — leaving the market, audience and tone to be asked
 // for separately when they could have said it all in one breath.
-/** The common ones, offered first. Anything else you say joins them. */
-/**
- * Audiences named by their tension, not their segment.
- *
- * "Buyers" is a category; it tells the writer nothing it did not already
- * assume. "Move-up (keeping a low rate)" is a conflict, and a conflict is what
- * makes a script argue rather than describe — the same reason the strongest
- * blog headings are questions rather than labels.
- *
- * The old segment names still resolve in AUDIENCE_SCRIPT_GUIDANCE, so projects
- * written before this keep the guidance they were generated with. Anything a
- * user types themselves is honoured too — see audienceClause.
- */
-const BASE_AUDIENCES = [
-  "Move-up (keeping a low rate)",
-  "Downsizing",
-  "Relocating in",
-  "First-time buyers",
-  "Sellers deciding when",
-  "Investors",
-  "Luxury",
-  "Mixed",
-];
-const AUDIENCE_KEY = "spark_custom_audiences";
+/** The Audience dropdown's value for its last option, which opens the box to type one. */
+const ADD_AUDIENCE = "__add_your_own__";
 
 const TRY_LINES = [
   "Make a market update for my area. Prices are up, homes are moving fast.",
@@ -342,8 +322,12 @@ function CreatePageInner() {
 
   // Advanced options
   const [locAudience, setLocAudience] = useState("");
-  // Audiences this user has used that are not one of the common six.
-  const [customAudiences, setCustomAudiences] = useState<string[]>([]);
+  // Audiences this user has named themselves, by voice or by typing. Kept on
+  // the account, so one added on a phone is in the picker on a computer.
+  const { audiences: customAudiences, add: addAudience } = useCustomAudiences();
+  // "Add your own…" was picked in the Audience dropdown: the box for typing it.
+  const [audienceAdding, setAudienceAdding] = useState(false);
+  const [audienceDraft, setAudienceDraft] = useState("");
   // A topic picked from the spark panel, on its way into the composer box.
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
@@ -615,13 +599,6 @@ function CreatePageInner() {
 
   // Paste tab upload-based script generation
   const [pasteUploadGenerating, setPasteUploadGenerating] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(AUDIENCE_KEY) ?? "[]");
-      if (Array.isArray(saved)) setCustomAudiences(saved.filter((a) => typeof a === "string"));
-    } catch { /* private mode, or a corrupt entry. The six defaults still work */ }
-  }, []);
 
   useEffect(() => {
     fetch("/api/profile/allowance")
@@ -939,19 +916,24 @@ function CreatePageInner() {
   }
 
   /**
-   * Remembers an audience that is not one of the common six, so "people
+   * Remembers an audience that is not one of the built-in ones, so "people
    * relocating" is in the picker next time rather than something you have to
-   * say again. Local, not on the profile: it is a convenience for this
-   * browser, and nothing else reads it.
+   * say again. On the account, so it is there on every device.
+   *
+   * Returns the name as the picker knows it: "first responders" said aloud is
+   * the "First responders" already on the list, not a second entry beside it.
    */
-  function rememberAudience(raw: string) {
-    const a = raw.trim();
-    if (!a) return;
-    const known = [...BASE_AUDIENCES, ...customAudiences];
-    if (known.some((k) => k.toLowerCase() === a.toLowerCase())) return;
-    const updated = [...customAudiences, a].slice(-12);
-    setCustomAudiences(updated);
-    try { localStorage.setItem(AUDIENCE_KEY, JSON.stringify(updated)); } catch { /* private mode */ }
+  function rememberAudience(raw: string): string {
+    return addAudience(raw) || raw;
+  }
+
+  /** The typed audience: added to the list and chosen for this video. */
+  function commitAudience() {
+    const name = addAudience(audienceDraft);
+    if (!name) return;
+    setLocAudience(name);
+    setAudienceAdding(false);
+    setAudienceDraft("");
   }
 
   function removeMarket(city: string, state: string) {
@@ -1745,11 +1727,28 @@ function CreatePageInner() {
               // of the six, so the select showed blank and the answer
               // was silently lost. Anything spoken or saved is an
               // option here, and persists for next time.
-              label: "Audience", value: locAudience, set: setLocAudience,
+              //
+              // Typing one had no way in at all: the list was the eight
+              // built-ins plus whatever had been spoken. The last option
+              // opens a box for it.
+              label: "Audience",
+              value: audienceAdding ? ADD_AUDIENCE : locAudience,
+              set: (v: string) => {
+                if (v === ADD_AUDIENCE) { setAudienceAdding(true); return; }
+                setAudienceAdding(false);
+                setAudienceDraft("");
+                setLocAudience(v);
+              },
               options: [
                 ["", "Any"],
                 ...BASE_AUDIENCES.map((a) => [a, a] as [string, string]),
                 ...customAudiences.map((a) => [a, a] as [string, string]),
+                // One that is chosen but not listed yet (spoken a moment ago,
+                // or carried in from another screen) still shows as chosen.
+                ...(locAudience && ![...BASE_AUDIENCES, ...customAudiences].includes(locAudience)
+                  ? [[locAudience, locAudience] as [string, string]]
+                  : []),
+                [ADD_AUDIENCE, "Add your own…"],
               ] as [string, string][],
             },
             {
@@ -1796,6 +1795,46 @@ function CreatePageInner() {
                 </select>
                 <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
               </div>
+              {label === "Audience" && audienceAdding && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-2">
+                    {/* 16px, not the 15 the selects use: iPhone zooms the
+                        whole page in on a text box any smaller than that. */}
+                    <input
+                      type="text"
+                      value={audienceDraft}
+                      onChange={(e) => setAudienceDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); commitAudience(); }
+                        if (e.key === "Escape") { setAudienceAdding(false); setAudienceDraft(""); }
+                      }}
+                      maxLength={MAX_AUDIENCE_LENGTH}
+                      placeholder="e.g. First responders"
+                      aria-label="Your own audience"
+                      autoFocus
+                      className="min-w-0 flex-1 rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 text-[16px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                    />
+                    <button
+                      type="button"
+                      onClick={commitAudience}
+                      disabled={!audienceDraft.trim()}
+                      className="rounded-[9px] spark-cta-gradient px-3.5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAudienceAdding(false); setAudienceDraft(""); }}
+                      className="px-1 py-2.5 text-[13px] font-medium text-spark-ink-muted hover:text-spark-ink"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[13px] leading-snug text-spark-ink-faint">
+                    Saved to your account, so it&rsquo;s here next time on any device.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2467,7 +2506,7 @@ function CreatePageInner() {
                 if (s.city) setLocCity(s.city);
                 if (s.state) setLocState(s.state);
                 if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
-                if (s.audience) { setLocAudience(s.audience); rememberAudience(s.audience); }
+                if (s.audience) setLocAudience(rememberAudience(s.audience));
                 if (s.tone) setLocTone(s.tone);
                 if (s.length) { setLocLength(s.length); setFormatTouched(true); }
                 if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
@@ -3775,7 +3814,7 @@ function CreatePageInner() {
                     if (sl.length) setCameraScriptLength(sl.length === "long" ? "full" : "standard");
                     // The same brief the row above this card shows, so what was
                     // said and what is picked stay one answer.
-                    if (sl.audience) { setLocAudience(sl.audience); rememberAudience(sl.audience); }
+                    if (sl.audience) setLocAudience(rememberAudience(sl.audience));
                     if (sl.tone) setLocTone(sl.tone);
                     if (sl.purpose) setLocPurpose(sl.purpose);
                   }}
