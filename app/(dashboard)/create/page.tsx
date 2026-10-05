@@ -30,6 +30,7 @@ import {
   substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
+import { SpeakToSpark } from "@/components/dashboard/speak-to-spark";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -347,6 +348,21 @@ function CreatePageInner() {
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
   const [voiceCommand, setVoiceCommand] = useState({ text: "", n: 0 });
+  // For the mic at the top of the page: whether its sentence is still being
+  // worked out, and what the brief said back, which it shows under the button.
+  const [commandPending, setCommandPending] = useState(false);
+  const [commandReply, setCommandReply] = useState("");
+  // The panel that answers lives further down the page and is not always on
+  // screen (the blog route's source step hides it). If no answer comes, the
+  // top mic is released rather than left spinning with nothing to say why.
+  useEffect(() => {
+    if (!commandPending) return;
+    const t = setTimeout(() => {
+      setCommandPending(false);
+      setCommandReply("That didn't go through. Tap the mic and try again.");
+    }, 25000);
+    return () => clearTimeout(t);
+  }, [commandPending]);
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
   /**
@@ -637,6 +653,7 @@ function CreatePageInner() {
       setInputMode("script");
       setLastSparkTab("script");
       setVoiceCommand({ text: say.trim().slice(0, 1500), n: Date.now() });
+      setCommandPending(true);
       router.replace("/create");
     }
 
@@ -1901,10 +1918,30 @@ function CreatePageInner() {
             Turn your Spark into more ways to connect, build trust, and stay visible.
           </p>
 
-          {/* The mic that used to sit here is now the one beside the
-              composer in section 3. Two mics for one job — a pill up here and
-              a button down there — meant the page asked to be spoken to twice
-              before it asked anything else. */}
+          {/* A mic sat here once and was moved down beside the composer in
+              section 3, because two mics did one job. They do different jobs
+              now. This one takes the whole thing in a sentence, "create a blog
+              for downsizers about…", and answers sections 1, 2 and 3 at once;
+              the one below is for adding to a topic or fixing a misheard word.
+              It is back at the top because signing in lands here, and reaching
+              the only mic meant tapping through two rows of tiles first.
+
+              It hands the sentence to the same voice panel, so there is still
+              one place that understands a command. That panel only exists on
+              the AI-writes-it route, so the route is switched to before the
+              sentence is sent. */}
+          <SpeakToSpark
+            variant="hero"
+            busy={commandPending || locGenerating || cameraScriptGenerating}
+            reply={commandReply}
+            onCommand={(text) => {
+              setInputMode("script");
+              setLastSparkTab("script");
+              setCommandReply("");
+              setCommandPending(true);
+              setVoiceCommand({ text, n: Date.now() });
+            }}
+          />
         </div>
       )}
 
@@ -2464,6 +2501,7 @@ function CreatePageInner() {
               onDraftChange={setBriefHasDraft}
               seed={sparkSeed}
               command={voiceCommand}
+              onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
             />
           </ComposerCard>
 

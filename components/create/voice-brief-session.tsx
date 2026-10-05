@@ -113,6 +113,15 @@ interface Props {
    * Carries a nonce so the same sentence said twice still lands.
    */
   command?: { text: string; n: number };
+  /**
+   * What the brief answered, after every turn: a read-back, a question about
+   * what is missing, or "" when the turn could not be answered at all.
+   *
+   * For the mic at the top of the page, which hands its sentence down here.
+   * This panel sits two sections below it, so without this the answer to a
+   * command spoken up there appeared off screen.
+   */
+  onReply?: (reply: string) => void;
 }
 
 /**
@@ -132,7 +141,10 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply }: Props) {
+  // In a ref so `send` calls the current one without being rebuilt for it.
+  const onReplyRef = useRef(onReply);
+  onReplyRef.current = onReply;
   /** Read in three labels and sent with every turn, so what the panel says and
    *  what the assistant says out loud stay the same answer. */
   const isBlog = mode === "blog";
@@ -189,6 +201,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         // the form they can always fall back to.
         if (res.status === 503) {
           toast.error("The voice session isn't available right now — switched you to typing.");
+          onReplyRef.current?.("");
           onSwitchToTyping();
           return;
         }
@@ -198,6 +211,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       onSlots(data.slots as BriefSlots);
       setSlots(data.slots as BriefSlots);
       setTurns((t) => [...t, { role: "assistant", content: data.reply as string }]);
+      onReplyRef.current?.(typeof data.reply === "string" ? data.reply : "");
       const got = data.slots as BriefSlots;
       // A command goes as soon as it is complete, with no wake word: it was an
       // instruction when it was said. Latched like the button, so nothing can
@@ -214,6 +228,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         ...t,
         { role: "assistant", content: "Sorry — I didn't catch that. Say it again?" },
       ]);
+      onReplyRef.current?.("Sorry, I didn't catch that. Say it again?");
     } finally {
       setThinking(false);
       busyRef.current = false;
@@ -324,6 +339,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // A command from the home-screen mic: sent the moment it arrives.
   useEffect(() => {
     if (!command?.text) return;
+    // A turn already in flight would swallow this one without a word, and the
+    // mic that sent it would wait forever for an answer. Say so instead.
+    if (busyRef.current) { onReplyRef.current?.(""); return; }
     void send(command.text, { go: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command?.n]);
