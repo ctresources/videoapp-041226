@@ -28,10 +28,26 @@ export interface BriefSlots {
   length: "standard" | "long" | null;
   /** Vertical reel or landscape YouTube. */
   platform: "reel" | "youtube" | null;
+  /**
+   * What was asked for. "Create a blog about…" and "make a video about…" were
+   * the same sentence to this brief, and which one you got depended on a tile
+   * pressed before speaking. Said out loud, it is part of the brief.
+   */
+  output: "blog" | "video" | null;
+  /**
+   * Who is on screen, for a video: the avatar, nobody (voice over footage), or
+   * the agent themselves on camera. It used to be heard only on the setup
+   * step, in a second conversation, so "with my avatar and voice" in the
+   * opening sentence went nowhere.
+   */
+  onScreen: "avatar" | "voice_only" | "camera" | null;
+  /** Why it is being made: one of the Create page's five reasons. */
+  purpose: "found" | "answer" | "appointment" | "topofmind" | "announce" | null;
 }
 
 export const EMPTY_SLOTS: BriefSlots = {
   city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
+  output: null, onScreen: null, purpose: null,
 };
 
 export interface BriefTurn {
@@ -48,7 +64,11 @@ export interface BriefSessionResult {
 }
 
 /** The vocabularies the form offers. Anything outside them is left null. */
-const AUDIENCES = ["Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"];
+const AUDIENCES = [
+  "Move-up (keeping a low rate)", "Downsizing", "Relocating in", "First-time buyers",
+  "Sellers deciding when", "Investors", "Luxury", "Mixed",
+];
+const PURPOSES = ["found", "answer", "appointment", "topofmind", "announce"] as const;
 const TONES = ["Friendly", "Modern", "Luxury", "High-Energy", "Educational"];
 
 /**
@@ -78,6 +98,9 @@ export function coerceSlots(raw: unknown): BriefSlots {
   const stateRaw = str(o.state, 40);
   const length = str(o.length);
   const platform = str(o.platform);
+  const output = str(o.output);
+  const onScreen = str(o.onScreen);
+  const purpose = str(o.purpose);
 
   return {
     city: str(o.city, 80),
@@ -92,6 +115,9 @@ export function coerceSlots(raw: unknown): BriefSlots {
     tone: pick(o.tone, TONES),
     length: length === "long" ? "long" : length === "standard" ? "standard" : null,
     platform: platform === "reel" ? "reel" : platform === "youtube" ? "youtube" : null,
+    output: output === "blog" ? "blog" : output === "video" ? "video" : null,
+    onScreen: onScreen === "avatar" || onScreen === "voice_only" || onScreen === "camera" ? onScreen : null,
+    purpose: PURPOSES.find((p) => p === purpose) ?? null,
   };
 }
 
@@ -118,6 +144,12 @@ export async function runBriefTurn(
    * behaves exactly as before.
    */
   mode: "script" | "blog" = "script",
+  /**
+   * The agent's saved market, used only when they name no place. Without it,
+   * "create a blog about downsizing" from the home screen stopped to ask which
+   * market, when the account already knew.
+   */
+  savedMarket?: { city: string; state: string } | null,
 ): Promise<BriefSessionResult | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
 
@@ -132,9 +164,14 @@ Collect these fields:
 - tone: one of ${TONES.join(", ")} — optional
 - length: "standard" (~${minutesFor(shortWords)} min, ${shortWords} words) or "long" (~${minutesFor(LONG_MAX_WORDS)} min) — optional
 - platform: "reel" (vertical 9:16) or "youtube" (horizontal 16:9) — optional
-
+- output: what they asked to have made. "blog" for a blog, article or post to read; "video" for a video, reel or Shorts — optional
+- onScreen: who is on screen in a video. "avatar" (my avatar, my AI twin, with my avatar and voice, me on screen), "voice_only" (voice only, just my voice, no avatar, narration over footage) or "camera" (I'll record it, I'll film it myself, on my camera, teleprompter) — optional
+- purpose: why it is being made. "found" (get found in search), "answer" (answer a question people keep asking), "appointment" (win the appointment or the listing), "topofmind" (stay top of mind) or "announce" (announce something new) — optional
+${savedMarket ? `
+SAVED MARKET: ${savedMarket.city}, ${savedMarket.state}. This is a fallback for city and state, used ONLY when the whole conversation names no town, city, neighbourhood or ZIP at all. If they name any place ("in Ambler", "for King of Prussia", "around Lansdale"), that place is the city, and the saved market is ignored. A town named without a state takes the saved market's state.
+` : ""}
 Return ONLY this JSON, no code fence:
-{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"platform":null,"reply":""}
+{"city":null,"state":null,"topic":null,"audience":null,"tone":null,"length":null,"platform":null,"output":null,"onScreen":null,"purpose":null,"reply":""}
 
 Rules for the fields:
 - Re-read the WHOLE conversation each time and return the current value of every field. A later correction replaces an earlier answer — if they said Buyers and then "actually sellers", audience is Sellers.
@@ -146,12 +183,14 @@ Rules for the fields:
 - A standard video can be either shape, but longform is horizontal only — so if length is long, platform is always youtube, whatever shape they asked for.
 - Keep topic close to their words. Don't expand it into a script brief.
 - Anything about length or shape is a format instruction, never part of the topic. "Make it a Shorts" sets the format; it is not something the video is about, and it must not be appended to what they said the video covers.
+- The same goes for what is being made and who is on screen. "Create a blog about downsizing in Ambler" has topic "downsizing" and output "blog"; "a short YouTube video with my avatar and voice about the market" has output "video", onScreen "avatar", and topic "the market". None of those words belong in the topic.
+- output, onScreen and purpose are only what they said. If they did not say it, it is null. A blog has no one on screen: leave onScreen null for a blog.
 
 Rules for "reply":
 - One or two sentences. It is spoken aloud, so no lists, no markdown, no field names.
 - Sound like a colleague who is glad to be helping, not a form being filled in. Warm, brief, a little energy. "Spark" is the product's own verb — "what are we sparking", "let's spark it" — use it naturally, never more than once in a reply, and never at the cost of being clear.
 - Ask for ONE missing required field at a time — market first, then topic.
-- When you have both, read the brief back in a single sentence and ask if they want to go ahead.
+- When you have both, read the brief back in a single sentence and ask if they want to go ahead. Name what is being made when they said it: "a blog article", "a short vertical video with your avatar".
 - Never ask about audience, tone or length. Take them if offered, but they are optional and asking for them makes the conversation drag.
 - Once city, state and topic are all filled, read the brief back in one sentence and stop there. Do NOT tell them what to say or press to go ahead: the screen already shows a button for that, and repeating it in the reply is the same instruction given twice. Ending on the read-back leaves them free to correct it or to go.`;
 

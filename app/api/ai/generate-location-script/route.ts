@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     purpose,
     videoLength,
     videoPlatform,
+    renderMode,
     regenerateOnly,
   } = body as {
     videoType: LocationVideoType;
@@ -78,6 +79,8 @@ export async function POST(req: NextRequest) {
     /** Vertical reel or landscape YouTube. Chosen on step 1 so the editor can
      *  preselect it; does not change the script, only the shape it renders in. */
     videoPlatform?: "reel" | "youtube";
+    /** Who is on screen, when it was said in the brief. The editor opens on it. */
+    renderMode?: "voice_only" | "avatar_voice";
     /**
      * Redoing an existing project's script, not starting a new one. Skips the
      * project insert and returns { aiScript, seoData } directly — the same
@@ -217,6 +220,10 @@ export async function POST(req: NextRequest) {
     // standard video and silently trimming a long script.
     video_length: videoLength === "long" ? "long" : "standard",
     video_platform: videoPlatform === "reel" ? "reel" : "youtube",
+    // Only when the brief said so. The editor already restores render_mode
+    // from here (the listing form has always written it); absent, it keeps its
+    // own default.
+    ...(renderMode === "voice_only" || renderMode === "avatar_voice" ? { render_mode: renderMode } : {}),
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata in parallel — non-blocking

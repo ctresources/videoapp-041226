@@ -55,7 +55,21 @@ export async function POST(req: NextRequest) {
   const rawMode = (body as { mode?: unknown })?.mode;
   const mode = rawMode === "blog" ? "blog" : "script";
 
-  const result = await runBriefTurn(turns, mode);
+  // Read here rather than sent by the browser: the home-screen mic sends its
+  // command the moment the Create page opens, before that page has loaded the
+  // agent's market, and a value the client supplies is one more thing in a
+  // model prompt to distrust.
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("location_city, location_state")
+    .eq("id", user.id)
+    .maybeSingle();
+  const m = prof as { location_city: string | null; location_state: string | null } | null;
+  const savedMarket = m?.location_city?.trim() && m?.location_state?.trim()
+    ? { city: m.location_city.trim().slice(0, 80), state: m.location_state.trim().slice(0, 40) }
+    : null;
+
+  const result = await runBriefTurn(turns, mode, savedMarket);
   if (!result) {
     // The caller drops back to the typed form rather than looping on a mic that
     // will not answer.

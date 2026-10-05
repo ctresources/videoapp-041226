@@ -57,7 +57,7 @@ export async function chatJson(
   const { maxTokens = 400, temperature = 0.2, label = "chat", search = false } = opts;
 
   try {
-    const res = await fetch(PERPLEXITY_API_URL, {
+    const ask = () => fetch(PERPLEXITY_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -65,6 +65,16 @@ export async function chatJson(
       },
       body: JSON.stringify(requestBody(system, turns, maxTokens, temperature, search)),
     });
+    let res = await ask();
+    // One retry when rate-limited. The limit is shared with whatever else is
+    // generating, and a turn that failed here used to end the voice session
+    // ("isn't available right now, switched you to typing") over a pause of a
+    // second. A second refusal is still a refusal.
+    if (res.status === 429) {
+      const wait = Math.min(Number(res.headers.get("retry-after")) || 1.5, 4);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+      res = await ask();
+    }
     if (!res.ok) {
       console.error(`[${label}] perplexity ${res.status}`);
       return null;

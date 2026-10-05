@@ -345,6 +345,8 @@ function CreatePageInner() {
   const [customAudiences, setCustomAudiences] = useState<string[]>([]);
   // A topic picked from the spark panel, on its way into the composer box.
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
+  /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
+  const [voiceCommand, setVoiceCommand] = useState({ text: "", n: 0 });
   const [locTone, setLocTone] = useState("");
   const [locCta, setLocCta] = useState("");
   /**
@@ -625,6 +627,18 @@ function CreatePageInner() {
     else if (tab === "listing") { setInputMode("listing"); setLastSparkTab("listing"); }
     else if (tab === "paste" || tab === "script") { setInputMode(tab); setLastSparkTab(tab); }
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); setLastSparkTab("script"); }
+
+    // Said on the home screen: "create a blog about…". The voice panel works
+    // out what was meant and goes ahead if it is complete. The parameter is
+    // taken off the address straight away, so a refresh or the back button
+    // does not carry out the same command a second time.
+    const say = searchParams.get("say");
+    if (say?.trim()) {
+      setInputMode("script");
+      setLastSparkTab("script");
+      setVoiceCommand({ text: say.trim().slice(0, 1500), n: Date.now() });
+      router.replace("/create");
+    }
 
     /**
      * The shape, when something elsewhere already decided it.
@@ -935,10 +949,21 @@ function CreatePageInner() {
    * here would be a render behind — and one utterance carrying the whole
    * brief plus the wake word is exactly when that state is still empty.
    */
-  async function handleGenerateScript(spoken?: { city?: string | null; state?: string | null; topic?: string | null }) {
+  async function handleGenerateScript(spoken?: {
+    city?: string | null; state?: string | null; topic?: string | null;
+    audience?: string | null; tone?: string | null; purpose?: string | null;
+    length?: "standard" | "long" | null; platform?: "reel" | "youtube" | null;
+    output?: "blog" | "video" | null; onScreen?: "avatar" | "voice_only" | "camera" | null;
+  }) {
     const city = (spoken?.city ?? locCity).trim();
     const state = (spoken?.state ?? locState).trim();
-    const attached = blogOnly ? blogSrcText.trim() : "";
+    // What was said wins over which tile was pressed: "create a blog about…"
+    // is a blog whatever this page happened to be set to.
+    const asBlog = spoken?.output ? spoken.output === "blog" : blogOnly;
+    const length = spoken?.length ?? locLength;
+    // Long form renders landscape only, said or picked.
+    const platform = length === "long" ? "youtube" : (spoken?.platform ?? locPlatform);
+    const attached = asBlog ? blogSrcText.trim() : "";
     // An attached article stands in for a typed topic — its own subject is
     // what the piece is about. Falls back to the file or page name, and then to
     // a plain description, because the writer needs a subject line either way.
@@ -974,12 +999,16 @@ function CreatePageInner() {
           // Their own draft is edited and expanded; someone else's piece is
           // covered and rewritten. The writer is told which it is.
           ...(attached && { sourceText: attached, sourceIsOwn: blogSrcMode === "text" }),
-          audience: locAudience || undefined,
-          tone: locTone || undefined,
+          audience: spoken?.audience || locAudience || undefined,
+          tone: spoken?.tone || locTone || undefined,
           ctaPreference: locCta || undefined,
-          purpose: locPurpose || undefined,
-          videoLength: locLength,
-          videoPlatform: locPlatform,
+          purpose: spoken?.purpose || locPurpose || undefined,
+          videoLength: length,
+          videoPlatform: platform,
+          // Who is on screen, when the brief said. Saved on the project, so
+          // the setup step opens on it instead of on its default.
+          ...(spoken?.onScreen === "voice_only" ? { renderMode: "voice_only" }
+            : spoken?.onScreen === "avatar" ? { renderMode: "avatar_voice" } : {}),
         }),
       });
       const data = await safeJson(res);
@@ -990,8 +1019,8 @@ function CreatePageInner() {
       // asked for. The project is saved either way and shows in My Content
       // under Drafts, so the article is findable again later.
       const projectId = (data.project as { id: string }).id;
-      toast.success(blogOnly ? "Your article is ready." : "Sparked. Your script is ready to review.");
-      router.push(`/create/${projectId}?source=location${blogOnly ? "&step=5" : ""}`);
+      toast.success(asBlog ? "Your article is ready." : "Sparked. Your script is ready to review.");
+      router.push(`/create/${projectId}?source=location${asBlog ? "&step=5" : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -2405,12 +2434,28 @@ function CreatePageInner() {
                 if (s.tone) setLocTone(s.tone);
                 if (s.length) { setLocLength(s.length); setFormatTouched(true); }
                 if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
+                if (s.purpose) setLocPurpose(s.purpose);
+                // "Create a blog" and "make a video" pick the route out loud,
+                // the same as pressing its tile.
+                if (s.output) setBlogOnly(s.output === "blog");
                 // Long form renders landscape only. Said together, "long reel"
                 // has to resolve to something buildable, and the length is the
                 // half that changes the script.
                 if (s.length === "long") setLocPlatform("youtube");
               }}
-              onReady={(sl) => { if (!locGenerating) handleGenerateScript(sl); }}
+              onReady={(sl) => {
+                if (locGenerating) return;
+                // "I'll record it myself" is the camera route: the script goes
+                // to the teleprompter, not to a render.
+                if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
+                  setInputMode("camera");
+                  setCameraSource("speak");
+                  setCameraVoiceTopic(sl.topic);
+                  void handleCameraScriptFromTopic(sl.topic, sl);
+                  return;
+                }
+                handleGenerateScript(sl);
+              }}
               // This panel's button and the one in the footer call the same
               // handler, so they have to agree on what it does. Only this
               // instance takes a mode — the camera one below is always a
@@ -2418,6 +2463,7 @@ function CreatePageInner() {
               mode={blogOnly ? "blog" : "script"}
               onDraftChange={setBriefHasDraft}
               seed={sparkSeed}
+              command={voiceCommand}
             />
           </ComposerCard>
 

@@ -38,10 +38,17 @@ export interface BriefSlots {
   tone: string | null;
   length: "standard" | "long" | null;
   platform: "reel" | "youtube" | null;
+  /** What was asked for, when it was said: "create a blog", "make a video". */
+  output?: "blog" | "video" | null;
+  /** Who is on screen, when it was said: the avatar, voice only, or the agent on camera. */
+  onScreen?: "avatar" | "voice_only" | "camera" | null;
+  /** Why it is being made, as one of the Create page's five reasons. */
+  purpose?: "found" | "answer" | "appointment" | "topofmind" | "announce" | null;
 }
 
 const EMPTY_SLOTS: BriefSlots = {
   city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
+  output: null, onScreen: null, purpose: null,
 };
 
 interface Turn {
@@ -92,6 +99,20 @@ interface Props {
    * so it says.
    */
   onDraftChange?: (hasDraft: boolean) => void;
+  /**
+   * A whole command said somewhere else, the home-screen mic, and handed here
+   * to carry out.
+   *
+   * Unlike `seed`, it is sent at once and goes ahead without the wake word if
+   * it turns out to be complete. That is the difference between a conversation
+   * and a command: here on the Create page you are building a brief and say
+   * when it is done; on the home screen "create a blog about…" already is the
+   * instruction. If something required is missing, it becomes an ordinary
+   * conversation and the assistant asks for it.
+   *
+   * Carries a nonce so the same sentence said twice still lands.
+   */
+  command?: { text: string; n: number };
 }
 
 /**
@@ -111,7 +132,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command }: Props) {
   /** Read in three labels and sent with every turn, so what the panel says and
    *  what the assistant says out loud stay the same answer. */
   const isBlog = mode === "blog";
@@ -143,7 +164,11 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
 
-  const send = useCallback(async (spoken: string) => {
+  // Declared ahead of `send`, which sets it when a command goes straight through.
+  const [sparking, setSparking] = useState(false);
+  const sparkingRef = useRef(false);
+
+  const send = useCallback(async (spoken: string, opts?: { go?: boolean }) => {
     const said = spoken.trim();
     if (!said || busyRef.current) return;
     busyRef.current = true;
@@ -173,7 +198,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       onSlots(data.slots as BriefSlots);
       setSlots(data.slots as BriefSlots);
       setTurns((t) => [...t, { role: "assistant", content: data.reply as string }]);
-      if (data.ready === true) onReady(data.slots as BriefSlots);
+      const got = data.slots as BriefSlots;
+      // A command goes as soon as it is complete, with no wake word: it was an
+      // instruction when it was said. Latched like the button, so nothing can
+      // fire a second generation while this one is starting.
+      const complete = !!(got.topic && got.city && got.state);
+      if (data.ready === true || (opts?.go && complete && !sparkingRef.current)) {
+        sparkingRef.current = true;
+        setSparking(true);
+        onReady(got);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't follow that — try again.");
       setTurns((t) => [
@@ -194,10 +228,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // word would start a render of a brief with no place or no subject.
   const briefReady = !!(slots.topic && slots.city && slots.state);
 
-  // Latched the moment we hand over, so a second click or a repeated wake word
-  // cannot fire two generations in the tick before `disabled` arrives.
-  const [sparking, setSparking] = useState(false);
-  const sparkingRef = useRef(false);
+  // `sparking` (declared above `send`) is latched the moment we hand over, so
+  // a second click or a repeated wake word cannot fire two generations in the
+  // tick before `disabled` arrives.
 
   /**
    * Go — from the button, or from hearing the wake word.
@@ -288,6 +321,13 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     holdSpace: true,
   });
 
+  // A command from the home-screen mic: sent the moment it arrives.
+  useEffect(() => {
+    if (!command?.text) return;
+    void send(command.text, { go: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [command?.n]);
+
   // A picked topic lands in the box and puts the cursor after it, so it reads
   // as a starting point you can add to rather than a decision already made.
   useEffect(() => {
@@ -358,6 +398,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // What voice has captured so far, condensed to one line — the compact
   // stand-in for the big centered heading the old design used.
   const summary = [
+    slots.output === "blog" ? "blog" : slots.output === "video" ? "video" : null,
+    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice only" : slots.onScreen === "camera" ? "you on camera" : null,
     slots.city && slots.state ? `${slots.city}, ${slots.state}` : slots.city,
     slots.topic,
     slots.audience,

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity, Film } from "lucide-react";
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
+import { SpeakToSpark } from "@/components/dashboard/speak-to-spark";
 import { freeTrialLocked, freeTrialDaysLeft } from "@/lib/utils/free-trial";
 async function DraftQueueWrapper({ userId }: { userId: string }) {
   const supabase = await createClient();
@@ -353,6 +354,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {/* First, above the numbers: on a phone this is the screen the app opens
+          on, and the thing to do here is make something, not read a count. */}
+      <SpeakToSpark />
+
       <Suspense fallback={
         <div className="space-y-4 mb-8">
           <Skeleton className="h-8 w-64" />
