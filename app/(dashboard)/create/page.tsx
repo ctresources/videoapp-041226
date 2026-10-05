@@ -324,7 +324,7 @@ function CreatePageInner() {
   const [locAudience, setLocAudience] = useState("");
   // Audiences this user has named themselves, by voice or by typing. Kept on
   // the account, so one added on a phone is in the picker on a computer.
-  const { audiences: customAudiences, add: addAudience } = useCustomAudiences();
+  const { audiences: customAudiences, add: addAudience, remove: removeAudience } = useCustomAudiences();
   // "Add your own…" was picked in the Audience dropdown: the box for typing it.
   const [audienceAdding, setAudienceAdding] = useState(false);
   const [audienceDraft, setAudienceDraft] = useState("");
@@ -1795,6 +1795,21 @@ function CreatePageInner() {
                 </select>
                 <ChevronDown size={15} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
               </div>
+              {/* Only for one they added themselves: a typo would otherwise
+                  sit in the list until twelve newer names pushed it out. */}
+              {label === "Audience" && !audienceAdding && customAudiences.includes(locAudience) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeAudience(locAudience);
+                    toast.success(`Removed “${locAudience}” from your audiences.`);
+                    setLocAudience("");
+                  }}
+                  className="mt-1.5 text-left text-[13px] font-medium text-spark-ink-muted underline-offset-2 hover:text-spark-ink hover:underline"
+                >
+                  Remove &ldquo;{locAudience}&rdquo; from my list
+                </button>
+              )}
               {label === "Audience" && audienceAdding && (
                 <div className="mt-2">
                   <div className="flex items-center gap-2">

@@ -34,6 +34,9 @@ function writeLocal(key: string, list: string[]) {
 // else in the same tab must not show, or save, the last person's audiences.
 let store: { userId: string; list: string[] } | null = null;
 let loading: Promise<void> | null = null;
+// Names removed since the page opened, in lower case. A read of the account
+// that was already in flight still carries them, and must not put them back.
+const removed = new Set<string>();
 const listeners = new Set<(list: string[]) => void>();
 
 function publish(userId: string, list: string[]) {
@@ -45,8 +48,8 @@ function publish(userId: string, list: string[]) {
 async function saveToAccount(userId: string, list: string[]) {
   const supabase = createClient();
   const { error } = await supabase.from("profiles").update({ custom_audiences: list }).eq("id", userId);
-  // Not worth interrupting anyone over: the name is still in this browser and
-  // is offered to the account again on the next load.
+  // Not worth interrupting anyone over: this video still uses the name, and
+  // the picker shows it until the page is next opened.
   if (error) console.warn("[audiences] could not save to the account:", error.message);
 }
 
@@ -60,24 +63,28 @@ async function load() {
   if (!user) return;
   if (store?.userId === user.id) return;
 
-  // What this browser already knew, shown at once.
+  // What this browser last showed, at once, so the picker is not empty while
+  // the account answers.
   const legacy = readLocal(LEGACY_KEY);
-  const local = cleanAudienceList([...readLocal(keyFor(user.id)), ...legacy]);
-  publish(user.id, local);
+  const shown = cleanAudienceList([...readLocal(keyFor(user.id)), ...legacy]);
+  publish(user.id, shown);
 
   const { data, error } = await supabase
     .from("profiles")
     .select("custom_audiences")
     .eq("id", user.id)
     .single();
-  if (error) return; // keep the browser's own list; nothing is lost
+  if (error) return; // keep what the browser had; nothing is lost
 
   const account = cleanAudienceList((data as { custom_audiences?: unknown } | null)?.custom_audiences);
-  // The account's list first, then anything only this browser had: names
-  // spoken here before the list was on the account are carried up once.
-  // Anything added while the read was in flight is in the store, not `local`.
-  const here = store?.userId === user.id ? store.list : local;
-  const merged = cleanAudienceList([...account, ...here]);
+  // The account is the list. Two things are added to it: what the old
+  // browser-wide key held, carried up this once, and anything typed while the
+  // read was in flight. The browser's own copy is NOT merged back in: if it
+  // were, a name removed on a phone would return from the computer's copy the
+  // next time that computer opened the page.
+  const during = (store?.userId === user.id ? store.list : []).filter((a) => !shown.includes(a));
+  const merged = cleanAudienceList([...account, ...legacy, ...during])
+    .filter((a) => !removed.has(a.toLowerCase()));
   publish(user.id, merged);
   if (merged.length !== account.length || merged.some((a, i) => a !== account[i])) {
     await saveToAccount(user.id, merged);
@@ -117,11 +124,23 @@ export function useCustomAudiences() {
     // Before the account has answered there is no one to save it for yet. The
     // name is still returned, so the picker shows it and this video uses it.
     if (!store) return name;
+    removed.delete(name.toLowerCase());
     const next = withAudience(current, name);
     publish(store.userId, next);
     void saveToAccount(store.userId, next);
     return name;
   }, []);
 
-  return { audiences, add };
+  /** Takes a name off the list, here and on the account. The built-in ones are not on it. */
+  const remove = useCallback((raw: string) => {
+    const key = cleanAudienceName(raw).toLowerCase();
+    if (!key || !store) return;
+    removed.add(key);
+    const next = store.list.filter((a) => a.toLowerCase() !== key);
+    if (next.length === store.list.length) return;
+    publish(store.userId, next);
+    void saveToAccount(store.userId, next);
+  }, []);
+
+  return { audiences, add, remove };
 }
