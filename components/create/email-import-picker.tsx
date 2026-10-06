@@ -31,6 +31,26 @@ export interface PickedEmailArticle {
 }
 
 /**
+ * Opens one forwarded email: its text and images, by id.
+ *
+ * Shared because there are now three ways to reach a forwarded email (this
+ * picker, the list at the top of the Create page, and saying so to the mic)
+ * and they must all hand over the same thing.
+ */
+export async function fetchEmailArticle(id: string): Promise<PickedEmailArticle> {
+  const res = await fetch(`/api/email/imports?id=${encodeURIComponent(id)}`);
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error || "Couldn't open that email");
+  return {
+    id,
+    subject: (body.subject as string) || "(no subject)",
+    text: (body.text as string) || "",
+    words: Number(body.words ?? 0),
+    imageUrls: Array.isArray(body.imageUrls) ? (body.imageUrls as string[]) : [],
+  };
+}
+
+/**
  * Pick an article the agent forwarded to their private import address.
  *
  * The address comes first and stays visible even once there are imports to
@@ -95,16 +115,7 @@ export function EmailImportPicker({
   async function pick(id: string) {
     setFetchingId(id);
     try {
-      const res = await fetch(`/api/email/imports?id=${encodeURIComponent(id)}`);
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error || "Couldn't open that email");
-      onPick({
-        id,
-        subject: (body.subject as string) || "(no subject)",
-        text: (body.text as string) || "",
-        words: Number(body.words ?? 0),
-        imageUrls: Array.isArray(body.imageUrls) ? (body.imageUrls as string[]) : [],
-      });
+      onPick(await fetchEmailArticle(id));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't open that email");
     } finally {
@@ -232,7 +243,7 @@ export function EmailImportPicker({
 }
 
 /** "14 min ago" / "Tue" — a list of ten does not need a full timestamp. */
-function whenShort(iso: string): string {
+export function whenShort(iso: string): string {
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return "";
   const mins = Math.round((Date.now() - then) / 60000);

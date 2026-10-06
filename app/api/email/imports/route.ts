@@ -88,7 +88,13 @@ export async function GET(req: NextRequest) {
     .limit(LIST_LIMIT);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const address = await addressFor(user.id, user.email ?? null);
+  // The address is minted the first time it is asked for. The list at the top
+  // of the Create page loads for everyone who opens that page and shows no
+  // address, so it asks for the list alone (?address=0): otherwise every
+  // account would be given an import address just for looking at Create.
+  const address = req.nextUrl.searchParams.get("address") === "0"
+    ? null
+    : await addressFor(user.id, user.email ?? null);
 
   return NextResponse.json({
     address,

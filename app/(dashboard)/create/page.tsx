@@ -10,12 +10,13 @@ import {
   Mic, ArrowRight, CheckCircle, Loader2, FileText,
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
-  Plus, X, Paperclip, ImageIcon, Globe,
+  Plus, X, Paperclip, ImageIcon, Globe, Mail,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
-import { ArticleSource, MediaAndDocs, type DocMode } from "@/components/create/media-and-docs";
-import type { PickedEmailArticle } from "@/components/create/email-import-picker";
+import { ArticleSource, MediaAndDocs, type DocAttachment, type DocMode } from "@/components/create/media-and-docs";
+import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/email-import-picker";
+import { ForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -502,6 +503,14 @@ function CreatePageInner() {
   const [blogSrcUrlInput, setBlogSrcUrlInput] = useState("");
   const [blogSrcUploading, setBlogSrcUploading] = useState(false);
   const [blogSrcFetching, setBlogSrcFetching] = useState(false);
+  // Which forwarded email is attached, when it is one. Lets "from my Ambler
+  // email", said aloud, be told apart from the email already on the page.
+  const [blogSrcEmailId, setBlogSrcEmailId] = useState<string | null>(null);
+  // The same source, on the video route: closed to one line until wanted.
+  const [videoSrcOpen, setVideoSrcOpen] = useState(false);
+  // One fetch per email however it is asked for. A spoken command reports the
+  // email and says go in the same tick, so two callers want it at once.
+  const emailFetches = useRef(new Map<string, Promise<PickedEmailArticle>>());
   /**
    * What to do with the material once it is attached.
    *
@@ -953,6 +962,7 @@ function CreatePageInner() {
     audience?: string | null; tone?: string | null; purpose?: string | null;
     length?: "standard" | "long" | null; platform?: "reel" | "youtube" | null;
     output?: "blog" | "video" | null; onScreen?: "avatar" | "voice_only" | "camera" | null;
+    emailId?: string | null;
   }) {
     const city = (spoken?.city ?? locCity).trim();
     const state = (spoken?.state ?? locState).trim();
@@ -962,12 +972,30 @@ function CreatePageInner() {
     const length = spoken?.length ?? locLength;
     // Long form renders landscape only, said or picked.
     const platform = length === "long" ? "youtube" : (spoken?.platform ?? locPlatform);
-    const attached = asBlog ? blogSrcText.trim() : "";
+    // What they brought with them. It used to count only for a blog: the
+    // video route had no way to attach anything, so a forwarded market report
+    // could become an article and never a script.
+    let attached = blogSrcText.trim();
+    let attachedName = blogSrcName.trim();
+    let ownWriting = blogSrcMode === "text";
+    // "From my Ambler market report email", said aloud. The page may not have
+    // it attached yet: a spoken command names the email and says go at once.
+    if (spoken?.emailId && spoken.emailId !== blogSrcEmailId) {
+      try {
+        const article = await openEmail(spoken.emailId);
+        attachEmail(article, { quiet: true });
+        attached = article.text.trim();
+        attachedName = article.subject.trim();
+        ownWriting = false;
+      } catch {
+        toast.error("Couldn't open that email, so this is being written from the topic alone.");
+      }
+    }
     // An attached article stands in for a typed topic — its own subject is
     // what the piece is about. Falls back to the file or page name, and then to
     // a plain description, because the writer needs a subject line either way.
     const topic = (spoken?.topic ?? locCustomTopic).trim()
-      || (attached ? (blogSrcName.trim() || "the attached article") : "");
+      || (attached ? (attachedName || "the attached article") : "");
     // No market gate any more — the topic carries its own location, and the
     // saved market is only a fallback for topics that name no place.
     if (!topic) {
@@ -997,7 +1025,7 @@ function CreatePageInner() {
           // see buildCustomRequest for the rules it is handed with.
           // Their own draft is edited and expanded; someone else's piece is
           // covered and rewritten. The writer is told which it is.
-          ...(attached && { sourceText: attached, sourceIsOwn: blogSrcMode === "text" }),
+          ...(attached && { sourceText: attached, sourceIsOwn: ownWriting }),
           audience: spoken?.audience || locAudience || undefined,
           tone: spoken?.tone || locTone || undefined,
           ctaPreference: locCta || undefined,
@@ -1153,7 +1181,8 @@ function CreatePageInner() {
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
       setBlogSrcText(body.text as string);
       setBlogSrcName(body.name as string);
-      toast.success("PDF read — your article will be written from it.");
+      setBlogSrcEmailId(null);
+      toast.success(`PDF read — your ${blogOnly ? "article" : "script"} will be written from it.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to process PDF");
     } finally {
@@ -1174,7 +1203,8 @@ function CreatePageInner() {
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
       setBlogSrcText(body.text as string);
       try { setBlogSrcName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setBlogSrcName("Web page"); }
-      toast.success("Page read — your article will be written from it.");
+      setBlogSrcEmailId(null);
+      toast.success(`Page read — your ${blogOnly ? "article" : "script"} will be written from it.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -1230,19 +1260,134 @@ function CreatePageInner() {
     setBlogSrcText(text);
     const words = text.trim().split(/\s+/).length;
     setBlogSrcName(`Your text · ${words.toLocaleString()} words`);
-    toast.success("Saved. Your article will be written from this.");
+    setBlogSrcEmailId(null);
+    toast.success(`Saved. Your ${blogOnly ? "article" : "script"} will be written from this.`);
   }
 
-  function handleBlogSrcEmail(article: PickedEmailArticle) {
+  /** Puts the source away: what is attached, and which email it was. */
+  function clearSource() {
+    setBlogSrcText("");
+    setBlogSrcName("");
+    setBlogSrcUrlInput("");
+    setBlogSrcEmailId(null);
+  }
+
+  /** One forwarded email, opened once however many callers ask for it. */
+  function openEmail(id: string): Promise<PickedEmailArticle> {
+    const pending = emailFetches.current.get(id);
+    if (pending) return pending;
+    const fetching = fetchEmailArticle(id);
+    emailFetches.current.set(id, fetching);
+    // A failure is not remembered, so the next ask tries again.
+    fetching.catch(() => emailFetches.current.delete(id));
+    return fetching;
+  }
+
+  /**
+   * Attaches a forwarded email as the source, on whichever route is showing.
+   * `quiet` is for when it was asked for out loud: the brief has already said
+   * so in its reply, and a toast would say it twice.
+   */
+  function attachEmail(article: PickedEmailArticle, opts?: { quiet?: boolean; kind?: "blog" | "video" }) {
+    setBlogSrcMode("email");
     setBlogSrcText(article.text);
     setBlogSrcName(article.subject);
+    setBlogSrcEmailId(article.id);
     // The subject becomes the topic when there isn't one, so the brief is
     // complete the moment something is picked. Never overwrites a typed topic.
     if (!locCustomTopic.trim()) {
       setLocCustomTopic(article.subject);
       setTopicTemplateRaw(null);
     }
-    toast.success(`"${article.subject}" will be the source for your article.`);
+    if (opts?.quiet) {
+      // Said aloud: "create a blog from my … email" asks for one to be
+      // written. The blog route's default is to publish what is attached
+      // unchanged, which would have saved the raw report as the article.
+      setBlogSrcUse("rewrite");
+      return;
+    }
+    const asBlog = opts?.kind ? opts.kind === "blog" : blogOnly;
+    toast.success(`"${article.subject}" will be the source for your ${asBlog ? "article" : "script"}.`);
+  }
+
+  function handleBlogSrcEmail(article: PickedEmailArticle) {
+    attachEmail(article);
+    void fillPlaceFromSubject(article.subject);
+  }
+
+  /**
+   * The town, when the subject line names one and none has been set.
+   *
+   * "Ambler market report 10/5/2026" says where it is about, and the page was
+   * still asking for the city and state before it would carry on. A saved
+   * market is matched in the browser; anything else is asked of the brief,
+   * which already reads place names for the mic.
+   *
+   * Only a town the subject itself names is used. The brief falls back to the
+   * account's home market when no place is said, and this page deliberately
+   * never names a town for you.
+   */
+  async function fillPlaceFromSubject(subject: string) {
+    if (locCity.trim() && locState.trim()) return;
+    const hay = subject.toLowerCase();
+    const saved = savedMarkets.find((m) => m.city && hay.includes(m.city.toLowerCase()));
+    if (saved) {
+      setLocCity(saved.city);
+      setLocState(saved.state);
+      return;
+    }
+    try {
+      const res = await fetch("/api/ai/brief-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turns: [{ role: "user", content: subject.slice(0, 300) }] }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const city = data?.slots?.city;
+      const state = data?.slots?.state;
+      if (typeof city !== "string" || typeof state !== "string") return;
+      if (!hay.includes(city.toLowerCase())) return;
+      // Not over anything typed while this was being worked out.
+      setLocCity((prev) => (prev.trim() ? prev : city));
+      setLocState((prev) => (prev.trim() ? prev : state));
+    } catch { /* the city and state fields are still there to fill in */ }
+  }
+
+  /**
+   * Start a blog or a video from a forwarded email, from the list at the top
+   * of the page. It sets the route up with the email attached and stops:
+   * nothing is written until the button at the bottom is pressed.
+   */
+  function startFromEmail(article: PickedEmailArticle, kind: "blog" | "video") {
+    // The same lock the blog tile has, with the same two answers.
+    if (kind === "blog" && trialLocked) {
+      if (trialNotStarted) {
+        toast("Make your free video first — it unlocks articles, tools and the camera for 30 days.");
+      } else {
+        router.push("/billing");
+      }
+      return;
+    }
+    setInputMode("script");
+    setLastSparkTab("script");
+    setBlogOnly(kind === "blog");
+    if (kind === "blog") {
+      // As the blog tile does: the format picker is hidden on this route.
+      setLocLength("standard");
+      setBlogSrcOpen(true);
+      // "Make a blog" from a forwarded report means write one. Publishing it
+      // unchanged is still one tap away, on the card this opens.
+      setBlogSrcUse("rewrite");
+    } else {
+      setVideoSrcOpen(true);
+    }
+    attachEmail(article, { kind });
+    void fillPlaceFromSubject(article.subject);
+    // After the route has drawn, bring what was just attached into view.
+    setTimeout(() => {
+      document.getElementById("spark-source")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
   }
 
   async function handlePasteUrlExtract() {
@@ -1621,9 +1766,32 @@ function CreatePageInner() {
   // asking someone to summarise in a sentence what they just handed over is
   // asking twice.
   const blogSourceReady = blogOnly && !!blogSrcText.trim();
+  /**
+   * The four ways in, described once. The blog route and the video route show
+   * the same control over the same attachment, so a piece attached on one is
+   * still attached, and still visible, on the other.
+   */
+  const sourceDoc: DocAttachment = {
+    mode: blogSrcMode,
+    onModeChange: setBlogSrcMode,
+    attached: !!blogSrcText,
+    attachedName: blogSrcName,
+    onClear: clearSource,
+    uploading: blogSrcUploading,
+    onUploadPdf: handleBlogSrcPdf,
+    urlInput: blogSrcUrlInput,
+    onUrlInputChange: setBlogSrcUrlInput,
+    onFetchUrl: handleBlogSrcUrl,
+    fetching: blogSrcFetching,
+    onPickEmail: handleBlogSrcEmail,
+    // Here it means "write from this", on either route. Pasting into the
+    // script tab means "speak these words", which is a different job for the
+    // same gesture and why that tab does not offer it.
+    onPasteText: handleBlogSrcText,
+  };
   /** Publishing what they attached, rather than writing something new from it. */
   const importingAsIs = blogSourceReady && blogSrcUse === "asis";
-  const canContinue = locationSet && (!!locCustomTopic.trim() || blogSourceReady)
+  const canContinue = locationSet && (!!locCustomTopic.trim() || !!blogSrcText.trim())
     && !locGenerating && !blogImporting;
 
   // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
@@ -1996,6 +2164,13 @@ function CreatePageInner() {
               setVoiceCommand({ text, n: Date.now() });
             }}
           />
+          {/* What has been emailed in, and the notice that it arrived. Under
+              the mic because both answer the same question, "what do you want
+              to make", and this one answers it with something already sent. */}
+          <ForwardedEmails
+            busy={commandPending || locGenerating || cameraScriptGenerating}
+            onMake={startFromEmail}
+          />
         </div>
       )}
 
@@ -2105,6 +2280,10 @@ function CreatePageInner() {
                       return;
                     }
                     setBlogOnly(true);
+                    // Something attached on the video route comes with it, and
+                    // comes in view: this route only shows an attachment under
+                    // its own source tile.
+                    if (blogSrcText.trim()) setBlogSrcOpen(true);
                     // The format picker is hidden on this route, so a Longform
                     // pick made before switching must not carry over unseen.
                     setLocLength("standard");
@@ -2288,7 +2467,7 @@ function CreatePageInner() {
                 // Leaving this route puts the attachment away with it.
                 // Attached-but-hidden is the worst of both: the page would
                 // still write from a document nobody can see or clear.
-                if (!isSource) { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); }
+                if (!isSource) clearSource();
               }}
             />
             );
@@ -2346,30 +2525,13 @@ function CreatePageInner() {
           answers, it was a footnote under a question about topics. It is a
           tile now, and this is what that tile reveals, directly under it. */}
       {blogOnly && blogSrcOpen && (
-        <div className="mt-2 rounded-[18px] border border-spark-rule bg-white px-5 py-4">
+        <div id="spark-source" className="mt-2 scroll-mt-20 rounded-[18px] border border-spark-rule bg-white px-5 py-4">
           <ArticleSource
             purpose="article"
             // The tile above already made this offer by name, so the block
             // does not make it again.
             heading={false}
-            doc={{
-              mode: blogSrcMode,
-              onModeChange: setBlogSrcMode,
-              attached: !!blogSrcText,
-              attachedName: blogSrcName,
-              onClear: () => { setBlogSrcText(""); setBlogSrcName(""); setBlogSrcUrlInput(""); },
-              uploading: blogSrcUploading,
-              onUploadPdf: handleBlogSrcPdf,
-              urlInput: blogSrcUrlInput,
-              onUrlInputChange: setBlogSrcUrlInput,
-              onFetchUrl: handleBlogSrcUrl,
-              fetching: blogSrcFetching,
-              onPickEmail: handleBlogSrcEmail,
-              // Only on this route. Pasting into the script tab means
-              // "speak these words"; pasting here means "make an article
-              // out of this", which is a different job for the same gesture.
-              onPasteText: handleBlogSrcText,
-            }}
+            doc={sourceDoc}
           />
           {/* Said where it is decided, not discovered in the output. The
               writer is told to keep the source's facts and angle and to
@@ -2529,6 +2691,14 @@ function CreatePageInner() {
                 // "Create a blog" and "make a video" pick the route out loud,
                 // the same as pressing its tile.
                 if (s.output) setBlogOnly(s.output === "blog");
+                // "From my Ambler market report email": attached to the page,
+                // so the button at the bottom writes from it as well, and it
+                // can be seen and taken off again.
+                if (s.emailId && s.emailId !== blogSrcEmailId) {
+                  openEmail(s.emailId)
+                    .then((article) => attachEmail(article, { quiet: true }))
+                    .catch(() => { /* said when it is written, in handleGenerateScript */ });
+                }
                 // Long form renders landscape only. Said together, "long reel"
                 // has to resolve to something buildable, and the length is the
                 // half that changes the script.
@@ -2587,6 +2757,59 @@ function CreatePageInner() {
             }}
           />
           </div>
+
+          {/* Something they already have, on the video route.
+              The blog route has had this since it had a source tile; a video
+              could only start from a topic, so a forwarded market report could
+              become an article and never a script. Same control, same
+              attachment. One line until it is wanted: opened, its first tab is
+              a box to paste into, and a second empty box under the topic box
+              reads as a second thing to fill in. */}
+          {/* The blog route shows an attachment under its own source tile, and
+              that tile replaces this topic box. An email named to the mic is
+              attached while this box is still up, so it is shown here: what
+              the article will be written from, and the way to take it off. */}
+          {blogOnly && blogSrcText && (
+            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
+              <Mail size={16} className="shrink-0 text-green-600" />
+              <span className="min-w-0 flex-1 truncate text-sm text-green-800">
+                Writing from: {blogSrcName}
+              </span>
+              <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
+                <X size={14} className="text-green-700" />
+              </button>
+            </div>
+          )}
+          {!blogOnly && (
+            <div id="spark-source" className="scroll-mt-20 rounded-[18px] border border-spark-rule bg-white px-5 py-4">
+              {videoSrcOpen || blogSrcText ? (
+                <ArticleSource purpose="script" divider={false} doc={sourceDoc} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setVideoSrcOpen(true)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <span>
+                    <span className="block text-sm font-bold text-spark-ink-soft">
+                      Start from something you already have{" "}
+                      <span className="font-normal text-spark-ink-faint">(optional)</span>
+                    </span>
+                    <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-spark-ink-muted">
+                      Paste text, upload a PDF, add a link, or use an email you forwarded.
+                    </span>
+                  </span>
+                  <ChevronDown size={17} className="shrink-0 text-spark-ink-muted" />
+                </button>
+              )}
+              {blogSrcText && (
+                <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
+                  Your script will cover what this covers, written fresh in your voice.
+                  The topic above is only needed if you want to steer it.
+                </p>
+              )}
+            </div>
+          )}
 
         </div>
       )}
@@ -2806,7 +3029,7 @@ function CreatePageInner() {
                   // thing that is actually missing.
                   : blogOnly && blogSrcOpen && !blogSourceReady
                     ? "Paste, upload, link or forward the piece above to carry on."
-                  : !locCustomTopic.trim()
+                  : !locCustomTopic.trim() && !blogSrcText.trim()
                     ? (briefHasDraft
                         // The topic is on screen, just not sent. Telling
                         // someone to supply what they can already see reads as

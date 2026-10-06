@@ -306,13 +306,20 @@ export function ArticleSource({
    * always the point; only the heading and the rule above it are in question.
    */
   heading = true,
+  /**
+   * The rule and the space under the block, which separate it from the rest
+   * of the card it heads. False where it is the whole of its own card and
+   * there is nothing underneath to be separated from.
+   */
+  divider = true,
 }: {
   doc: DocAttachment;
   purpose?: "script" | "article";
   heading?: boolean;
+  divider?: boolean;
 }) {
   return (
-        <div className={heading ? "mb-4 pb-4 border-b border-spark-rule-soft" : undefined}>
+        <div className={heading && divider ? "mb-4 pb-4 border-b border-spark-rule-soft" : undefined}>
           <div className={`flex flex-wrap items-center gap-2 mb-1 ${heading ? "justify-between" : "justify-start"}`}>
             {heading && (
               <p className="text-sm font-bold text-spark-ink-soft">

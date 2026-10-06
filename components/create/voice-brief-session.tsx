@@ -44,11 +44,14 @@ export interface BriefSlots {
   onScreen?: "avatar" | "voice_only" | "camera" | null;
   /** Why it is being made, as one of the Create page's five reasons. */
   purpose?: "found" | "answer" | "appointment" | "topofmind" | "announce" | null;
+  /** A forwarded email to make it from, when they asked for one by name. */
+  emailId?: string | null;
+  emailSubject?: string | null;
 }
 
 const EMPTY_SLOTS: BriefSlots = {
   city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
-  output: null, onScreen: null, purpose: null,
+  output: null, onScreen: null, purpose: null, emailId: null, emailSubject: null,
 };
 
 interface Turn {
@@ -420,6 +423,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice only" : slots.onScreen === "camera" ? "you on camera" : null,
     slots.city && slots.state ? `${slots.city}, ${slots.state}` : slots.city,
     slots.topic,
+    slots.emailSubject ? "from your email" : null,
     slots.audience,
     slots.length === "long" ? "long length" : slots.length === "standard" ? "standard length" : null,
   ].filter(Boolean).join(" · ");

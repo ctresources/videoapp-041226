@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { runBriefTurn, type BriefTurn } from "@/lib/api/brief-session";
+import { runBriefTurn, type BriefEmail, type BriefTurn } from "@/lib/api/brief-session";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
@@ -69,7 +69,19 @@ export async function POST(req: NextRequest) {
     ? { city: m.location_city.trim().slice(0, 80), state: m.location_state.trim().slice(0, 40) }
     : null;
 
-  const result = await runBriefTurn(turns, mode, savedMarket);
+  // What they have forwarded, so "from my Ambler market report email" can be
+  // matched to a real one. Read with their own client: row-level security is
+  // what keeps this to their emails. A failure here only means the brief
+  // cannot find an email, which it says; the rest of the brief still works.
+  const { data: imports } = await supabase
+    .from("email_imports")
+    .select("id, subject")
+    .order("received_at", { ascending: false })
+    .limit(10);
+  const emails: BriefEmail[] = ((imports ?? []) as { id: string; subject: string | null }[])
+    .map((e) => ({ id: e.id, subject: e.subject ?? "" }));
+
+  const result = await runBriefTurn(turns, mode, savedMarket, emails);
   if (!result) {
     // The caller drops back to the typed form rather than looping on a mic that
     // will not answer.
