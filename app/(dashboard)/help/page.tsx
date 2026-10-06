@@ -114,6 +114,18 @@ export default function HelpPage() {
                 It is private to your account, so treat it like a password. Anyone who has it can send
                 articles into your list, and you can replace it any time from the same screen.
               </span>
+              {/* Where it turns up. The address was explained and the arrival
+                  was not: the only sign an email had landed was a list four
+                  taps into a route. */}
+              <span className="block mt-1.5">
+                Once something has arrived, the top of{" "}
+                <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
+                says so, with a line under the mic such as <strong>2 new emails ready</strong>. Open it and
+                each email has <strong>Make a blog</strong> and <strong>Make a video</strong>, which set
+                that up with the email already attached. Nothing is written until you press the button at
+                the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
+                report is used to its last page. Forwarded emails are kept for 30 days.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Getting Set Up" />
@@ -163,9 +175,13 @@ export default function HelpPage() {
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Something you already have</td>
                   <td className="py-2 pr-3">
                     An article forwarded by email, a PDF, a link, or text you paste in — published as
-                    it is, or used as the basis of a new one
+                    it is, used as the basis of a new article, or turned into a video script
                   </td>
-                  <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
+                  <td className="py-2 whitespace-nowrap">
+                    <span className="font-semibold text-green-600">FREE as a blog*</span>
+                    <br />
+                    1 short video as a video
+                  </td>
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My listings/My photos</td>
@@ -208,30 +224,73 @@ export default function HelpPage() {
               {/* The way in for people who did not start from nothing, which is
                   most people with an existing blog. */}
               <span className="block mt-1.5">
-                <strong>Already written it?</strong> Under those questions,{" "}
+                <strong>Already written it?</strong>{" "}
                 <strong>Start from something you already have</strong> takes it four ways:{" "}
                 <strong>Paste text</strong>, <strong>Upload PDF</strong>, <strong>Add URL</strong>, or{" "}
                 <strong>From email</strong> — the last one listing everything you have forwarded to
-                your import address (step 6). On the <strong>Blog post</strong> route you then choose
+                your import address (step 6). It is on the <strong>Blog post</strong> route, under its
+                own tile, and on the <strong>AI writes it</strong> video route, under the topic box.
+                There the script is written from what you attached, and typing a topic becomes
+                optional. The camera and paste routes take a PDF, a link or a forwarded email the
+                same way. If an email&apos;s subject names a town, the city and state fill in for you.
+              </span>
+              <span className="block mt-1.5">
+                On the <strong>Blog post</strong> route you then choose
                 what happens to it: <strong>Use it as it is</strong>, which publishes your words
                 unchanged and takes seconds, or <strong>Write a new article from it</strong>, which
                 covers the same ground in your voice for your market. Use the first for your own
                 writing and the second for someone else&apos;s — a newsletter another person wrote
-                is theirs, not yours to publish.
+                is theirs, not yours to publish. A market report is the second kind: it is a data
+                provider&apos;s pages of listings, so have a new article written from it rather than
+                publishing it as it stands.
+              </span>
+              {/* The brief. Three pickers that shape everything written
+                  afterwards and were not mentioned anywhere on this page. */}
+              <span className="block mt-1.5">
+                <strong>Who is it for?</strong> <strong>Audience</strong>, <strong>Tone</strong> and{" "}
+                <strong>Why</strong> are three optional pickers on the AI, camera and paste routes. What
+                you choose shapes the script, the article and the Spark Tools afterwards. If your
+                audience is not on the list — first responders, nurses relocating — choose{" "}
+                <strong>Add your own&hellip;</strong> at the bottom of Audience and type it. It is saved
+                to your account, so it is there on your phone and your computer, and choosing it again
+                shows <strong>Remove from my list</strong> for when you no longer want it.
               </span>
             </Step>
             <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
-              Speaking it is a real conversation: click the mic (or, on desktop, hold{" "}
-              <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
-              anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
-              tone, how long. It fills in whatever it catches and asks a quick follow-up for anything missing,
-              then say <strong>&ldquo;SparkReels&rdquo;</strong> — or just say you&apos;re ready — and it writes
-              the script. Prefer typing, or want a suggestion instead of a blank field? Every topic
-              is a chip under the box — twenty-five of them in three groups (Real estate tips,
-              Formats, Local events &amp; community), your city filled in automatically. Tap one and
-              it lands in the same box the mic writes into, so you can add to it before you send.
-              Either way, AI researches live market data for your city and writes a
-              broadcast-quality script with real stats.
+              {/* The mic at the top first: signing in lands on it, and one
+                  sentence there answers all three questions above. Example
+                  towns are generic on purpose. */}
+              The quickest way in is the big mic at the top of Spark Studio,{" "}
+              <strong>Hit the Mic to Speak</strong>. Say the whole thing in one sentence —{" "}
+              <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
+              <em>&ldquo;Make a short YouTube video with my avatar and voice about the Riverside
+              market&rdquo;</em> — and it takes the route, the town, the topic and who it&apos;s for from
+              what you said. A blog is written straight away. A video stops at its script, so nothing
+              comes out of your plan until you choose to render it. If something is missing it asks, and
+              you tap the mic again to answer.
+              <span className="block mt-1.5">
+                You can start from an email you forwarded the same way:{" "}
+                <em>&ldquo;Create a blog from my Springfield market report email.&rdquo;</em> It only
+                looks through your emails when you say &ldquo;email&rdquo; or &ldquo;forwarded&rdquo;,
+                so <em>&ldquo;a market update for Springfield&rdquo;</em> still means a fresh one.
+              </span>
+              <span className="block mt-1.5">
+                The mic beside the topic box further down is the slower version, a real conversation:
+                click it (or, on desktop, hold{" "}
+                <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
+                anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
+                tone, how long. It fills in whatever it catches and asks a quick follow-up for anything
+                missing, then say <strong>&ldquo;Spark it&rdquo;</strong> — or just say you&apos;re
+                ready — and it writes the script.
+              </span>
+              <span className="block mt-1.5">
+                Prefer typing, or want a suggestion instead of a blank field? Every topic
+                is a chip under the box — twenty-five of them in three groups (Real estate tips,
+                Formats, Local events &amp; community), your city filled in automatically. Tap one and
+                it lands in the same box the mic writes into, so you can add to it before you send.
+                Either way, AI researches live market data for your city and writes a
+                broadcast-quality script with real stats.
+              </span>
             </Step>
             <Step n={9} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
@@ -291,6 +350,24 @@ export default function HelpPage() {
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
               you can write one without making a video at all — pick <strong>Blog post</strong> on the first
               question.
+              <span className="block mt-1.5">
+                Coming from a camera recording or a pasted script, the article starts writing itself as
+                soon as the Share Kit opens — there is nothing to press. A take recorded with no script
+                still has a <strong>Write the article</strong> button, because the words have to be
+                taken off the video first. Before your free video it also waits for the button, so it
+                never uses one of your free tries without being asked.
+              </span>
+              {/* Says who sends it, because the button is called Email and the
+                  natural guess is that we do. */}
+              <span className="block mt-1.5">
+                <strong>Email</strong>, in the article&apos;s row of buttons, turns the article into an
+                email for your list: a short version with a button through to the full post. Paste in
+                the address of the post on your site and the button points there.{" "}
+                <strong>Send me a test</strong> sends it to the address you sign in with, so you can
+                see it in a real inbox (look in spam the first time), and <strong>Copy as HTML</strong>{" "}
+                drops it into the email tool you already use. SparkReels does not send it to your
+                clients for you.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Creating A Video" />
@@ -359,6 +436,14 @@ export default function HelpPage() {
                 and costs nothing, and using <strong>My photo</strong> or one of your listing photos is
                 free. <strong>New background</strong> makes another photo, and counts as one.{" "}
                 <strong>Use as blog header</strong> sends it straight to the article it belongs to.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
+                your LinkedIn profile or your Facebook page, each at the size that site wants. Put your
+                photo on the left or the right, pick a color palette or choose <strong>Custom</strong>{" "}
+                and set your own colors, and add QR codes to your site. Download the picture, or use{" "}
+                <strong>Download for Canva (PDF)</strong> for a copy meant to be opened in Canva, where
+                you can change the text and colors yourself.
               </span>
             </Step>
             <Step n={17} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
@@ -434,7 +519,7 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-3">The Weekly Rhythm</h2>
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
-            <li><strong>Weekly:</strong> tap a topic chip → generate script → Spark Video — about 5 minutes of your time</li>
+            <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
