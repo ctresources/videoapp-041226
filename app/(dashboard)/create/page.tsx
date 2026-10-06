@@ -874,6 +874,9 @@ function CreatePageInner() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      // All of it. The teleprompter script is written from this, and the
+      // default extract is the first 5,000 characters.
+      formData.append("maxChars", String(SOURCE_CHAR_LIMIT));
       const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
@@ -1486,7 +1489,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/extract-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cameraPdfUrlInput.trim() }),
+        body: JSON.stringify({ url: cameraPdfUrlInput.trim(), maxChars: SOURCE_CHAR_LIMIT }),
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");

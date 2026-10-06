@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { prepareImportedArticle } from "@/lib/api/article-import";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialLocked } from "@/lib/utils/free-trial";
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -22,7 +23,17 @@ import { NextRequest, NextResponse } from "next/server";
 // One short metadata call, no web research. The generating route needs 300.
 export const maxDuration = 60;
 
-const MAX_CHARS = 20000;
+/**
+ * The same ceiling the writer reads to. It was 20,000 here, about 3,300 words,
+ * which is the one place a cut-off does real damage: this route's promise is
+ * that the article is published as it is, and a long piece was published with
+ * its ending missing and nothing to say so.
+ *
+ * Safe to raise because the article never passes through the model. Only the
+ * first 400 characters of each paragraph are sent, for the headline and
+ * headings, so a longer article does not mean a longer or slower call.
+ */
+const MAX_CHARS = SOURCE_CHAR_LIMIT;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();

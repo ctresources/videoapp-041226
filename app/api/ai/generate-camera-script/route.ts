@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
 import { scriptBriefGuidance } from "@/lib/api/perplexity-prompts";
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import {
   cameraTargetWords, minutesFor,
   type CameraLength, type RenderedScriptLength,
@@ -24,6 +25,10 @@ export async function POST(req: NextRequest) {
   const briefGuidance = scriptBriefGuidance({ audience: str(audience), tone: str(tone), purpose: str(purpose) });
   const hasTopic = !!(topic?.trim());
   const hasDocs = !!(pdfText?.trim());
+  // All of what was attached, up to the same ceiling the article writer has.
+  // This read 3,000 characters, about 500 words: a forwarded market report
+  // runs ten times that, so the script was written from its first page.
+  const source = hasDocs ? String(pdfText).trim().slice(0, SOURCE_CHAR_LIMIT) : "";
 
   // The market the agent set for this video, asked before the script is
   // written. A fallback only, the same way generate-location-script treats it:
@@ -89,7 +94,7 @@ ${FAIR_HOUSING_SHORT}`;
 
 Source material:
 """
-${(pdfText as string).slice(0, 3000)}
+${source}
 """
 ${photoLine}${topicLine}
 
@@ -114,7 +119,11 @@ Rules:
     const controller = new AbortController();
     // Scales with length — a 10-minute script takes noticeably longer to write
     // than the old ~400-word default, which used to fit comfortably in 25s.
-    const timeout = setTimeout(() => controller.abort(), words >= 700 ? 50000 : 25000);
+    // A long attachment gets the longer wait as well: there is more to read
+    // before the first word is written, and 25 seconds was sized for a
+    // 3,000-character extract.
+    const longSource = source.length > 12000;
+    const timeout = setTimeout(() => controller.abort(), words >= 700 || longSource ? 50000 : 25000);
 
     const res = await fetch(`${PERPLEXITY_API}/chat/completions`, {
       method: "POST",
