@@ -5,6 +5,7 @@
 // All prompts include Fair Housing compliance guardrail.
 // ============================================================
 
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 
@@ -393,16 +394,6 @@ Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${
 }
 
 // ─── VIDEO TYPE 4: Custom Topic ──────────────────────────────────────────────
-
-/**
- * How much of the agent's own material to hand the writer.
- *
- * 12,000 characters is roughly 2,000 words — longer than anything this is
- * asked to rewrite — and leaves the instruction budget intact. The article
- * rules are what keep the output usable, so they must not be crowded out by a
- * newsletter that happened to be long.
- */
-const SOURCE_CHAR_LIMIT = 12000;
 
 function buildCustomRequest(params: LocationParams): Record<string, unknown> {
   const { city, state, zip, customTopic } = params;

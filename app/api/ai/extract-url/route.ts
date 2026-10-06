@@ -1,3 +1,4 @@
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { createClient } from "@/lib/supabase/server";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
@@ -63,8 +64,11 @@ export async function POST(req: NextRequest) {
    * characters is roughly 800 words, and this app's own blog generator writes
    * about 1,300, so the default truncates its own output before the summariser
    * ever sees the end of it. That path asks for 20,000; nothing else changes.
+   *
+   * The ceiling is the writer's own limit, for the route that hands a whole
+   * page or a linked PDF to the writer as its source.
    */
-  const textLimit = Math.min(Math.max(Number(maxChars) || 5000, 500), 20000);
+  const textLimit = Math.min(Math.max(Number(maxChars) || 5000, 500), SOURCE_CHAR_LIMIT);
 
   if (!url || typeof url !== "string") {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });

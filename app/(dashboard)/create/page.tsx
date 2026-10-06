@@ -40,6 +40,7 @@ import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import { BASE_AUDIENCES, MAX_AUDIENCE_LENGTH } from "@/lib/utils/audiences";
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import {
   RENDERED_SCRIPT_LENGTHS,
@@ -1175,7 +1176,8 @@ function CreatePageInner() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("maxChars", "20000");
+      // All of it the writer will read: this PDF is what gets written from.
+      formData.append("maxChars", String(SOURCE_CHAR_LIMIT));
       const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
@@ -1197,7 +1199,7 @@ function CreatePageInner() {
       const res = await fetch("/api/ai/extract-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: blogSrcUrlInput.trim(), maxChars: 20000 }),
+        body: JSON.stringify({ url: blogSrcUrlInput.trim(), maxChars: SOURCE_CHAR_LIMIT }),
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");

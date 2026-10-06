@@ -1,3 +1,4 @@
+import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
@@ -22,8 +23,13 @@ export async function POST(req: NextRequest) {
    * the PDF *is* the article about to be summarised. At the old flat 5,000 a
    * forwarded market report was cut off around 800 words, so the summary ended
    * wherever the truncation happened to land.
+   *
+   * The ceiling is the writer's own limit. It was 20,000 here, so a report
+   * uploaded as a PDF was cut at about 3,300 words before the writer saw it,
+   * whatever the writer itself was willing to read. Callers still ask for
+   * what they need; this is only the most any of them can have.
    */
-  const textLimit = Math.min(Math.max(Number(formData.get("maxChars")) || 5000, 500), 20000);
+  const textLimit = Math.min(Math.max(Number(formData.get("maxChars")) || 5000, 500), SOURCE_CHAR_LIMIT);
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
   if (file.size > 20 * 1024 * 1024) {
     return NextResponse.json({ error: "PDF must be under 20MB" }, { status: 413 });
