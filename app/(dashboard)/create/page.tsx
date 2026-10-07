@@ -2265,10 +2265,12 @@ function CreatePageInner() {
             eyebrow="1 · Topic"
             // Not "your video" or "your article": this is asked before the
             // cards below have been chosen from.
-            question="What is it about?"
-            // "Spark" rather than "Start" — the product's own verb for this,
-            // and the same one on the button it eventually leads to.
-            aside={topicApplies ? "Spark with a template or idea below." : undefined}
+            // The owner's wording, both lines. "Content" for the same reason:
+            // it is a video or an article, and nobody has said which yet.
+            question="What would you like to create content about?"
+            // The three ways to fill the box, typing first, since the hero
+            // mic directly above has already made the case for speaking.
+            aside={topicApplies ? "Type a topic, optionally speak it, or choose a suggested idea." : undefined}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
