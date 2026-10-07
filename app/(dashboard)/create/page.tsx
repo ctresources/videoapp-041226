@@ -2210,7 +2210,7 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you sparking?" />}
       {step === "input" && !cameraHandoff && (
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2274,11 +2274,27 @@ function CreatePageInner() {
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },
+            {
+              // A fourth thing to create, at the owner's direction. It sat in
+              // the row below as an answer to "How should your script begin?",
+              // which it is not: a photo reel has no script at all, and a
+              // listing video's is written from the listing, not chosen here.
+              key: "listing" as const,
+              label: "My listings/My photos",
+              Icon: Building2,
+              desc: "A listing video, or a photo reel",
+              free: true,
+              // Not "Free". A Classic reel is; a Cinematic reel and a listing
+              // video each use one video. The card under it says which.
+              cost: "Free or 1 video",
+            },
           ]).map(({ key, label, Icon, desc, free, cost }) => {
             const active = key === "blog"
               ? blogOnly
               : blogOnly ? false
-                : key === "film" ? inputMode === "camera" : inputMode !== "camera";
+                : key === "film" ? inputMode === "camera"
+                  : key === "listing" ? inputMode === "listing"
+                    : inputMode !== "camera" && inputMode !== "listing";
             return (
               <button
                 key={key}
@@ -2335,8 +2351,17 @@ function CreatePageInner() {
                     return;
                   }
                   setBlogOnly(false);
+                  if (key === "listing") {
+                    // lastSparkTab is left alone: it is where the avatar card
+                    // returns to, and that is no longer here.
+                    setInputMode("listing");
+                    return;
+                  }
                   setInputMode(
-                    key === "film" ? "camera" : lastSparkTab === "camera" ? "script" : lastSparkTab
+                    key === "film"
+                      ? "camera"
+                      // A listing named to the mic sets lastSparkTab too.
+                      : lastSparkTab === "camera" || lastSparkTab === "listing" ? "script" : lastSparkTab
                   );
                 }}
                 aria-pressed={active}
@@ -2437,7 +2462,10 @@ function CreatePageInner() {
 
       {/* The same question on the render-it-for-me side. Three of the four
           original tabs, minus the camera one that row 1 now owns. */}
-      {step === "input" && inputMode !== "camera" && (
+      {/* Not for a listing on the video route: that card above is the whole
+          choice, and the panel it opens asks its own (listing video or photo
+          reel). On the blog route a listing is still a source, so it stays. */}
+      {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
         <>
         <SectionHead
           className="mt-7"
@@ -2446,7 +2474,7 @@ function CreatePageInner() {
           // listings — and "come from" already carries the what.
           question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
         />
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           {([
             // Its blog subtitle used to read "From a topic, or from an
             // article you already have" — back when the second half had no
@@ -2464,16 +2492,13 @@ function CreatePageInner() {
               // shorten, and a PDF, link or email for AI to write from.
               { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use something I already have", desc: "Speak it as written, or have AI write from it" },
             ]),
-            // One tile, two things, so the description has to carry both. The
-            // mock split it into Add Listing URL and Upload photos, but photos
-            // on their own cannot write a script — that is the photo reel,
-            // which is a different renderer and free.
-            // "Free" is in the description rather than on a pill. The pill sat
-            // beside a two-line kicker and a two-line label in the narrowest
-            // tile on the row, and three stacked things in one corner is what
-            // made this tile read as crowded. The blog-mode kicker keeps its
-            // own wording: there is no photo route on that side.
-            { mode: "listing" as InputMode, kicker: blogOnly ? "Zillow or MLS" : "Zillow, CRM, or photos", label: blogOnly ? "My listings" : "My listings/My photos", desc: blogOnly ? "Turn a listing into a property article" : "Turn a listing into a script, or photos into a reel. Free." },
+            // Blog route only. On the video route this was "My listings/My
+            // photos", and it is now the fourth card in the row above: a reel
+            // or a listing video is a thing you make, not where a script
+            // begins. A property article does begin with the listing.
+            ...(blogOnly ? [
+              { mode: "listing" as InputMode, kicker: "Zillow or MLS", label: "My listings", desc: "Turn a listing into a property article" },
+            ] : []),
             // The third answer to "where should the article come from", which
             // for months was true of the page and absent from the row. It runs
             // the same route as the first tile — hence the shared mode — and
@@ -2499,10 +2524,7 @@ function CreatePageInner() {
               kicker={kicker}
               label={label}
               desc={desc}
-              // Blog mode only. The listing tile used to carry its own
-              // "Photo reel free" pill here; that now reads as plain "Free."
-              // at the end of its description, which is the same fact without
-              // a third element competing for the same corner.
+              // Blog mode only.
               cost={blogOnly ? <CostPill free>Free</CostPill> : undefined}
               active={active}
               onClick={() => {
@@ -3741,7 +3763,7 @@ function CreatePageInner() {
                   {blogOnly
                     ? "Import from Zillow · Upload photos · Enter manually"
                     : listingMode === "reel"
-                      ? "Your photos, Ken Burns, and music or your voice · free, nothing from your plan"
+                      ? "Your photos, with music or your voice · Classic is free, Cinematic uses 1 short video"
                       : "Upload Photos · Import From Zillow · Enter Manually"}
                 </p>
               </div>
@@ -3757,7 +3779,8 @@ function CreatePageInner() {
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
-                { key: "reel" as const, label: "Photo reel", sub: "photos into a video · free" },
+                // "free" alone was true until Cinematic, which uses a video.
+                { key: "reel" as const, label: "Photo reel", sub: "photos into a video · Classic is free" },
               ]).map(({ key, label, sub }) => (
                 <button
                   key={key}
