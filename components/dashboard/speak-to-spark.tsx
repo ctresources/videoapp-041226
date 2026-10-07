@@ -22,7 +22,7 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
  *   page with the sentence (`?say=`).
  * - "hero", at the top of the Create page, which is where signing in lands.
  *   It hands the sentence straight to the page (`onCommand`) and shows the
- *   brief's answer under the mic, because the panel that answer lives in is
+ *   brief's answer beside the mic, because the panel that answer lives in is
  *   two sections further down the screen.
  *
  * Nothing said here can spend a video: a blog is written outright, and a
@@ -66,40 +66,105 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
 
   const live = [transcript, interim].filter(Boolean).join(" ");
 
+  /**
+   * The hero, at the top of the Create page: a card with the mic on the left
+   * and the words on the right.
+   *
+   * It was a centred mic with a slogan under it, "Hit the Mic to Speak", and
+   * two example sentences naming real towns. The card says what the mic is
+   * FOR ("Tell us what you want to create") and what the alternative is, in
+   * the order someone reads them, and offers one example that would be true
+   * of any market.
+   *
+   * One line under the title always says what is happening, because a mic
+   * that has gone quiet reads as a mic that has failed: the instruction while
+   * idle, the words as they land while listening, and afterwards what the
+   * brief said back.
+   */
+  if (hero) {
+    const idle = !listening && !working && !reply;
+    const line = listening
+      ? (live || "Listening… tap the mic when you're done.")
+      : working
+        ? (reply || "Got it. Working on it…")
+        : reply || "Tap the mic and describe your topic, or choose an option below.";
+
+    return (
+      <section className="mt-6 flex items-center gap-4 rounded-2xl border border-spark-rule bg-white px-4 py-4 text-left shadow-[0_2px_14px_rgba(44,44,42,0.05)] sm:gap-6 sm:px-6 sm:py-5">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={working}
+          aria-pressed={listening}
+          aria-label={listening ? "Stop listening" : "Tap the mic and say what you want to create"}
+          className={`relative flex h-20 w-20 flex-none items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-95 disabled:opacity-60 sm:h-24 sm:w-24 ${
+            listening ? "bg-red-500" : "spark-cta-gradient"
+          }`}
+        >
+          {listening && <span className="absolute inset-0 animate-ping rounded-full bg-red-400 opacity-40" />}
+          {working
+            ? <Loader2 size={32} className="animate-spin" />
+            : listening ? <Square size={28} className="relative" fill="currentColor" /> : <Mic size={36} className="relative" />}
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[20px] font-bold leading-tight text-spark-ink sm:text-[23px]">
+            Tell us what you want to create
+          </h2>
+          <p
+            className={`mt-1 leading-snug ${
+              idle ? "text-[15px] text-spark-ink-muted sm:text-[16px]" : "text-[15px] font-medium text-spark-ink sm:text-[16px]"
+            }`}
+            aria-live="polite"
+          >
+            {line}
+          </p>
+
+          {/* After an answer: how to reply to it, since the mic is the way. */}
+          {!listening && !working && reply && (
+            <p className="mt-1 text-[14px] leading-snug text-spark-ink-muted">
+              Tap the mic to answer, or carry on below.
+            </p>
+          )}
+
+          {/* One example, and one any agent could say. The two it replaces
+              named towns from one county. */}
+          {idle && (
+            <p className="mt-2.5 inline-block rounded-xl bg-[#f4f2e8] px-3 py-1.5 text-[14px] leading-snug text-spark-ink-soft sm:text-[15px]">
+              Try: &ldquo;Create a blog about preparing a home for sale.&rdquo;
+            </p>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   // One line under the mic that always says what is happening, because a mic
   // that has gone quiet reads as a mic that has failed.
   const status = listening
     ? (live || "Listening… tap the button when you're done")
     : working
       ? (reply || "Got it. Working on it…")
-      : reply || (hero ? "Hit the Mic to Speak" : "Tap and speak");
+      : reply || "Tap and speak";
 
   return (
-    <section
-      className={hero
-        ? "mt-6 text-center"
-        : "mb-6 rounded-2xl border border-spark-rule bg-white px-5 py-6 text-center sm:px-8 sm:py-7"}
-    >
-      {!hero && (
-        <>
-          <h2 className="text-[20px] font-bold leading-tight text-spark-ink sm:text-[22px]">
-            Say what you want to make
-          </h2>
-          <p className="mx-auto mt-1 max-w-md text-[14px] leading-snug text-spark-ink-muted">
-            One sentence is enough. A blog is written straight away; a video stops at its script until you say go.
-          </p>
-        </>
-      )}
+    <section className="mb-6 rounded-2xl border border-spark-rule bg-white px-5 py-6 text-center sm:px-8 sm:py-7">
+      <h2 className="text-[20px] font-bold leading-tight text-spark-ink sm:text-[22px]">
+        Say what you want to make
+      </h2>
+      <p className="mx-auto mt-1 max-w-md text-[14px] leading-snug text-spark-ink-muted">
+        One sentence is enough. A blog is written straight away; a video stops at its script until you say go.
+      </p>
 
       <button
         type="button"
         onClick={toggle}
         disabled={working}
         aria-pressed={listening}
-        aria-label={listening ? "Stop listening" : "Hit the mic to speak"}
-        className={`relative mx-auto flex h-24 w-24 items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-95 disabled:opacity-60 ${
-          hero ? "" : "mt-5"
-        } ${listening ? "bg-red-500" : "spark-cta-gradient"}`}
+        aria-label={listening ? "Stop listening" : "Tap the mic and speak"}
+        className={`relative mx-auto mt-5 flex h-24 w-24 items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-95 disabled:opacity-60 ${
+          listening ? "bg-red-500" : "spark-cta-gradient"
+        }`}
       >
         {listening && <span className="absolute inset-0 animate-ping rounded-full bg-red-400 opacity-40" />}
         {working
@@ -116,15 +181,6 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
         {status}
       </p>
 
-      {/* Said as an option, not the only way in: the tiles below still work. */}
-      {hero && !listening && !working && (
-        <p className="mx-auto mt-0.5 max-w-md text-[14px] leading-snug text-spark-ink-muted">
-          {reply
-            ? "Tap the mic to answer, or carry on below."
-            : "Say it all in one sentence, or choose below."}
-        </p>
-      )}
-
       {!listening && !working && !reply && (
         <div className="mx-auto mt-3 max-w-md space-y-1 text-[13px] italic leading-snug text-spark-ink-faint">
           <p>&ldquo;Create a blog for downsizers about one-floor living in Ambler.&rdquo;</p>
@@ -132,8 +188,7 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
         </div>
       )}
 
-      {/* The Create page has its own box for typing, in the topic section. */}
-      {!hero && (typing ? (
+      {typing ? (
         <form
           onSubmit={(e) => { e.preventDefault(); go(typed); }}
           className="mx-auto mt-4 flex max-w-md items-center gap-2"
@@ -164,7 +219,7 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
             Or type it instead
           </button>
         )
-      ))}
+      )}
     </section>
   );
 }

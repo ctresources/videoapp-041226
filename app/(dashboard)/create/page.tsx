@@ -11,6 +11,7 @@ import {
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe, Mail,
+  SquareUser, Camera,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
@@ -2213,14 +2214,20 @@ function CreatePageInner() {
               // trial lock hits one and not the other. A single Video tile
               // would push that choice into a second step and move the price
               // away from the moment of choosing.
-              label: "Video — My Avatar",
+              // Named as things you do, not as kinds of video. "Video — My
+              // Avatar" and "Video — My Camera" shared a prefix so they would
+              // read as two of one thing; as verbs each says what happens
+              // when you choose it, which is what someone arriving wants.
+              label: "Create an avatar video",
+              Icon: SquareUser,
               desc: "Avatar + cloned voice",
               free: false,
               cost: "Uses 1 video",
             },
             {
               key: "film" as const,
-              label: "Video — My Camera",
+              label: "Record yourself",
+              Icon: Camera,
               // Said here because the alternative is finding out at the end.
               // Nothing checks the window before the camera opens, so a locked
               // user could record fifteen minutes, watch the upload succeed,
@@ -2237,7 +2244,8 @@ function CreatePageInner() {
             },
             {
               key: "blog" as const,
-              label: "Blog post",
+              label: "Create a blog",
+              Icon: FileText,
               // Said on the tile, before a minute is spent writing a script
               // that arrives with no article attached and nothing explaining
               // the gap. The 30-day window is the same one camera recording
@@ -2253,7 +2261,7 @@ function CreatePageInner() {
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },
-          ]).map(({ key, label, desc, free, cost }) => {
+          ]).map(({ key, label, Icon, desc, free, cost }) => {
             const active = key === "blog"
               ? blogOnly
               : blogOnly ? false
@@ -2319,27 +2327,32 @@ function CreatePageInner() {
                   );
                 }}
                 aria-pressed={active}
-                className={`flex min-h-[86px] items-center rounded-[14px] px-4 py-3 text-left transition-colors ${
+                className={`flex min-h-[96px] items-center rounded-[14px] px-4 py-3.5 text-left transition-colors ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
                 }`}
               >
-                {/* No icon. Three decorative glyphs competed with the labels
-                    for the same glance without telling you anything the words
-                    did not — and with the longer "Video — …" labels they were
-                    pushing the text into three lines on a narrow column. */}
+                {/* An icon again, at the owner's request, but in the line with
+                    the name rather than above it. Above, three glyphs were a
+                    row of decoration competing with the labels and pushing
+                    them down the card. Beside the name, each one is part of
+                    the label it belongs to and costs no height. */}
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[17px] font-semibold leading-[1.15] text-spark-ink">
-                    {label}
+                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink">
+                    <Icon size={21} strokeWidth={1.9} className="mt-px flex-none text-[#A3660F]" aria-hidden />
+                    <span className="min-w-0">{label}</span>
                   </span>
-                  <span className="mt-0.5 block text-[13px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                  <span className="mt-1 block text-[13.5px] leading-[1.3] text-spark-ink-muted">{desc}</span>
                   {/* Under the description rather than beside the label. Next
                       to it, the badge set the width the label had to wrap
                       around; here each tile reads top to bottom — what it is,
-                      what it does, what it costs. */}
-                  <span className="mt-1.5 block">
+                      what it does, what it costs. The arrow is the design's
+                      way of saying the card is a way in. It still only
+                      chooses: nothing is made by pressing a card. */}
+                  <span className="mt-2 flex items-center justify-between gap-2">
                     <CostPill free={free} emphasis>{cost}</CostPill>
+                    <ArrowRight size={17} strokeWidth={2} className="flex-none text-[#A3660F]" aria-hidden />
                   </span>
                 </span>
               </button>
