@@ -131,6 +131,14 @@ interface SparkPanelProps {
   /** Receives the resolved topic and the raw {city}/{state} original, so a
    *  location typed after picking still lands. */
   onSelect: (topic: string, raw: string) => void;
+  /**
+   * One whole sentence to try, shown under the heading and above the ideas.
+   * It sat beside the mic, a few lines under the page's other example, and the
+   * two competed; here it is one more thing to pick, among the others.
+   */
+  tryLine?: string;
+  /** Puts that sentence in the box. */
+  onUseTry?: (text: string) => void;
 }
 
 /**
@@ -146,7 +154,7 @@ interface SparkPanelProps {
  * grouped library for anyone who does want to browse. Nothing is hidden that
  * was reachable before; it is one press further away and the press is labelled.
  */
-export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
+export function SparkPanel({ city, state, onSelect, tryLine, onUseTry }: SparkPanelProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   /**
@@ -219,6 +227,17 @@ export function SparkPanel({ city, state, onSelect }: SparkPanelProps) {
           {open ? "Show fewer" : `More ideas (${CONTENT_TEMPLATES.length})`}
         </button>
       </div>
+
+      {!open && tryLine && (
+        <button
+          type="button"
+          onClick={() => onUseTry?.(tryLine)}
+          title="Use this — you can edit it after"
+          className="mt-2 block rounded-xl border border-spark-rule bg-white px-3 py-1.5 text-left text-[14px] leading-snug text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber sm:text-[15px]"
+        >
+          Try: &ldquo;{tryLine}&rdquo;
+        </button>
+      )}
 
       {!open && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Mic, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { Mic, ChevronDown, ChevronUp, CheckCircle, Loader2, Square } from "lucide-react";
 import { saidGoAhead } from "@/lib/utils/wake-word";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 
@@ -126,15 +126,17 @@ interface Props {
    */
   onReply?: (reply: string) => void;
   /**
-   * Drawn as a plain box: no mic row above it and no mic in it.
-   *
-   * For the topic box in section 1 of the Create page, which shares a card
-   * with the big mic. That mic is the one way to speak; a second one here, of
-   * any size, was the page offering the same thing twice. What the session
-   * says back is shown beside that mic (through `onReply`), so this only says
-   * what the box itself is doing.
+   * The brief does not apply on the route that is chosen: the box dims and
+   * takes no typing. `disabled` is the other thing, the page being busy
+   * writing, when nothing here should respond at all.
    */
-  field?: boolean;
+  off?: boolean;
+  /**
+   * Given while `off`, where switching to a route that starts from a topic
+   * loses nothing: called as the mic is tapped, so speaking is always a way
+   * in. Without it the mic dims with the box.
+   */
+  onWake?: () => void;
 }
 
 /**
@@ -154,7 +156,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, field = false }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -177,6 +179,17 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // Guards against a second submit while a turn is in flight, without waiting
   // for the `thinking` state to land.
   const busyRef = useRef(false);
+  /**
+   * Whether what is in the box was spoken.
+   *
+   * The mic used to send its sentence the moment you stopped talking, and go
+   * ahead if it was complete: one sentence, one draft. The words wait in the
+   * box now, so a misheard town can be fixed first, and Send is what sends
+   * them. It still goes ahead when they are complete, because saying "create a
+   * blog about…" was an instruction. Typed words keep the read-back they
+   * always had, since typing a topic is building a brief, not giving an order.
+   */
+  const spokenRef = useRef(false);
 
   // `send` reads the transcript through a ref so it never closes over a stale
   // turn list — the recogniser's callback outlives the render that made it.
@@ -343,10 +356,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
        */
       setDraft(text);
       setJustHeard(true);
+      spokenRef.current = true;
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
-    holdSpace: true,
+    // Not while the box is off: Space would fill a box nobody can see into.
+    holdSpace: !off,
   });
 
   // A command from the home-screen mic: sent the moment it arrives.
@@ -411,7 +426,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
   function submitDraft() {
     const text = draft.trim();
-    if (!text || thinking || disabled) return;
+    if (!text || thinking || disabled || off) return;
+    const spoken = spokenRef.current;
+    spokenRef.current = false;
     setDraft("");
     setJustHeard(false);
     // Typed or spoken, the wake word does the same thing.
@@ -423,7 +440,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     // Goes as another turn. The session re-reads the whole conversation each
     // time, so a corrected sentence overrides what it heard before — the same
     // mechanism that makes "actually, make it sellers" work.
-    send(text);
+    send(text, spoken ? { go: true } : undefined);
   }
 
   // What voice has captured so far, condensed to one line — the compact
@@ -445,10 +462,13 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const status = thinking
     ? "Thinking…"
     : listening
-      ? "Listening — click to stop"
+      ? "Listening… tap the mic when you're done."
       : justHeard && draft.trim()
-        ? "Got that — check the words below, then Send"
+        ? "Got that. Check the words below, then press Send."
         : "";
+
+  // The mic dims with the box unless tapping it can switch the route on.
+  const micOff = off && !onWake;
 
   return (
     <div className="flex flex-col gap-2">
@@ -497,73 +517,71 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           brief on one screen — above the box, in it, and summarised below —
           was the confusion, not the absence of a fourth. */}
 
-      {/* Mic above the box, not beside it — you either press it or start
-          talking, so it is the first move rather than a control attached to
-          text you have already typed.
+      {/* The big mic and the box, in one card.
+          They were two cards: this mic above, sending its sentence the moment
+          you stopped talking, and a box below with a small mic of its own.
+          The owner asked for one, and for what is said to show in the box,
+          which is where typed words already went and where either kind can be
+          corrected. So this is that mic, driving this session's recogniser:
+          the words land below as they are heard, and wait for Send.
 
-          The session's question rides on this row instead of having a line and
-          an avatar of its own. It was saying "What are we sparking today?"
-          directly above a mic labelled "Say it or type it", which is the same
-          instruction told twice, once by a face. */}
-      {/* As a field there is no row. The reply is read beside the mic the
-          page puts above this box, so the line here is only for what the box
-          is doing: thinking, or holding words that still need sending. */}
-      {field ? (
-        status && (
-          <p className="text-[15px] leading-[1.4] text-spark-ink-muted" aria-live="polite">
-            {status}
-          </p>
-        )
-      ) : (
-      <div className="flex items-center gap-2.5">
+          The sentence beside it is the owner's, moved here from under the
+          section heading. The line under that is only for what is happening:
+          listening, thinking, words waiting to be sent, or what the brief said
+          back. */}
+      <div className={`flex items-center gap-4 px-1 pb-1.5 pt-2 sm:gap-6 sm:px-2 sm:pt-2.5 ${micOff ? "opacity-45" : ""}`}>
         <button
           type="button"
-          onClick={toggle}
-          disabled={disabled || thinking}
+          onClick={() => {
+            // Tapped while the box is off: switch to the route it feeds first.
+            if (off && !listening) onWake?.();
+            toggle();
+          }}
+          disabled={disabled || thinking || micOff}
           aria-pressed={listening}
-          aria-label={listening ? "Stop recording" : "Speak"}
-          className="relative flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={listening ? "Stop listening" : "Tap the mic and say your topic"}
+          className={`relative flex h-20 w-20 flex-none items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:h-24 sm:w-24 ${
+            listening ? "bg-red-500" : "spark-cta-gradient"
+          }`}
         >
-          {listening && (
-            <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />
-          )}
-          <Mic size={18} className="relative text-white" />
+          {listening && <span className="absolute inset-0 animate-ping rounded-full bg-red-400 opacity-40" />}
+          {thinking || sparking
+            ? <Loader2 size={32} className="animate-spin" />
+            : listening ? <Square size={28} className="relative" fill="currentColor" /> : <Mic size={36} className="relative" />}
         </button>
-        {/* At rest this row carries what the mic is FOR — the two lines that
-            used to sit in a pill at the top of the page. Up there they were a
-            third block to read before reaching the first control, and the mic
-            they described was a different mic from the one beside the box.
-            Once a session is running, the session's own words replace them. */}
         <div className="min-w-0 flex-1">
-          {status || lastAssistant ? (
-            <p className={`text-[15px] leading-[1.4] ${status ? "text-spark-ink-muted" : "font-medium text-spark-ink"}`}>
+          <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
+            Type a topic, optionally speak it, or choose a suggested idea.
+          </h2>
+          {(status || lastAssistant) && (
+            <p
+              className={`mt-1 text-[15px] leading-snug sm:text-[16px] ${status ? "text-spark-ink-muted" : "font-medium text-spark-ink"}`}
+              aria-live="polite"
+            >
               {status || lastAssistant}
             </p>
-          ) : (
-            <>
-              <p className="text-[15px] font-semibold leading-tight text-spark-ink">
-                Speak what you want to Spark
-              </p>
-              <p className="mt-0.5 text-[13px] leading-tight text-spark-ink-muted">
-                Topic, town, who it&rsquo;s for — all at once, or one at a time
-              </p>
-            </>
           )}
         </div>
       </div>
-      )}
 
-      <div className="relative">
+      {/* Everything that is the box: dimmed together when the brief does not
+          apply, while the mic above may stay lit. */}
+      <div className={`flex flex-col gap-2 ${off ? "pointer-events-none select-none opacity-45" : ""}`}>
       <textarea
         ref={boxRef}
         value={boxValue}
-        onChange={(e) => { setDraft(e.target.value); setJustHeard(false); }}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setJustHeard(false);
+          // Emptied and started again by hand: no longer something said.
+          if (!e.target.value.trim()) spokenRef.current = false;
+        }}
         // Locked only while the mic is running, where the recogniser owns the
         // value and a keystroke would be overwritten on the next result.
         readOnly={listening}
-        disabled={disabled}
+        disabled={disabled || off}
         rows={2}
-        placeholder={field ? "Speak or Type…" : "Say it or type it…"}
+        placeholder="Speak or Type…"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -576,7 +594,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
         }`}
       />
-      </div>
 
       <div className="flex items-center gap-2.5">
         {/* What the session has actually understood — the town, the subject,
@@ -605,12 +622,13 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           <button
             type="button"
             onClick={submitDraft}
-            disabled={thinking || disabled}
+            disabled={thinking || disabled || off}
             className="flex-none rounded-full bg-spark-blue px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
           >
             Send
           </button>
         )}
+      </div>
       </div>
 
       {/* The wake word, said only once saying it would do something.

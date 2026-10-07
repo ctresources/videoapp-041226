@@ -32,7 +32,6 @@ import {
   substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceBriefSession } from "@/components/create/voice-brief-session";
-import { SpeakToSpark } from "@/components/dashboard/speak-to-spark";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -335,22 +334,16 @@ function CreatePageInner() {
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
   const [voiceCommand, setVoiceCommand] = useState({ text: "", n: 0 });
-  // For the mic at the top of the page: whether its sentence is still being
-  // worked out, and what the brief said back, which it shows under the button.
+  // Whether a sentence said on the home screen (?say=…) is still being worked
+  // out. The brief panel shows its own answer, beside its mic.
   const [commandPending, setCommandPending] = useState(false);
-  const [commandReply, setCommandReply] = useState("");
   // What has been forwarded in. Held here because its tile sits inside the
   // source row's grid and the list it opens sits under that row.
   const emails = useForwardedEmails();
-  // The panel that answers lives further down the page and is not always on
-  // screen (the blog route's source step hides it). If no answer comes, the
-  // top mic is released rather than left spinning with nothing to say why.
+  // If no answer comes, the page is released rather than left waiting on it.
   useEffect(() => {
     if (!commandPending) return;
-    const t = setTimeout(() => {
-      setCommandPending(false);
-      setCommandReply("That didn't go through. Tap the mic and try again.");
-    }, 25000);
+    const t = setTimeout(() => setCommandPending(false), 25000);
     return () => clearTimeout(t);
   }, [commandPending]);
   const [locTone, setLocTone] = useState("");
@@ -1892,6 +1885,18 @@ function CreatePageInner() {
   const topicOffProps = topicApplies
     ? {}
     : ({ inert: "", "aria-hidden": true } as unknown as { inert: boolean; "aria-hidden": boolean });
+  // Tapping the mic while the box is off is asking to start from a topic, so
+  // it switches to the route that does, wherever switching loses nothing.
+  // Recording yourself stays recording yourself, with AI writing the script.
+  // Not mid-take, and not over an attached piece: the first would drop the
+  // recorder and the second puts the attachment away.
+  const topicWake: (() => void) | undefined =
+    topicApplies ? undefined
+      : inputMode === "camera"
+        ? (cameraSourceLocked ? undefined : () => setCameraSource("speak"))
+        : blogOnly && blogSrcOpen
+          ? undefined
+          : () => { setInputMode("script"); setLastSparkTab("script"); };
   // What the camera script is written from. Section 1 keeps both in step, and
   // a picked idea only sets the first, so the first is the newer of the two.
   const cameraTopicText = locCustomTopic.trim() || cameraVoiceTopic.trim();
@@ -2195,33 +2200,14 @@ function CreatePageInner() {
           record. */}
       {step === "input" && !cameraHandoff && (
         <div className="pt-2 text-center">
-          {/* The headline and the line that was under it, on one line, at the
-              owner's ask: the question, then what the place is. The headline
-              comes down a size to make room, 52px and the tagline together
-              being wider than the column. Where they still do not fit, a
-              phone, the tagline wraps under it, centred, as before. */}
-          <div className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1.5">
-            <h1 className="font-display text-[36px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink sm:text-[40px]">
-              {/* One verb, not the three. "Speak, Spark, Share" is the tagline
-                  and still carries the logo, but as a headline it asked how you
-                  would do three things at once over a screen whose first
-                  question is what you are making. Spark is also a noun now — the
-                  folder this page creates — so the verb and the thing it makes
-                  are deliberately the same word. */}
-              What will you{" "}
-              <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
-                Spark
-              </span>
-              ?
-            </h1>
-            {/* Dark amber rather than muted grey. primary-700 is #8D580F — the
-                same deep amber the Spark Card uses for the line that needs
-                reading. The owner's line: it once listed the routes in, which
-                the four cards below now do themselves. */}
-            <p className="text-[19px] leading-[1.3] text-primary-700">
-              Your all-in-one AI visibility studio
-            </p>
-          </div>
+          {/* The owner's line, and the page's headline now. "What will you
+              Spark?" sat above it, then beside it, and is gone: the section
+              under this asks what you want to make in plainer words. Dark
+              amber, primary-700 (#8D580F), the same deep amber the Spark Card
+              uses for the line that needs reading. */}
+          <h1 className="text-balance text-[26px] font-medium leading-[1.2] tracking-[-0.01em] text-primary-700 sm:text-[32px]">
+            Your all-in-one AI visibility studio
+          </h1>
           <p className="mt-2.5 text-[17px] leading-[1.5] text-primary-700">
             Turn your Spark into more ways to connect, build trust, and stay visible.
           </p>
@@ -2256,10 +2242,9 @@ function CreatePageInner() {
             // cards below have been chosen from.
             // The owner's wording, both lines. "Content" for the same reason:
             // it is a video or an article, and nobody has said which yet.
+            // The line that ran beside it, the three ways to fill the box, is
+            // beside the mic in the card now.
             question="What would you like to create content about?"
-            // The three ways to fill the box, typing first, since the hero
-            // mic directly above has already made the case for speaking.
-            aside={topicApplies ? "Type a topic, optionally speak it, or choose a suggested idea." : undefined}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2274,8 +2259,8 @@ function CreatePageInner() {
                   : "Not needed here. Your content sets the topic."}
             </p>
           )}
-          {/* Dimmed part by part (topicOffClass), not as a block: the mic in
-              the card has to stay live when the box under it is switched off. */}
+          {/* Dimmed part by part, not as a block: the mic in the card can
+              stay live when the box under it is switched off. */}
           <div className="flex flex-col gap-3">
           {/* Named so the hero mic can bring what it heard into view. */}
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
@@ -2306,43 +2291,14 @@ function CreatePageInner() {
               { label: "Format", ok: formatTouched },
             ]}
           >
-            {/* The big mic, in the same card as the box, at the owner's ask.
-                It was a card of its own above this section, and with the box
-                directly under it the page had two topic boxes a few lines
-                apart. One card now: the mic and its words as they were, and
-                under them the box, which has lost the small mic it carried.
-
-                The mic still takes the whole thing in a sentence, "create a
-                blog for downsizers about…", and goes ahead if that is
-                complete; the box is for typing, or for adding to and fixing
-                what was understood. Both hand their words to the one session
-                below, so there is one place that knows what was meant. On the
-                routes that do not start from a topic the route is switched to
-                first, which is why the mic stays lit while the box under it
-                dims. */}
-            <SpeakToSpark
-              variant="hero"
-              embedded
-              busy={commandPending || locGenerating || cameraScriptGenerating}
-              reply={commandReply}
-              onCommand={(text) => {
-                // Recording yourself from a topic is fed by the same panel
-                // now, so a sentence said from there stays there.
-                if (!cameraFromTopic || cameraSourceLocked) {
-                  setInputMode("script");
-                  setLastSparkTab("script");
-                }
-                setCommandReply("");
-                setCommandPending(true);
-                setVoiceCommand({ text, n: Date.now() });
-              }}
-            />
-            <div className={topicOffClass} {...topicOffProps}>
+            {/* One card: the big mic, and under it the box its words land in.
+                The mic belongs to the session now rather than sitting above it
+                and handing a finished sentence down, so what is said shows in
+                the box and can be corrected before it is sent. */}
             <VoiceBriefSession
-              // A plain box. The mic above it is the one that says "speak";
-              // this is where a topic is typed, added to or corrected.
-              field
-              disabled={locGenerating || cameraScriptGenerating || !topicApplies}
+              disabled={locGenerating || cameraScriptGenerating}
+              off={!topicApplies}
+              onWake={topicWake}
               onSwitchToTyping={() => { /* the box already takes typing */ }}
               // Only ever fills blanks it has an answer for — a null slot
               // must not wipe something already typed or picked from a chip.
@@ -2418,9 +2374,8 @@ function CreatePageInner() {
               onDraftChange={setBriefHasDraft}
               seed={sparkSeed}
               command={voiceCommand}
-              onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
+              onReply={() => setCommandPending(false)}
             />
-            </div>
           </ComposerCard>
 
           {/* The six quick chips used to sit here, above the panel — a second
@@ -2449,6 +2404,10 @@ function CreatePageInner() {
               setTopicTemplateRaw(raw);
               setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
             }}
+            // A whole command rather than a topic, so it only goes in the box:
+            // sent from there, the brief works out that it asks for a blog.
+            tryLine="Create a blog about preparing a home for sale."
+            onUseTry={(text) => setSparkSeed((s) => ({ text, n: s.n + 1 }))}
           />
           </div>
 
