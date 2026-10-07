@@ -132,23 +132,20 @@ export function ForwardedEmails({
       >
         <Mail size={17} className="shrink-0 text-spark-amber" />
         <span className="min-w-0 flex-1 text-[15px] leading-snug text-spark-ink">
+          {/* One wording for both states, the owner's: what this is, how
+              many, and what you can do with one. The line used to drop the
+              "make a blog or a video" half exactly when there was something
+              new, which is when someone is most likely to act on it. */}
+          <strong className="font-bold">Imported content:</strong>{" "}
           {fresh > 0 ? (
             <>
-              <strong className="font-bold">
-                {fresh} new email{fresh === 1 ? "" : "s"} ready
-              </strong>
-              {items.length > fresh && (
-                <span className="text-spark-ink-muted"> · {items.length} in all</span>
-              )}
+              {fresh} new email{fresh === 1 ? "" : "s"}
+              {items.length > fresh && <> · {items.length} total</>}
             </>
           ) : (
-            <>
-              <strong className="font-bold">
-                {items.length} forwarded email{items.length === 1 ? "" : "s"}
-              </strong>
-              <span className="text-spark-ink-muted"> · make a blog or a video from one</span>
-            </>
+            <>{items.length} email{items.length === 1 ? "" : "s"}</>
           )}
+          <span className="text-spark-ink-muted"> · make a blog or video</span>
         </span>
         <ChevronDown
           size={17}
