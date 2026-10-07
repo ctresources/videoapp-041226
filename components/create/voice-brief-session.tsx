@@ -137,6 +137,17 @@ interface Props {
    * in. Without it the mic dims with the box.
    */
   onWake?: () => void;
+  /**
+   * What Send is about to write, as it reads in a sentence: "an avatar video
+   * script", "a blog". Follows the card that is chosen on the page, which this
+   * panel cannot see.
+   */
+  making?: string;
+  /**
+   * The name of the page's own button, for the moment a typed brief is
+   * complete and that button is the next thing to press.
+   */
+  nextLabel?: string;
 }
 
 /**
@@ -156,13 +167,10 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, making = "a script", nextLabel = "Next" }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
-  /** Read in three labels and sent with every turn, so what the panel says and
-   *  what the assistant says out loud stay the same answer. */
-  const isBlog = mode === "blog";
   const [turns, setTurns] = useState<Turn[]>([{ role: "assistant", content: OPENING_LINE }]);
   const [thinking, setThinking] = useState(false);
   const [slots, setSlots] = useState<BriefSlots>(EMPTY_SLOTS);
@@ -188,8 +196,10 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
    * them. It still goes ahead when they are complete, because saying "create a
    * blog about…" was an instruction. Typed words keep the read-back they
    * always had, since typing a topic is building a brief, not giving an order.
+   *
+   * In state, not a ref: while it is true the box says what Send will do.
    */
-  const spokenRef = useRef(false);
+  const [spoken, setSpoken] = useState(false);
 
   // `send` reads the transcript through a ref so it never closes over a stale
   // turn list — the recogniser's callback outlives the render that made it.
@@ -356,7 +366,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
        */
       setDraft(text);
       setJustHeard(true);
-      spokenRef.current = true;
+      setSpoken(true);
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
@@ -427,8 +437,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   function submitDraft() {
     const text = draft.trim();
     if (!text || thinking || disabled || off) return;
-    const spoken = spokenRef.current;
-    spokenRef.current = false;
+    const wasSpoken = spoken;
+    setSpoken(false);
     setDraft("");
     setJustHeard(false);
     // Typed or spoken, the wake word does the same thing.
@@ -440,7 +450,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     // Goes as another turn. The session re-reads the whole conversation each
     // time, so a corrected sentence overrides what it heard before — the same
     // mechanism that makes "actually, make it sellers" work.
-    send(text, spoken ? { go: true } : undefined);
+    send(text, wasSpoken ? { go: true } : undefined);
   }
 
   // What voice has captured so far, condensed to one line — the compact
@@ -455,17 +465,26 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     slots.length === "long" ? "long length" : slots.length === "standard" ? "standard length" : null,
   ].filter(Boolean).join(" · ");
 
-  // Only while it is doing something. Idle instructions sat here permanently
-  // restating what the mic button and the box already show — except after a
-  // spoken turn, where the box now holds words that have not gone anywhere
-  // yet, and saying nothing would read as the mic having failed.
+  // Only while it is doing something. What to do with words that have just
+  // landed is said under the box, beside the button it is about.
   const status = thinking
     ? "Thinking…"
     : listening
       ? "Listening… tap the mic when you're done."
-      : justHeard && draft.trim()
-        ? "Got that. Check the words below, then press Send."
-        : "";
+      : "";
+
+  /**
+   * What is still needed, in the page's own words.
+   *
+   * The assistant asks for it too, beside the mic, but in whatever sentence it
+   * comes up with. This is the same thing said the same way every time, next
+   * to the box the answer goes in, with what to do about it.
+   */
+  const hasSpokenTurn = turns.some((t) => t.role === "user");
+  const missing = [
+    !slots.topic ? "what it's about" : null,
+    !slots.city ? "the town" : !slots.state ? "the state" : null,
+  ].filter(Boolean).join(" and ");
 
   // The mic dims with the box unless tapping it can switch the route on.
   const micOff = off && !onWake;
@@ -574,7 +593,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           setDraft(e.target.value);
           setJustHeard(false);
           // Emptied and started again by hand: no longer something said.
-          if (!e.target.value.trim()) spokenRef.current = false;
+          if (!e.target.value.trim()) setSpoken(false);
         }}
         // Locked only while the mic is running, where the recogniser owns the
         // value and a keystroke would be overwritten on the next result.
@@ -595,17 +614,40 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         }`}
       />
 
+      {/* Words that were spoken, waiting to be sent.
+          The owner tried it and stopped here: the words were in the box, and
+          nothing said whether to press Send or whether the rest of the page
+          still had to be filled in. So it says both, beside the button, and
+          names what Send will write, since that depends on a card further down
+          the page. It cannot say "I have everything" yet: the words are only
+          read once they are sent. */}
+      {spoken && !listening && !!draft.trim() ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5">
+          <div className="min-w-0 flex-1 basis-[220px]">
+            <p className="text-[15px] font-semibold leading-snug text-spark-ink">
+              Check your words, then press Send.
+            </p>
+            <p className="mt-0.5 text-[13.5px] leading-snug text-spark-ink-muted">
+              I&rsquo;ll write {making} and ask if anything is missing. The steps below are optional.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={submitDraft}
+            disabled={thinking || disabled || off}
+            className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+          >
+            Send
+          </button>
+        </div>
+      ) : (
       <div className="flex items-center gap-2.5">
         {/* What the session has actually understood — the town, the subject,
-            the audience — accumulated across every turn. Labelled now, because
+            the audience — accumulated across every turn. Labelled, because
             unlabelled it read as a third copy of the sentence in the box
             rather than the different thing it is: the box is what you are
             about to say, this is what has been taken from everything you have
-            said so far. */}
-        {/* Only while the brief is still being built. Once it is complete the
-            assistant's own reply has just read it back in a full sentence
-            directly above, and a truncated copy underneath it is the same
-            information said worse. */}
+            said so far. Only while the brief is still being built. */}
         {summary && !briefReady && (
           <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
             <span className="font-semibold text-spark-ink-faint">Brief so far:</span> {summary}
@@ -613,22 +655,26 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         )}
         {(!summary || briefReady) && <span className="flex-1" />}
 
-        {/* Only when it has something to send.
-            Speaking commits on its own — you stop talking and the turn goes —
-            so Send is the typing half of the box and nothing else. Sitting
-            there greyed out next to Spark Script, it read as the other way to
-            start the script, which is the one thing it never does. */}
+        {/* Only when it has something to send. */}
         {!listening && !!draft.trim() && (
           <button
             type="button"
             onClick={submitDraft}
             disabled={thinking || disabled || off}
-            className="flex-none rounded-full bg-spark-blue px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+            className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
           >
             Send
           </button>
         )}
       </div>
+      )}
+
+      {/* Sent, and something is still missing. */}
+      {hasSpokenTurn && !briefReady && !!missing && !thinking && !listening && !draft.trim() && (
+        <p className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5 text-[15px] font-semibold leading-snug text-spark-ink">
+          I still need {missing}. Say it or type it, then press Send.
+        </p>
+      )}
       </div>
 
       {/* The wake word, said only once saying it would do something.
@@ -641,21 +687,18 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           <CheckCircle size={14} className="flex-none text-spark-blue" />
           {sparking ? (
             <span className="font-medium">
-              {isBlog
-                ? "Writing your article — this takes about a minute."
-                : "Sparking your script — this takes about a minute."}
+              I have everything. Writing it now, about a minute.
             </span>
           ) : (
-            /* One line, no button.
+            /* No button here, but the name of the one to press.
              *
-             * This panel used to carry its own {isBlog ? "Write the blog" : "Spark Script"}
-             * button plus a sentence explaining it — while the page footer
-             * carried the same action, and the assistant's reply above told
-             * you to say the same phrase. Four ways to start one thing, on one
-             * screen. The footer keeps the button because it never scrolls
-             * away; the wake word still works, so saying it does what it
-             * always did. */
-            <span className="font-medium">That&rsquo;s everything I need.</span>
+             * This panel used to carry its own button, while the page footer
+             * carried the same action; the footer kept it because it never
+             * scrolls away. What was left said only "That's everything I
+             * need", which is true and does not say what to do about it. */
+            <span className="font-medium">
+              I have everything. Press <strong className="font-bold">{nextLabel}</strong> at the bottom to continue.
+            </span>
           )}
         </div>
       )}

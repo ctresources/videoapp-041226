@@ -2299,6 +2299,10 @@ function CreatePageInner() {
               disabled={locGenerating || cameraScriptGenerating}
               off={!topicApplies}
               onWake={topicWake}
+              // Both follow the card chosen in section 2, and match the
+              // button in the bar at the bottom.
+              making={inputMode === "camera" ? "a script to record yourself" : blogOnly ? "a blog" : "an avatar video script"}
+              nextLabel={inputMode === "camera" ? "Write my script" : blogOnly ? "Write the blog" : "Next"}
               onSwitchToTyping={() => { /* the box already takes typing */ }}
               // Only ever fills blanks it has an answer for — a null slot
               // must not wipe something already typed or picked from a chip.
