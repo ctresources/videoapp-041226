@@ -153,7 +153,7 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Create a blog</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Blog</td>
                   <td className="py-2 pr-3">Words for your own site — no video made at all</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
@@ -206,8 +206,8 @@ export default function HelpPage() {
             <Step n={7} title="Three Questions, Then It Writes" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
               asks up to three things in order. <strong>1 · What are you sparking?</strong> — four
-              cards: <strong>Create an avatar video</strong>, <strong>Record yourself</strong>,{" "}
-              <strong>Create a blog</strong> or <strong>My listings/My photos</strong>.{" "}
+              cards: <strong>Avatar video</strong>, <strong>Record yourself</strong>,{" "}
+              <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
               <strong>2 · How should your script begin?</strong> — <strong>AI writes it</strong> from
               a topic, or <strong>Use my content</strong>. A listing or a photos only reel
               skips this one (step 12). <strong>3 · What is it about?</strong>
@@ -235,7 +235,7 @@ export default function HelpPage() {
                 for you. Recording yourself has its own version of this, <strong>From a document</strong>.
               </span>
               <span className="block mt-1.5">
-                On the <strong>Create a blog</strong> route the same tile is there, and you choose
+                On the <strong>Blog</strong> route the same tile is there, and you choose
                 what happens to it: <strong>Use it as it is</strong>, which publishes your words
                 unchanged and takes seconds, or <strong>Write a new article from it</strong>, which
                 covers the same ground in your voice for your market. Use the first for your own
@@ -261,7 +261,7 @@ export default function HelpPage() {
                   sentence there answers all three questions above. Example
                   towns are generic on purpose. */}
               The quickest way in is the mic card at the top of Spark Studio,{" "}
-              <strong>Tell us what you want to create</strong>. Tap the mic and say the whole thing in
+              <strong>Speak what you want to create</strong>. Tap the mic and say the whole thing in
               one sentence —{" "}
               <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
               <em>&ldquo;Make a short YouTube video with my avatar and voice about the Riverside
@@ -340,7 +340,7 @@ export default function HelpPage() {
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
             <Step n={12} title="Listings And Photos Only Reels" icon={ImageIcon}>
-              <strong>My listings/My photos</strong>, the fourth card, makes two things from a
+              <strong>Listings &amp; photos</strong>, the fourth card, makes two things from a
               set of property pictures. <strong>Listing video</strong> writes a tour from the listing —
               paste a listing link, upload photos or enter the details — and renders it in your voice,
               with your avatar on screen or the photos full-frame. It uses one short video.
@@ -383,7 +383,7 @@ export default function HelpPage() {
               paste into your site arrives with its image already in place. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
-              you can write one without making a video at all — pick <strong>Create a blog</strong> on the
+              you can write one without making a video at all — pick <strong>Blog</strong> on the
               first question.
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as

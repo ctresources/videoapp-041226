@@ -72,7 +72,7 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
    *
    * It was a centred mic with a slogan under it, "Hit the Mic to Speak", and
    * two example sentences naming real towns. The card says what the mic is
-   * FOR ("Tell us what you want to create") and what the alternative is, in
+   * FOR ("Speak what you want to create") and what the alternative is, in
    * the order someone reads them, and offers one example that would be true
    * of any market.
    *
@@ -109,7 +109,7 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
 
         <div className="min-w-0 flex-1">
           <h2 className="text-[20px] font-bold leading-tight text-spark-ink sm:text-[23px]">
-            Tell us what you want to create
+            Speak what you want to create
           </h2>
           <p
             className={`mt-1 leading-snug ${

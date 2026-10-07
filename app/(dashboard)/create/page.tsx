@@ -1868,10 +1868,10 @@ function CreatePageInner() {
   // Which of the three ways in you are on. Shown on every tab: they are all
   // step 1 of the same five, and only the AI tab said so.
   const tabLabel =
-    inputMode === "camera" ? "Film on camera"
+    inputMode === "camera" ? "Record yourself"
       : inputMode === "script" ? "AI writes it"
-        : inputMode === "listing" ? "My listings/My photos"
-          : "Paste my script";
+        : inputMode === "listing" ? "Listings & photos"
+          : "Use my content";
 
   /**
    * Out of videos, and said before the work rather than after it.
@@ -2234,7 +2234,10 @@ function CreatePageInner() {
               // Avatar" and "Video — My Camera" shared a prefix so they would
               // read as two of one thing; as verbs each says what happens
               // when you choose it, which is what someone arriving wants.
-              label: "Create an avatar video",
+              // Short, at the owner's choice: four across leaves each card
+              // about 174px, and the longer names ("Create an avatar video")
+              // each wrapped to two or three lines.
+              label: "Avatar video",
               Icon: SquareUser,
               desc: "Avatar + cloned voice",
               free: false,
@@ -2254,13 +2257,13 @@ function CreatePageInner() {
               // whose voice comes out of the video.
               desc: trialNotStarted
                 ? "Unlocked by your free video"
-                : trialLocked ? "Free trial ended — pick a plan" : "Your voice + teleprompter",
+                : trialLocked ? "Free trial ended — pick a plan" : "Camera + teleprompter",
               free: true,
               cost: trialLocked ? "Locked" : "Free",
             },
             {
               key: "blog" as const,
-              label: "Create a blog",
+              label: "Blog",
               Icon: FileText,
               // Said on the tile, before a minute is spent writing a script
               // that arrives with no article attached and nothing explaining
@@ -2273,7 +2276,7 @@ function CreatePageInner() {
                 ? "Unlocked by your free video"
                 : trialLocked
                   ? "Free trial ended — pick a plan"
-                  : "New article, or paste your own",
+                  : "New, or paste your own",
               free: true,
               cost: trialLocked ? "Locked" : "Included",
             },
@@ -2283,9 +2286,9 @@ function CreatePageInner() {
               // which it is not: a photo reel has no script at all, and a
               // listing video's is written from the listing, not chosen here.
               key: "listing" as const,
-              label: "My listings/My photos",
+              label: "Listings & photos",
               Icon: Building2,
-              desc: "A listing video, or a photos only reel",
+              desc: "Video, or photos only",
               free: true,
               // Not "Free". A Classic reel is; a Cinematic reel and a listing
               // video each use one video. The card under it says which.
@@ -2368,7 +2371,7 @@ function CreatePageInner() {
                   );
                 }}
                 aria-pressed={active}
-                className={`flex min-h-[96px] items-center rounded-[14px] px-4 py-3.5 text-left transition-colors ${
+                className={`flex min-h-[96px] items-center rounded-[14px] px-4 py-3.5 text-left transition-colors lg:min-h-0 lg:px-2 lg:py-3 ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
@@ -2380,11 +2383,11 @@ function CreatePageInner() {
                     them down the card. Beside the name, each one is part of
                     the label it belongs to and costs no height. */}
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink">
-                    <Icon size={21} strokeWidth={1.9} className="mt-px flex-none text-[#A3660F]" aria-hidden />
+                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink lg:items-center lg:gap-1.5 lg:whitespace-nowrap lg:text-[15px]">
+                    <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
                     <span className="min-w-0">{label}</span>
                   </span>
-                  <span className="mt-1 block text-[13.5px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                  <span className="mt-1 block text-[13.5px] leading-[1.3] text-spark-ink-muted lg:text-[12.5px]">{desc}</span>
                   {/* Under the description rather than beside the label. Next
                       to it, the badge set the width the label had to wrap
                       around; here each tile reads top to bottom — what it is,
@@ -2393,7 +2396,7 @@ function CreatePageInner() {
                       chooses: nothing is made by pressing a card. */}
                   <span className="mt-2 flex items-center justify-between gap-2">
                     <CostPill free={free} emphasis>{cost}</CostPill>
-                    <ArrowRight size={17} strokeWidth={2} className="flex-none text-[#A3660F]" aria-hidden />
+                    <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
                   </span>
                 </span>
               </button>
