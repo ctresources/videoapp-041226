@@ -166,7 +166,7 @@ export default function HelpPage() {
                     article, Something you already have), because the app now
                     has one card for all of it. */}
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text">Use something I already have</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Use my content</td>
                   <td className="py-2 pr-3">
                     A finished script spoken exactly as written — or an article, a PDF, a link or a
                     forwarded email that AI writes from
@@ -183,12 +183,12 @@ export default function HelpPage() {
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photo reel · Classic</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photos only reel · Classic</td>
                   <td className="py-2 pr-3">Your photos with a slow pan across each, and music or your voice</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photo reel · Cinematic</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photos only reel · Cinematic</td>
                   <td className="py-2 pr-3">Each photo becomes a few seconds of real camera movement</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
@@ -209,7 +209,7 @@ export default function HelpPage() {
               cards: <strong>Create an avatar video</strong>, <strong>Record yourself</strong>,{" "}
               <strong>Create a blog</strong> or <strong>My listings/My photos</strong>.{" "}
               <strong>2 · How should your script begin?</strong> — <strong>AI writes it</strong> from
-              a topic, or <strong>Use something I already have</strong>. A listing or a photo reel
+              a topic, or <strong>Use my content</strong>. A listing or a photos only reel
               skips this one (step 12). <strong>3 · What is it about?</strong>
               {/* Sparks are named here because everything below refers to them,
                   and because one now exists the moment a project does — someone
@@ -225,7 +225,7 @@ export default function HelpPage() {
                   most people with an existing blog. */}
               <span className="block mt-1.5">
                 <strong>Already written it?</strong>{" "}
-                <strong>Use something I already have</strong> is the one place for it, the second
+                <strong>Use my content</strong> is the one place for it, the second
                 tile on question 2. Paste your words in, or attach a PDF, a link, or an email you
                 forwarded to your import address (step 6). On a video you then say what happens to
                 them: <strong>Speak it word for word</strong>, for a finished script, or{" "}
@@ -339,13 +339,13 @@ export default function HelpPage() {
             {/* Its own step since the card moved up to row 1 and the reel
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
-            <Step n={12} title="Listings And Photo Reels" icon={ImageIcon}>
+            <Step n={12} title="Listings And Photos Only Reels" icon={ImageIcon}>
               <strong>My listings/My photos</strong>, the fourth card, makes two things from a
               set of property pictures. <strong>Listing video</strong> writes a tour from the listing —
               paste a listing link, upload photos or enter the details — and renders it in your voice,
               with your avatar on screen or the photos full-frame. It uses one short video.
               <span className="block mt-1.5">
-                <strong>Photo reel</strong> needs no script at all. Add up to 12 photos, pick the
+                <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos, pick the
                 shape (<strong>Reel 9:16</strong> or <strong>Wide 16:9</strong>), a length, music, and
                 whether it has a voiceover and a closing card with your ask and phone number. Then
                 choose the <strong>Motion</strong>:
@@ -558,7 +558,7 @@ export default function HelpPage() {
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
-            <li><strong>For a listing:</strong> a Classic photo reel is free; Cinematic or a listing video uses one short video</li>
+            <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>

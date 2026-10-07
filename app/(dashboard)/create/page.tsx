@@ -1334,7 +1334,7 @@ function CreatePageInner() {
    * never names a town for you.
    */
   async function fillPlaceFromSubject(subject: string, opts?: { paste?: boolean }) {
-    // "Use something I already have" keeps a market of its own, asked beside
+    // "Use my content" keeps a market of its own, asked beside
     // its script. Filled the same way, and the same way only when empty.
     const place = (city: string, state: string) => {
       setLocCity((prev) => (prev.trim() ? prev : city));
@@ -1399,8 +1399,8 @@ function CreatePageInner() {
       attachEmail(article, { kind });
       void fillPlaceFromSubject(article.subject);
     } else {
-      // A video from something that already exists has one home, "Use
-      // something I already have", so this opens it with the email attached
+      // A video from something that already exists has one home, "Use my
+      // content", so this opens it with the email attached
       // and AI set to write from it. Nothing is written until its own button
       // is pressed, and the script comes back to be read before anything else.
       setInputMode("paste");
@@ -2282,7 +2282,7 @@ function CreatePageInner() {
               key: "listing" as const,
               label: "My listings/My photos",
               Icon: Building2,
-              desc: "A listing video, or a photo reel",
+              desc: "A listing video, or a photos only reel",
               free: true,
               // Not "Free". A Classic reel is; a Cinematic reel and a listing
               // video each use one video. The card under it says which.
@@ -2490,7 +2490,7 @@ function CreatePageInner() {
               // "Paste my script", which named one of the three things it does
               // and hid the other two: it has always taken an article to
               // shorten, and a PDF, link or email for AI to write from.
-              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use something I already have", desc: "Speak it as written, or have AI write from it" },
+              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use my content", desc: "Speak it as written, or have AI write from it" },
             ]),
             // Blog route only. On the video route this was "My listings/My
             // photos", and it is now the fourth card in the row above: a reel
@@ -2506,7 +2506,7 @@ function CreatePageInner() {
             ...(blogOnly ? [{
               mode: "script" as InputMode,
               kicker: "PDF, link or email",
-              label: "Use something I already have",
+              label: "Use my content",
               desc: "Paste it, upload it, or forward it in",
               source: true,
             }] : []),
@@ -2837,7 +2837,7 @@ function CreatePageInner() {
               the mic ("from my Ambler market report email"), or a piece
               carried over from the other route. Shown so it can be seen and
               taken off. There is no way to ATTACH from here any more: on the
-              video route that lives in "Use something I already have", and on
+              video route that lives in "Use my content", and on
               the blog route under its own source tile. Offering it here as
               well was the same thing in two places. */}
           {blogSrcText && (
@@ -3757,7 +3757,7 @@ function CreatePageInner() {
               </div>
               <div>
                 <p className="text-base font-bold text-brand-text">
-                  {blogOnly ? "Property Article" : listingMode === "reel" ? "Photo Reel" : "Listing Video"}
+                  {blogOnly ? "Property Article" : listingMode === "reel" ? "Photos Only Reel" : "Listing Video"}
                 </p>
                 <p className="text-sm text-spark-ink-muted">
                   {blogOnly
@@ -3780,7 +3780,7 @@ function CreatePageInner() {
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
                 // "free" alone was true until Cinematic, which uses a video.
-                { key: "reel" as const, label: "Photo reel", sub: "photos into a video · Classic is free" },
+                { key: "reel" as const, label: "Photos only reel", sub: "photos into a video · Classic is free" },
               ]).map(({ key, label, sub }) => (
                 <button
                   key={key}
@@ -3853,7 +3853,7 @@ function CreatePageInner() {
             <p className="text-base font-bold text-brand-text mb-3">
               {blogOnly
                 ? "What Your Property Article Includes"
-                : listingMode === "reel" ? "What Your Photo Reel Includes" : "What Your Listing Video Includes"}
+                : listingMode === "reel" ? "What Your Photos Only Reel Includes" : "What Your Listing Video Includes"}
             </p>
             {/* A third list for the blog route, which had been showing the
                 listing video's — b-roll, a narrator, an avatar — beside a card
