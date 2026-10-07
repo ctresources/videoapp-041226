@@ -20,7 +20,7 @@ import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/
 import { ForwardedEmailsList, useForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -491,6 +491,13 @@ function CreatePageInner() {
    * sitting visible in the box above it.
    */
   const [briefHasDraft, setBriefHasDraft] = useState(false);
+  // The words sitting unsent in section 1's topic box. Only read at the moment
+  // the camera route's own topic box appears, so it is a ref and not state.
+  const topicDraftRef = useRef("");
+  const noteTopicDraft = useCallback((hasDraft: boolean, text: string) => {
+    setBriefHasDraft(hasDraft);
+    topicDraftRef.current = text;
+  }, []);
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -2266,7 +2273,9 @@ function CreatePageInner() {
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
               {inputMode === "camera"
-                ? "Not used when you record yourself. Your script source below takes it from here."
+                ? (cameraSource === "speak"
+                    ? "Not used when you record yourself. A topic entered here is carried to the topic box below."
+                    : "Not used when you record yourself. Your script source below takes it from here.")
                 : inputMode === "listing"
                   ? "Not needed here. Your listing sets the topic."
                   : "Not needed here. Your content sets the topic."}
@@ -2364,7 +2373,7 @@ function CreatePageInner() {
               // instance takes a mode — the camera one below is always a
               // script.
               mode={blogOnly ? "blog" : "script"}
-              onDraftChange={setBriefHasDraft}
+              onDraftChange={noteTopicDraft}
               seed={sparkSeed}
               command={voiceCommand}
               onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
@@ -4185,6 +4194,11 @@ function CreatePageInner() {
                   teleprompter below.
                 </p>
                 <VoiceBriefSession
+                  // A topic entered in section 1 before choosing to record
+                  // comes with you: what is still unsent in that box, or else
+                  // the topic it had already taken. Not once a script exists,
+                  // where a refilled topic box would read as a step undone.
+                  initialDraft={cameraGeneratedScript.trim() ? "" : (topicDraftRef.current.trim() || locCustomTopic.trim())}
                   disabled={cameraScriptGenerating}
                   onSwitchToTyping={() => { /* the box already takes typing */ }}
                   onSlots={(sl) => {

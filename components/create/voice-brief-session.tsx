@@ -101,7 +101,17 @@ interface Props {
    * to supply the thing you could see. The panel is the only thing that knows,
    * so it says.
    */
-  onDraftChange?: (hasDraft: boolean) => void;
+  onDraftChange?: (hasDraft: boolean, text: string) => void;
+  /**
+   * Words the box starts with, read once when the panel appears.
+   *
+   * For a topic entered somewhere else on the page before this panel existed:
+   * the Create page's first section, then choosing to record it yourself,
+   * which is the route this instance lives on. It arrives as a draft to check
+   * and send, the same as a picked idea, and unlike `seed` it does not take
+   * the cursor, which would pull the page down to a box nobody had reached.
+   */
+  initialDraft?: string;
   /**
    * A whole command said somewhere else, the home-screen mic, and handed here
    * to carry out.
@@ -155,7 +165,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, field = false }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, field = false, initialDraft = "" }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -169,7 +179,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // What is in the box. Speech fills it, and it stays editable afterwards so a
   // misheard word can be fixed by hand instead of by saying the whole thing
   // again — "Ambler" coming back as "Amber" should cost one keystroke.
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft);
   /** True between the mic stopping and the turn being sent, so the status line
    *  can say the words landed rather than leaving silence to speak for itself. */
   const [justHeard, setJustHeard] = useState(false);
@@ -407,7 +417,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
    * mic stops.
    */
   useEffect(() => {
-    onDraftChange?.(!!draft.trim());
+    onDraftChange?.(!!draft.trim(), draft);
   }, [draft, onDraftChange]);
 
   function submitDraft() {
