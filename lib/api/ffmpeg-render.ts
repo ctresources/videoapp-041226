@@ -715,6 +715,15 @@ export interface SlideshowParams {
    */
   photoCaptions?: (string | null | undefined)[];
   /**
+   * A moving clip to show in place of a photo, aligned to photoUrls by index.
+   *
+   * This is the Cinematic reel: the clip opens on the photo and pushes in.
+   * Sparse on purpose. A photo with no clip, or whose clip will not download,
+   * is shown the classic way, so the two can sit side by side in one reel and
+   * a clip that failed to generate never costs the whole video.
+   */
+  clips?: ({ url: string; seconds: number } | null | undefined)[];
+  /**
    * A closing card over the last few seconds — the ask, once the pictures have
    * done their work. Omitted entirely when absent, rather than drawn empty.
    */
@@ -724,6 +733,60 @@ export interface SlideshowParams {
     market?: string;
     phone?: string;
   } | null;
+}
+
+/** A segment that is a clip rather than a still: how long it runs. */
+interface SegmentClip {
+  seconds: number;
+}
+
+/**
+ * Longest clip that is played backwards. The reverse filter holds every frame
+ * of the clip in memory at once, about 28 MB a second at this size, and the
+ * function has 2 GB for everything.
+ */
+const REVERSE_MAX_SECONDS = 8;
+
+/**
+ * A clip, played backwards, as a file of its own.
+ *
+ * A push-in reversed is a pull-back that ends on the true photograph, which is
+ * the only honest way to get one: asking the model to pull back means asking it
+ * to draw what was outside the frame. Done as a separate pass, one clip at a
+ * time, so only one clip's frames are ever in memory.
+ */
+function reverseClip(src: string, dest: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    ffmpeg(src)
+      .noAudio()
+      .videoFilters("reverse")
+      .outputOptions(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p"])
+      .on("error", (err) => {
+        console.warn(`[ffmpeg-slideshow] could not reverse a clip, playing it forwards: ${err.message}`);
+        resolve(false);
+      })
+      .on("end", () => resolve(true))
+      .save(dest);
+  });
+}
+
+/**
+ * How long a piece of audio runs, from its bytes.
+ *
+ * The reel's length is its audio's length, and a Cinematic reel has to know
+ * that before it renders: the clips are asked for at the length each photo
+ * will be on screen.
+ */
+export async function audioBufferSeconds(buffer: Buffer): Promise<number> {
+  const dir = join(tmpdir(), `probe-${randomUUID()}`);
+  await fs.mkdir(dir, { recursive: true });
+  try {
+    const p = join(dir, "audio.bin");
+    await fs.writeFile(p, buffer);
+    return await probeAudioDuration(p);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 /**
@@ -758,10 +821,35 @@ export async function renderPhotoSlideshow(
     await fs.writeFile(audioPath, params.audioBuffer);
 
     // ── 2. Download listing photos ───────────────────────────────────────────
+    // One entry per segment, in order. `clipInfos` runs alongside photoPaths:
+    // a clip where that segment moves, null where it is a still.
     const photoPaths: string[] = [];
+    const clipInfos: (SegmentClip | null)[] = [];
+    let moving = 0;
     for (let i = 0; i < params.photoUrls.length; i++) {
+      const clip = params.clips?.[i];
+      if (clip?.url) {
+        const cp = join(renderTmpDir, `clip${i}.mp4`);
+        if (await downloadFile(clip.url, cp)) {
+          const seconds = (await probeAudioDuration(cp)) || clip.seconds;
+          let path = cp;
+          // Every other moving segment plays backwards: in, out, in, out.
+          if (moving % 2 === 1 && seconds <= REVERSE_MAX_SECONDS) {
+            const rp = join(renderTmpDir, `clip${i}-reversed.mp4`);
+            if (await reverseClip(cp, rp)) path = rp;
+          }
+          photoPaths.push(path);
+          clipInfos.push({ seconds });
+          moving++;
+          continue;
+        }
+        // The clip was made but could not be fetched: the photo, the classic way.
+      }
       const p = join(renderTmpDir, `photo${i}.jpg`);
-      if (await downloadFile(params.photoUrls[i], p)) photoPaths.push(p);
+      if (await downloadFile(params.photoUrls[i], p)) {
+        photoPaths.push(p);
+        clipInfos.push(null);
+      }
     }
     if (photoPaths.length === 0) throw new Error("No listing photos could be downloaded");
 
@@ -788,7 +876,7 @@ export async function renderPhotoSlideshow(
 
     // ── 5. Probe audio duration ──────────────────────────────────────────────
     const audioDuration = await probeAudioDuration(audioPath);
-    console.log(`[ffmpeg-slideshow] ${photoPaths.length} photos, audio: ${audioDuration.toFixed(1)}s, music: ${!!musicPath}`);
+    console.log(`[ffmpeg-slideshow] ${photoPaths.length} photos (${moving} moving), audio: ${audioDuration.toFixed(1)}s, music: ${!!musicPath}`);
 
     // ── 6. Generate ASS captions ─────────────────────────────────────────────
     const assPath = join(renderTmpDir, "captions.ass");
@@ -808,7 +896,7 @@ export async function renderPhotoSlideshow(
     try {
       await buildSlideshowAndRun(
         photoPaths, audioPath, assPath, logoPath, avatarPath, musicPath,
-        outputPath, params, cfg, audioDuration, videoType, true,
+        outputPath, params, cfg, audioDuration, videoType, true, clipInfos,
       );
     } catch (renderErr) {
       const msg = renderErr instanceof Error ? renderErr.message : String(renderErr);
@@ -816,7 +904,7 @@ export async function renderPhotoSlideshow(
         console.warn("[ffmpeg-slideshow] ASS captions unavailable, retrying without...");
         await buildSlideshowAndRun(
           photoPaths, audioPath, assPath, logoPath, avatarPath, musicPath,
-          outputPath, params, cfg, audioDuration, videoType, false,
+          outputPath, params, cfg, audioDuration, videoType, false, clipInfos,
         );
       } else {
         throw renderErr;
@@ -859,6 +947,8 @@ async function buildSlideshowAndRun(
   audioDuration: number,
   videoType: VideoType,
   withCaptions: boolean,
+  /** Alongside photoPaths: set where that input is a moving clip, not a still. */
+  clips: (SegmentClip | null)[] = [],
 ): Promise<void> {
   const { width, height } = cfg;
   const N = photoPaths.length;
@@ -958,6 +1048,29 @@ async function buildSlideshowAndRun(
   const kbW = Math.round((width * 1.4) / 2) * 2;
   const kbH = Math.round((height * 1.4) / 2) * 2;
   for (let i = 0; i < N; i++) {
+    const clip = clips[i];
+    if (clip) {
+      /**
+       * A moving clip already has its camera move, so it skips zoompan and is
+       * only fitted: to the frame, to 30 frames a second, and to the time this
+       * segment has.
+       *
+       * Retimed to fill its segment so the whole move plays, but only within
+       * reason. The clip was asked for at about this length, so the factor is
+       * normally close to one; where it is not (many photos in a short reel),
+       * a push-in sped up two and a half times reads as a lurch, so the speed
+       * is held near normal and the move is cut short instead. Past the top
+       * of the range the last frame simply holds.
+       */
+      const factor = Math.min(1.6, Math.max(0.8, segDur / Math.max(0.5, clip.seconds)));
+      filterParts.push(
+        `[${i}:v]setpts=${factor.toFixed(4)}*(PTS-STARTPTS),fps=30,` +
+        `scale=${width}:${height}:force_original_aspect_ratio=increase,` +
+        `crop=${width}:${height},setsar=1,` +
+        `trim=duration=${segDur.toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`,
+      );
+      continue;
+    }
     const zoomExpr = i % 2 === 0
       ? `'min(zoom+0.0004,1.15)'`                                       // zoom in
       : `'if(lte(zoom,1.0),1.15,max(1.0,zoom-0.0004))'`;               // zoom out
@@ -1366,9 +1479,11 @@ async function buildSlideshowAndRun(
     const cmd = ffmpeg();
 
     // Photo inputs — loop each still image for slightly longer than segDur
-    for (const photoPath of photoPaths) {
-      cmd.input(photoPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(segDur) + 2}`]);
-    }
+    photoPaths.forEach((photoPath, i) => {
+      // A clip is a video already: it is read once, not looped like a still.
+      if (clips[i]) cmd.input(photoPath);
+      else cmd.input(photoPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(segDur) + 2}`]);
+    });
     cmd.input(audioPath);
     if (logoPath) cmd.input(logoPath);
     if (avatarPath) cmd.input(avatarPath);
