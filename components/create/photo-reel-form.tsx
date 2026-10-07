@@ -832,28 +832,41 @@ export function PhotoReelForm({
         </p>
       )}
 
-      <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
-        {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
-        {rendering ? "Building your reel…" : cinematic ? "Build the Cinematic reel" : "Build the reel"}
-      </Button>
+      {/* One big button at a time. Once a reel is saved, the thing to do next
+          is watch it, so that takes the place of Build. Both used to show,
+          Build the larger of the two, and the owner did not know which to
+          press; pressing Build again makes a second reel, and on Cinematic
+          spends a second short video. Building again is still here, as a
+          link that says so. */}
+      {savedId ? (
+        <div className="space-y-2">
+          <p className="text-center text-[13px] font-semibold text-spark-ink">Saved to My Sparks</p>
+          <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)} className="block">
+            <Button size="lg" className="w-full gap-2">
+              {openingVideo ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+              {openingVideo ? "Opening…" : "View your reel"}
+            </Button>
+          </a>
+          <button
+            type="button"
+            onClick={() => setSavedId(null)}
+            className="block w-full text-center text-[12.5px] font-medium text-spark-amber hover:text-spark-blue"
+          >
+            {cinematic ? "Make another reel (uses another short video)" : "Make another reel"}
+          </button>
+        </div>
+      ) : (
+        <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
+          {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+          {rendering ? "Building your reel…" : cinematic ? "Build the Cinematic reel" : "Build the reel"}
+        </Button>
+      )}
 
       {rendering && (
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
           Rendering on our server, so you can leave this page. Most reels take three to five
           minutes — the longer ones, and the ones with more photos, take the longer end of that.
         </p>
-      )}
-
-      {savedId && (
-        <div className="flex items-center gap-2 rounded-lg border border-spark-rule px-3 py-2.5">
-          <p className="flex-1 text-[13px] font-semibold text-spark-ink">Saved to My Sparks</p>
-          <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)}>
-            <Button variant="outline" size="lg" className="gap-2">
-              {openingVideo && <Loader2 size={15} className="animate-spin" />}
-              {openingVideo ? "Opening…" : "View it"}
-            </Button>
-          </a>
-        </div>
       )}
     </div>
   );
