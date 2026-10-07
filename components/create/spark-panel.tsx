@@ -83,15 +83,38 @@ function shortlistFor(city: string | undefined, seed: number): ContentTemplate[]
   return dedupe(ordered).slice(0, SHORTLIST);
 }
 
-/** `count` items from `items`, starting somewhere the seed decides and striding
- *  through so a draw is spread across the list rather than a run of neighbours. */
+/**
+ * `count` items from `items`, starting somewhere the seed decides and striding
+ * through so a draw is spread across the list rather than a run of neighbours.
+ *
+ * The walk is one lap of the list at most, and that bound is the point.
+ *
+ * It used to run until it had `count` different items, with no other way out.
+ * A stride that shares a factor with the length of the list only ever lands on
+ * a few of its items: with sixteen ideas, a stride of 4, 8 or 12 visits four,
+ * two or four of them, never the five being asked for. So the loop never ended.
+ * The seed is random on every visit, one seed in five picks such a stride, and
+ * this runs while the page is drawing. For two weeks the Create page froze the
+ * browser on a fifth of its loads, for everyone, and again on a fifth of the
+ * presses of Shuffle. Nothing was logged, because nothing ever finished.
+ *
+ * One lap finds everything a stride can reach. When that is fewer than was
+ * asked for, the rest are taken in order from the same starting point, so the
+ * draw is always full and never repeats an item. Where the old walk finished,
+ * this returns exactly what it did.
+ */
 function draw(items: ContentTemplate[], count: number, seed: number): ContentTemplate[] {
   if (items.length === 0) return [];
+  const want = Math.min(count, items.length);
   const stride = 1 + (seed % Math.max(1, items.length - 1));
   const start = seed % items.length;
   const out: ContentTemplate[] = [];
-  for (let i = 0; out.length < Math.min(count, items.length); i++) {
+  for (let i = 0; i < items.length && out.length < want; i++) {
     const next = items[(start + i * stride) % items.length];
+    if (!out.includes(next)) out.push(next);
+  }
+  for (let i = 0; i < items.length && out.length < want; i++) {
+    const next = items[(start + i) % items.length];
     if (!out.includes(next)) out.push(next);
   }
   return out;
