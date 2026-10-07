@@ -30,6 +30,7 @@ interface ComposerCardProps {
    * decoration it was.
    */
   onUseTryLine?: (text: string) => void;
+  /** The brief does not apply on the chosen route: the checklist dims. */
   disabled?: boolean;
   children: React.ReactNode;
 }
@@ -54,6 +55,7 @@ export function ComposerCard({
   tryLines = [],
   showTryLine = false,
   onUseTryLine,
+  disabled = false,
   children,
 }: ComposerCardProps) {
   const [tryIdx, setTryIdx] = useState(0);
@@ -117,7 +119,7 @@ export function ComposerCard({
         {/* One bottom row: what is still missing, and the way in. The chips are
             a checklist rather than field labels, so they sit under the input
             with the controls, not above it as headings. */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 ${disabled ? "opacity-45" : ""}`}>
           {chips.map((chip) => (
             <span
               key={chip.label}

@@ -29,8 +29,13 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
  * video stops at its script and setup screen, where rendering is its own
  * deliberate step.
  */
-export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply = "" }: {
+export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply = "", embedded = false }: {
   variant?: "card" | "hero";
+  /**
+   * Hero only: drawn without a card of its own, to sit inside one. On the
+   * Create page it is the top of the topic card, above the box.
+   */
+  embedded?: boolean;
   /** Given on the Create page: carry the sentence out here instead of navigating. */
   onCommand?: (text: string) => void;
   /** The page is thinking about, or carrying out, what was said. */
@@ -90,7 +95,13 @@ export function SpeakToSpark({ variant = "card", onCommand, busy = false, reply 
         : reply || "Tap the mic and describe your topic, or choose an option below.";
 
     return (
-      <section className="mt-6 flex items-center gap-4 rounded-2xl border border-spark-rule bg-white px-4 py-4 text-left shadow-[0_2px_14px_rgba(44,44,42,0.05)] sm:gap-6 sm:px-6 sm:py-5">
+      <section
+        className={`flex items-center gap-4 text-left sm:gap-6 ${
+          embedded
+            ? "px-1 pb-3.5 pt-2 sm:px-2 sm:pb-4 sm:pt-2.5"
+            : "mt-6 rounded-2xl border border-spark-rule bg-white px-4 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] sm:px-6 sm:py-5"
+        }`}
+      >
         <button
           type="button"
           onClick={toggle}

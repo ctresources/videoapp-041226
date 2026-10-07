@@ -1884,6 +1884,14 @@ function CreatePageInner() {
   const topicApplies =
     (inputMode === "script" && !(blogOnly && blogSrcOpen))
     || (cameraFromTopic && !cameraSourceLocked);
+  // For the parts of section 1 that switch off when it does not apply: out of
+  // reach of the pointer and, with `inert`, out of the tab order too. React 18
+  // drops `inert={true}` and only passes the attribute through as a string,
+  // while its types ask for a boolean.
+  const topicOffClass = topicApplies ? "" : "pointer-events-none select-none opacity-45";
+  const topicOffProps = topicApplies
+    ? {}
+    : ({ inert: "", "aria-hidden": true } as unknown as { inert: boolean; "aria-hidden": boolean });
   // What the camera script is written from. Section 1 keeps both in step, and
   // a picked idea only sets the first, so the first is the newer of the two.
   const cameraTopicText = locCustomTopic.trim() || cameraVoiceTopic.trim();
@@ -2187,68 +2195,36 @@ function CreatePageInner() {
           record. */}
       {step === "input" && !cameraHandoff && (
         <div className="pt-2 text-center">
-          <h1 className="font-display text-[40px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink text-balance sm:text-[52px]">
-            {/* One verb, not the three. "Speak, Spark, Share" is the tagline
-                and still carries the logo, but as a headline it asked how you
-                would do three things at once over a screen whose first
-                question is what you are making. Spark is also a noun now — the
-                folder this page creates — so the verb and the thing it makes
-                are deliberately the same word. */}
-            What will you{" "}
-            <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
-              Spark
-            </span>
-            ?
-          </h1>
-          {/* Two jobs, so two lines: the routes in, then what they are for.
-              Run together at this size it reads as one long breath, and the
-              promise — the half that answers "why bother" — is the half that
-              gets skimmed. */}
-          {/* Dark amber rather than muted grey, and a size up. primary-700 is
-              #8D580F — the same deep amber the Spark Card uses for the line
-              that needs reading. Muted grey at 15px made the half that answers
-              "why bother" the quietest thing on the screen. */}
-          {/* A size above the line below it: the routes in are what you act
-              on, the promise underneath is why. Same size for both made them
-              one block to skim past. */}
-          <p className="mt-3 text-[19px] leading-[1.5] text-primary-700">
-            {/* The owner's line. It listed the routes in ("A video with your
-                avatar, record yourself, create a blog—or do both."), which the
-                four cards below now do themselves. */}
-            Your all-in-one AI visibility studio
-          </p>
-          <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
+          {/* The headline and the line that was under it, on one line, at the
+              owner's ask: the question, then what the place is. The headline
+              comes down a size to make room, 52px and the tagline together
+              being wider than the column. Where they still do not fit, a
+              phone, the tagline wraps under it, centred, as before. */}
+          <div className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1.5">
+            <h1 className="font-display text-[36px] font-semibold leading-[1.0] tracking-[-0.02em] text-spark-ink sm:text-[40px]">
+              {/* One verb, not the three. "Speak, Spark, Share" is the tagline
+                  and still carries the logo, but as a headline it asked how you
+                  would do three things at once over a screen whose first
+                  question is what you are making. Spark is also a noun now — the
+                  folder this page creates — so the verb and the thing it makes
+                  are deliberately the same word. */}
+              What will you{" "}
+              <span className="bg-gradient-to-r from-spark-amber via-[#52665D] to-spark-blue bg-clip-text text-transparent">
+                Spark
+              </span>
+              ?
+            </h1>
+            {/* Dark amber rather than muted grey. primary-700 is #8D580F — the
+                same deep amber the Spark Card uses for the line that needs
+                reading. The owner's line: it once listed the routes in, which
+                the four cards below now do themselves. */}
+            <p className="text-[19px] leading-[1.3] text-primary-700">
+              Your all-in-one AI visibility studio
+            </p>
+          </div>
+          <p className="mt-2.5 text-[17px] leading-[1.5] text-primary-700">
             Turn your Spark into more ways to connect, build trust, and stay visible.
           </p>
-
-          {/* A mic sat here once and was moved down beside the composer in
-              section 3, because two mics did one job. They do different jobs
-              now. This one takes the whole thing in a sentence, "create a blog
-              for downsizers about…", and answers sections 1, 2 and 3 at once;
-              the one below is for adding to a topic or fixing a misheard word.
-              It is back at the top because signing in lands here, and reaching
-              the only mic meant tapping through two rows of tiles first.
-
-              It hands the sentence to the same voice panel, so there is still
-              one place that understands a command. That panel only exists on
-              the AI-writes-it route, so the route is switched to before the
-              sentence is sent. */}
-          <SpeakToSpark
-            variant="hero"
-            busy={commandPending || locGenerating || cameraScriptGenerating}
-            reply={commandReply}
-            onCommand={(text) => {
-              // Recording yourself from a topic is fed by the same panel now,
-              // so a sentence said from there stays there.
-              if (!cameraFromTopic || cameraSourceLocked) {
-                setInputMode("script");
-                setLastSparkTab("script");
-              }
-              setCommandReply("");
-              setCommandPending(true);
-              setVoiceCommand({ text, n: Date.now() });
-            }}
-          />
         </div>
       )}
 
@@ -2298,17 +2274,13 @@ function CreatePageInner() {
                   : "Not needed here. Your content sets the topic."}
             </p>
           )}
-          <div
-            className={`flex flex-col gap-3 ${topicApplies ? "" : "pointer-events-none select-none opacity-45"}`}
-            aria-hidden={!topicApplies}
-            // Out of the tab order as well as out of reach of the pointer.
-            // React 18 drops `inert={true}` and only passes the attribute
-            // through as a string, while its types ask for a boolean.
-            {...(topicApplies ? {} : ({ inert: "" } as unknown as { inert: boolean }))}
-          >
+          {/* Dimmed part by part (topicOffClass), not as a block: the mic in
+              the card has to stay live when the box under it is switched off. */}
+          <div className="flex flex-col gap-3">
           {/* Named so the hero mic can bring what it heard into view. */}
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
+            disabled={!topicApplies}
             // Not while dimmed: a line of display type changing every few
             // seconds is the loudest thing in a section that is switched off.
             showTryLine={topicApplies && !locCustomTopic.trim()}
@@ -2334,14 +2306,41 @@ function CreatePageInner() {
               { label: "Format", ok: formatTouched },
             ]}
           >
-            {/* One input for both ways in. Speech writes into the box, typing
-                edits it, and Send commits — so a misheard word is a keystroke
-                to fix rather than the whole brief said again. The speak-or-type
-                choice this replaced was asking which of two boxes to show, when
-                the answer was always "the one that takes both". */}
+            {/* The big mic, in the same card as the box, at the owner's ask.
+                It was a card of its own above this section, and with the box
+                directly under it the page had two topic boxes a few lines
+                apart. One card now: the mic and its words as they were, and
+                under them the box, which has lost the small mic it carried.
+
+                The mic still takes the whole thing in a sentence, "create a
+                blog for downsizers about…", and goes ahead if that is
+                complete; the box is for typing, or for adding to and fixing
+                what was understood. Both hand their words to the one session
+                below, so there is one place that knows what was meant. On the
+                routes that do not start from a topic the route is switched to
+                first, which is why the mic stays lit while the box under it
+                dims. */}
+            <SpeakToSpark
+              variant="hero"
+              embedded
+              busy={commandPending || locGenerating || cameraScriptGenerating}
+              reply={commandReply}
+              onCommand={(text) => {
+                // Recording yourself from a topic is fed by the same panel
+                // now, so a sentence said from there stays there.
+                if (!cameraFromTopic || cameraSourceLocked) {
+                  setInputMode("script");
+                  setLastSparkTab("script");
+                }
+                setCommandReply("");
+                setCommandPending(true);
+                setVoiceCommand({ text, n: Date.now() });
+              }}
+            />
+            <div className={topicOffClass} {...topicOffProps}>
             <VoiceBriefSession
-              // A field with its mic inside it. The hero mic is the one that
-              // says "speak"; this is where the words land.
+              // A plain box. The mic above it is the one that says "speak";
+              // this is where a topic is typed, added to or corrected.
               field
               disabled={locGenerating || cameraScriptGenerating || !topicApplies}
               onSwitchToTyping={() => { /* the box already takes typing */ }}
@@ -2421,6 +2420,7 @@ function CreatePageInner() {
               command={voiceCommand}
               onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
             />
+            </div>
           </ComposerCard>
 
           {/* The six quick chips used to sit here, above the panel — a second
@@ -2437,7 +2437,7 @@ function CreatePageInner() {
               bottom, and between them there is a single shared rule. They fill
               the same field, so a gap made choosing an idea look like a
               different exercise from typing one. */}
-          <div className="-mt-3">
+          <div className={`-mt-3 ${topicOffClass}`} {...topicOffProps}>
           <SparkPanel
             city={locCity || undefined}
             state={locState || undefined}
