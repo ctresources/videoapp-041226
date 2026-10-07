@@ -301,6 +301,13 @@ export async function uploadVideoToYouTube(
      * is set, and YouTube flips it public itself at the appointed time.
      */
     publishAt?: string | null;
+    /**
+     * YouTube's "altered content" setting. True for a video with an AI avatar
+     * or AI-generated camera movement, which a viewer could take for real
+     * footage and which YouTube asks to be told about at upload. It was never
+     * sent, so every avatar video went up undeclared.
+     */
+    aiMade?: boolean;
   },
 ): Promise<{ videoId: string; youtubeUrl: string }> {
   const scheduled = !!params.publishAt;
@@ -330,6 +337,7 @@ export async function uploadVideoToYouTube(
           privacyStatus: scheduled ? "private" : params.privacy,
           ...(scheduled && { publishAt: params.publishAt }),
           selfDeclaredMadeForKids: false,
+          ...(params.aiMade && { containsSyntheticMedia: true }),
         },
       }),
     },

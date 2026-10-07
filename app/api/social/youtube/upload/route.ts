@@ -1,3 +1,4 @@
+import { isAiMadeVideo } from "@/lib/utils/ai-made";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const { data: videoRow } = await admin
     .from("generated_videos")
-    .select("video_url, project_id")
+    .select("video_url, project_id, render_provider, metadata")
     .eq("id", body.videoId)
     .eq("user_id", user.id)
     .single();
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       description: body.description || "",
       privacy: body.privacy || "public",
       tags: body.tags,
+      aiMade: isAiMadeVideo(videoRow as { render_provider?: string | null; metadata?: Record<string, unknown> | null }),
     });
 
     // Set the project's generated thumbnail on the YouTube video. Non-fatal:

@@ -1,3 +1,4 @@
+import { isAiMadeVideo } from "@/lib/utils/ai-made";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes } from "@/lib/api/youtube";
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     duration_seconds: number | null;
     video_type: string | null;
     render_provider: string | null;
+    metadata: Record<string, unknown> | null;
     projects: { title: string; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; thumbnail_url: string | null; campaign_id: string | null } | null;
   } | null;
 
@@ -151,6 +153,7 @@ export async function POST(req: NextRequest) {
         description: target.description ?? defaultYouTubeDesc,
         privacy: target.privacy || "public",
         publishAt: scheduledAt || null,
+        aiMade: isAiMadeVideo(video),
       });
 
       // Apply the project's thumbnail. Non-fatal by design: a channel without
@@ -407,8 +410,9 @@ export async function POST(req: NextRequest) {
             : caption,
           x_title: fitCaption(caption, 280),
           threads_title: fitCaption(caption, 500),
-          // Said plainly where the platform asks: an avatar video is AI-made.
-          ...(video.render_provider?.startsWith("heygen") ? { is_ai_generated: "true" } : {}),
+          // Said plainly where the platform asks: an avatar video is AI-made,
+          // and so is a Cinematic reel. One answer for both, in isAiMadeVideo.
+          ...(isAiMadeVideo(video) ? { is_ai_generated: "true" } : {}),
         };
         await handOff(asVideo, caption, (requestId) => publishVideo({
           username, platforms: asVideo, requestId, title: fitCaption(caption, 2200),

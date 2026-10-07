@@ -34,6 +34,19 @@ const FORMATS = [
  */
 const LENGTHS = [7, 12, 30, 60] as const;
 
+/**
+ * How the photos move.
+ *
+ * Classic is the pan across each photo this reel has always had, and it is
+ * free. Cinematic turns each photo into a short clip with real camera
+ * movement, and counts as one short video from the plan. The limits match the
+ * server's; they are smaller than the classic reel's until Cinematic has been
+ * timed at full size.
+ */
+type Motion = "classic" | "cinematic";
+const CINEMATIC_MAX_PHOTOS = 8;
+const CINEMATIC_MAX_SECONDS = 60;
+
 type Voice = "music" | "script" | "record";
 
 export function PhotoReelForm({
@@ -103,6 +116,7 @@ export function PhotoReelForm({
   const [endCard, setEndCard] = useState(true);
   const [endCardHeadline, setEndCardHeadline] = useState("See it in person");
   const [address, setAddress] = useState(initialAddress ?? "");
+  const [motion, setMotion] = useState<Motion>("classic");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -270,7 +284,17 @@ export function PhotoReelForm({
       ? recordedSecs
       : seconds;
   const perPhoto = photos.length ? effectiveSecs / photos.length : 0;
-  const ready = photos.length > 0 && !rendering &&
+  const cinematic = motion === "cinematic";
+  // Said on screen, beside the choice, before the button will work: the server
+  // refuses both, and a refusal after the wait is the worse way to find out.
+  const cinematicBlock = !cinematic
+    ? null
+    : photos.length > CINEMATIC_MAX_PHOTOS
+      ? `Cinematic uses up to ${CINEMATIC_MAX_PHOTOS} photos and you have ${photos.length}. Remove ${photos.length - CINEMATIC_MAX_PHOTOS}, or choose Classic.`
+      : effectiveSecs > CINEMATIC_MAX_SECONDS
+        ? `Cinematic runs up to ${CINEMATIC_MAX_SECONDS} seconds and this is about ${effectiveSecs}. Shorten it, or choose Classic.`
+        : null;
+  const ready = photos.length > 0 && !rendering && !cinematicBlock &&
     (voice !== "script" || scriptWords >= 8) &&
     (voice !== "record" || !!voiceoverPath);
 
@@ -288,6 +312,7 @@ export function PhotoReelForm({
           title: title.trim() || "Photo Reel",
           format,
           seconds,
+          motion,
           script: voice === "script" ? script.trim() : undefined,
           voiceoverPath: voice === "record" ? voiceoverPath : undefined,
           musicQuery,
@@ -309,7 +334,11 @@ export function PhotoReelForm({
        * real explanation and an obvious next step, and both belong on screen.
        */
       const raw = await res.text();
-      let data: { videoId?: string; error?: string } = {};
+      let data: {
+        videoId?: string;
+        error?: string;
+        cinematic?: { moving: number; photos: number; charged: boolean };
+      } = {};
       try { data = raw ? JSON.parse(raw) : {}; } catch { /* not JSON — handled below */ }
 
       if (!res.ok) {
@@ -322,7 +351,21 @@ export function PhotoReelForm({
         );
       }
       setSavedId(data.videoId as string);
-      toast.success("Reel is ready. It's in My Sparks.");
+      // What actually happened, because it decides what they were charged.
+      // A photo is shown the classic way when its clip could not be made or
+      // did not stay true to the photo.
+      const c = data.cinematic;
+      if (!c) {
+        toast.success("Reel is ready. It's in My Sparks.");
+      } else if (c.moving === c.photos) {
+        toast.success("Cinematic reel is ready. It's in My Sparks.");
+      } else if (c.charged) {
+        toast.success(`Reel is ready. ${c.moving} of ${c.photos} photos are moving; the rest use the classic pan.`, { duration: 7000 });
+      } else if (c.moving > 0) {
+        toast.success(`Reel is ready. Only ${c.moving} of ${c.photos} photos could be animated, so no video was taken from your plan.`, { duration: 8000 });
+      } else {
+        toast.success("Reel is ready as a Classic reel. The photos could not be animated, so no video was taken from your plan.", { duration: 8000 });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not build that reel");
     } finally {
@@ -497,6 +540,56 @@ export function PhotoReelForm({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ── Motion ── */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Motion</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {([
+            { id: "classic", label: "Classic", note: "A slow pan across each photo · Free" },
+            { id: "cinematic", label: "Cinematic", note: "Each photo comes to life · Uses 1 short video" },
+          ] as const).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMotion(m.id)}
+              aria-pressed={motion === m.id}
+              className={`rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+                motion === m.id
+                  ? "border-spark-amber bg-spark-amber-tint"
+                  : "border-spark-rule bg-white hover:border-spark-rule-dim"
+              }`}
+            >
+              <span className="block text-[12px] font-bold text-spark-ink">{m.label}</span>
+              <span className="block text-[10.5px] text-spark-ink-faint">{m.note}</span>
+            </button>
+          ))}
+        </div>
+        {/* What it is good at, what it is not, and what it will say about
+            itself, all before the button. The people line is the one that
+            matters most: nothing in the app can catch a person being redrawn. */}
+        {cinematic && (
+          <div className="mt-1.5 rounded-lg border border-spark-rule bg-spark-paper px-2.5 py-2 text-[11px] leading-[1.5] text-spark-ink-muted">
+            <p>
+              Each photo is turned into a few seconds of gentle camera movement. Best for rooms and
+              exteriors. <strong className="font-semibold text-spark-ink-soft">Avoid photos with people in them</strong>:
+              they can come out looking different.
+            </p>
+            <p className="mt-1">
+              Every clip is checked against its photo. One that drifts away from it is dropped and
+              that photo uses the classic pan. If fewer than half your photos can be animated, no
+              video is taken from your plan.
+            </p>
+            <p className="mt-1">
+              Up to {CINEMATIC_MAX_PHOTOS} photos and {CINEMATIC_MAX_SECONDS} seconds.
+              &ldquo;Photos animated with AI.&rdquo; is added to the description.
+            </p>
+          </div>
+        )}
+        {cinematicBlock && (
+          <p className="mt-1.5 text-[11.5px] font-medium leading-[1.45] text-amber-800">{cinematicBlock}</p>
+        )}
       </div>
 
       {/* ── Voice ── */}
@@ -729,7 +822,9 @@ export function PhotoReelForm({
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
           {photos.length} photos over {effectiveSecs}s. About{" "}
           <strong className="font-semibold text-spark-ink-soft">{perPhoto.toFixed(1)}s each</strong>.{" "}
-          {perPhoto < 1.4
+          {cinematic && perPhoto < 3
+            ? "That is short for Cinematic: the movement needs about three seconds a photo to be seen."
+            : perPhoto < 1.4
             ? "A fast montage; the slow zoom won't read at that speed."
             : perPhoto > 6
               ? "A long hold on each shot. Consider more photos or a shorter reel."
@@ -739,7 +834,7 @@ export function PhotoReelForm({
 
       <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
         {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
-        {rendering ? "Building your reel…" : "Build the reel"}
+        {rendering ? "Building your reel…" : cinematic ? "Build the Cinematic reel" : "Build the reel"}
       </Button>
 
       {rendering && (

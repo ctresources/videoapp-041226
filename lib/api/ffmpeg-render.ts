@@ -722,7 +722,7 @@ export interface SlideshowParams {
    * is shown the classic way, so the two can sit side by side in one reel and
    * a clip that failed to generate never costs the whole video.
    */
-  clips?: ({ url: string; seconds: number } | null | undefined)[];
+  clips?: ({ url: string; seconds: number; width?: number; height?: number } | null | undefined)[];
   /**
    * A closing card over the last few seconds — the ask, once the pictures have
    * done their work. Omitted entirely when absent, rather than drawn empty.
@@ -735,9 +735,12 @@ export interface SlideshowParams {
   } | null;
 }
 
-/** A segment that is a clip rather than a still: how long it runs. */
+/** A segment that is a clip rather than a still: how long it runs, and its shape. */
 interface SegmentClip {
   seconds: number;
+  /** 0 when unknown, which is treated as already the frame's shape. */
+  width: number;
+  height: number;
 }
 
 /**
@@ -839,7 +842,7 @@ export async function renderPhotoSlideshow(
             if (await reverseClip(cp, rp)) path = rp;
           }
           photoPaths.push(path);
-          clipInfos.push({ seconds });
+          clipInfos.push({ seconds, width: clip.width ?? 0, height: clip.height ?? 0 });
           moving++;
           continue;
         }
@@ -1063,12 +1066,42 @@ async function buildSlideshowAndRun(
        * of the range the last frame simply holds.
        */
       const factor = Math.min(1.6, Math.max(0.8, segDur / Math.max(0.5, clip.seconds)));
-      filterParts.push(
-        `[${i}:v]setpts=${factor.toFixed(4)}*(PTS-STARTPTS),fps=30,` +
-        `scale=${width}:${height}:force_original_aspect_ratio=increase,` +
-        `crop=${width}:${height},setsar=1,` +
-        `trim=duration=${segDur.toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`,
-      );
+      const timing = `setpts=${factor.toFixed(4)}*(PTS-STARTPTS),fps=30`;
+      const tail = `setsar=1,trim=duration=${segDur.toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`;
+
+      /**
+       * A clip is made in its photo's own shape, never cut to the reel's
+       * first, because a clip started from a narrow strip of a photo is the
+       * one that invented a room. So a wide clip often arrives in a tall reel.
+       *
+       * Filling the frame with it would throw away more than half the picture
+       * and blow the rest up two and a half times. Instead the whole clip is
+       * shown at its own size over a blurred, dimmed copy of itself, which is
+       * how a wide video is normally carried in a tall one, and nothing the
+       * photograph showed is lost. The copy is blurred small and scaled up:
+       * blurring at full size costs more time than the rest of the segment.
+       *
+       * Where the shapes are close, it simply fills the frame.
+       */
+      const clipAspect = clip.width > 0 && clip.height > 0 ? clip.width / clip.height : width / height;
+      const mismatch = clipAspect / (width / height);
+      if (mismatch > 1.3 || mismatch < 0.77) {
+        const bw = Math.round(width / 8) * 2;
+        const bh = Math.round(height / 8) * 2;
+        filterParts.push(
+          `[${i}:v]${timing},split=2[cfg${i}][cbg${i}]`,
+          `[cbg${i}]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh},` +
+          `boxblur=10:2,scale=${width}:${height},eq=brightness=-0.06[cbb${i}]`,
+          `[cfg${i}]scale=${width}:${height}:force_original_aspect_ratio=decrease[cfs${i}]`,
+          `[cbb${i}][cfs${i}]overlay=(W-w)/2:(H-h)/2,${tail}`,
+        );
+      } else {
+        filterParts.push(
+          `[${i}:v]${timing},` +
+          `scale=${width}:${height}:force_original_aspect_ratio=increase,` +
+          `crop=${width}:${height},${tail}`,
+        );
+      }
       continue;
     }
     const zoomExpr = i % 2 === 0

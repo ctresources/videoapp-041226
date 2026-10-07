@@ -18,7 +18,10 @@ import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { searchBackgroundMusic } from "@/lib/api/heygen";
-import { renderPhotoSlideshow, generateSilentAudio, type VideoType } from "@/lib/api/ffmpeg-render";
+import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type VideoType } from "@/lib/api/ffmpeg-render";
+import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
+import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
+import { CINEMATIC_DISCLOSURE } from "@/lib/utils/ai-made";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
@@ -37,6 +40,16 @@ const FORMATS: Record<string, VideoType> = {
 const MIN_SECONDS = 5;
 const MAX_SECONDS = 90;
 const MAX_PHOTOS = 12;
+
+/**
+ * Cinematic: each photo becomes a short moving clip. See cinematic-clips.ts.
+ *
+ * Smaller limits than the classic reel until it has been timed on the live
+ * server: every photo is a generated clip that is made, checked and possibly
+ * made again before the render can start.
+ */
+const CINEMATIC_MAX_PHOTOS = 8;
+const CINEMATIC_MAX_SECONDS = 60;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -62,6 +75,11 @@ export async function POST(req: NextRequest) {
     endCard?: boolean;
     /** Its opening line — the ask itself. */
     endCardHeadline?: string;
+    /**
+     * "cinematic" turns each photo into a moving clip and counts as one short
+     * video from the plan. Anything else is the classic reel, which is free.
+     */
+    motion?: string;
     /** The property, if this reel is about one. */
     address?: string;
     city?: string;
@@ -73,16 +91,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Add at least one photo." }, { status: 400 });
   }
 
+  const cinematic = body.motion === "cinematic";
+  if (cinematic && photoUrls.length > CINEMATIC_MAX_PHOTOS) {
+    return NextResponse.json(
+      { error: `A Cinematic reel uses up to ${CINEMATIC_MAX_PHOTOS} photos. Remove some, or choose Classic.` },
+      { status: 400 },
+    );
+  }
+
   const videoType = FORMATS[body.format ?? "reel_9x16"] ?? "reel_9x16";
   const title = (body.title || "Photo Reel").slice(0, 120);
   const admin = createAdminClient();
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, company_name, logo_url, avatar_url, voice_clone_id, location_city, location_state, phone, company_phone")
+    .select(`full_name, company_name, logo_url, avatar_url, voice_clone_id, location_city, location_state, phone, company_phone, role, subscription_tier, first_video_generated_at, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
+
+  /**
+   * A Cinematic reel counts as one short video, so it needs one to count.
+   *
+   * Asked before anything is made: the narration and the clips both cost
+   * money to produce, and finding out at the end that there was nothing to
+   * charge would mean having given the reel away. Only checked here. The
+   * video is actually taken after the reel exists, so a render that fails
+   * takes nothing and there is no refund to get right.
+   */
+  const isAdmin = p.role === "admin";
+  if (cinematic && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
+    return NextResponse.json(
+      {
+        code: "out_of_videos",
+        kind: "short",
+        tier: p.subscription_tier ?? "free",
+        error: "A Cinematic reel uses one short video and you have none left. Choose Classic, which is free, or add more in Billing.",
+      },
+      { status: 402 },
+    );
+  }
 
   try {
     // ── Audio, from whichever of the three routes was chosen ────────────────
@@ -138,6 +186,34 @@ export async function POST(req: NextRequest) {
       audioBuffer = await generateSilentAudio(seconds);
       reelSeconds = seconds;
     }
+
+    /**
+     * ── Cinematic clips ──
+     *
+     * Made once the reel's length is known, because each clip is asked for at
+     * the length its photo will be on screen. A photo whose clip could not be
+     * made, or whose clip did not stay on the photo, comes back empty and the
+     * renderer shows it the classic way.
+     */
+    let clips: (CinematicClip | null)[] = [];
+    let moving = 0;
+    if (cinematic) {
+      const seconds = reelSeconds ?? (await audioBufferSeconds(audioBuffer));
+      if (seconds > CINEMATIC_MAX_SECONDS + 2) {
+        return NextResponse.json(
+          { error: `A Cinematic reel runs up to ${CINEMATIC_MAX_SECONDS} seconds and this one is ${Math.round(seconds)}. Shorten the narration, or choose Classic.` },
+          { status: 400 },
+        );
+      }
+      clips = await makeCinematicClips(photoUrls, seconds / photoUrls.length);
+      moving = clips.filter(Boolean).length;
+    }
+    /**
+     * Whether this is worth a video from their plan. More than half the photos
+     * have to be moving. A reel where most fell back to the classic pan is a
+     * classic reel with a few extras, and the classic reel is free.
+     */
+    const earnedItsCharge = cinematic && moving * 2 > photoUrls.length;
 
     // ── Music bed ───────────────────────────────────────────────────────────
     let musicUrl: string | null = null;
@@ -209,6 +285,7 @@ export async function POST(req: NextRequest) {
         audioBuffer,
         photoUrls,
         wordTimestamps,
+        ...(moving > 0 && { clips }),
         // Trimmed to the photos that survived the cap, so a caption cannot end
         // up on the photo after the one it was written for.
         photoCaptions: (body.photoCaptions ?? [])
@@ -258,6 +335,35 @@ export async function POST(req: NextRequest) {
     // finish. Awaited here rather than earlier so it never delays the video.
     const seo = await seoPromise;
 
+    /**
+     * Taken now, with the reel made and stored. Admins are not charged, as
+     * everywhere else. If the balance was spent by another tab in the minute
+     * this took, the reel is still theirs: it exists, and refusing to hand it
+     * over would waste what it cost to make.
+     */
+    let charged: Awaited<ReturnType<typeof chargeOneVideo>> = null;
+    if (earnedItsCharge && !isAdmin) {
+      charged = await chargeOneVideo(admin, user.id, "short");
+      if (!charged) console.warn("[photo-reel] cinematic reel made but nothing was left to charge");
+      // The free video starts the 30-day clock, whichever kind of video it was.
+      if (charged && (p.subscription_tier ?? "free") === "free" && !p.first_video_generated_at) {
+        await admin.from("profiles").update({ first_video_generated_at: new Date().toISOString() }).eq("id", user.id);
+      }
+    }
+
+    /**
+     * Said in the description, which is where the owner chose to say it.
+     * Only when something in the reel actually moves: a Cinematic reel whose
+     * every photo fell back is a classic reel, and has nothing to disclose.
+     */
+    const describe = (text: string | undefined) =>
+      moving > 0 ? [text?.trim(), CINEMATIC_DISCLOSURE].filter(Boolean).join("\n\n") : text;
+    const seoData: Record<string, unknown> | null = seo
+      ? { ...seo, youtube_title: seo.youtube_title || title, youtube_description: describe(seo.youtube_description) }
+      : moving > 0
+        ? { youtube_title: title, youtube_description: CINEMATIC_DISCLOSURE }
+        : null;
+
     const { data: project, error: projErr } = await admin
       .from("projects")
       .insert({
@@ -273,9 +379,7 @@ export async function POST(req: NextRequest) {
         // The title the agent typed wins over the model's: it is the one
         // burned into the opening of the video, and a Publish window offering
         // a different one would be offering to contradict the picture.
-        ...(seo && {
-          seo_data: { ...seo, youtube_title: seo.youtube_title || title } as unknown as Record<string, unknown>,
-        }),
+        ...(seoData && { seo_data: seoData }),
       })
       .select("id")
       .single();
@@ -294,16 +398,40 @@ export async function POST(req: NextRequest) {
         render_provider: "ffmpeg",
         render_status: "completed",
         ...(reelSeconds ? { duration_seconds: reelSeconds } : {}),
-        metadata: { source: "photo-reel", photos: photoUrls.length },
+        metadata: {
+          source: "photo-reel",
+          photos: photoUrls.length,
+          // Read by isAiMadeVideo, which decides the platform disclosures.
+          // Set only when something moves; see the description above.
+          ...(moving > 0 && {
+            motion: "cinematic",
+            cinematic_clips: moving,
+            cinematic_seconds: Math.round(clips.reduce((sum, c) => sum + (c?.seconds ?? 0), 0)),
+          }),
+          ...(charged && { credit_cost: 1, credit_kind: "short", credit_source: charged.source }),
+        },
       })
       .select("id")
       .single();
     if (vidErr || !videoRow) throw new Error(vidErr?.message || "Could not save the video");
 
+    if (cinematic) {
+      await admin.from("api_usage_log").insert({
+        user_id: user.id,
+        api_provider: "heygen",
+        endpoint: "cinematic-reel",
+        credits_used: charged ? 1 : 0,
+        response_status: 200,
+      });
+    }
+
     return NextResponse.json({
       videoId: (videoRow as { id: string }).id,
       videoUrl: publicUrl,
       title,
+      // For the form to say what actually happened: how many photos moved,
+      // and whether a video was taken from the plan for it.
+      ...(cinematic && { cinematic: { moving, photos: photoUrls.length, charged: !!charged || (isAdmin && earnedItsCharge) } }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Could not build that reel";
