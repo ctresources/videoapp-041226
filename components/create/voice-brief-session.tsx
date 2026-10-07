@@ -125,6 +125,17 @@ interface Props {
    * command spoken up there appeared off screen.
    */
   onReply?: (reply: string) => void;
+  /**
+   * Drawn as a plain field: no mic row above the box, a small mic inside it.
+   *
+   * For the topic box that is step 1 of the Create page, directly under the
+   * hero mic. With its own amber mic and "Speak what you want to Spark" title
+   * it was a second front door a few lines below the first. As a field it is
+   * the place the words land and get corrected, and its mic is the same quiet
+   * one the City and State fields carry. It still runs this whole session, so
+   * nothing that could be said here before is lost.
+   */
+  field?: boolean;
 }
 
 /**
@@ -144,7 +155,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, field = false }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -495,6 +506,19 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           an avatar of its own. It was saying "What are we sparking today?"
           directly above a mic labelled "Say it or type it", which is the same
           instruction told twice, once by a face. */}
+      {/* As a field there is no row: the mic is in the box. What the session
+          says back still needs somewhere to be read, so it takes this line,
+          and only while there is something to say. */}
+      {field ? (
+        (status || lastAssistant) && (
+          <p
+            className={`text-[15px] leading-[1.4] ${status ? "text-spark-ink-muted" : "font-medium text-spark-ink"}`}
+            aria-live="polite"
+          >
+            {status || lastAssistant}
+          </p>
+        )
+      ) : (
       <div className="flex items-center gap-2.5">
         <button
           type="button"
@@ -531,7 +555,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           )}
         </div>
       </div>
+      )}
 
+      <div className="relative">
       <textarea
         ref={boxRef}
         value={boxValue}
@@ -541,7 +567,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         readOnly={listening}
         disabled={disabled}
         rows={2}
-        placeholder="Say it or type it…"
+        placeholder={field ? "Speak or Type…" : "Say it or type it…"}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -550,10 +576,36 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         }}
         // Ringed while it holds words that have just been heard and not yet
         // sent, so the thing needing a look is the thing that looks different.
-        className={`w-full resize-none rounded-[12px] border bg-white px-3.5 py-2.5 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
+        className={`block w-full resize-none rounded-[12px] border bg-white px-3.5 py-2.5 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
+          field ? "pr-14" : ""
+        } ${
           justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
         }`}
       />
+      {/* The field's own mic. Small and in the corner, like the ones in City
+          and State, but it is this session's mic and not plain dictation: what
+          it hears is added to the box and read as a brief. */}
+      {field && (
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={disabled || thinking}
+          aria-pressed={listening}
+          aria-label={listening ? "Stop recording" : "Speak"}
+          title={listening ? "Tap to stop" : "Speak it"}
+          className={`absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            listening
+              ? "bg-spark-amber text-white"
+              : "text-spark-amber hover:bg-spark-amber-tint"
+          }`}
+        >
+          {listening && (
+            <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />
+          )}
+          <Mic size={20} className="relative" />
+        </button>
+      )}
+      </div>
 
       <div className="flex items-center gap-2.5">
         {/* What the session has actually understood — the town, the subject,

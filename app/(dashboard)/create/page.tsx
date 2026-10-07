@@ -17,7 +17,7 @@ import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
 import { ArticleSource, MediaAndDocs, type DocAttachment, type DocMode } from "@/components/create/media-and-docs";
 import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/email-import-picker";
-import { ForwardedEmails } from "@/components/create/forwarded-emails";
+import { ForwardedEmailsList, useForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -339,6 +339,9 @@ function CreatePageInner() {
   // worked out, and what the brief said back, which it shows under the button.
   const [commandPending, setCommandPending] = useState(false);
   const [commandReply, setCommandReply] = useState("");
+  // What has been forwarded in. Held here because its tile sits inside the
+  // source row's grid and the list it opens sits under that row.
+  const emails = useForwardedEmails();
   // The panel that answers lives further down the page and is not always on
   // screen (the blog route's source step hides it). If no answer comes, the
   // top mic is released rather than left spinning with nothing to say why.
@@ -1784,6 +1787,10 @@ function CreatePageInner() {
 
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
+  // Whether section 1, the topic box, feeds the route that is chosen. Only
+  // "AI writes it" starts from a topic; an attached piece, a listing and the
+  // camera's own sources each say what the thing is about themselves.
+  const topicApplies = inputMode === "script" && !(blogOnly && blogSrcOpen);
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
@@ -1900,6 +1907,35 @@ function CreatePageInner() {
     && inputMode !== "camera";
 
   const showActionBar = inputMode === "script" && step === "input";
+
+  /**
+   * "Imported content", as the last tile of whichever source row is showing,
+   * and the list it opens under that row.
+   *
+   * Unlike its neighbours it does not choose a route by being pressed: it
+   * opens the emails, and Make a blog or Make a video on one of them is what
+   * chooses. Lit while the list is open, so it is clear what the list belongs
+   * to. Nothing at all until something has been forwarded.
+   */
+  const emailCount = emails.items.length;
+  const emailTile = emailCount > 0 ? (
+    <SourceTile
+      kicker="Forwarded in"
+      label="Imported content"
+      desc={`${emailCount} email${emailCount === 1 ? "" : "s"} · make a blog or video`}
+      cost={emails.fresh > 0 ? <CostPill free={false}>{emails.fresh} new</CostPill> : undefined}
+      active={emails.open}
+      disabled={inputMode === "camera" && cameraSourceLocked}
+      onClick={emails.toggle}
+    />
+  ) : null;
+  const emailList = emailTile && emails.open ? (
+    <ForwardedEmailsList
+      emails={emails}
+      busy={commandPending || locGenerating || cameraScriptGenerating}
+      onMake={startFromEmail}
+    />
+  ) : null;
 
   /**
    * Who it is for, how it sounds, what it is for: one row, three tabs.
@@ -2196,6 +2232,204 @@ function CreatePageInner() {
         </div>
       )}
 
+      {/* ── Your topic ──
+          One card, per the v2 composer. The speak-or-type choice used to be
+          two large tiles in a section of their own, above a second section
+          holding the actual input — two headings and a rule between the
+          decision and the thing it changed. It is now a segmented control in
+          this card's header, next to the input it switches.
+
+          Trending and templates stay below the card rather than inside it:
+          they are other ways to fill the same field, not part of the composer,
+          and folding them in would have made the card the whole page. */}
+      {/* First, at the owner's ask, directly under the hero mic. It was the
+          third section, under the cards and the source row, which put the box
+          the mic fills two rows of tiles away from the mic. Only the box and
+          the ideas moved: where, who and what shape stay at the bottom as
+          section 4, or the four cards would sit two screens down. */}
+      {/* It only feeds the route where AI writes from a topic. On the others
+          (your own content, your camera, a listing) it used to disappear,
+          which was fine at the bottom of the page. Up here it would vanish
+          above the tile just pressed and pull the page up under the finger, so
+          it stays where it is, dimmed, with a line saying why. */}
+      {step === "input" && !cameraHandoff && (
+        <div className="mt-7 flex flex-col gap-3">
+          <SectionHead
+            eyebrow="1 · Topic"
+            // Not "your video" or "your article": this is asked before the
+            // cards below have been chosen from.
+            question="What is it about?"
+            // "Spark" rather than "Start" — the product's own verb for this,
+            // and the same one on the button it eventually leads to.
+            aside={topicApplies ? "Spark with a template or idea below." : undefined}
+          />
+          {!topicApplies && (
+            <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
+              {inputMode === "camera"
+                ? "Not used when you record yourself. Your script source below takes it from here."
+                : inputMode === "listing"
+                  ? "Not needed here. Your listing sets the topic."
+                  : "Not needed here. Your content sets the topic."}
+            </p>
+          )}
+          <div
+            className={`flex flex-col gap-3 ${topicApplies ? "" : "pointer-events-none select-none opacity-45"}`}
+            aria-hidden={!topicApplies}
+            // Out of the tab order as well as out of reach of the pointer.
+            // React 18 drops `inert={true}` and only passes the attribute
+            // through as a string, while its types ask for a boolean.
+            {...(topicApplies ? {} : ({ inert: "" } as unknown as { inert: boolean }))}
+          >
+          {/* Named so the hero mic can bring what it heard into view. */}
+          <div id="spark-composer" className="-mb-3 scroll-mt-20" />
+          <ComposerCard
+            // Not while dimmed: a line of display type changing every few
+            // seconds is the loudest thing in a section that is switched off.
+            showTryLine={topicApplies && !locCustomTopic.trim()}
+            tryLines={TRY_LINES}
+            // Straight into the box, through the same channel a topic chip
+            // uses — so it arrives as a sentence to edit rather than a brief
+            // already sent.
+            onUseTryLine={(text) => {
+              setLocCustomTopic(text);
+              setTopicTemplateRaw(null);
+              setSparkSeed((s) => ({ text, n: s.n + 1 }));
+            }}
+            // Four nouns. "What's it about?" here was the third asking of the
+            // section's own question, and "Which town?" was a question in both
+            // of its states.
+            chips={[
+              { label: "Topic", ok: !!locCustomTopic.trim() },
+              { label: "Town", ok: locationSet },
+              { label: "Audience", ok: !!locAudience.trim() },
+              // Always satisfiable now that format is asked on this step. It
+              // starts on a default, so this reads as "set" from the outset —
+              // the chip is a reminder of what you can say, not a blocker.
+              { label: "Format", ok: formatTouched },
+            ]}
+          >
+            {/* One input for both ways in. Speech writes into the box, typing
+                edits it, and Send commits — so a misheard word is a keystroke
+                to fix rather than the whole brief said again. The speak-or-type
+                choice this replaced was asking which of two boxes to show, when
+                the answer was always "the one that takes both". */}
+            <VoiceBriefSession
+              // A field with its mic inside it. The hero mic is the one that
+              // says "speak"; this is where the words land.
+              field
+              disabled={locGenerating || !topicApplies}
+              onSwitchToTyping={() => { /* the box already takes typing */ }}
+              // Only ever fills blanks it has an answer for — a null slot
+              // must not wipe something already typed or picked from a chip.
+              onSlots={(s) => {
+                if (s.city) setLocCity(s.city);
+                if (s.state) setLocState(s.state);
+                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
+                if (s.audience) setLocAudience(rememberAudience(s.audience));
+                if (s.tone) setLocTone(s.tone);
+                if (s.length) { setLocLength(s.length); setFormatTouched(true); }
+                if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
+                if (s.purpose) setLocPurpose(s.purpose);
+                // "Create a blog" and "make a video" pick the route out loud,
+                // the same as pressing its tile.
+                if (s.output) setBlogOnly(s.output === "blog");
+                // "From my Ambler market report email": attached to the page,
+                // so the button at the bottom writes from it as well, and it
+                // can be seen and taken off again.
+                if (s.emailId && s.emailId !== blogSrcEmailId) {
+                  openEmail(s.emailId)
+                    .then((article) => attachEmail(article, { quiet: true }))
+                    .catch(() => { /* said when it is written, in handleGenerateScript */ });
+                }
+                // Long form renders landscape only. Said together, "long reel"
+                // has to resolve to something buildable, and the length is the
+                // half that changes the script.
+                if (s.length === "long") setLocPlatform("youtube");
+              }}
+              onReady={(sl) => {
+                if (locGenerating) return;
+                // "I'll record it myself" is the camera route: the script goes
+                // to the teleprompter, not to a render.
+                if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
+                  setInputMode("camera");
+                  setCameraSource("speak");
+                  setCameraVoiceTopic(sl.topic);
+                  void handleCameraScriptFromTopic(sl.topic, sl);
+                  return;
+                }
+                handleGenerateScript(sl);
+              }}
+              // This panel's button and the one in the footer call the same
+              // handler, so they have to agree on what it does. Only this
+              // instance takes a mode — the camera one below is always a
+              // script.
+              mode={blogOnly ? "blog" : "script"}
+              onDraftChange={setBriefHasDraft}
+              seed={sparkSeed}
+              command={voiceCommand}
+              onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
+            />
+          </ComposerCard>
+
+          {/* The six quick chips used to sit here, above the panel — a second
+              template picker stacked on the one below it, under a label
+              ("Start with a template or idea") that said almost exactly what
+              the panel's own title says. Every one of the six was already
+              inside it, one tab away. They are in the panel now, under its
+              title; the label moved up to the section question, where it
+              points at them. */}
+
+          {/* ── Spark an idea ──
+              Flush against the composer above it. The -mt-3 cancels this
+              column's gap: the card rounds at the top, the panel rounds at the
+              bottom, and between them there is a single shared rule. They fill
+              the same field, so a gap made choosing an idea look like a
+              different exercise from typing one. */}
+          <div className="-mt-3">
+          <SparkPanel
+            city={locCity || undefined}
+            state={locState || undefined}
+            // Also drops the topic into the composer, so a pick is the start of
+            // a sentence you can add to rather than a silent field change
+            // somewhere further down the page.
+            onSelect={(topic, raw) => {
+              setLocCustomTopic(topic);
+              setTopicTemplateRaw(raw);
+              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
+            }}
+          />
+          </div>
+
+          {/* Something they already have, on the video route.
+              The blog route has had this since it had a source tile; a video
+              could only start from a topic, so a forwarded market report could
+              become an article and never a script. Same control, same
+              attachment. One line until it is wanted: opened, its first tab is
+              a box to paste into, and a second empty box under the topic box
+              reads as a second thing to fill in. */}
+          {/* Something attached while this topic box is up: an email named to
+              the mic ("from my Ambler market report email"), or a piece
+              carried over from the other route. Shown so it can be seen and
+              taken off. There is no way to ATTACH from here any more: on the
+              video route that lives in "Use my content", and on
+              the blog route under its own source tile. Offering it here as
+              well was the same thing in two places. */}
+          {blogSrcText && topicApplies && (
+            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
+              <Mail size={16} className="shrink-0 text-green-600" />
+              <span className="min-w-0 flex-1 truncate text-sm text-green-800">
+                Writing from: {blogSrcName}
+              </span>
+              <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
+                <X size={14} className="text-green-700" />
+              </button>
+            </div>
+          )}
+          </div>
+
+        </div>
+      )}
+
       {/* ── Row 1 · how it gets made ──
           One row used to ask two questions: three tiles chose where the words
           come from and the fourth chose who does the filming. That mix is why
@@ -2211,7 +2445,7 @@ function CreatePageInner() {
           out among three answers to "where do the words come from". */}
       {/* "Sparking", not "making" — the product's own verb, the one in the
           headline above and on the button at the end. */}
-      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="1 · Create" question="What are you sparking?" />}
+      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" question="What are you sparking?" />}
       {step === "input" && !cameraHandoff && (
         <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {/* Avatar first, because avatar is what the page opens on.
@@ -2405,16 +2639,10 @@ function CreatePageInner() {
         </div>
       )}
 
-      {/* What has been emailed in, under the three cards as the owner's
-          mockup has it. It sat under the mic, between the question and the
-          cards that answer it; here it reads as a fourth thing you can start
-          from, which is what it is. */}
-      {step === "input" && !cameraHandoff && (
-        <ForwardedEmails
-          busy={commandPending || locGenerating || cameraScriptGenerating}
-          onMake={startFromEmail}
-        />
-      )}
+      {/* What has been emailed in used to be a line of its own here, under the
+          cards. It is the last tile of the source row below now (emailTile),
+          at the owner's ask. The one place that leaves it out of reach is a
+          listing on the video route, which has no source row. */}
 
       {/* ── Row 2 · where the script comes from ──
           Filming it yourself. This is the row that used to sit inside the
@@ -2424,7 +2652,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
+          <SectionHead className="mt-7" eyebrow="3 · Script source" question="How should your script begin?" />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -2453,7 +2681,10 @@ function CreatePageInner() {
                 onClick={() => setCameraSource(key)}
               />
             ))}
+            {/* Sixth, which also fills the second row of three. */}
+            {emailTile}
           </div>
+          {emailList}
           {/* Dimmed type on its own says "unavailable" but not why. One line,
               and only while it is actually locked. */}
           {cameraSourceLocked && (
@@ -2475,12 +2706,21 @@ function CreatePageInner() {
         <>
         <SectionHead
           className="mt-7"
-          eyebrow={blogOnly ? "2 · Source" : "2 · Script source"}
+          eyebrow={blogOnly ? "3 · Source" : "3 · Script source"}
           // "Where", not "What": the answers are origins — the writer, your
           // listings — and "come from" already carries the what.
           question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
         />
-        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {/* One more column when there is email to start from: three across on
+            the video route, and four on the blog route, which already had
+            three. */}
+        <div
+          className={`mt-2.5 grid grid-cols-1 gap-2 ${
+            blogOnly
+              ? (emailTile ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")
+              : (emailTile ? "sm:grid-cols-3" : "sm:grid-cols-2")
+          }`}
+        >
           {([
             // Its blog subtitle used to read "From a topic, or from an
             // article you already have" — back when the second half had no
@@ -2550,7 +2790,9 @@ function CreatePageInner() {
               beside the two videos: this row answers where the WORDS come
               from, and "a blog post" is not an answer to that — it is what
               comes out at the other end. */}
+          {emailTile}
         </div>
+        {emailList}
         </>
       )}
 
@@ -2684,189 +2926,16 @@ function CreatePageInner() {
         </div>
       )}
 
-      {/* ── Your topic ──
-          One card, per the v2 composer. The speak-or-type choice used to be
-          two large tiles in a section of their own, above a second section
-          holding the actual input — two headings and a rule between the
-          decision and the thing it changed. It is now a segmented control in
-          this card's header, next to the input it switches.
-
-          Trending and templates stay below the card rather than inside it:
-          they are other ways to fill the same field, not part of the composer,
-          and folding them in would have made the card the whole page. */}
-      {/* Hidden on the import route: the piece already says what it is about,
-          which is why an attachment counts as the topic further down. Asking
-          someone to summarise in a sentence what they just handed over is
-          asking twice. The market below stays — a rewrite needs it. */}
-      {inputMode === "script" && step === "input" && !(blogOnly && blogSrcOpen) && (
-        <div className="mt-7 flex flex-col gap-3">
-          {/* Just the section and its number.
-              It read "Topic details · AI writes it · Step 1 of 5", which was
-              three claims where one was wanted. The step count was true of the
-              whole page, not of this third section — so hanging it here made
-              Video style and Script source above look like they sat outside
-              the flow — and the topbar already carries it, with a progress
-              rail, at the top of every screen. The tab name went the same way:
-              row 2 is directly above with that tile lit. */}
-          <SectionHead
-            // Always 3 now. Row 1 stays on screen in blog mode — it is where
-            // the blog was chosen — so nothing shifts up behind it.
-            eyebrow="3 · Topic details"
-            question={blogOnly ? "What is your article about?" : "What is your video about?"}
-            // "Spark" rather than "Start" — the product's own verb for this,
-            // and the same one on the button it eventually leads to.
-            aside="Spark with a template or idea below."
-          />
-          {/* Named so the hero mic can bring what it heard into view. */}
-          <div id="spark-composer" className="-mb-3 scroll-mt-20" />
-          <ComposerCard
-            showTryLine={!locCustomTopic.trim()}
-            tryLines={TRY_LINES}
-            // Straight into the box, through the same channel a topic chip
-            // uses — so it arrives as a sentence to edit rather than a brief
-            // already sent.
-            onUseTryLine={(text) => {
-              setLocCustomTopic(text);
-              setTopicTemplateRaw(null);
-              setSparkSeed((s) => ({ text, n: s.n + 1 }));
-            }}
-            // Four nouns. "What's it about?" here was the third asking of the
-            // section's own question, and "Which town?" was a question in both
-            // of its states.
-            chips={[
-              { label: "Topic", ok: !!locCustomTopic.trim() },
-              { label: "Town", ok: locationSet },
-              { label: "Audience", ok: !!locAudience.trim() },
-              // Always satisfiable now that format is asked on this step. It
-              // starts on a default, so this reads as "set" from the outset —
-              // the chip is a reminder of what you can say, not a blocker.
-              { label: "Format", ok: formatTouched },
-            ]}
-          >
-            {/* One input for both ways in. Speech writes into the box, typing
-                edits it, and Send commits — so a misheard word is a keystroke
-                to fix rather than the whole brief said again. The speak-or-type
-                choice this replaced was asking which of two boxes to show, when
-                the answer was always "the one that takes both". */}
-            <VoiceBriefSession
-              disabled={locGenerating}
-              onSwitchToTyping={() => { /* the box already takes typing */ }}
-              // Only ever fills blanks it has an answer for — a null slot
-              // must not wipe something already typed or picked from a chip.
-              onSlots={(s) => {
-                if (s.city) setLocCity(s.city);
-                if (s.state) setLocState(s.state);
-                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
-                if (s.audience) setLocAudience(rememberAudience(s.audience));
-                if (s.tone) setLocTone(s.tone);
-                if (s.length) { setLocLength(s.length); setFormatTouched(true); }
-                if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
-                if (s.purpose) setLocPurpose(s.purpose);
-                // "Create a blog" and "make a video" pick the route out loud,
-                // the same as pressing its tile.
-                if (s.output) setBlogOnly(s.output === "blog");
-                // "From my Ambler market report email": attached to the page,
-                // so the button at the bottom writes from it as well, and it
-                // can be seen and taken off again.
-                if (s.emailId && s.emailId !== blogSrcEmailId) {
-                  openEmail(s.emailId)
-                    .then((article) => attachEmail(article, { quiet: true }))
-                    .catch(() => { /* said when it is written, in handleGenerateScript */ });
-                }
-                // Long form renders landscape only. Said together, "long reel"
-                // has to resolve to something buildable, and the length is the
-                // half that changes the script.
-                if (s.length === "long") setLocPlatform("youtube");
-              }}
-              onReady={(sl) => {
-                if (locGenerating) return;
-                // "I'll record it myself" is the camera route: the script goes
-                // to the teleprompter, not to a render.
-                if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
-                  setInputMode("camera");
-                  setCameraSource("speak");
-                  setCameraVoiceTopic(sl.topic);
-                  void handleCameraScriptFromTopic(sl.topic, sl);
-                  return;
-                }
-                handleGenerateScript(sl);
-              }}
-              // This panel's button and the one in the footer call the same
-              // handler, so they have to agree on what it does. Only this
-              // instance takes a mode — the camera one below is always a
-              // script.
-              mode={blogOnly ? "blog" : "script"}
-              onDraftChange={setBriefHasDraft}
-              seed={sparkSeed}
-              command={voiceCommand}
-              onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
-            />
-          </ComposerCard>
-
-          {/* The six quick chips used to sit here, above the panel — a second
-              template picker stacked on the one below it, under a label
-              ("Start with a template or idea") that said almost exactly what
-              the panel's own title says. Every one of the six was already
-              inside it, one tab away. They are in the panel now, under its
-              title; the label moved up to the section question, where it
-              points at them. */}
-
-          {/* ── Spark an idea ──
-              Flush against the composer above it. The -mt-3 cancels this
-              column's gap: the card rounds at the top, the panel rounds at the
-              bottom, and between them there is a single shared rule. They fill
-              the same field, so a gap made choosing an idea look like a
-              different exercise from typing one. */}
-          <div className="-mt-3">
-          <SparkPanel
-            city={locCity || undefined}
-            state={locState || undefined}
-            // Also drops the topic into the composer, so a pick is the start of
-            // a sentence you can add to rather than a silent field change
-            // somewhere further down the page.
-            onSelect={(topic, raw) => {
-              setLocCustomTopic(topic);
-              setTopicTemplateRaw(raw);
-              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
-            }}
-          />
-          </div>
-
-          {/* Something they already have, on the video route.
-              The blog route has had this since it had a source tile; a video
-              could only start from a topic, so a forwarded market report could
-              become an article and never a script. Same control, same
-              attachment. One line until it is wanted: opened, its first tab is
-              a box to paste into, and a second empty box under the topic box
-              reads as a second thing to fill in. */}
-          {/* Something attached while this topic box is up: an email named to
-              the mic ("from my Ambler market report email"), or a piece
-              carried over from the other route. Shown so it can be seen and
-              taken off. There is no way to ATTACH from here any more: on the
-              video route that lives in "Use my content", and on
-              the blog route under its own source tile. Offering it here as
-              well was the same thing in two places. */}
-          {blogSrcText && (
-            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
-              <Mail size={16} className="shrink-0 text-green-600" />
-              <span className="min-w-0 flex-1 truncate text-sm text-green-800">
-                Writing from: {blogSrcName}
-              </span>
-              <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
-                <X size={14} className="text-green-700" />
-              </button>
-            </div>
-          )}
-
-        </div>
-      )}
-
-
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-7 flex flex-col gap-3">
+
+          {/* What is left of the old third section now that its topic box is
+              section 1: the place, the audience and the shape. It had no
+              heading of its own because it sat directly under that box. */}
+          <SectionHead eyebrow="4 · Details" question="Where is it, and who is it for?" />
 
           {/* ── Where / Who / What ──
               One shaded panel of questions, as in the design, rather than a
@@ -3222,11 +3291,11 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
         <div id="spark-source" className="mt-7 max-w-3xl scroll-mt-20">
-          {/* Third section of this page, counted with the other two. The step
+          {/* Fourth section of this page, counted with the other three. The step
               count it used to carry belongs to the whole page and is in the
               topbar; the tab name is the lit tile directly above. */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            3 · Your script
+            4 · Your script
           </p>
           {/* One column, top to bottom.
               Two columns asked which side to begin on and answered neither:
@@ -4051,7 +4120,7 @@ function CreatePageInner() {
                 take those are hidden, and a page that opens at "3" reads as
                 one you have lost your place in. */}
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-              {cameraHandoff ? "Where it's set" : "3 · What we're writing"}
+              {cameraHandoff ? "Where it's set" : "4 · What we're writing"}
             </p>
 
             {/* Market for THIS video. Without it the CTA and end card silently

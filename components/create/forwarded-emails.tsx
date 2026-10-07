@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, FileText, Loader2, Mail, RefreshCw } from "lucide-react";
+import { FileText, Loader2, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   fetchEmailArticle,
@@ -28,36 +28,29 @@ function readSeen(): number {
 }
 
 /**
- * What you have emailed in, at the top of the Create page.
+ * What you have emailed in, as one of the answers to "how should it begin".
  *
  * A forwarded email could only be reached from inside a route: pick blog or
  * video, pick a source, open "Start from something you already have", choose
  * From email. Five taps to find out whether the report you sent had arrived,
  * and nothing on the page said it had.
  *
- * Closed, this is one line that says how many are waiting and how many are
- * new. Open, each one has the two things you would do with it. Picking one
- * sets the route up with the email already attached; it writes nothing by
- * itself, so nothing here can spend a video.
+ * It was a line of its own under the four cards. It is a tile in the source
+ * row now, beside "AI writes it" and "Use my content", at the owner's ask: an
+ * email is somewhere a script or an article starts, which is the question that
+ * row asks. So this is in two halves, the state (this hook) and the list the
+ * tile opens (below), because the tile sits inside the row's grid and the list
+ * sits under it.
  *
- * Renders nothing until something has been forwarded. The address and how to
- * use it are in Settings and in the From email picker, and an empty box at the
- * top of the page for a feature someone has not used would only be in the way.
+ * Nothing is shown until something has been forwarded. The address and how to
+ * use it are in Settings and in the From email picker, and an empty tile for a
+ * feature someone has not used would only be in the way.
  */
-export function ForwardedEmails({
-  onMake,
-  busy = false,
-}: {
-  /** Start a blog or a video from this email. */
-  onMake: (article: PickedEmailArticle, kind: "blog" | "video") => void;
-  /** The page is already writing something. */
-  busy?: boolean;
-}) {
+export function useForwardedEmails() {
   const [items, setItems] = useState<EmailImportItem[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [seen, setSeen] = useState<number>(() => Date.now());
-  const [opening, setOpening] = useState<string | null>(null);
 
   const load = useCallback(async (announce = false) => {
     setLoading(true);
@@ -77,7 +70,7 @@ export function ForwardedEmails({
       });
     } catch (err) {
       // Quiet on arrival: this loads by itself, and a page that opens with an
-      // error about something nobody asked for is worse than a missing line.
+      // error about something nobody asked for is worse than a missing tile.
       if (announce) toast.error(err instanceof Error ? err.message : "Couldn't load your forwarded emails");
     } finally {
       setLoading(false);
@@ -89,26 +82,57 @@ export function ForwardedEmails({
     void load();
   }, [load]);
 
-  if (items.length === 0) return null;
+  const toggle = useCallback(() => {
+    setOpen((was) => {
+      // Opening the list is reading it. The "new" count stays on screen for
+      // this visit, so the rows can still be told apart, and is gone next time.
+      if (!was) {
+        try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch { /* private mode */ }
+      }
+      return !was;
+    });
+  }, []);
 
-  const fresh = items.filter((i) => Date.parse(i.receivedAt) > seen).length;
+  const close = useCallback(() => setOpen(false), []);
 
-  function toggle() {
-    const next = !open;
-    setOpen(next);
-    // Opening the list is reading it. The "new" count stays on screen for
-    // this visit, so the rows can still be told apart, and is gone next time.
-    if (next) {
-      try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch { /* private mode */ }
-    }
-  }
+  return {
+    items,
+    /** How many arrived since the list was last opened in this browser. */
+    fresh: items.filter((i) => Date.parse(i.receivedAt) > seen).length,
+    seen,
+    open,
+    toggle,
+    close,
+    loading,
+    reload: load,
+  };
+}
+
+/**
+ * The list the "Imported content" tile opens: each email, and the two things
+ * you would do with it. Picking one sets the route up with the email already
+ * attached; it writes nothing by itself, so nothing here can spend a video.
+ */
+export function ForwardedEmailsList({
+  emails,
+  onMake,
+  busy = false,
+}: {
+  emails: ReturnType<typeof useForwardedEmails>;
+  /** Start a blog or a video from this email. */
+  onMake: (article: PickedEmailArticle, kind: "blog" | "video") => void;
+  /** The page is already writing something. */
+  busy?: boolean;
+}) {
+  const { items, seen, loading, reload, close } = emails;
+  const [opening, setOpening] = useState<string | null>(null);
 
   async function make(id: string, kind: "blog" | "video") {
     if (opening || busy) return;
     setOpening(`${id}:${kind}`);
     try {
       onMake(await fetchEmailArticle(id), kind);
-      setOpen(false);
+      close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't open that email");
     } finally {
@@ -119,102 +143,65 @@ export function ForwardedEmails({
   const action = "rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50";
 
   return (
-    <section className="mt-2.5 w-full text-left">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        className={`flex w-full items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
-          fresh > 0
-            ? "border-spark-amber bg-spark-amber-tint"
-            : "border-spark-rule bg-white hover:border-spark-rule-dim"
-        }`}
-      >
-        <Mail size={17} className="shrink-0 text-spark-amber" />
-        <span className="min-w-0 flex-1 text-[15px] leading-snug text-spark-ink">
-          {/* One wording for both states, the owner's: what this is, how
-              many, and what you can do with one. The line used to drop the
-              "make a blog or a video" half exactly when there was something
-              new, which is when someone is most likely to act on it. */}
-          <strong className="font-bold">Imported content:</strong>{" "}
-          {fresh > 0 ? (
-            <>
-              {fresh} new email{fresh === 1 ? "" : "s"}
-              {items.length > fresh && <> · {items.length} total</>}
-            </>
-          ) : (
-            <>{items.length} email{items.length === 1 ? "" : "s"}</>
-          )}
-          <span className="text-spark-ink-muted"> · make a blog or video</span>
-        </span>
-        <ChevronDown
-          size={17}
-          className={`shrink-0 text-spark-ink-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div className="mt-2 rounded-xl border border-spark-rule bg-white p-2.5">
-          <ul className="flex flex-col gap-2">
-            {items.map((item) => {
-              const isNew = Date.parse(item.receivedAt) > seen;
-              return (
-                <li key={item.id} className="rounded-lg border border-spark-rule-soft p-2.5">
-                  <p className="flex items-start gap-1.5 text-[14px] font-bold leading-snug text-brand-text">
-                    <span className="min-w-0 flex-1 break-words">{item.subject}</span>
-                    {isNew && (
-                      <span className="shrink-0 rounded-full bg-spark-amber px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-white">
-                        New
-                      </span>
-                    )}
-                  </p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-spark-ink-faint">
-                    {item.pdfSource && (
-                      <span className="flex items-center gap-1 font-semibold text-spark-amber">
-                        <FileText size={11} /> PDF read
-                      </span>
-                    )}
-                    <span>{item.words.toLocaleString()} words · {whenShort(item.receivedAt)}</span>
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(["blog", "video"] as const).map((kind) => (
-                      <button
-                        key={kind}
-                        type="button"
-                        onClick={() => make(item.id, kind)}
-                        disabled={!!opening || busy}
-                        className={`${action} ${
-                          kind === "blog"
-                            ? "border-spark-amber bg-spark-amber text-white hover:opacity-90"
-                            : "border-spark-rule bg-white text-spark-ink hover:border-spark-amber"
-                        }`}
-                      >
-                        {opening === `${item.id}:${kind}`
-                          ? <Loader2 size={13} className="inline animate-spin" />
-                          : kind === "blog" ? "Make a blog" : "Make a video"}
-                      </button>
-                    ))}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
-            <p className="text-[12px] leading-snug text-spark-ink-faint">
-              Kept for 30 days. You can also say &ldquo;create a blog from my &hellip; email&rdquo;.
-            </p>
-            <button
-              type="button"
-              onClick={() => load(true)}
-              disabled={loading}
-              className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-spark-ink-muted hover:text-brand-text disabled:opacity-50"
-            >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              Check for new
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
+    <div className="mt-2 rounded-xl border border-spark-rule bg-white p-2.5">
+      <ul className="flex flex-col gap-2">
+        {items.map((item) => {
+          const isNew = Date.parse(item.receivedAt) > seen;
+          return (
+            <li key={item.id} className="rounded-lg border border-spark-rule-soft p-2.5">
+              <p className="flex items-start gap-1.5 text-[14px] font-bold leading-snug text-brand-text">
+                <span className="min-w-0 flex-1 break-words">{item.subject}</span>
+                {isNew && (
+                  <span className="shrink-0 rounded-full bg-spark-amber px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-white">
+                    New
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[12px] text-spark-ink-faint">
+                {item.pdfSource && (
+                  <span className="flex items-center gap-1 font-semibold text-spark-amber">
+                    <FileText size={11} /> PDF read
+                  </span>
+                )}
+                <span>{item.words.toLocaleString()} words · {whenShort(item.receivedAt)}</span>
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(["blog", "video"] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => make(item.id, kind)}
+                    disabled={!!opening || busy}
+                    className={`${action} ${
+                      kind === "blog"
+                        ? "border-spark-amber bg-spark-amber text-white hover:opacity-90"
+                        : "border-spark-rule bg-white text-spark-ink hover:border-spark-amber"
+                    }`}
+                  >
+                    {opening === `${item.id}:${kind}`
+                      ? <Loader2 size={13} className="inline animate-spin" />
+                      : kind === "blog" ? "Make a blog" : "Make a video"}
+                  </button>
+                ))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-2 flex items-center justify-between gap-2 px-0.5">
+        <p className="text-[12px] leading-snug text-spark-ink-faint">
+          Kept for 30 days. You can also say &ldquo;create a blog from my &hellip; email&rdquo;.
+        </p>
+        <button
+          type="button"
+          onClick={() => reload(true)}
+          disabled={loading}
+          className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-spark-ink-muted hover:text-brand-text disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          Check for new
+        </button>
+      </div>
+    </div>
   );
 }
