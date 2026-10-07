@@ -20,7 +20,7 @@ import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/
 import { ForwardedEmailsList, useForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -491,13 +491,6 @@ function CreatePageInner() {
    * sitting visible in the box above it.
    */
   const [briefHasDraft, setBriefHasDraft] = useState(false);
-  // The words sitting unsent in section 1's topic box. Only read at the moment
-  // the camera route's own topic box appears, so it is a ref and not state.
-  const topicDraftRef = useRef("");
-  const noteTopicDraft = useCallback((hasDraft: boolean, text: string) => {
-    setBriefHasDraft(hasDraft);
-    topicDraftRef.current = text;
-  }, []);
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -1668,6 +1661,11 @@ function CreatePageInner() {
       if (!res.ok) throw new Error((data.error as string) || "Failed to generate script");
       setCameraGeneratedScript(data.script as string);
       toast.success("Script ready. It's loaded in your teleprompter.");
+      // The topic is at the top of the page and the button is in the bar at
+      // the bottom; the script lands in between, usually off screen.
+      setTimeout(() => {
+        document.getElementById("camera-script")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate script");
     } finally {
@@ -1794,10 +1792,6 @@ function CreatePageInner() {
 
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
-  // Whether section 1, the topic box, feeds the route that is chosen. Only
-  // "AI writes it" starts from a topic; an attached piece, a listing and the
-  // camera's own sources each say what the thing is about themselves.
-  const topicApplies = inputMode === "script" && !(blogOnly && blogSrcOpen);
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
@@ -1878,6 +1872,21 @@ function CreatePageInner() {
   // your script had come from.
   const cameraSourceLocked =
     cameraPhase !== "script" || (cameraMode === "brand" && canBrandClips);
+
+  // Recording yourself from a topic: "AI writes it" on the camera side.
+  const cameraFromTopic = inputMode === "camera" && cameraSource === "speak";
+  // Whether section 1, the topic box, feeds the route that is chosen. Only
+  // "AI writes it" starts from a topic, on either side of row 2: rendered, or
+  // filmed yourself. An attached piece, a listing and the camera's other
+  // sources each say what the thing is about themselves. The camera side had
+  // a topic box of its own in the camera card, a second one on the page, until
+  // this one moved to the top and could do both jobs.
+  const topicApplies =
+    (inputMode === "script" && !(blogOnly && blogSrcOpen))
+    || (cameraFromTopic && !cameraSourceLocked);
+  // What the camera script is written from. Section 1 keeps both in step, and
+  // a picked idea only sets the first, so the first is the newer of the two.
+  const cameraTopicText = locCustomTopic.trim() || cameraVoiceTopic.trim();
 
   // Which of the three ways in you are on. Shown on every tab: they are all
   // step 1 of the same five, and only the AI tab said so.
@@ -2229,8 +2238,12 @@ function CreatePageInner() {
             busy={commandPending || locGenerating || cameraScriptGenerating}
             reply={commandReply}
             onCommand={(text) => {
-              setInputMode("script");
-              setLastSparkTab("script");
+              // Recording yourself from a topic is fed by the same panel now,
+              // so a sentence said from there stays there.
+              if (!cameraFromTopic || cameraSourceLocked) {
+                setInputMode("script");
+                setLastSparkTab("script");
+              }
               setCommandReply("");
               setCommandPending(true);
               setVoiceCommand({ text, n: Date.now() });
@@ -2275,9 +2288,11 @@ function CreatePageInner() {
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
               {inputMode === "camera"
-                ? (cameraSource === "speak"
-                    ? "Not used when you record yourself. A topic entered here is carried to the topic box below."
-                    : "Not used when you record yourself. Your script source below takes it from here.")
+                ? (cameraSource !== "speak"
+                    ? "Not used with this script source. Choose AI writes it in step 3 to start from a topic."
+                    : cameraMode === "brand" && canBrandClips
+                      ? "Not used while you're branding a clip you already shot."
+                      : "Set for this take. Start over to change the topic.")
                 : inputMode === "listing"
                   ? "Not needed here. Your listing sets the topic."
                   : "Not needed here. Your content sets the topic."}
@@ -2328,26 +2343,38 @@ function CreatePageInner() {
               // A field with its mic inside it. The hero mic is the one that
               // says "speak"; this is where the words land.
               field
-              disabled={locGenerating || !topicApplies}
+              disabled={locGenerating || cameraScriptGenerating || !topicApplies}
               onSwitchToTyping={() => { /* the box already takes typing */ }}
               // Only ever fills blanks it has an answer for — a null slot
               // must not wipe something already typed or picked from a chip.
               onSlots={(s) => {
                 if (s.city) setLocCity(s.city);
                 if (s.state) setLocState(s.state);
-                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); }
+                // Both topics, so the camera side has it whichever route this
+                // was said on.
+                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); setCameraVoiceTopic(s.topic); }
                 if (s.audience) setLocAudience(rememberAudience(s.audience));
                 if (s.tone) setLocTone(s.tone);
-                if (s.length) { setLocLength(s.length); setFormatTouched(true); }
+                if (s.length) {
+                  setLocLength(s.length);
+                  setFormatTouched(true);
+                  // The brief speaks in standard/long; the teleprompter has
+                  // four lengths. Map onto the nearest and leave the four-way
+                  // picker for anything finer.
+                  setCameraScriptLength(s.length === "long" ? "full" : "standard");
+                }
                 if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
                 if (s.purpose) setLocPurpose(s.purpose);
                 // "Create a blog" and "make a video" pick the route out loud,
                 // the same as pressing its tile.
-                if (s.output) setBlogOnly(s.output === "blog");
+                // Not while recording yourself: there the route only changes
+                // once the brief is done (onReady below), as it did when the
+                // camera had a topic box of its own.
+                if (s.output && inputMode !== "camera") setBlogOnly(s.output === "blog");
                 // "From my Ambler market report email": attached to the page,
                 // so the button at the bottom writes from it as well, and it
                 // can be seen and taken off again.
-                if (s.emailId && s.emailId !== blogSrcEmailId) {
+                if (s.emailId && s.emailId !== blogSrcEmailId && inputMode !== "camera") {
                   openEmail(s.emailId)
                     .then((article) => attachEmail(article, { quiet: true }))
                     .catch(() => { /* said when it is written, in handleGenerateScript */ });
@@ -2358,7 +2385,23 @@ function CreatePageInner() {
                 if (s.length === "long") setLocPlatform("youtube");
               }}
               onReady={(sl) => {
-                if (locGenerating) return;
+                if (locGenerating || cameraScriptGenerating) return;
+                if (inputMode === "camera") {
+                  // What was asked for wins over which route the page happened
+                  // to be on: a blog, or a video with the avatar or voice
+                  // only, leaves the camera route and is made. Without this,
+                  // "create a blog about…" said here came back as a script to
+                  // read on camera and the blog was never written.
+                  if (sl.output === "blog" || sl.onScreen === "avatar" || sl.onScreen === "voice_only") {
+                    setInputMode("script");
+                    setLastSparkTab("script");
+                    setBlogOnly(sl.output === "blog");
+                    void handleGenerateScript({ ...sl, topic: sl.topic ?? cameraTopicText });
+                    return;
+                  }
+                  void handleCameraScriptFromTopic(sl.topic ?? cameraTopicText, sl);
+                  return;
+                }
                 // "I'll record it myself" is the camera route: the script goes
                 // to the teleprompter, not to a render.
                 if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
@@ -2371,11 +2414,9 @@ function CreatePageInner() {
                 handleGenerateScript(sl);
               }}
               // This panel's button and the one in the footer call the same
-              // handler, so they have to agree on what it does. Only this
-              // instance takes a mode — the camera one below is always a
-              // script.
+              // handler, so they have to agree on what it does.
               mode={blogOnly ? "blog" : "script"}
-              onDraftChange={noteTopicDraft}
+              onDraftChange={setBriefHasDraft}
               seed={sparkSeed}
               command={voiceCommand}
               onReply={(reply) => { setCommandPending(false); setCommandReply(reply); }}
@@ -3264,7 +3305,13 @@ function CreatePageInner() {
                 : cameraGeneratedScript.trim()
                   ? "Script ready. Press Open Camera to record it."
                   : cameraSource === "speak"
-                    ? "Say what the video is about, and we'll write the script."
+                    ? (cameraTopicText
+                        ? "We'll write your teleprompter script from your topic."
+                        : briefHasDraft
+                          // The topic is on screen, just not sent — as on the
+                          // avatar route.
+                          ? "Press Send to add what you've typed."
+                          : "Say or type what the video is about in step 1, and we'll write the script.")
                     : cameraSource === "uploads"
                       ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"
@@ -3288,10 +3335,30 @@ function CreatePageInner() {
               same effect were on screen together, one of them a full page
               away from the brief it acted on. The panel's stays, because it
               sits beside the thing it reads. */}
+          {/* And one more, on the topic route. The brief panel's own button
+              went when the footer on the avatar side took the job over, which
+              left this side with a brief that said "That's everything I need"
+              and no button anywhere: the go-ahead words were the only way to
+              get a script. The panel is at the top of the page now, so the bar
+              is the one place this is always in reach. Only until a script
+              exists — after that it would overwrite one that may have been
+              edited, a tap away from Open Camera. */}
           {cameraMode === "brand" && canBrandClips ? null : readyToContinue ? (
             <Button onClick={handleContinue} size="lg" className="gap-2">
               Transcribe<span className="hidden sm:inline"> &amp; continue</span>{" "}
               <ArrowRight size={18} />
+            </Button>
+          ) : cameraFromTopic && cameraPhase === "script" && !cameraGeneratedScript.trim() ? (
+            <Button
+              onClick={() => void handleCameraScriptFromTopic(cameraTopicText)}
+              loading={cameraScriptGenerating}
+              disabled={!cameraTopicText}
+              size="lg"
+              className="gap-2"
+            >
+              {cameraScriptGenerating
+                ? <>Writing<span className="hidden sm:inline"> your script</span>…</>
+                : <>Write<span className="hidden sm:inline"> my script</span> <ArrowRight size={18} /></>}
             </Button>
           ) : null}
         </StepFooter>
@@ -4180,61 +4247,20 @@ function CreatePageInner() {
               </div>
             )}
 
+            {/* The topic, read back. This was a second topic box, the same
+                session as the one in section 1, and the page asked the same
+                question in two places. It is asked once now, at the top;
+                this says what it has, where the script is about to be
+                written from it. */}
             {cameraSource === "speak" && (
-            <div className="mb-4">
-                {/* Named, because it is not the script. Unlabelled, a box
-                    saying "Say it or type it" sat directly above a second box
-                    saying "Your Script" — two empty boxes on one screen, both
-                    apparently wanting the words you are going to say. This one
-                    wants the topic; the one below holds what gets written. */}
+              <div className="mb-4">
                 <p className="text-xs font-semibold text-spark-ink-muted uppercase tracking-wide mb-1">
-                  Tell Us The Topic
+                  Topic
                 </p>
-                <p className="mb-2 text-xs text-spark-ink-faint">
-                  Say or type what the video is about — a sentence is enough. The
-                  AI writes the script from it and loads it into your
-                  teleprompter below.
+                <p className={`text-[15px] leading-snug ${cameraTopicText ? "text-spark-ink" : "text-spark-ink-faint"}`}>
+                  {cameraTopicText || "Not set yet. Say or type it in step 1 at the top of the page."}
                 </p>
-                <VoiceBriefSession
-                  // A topic entered in section 1 before choosing to record
-                  // comes with you: what is still unsent in that box, or else
-                  // the topic it had already taken. Not once a script exists,
-                  // where a refilled topic box would read as a step undone.
-                  initialDraft={cameraGeneratedScript.trim() ? "" : (topicDraftRef.current.trim() || locCustomTopic.trim())}
-                  disabled={cameraScriptGenerating}
-                  onSwitchToTyping={() => { /* the box already takes typing */ }}
-                  onSlots={(sl) => {
-                    if (sl.city) setLocCity(sl.city);
-                    if (sl.state) setLocState(sl.state);
-                    if (sl.topic) setCameraVoiceTopic(sl.topic);
-                    // The brief speaks in standard/long; the teleprompter has
-                    // four lengths. Map onto the nearest and leave the
-                    // four-way picker for anything finer.
-                    if (sl.length) setCameraScriptLength(sl.length === "long" ? "full" : "standard");
-                    // The same brief the row above this card shows, so what was
-                    // said and what is picked stay one answer.
-                    if (sl.audience) setLocAudience(rememberAudience(sl.audience));
-                    if (sl.tone) setLocTone(sl.tone);
-                    if (sl.purpose) setLocPurpose(sl.purpose);
-                  }}
-                  onReady={(sl) => {
-                    // This mic only knew how to write a teleprompter script, so
-                    // "create a blog about…" said here came back as a script to
-                    // read on camera, and the blog that was asked for was never
-                    // written. What was asked for wins over which route the
-                    // page happened to be on: a blog, or a video with the
-                    // avatar or voice only, leaves the camera route and is made.
-                    if (sl.output === "blog" || sl.onScreen === "avatar" || sl.onScreen === "voice_only") {
-                      setInputMode("script");
-                      setLastSparkTab("script");
-                      setBlogOnly(sl.output === "blog");
-                      void handleGenerateScript({ ...sl, topic: sl.topic ?? cameraVoiceTopic });
-                      return;
-                    }
-                    void handleCameraScriptFromTopic(sl.topic ?? cameraVoiceTopic, sl);
-                  }}
-                />
-            </div>
+              </div>
             )}
 
             {/* The audio a recording already exists in — transcribed into a
@@ -4316,9 +4342,11 @@ function CreatePageInner() {
                 until the first half has produced a script. Stated rather than
                 implied, because eleven unlabelled sections in a row read as
                 eleven equally urgent things rather than two halves. */}
+            {/* Where a freshly written script is brought into view. */}
+            <div id="camera-script" className="scroll-mt-20" />
             {cameraPhase === "script" && (
               <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-                {cameraHandoff ? "How it records" : "4 · How it records"}
+                {cameraHandoff ? "How it records" : "5 · How it records"}
               </p>
             )}
 
