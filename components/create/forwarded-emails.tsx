@@ -119,7 +119,7 @@ export function ForwardedEmails({
   const action = "rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50";
 
   return (
-    <section className="mx-auto mt-5 w-full max-w-xl text-left">
+    <section className="mt-2.5 w-full text-left">
       <button
         type="button"
         onClick={toggle}

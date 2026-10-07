@@ -508,8 +508,6 @@ function CreatePageInner() {
   // Which forwarded email is attached, when it is one. Lets "from my Ambler
   // email", said aloud, be told apart from the email already on the page.
   const [blogSrcEmailId, setBlogSrcEmailId] = useState<string | null>(null);
-  // The same source, on the video route: closed to one line until wanted.
-  const [videoSrcOpen, setVideoSrcOpen] = useState(false);
   // One fetch per email however it is asked for. A spoken command reports the
   // email and says go in the same tick, so two callers want it at once.
   const emailFetches = useRef(new Map<string, Promise<PickedEmailArticle>>());
@@ -1101,7 +1099,9 @@ function CreatePageInner() {
       // The whole article when it is the thing being summarised, rather than the
       // 5,000-character reference-doc extract. Same figure the URL import asks
       // for on this route.
-      if (pasteSource === "blog") formData.append("maxChars", "20000");
+      // And the whole document when AI is writing from it, up to what the
+      // writer reads. The default is the first 5,000 characters.
+      formData.append("maxChars", pasteSource === "blog" ? "20000" : String(SOURCE_CHAR_LIMIT));
       const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
@@ -1333,13 +1333,25 @@ function CreatePageInner() {
    * account's home market when no place is said, and this page deliberately
    * never names a town for you.
    */
-  async function fillPlaceFromSubject(subject: string) {
-    if (locCity.trim() && locState.trim()) return;
+  async function fillPlaceFromSubject(subject: string, opts?: { paste?: boolean }) {
+    // "Use something I already have" keeps a market of its own, asked beside
+    // its script. Filled the same way, and the same way only when empty.
+    const place = (city: string, state: string) => {
+      setLocCity((prev) => (prev.trim() ? prev : city));
+      setLocState((prev) => (prev.trim() ? prev : state));
+      if (opts?.paste) {
+        setPasteCity((prev) => (prev.trim() ? prev : city));
+        setPasteState((prev) => (prev.trim() ? prev : state));
+      }
+    };
+    const already = opts?.paste
+      ? pasteCity.trim() && pasteState.trim()
+      : locCity.trim() && locState.trim();
+    if (already) return;
     const hay = subject.toLowerCase();
     const saved = savedMarkets.find((m) => m.city && hay.includes(m.city.toLowerCase()));
     if (saved) {
-      setLocCity(saved.city);
-      setLocState(saved.state);
+      place(saved.city, saved.state);
       return;
     }
     try {
@@ -1355,8 +1367,7 @@ function CreatePageInner() {
       if (typeof city !== "string" || typeof state !== "string") return;
       if (!hay.includes(city.toLowerCase())) return;
       // Not over anything typed while this was being worked out.
-      setLocCity((prev) => (prev.trim() ? prev : city));
-      setLocState((prev) => (prev.trim() ? prev : state));
+      place(city, state);
     } catch { /* the city and state fields are still there to fill in */ }
   }
 
@@ -1375,21 +1386,30 @@ function CreatePageInner() {
       }
       return;
     }
-    setInputMode("script");
-    setLastSparkTab("script");
     setBlogOnly(kind === "blog");
     if (kind === "blog") {
+      setInputMode("script");
+      setLastSparkTab("script");
       // As the blog tile does: the format picker is hidden on this route.
       setLocLength("standard");
       setBlogSrcOpen(true);
       // "Make a blog" from a forwarded report means write one. Publishing it
       // unchanged is still one tap away, on the card this opens.
       setBlogSrcUse("rewrite");
+      attachEmail(article, { kind });
+      void fillPlaceFromSubject(article.subject);
     } else {
-      setVideoSrcOpen(true);
+      // A video from something that already exists has one home, "Use
+      // something I already have", so this opens it with the email attached
+      // and AI set to write from it. Nothing is written until its own button
+      // is pressed, and the script comes back to be read before anything else.
+      setInputMode("paste");
+      setLastSparkTab("paste");
+      setPasteSource("ai");
+      setPastePdfMode("email");
+      handlePasteEmailPick(article);
+      void fillPlaceFromSubject(article.subject, { paste: true });
     }
-    attachEmail(article, { kind });
-    void fillPlaceFromSubject(article.subject);
     // After the route has drawn, bring what was just attached into view.
     setTimeout(() => {
       document.getElementById("spark-source")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1408,7 +1428,7 @@ function CreatePageInner() {
         // the summariser ever sees the end of it.
         body: JSON.stringify({
           url: pastePdfUrlInput.trim(),
-          ...(pasteSource === "blog" && { maxChars: 20000 }),
+          maxChars: pasteSource === "blog" ? 20000 : SOURCE_CHAR_LIMIT,
         }),
       });
       const body = await safeJson(res);
@@ -2170,13 +2190,6 @@ function CreatePageInner() {
               setVoiceCommand({ text, n: Date.now() });
             }}
           />
-          {/* What has been emailed in, and the notice that it arrived. Under
-              the mic because both answer the same question, "what do you want
-              to make", and this one answers it with something already sent. */}
-          <ForwardedEmails
-            busy={commandPending || locGenerating || cameraScriptGenerating}
-            onMake={startFromEmail}
-          />
         </div>
       )}
 
@@ -2361,6 +2374,17 @@ function CreatePageInner() {
         </div>
       )}
 
+      {/* What has been emailed in, under the three cards as the owner's
+          mockup has it. It sat under the mic, between the question and the
+          cards that answer it; here it reads as a fourth thing you can start
+          from, which is what it is. */}
+      {step === "input" && !cameraHandoff && (
+        <ForwardedEmails
+          busy={commandPending || locGenerating || cameraScriptGenerating}
+          onMake={startFromEmail}
+        />
+      )}
+
       {/* ── Row 2 · where the script comes from ──
           Filming it yourself. This is the row that used to sit inside the
           camera card, under a heading about the script, one level below the
@@ -2434,7 +2458,11 @@ function CreatePageInner() {
             // and nothing to expand — and it is the one route that has never
             // produced a blog.
             ...(blogOnly ? [] : [
-              { mode: "paste" as InputMode, kicker: "Word for word", label: "Paste my script", desc: "Use your own finished copy" },
+              // The one home for material that already exists. It was called
+              // "Paste my script", which named one of the three things it does
+              // and hid the other two: it has always taken an article to
+              // shorten, and a PDF, link or email for AI to write from.
+              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use something I already have", desc: "Speak it as written, or have AI write from it" },
             ]),
             // One tile, two things, so the description has to carry both. The
             // mock split it into Add Listing URL and Upload photos, but photos
@@ -2453,7 +2481,7 @@ function CreatePageInner() {
             ...(blogOnly ? [{
               mode: "script" as InputMode,
               kicker: "PDF, link or email",
-              label: "Something I already have",
+              label: "Use something I already have",
               desc: "Paste it, upload it, or forward it in",
               source: true,
             }] : []),
@@ -2783,11 +2811,14 @@ function CreatePageInner() {
               attachment. One line until it is wanted: opened, its first tab is
               a box to paste into, and a second empty box under the topic box
               reads as a second thing to fill in. */}
-          {/* The blog route shows an attachment under its own source tile, and
-              that tile replaces this topic box. An email named to the mic is
-              attached while this box is still up, so it is shown here: what
-              the article will be written from, and the way to take it off. */}
-          {blogOnly && blogSrcText && (
+          {/* Something attached while this topic box is up: an email named to
+              the mic ("from my Ambler market report email"), or a piece
+              carried over from the other route. Shown so it can be seen and
+              taken off. There is no way to ATTACH from here any more: on the
+              video route that lives in "Use something I already have", and on
+              the blog route under its own source tile. Offering it here as
+              well was the same thing in two places. */}
+          {blogSrcText && (
             <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
               <Mail size={16} className="shrink-0 text-green-600" />
               <span className="min-w-0 flex-1 truncate text-sm text-green-800">
@@ -2796,36 +2827,6 @@ function CreatePageInner() {
               <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
                 <X size={14} className="text-green-700" />
               </button>
-            </div>
-          )}
-          {!blogOnly && (
-            <div id="spark-source" className="scroll-mt-20 rounded-[18px] border border-spark-rule bg-white px-5 py-4">
-              {videoSrcOpen || blogSrcText ? (
-                <ArticleSource purpose="script" divider={false} doc={sourceDoc} />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setVideoSrcOpen(true)}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <span>
-                    <span className="block text-sm font-bold text-spark-ink-soft">
-                      Start from something you already have{" "}
-                      <span className="font-normal text-spark-ink-faint">(optional)</span>
-                    </span>
-                    <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-spark-ink-muted">
-                      Paste text, upload a PDF, add a link, or use an email you forwarded.
-                    </span>
-                  </span>
-                  <ChevronDown size={17} className="shrink-0 text-spark-ink-muted" />
-                </button>
-              )}
-              {blogSrcText && (
-                <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-                  Your script will cover what this covers, written fresh in your voice.
-                  The topic above is only needed if you want to steer it.
-                </p>
-              )}
             </div>
           )}
 
@@ -3192,7 +3193,7 @@ function CreatePageInner() {
           PASTE SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "paste" && step === "input" && (
-        <div className="mt-7 max-w-3xl">
+        <div id="spark-source" className="mt-7 max-w-3xl scroll-mt-20">
           {/* Third section of this page, counted with the other two. The step
               count it used to carry belongs to the whole page and is in the
               topbar; the tab name is the lit tile directly above. */}
@@ -3226,33 +3227,61 @@ function CreatePageInner() {
             {/* Which way in — asked before anything else, the way the listings
                 tab asks how you want to get the details in. */}
             <div className="mb-4">
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* One question first: are these the words to be spoken, or the
+                  material to write from? It was three options side by side,
+                  two of which were AI doing the writing, so the real choice
+                  had to be worked out from the small print. The second
+                  question is asked only of people it applies to. */}
+              <div className="grid grid-cols-2 gap-1.5">
                 {([
-                  // Named by what happens to the words, not by the action. Both
-                  // of these begin with pasting, so labels that both said
-                  // "paste" described the same gesture twice and left the
-                  // difference — spoken as written, versus cut down to fit — to
-                  // be worked out from the small print underneath.
-                  { key: "own" as const, label: "My script, word for word", sub: "nothing is rewritten" },
-                  { key: "blog" as const, label: "Shorten my article into a script", sub: "too long to read aloud — AI condenses it" },
-                  { key: "ai" as const, label: "Let AI draft it", sub: "then edit it yourself" },
-                ]).map(({ key, label, sub }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPasteSource(key)}
-                    aria-pressed={pasteSource === key}
-                    className={`px-2.5 py-2 rounded-lg border text-left transition-colors ${
-                      pasteSource === key
-                        ? "border-spark-amber bg-spark-amber-tint"
-                        : "border-spark-rule bg-white hover:border-spark-rule-dim"
-                    }`}
-                  >
-                    <span className="block text-[12px] font-bold text-brand-text">{label}</span>
-                    <span className="block text-[10.5px] text-spark-ink-muted">{sub}</span>
-                  </button>
-                ))}
+                  { ai: false, label: "Speak it word for word", sub: "your finished script · nothing is rewritten" },
+                  { ai: true, label: "Have AI write from it", sub: "an article, PDF, link or email" },
+                ]).map(({ ai, label, sub }) => {
+                  const on = (pasteSource !== "own") === ai;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      // Into AI: the kind chosen last time is kept, and the
+                      // first time it is a new script, the commoner of the two.
+                      onClick={() => setPasteSource(ai ? (pasteSource === "own" ? "ai" : pasteSource) : "own")}
+                      aria-pressed={on}
+                      className={`px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                        on
+                          ? "border-spark-amber bg-spark-amber-tint"
+                          : "border-spark-rule bg-white hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      <span className="block text-[14px] font-bold text-brand-text">{label}</span>
+                      <span className="block text-[12px] text-spark-ink-muted">{sub}</span>
+                    </button>
+                  );
+                })}
               </div>
+              {pasteSource !== "own" && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[12px] font-semibold text-spark-ink-muted">What should AI do?</span>
+                  {([
+                    { key: "ai" as const, label: "Write a new script from it" },
+                    // Their own words, cut to length, with nothing added.
+                    { key: "blog" as const, label: "Shorten my own article" },
+                  ]).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setPasteSource(key)}
+                      aria-pressed={pasteSource === key}
+                      className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                        pasteSource === key
+                          ? "border-spark-amber bg-spark-amber-tint text-brand-text"
+                          : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Where the words come from, directly under the choice of how to
