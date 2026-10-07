@@ -2160,7 +2160,10 @@ function CreatePageInner() {
               on, the promise underneath is why. Same size for both made them
               one block to skim past. */}
           <p className="mt-3 text-[19px] leading-[1.5] text-primary-700">
-            A video with your avatar, record yourself, create a blog—or do both.
+            {/* The owner's line. It listed the routes in ("A video with your
+                avatar, record yourself, create a blog—or do both."), which the
+                four cards below now do themselves. */}
+            Your all-in-one AI visibility studio
           </p>
           <p className="mt-1.5 text-[17px] leading-[1.5] text-primary-700">
             Turn your Spark into more ways to connect, build trust, and stay visible.
