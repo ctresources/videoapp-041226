@@ -178,5 +178,8 @@ export const config = {
   // Video files are let through with the images. Without mp4 here the landing
   // page's own demo (/demo.mp4) was sent to /login for anyone signed out,
   // which is everyone the landing page is for.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
+  // The install manifest too: a browser fetches it without the visitor's
+  // sign-in, so it was getting the login page and "Add to Home Screen" had
+  // no name or icon to use.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
 };
