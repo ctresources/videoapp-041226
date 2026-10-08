@@ -36,13 +36,13 @@ export async function GET(req: NextRequest) {
 
   const { data: project } = await admin
     .from("projects")
-    .select("intro:ai_script->>blog_intro, body:ai_script->>blog_body, conclusion:ai_script->>blog_conclusion, headline:ai_script->>blog_headline, header_url:ai_script->>blog_header_url, place:ai_script->>location, created_at")
+    .select("intro:ai_script->>blog_intro, body:ai_script->>blog_body, conclusion:ai_script->>blog_conclusion, headline:ai_script->>blog_headline, header_url:ai_script->>blog_header_url, header_video_url:ai_script->>blog_header_video_url, header_video_poster:ai_script->>blog_header_video_poster, place:ai_script->>location, created_at")
     .eq("id", projectId)
     .eq("user_id", userId)
     .maybeSingle();
   const row = project as {
     intro: string | null; body: string | null; conclusion: string | null;
-    headline: string | null; header_url: string | null;
+    headline: string | null; header_url: string | null; header_video_url: string | null; header_video_poster: string | null;
     place: string | null; created_at: string | null;
   } | null;
 
@@ -69,6 +69,8 @@ export async function GET(req: NextRequest) {
       // the header image, not only the paragraphs.
       headline: row.headline ?? "",
       headerUrl: row.header_url ?? "",
+      headerVideoUrl: row.header_video_url ?? "",
+      headerVideoPosterUrl: row.header_video_poster ?? "",
       author: (profile as { full_name: string | null } | null)?.full_name ?? "",
       place: row.place ?? "",
       written: row.created_at ?? "",

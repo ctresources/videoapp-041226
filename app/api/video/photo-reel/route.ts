@@ -23,6 +23,7 @@ import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type Vid
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
 import { CINEMATIC_DISCLOSURE, SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
+import { formatPhone } from "@/lib/utils/format-phone";
 import { makeSceneClips, planScenes, SCENES_MAX, SCENES_MAX_SECONDS, SCENES_MIN, type SceneAspect } from "@/lib/api/scene-clips";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
@@ -408,7 +409,10 @@ export async function POST(req: NextRequest) {
          */
         endCard: body.endCard === false ? null : (() => {
           const market = [body.city, body.state].filter(Boolean).join(", ");
-          const phone = (p.phone || p.company_phone || "").trim();
+          // As it is read, 610-457-8698, not the ten bare digits most
+          // profiles hold. The contact card on a rendered video already did
+          // this; the closing card on a reel was printing what was stored.
+          const phone = formatPhone(p.phone || p.company_phone);
           const address = (body.address || "").trim();
           if (!phone && !address && !market) return null;
           return {

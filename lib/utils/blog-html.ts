@@ -63,6 +63,13 @@ export function blogAsHtml(sections: {
   headline?: string;
   /** Made in the image generator; goes first, above the <h1>. */
   headerUrl?: string;
+  /**
+   * The header picture, moving: a short silent loop that opens on it. When
+   * there is one it leads the post, with the still picture inside it.
+   */
+  headerVideoUrl?: string;
+  /** What that loop opens on: the picture without the words drawn on it. */
+  headerVideoPosterUrl?: string;
   intro: string;
   body: string;
   conclusion: string;
@@ -79,7 +86,20 @@ schema?: ArticleSchemaInfo): string {
   // The header image goes first, above the <h1>, the way an article page
   // leads with its picture. Alt text is the headline, which is what it shows.
   if (sections.headerUrl?.startsWith("https://")) {
-    blocks.push(`<img src="${attr(sections.headerUrl)}" alt="${attr(sections.headline?.trim() || "")}">`);
+    const img = `<img src="${attr(sections.headerUrl)}" alt="${attr(sections.headline?.trim() || "")}">`;
+    /**
+     * The moving header, with the picture inside it.
+     *
+     * Muted, looping and inline, which is what a browser will start without
+     * being asked. Its poster is the clean picture the loop opens on, so the
+     * post looks right before the video has loaded and nothing jumps when it
+     * starts; the headline is the <h1> directly underneath. The picture is also inside the element as plain
+     * content: a site that removes <video> from pasted HTML usually keeps
+     * what was inside it, and then the post has its header as it did before.
+     */
+    blocks.push(sections.headerVideoUrl?.startsWith("https://")
+      ? `<video autoplay muted loop playsinline poster="${attr(sections.headerVideoPosterUrl?.startsWith("https://") ? sections.headerVideoPosterUrl : sections.headerUrl)}" style="width:100%;height:auto"><source src="${attr(sections.headerVideoUrl)}" type="video/mp4">${img}</video>`
+      : img);
   }
   // The one <h1> on the page, and the line a search or answer engine reads
   // first. Omitted when the article predates headlines rather than emitted

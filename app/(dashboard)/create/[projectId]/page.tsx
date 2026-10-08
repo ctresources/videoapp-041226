@@ -24,7 +24,7 @@ import { StepFooter } from "@/components/create/step-footer";
 import { RenderPipeline } from "@/components/create/render-pipeline";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
-  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2,
+  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2, Film, Download,
   User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin, Mail, Send,
 } from "lucide-react";
 import Link from "next/link";
@@ -90,6 +90,10 @@ interface AiScript {
   blog_headline?: string;
   /** Made in the Spark Tools image generator ("Use as blog header"). */
   blog_header_url?: string;
+  /** The header picture as a short silent loop, and a vertical teaser for social. Both made from the header. */
+  blog_header_video_url?: string;
+  blog_header_video_poster?: string;
+  blog_teaser_url?: string;
   blog_intro: string;
   blog_body: string;
   blog_conclusion: string;
@@ -128,6 +132,9 @@ function keepArticle(fresh: AiScript, prior: AiScript | null | undefined): AiScr
     ...fresh,
     blog_headline: prior.blog_headline,
     blog_header_url: prior.blog_header_url,
+    blog_header_video_url: prior.blog_header_video_url,
+    blog_header_video_poster: prior.blog_header_video_poster,
+    blog_teaser_url: prior.blog_teaser_url,
     blog_intro: prior.blog_intro,
     blog_body: prior.blog_body,
     blog_conclusion: prior.blog_conclusion,
@@ -2006,11 +2013,54 @@ export default function ProjectEditorPage() {
     }
   }
 
+  /**
+   * The moving header, or the social teaser, made from the header image.
+   *
+   * Each takes about a minute. The page is told the address when it is done
+   * and shows it; nothing is taken from the plan for either.
+   */
+  const [motionBusy, setMotionBusy] = useState<"header" | "teaser" | null>(null);
+  async function makeBlogMotion(kind: "header" | "teaser") {
+    if (!project || motionBusy) return;
+    setMotionBusy(kind);
+    try {
+      const res = await fetch("/api/ai/blog-motion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, kind }),
+      });
+      const raw = await res.text();
+      let data: { url?: string; poster?: string; error?: string } = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { /* a timeout does not answer in JSON */ }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || (res.status === 504 ? "That took too long. Try again." : `Could not make that (error ${res.status}).`));
+      }
+      const url = data.url;
+      setProject((p) => p ? {
+        ...p,
+        ai_script: {
+          ...(p.ai_script as AiScript),
+          ...(kind === "header" ? { blog_header_video_url: url, blog_header_video_poster: data.poster } : { blog_teaser_url: url }),
+        } as typeof p.ai_script,
+      } : p);
+      setExpandedSections((e) => ({ ...e, blog: true }));
+      toast.success(kind === "header"
+        ? "Moving header is ready. Copy as HTML now includes it."
+        : "Social teaser is ready. Download it to post.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not make that.");
+    } finally {
+      setMotionBusy(null);
+    }
+  }
+
   function copyBlogHtml() {
     if (!script) return;
     const html = blogAsHtml({
       headline: script.blog_headline || "",
       headerUrl: script.blog_header_url || "",
+      headerVideoUrl: script.blog_header_video_url || "",
+      headerVideoPosterUrl: script.blog_header_video_poster || "",
       intro: script.blog_intro || "",
       body: script.blog_body || "",
       conclusion: script.blog_conclusion || "",
@@ -3694,6 +3744,29 @@ export default function ProjectEditorPage() {
                       >
                         <ImageIcon size={12} /> {script.blog_header_url ? "Change header image" : "Header image"}
                       </Link>
+                      {/* Two things made from that picture, so they are only
+                          offered once there is one: the picture moving, for
+                          the top of the post, and a short vertical clip to
+                          send people to it. */}
+                      {script.blog_header_url && (["header", "teaser"] as const).map((kind) => {
+                        const has = kind === "header" ? !!script.blog_header_video_url : !!script.blog_teaser_url;
+                        const name = kind === "header" ? "Moving header" : "Social teaser";
+                        return (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => makeBlogMotion(kind)}
+                            disabled={!!motionBusy}
+                            title={kind === "header"
+                              ? "The header picture as a short silent loop, for the top of the post"
+                              : "A short vertical clip with the headline, to post with a link to the article"}
+                            className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-rule-dim disabled:opacity-60"
+                          >
+                            {motionBusy === kind ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
+                            {motionBusy === kind ? "Making, about a minute…" : has ? `Remake ${name.toLowerCase()}` : name}
+                          </button>
+                        );
+                      })}
                       {/* Every way from the article to a video, in one menu.
                           The short script already exists (written with the
                           article), so each option carries its own length, and
@@ -3862,6 +3935,37 @@ export default function ProjectEditorPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={script.blog_header_url} alt={script.blog_headline || "Blog header"} className="w-full rounded-xl border border-slate-200" />
                   <p className="mt-1 text-[11px] text-slate-400">Copy as HTML puts it above the headline.</p>
+                </div>
+              )}
+              {/* What was made from it. The header plays the way it will on
+                  the post, silent and looping; the teaser has its sound and
+                  its controls, because it is the one you watch before posting. */}
+              {expandedSections.blog && (script.blog_intro || script.blog_body) && (script.blog_header_video_url || script.blog_teaser_url) && (
+                <div className="px-2 mb-3 grid gap-3 sm:grid-cols-2">
+                  {script.blog_header_video_url && (
+                    <div>
+                      <video src={script.blog_header_video_url} autoPlay muted loop playsInline className="w-full rounded-xl border border-slate-200" />
+                      <p className="mt-1 text-[11px] leading-[1.45] text-slate-500">
+                        <strong className="font-semibold text-slate-600">Moving header.</strong> The picture without the words, since the
+                        headline sits right under it on your post. Copy as HTML now leads with it, and keeps the
+                        still header for sites that won&rsquo;t play video.{" "}
+                        <a href={script.blog_header_video_url} download className="inline-flex items-center gap-1 font-semibold text-spark-amber hover:text-spark-blue">
+                          <Download size={11} /> Download
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                  {script.blog_teaser_url && (
+                    <div>
+                      <video src={script.blog_teaser_url} controls playsInline className="mx-auto max-h-[420px] rounded-xl border border-slate-200" />
+                      <p className="mt-1 text-[11px] leading-[1.45] text-slate-500">
+                        <strong className="font-semibold text-slate-600">Social teaser.</strong> Post it with a link to the article.{" "}
+                        <a href={script.blog_teaser_url} download className="inline-flex items-center gap-1 font-semibold text-spark-amber hover:text-spark-blue">
+                          <Download size={11} /> Download
+                        </a>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (

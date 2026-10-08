@@ -297,13 +297,13 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
   }
 
   async function loadArticle(): Promise<{
-    intro: string; body: string; conclusion: string; headline: string; headerUrl: string;
+    intro: string; body: string; conclusion: string; headline: string; headerUrl: string; headerVideoUrl?: string; headerVideoPosterUrl?: string;
     author?: string; place?: string; written?: string;
   } | null> {
     try {
       const data = await send(`/api/campaigns/blog?campaignId=${encodeURIComponent(c.id)}`, "GET");
       return data.blog as {
-        intro: string; body: string; conclusion: string; headline: string; headerUrl: string;
+        intro: string; body: string; conclusion: string; headline: string; headerUrl: string; headerVideoUrl?: string; headerVideoPosterUrl?: string;
         author?: string; place?: string; written?: string;
       };
     } catch (e) {
