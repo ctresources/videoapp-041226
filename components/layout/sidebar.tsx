@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
+import { useCreateProgress } from "@/components/layout/create-progress";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -155,14 +156,41 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
     ? navItems.map((i) => (i.href === "/calendar" ? { ...i, href: "/campaigns" } : i))
     : navItems;
 
+  // Set only on the Create page, where the top bar is black (see topbar.tsx).
+  const onCreate = useCreateProgress() !== null;
+
   return (
     <aside
       className={cn(
-        "flex-col w-[184px] shrink-0 min-h-screen bg-white border-r border-spark-rule py-4",
+        "flex-col w-[184px] shrink-0 min-h-screen bg-white border-r border-spark-rule pb-4",
+        !onCreate && "pt-4",
         mobile ? "flex" : "hidden md:flex"
       )}
     >
       {/* Logo */}
+      {onCreate ? (
+        /* On Create the logo sits on black, as it was drawn.
+           It is a gold mark made for a dark ground. On white it has to be
+           darkened to be read at all, and the owner looked at that darkened
+           copy beside the black bar and asked for the real one. So the bar's
+           black runs across the top of the sidebar here, the same height as
+           the bar and its rail (46px + 3px), and the logo is shown untouched.
+           -mr-px covers the sidebar's own right border, which would otherwise
+           draw a pale line between the two halves of one header. */
+        <div className="-mr-px mb-3 flex h-[49px] items-center justify-center bg-[#050505]">
+          <Link href="/dashboard">
+            <Image
+              src="/sparkreels-logo.png"
+              alt="SparkReels.ai — Speak. Spark. Share."
+              width={122}
+              height={42}
+              className="block h-[42px] w-[122px] object-contain"
+              unoptimized
+              priority
+            />
+          </Link>
+        </div>
+      ) : (
       <div className="px-4 pb-4">
         <Link href="/dashboard">
           <Image
@@ -177,6 +205,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
           />
         </Link>
       </div>
+      )}
 
       {/* Nav */}
       <nav className="flex flex-col gap-px px-2">

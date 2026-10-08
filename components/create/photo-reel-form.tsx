@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown } from "lucide-react";
+import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown, Link2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVideoPhoto, assertPhotoUploadAllowed, currentUserId } from "@/lib/utils/upload-photo";
@@ -79,6 +79,17 @@ export function PhotoReelForm({
   );
   const [uploading, setUploading] = useState(false);
   /**
+   * A listing link, to bring that listing's photos in.
+   *
+   * The Listing video tab has had this from the start, and a reel could only
+   * borrow its photos by pasting the link there first and then switching
+   * tabs, which nothing on this tab said. The owner asked for the link here.
+   * Same reader, and only the photos (and the address, if this reel has none)
+   * are taken from what it returns.
+   */
+  const [listingUrl, setListingUrl] = useState("");
+  const [fetchingListing, setFetchingListing] = useState(false);
+  /**
    * The market for THIS reel.
    *
    * These used to be read-only props holding whatever was loaded from the
@@ -119,6 +130,50 @@ export function PhotoReelForm({
   const [motion, setMotion] = useState<Motion>("classic");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function addPhotosFromListing() {
+    const link = listingUrl.trim();
+    if (!link || fetchingListing) return;
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) {
+      toast.error(`This reel already has ${MAX_PHOTOS} photos. Remove some first.`);
+      return;
+    }
+    setError(null);
+    setFetchingListing(true);
+    try {
+      const res = await fetch("/api/ai/scrape-listing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error((data?.error as string) || "Could not read that listing");
+      const listing = (data?.listing ?? {}) as { photoUrls?: unknown; address?: unknown };
+      const found = (Array.isArray(listing.photoUrls) ? listing.photoUrls : [])
+        .filter((u): u is string => typeof u === "string" && u.startsWith("http"));
+      // Not ones already here: pasting the same link twice should not double the reel.
+      const fresh = found.filter((u) => !photos.some((p) => p.url === u)).slice(0, room);
+      if (!fresh.length) {
+        throw new Error(found.length
+          ? "Those photos are already in this reel."
+          : "No photos were found on that page. Try the listing's own page, or upload them below.");
+      }
+      setPhotos((prev) => [
+        ...prev,
+        ...fresh.map((url, i) => ({ url, name: `Listing photo ${prev.length + i + 1}`, caption: "" })),
+      ]);
+      if (!address.trim() && typeof listing.address === "string" && listing.address.trim()) {
+        setAddress(listing.address.trim());
+      }
+      setListingUrl("");
+      toast.success(`${fresh.length} photo${fresh.length === 1 ? "" : "s"} added from the listing.${found.length > fresh.length ? ` A reel holds ${MAX_PHOTOS}.` : ""}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that listing");
+    } finally {
+      setFetchingListing(false);
+    }
+  }
   const [savedId, setSavedId] = useState<string | null>(null);
   /** Same as the camera's: View it is a full page navigation and the wait
    *  before My Content paints read as a dead button. */
@@ -146,10 +201,15 @@ export function PhotoReelForm({
       if (!user || cancelled) return;
       const { data } = await supabase
         .from("profiles")
-        .select("voice_clone_id")
+        // The clone made in Settings is `heygen_voice_id`; a retired one keeps
+        // its sample and is brought back when used. `voice_clone_id` is an
+        // older kind nobody has now, and checking only that is why this said
+        // "a stock voice" to people who had cloned their voice.
+        .select("voice_clone_id, heygen_voice_id, voice_sample_url")
         .eq("id", user.id)
         .single();
-      if (!cancelled) setHasVoiceClone(!!data?.voice_clone_id);
+      const v = data as { voice_clone_id?: string | null; heygen_voice_id?: string | null; voice_sample_url?: string | null } | null;
+      if (!cancelled) setHasVoiceClone(!!(v?.heygen_voice_id || v?.voice_sample_url || v?.voice_clone_id));
     })();
     return () => { cancelled = true; };
   }, []);
@@ -338,6 +398,7 @@ export function PhotoReelForm({
         videoId?: string;
         error?: string;
         cinematic?: { moving: number; photos: number; charged: boolean };
+        voice?: "yours" | "stock";
       } = {};
       try { data = raw ? JSON.parse(raw) : {}; } catch { /* not JSON — handled below */ }
 
@@ -365,6 +426,10 @@ export function PhotoReelForm({
         toast.success(`Reel is ready. Only ${c.moving} of ${c.photos} photos could be animated, so no video was taken from your plan.`, { duration: 8000 });
       } else {
         toast.success("Reel is ready as a Classic reel. The photos could not be animated, so no video was taken from your plan.", { duration: 8000 });
+      }
+      // A script that should have been read in their own voice and was not.
+      if (data.voice === "stock" && hasVoiceClone) {
+        toast("Your voice clone couldn't be used this time, so a stock voice read the script.", { duration: 8000, icon: "🎙️" });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not build that reel");
@@ -472,6 +537,37 @@ export function PhotoReelForm({
               Arrows reorder — photo 1 opens the reel. Text appears on a card at the top while that
               photo is up, and only on the photos you write one for. Leave them all blank for a reel
               with no labels.
+            </p>
+          </div>
+        )}
+        {photos.length < MAX_PHOTOS && (
+          <div className="mb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-spark-rule bg-white px-3 focus-within:ring-2 focus-within:ring-spark-amber">
+                <Link2 size={15} className="shrink-0 text-spark-ink-faint" />
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={listingUrl}
+                  onChange={(e) => setListingUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addPhotosFromListing(); } }}
+                  placeholder="Paste a listing link to bring in its photos"
+                  disabled={fetchingListing}
+                  className="min-w-0 flex-1 bg-transparent py-2.5 text-[14px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void addPhotosFromListing()}
+                loading={fetchingListing}
+                disabled={!listingUrl.trim()}
+              >
+                {fetchingListing ? "Reading…" : "Get photos"}
+              </Button>
+            </div>
+            <p className="mt-1 text-[11.5px] leading-snug text-spark-ink-faint">
+              Zillow, Realtor.com, your MLS or brokerage page. Or upload your own below.
             </p>
           </div>
         )}

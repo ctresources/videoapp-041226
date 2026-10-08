@@ -1163,6 +1163,50 @@ export async function deleteVoice(voiceId: string): Promise<boolean> {
   }
 }
 
+/**
+ * A script read aloud in one of the account's voices, as audio, with the time
+ * of every word.
+ *
+ * For the photo reel, which builds its own video and only needs the voice.
+ * The reel used to say the cloned voice "only speaks inside a render", and so
+ * read every script in a stock voice from another provider, while the page
+ * promised "your cloned voice". This endpoint is what makes the promise true:
+ * the same clone the avatar videos use, speaking without a render.
+ *
+ * Throws on any failure, so the caller can fall back and say that it did.
+ */
+export async function speakInVoice(
+  text: string,
+  voiceId: string,
+): Promise<{ audioBuffer: Buffer; wordTimestamps: { word: string; start: number; end: number }[] }> {
+  const res = await fetch(`${HEYGEN_API}/v3/voices/speech`, {
+    method: "POST",
+    headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
+    // The limit is 5,000 characters; a reel's script is a few sentences.
+    body: JSON.stringify({ text: text.slice(0, 5000), voice_id: voiceId }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const body = await res.json().catch(() => null) as {
+    data?: { audio_url?: string; word_timestamps?: { word: string; start: number; end: number }[] | null };
+    error?: { code?: string; message?: string };
+  } | null;
+  const url = body?.data?.audio_url;
+  if (!res.ok || !url) {
+    throw new Error(`speech not made (HTTP ${res.status}) ${body?.error?.code ?? ""} ${String(body?.error?.message ?? "").slice(0, 160)}`.trim());
+  }
+  const audio = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+  if (!audio.ok) throw new Error(`speech audio not readable (HTTP ${audio.status})`);
+  return {
+    audioBuffer: Buffer.from(await audio.arrayBuffer()),
+    // The timings come with markers such as "<start>" and "<end>" as if they
+    // were words. They are not, and a caption track would print them.
+    wordTimestamps: (body?.data?.word_timestamps ?? []).filter(
+      (w) => typeof w?.word === "string" && w.word.trim() !== "" && !/^<[^>]*>$/.test(w.word.trim())
+        && Number.isFinite(w.start) && Number.isFinite(w.end),
+    ),
+  };
+}
+
 export async function resolveVoiceId(
   userVoiceId: string | null | undefined,
 ): Promise<string | null> {

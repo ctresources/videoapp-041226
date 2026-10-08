@@ -17,7 +17,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
 import { generateSeoData } from "@/lib/api/perplexity";
-import { searchBackgroundMusic } from "@/lib/api/heygen";
+import { searchBackgroundMusic, speakInVoice } from "@/lib/api/heygen";
+import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type VideoType } from "@/lib/api/ffmpeg-render";
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select(`full_name, company_name, logo_url, avatar_url, voice_clone_id, location_city, location_state, phone, company_phone, role, subscription_tier, first_video_generated_at, ${ALLOWANCE_SELECT}`)
+    .select(`id, full_name, company_name, logo_url, avatar_url, voice_clone_id, heygen_voice_id, voice_sample_url, location_city, location_state, phone, company_phone, role, subscription_tier, first_video_generated_at, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
@@ -139,6 +140,8 @@ export async function POST(req: NextRequest) {
     let reelSeconds: number | null = null;
     let wordTimestamps: WordTimestamp[] = [];
     let spokenScript = "";
+    /** Which voice read a typed script, for the form to say so. Unset when nothing was read. */
+    let voiceUsed: "yours" | "stock" | null = null;
 
     if (body.voiceoverPath) {
       // Their own recording. Downloaded rather than trusted from the client:
@@ -170,15 +173,58 @@ export async function POST(req: NextRequest) {
         }
       }
     } else if (body.script?.trim()) {
-      // Their cloned voice if they have one, ElevenLabs' default if not. The
-      // clone is the ElevenLabs one — the HeyGen clone only speaks inside a
-      // HeyGen render, which is the credit this whole route exists to avoid.
-      const speech = await generateSpeechWithTimestamps(body.script.trim(), p.voice_clone_id);
+      /**
+       * Their own voice, which is the clone the avatar videos use.
+       *
+       * This read from `voice_clone_id`, an older clone at another provider
+       * that no account has any more, so every script was read in a stock
+       * voice while the page said "your cloned voice". The clone people
+       * actually make in Settings is the one tried first now, brought back if
+       * it had been retired for being idle. Speech alone is not a render, so
+       * this still costs no video.
+       *
+       * If that fails the older path still reads it, in the old clone or a
+       * stock voice, and the reply says which so the form can tell them.
+       */
+      const text = body.script.trim();
+      let speech: { audioBuffer: Buffer; wordTimestamps: WordTimestamp[] } | null = null;
+      if (p.heygen_voice_id || p.voice_sample_url) {
+        try {
+          const own = await ensureVoiceForRender({
+            id: user.id,
+            heygen_voice_id: p.heygen_voice_id,
+            voice_sample_url: p.voice_sample_url,
+          });
+          // ensureVoiceForRender hands back a public voice when the clone
+          // could not be restored. That is not "their voice", so it is left
+          // to the fallback below rather than reported as one.
+          const { data: now } = await admin.from("profiles").select("heygen_voice_id").eq("id", user.id).single();
+          const mine = (now as { heygen_voice_id: string | null } | null)?.heygen_voice_id;
+          if (own && mine && own === mine) {
+            speech = await speakInVoice(text, own);
+            voiceUsed = "yours";
+          }
+        } catch (e) {
+          console.warn("[photo-reel] own voice not used:", e instanceof Error ? e.message : e);
+        }
+      }
+      if (!speech) {
+        speech = await generateSpeechWithTimestamps(text, p.voice_clone_id);
+        voiceUsed = p.voice_clone_id ? "yours" : "stock";
+      }
       audioBuffer = speech.audioBuffer;
       // Free and exact here: the timings arrive with the audio, so captions on
-      // a written script cost nothing and never mishear a street name.
+      // a written script cost nothing and never mishear a street name. Where a
+      // voice came back without them, the audio is listened to instead.
       wordTimestamps = body.captions ? speech.wordTimestamps : [];
-      spokenScript = body.script.trim();
+      if (body.captions && !wordTimestamps.length) {
+        try {
+          wordTimestamps = await transcribeToWords(audioBuffer, "audio/mpeg");
+        } catch (e) {
+          console.warn("[photo-reel] could not time the narration for captions:", e);
+        }
+      }
+      spokenScript = text;
     } else {
       // Music only. Silence sets the length precisely, which nothing else here
       // can: a music track is however long it is, and the reel is not.
@@ -429,6 +475,8 @@ export async function POST(req: NextRequest) {
       videoId: (videoRow as { id: string }).id,
       videoUrl: publicUrl,
       title,
+      // Which voice read a typed script: theirs, or a stock one it fell back to.
+      ...(voiceUsed && { voice: voiceUsed }),
       // For the form to say what actually happened: how many photos moved,
       // and whether a video was taken from the plan for it.
       ...(cinematic && { cinematic: { moving, photos: photoUrls.length, charged: !!charged || (isAdmin && earnedItsCharge) } }),
