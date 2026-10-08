@@ -100,7 +100,7 @@ This article is written for three surfaces at once — SEO, GEO and AEO — and 
 - SEO (Google and Bing): name ${place} naturally throughout, along with any neighborhoods, streets and landmarks. This is a local search page and the place name is what it has to rank on.
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): write clear factual sentences built on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it. Keep every figure, date and proper noun exactly as your research gave it. Do not round and do not invent; a made-up number is worse than a missing one.
 - AEO (answer engines, voice search, featured snippets): use 4-6 section headings, each on its own line and prefixed exactly "H2: ". Write each heading as the question a reader would actually type or say out loud ("H2: What is happening to prices in ${place}?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips.
-${faqInstruction(place, "your research")}
+${faqInstruction(place, "your research", true)}
 
 Under each of the 4-6 section headings, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.
 
