@@ -676,6 +676,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       <div className={`flex flex-col gap-2 ${off ? "pointer-events-none select-none opacity-45" : ""}`}>
       <textarea
         ref={boxRef}
+        id="brief-box"
         value={boxValue}
         onChange={(e) => {
           setDraft(e.target.value);

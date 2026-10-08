@@ -18,6 +18,12 @@ export interface ComposerChip {
   label: string;
   /** Whether the brief has this yet. */
   ok: boolean;
+  /**
+   * Takes you to where this is set. With it the chip is a button; they were
+   * only ever a checklist, drawn as pills, and the owner pressed Audience and
+   * Format expecting them to do something.
+   */
+  onClick?: () => void;
 }
 
 interface ComposerCardProps {
@@ -32,6 +38,8 @@ interface ComposerCardProps {
   onUseTryLine?: (text: string) => void;
   /** The brief does not apply on the chosen route: the checklist dims. */
   disabled?: boolean;
+  /** One line under the chips: that they can be pressed, and said. */
+  chipsHint?: string;
   children: React.ReactNode;
 }
 
@@ -56,6 +64,7 @@ export function ComposerCard({
   showTryLine = false,
   onUseTryLine,
   disabled = false,
+  chipsHint,
   children,
 }: ComposerCardProps) {
   const [tryIdx, setTryIdx] = useState(0);
@@ -120,24 +129,43 @@ export function ComposerCard({
             a checklist rather than field labels, so they sit under the input
             with the controls, not above it as headings. */}
         <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 ${disabled ? "opacity-45" : ""}`}>
-          {chips.map((chip) => (
-            <span
-              key={chip.label}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12.5px] font-semibold ${
-                chip.ok
-                  ? "border-spark-blue/25 bg-spark-blue/10 text-spark-blue"
-                  : "border-spark-rule bg-[#faf8f2] text-spark-ink-muted"
-              }`}
-            >
+          {chips.map((chip) => {
+            const look = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12.5px] font-semibold ${
+              chip.ok
+                ? "border-spark-blue/25 bg-spark-blue/10 text-spark-blue"
+                : "border-spark-rule bg-[#faf8f2] text-spark-ink-muted"
+            }`;
+            const dot = (
               <span
                 className={`block h-[5px] w-[5px] flex-none rounded-full ${
                   chip.ok ? "bg-spark-blue" : "bg-spark-ink-faint"
                 }`}
               />
-              {chip.label}
-            </span>
-          ))}
+            );
+            return chip.onClick ? (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={chip.onClick}
+                disabled={disabled}
+                className={`${look} transition-colors hover:border-spark-amber hover:text-spark-amber disabled:cursor-not-allowed`}
+              >
+                {dot}
+                {chip.label}
+              </button>
+            ) : (
+              <span key={chip.label} className={look}>
+                {dot}
+                {chip.label}
+              </span>
+            );
+          })}
         </div>
+        {chipsHint && (
+          <p className={`mt-1.5 text-[13px] leading-snug text-spark-ink-muted ${disabled ? "opacity-45" : ""}`}>
+            {chipsHint}
+          </p>
+        )}
       </div>
     </>
   );

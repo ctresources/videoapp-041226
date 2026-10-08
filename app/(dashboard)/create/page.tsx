@@ -1897,6 +1897,26 @@ function CreatePageInner() {
         : blogOnly && blogSrcOpen
           ? undefined
           : () => { setInputMode("script"); setLastSparkTab("script"); };
+  /**
+   * Take someone to where a part of the brief is set, and show them which
+   * control it is.
+   *
+   * For the four chips in the topic card. Each route draws its own town,
+   * audience and format controls, further down the page, and whichever one is
+   * on screen carries the id; the ring is on for a moment because after a
+   * scroll it is not obvious which of a row of fields was meant.
+   */
+  function showBriefControl(id: string) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const ring = ["ring-2", "ring-spark-amber", "ring-offset-4", "ring-offset-transparent", "rounded-lg"];
+    el.classList.add(...ring);
+    setTimeout(() => el.classList.remove(...ring), 1800);
+    // Once the scroll has had time to land. Focused at once, a phone opens its
+    // keyboard mid-scroll and the page settles somewhere else.
+    setTimeout(() => el.querySelector<HTMLElement>("input, select, button")?.focus({ preventScroll: true }), 450);
+  }
   // What the camera script is written from. Section 1 keeps both in step, and
   // a picked idea only sets the first, so the first is the newer of the two.
   const cameraTopicText = locCustomTopic.trim() || cameraVoiceTopic.trim();
@@ -2036,7 +2056,7 @@ function CreatePageInner() {
               options: [["", "Default"], ["none", "None"], ["call", "Call"], ["text", "Text"], ["website", "Website"], ["consultation", "Consult"]],
             },
           ].filter(({ label }) => withCta || label !== "Call to action").map(({ label, value, set, options }) => (
-            <div key={label}>
+            <div key={label} id={label === "Audience" ? "brief-audience" : undefined} className="scroll-mt-24">
               {/* All three are optional and every one of them defaults
                   to a usable answer. Saying so on the label is what
                   stops the row reading as three more things to fill
@@ -2281,15 +2301,19 @@ function CreatePageInner() {
             // Four nouns. "What's it about?" here was the third asking of the
             // section's own question, and "Which town?" was a question in both
             // of its states.
+            // Buttons now: each goes to where that part is set. Format is not
+            // offered for a blog, which has no shape or length to choose.
             chips={[
-              { label: "Topic", ok: !!locCustomTopic.trim() },
-              { label: "Town", ok: locationSet },
-              { label: "Audience", ok: !!locAudience.trim() },
-              // Always satisfiable now that format is asked on this step. It
-              // starts on a default, so this reads as "set" from the outset —
-              // the chip is a reminder of what you can say, not a blocker.
-              { label: "Format", ok: formatTouched },
+              { label: "Topic", ok: !!locCustomTopic.trim(), onClick: () => document.getElementById("brief-box")?.focus() },
+              { label: "Town", ok: locationSet, onClick: () => showBriefControl("brief-town") },
+              { label: "Audience", ok: !!locAudience.trim(), onClick: () => showBriefControl("brief-audience") },
+              ...(blogOnly ? [] : [
+                { label: "Format", ok: formatTouched, onClick: () => showBriefControl("brief-format") },
+              ]),
             ]}
+            chipsHint={blogOnly
+              ? "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d."
+              : "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d, \u201ca short reel\u201d."}
           >
             {/* One card: the big mic, and under it the box its words land in.
                 The mic belongs to the session now rather than sitting above it
@@ -2971,7 +2995,7 @@ function CreatePageInner() {
               question the page has to ask rather than a profile setting it can
               assume. It seeds the trending list too. */}
           <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5">
-          <div className="flex flex-col gap-3">
+          <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                 City + State
@@ -3086,7 +3110,7 @@ function CreatePageInner() {
                     choice was quietly deciding how long the hidden script got.
                     A Longform script can be written from the article later. */}
                 {!blogOnly && (
-                <div className="mt-6">
+                <div id="brief-format" className="mt-6 scroll-mt-24">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                       Choose your format
@@ -4179,7 +4203,7 @@ function CreatePageInner() {
                 went out saying Blue Bell. Above the brief now: the spoken
                 brief fills it in as you talk, so watching it populate is the
                 confirmation that we heard the town right. */}
-            <div className="mb-3">
+            <div id="brief-town" className="mb-3 scroll-mt-24">
               <p className="text-xs font-semibold text-spark-ink-muted uppercase tracking-wide mb-1.5">
                 Market For This Video
               </p>
@@ -4210,7 +4234,7 @@ function CreatePageInner() {
                 whatever you said or wrote, so a picker there would be a
                 setting that changes nothing. */}
             {(cameraSource === "speak" || cameraSource === "uploads") && (
-              <div className="mb-3">
+              <div id="brief-format" className="mb-3 scroll-mt-24">
                 <ScriptLengthPicker
                   value={cameraScriptLength}
                   onChange={setCameraScriptLength}
