@@ -118,10 +118,11 @@ export default function HelpPage() {
                   was not: the only sign an email had landed was a list four
                   taps into a route. */}
               <span className="block mt-1.5">
-                Once something has arrived, the top of{" "}
+                Once something has arrived,{" "}
                 <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-                says so, in a line under the four cards such as{" "}
-                <strong>Imported content: 2 new emails</strong>. Open it and
+                shows it as a box of its own, <strong>Imported content</strong>, at the end of the{" "}
+                <strong>Script source</strong> row, with a <strong>new</strong> badge when something
+                has come in since you last looked. Open it and
                 each email has <strong>Make a blog</strong> and <strong>Make a video</strong>, which set
                 that up with the email already attached. Nothing is written until you press the button at
                 the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
@@ -203,14 +204,27 @@ export default function HelpPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <Step n={7} title="Three Questions, Then It Writes" icon={Sparkles}>
+            {/* The page's order changed: the topic is first now, under the
+                headline, and the cards and the source row follow it. Its own
+                sections are called by their labels here, not "step 1", so
+                they are not mistaken for the numbered steps of this guide. */}
+            <Step n={7} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-              asks up to three things in order. <strong>1 · What are you sparking?</strong> — four
+              has four sections, top to bottom. <strong>1 · Topic</strong> — one card with the mic
+              and a box, where you say or type what it&apos;s about (step 8).{" "}
+              <strong>2 · Create</strong> — four
               cards: <strong>Avatar video</strong>, <strong>Record yourself</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
-              <strong>2 · How should your script begin?</strong> — <strong>AI writes it</strong> from
-              a topic, or <strong>Use my content</strong>. A listing or a photos only reel
-              skips this one (step 12). <strong>3 · What is it about?</strong>
+              <strong>3 · Script source</strong> — <strong>AI writes it</strong> from
+              a topic, <strong>Use my content</strong>, or <strong>Imported content</strong> once
+              you have forwarded something in (step 6). A listing or a photos only reel
+              skips this one (step 12). <strong>4 · Details</strong> — the city and state, who
+              it&apos;s for, and a video&apos;s shape.
+              <span className="block mt-1.5">
+                You don&apos;t have to work down all four. Give it a topic at the top, choose what to
+                make when it asks, and it starts writing. The sections underneath are there for when
+                you want to change something first.
+              </span>
               {/* Sparks are named here because everything below refers to them,
                   and because one now exists the moment a project does — someone
                   who saves an idea and leaves will find it waiting. */}
@@ -226,7 +240,7 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>Already written it?</strong>{" "}
                 <strong>Use my content</strong> is the one place for it, the second
-                tile on question 2. Paste your words in, or attach a PDF, a link, or an email you
+                box under Script source. Paste your words in, or attach a PDF, a link, or an email you
                 forwarded to your import address (step 6). On a video you then say what happens to
                 them: <strong>Speak it word for word</strong>, for a finished script, or{" "}
                 <strong>Have AI write from it</strong>, which either writes a new script from it or
@@ -248,8 +262,12 @@ export default function HelpPage() {
                   afterwards and were not mentioned anywhere on this page. */}
               <span className="block mt-1.5">
                 <strong>Who is it for?</strong> <strong>Audience</strong>, <strong>Tone</strong> and{" "}
-                <strong>Why</strong> are three optional pickers beside the topic. What
-                you choose shapes the script, the article and the Spark Tools afterwards. If your
+                <strong>Why</strong> are three optional pickers under Details. What
+                you choose shapes the script, the article and the Spark Tools afterwards. The four
+                chips under the topic box, <strong>Topic</strong>, <strong>Town</strong>,{" "}
+                <strong>Audience</strong> and <strong>Format</strong>, turn blue as each one is
+                filled in. Tap one and it takes you to where that is set, or just say it:{" "}
+                <em>&ldquo;for first-time buyers&rdquo;</em>, <em>&ldquo;a short reel&rdquo;</em>. If your
                 audience is not on the list — first responders, nurses relocating — choose{" "}
                 <strong>Add your own&hellip;</strong> at the bottom of Audience and type it. It is saved
                 to your account, so it is there on your phone and your computer, and choosing it again
@@ -257,18 +275,29 @@ export default function HelpPage() {
               </span>
             </Step>
             <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
-              {/* The mic at the top first: signing in lands on it, and one
-                  sentence there answers all three questions above. Example
-                  towns are generic on purpose. */}
-              The quickest way in is the mic card at the top of Spark Studio,{" "}
-              <strong>Speak what you want to create</strong>. Tap the mic and say the whole thing in
-              one sentence —{" "}
+              {/* One card now: the mic and the box together, at the top, where
+                  signing in lands. Example towns are generic on purpose. */}
+              The Topic card at the top of Spark Studio has one mic and one box, and they are the same
+              thing: what you say shows up in the box, and what you type goes in the same place. Tap
+              the mic and say the whole thing in one sentence —{" "}
               <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
               <em>&ldquo;Make a short YouTube video with my avatar and voice about the Riverside
-              market&rdquo;</em> — and it takes the route, the town, the topic and who it&apos;s for from
-              what you said. A blog is written straight away. A video stops at its script, so nothing
-              comes out of your plan until you choose to render it. If something is missing it asks, and
-              you tap the mic again to answer.
+              market&rdquo;</em> — and tap the mic again when you&apos;re done. Your words wait in the box,
+              so a misheard town or street name is a quick fix before anything is sent.
+              {/* What the strip under the box does, which is the part the owner
+                  stopped at twice before it said so on the screen. */}
+              <span className="block mt-1.5">
+                Under the box it then asks what to make, with three buttons:{" "}
+                <strong>Avatar video</strong>, <strong>Record yourself</strong> or{" "}
+                <strong>Blog</strong>. Tap one and it&apos;s sent. If your sentence already said, as both
+                examples above do, it skips the question and shows what it&apos;s making beside a{" "}
+                <strong>Send</strong> button, with <strong>Change</strong> if it read you wrong. It
+                takes the town, the topic and who it&apos;s for from what you said. A blog is written
+                straight away. A video stops at its script, so nothing
+                comes out of your plan until you choose to render it. If something is missing it says
+                so, such as <em>&ldquo;I still need the town&rdquo;</em>, and you say or type the answer
+                and press Send.
+              </span>
               <span className="block mt-1.5">
                 You can start from an email you forwarded the same way:{" "}
                 <em>&ldquo;Create a blog from my Springfield market report email.&rdquo;</em> It only
@@ -276,19 +305,19 @@ export default function HelpPage() {
                 so <em>&ldquo;a market update for Springfield&rdquo;</em> still means a fresh one.
               </span>
               <span className="block mt-1.5">
-                The mic beside the topic box further down is the slower version, a real conversation:
-                click it (or, on desktop, hold{" "}
+                You don&apos;t have to say it all at once. Give it the topic, then the town, then who
+                it&apos;s for, one answer at a time, and it keeps what it has already heard. On a
+                desktop you can hold{" "}
                 <span className="spark-cta-gradient rounded px-1.5 py-0.5 text-xs font-semibold text-white">Spacebar</span>{" "}
-                anywhere on the page) and just talk — your city, the topic, who it&apos;s for, the
-                tone, how long. It fills in whatever it catches and asks a quick follow-up for anything
-                missing, then say <strong>&ldquo;Spark it&rdquo;</strong> — or just say you&apos;re
-                ready — and it writes the script.
+                anywhere on the page instead of tapping the mic. Once it says it has everything,
+                saying <strong>&ldquo;Spark it&rdquo;</strong> starts it too.
               </span>
               <span className="block mt-1.5">
-                Prefer typing, or want a suggestion instead of a blank field? Every topic
-                is a chip under the box — twenty-five of them in three groups (Real estate tips,
-                Formats, Local events &amp; community), your city filled in automatically. Tap one and
-                it lands in the same box the mic writes into, so you can add to it before you send.
+                Prefer typing, or want a suggestion instead of a blank box? Under it,{" "}
+                <strong>Need an Idea for a Topic?</strong> offers five ideas with your city filled in.{" "}
+                <strong>Shuffle</strong> shows five more, and <strong>More ideas</strong> opens the
+                whole list with a search box. Tap one, or one of the two <strong>Try</strong> examples,
+                and it lands in the same box the mic writes into, so you can add to it before you send.
                 Either way, AI researches live market data for your city and writes a
                 broadcast-quality script with real stats.
               </span>
@@ -317,7 +346,10 @@ export default function HelpPage() {
               The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
               market, how long the script should be, and where the words come from: a topic, a PDF or link, a
               recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
-              script and no teleprompter at all. Then <strong>how it records</strong> — vertical or horizontal,
+              script and no teleprompter at all. When AI is writing it from a topic, the topic is the one
+              in the Topic card at the top of the page, and <strong>Write my script</strong> in the bar
+              at the bottom writes it and loads it into your teleprompter.
+              Then <strong>how it records</strong> — vertical or horizontal,
               Branded Look, your photos playing behind you, and <strong>Add Channel CTA</strong> to append your
               closing pitch. You can also skip straight here with <strong>Record on Camera</strong>, a
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
@@ -383,8 +415,8 @@ export default function HelpPage() {
               paste into your site arrives with its image already in place. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
-              you can write one without making a video at all — pick <strong>Blog</strong> on the
-              first question.
+              you can write one without making a video at all — pick <strong>Blog</strong> when the
+              Topic card asks what to make, or start your sentence with &ldquo;create a blog&rdquo;.
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as
                 soon as the Share Kit opens — there is nothing to press. A take recorded with no script
