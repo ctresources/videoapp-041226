@@ -193,6 +193,11 @@ export default function HelpPage() {
                   <td className="py-2 pr-3">Each photo becomes a few seconds of real camera movement</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Scenes reel</td>
+                  <td className="py-2 pr-3">No photos and no camera — a topic becomes a short video of AI-made scenes under your voice</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
               </tbody>
             </table>
             <p className="text-xs text-slate-400 mt-1.5">
@@ -218,8 +223,8 @@ export default function HelpPage() {
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
               <strong>3 · Script source</strong> — <strong>AI writes it</strong> from
               a topic, <strong>Use my content</strong>, or <strong>Imported content</strong> once
-              you have forwarded something in (step 6). A listing or a photos only reel
-              skips this one (step 12). <strong>4 · Details</strong> — the city and state, who
+              you have forwarded something in (step 6). A listing, a photos only reel or a scenes
+              reel skips this one (step 12). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s shape.
               <span className="block mt-1.5">
                 You don&apos;t have to work down all four. Give it a topic at the top, choose what to
@@ -278,8 +283,10 @@ export default function HelpPage() {
             <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
-              The Topic card at the top of Spark Studio has one mic and one box, and they are the same
-              thing: what you say shows up in the box, and what you type goes in the same place. Tap
+              The Topic card at the top of Spark Studio reads{" "}
+              <strong>Speak, Type or choose suggested idea</strong>. It has one mic and one box, and
+              they are the same thing: what you say shows up in the box, and what you type goes in the
+              same place. Tap
               the mic and say the whole thing in one sentence —{" "}
               <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
               <em>&ldquo;Make a short YouTube video with my avatar and voice about the Riverside
@@ -298,6 +305,12 @@ export default function HelpPage() {
                 comes out of your plan until you choose to render it. If something is missing it says
                 so, such as <em>&ldquo;I still need the town&rdquo;</em>, and you say or type the answer
                 and press Send.
+              </span>
+              {/* The cards and the box agree, in both directions. */}
+              <span className="block mt-1.5">
+                The cards under <strong>2 · Create</strong> follow along. Say &ldquo;create a
+                blog&rdquo; and the Blog card is the one picked; tap a card yourself and the box
+                makes that instead.
               </span>
               <span className="block mt-1.5">
                 You can start from an email you forwarded the same way:{" "}
@@ -351,11 +364,29 @@ export default function HelpPage() {
               in the Topic card at the top of the page, and <strong>Write my script</strong> in the bar
               at the bottom writes it and loads it into your teleprompter.
               Then <strong>how it records</strong> — vertical or horizontal,
-              Branded Look, your photos playing behind you, and <strong>Add Channel CTA</strong> to append your
+              Branded Look, what plays behind you, and <strong>Add Channel CTA</strong> to append your
               closing pitch. You can also skip straight here with <strong>Record on Camera</strong>, a
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
+              {/* Three things can be behind the speaker now, and one of them
+                  costs something, on a screen whose headline is "free". */}
+              <span className="block mt-1.5">
+                <strong>What plays behind you</strong> is one of three things, with you in the
+                corner. <strong>Your photos</strong>, if you attached any.{" "}
+                <strong>Play my footage behind me</strong>, a clip of your own. Or, with neither,{" "}
+                <strong>Make scenes from my script</strong>: up to six short realistic scenes made
+                with AI to match what you&apos;re about to say — ordinary homes and rooms, no people,
+                never your town or a real property. Scenes take about three minutes to make and use{" "}
+                <strong>one short video</strong> from your plan; photos and your own footage stay
+                free. Write the script first, because the scenes are made from it.
+              </span>
+              <span className="block mt-1.5">
+                With a clip or scenes chosen you can tick <strong>Open on it</strong>. The first 5
+                seconds of the take are then the clip full screen with a title you type, and you
+                appear after that. Start talking as soon as you press record; your voice is heard over
+                the opener.
+              </span>
               {/* The recovery behaviour, which was invisible until it fires and
                   then reads like an error. Worded to match what the notice
                   itself says, and deliberately not promising the recording
@@ -373,15 +404,18 @@ export default function HelpPage() {
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
             <Step n={12} title="Listings And Photos Only Reels" icon={ImageIcon}>
-              <strong>Listings &amp; photos</strong>, the fourth card, makes two things from a
-              set of property pictures. <strong>Listing video</strong> writes a tour from the listing —
+              <strong>Listings &amp; photos</strong>, the fourth card, has three tabs. Two start
+              from a set of property pictures and the third needs no pictures at all.{" "}
+              <strong>Listing video</strong> writes a tour from the listing —
               paste a listing link, upload photos or enter the details — and renders it in your voice,
               with your avatar on screen or the photos full-frame. It uses one short video.
               <span className="block mt-1.5">
-                <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos, pick the
+                <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
+                them, or paste a listing link and its photos are brought in for you — then pick the
                 shape (<strong>Reel 9:16</strong> or <strong>Wide 16:9</strong>), a length, music, and
-                whether it has a voiceover and a closing card with your ask and phone number. Then
-                choose the <strong>Motion</strong>:
+                whether it has a voiceover and a closing card with your ask and phone number. A
+                voiceover you type is read in <strong>your own voice clone</strong> once you have set
+                one up, and by a stock voice until then. Then choose the <strong>Motion</strong>:
               </span>
               <span className="block mt-1.5">
                 <strong>Classic</strong> is a slow pan across each photo. It is free and takes nothing
@@ -402,6 +436,18 @@ export default function HelpPage() {
                 <strong>Make another reel</strong>, underneath, brings the build button back — on
                 Cinematic that is another short video.
               </span>
+              {/* The one with no pictures. Says plainly what the scenes are
+                  not, because the tab sits beside two that show a real home. */}
+              <span className="block mt-1.5">
+                <strong>Scenes reel</strong> is for a topic, not a property. Type what it&apos;s about
+                and tap <strong>Write it</strong>, or write the script yourself — about a minute of
+                talking at most. It is read in your voice clone over a handful of realistic scenes made
+                with AI to match it, with captions, music and your closing card. The scenes are
+                generic on purpose: ordinary American homes and rooms, no people, never your town or
+                a real listing. For a real property use Photos only reel with its own photos. A
+                scenes reel uses <strong>one short video</strong>, and{" "}
+                <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
+              </span>
             </Step>
             <Step n={13} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
@@ -417,7 +463,14 @@ export default function HelpPage() {
               paste into your site arrives with its image already in place. The same paste includes
               the article&apos;s <strong>schema</strong>, the hidden description that tells search and
               answer engines what the article is, who wrote it, and which parts are questions and
-              answers. Some website builders remove it when you paste; the article is unaffected. That gives one recording two places to
+              answers. Some website builders remove it when you paste; the article is unaffected.
+              Once an article has a header image, two more buttons appear beside it.{" "}
+              <strong>Moving header</strong> turns that picture into a short silent loop of slow
+              camera movement, and Copy as HTML then leads with it, keeping the still picture for
+              sites that won&apos;t play video. <strong>Social teaser</strong> makes a short vertical
+              clip with the headline and a &ldquo;Read the full article&rdquo; card, to download and
+              post with a link. Each takes about a minute, neither uses a video from your plan, and
+              each can be made up to four times for one article. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
               you can write one without making a video at all — pick <strong>Blog</strong> when the
@@ -454,8 +507,9 @@ export default function HelpPage() {
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
-              Avatar videos and Cinematic reels are marked to YouTube as AI-made when they go up,
-              which YouTube asks for. Videos you record yourself and Classic reels are not.
+              Avatar videos, Cinematic reels, Scenes reels and a camera recording made over AI scenes
+              are marked to YouTube as AI-made when they go up, which YouTube asks for. Other videos
+              you record yourself and Classic reels are not.
               {/* Failures used to be a toast and nothing else: gone on refresh,
                   with no reason and nothing to retry from. Saying so is the
                   most useful line on this card when something goes wrong. */}
@@ -596,6 +650,7 @@ export default function HelpPage() {
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
             <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
+            <li><strong>No photos and no camera:</strong> a Scenes reel turns a topic into a short video, for one short video</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>

@@ -4,6 +4,7 @@ import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { cameraGateResponse, noteRecordingSaved } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
+import { SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
   let uploadedInline = false;
   /** Audience, tone and purpose from the Create page; empty on the legacy inline path. */
   let brief = { audience: "", tone: "", purpose: "" };
+  /** Recorded over scenes made with AI: marked for publishing, and said in the description. */
+  let aiScenes = false;
 
   const contentType = req.headers.get("content-type") || "";
 
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
       state?: string;
       cta?: string;
       idempotencyKey?: string;
+      aiScenes?: boolean;
       audience?: string;
       tone?: string;
       purpose?: string;
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
     state = (body.state || "").trim().slice(0, 50);
     cta = (body.cta || "").trim().slice(0, 2000);
     idempotencyKey = (body.idempotencyKey || "").trim().slice(0, 64) || null;
+    aiScenes = body.aiScenes === true;
 
     const gate = await cameraGateResponse(user.id, idempotencyKey);
     if (gate) return gate;
@@ -211,7 +216,8 @@ export async function POST(req: NextRequest) {
       video_type: videoType,
       render_provider: "camera",
       render_status: "completed",
-      metadata: { source: "teleprompter" },
+      // "scenes" is what isAiMadeVideo reads to set the platform disclosures.
+      metadata: { source: "teleprompter", ...(aiScenes && { motion: "scenes" }) },
       idempotency_key: idempotencyKey,
     })
     .select("id")
@@ -318,7 +324,7 @@ export async function POST(req: NextRequest) {
   // from a scripted project that wrote its own, and regenerating would
   // overwrite wording the user may have edited.
   const canSummarise = spokenScript.length > 40;
-  if (canSummarise || hook || cta) {
+  if (canSummarise || hook || cta || aiScenes) {
     try {
       const { data: existing } = await admin
         .from("projects")
@@ -346,7 +352,7 @@ export async function POST(req: NextRequest) {
         // The sign-off is appended rather than handed to the model. It is the
         // agent's own wording, and a summariser would paraphrase it.
         const body = seo?.youtube_description || hook || spokenScript;
-        const description = [body, cta].filter(Boolean).join("\n\n").slice(0, 4900);
+        const description = [body, cta, aiScenes ? SCENES_DISCLOSURE : ""].filter(Boolean).join("\n\n").slice(0, 4900);
 
         await admin
           .from("projects")

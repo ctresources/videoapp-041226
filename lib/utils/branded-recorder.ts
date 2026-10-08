@@ -112,6 +112,16 @@ export class BrandedComposite {
   private brollVideoEl: HTMLVideoElement | null = null;
   /** When the clip was handed the background, for the fade in. 0 = not yet. */
   private brollVideoAt = 0;
+  /**
+   * An opener: the clip fills the frame for the first few seconds of the
+   * take, with a title over it, before the speaker appears. 0 = none.
+   *
+   * The same clip that later plays behind the speaker, from its start, so
+   * nothing extra is loaded and the two are plainly the same footage.
+   */
+  private openerMs = 0;
+  private openerTitle = "";
+  private openerActive = false;
   private brollElapsed = 0;
   private brollLastTick = 0;
   private brollRunning = false;
@@ -282,10 +292,15 @@ export class BrandedComposite {
    */
   async init(
     source: MediaStream | string,
-    opts?: { narrateWith?: MediaStream | null; brollVideo?: string | null },
+    opts?: {
+      narrateWith?: MediaStream | null;
+      brollVideo?: string | null;
+      /** Open the take on the clip, full screen, for this long, under this title. Needs `brollVideo`. */
+      opener?: { seconds: number; title: string } | null;
+    },
   ): Promise<MediaStream> {
     try {
-      return await this.build(source, opts?.narrateWith ?? null, opts?.brollVideo ?? null);
+      return await this.build(source, opts?.narrateWith ?? null, opts?.brollVideo ?? null, opts?.opener ?? null);
     } catch (err) {
       // Never leave a half-built pipeline (or its mounted element) behind —
       // the caller drops its reference and falls back to the plain path.
@@ -299,6 +314,7 @@ export class BrandedComposite {
     source: MediaStream | string,
     narrateWith: MediaStream | null,
     brollVideo: string | null,
+    opener: { seconds: number; title: string } | null = null,
   ): Promise<MediaStream> {
     const fromFile = typeof source === "string";
     this.fromFile = fromFile;
@@ -366,6 +382,12 @@ export class BrandedComposite {
         el.pause();
         try { el.currentTime = 0; } catch { /* seeking unsupported — start late */ }
         this.brollVideoEl = el;
+        // Only with a clip to open on. Never when narrating over a file: that
+        // take's opening seconds are the file's own.
+        if (opener && !fromFile) {
+          this.openerMs = Math.max(0, Math.min(10, opener.seconds)) * 1000;
+          this.openerTitle = (opener.title || "").trim().slice(0, 90);
+        }
       } catch (err) {
         console.warn("[branded-recorder] video b-roll unavailable:", err);
         this.brollVideoEl?.remove();
@@ -558,7 +580,7 @@ export class BrandedComposite {
     // not stop when the recording does. Left running through a pause it walks
     // away from the take: you come back to a background thirty seconds further
     // on than the moment you stopped at.
-    if (this.brollVideoAt !== 0) void this.brollVideoEl?.play().catch(() => {});
+    if (this.brollVideoAt !== 0 || this.openerActive) void this.brollVideoEl?.play().catch(() => {});
   }
   pauseBroll() {
     this.tickBroll();
@@ -599,10 +621,63 @@ export class BrandedComposite {
    * takes over rather than at the moment it loaded, so nothing of it is spent
    * off screen. Null keeps the speaker full-frame.
    */
+  /**
+   * Whether this frame belongs to the opener: the clip full screen, before
+   * the speaker has appeared.
+   *
+   * Only once the take is running. In the preview, with nothing recorded yet,
+   * the frame has to be the camera, or there is no way to see yourself before
+   * you start. When the opener's time is up the clip is paused where it is
+   * and waits: the speaker takes the frame for their opening line, and the
+   * clip resumes from there when it goes behind them.
+   */
+  private openerShot(): boolean {
+    const el = this.brollVideoEl;
+    if (!el || !this.openerMs) return false;
+    if (!this.brollRunning && this.brollElapsed === 0) return false;
+    if (this.brollElapsed >= this.openerMs) {
+      if (this.openerActive) {
+        this.openerActive = false;
+        el.pause();
+      }
+      return false;
+    }
+    if (!this.openerActive) {
+      this.openerActive = true;
+      if (this.brollRunning) void el.play().catch(() => { /* drawn as a still, or the speaker shows */ });
+    }
+    return el.readyState >= 2 && !!el.videoWidth;
+  }
+
+  /** The opener's title, in real type over a scrim, low in the frame. */
+  private drawOpenerTitle(W: number, H: number, S: number) {
+    const ctx = this.ctx;
+    if (!ctx || !this.openerTitle) return;
+    const size = Math.round(S * 0.075);
+    const lines = wrapText(this.openerTitle, W > H ? 30 : 18).slice(0, 3);
+    const lh = Math.round(size * 1.18);
+    const blockH = lines.length * lh;
+    const top = Math.round(H * 0.6 - blockH / 2);
+    const grad = ctx.createLinearGradient(0, top - size * 2, 0, top + blockH + size * 2);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.35, "rgba(0,0,0,0.55)");
+    grad.addColorStop(0.65, "rgba(0,0,0,0.55)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, top - size * 2, W, blockH + size * 4);
+    ctx.font = `800 ${size}px Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#ffffff";
+    lines.forEach((line, i) => ctx.fillText(line, W / 2, top + i * lh));
+    ctx.textAlign = "left";
+  }
+
   private brollVideoShot(): { fade: number } | null {
     const el = this.brollVideoEl;
     if (!el) return null;
-    if (this.brollElapsed < BROLL_LEAD_IN_MS) return null;
+    // After the opener, if there is one, the speaker still gets the lead-in.
+    if (this.brollElapsed < this.openerMs + BROLL_LEAD_IN_MS) return null;
 
     if (this.brollVideoAt === 0) {
       this.brollVideoAt = performance.now();
@@ -737,12 +812,18 @@ export class BrandedComposite {
     // A moving background wins over the stills when both were supplied —
     // cutting between the two would be two different ideas of what the
     // background is, alternating.
-    const clip = this.brollVideoShot();
-    const shot = clip ? null : this.currentBrollShot();
+    const opening = this.openerShot();
+    const clip = opening ? null : this.brollVideoShot();
+    const shot = opening || clip ? null : this.currentBrollShot();
     // Whether the speaker is already on screen in the corner this frame. The
     // name bar reads it to decide whether to also carry their headshot.
     const pipOnScreen = !!clip || !!shot;
-    if (clip) {
+    if (opening) {
+      // The clip alone, with the title. The speaker is heard, not yet seen.
+      this.drawBrollVideo(W, H, 1);
+      this.drawOpenerTitle(W, H, S);
+      this.hasDrawnFrame = true;
+    } else if (clip) {
       this.drawBrollVideo(W, H, clip.fade);
       this.drawCameraPip(W, H);
       this.hasDrawnFrame = true;

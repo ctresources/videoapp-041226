@@ -328,6 +328,54 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
    */
   const [brollVideoUrl, setBrollVideoUrl] = useState<string | null>(null);
   const [brollVideoName, setBrollVideoName] = useState("");
+  /**
+   * Whether that clip is scenes made for this script, and not footage of
+   * their own. A take recorded over them is saved as AI-made.
+   */
+  const [brollIsScenes, setBrollIsScenes] = useState(false);
+  const [scenesBusy, setScenesBusy] = useState(false);
+  /** Open the take on the clip, full screen, with a title, before you appear. */
+  const [openOnClip, setOpenOnClip] = useState(false);
+  const [openerTitle, setOpenerTitle] = useState("");
+
+  /**
+   * Scenes to play behind you, made from the script.
+   *
+   * For someone with no photos and no footage. Fetched as a file and held as
+   * an object URL, the same as a clip they chose, because that is the only
+   * kind the composite can draw without spoiling the recording.
+   */
+  async function makeScenes() {
+    if (scenesBusy) return;
+    setScenesBusy(true);
+    try {
+      const res = await fetch("/api/video/scene-footage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script, shape }),
+      });
+      const raw = await res.text();
+      let data: { url?: string; scenes?: number; error?: string } = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { /* a timeout does not answer in JSON */ }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || (res.status === 504
+          ? "That took too long, so nothing was taken from your plan. Try again."
+          : `Could not make the scenes (error ${res.status}).`));
+      }
+      const file = await fetch(data.url);
+      if (!file.ok) throw new Error("The scenes were made but could not be loaded. Try again.");
+      const blob = await file.blob();
+      if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
+      setBrollVideoUrl(URL.createObjectURL(blob));
+      setBrollVideoName(`${data.scenes ?? ""} scenes made for this script`.trim());
+      setBrollIsScenes(true);
+      toast.success("Scenes are ready. They'll play behind you when you record.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not make the scenes.", { duration: 7000 });
+    } finally {
+      setScenesBusy(false);
+    }
+  }
   useEffect(() => () => {
     if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
   }, [brollVideoUrl]);
@@ -608,7 +656,10 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
             "medium",
             SHAPES[shape],
           );
-          previewStream = await composite.init(stream, { brollVideo: brollVideoUrl });
+          previewStream = await composite.init(stream, {
+            brollVideo: brollVideoUrl,
+            opener: openOnClip && brollVideoUrl ? { seconds: 5, title: openerTitle } : null,
+          });
           compositeRef.current = composite;
           setBrandedActive(true);
           if (composite.musicUnavailable) {
@@ -1080,6 +1131,8 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
       title,
       script: promptScript,
       videoType: videoTypeForSize(size),
+      // Only when the scenes were actually in the picture.
+      aiScenes: brollIsScenes && !!brollVideoUrl && brandedLook,
       width: size?.width ?? null,
       height: size?.height ?? null,
       mimeType,
@@ -1166,6 +1219,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
         title: record.title,
         script: record.script,
         videoType: record.videoType,
+        aiScenes: record.aiScenes,
         city: record.city,
         state: record.state,
         audience: record.audience,
@@ -1848,6 +1902,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                           if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
                           setBrollVideoUrl(URL.createObjectURL(f));
                           setBrollVideoName(f.name);
+                          setBrollIsScenes(false);
                         }}
                       />
                     </label>
@@ -1862,6 +1917,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                             URL.revokeObjectURL(brollVideoUrl);
                             setBrollVideoUrl(null);
                             setBrollVideoName("");
+                            setBrollIsScenes(false);
                           }}
                           className="shrink-0 text-[11px] font-medium text-slate-400 underline hover:text-slate-600"
                         >
@@ -1870,11 +1926,61 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                       </>
                     )}
                   </div>
+                  {/* No photos and no footage: scenes made from the script.
+                      The third thing that can be behind you. Offered where the
+                      other two are chosen, and only with a script to make them
+                      from. */}
+                  {!brollVideoUrl && (
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void makeScenes()}
+                        disabled={scenesBusy || script.trim().split(/\s+/).filter(Boolean).length < 20}
+                        className="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50"
+                      >
+                        {scenesBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        {scenesBusy ? "Making scenes, about three minutes…" : "No footage? Make scenes from my script"}
+                      </button>
+                      <p className="text-[11px] leading-[1.45] text-slate-400">
+                        Up to six short realistic scenes made with AI to match your script: ordinary homes and
+                        rooms, no people, never your town or a real property. Uses{" "}
+                        <strong className="font-semibold text-slate-500">one short video</strong> from your plan,
+                        and the take is labelled as made with AI when you publish it.
+                      </p>
+                    </div>
+                  )}
                   {brollVideoUrl && (
                     <p className="text-[11px] leading-[1.45] text-slate-400">
                       Chosen before the camera opens — the background is built into the recording,
                       so it cannot be swapped once you are rolling.
                     </p>
+                  )}
+                  {/* An opener, from the same clip. */}
+                  {brollVideoUrl && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="flex cursor-pointer items-start gap-2 select-none">
+                        <input
+                          type="checkbox"
+                          checked={openOnClip}
+                          onChange={(e) => setOpenOnClip(e.target.checked)}
+                          className="accent-indigo-500 w-4 h-4 mt-0.5 shrink-0"
+                        />
+                        <span className="text-xs text-slate-600">
+                          <strong>Open on it</strong> — the clip fills the screen for the first 5 seconds with
+                          your title, then you appear.{" "}
+                          <span className="text-slate-400">Start talking straight away; your voice is heard over it.</span>
+                        </span>
+                      </label>
+                      {openOnClip && (
+                        <input
+                          value={openerTitle}
+                          onChange={(e) => setOpenerTitle(e.target.value)}
+                          placeholder="Title on the opener, e.g. 3 fixes before you list"
+                          maxLength={90}
+                          className="ml-6 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[13px] text-slate-700 outline-none focus:border-indigo-400"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
 

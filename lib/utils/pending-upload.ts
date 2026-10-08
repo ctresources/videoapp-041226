@@ -64,6 +64,8 @@ export interface RecoveryRecord {
   script: string;
   /** The shape the server should file it as. */
   videoType?: string;
+  /** Recorded over scenes made with AI, so it is saved and published as AI-made. */
+  aiScenes?: boolean;
   /** Real recorded pixels, so a retry files the same shape the take really is. */
   width: number | null;
   height: number | null;
