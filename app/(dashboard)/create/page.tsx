@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { PhotoReelForm } from "@/components/create/photo-reel-form";
+import { ScenesReelForm } from "@/components/create/scenes-reel-form";
 import { SparkPanel } from "@/components/create/spark-panel";
 import {
   TEMPLATE_COUNT,
@@ -303,7 +304,7 @@ function CreatePageInner() {
    * scripted tour that renders with an avatar or a voice, and a reel built
    * straight out of the photos. They share a tab because they share an input.
    */
-  const [listingMode, setListingMode] = useState<"listing" | "reel">("listing");
+  const [listingMode, setListingMode] = useState<"listing" | "reel" | "scenes">("listing");
   /**
    * The listing's photos and address, lifted out of ListingVideoForm so the
    * Photo reel under the same tab can start from them. Held here rather than
@@ -2624,7 +2625,7 @@ function CreatePageInner() {
               key: "listing" as const,
               label: "Listings & photos",
               Icon: Building2,
-              desc: "Video, or photos only",
+              desc: "Video, photos or scenes",
               free: true,
               // Not "Free". A Classic reel is; a Cinematic reel and a listing
               // video each use one video. The card under it says which.
@@ -3962,11 +3963,13 @@ function CreatePageInner() {
               </div>
               <div>
                 <p className="text-base font-bold text-brand-text">
-                  {blogOnly ? "Property Article" : listingMode === "reel" ? "Photos Only Reel" : "Listing Video"}
+                  {blogOnly ? "Property Article" : listingMode === "scenes" ? "Scenes Reel" : listingMode === "reel" ? "Photos Only Reel" : "Listing Video"}
                 </p>
                 <p className="text-sm text-spark-ink-muted">
                   {blogOnly
                     ? "Import from Zillow · Upload photos · Enter manually"
+                    : listingMode === "scenes"
+                      ? "No photos needed · your voice over scenes made from the script · uses 1 short video"
                     : listingMode === "reel"
                       ? "Your photos, with music or your voice · Classic is free, Cinematic uses 1 short video"
                       : "Upload Photos · Import From Zillow · Enter Manually"}
@@ -3981,11 +3984,15 @@ function CreatePageInner() {
                 Not on the blog route: a reel is a video, and this card sat
                 directly under "No video will be made". */}
             {!blogOnly && (
-            <div className="mb-3 grid grid-cols-2 gap-1.5">
+            <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
                 // "free" alone was true until Cinematic, which uses a video.
                 { key: "reel" as const, label: "Photos only reel", sub: "photos into a video · Classic is free" },
+                // The one thing here that is not about a listing. It lives in
+                // this card because it is made by the reel builder, and it is
+                // where the owner looks for reels.
+                { key: "scenes" as const, label: "Scenes reel", sub: "no photos · a topic into a video" },
               ]).map(({ key, label, sub }) => (
                 <button
                   key={key}
@@ -4012,6 +4019,9 @@ function CreatePageInner() {
                 built to turn photos into a video unable to see them.
                 Kept mounted only while selected, so each switch is a fresh
                 mount that re-reads the listing's current photos. */}
+            {listingMode === "scenes" && !blogOnly && (
+              <ScenesReelForm city={locCity || undefined} state={locState || undefined} />
+            )}
             {listingMode === "reel" && !blogOnly && (
               <PhotoReelForm
                 city={locCity || undefined}
@@ -4058,6 +4068,7 @@ function CreatePageInner() {
             <p className="text-base font-bold text-brand-text mb-3">
               {blogOnly
                 ? "What Your Property Article Includes"
+                : listingMode === "scenes" ? "What Your Scenes Reel Includes"
                 : listingMode === "reel" ? "What Your Photos Only Reel Includes" : "What Your Listing Video Includes"}
             </p>
             {/* A third list for the blog route, which had been showing the
@@ -4070,6 +4081,12 @@ function CreatePageInner() {
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Fair Housing-safe wording</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Nothing spent. Turn it into a video afterwards if you want one</li>
+              </>) : listingMode === "scenes" ? (<>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script of about a minute, written from your topic or typed by you</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your voice clone reading it</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Three to eight realistic scenes made with AI to match what is said, with no people in them</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Captions, music, and a closing card with your ask and phone number</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing, labelled as made with AI</li>
               </>) : listingMode === "reel" ? (<>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your photos in the shape you pick, with Ken Burns motion and dissolves between them</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Music only, your cloned voice reading a script you write, or a recording of you</li>
@@ -4090,6 +4107,8 @@ function CreatePageInner() {
             <p className="text-sm text-spark-ink-faint mt-3 pt-3 border-t border-spark-rule-soft">
               {blogOnly
                 ? "Tip: Zillow import fills in the details in seconds. Just paste the listing URL."
+                : listingMode === "scenes"
+                  ? "Tip: the scenes are generic on purpose. For a real property, use Photos only reel with its own photos."
                 : listingMode === "reel"
                   ? "Tip: photo 1 opens the reel. Use the arrows to put your strongest shot first."
                   : "Tip: Zillow import fills everything in seconds. Just paste the listing URL."}

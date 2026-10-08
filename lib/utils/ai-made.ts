@@ -16,8 +16,12 @@ export function isAiMadeVideo(video: {
 } | null | undefined): boolean {
   if (!video) return false;
   if (video.render_provider?.startsWith("heygen")) return true;
-  return video.metadata?.motion === "cinematic";
+  // "scenes": a reel whose every picture was generated from the script.
+  return video.metadata?.motion === "cinematic" || video.metadata?.motion === "scenes";
 }
 
 /** Goes at the end of a Cinematic reel's description. The owner chose the description, not the picture, as where this is said. */
 export const CINEMATIC_DISCLOSURE = "Photos animated with AI.";
+
+/** The same, for a Scenes reel, where the pictures themselves are generated. */
+export const SCENES_DISCLOSURE = "Scenes made with AI.";

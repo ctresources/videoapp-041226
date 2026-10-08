@@ -22,7 +22,8 @@ import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type VideoType } from "@/lib/api/ffmpeg-render";
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
-import { CINEMATIC_DISCLOSURE } from "@/lib/utils/ai-made";
+import { CINEMATIC_DISCLOSURE, SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
+import { makeSceneClips, planScenes, SCENES_MAX, SCENES_MAX_SECONDS, SCENES_MIN, type SceneAspect } from "@/lib/api/scene-clips";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
@@ -81,18 +82,28 @@ export async function POST(req: NextRequest) {
      * video from the plan. Anything else is the classic reel, which is free.
      */
     motion?: string;
+    /**
+     * A Scenes reel: no photos, the pictures are made from the script. Needs
+     * `script`, runs up to a minute, and counts as one short video.
+     */
+    scenes?: boolean;
     /** The property, if this reel is about one. */
     address?: string;
     city?: string;
     state?: string;
   };
 
-  const photoUrls = (body.photoUrls ?? []).filter(Boolean).slice(0, MAX_PHOTOS);
-  if (photoUrls.length === 0) {
+  const scenes = body.scenes === true;
+  const requestStarted = Date.now();
+  const photoUrls = scenes ? [] : (body.photoUrls ?? []).filter(Boolean).slice(0, MAX_PHOTOS);
+  if (!scenes && photoUrls.length === 0) {
     return NextResponse.json({ error: "Add at least one photo." }, { status: 400 });
   }
+  if (scenes && (body.script ?? "").trim().split(/\s+/).filter(Boolean).length < 8) {
+    return NextResponse.json({ error: "Write a few sentences for it to read. The scenes are made from the script." }, { status: 400 });
+  }
 
-  const cinematic = body.motion === "cinematic";
+  const cinematic = !scenes && body.motion === "cinematic";
   if (cinematic && photoUrls.length > CINEMATIC_MAX_PHOTOS) {
     return NextResponse.json(
       { error: `A Cinematic reel uses up to ${CINEMATIC_MAX_PHOTOS} photos. Remove some, or choose Classic.` },
@@ -101,7 +112,7 @@ export async function POST(req: NextRequest) {
   }
 
   const videoType = FORMATS[body.format ?? "reel_9x16"] ?? "reel_9x16";
-  const title = (body.title || "Photo Reel").slice(0, 120);
+  const title = (body.title || (scenes ? "Scenes Reel" : "Photo Reel")).slice(0, 120);
   const admin = createAdminClient();
 
   const { data: profile } = await admin
@@ -121,13 +132,15 @@ export async function POST(req: NextRequest) {
    * takes nothing and there is no refund to get right.
    */
   const isAdmin = p.role === "admin";
-  if (cinematic && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
+  if ((cinematic || scenes) && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       {
         code: "out_of_videos",
         kind: "short",
         tier: p.subscription_tier ?? "free",
-        error: "A Cinematic reel uses one short video and you have none left. Choose Classic, which is free, or add more in Billing.",
+        error: scenes
+          ? "A Scenes reel uses one short video and you have none left. Add more in Billing."
+          : "A Cinematic reel uses one short video and you have none left. Choose Classic, which is free, or add more in Billing.",
       },
       { status: 402 },
     );
@@ -254,12 +267,51 @@ export async function POST(req: NextRequest) {
       clips = await makeCinematicClips(photoUrls, seconds / photoUrls.length);
       moving = clips.filter(Boolean).length;
     }
+
+    /**
+     * ── Scenes ──
+     *
+     * The pictures for a reel that has none: one generated clip for each part
+     * of the narration. Planned from the script, made a few at a time, and
+     * stopped in time to leave the render its share of this request. A scene
+     * that could not be made is left out and the others share its time; fewer
+     * than three is not a reel, and nothing is taken for it.
+     */
+    let segmentUrls: string[] = photoUrls;
+    let scenesAsked = 0;
+    if (scenes) {
+      const seconds = await audioBufferSeconds(audioBuffer);
+      if (seconds > SCENES_MAX_SECONDS + 3) {
+        return NextResponse.json(
+          { error: `A Scenes reel runs up to ${SCENES_MAX_SECONDS} seconds and this script reads at about ${Math.round(seconds)}. Shorten it to roughly 140 words.` },
+          { status: 400 },
+        );
+      }
+      scenesAsked = Math.min(SCENES_MAX, Math.max(SCENES_MIN, Math.round(seconds / 7)));
+      const aspect: SceneAspect = videoType === "youtube_16x9" ? "16:9" : videoType === "short_1x1" ? "1:1" : "9:16";
+      const plan = await planScenes(spokenScript, scenesAsked);
+      // Clips may run until 150 seconds into the request; the render needs the rest.
+      const made = (await makeSceneClips(plan, seconds / scenesAsked, aspect, requestStarted + 150_000))
+        .filter((c): c is NonNullable<typeof c> => !!c);
+      if (made.length < SCENES_MIN) {
+        return NextResponse.json(
+          { error: "Not enough scenes could be made this time, so nothing was taken from your plan. Try again in a minute." },
+          { status: 502 },
+        );
+      }
+      // The renderer takes a clip per segment, in place of a photo. There is no
+      // photo behind these, so the list that stands for them is empty strings.
+      clips = made.map((c) => ({ ...c, similarity: 1 }));
+      segmentUrls = made.map(() => "");
+      moving = made.length;
+    }
     /**
      * Whether this is worth a video from their plan. More than half the photos
      * have to be moving. A reel where most fell back to the classic pan is a
-     * classic reel with a few extras, and the classic reel is free.
+     * classic reel with a few extras, and the classic reel is free. A Scenes
+     * reel that got this far has its scenes, and is one.
      */
-    const earnedItsCharge = cinematic && moving * 2 > photoUrls.length;
+    const earnedItsCharge = scenes || (cinematic && moving * 2 > photoUrls.length);
 
     // ── Music bed ───────────────────────────────────────────────────────────
     let musicUrl: string | null = null;
@@ -329,12 +381,14 @@ export async function POST(req: NextRequest) {
       {
         title,
         audioBuffer,
-        photoUrls,
+        photoUrls: segmentUrls,
         wordTimestamps,
         ...(moving > 0 && { clips }),
+        // A generated scene is not played backwards; see the renderer.
+        ...(scenes && { reverseAlternate: false }),
         // Trimmed to the photos that survived the cap, so a caption cannot end
         // up on the photo after the one it was written for.
-        photoCaptions: (body.photoCaptions ?? [])
+        photoCaptions: (scenes ? [] : body.photoCaptions ?? [])
           .slice(0, photoUrls.length)
           .map((c) => (typeof c === "string" ? c.trim().slice(0, 80) : "")),
         logoUrl: p.logo_url ?? undefined,
@@ -402,12 +456,13 @@ export async function POST(req: NextRequest) {
      * Only when something in the reel actually moves: a Cinematic reel whose
      * every photo fell back is a classic reel, and has nothing to disclose.
      */
+    const disclosure = scenes ? SCENES_DISCLOSURE : CINEMATIC_DISCLOSURE;
     const describe = (text: string | undefined) =>
-      moving > 0 ? [text?.trim(), CINEMATIC_DISCLOSURE].filter(Boolean).join("\n\n") : text;
+      moving > 0 ? [text?.trim(), disclosure].filter(Boolean).join("\n\n") : text;
     const seoData: Record<string, unknown> | null = seo
       ? { ...seo, youtube_title: seo.youtube_title || title, youtube_description: describe(seo.youtube_description) }
       : moving > 0
-        ? { youtube_title: title, youtube_description: CINEMATIC_DISCLOSURE }
+        ? { youtube_title: title, youtube_description: disclosure }
         : null;
 
     const { data: project, error: projErr } = await admin
@@ -445,12 +500,12 @@ export async function POST(req: NextRequest) {
         render_status: "completed",
         ...(reelSeconds ? { duration_seconds: reelSeconds } : {}),
         metadata: {
-          source: "photo-reel",
+          source: scenes ? "scenes-reel" : "photo-reel",
           photos: photoUrls.length,
           // Read by isAiMadeVideo, which decides the platform disclosures.
           // Set only when something moves; see the description above.
           ...(moving > 0 && {
-            motion: "cinematic",
+            motion: scenes ? "scenes" : "cinematic",
             cinematic_clips: moving,
             cinematic_seconds: Math.round(clips.reduce((sum, c) => sum + (c?.seconds ?? 0), 0)),
           }),
@@ -461,11 +516,11 @@ export async function POST(req: NextRequest) {
       .single();
     if (vidErr || !videoRow) throw new Error(vidErr?.message || "Could not save the video");
 
-    if (cinematic) {
+    if (cinematic || scenes) {
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
-        endpoint: "cinematic-reel",
+        endpoint: scenes ? "scenes-reel" : "cinematic-reel",
         credits_used: charged ? 1 : 0,
         response_status: 200,
       });
@@ -480,6 +535,7 @@ export async function POST(req: NextRequest) {
       // For the form to say what actually happened: how many photos moved,
       // and whether a video was taken from the plan for it.
       ...(cinematic && { cinematic: { moving, photos: photoUrls.length, charged: !!charged || (isAdmin && earnedItsCharge) } }),
+      ...(scenes && { scenes: { made: moving, asked: scenesAsked, charged: !!charged || isAdmin } }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Could not build that reel";

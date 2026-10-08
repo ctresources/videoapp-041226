@@ -724,6 +724,13 @@ export interface SlideshowParams {
    */
   clips?: ({ url: string; seconds: number; width?: number; height?: number } | null | undefined)[];
   /**
+   * False to play every clip forwards. Every other Cinematic clip is reversed
+   * for variety, which works because a push in on a photograph is as true
+   * backwards as forwards. A generated scene is not: leaves fall upwards and
+   * steam goes back into the kettle.
+   */
+  reverseAlternate?: boolean;
+  /**
    * A closing card over the last few seconds — the ask, once the pictures have
    * done their work. Omitted entirely when absent, rather than drawn empty.
    */
@@ -837,7 +844,7 @@ export async function renderPhotoSlideshow(
           const seconds = (await probeAudioDuration(cp)) || clip.seconds;
           let path = cp;
           // Every other moving segment plays backwards: in, out, in, out.
-          if (moving % 2 === 1 && seconds <= REVERSE_MAX_SECONDS) {
+          if (params.reverseAlternate !== false && moving % 2 === 1 && seconds <= REVERSE_MAX_SECONDS) {
             const rp = join(renderTmpDir, `clip${i}-reversed.mp4`);
             if (await reverseClip(cp, rp)) path = rp;
           }

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { topic, pdfText, photoCount, length, city, state, unbranded, audience, tone, purpose } = await req.json();
+  const { topic, pdfText, photoCount, length, city, state, unbranded, audience, tone, purpose, targetWords } = await req.json();
   // Who it is for, how it sounds, what it is for: the same brief, and the same
   // guidance text, a market script is written under. Absent means as before.
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
@@ -61,7 +61,12 @@ export async function POST(req: NextRequest) {
   // Teleprompter keys from the camera tab, render-matched keys from the paste
   // tab. Anything unrecognised falls back to the standard budget rather than
   // to a number that would be clamped later.
-  const words = cameraTargetWords(length as CameraLength | RenderedScriptLength | undefined);
+  // A plain number, for a caller that needs a length none of the named ones
+  // is: the Scenes reel, whose narration has to fit in a minute. The shortest
+  // named length is two.
+  const words = typeof targetWords === "number" && Number.isFinite(targetWords)
+    ? Math.min(2200, Math.max(60, Math.round(targetWords)))
+    : cameraTargetWords(length as CameraLength | RenderedScriptLength | undefined);
   const low = Math.round(words * 0.92);
   const high = Math.round(words * 1.08);
   const mins = minutesFor(words);
