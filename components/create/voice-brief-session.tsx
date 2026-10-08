@@ -73,6 +73,38 @@ const MAKES: { kind: BriefMake; label: string }[] = [
  * The page already knows what "create a blog" and "I'll record it myself" mean
  * when they are spoken, so a tap takes the same road and there is one of them.
  */
+/**
+ * What the words in the box already say to make, read before they are sent.
+ *
+ * The box asks what to make before sending, and it asked even of "create a
+ * blog for Ambler", which had just said. The brief only reads the words once
+ * they are sent, so this is a small reading of its own, for the obvious cases:
+ * a making verb followed closely by the thing, or the thing first. It is
+ * deliberately narrow. A topic that merely mentions a blog or a video ("why
+ * every agent needs a blog") should still be asked about, and a wrong guess is
+ * one tap on Change.
+ *
+ * `video` is the half-answer: a video was asked for, but not which of the two.
+ */
+const MAKE_VERB = "(?:create|make|write|draft|spark|generate|do|give me|i need|i want|i'd like|start)";
+const SAID_BLOG = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:blog|article)\\b|^\\s*(?:an?\\s+)?(?:blog|article)\\b`);
+const SAID_VIDEO = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:video|reel|short)\\b|^\\s*(?:an?\\s+)?(?:short\\s+|long\\s+|quick\\s+)?(?:video|reel)\\b`);
+const SAID_CAMERA = /\b(?:record(?:ing)?\s+(?:it\s+|this\s+|that\s+|one\s+)?(?:myself|my\s+self)|record\s+(?:a|my|this|the)\s+(?:short\s+|long\s+|quick\s+)?(?:video|reel|short)|i(?:'ll| will|'m going to| am going to| want to)\s+(?:record|film|shoot)|film\s+(?:it\s+|this\s+)?myself|on\s+camera|teleprompter)\b/;
+const SAID_AVATAR = /\b(?:my|an|the)\s+avatar\b|\bavatar\s+video\b/;
+
+function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
+  const t = text.toLowerCase().replace(/[’‘]/g, "'");
+  const video = SAID_VIDEO.test(t);
+  const kinds: BriefMake[] = [];
+  if (SAID_BLOG.test(t)) kinds.push("blog");
+  if (SAID_CAMERA.test(t)) kinds.push("camera");
+  if (SAID_AVATAR.test(t)) kinds.push("avatar");
+  // Exactly one, and not a blog said alongside a video: that is two things.
+  if (kinds.length === 1 && !(kinds[0] === "blog" && video)) return { kind: kinds[0], video: false };
+  if (kinds.length === 0 && video) return { kind: null, video: true };
+  return { kind: null, video: false };
+}
+
 function withMake(slots: BriefSlots, make: BriefMake | null): BriefSlots {
   if (!make) return slots;
   return { ...slots, output: make === "blog" ? "blog" : "video", onScreen: make === "blog" ? null : make };
@@ -218,6 +250,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
    */
   const [make, setMake] = useState<BriefMake | null>(null);
   const makeRef = useRef<BriefMake | null>(null);
+  /** Change was pressed: show all three, whatever was chosen or said. */
+  const [askAll, setAskAll] = useState(false);
 
   // `send` reads the transcript through a ref so it never closes over a stale
   // turn list — the recogniser's callback outlives the render that made it.
@@ -469,9 +503,11 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     // Goes as another turn. The session re-reads the whole conversation each
     // time, so a corrected sentence overrides what it heard before — the same
     // mechanism that makes "actually, make it sellers" work.
-    // With the choice made it goes ahead when complete. Without one (Enter in
-    // the box, before any button) it is read back, and the box asks then.
-    send(text, makeRef.current ? { go: true } : undefined);
+    // Goes ahead when it is complete and it is known what to make: tapped
+    // here, read from the words before sending, or worked out by the brief
+    // from the sentence. If none of those, it is read back and the box asks.
+    setAskAll(false);
+    send(text, { go: true });
   }
 
   /** One of the three, tapped while words wait in the box: choose, and send. */
@@ -482,6 +518,14 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     setMake(kind);
     submitDraft();
   }
+
+  // What the strip under the box offers. A choice already made, or one the
+  // words in the box state, is shown with a plain Send; Change asks again.
+  const said = saidMake(draft);
+  const making: BriefMake | null = askAll ? null : (make ?? said.kind);
+  const offered = !askAll && !make && said.video
+    ? MAKES.filter((m) => m.kind !== "blog")
+    : MAKES;
 
   /** One of the three, tapped once the brief is already complete: go. */
   function chooseAndGo(kind: BriefMake) {
@@ -636,6 +680,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         onChange={(e) => {
           setDraft(e.target.value);
           setJustHeard(false);
+          // Emptied and started again: read the new words afresh.
+          if (!e.target.value.trim()) setAskAll(false);
         }}
         // Locked only while the mic is running, where the recogniser owns the
         // value and a keystroke would be overwritten on the next result.
@@ -646,7 +692,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            submitDraft();
+            if (making) chooseAndSend(making);
+            else submitDraft();
           }
         }}
         // Ringed while it holds words that have just been heard and not yet
@@ -668,21 +715,24 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           the choice is kept, shown, and can be changed. */}
       {!listening && !!draft.trim() ? (
         <div className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-3">
-          {make ? (
+          {making ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <p className="min-w-0 flex-1 basis-[200px] text-[15px] font-semibold leading-snug text-spark-ink">
-                Making: {MAKES.find((m) => m.kind === make)?.label}.{" "}
-                <button
-                  type="button"
-                  onClick={() => { makeRef.current = null; setMake(null); }}
-                  className="font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
-                >
-                  Change
-                </button>
+                Check your words, then press Send.
+                <span className="mt-0.5 block text-[13.5px] font-normal text-spark-ink-muted">
+                  Making: <strong className="font-semibold text-spark-ink">{MAKES.find((m) => m.kind === making)?.label}</strong>.{" "}
+                  <button
+                    type="button"
+                    onClick={() => { makeRef.current = null; setMake(null); setAskAll(true); }}
+                    className="font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
+                  >
+                    Change
+                  </button>
+                </span>
               </p>
               <button
                 type="button"
-                onClick={submitDraft}
+                onClick={() => chooseAndSend(making)}
                 disabled={thinking || disabled || off}
                 className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
               >
@@ -692,10 +742,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           ) : (
             <>
               <p className="text-[15px] font-semibold leading-snug text-spark-ink">
-                Check your words, then choose what to make.
+                {offered.length < MAKES.length
+                  ? "Check your words, then choose which kind of video."
+                  : "Check your words, then choose what to make."}
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {MAKES.map(({ kind, label }) => (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {offered.map(({ kind, label }) => (
                   <button
                     key={kind}
                     type="button"
@@ -706,6 +758,15 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                     {label}
                   </button>
                 ))}
+                {offered.length < MAKES.length && (
+                  <button
+                    type="button"
+                    onClick={() => setAskAll(true)}
+                    className="px-1 text-[14px] font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
+                  >
+                    Something else
+                  </button>
+                )}
               </div>
               <p className="mt-2 text-[13.5px] leading-snug text-spark-ink-muted">
                 I&rsquo;ll start writing and ask if anything is missing. The steps below are optional.
