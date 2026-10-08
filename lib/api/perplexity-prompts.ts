@@ -8,6 +8,7 @@
 import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
+import { isMarketUpdateTopic, MARKET_SOURCES_BLOG, MARKET_SOURCES_SCRIPT } from "@/lib/api/market-sources";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -409,6 +410,10 @@ function buildCustomRequest(params: LocationParams): Record<string, unknown> {
 
   if (!customTopic) throw new Error("customTopic is required for custom video type");
 
+  // A market update names its sources (see market-sources.ts). Not when the
+  // agent brought their own material: those figures are that document's.
+  const marketSources = !source && isMarketUpdateTopic(customTopic);
+
   /**
    * The agent's own material, when they brought some.
    *
@@ -494,12 +499,12 @@ Rules:
 - Keep language conversational and direct — write for home buyers, sellers, and residents
 - Aim for content that's genuinely useful, not just promotional
 ${NARRATION_STYLE_RULE}
-
+${marketSources ? `${MARKET_SOURCES_SCRIPT}\n${MARKET_SOURCES_BLOG}\n` : ""}
 ${FAIR_HOUSING_GUARDRAIL}`,
       },
       {
         role: "user",
-        content: `Create a short social video script about "${customTopic}". The topic names the place to cover${fallbackLocation ? `; if it names none, cover ${fallbackLocation}` : ""}. Research it thoroughly and provide specific, factual content that would be valuable to real estate agents, buyers, and sellers in that area.${sourceBlock}`,
+        content: `Create a short social video script about "${customTopic}". The topic names the place to cover${fallbackLocation ? `; if it names none, cover ${fallbackLocation}` : ""}. Research it thoroughly and provide specific, factual content that would be valuable to real estate agents, buyers, and sellers in that area.${marketSources ? " This is a market update: check Redfin, Realtor.com and Zillow first for the figures, and say which one each headline figure came from." : ""}${sourceBlock}`,
       },
     ],
     search_recency_filter: "month",

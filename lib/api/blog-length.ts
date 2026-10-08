@@ -78,6 +78,7 @@ HOW TO ADD LENGTH (depth, never padding):
 - Under each heading, add the detail the source supports and the draft skipped: what each named feature means day to day, how the rooms or the points connect, and the specifics of the place the source gives.
 - Intro at least 120 words, every H2 section at least 110 words, conclusion at least 100 words.
 - Never add a fact, figure, name or claim the source does not contain. Where the source runs out, stop rather than invent.
+- Where the draft says whose figure a number is ("According to Redfin", "Realtor.com reports"), keep that with the number. Keep a closing line that begins "Sources:" exactly as written, as the last line of the conclusion.
 - Never repeat a point already made, and never add filler about how stunning, perfect or beautiful something is.
 ${opts.closingRule}
 

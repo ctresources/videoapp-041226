@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
 import { scriptBriefGuidance } from "@/lib/api/perplexity-prompts";
 import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
+import { isMarketUpdateTopic, MARKET_SOURCES_SCRIPT } from "@/lib/api/market-sources";
 import {
   cameraTargetWords, minutesFor,
   type CameraLength, type RenderedScriptLength,
@@ -112,7 +113,7 @@ Rules:
 - Natural spoken language, short punchy sentences
 - Include real value: stats, tips, or insights relevant to the topic${ctaRule}
 - ${lengthRule}${depthRule}
-- Return ONLY the script text — no title, no labels, no markdown`;
+- Return ONLY the script text — no title, no labels, no markdown${isMarketUpdateTopic(topic) ? `\n${MARKET_SOURCES_SCRIPT}` : ""}`;
   }
 
   try {
