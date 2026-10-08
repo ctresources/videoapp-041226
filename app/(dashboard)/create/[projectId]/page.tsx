@@ -113,6 +113,27 @@ interface AiScript {
   imported?: boolean;
 }
 
+/**
+ * A regenerated script that comes back with no article keeps the one the
+ * project already has.
+ *
+ * The article is left out of the reply for an account outside its 30 days,
+ * and the reply replaces the whole script. For someone who had just written
+ * their one free blog, pressing Regenerate deleted it, with no way to write
+ * another.
+ */
+function keepArticle(fresh: AiScript, prior: AiScript | null | undefined): AiScript {
+  if (fresh.blog_body?.trim() || !prior?.blog_body?.trim()) return fresh;
+  return {
+    ...fresh,
+    blog_headline: prior.blog_headline,
+    blog_header_url: prior.blog_header_url,
+    blog_intro: prior.blog_intro,
+    blog_body: prior.blog_body,
+    blog_conclusion: prior.blog_conclusion,
+  };
+}
+
 interface SeoData {
   title: string;
   meta_description: string;
@@ -1269,7 +1290,8 @@ export default function ProjectEditorPage() {
       }
       const body = await safeJson(res);
       if (!body) throw new Error("Invalid response from regenerate");
-      const { aiScript, seoData } = body as { aiScript: AiScript; seoData: SeoData };
+      const { aiScript: fresh, seoData } = body as { aiScript: AiScript; seoData: SeoData };
+      const aiScript = keepArticle(fresh, project?.ai_script as AiScript | null | undefined);
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
@@ -1325,7 +1347,8 @@ export default function ProjectEditorPage() {
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || `Regeneration failed (${res.status})`);
       if (!body) throw new Error("Invalid response from regenerate");
-      const { aiScript, seoData } = body as { aiScript: AiScript; seoData: SeoData };
+      const { aiScript: fresh, seoData } = body as { aiScript: AiScript; seoData: SeoData };
+      const aiScript = keepArticle(fresh, project?.ai_script as AiScript | null | undefined);
       setProject((p) => p ? { ...p, ai_script: aiScript, seo_data: seoData } : p);
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");

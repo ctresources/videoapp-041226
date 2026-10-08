@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
-import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import { cameraGateResponse, noteRecordingSaved } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,12 +13,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Free-tier camera recording is a 30-day trial from the user's first
-  // generated video, not forever — paid plans are unaffected. Checked here,
-  // not just in the UI, since this is the actual point a recording gets
-  // persisted.
-  const gate = await freeTrialGateResponse(user.id, { preVideo: "block" });
-  if (gate) return gate;
+  // Free-tier camera recording is one free take before the first generated
+  // video, then a 30-day trial from that video, not forever — paid plans are
+  // unaffected. Checked here, not just in the UI, since this is the actual
+  // point a recording gets persisted. The check itself runs below, once the
+  // recovery id is known, so a retry of a take that is already saved is let
+  // through to be told so.
 
   const admin = createAdminClient();
 
@@ -90,7 +90,14 @@ export async function POST(req: NextRequest) {
     state = (body.state || "").trim().slice(0, 50);
     cta = (body.cta || "").trim().slice(0, 2000);
     idempotencyKey = (body.idempotencyKey || "").trim().slice(0, 64) || null;
+
+    const gate = await cameraGateResponse(user.id, idempotencyKey);
+    if (gate) return gate;
   } else {
+    // Before the file is read and stored. This path has no recovery id.
+    const gate = await cameraGateResponse(user.id);
+    if (gate) return gate;
+
     const formData = await req.formData();
     const file = formData.get("video") as File | null;
     projectId = formData.get("projectId") as string | null;
@@ -237,6 +244,10 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: videoErr?.message || "Failed to save video" }, { status: 500 });
   }
+
+  // A new recording exists. If it was the one free take, it is used now: here
+  // and not at the gate, so a save that fails does not cost the free one.
+  await noteRecordingSaved(user.id);
 
   await admin
     .from("projects")

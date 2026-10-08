@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prepareImportedArticle } from "@/lib/api/article-import";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
-import { freeTrialLocked } from "@/lib/utils/free-trial";
+import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } from "@/lib/utils/free-trial";
 import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -85,11 +85,19 @@ export async function POST(req: NextRequest) {
    * so a closed trial cannot be a way around it. Refused outright rather than
    * saved with the article stripped out: here the article IS the request.
    */
-  const blogAllowed = profile.role === "admin"
+  const trialOpen = profile.role === "admin"
     || !freeTrialLocked(profile.first_video_generated_at, profile.subscription_tier);
-  if (!blogAllowed) {
+  // An article brought in is a blog like any other, so it is what the one
+  // free blog before the video can be spent on.
+  const preVideo = isPreVideoAccount(profile);
+  const freeBlog = !trialOpen && preVideo && (await freeBlogAvailable(user.id));
+  if (!trialOpen && !freeBlog) {
     return NextResponse.json(
-      { error: "Your free 30 days have ended. Pick a plan to keep publishing articles." },
+      {
+        error: preVideo
+          ? "You've used your free blog. Make your free video — it costs nothing and unlocks unlimited blogs for 30 days."
+          : "Your free 30 days have ended. Pick a plan to keep publishing articles.",
+      },
       { status: 403 },
     );
   }

@@ -33,9 +33,27 @@ export const FREE_TRIAL_DAYS = 30;
  */
 export const FREE_RUNS_BEFORE_VIDEO = 2;
 export const FREE_IMAGES_BEFORE_VIDEO = 2;
+/**
+ * One blog and one camera recording, also before the video, at the owner's
+ * ask. Both cards on the Create page used to be locked on day one, so the two
+ * cheapest things the product makes were the two a new account could not try.
+ * One of each is enough to see them work. Neither starts the 30 days: the
+ * free video is still what unlocks everything, and after the one, each says
+ * so.
+ *
+ * A "recording" is a take saved to My Sparks. Retakes before saving, and the
+ * teleprompter script written for it, do not count.
+ */
+export const FREE_BLOGS_BEFORE_VIDEO = 1;
+export const FREE_RECORDINGS_BEFORE_VIDEO = 1;
 
 /** api_usage_log endpoint that marks one of those free runs. */
 const FREE_RUN_ENDPOINT = "free_tool_run";
+/** And the same for the one free blog and the one free recording. A marker
+ *  row, not a count of what exists, so deleting the blog or the take does not
+ *  hand the free one back. */
+const FREE_BLOG_ENDPOINT = "free_blog";
+const FREE_RECORDING_ENDPOINT = "free_recording";
 
 const TRIAL_MS = FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000;
 
@@ -74,19 +92,94 @@ export function freeTrialDaysLeft(firstVideoGeneratedAt: string | null | undefin
  * "consume" — an AI tool: allowed while free runs remain, and spends one.
  * "allow"   — the image generator, which counts its own five and must not
  *             also burn a text run for the same press.
- * "block"   — camera recording and its uploads, which stay behind the video.
+ * "block"   — the article that writes itself for a recording, which waits to
+ *             be asked for before the video.
+ * "recording" — camera recording and its uploads: allowed while the one free
+ *             recording is unspent. Spent by the save route, not here, so
+ *             asking for an upload address does not use it up.
  */
-export type PreVideoMode = "consume" | "allow" | "block";
+export type PreVideoMode = "consume" | "allow" | "block" | "recording";
 
-/** How many of the free pre-video runs this account has spent. */
-export async function freeRunsUsed(userId: string): Promise<number> {
+async function marksUsed(userId: string, endpoint: string): Promise<number> {
   const admin = createAdminClient();
   const { count } = await admin
     .from("api_usage_log")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("endpoint", FREE_RUN_ENDPOINT);
+    .eq("endpoint", endpoint);
   return count ?? 0;
+}
+
+async function mark(userId: string, endpoint: string): Promise<void> {
+  await createAdminClient().from("api_usage_log").insert({
+    user_id: userId,
+    api_provider: "sparkreels",
+    endpoint,
+    credits_used: 0,
+    response_status: 200,
+  });
+}
+
+/** How many of the free pre-video runs this account has spent. */
+export const freeRunsUsed = (userId: string) => marksUsed(userId, FREE_RUN_ENDPOINT);
+export const freeBlogsUsed = (userId: string) => marksUsed(userId, FREE_BLOG_ENDPOINT);
+export const freeRecordingsUsed = (userId: string) => marksUsed(userId, FREE_RECORDING_ENDPOINT);
+
+/** An account the pre-video allowances are for: free tier, no video made yet. */
+export function isPreVideoAccount(p: {
+  role?: string | null; subscription_tier?: string | null; first_video_generated_at?: string | null;
+} | null | undefined): boolean {
+  if (!p || p.role === "admin") return false;
+  if (p.subscription_tier && p.subscription_tier !== "free") return false;
+  return !p.first_video_generated_at;
+}
+
+/** Whether a pre-video account still has its one free blog. */
+export async function freeBlogAvailable(userId: string): Promise<boolean> {
+  return (await freeBlogsUsed(userId)) < FREE_BLOGS_BEFORE_VIDEO;
+}
+
+/** The free blog has been written. */
+export const markFreeBlog = (userId: string) => mark(userId, FREE_BLOG_ENDPOINT);
+
+/**
+ * A camera recording was saved. Marks the free one as used when that is what
+ * it was; does nothing for a paid account, an admin, or one inside its 30
+ * days, where recordings are not counted.
+ */
+export async function noteRecordingSaved(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("role, subscription_tier, first_video_generated_at")
+    .eq("id", userId)
+    .single();
+  if (isPreVideoAccount(data as never)) await mark(userId, FREE_RECORDING_ENDPOINT);
+}
+
+/**
+ * The gate for the camera routes.
+ *
+ * The "recording" gate, with one exception: a take that is already saved is
+ * always let through. A recording is kept on the device until the server
+ * confirms it, and a save whose reply was lost is retried with the same
+ * recovery id. Once the one free recording is spent, that retry would be
+ * refused by the very save it is asking about, and the person would be told
+ * their recording failed when it is sitting in My Sparks.
+ */
+export async function cameraGateResponse(
+  userId: string,
+  recoveryKey?: string | null,
+): Promise<NextResponse | null> {
+  const gate = await freeTrialGateResponse(userId, { preVideo: "recording" });
+  if (!gate || !recoveryKey) return gate;
+  const { data } = await createAdminClient()
+    .from("generated_videos")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("idempotency_key", recoveryKey)
+    .maybeSingle();
+  return data ? null : gate;
 }
 
 export async function freeTrialGateResponse(
@@ -105,6 +198,18 @@ export async function freeTrialGateResponse(
   if (!freeTrialLocked(p.first_video_generated_at, p.subscription_tier)) return null;
 
   const notStarted = !p.first_video_generated_at;
+
+  // The one free camera recording, before the free video.
+  if (notStarted && preVideo === "recording") {
+    if ((await freeRecordingsUsed(userId)) < FREE_RECORDINGS_BEFORE_VIDEO) return null;
+    return NextResponse.json(
+      {
+        error: "You've used your free camera recording. Make your free video — it costs nothing and unlocks unlimited recordings for 30 days.",
+        code: "free_recording_spent",
+      },
+      { status: 403 },
+    );
+  }
 
   // The window before the free video, where a few runs are allowed.
   if (notStarted && preVideo !== "block") {

@@ -9,7 +9,7 @@ import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, C
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
 import { SpeakToSpark } from "@/components/dashboard/speak-to-spark";
-import { freeTrialLocked, freeTrialDaysLeft } from "@/lib/utils/free-trial";
+import { FREE_RECORDINGS_BEFORE_VIDEO, freeRecordingsUsed, freeTrialLocked, freeTrialDaysLeft } from "@/lib/utils/free-trial";
 async function DraftQueueWrapper({ userId }: { userId: string }) {
   const supabase = await createClient();
   const { data: profile } = await supabase
@@ -68,14 +68,22 @@ async function DashboardStats({ userId }: { userId: string }) {
    * work, not before it. The badge now says what the server will actually
    * allow.
    */
-  const cameraLocked = !isAdmin && freeTrialLocked(
+  const trialLocked = !isAdmin && freeTrialLocked(
     profile?.first_video_generated_at,
     profile?.subscription_tier,
   );
+  // One free take before the free video. While it is unspent the camera is
+  // open, so this must not say locked.
+  const freeRecording = trialLocked && !profile?.first_video_generated_at
+    ? (await freeRecordingsUsed(userId)) < FREE_RECORDINGS_BEFORE_VIDEO
+    : false;
+  const cameraLocked = trialLocked && !freeRecording;
   const trialDaysLeft = isAdmin ? null : freeTrialDaysLeft(profile?.first_video_generated_at);
   const onFreeTier = !["starter", "agent", "pro", "agency"].includes(profile?.subscription_tier ?? "free");
   const cameraLabel = isAdmin || !onFreeTier
     ? "∞ Camera Recordings"
+    : freeRecording
+      ? "1 Free Camera Recording"
     : cameraLocked
       ? (profile?.first_video_generated_at ? "Camera Recording Ended" : "Camera Unlocks With Your First Video")
       : `∞ Camera Recordings · ${trialDaysLeft} Day${trialDaysLeft === 1 ? "" : "s"} Left`;
@@ -166,13 +174,17 @@ async function DashboardStats({ userId }: { userId: string }) {
             <div className="flex items-center gap-1">
               {cameraLocked
                 ? <p className="text-2xl font-bold text-slate-400">&mdash;</p>
-                : <Infinity className="w-5 h-5 font-bold text-emerald-600" />}
+                : freeRecording
+                  ? <p className="text-2xl font-bold text-emerald-600">1</p>
+                  : <Infinity className="w-5 h-5 font-bold text-emerald-600" />}
             </div>
             <p className="text-xs text-slate-500 leading-tight">Camera Recordings</p>
             <p className={`text-[10px] font-semibold ${cameraLocked ? "text-slate-400" : "text-emerald-600"}`}>
               {cameraLocked
-                ? (profile?.first_video_generated_at ? "Trial ended" : "After your first video")
-                : `${cameraVideoCount} Recorded`}
+                ? (profile?.first_video_generated_at ? "Trial ended" : "More after your first video")
+                : freeRecording
+                  ? "Free, before your first video"
+                  : `${cameraVideoCount} Recorded`}
             </p>
           </div>
         </Card>

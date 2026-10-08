@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import { cameraGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 15;
@@ -45,12 +45,14 @@ export async function POST(req: NextRequest) {
   // Checked here too, not just at save time — otherwise a trial-expired
   // user would upload the whole recording (sometimes 100+ MB) before
   // finding out it can't be saved.
-  const gate = await freeTrialGateResponse(user.id, { preVideo: "block" });
-  if (gate) return gate;
-
   const admin = createAdminClient();
   const { ext, key } = (await req.json()) as { ext?: string; key?: string };
   const safeExt = ext === "mp4" ? "mp4" : "webm";
+
+  // After the body is read, because the gate needs the recovery id: a take
+  // that is already saved is let through to be told so (cameraGateResponse).
+  const gate = await cameraGateResponse(user.id, (key || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 64));
+  if (gate) return gate;
 
   /**
    * The path is derived from the recording's recovery id, not the clock.

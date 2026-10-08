@@ -286,7 +286,7 @@ function CreatePageInner() {
    * and nothing called it. A zero balance was discovered at Generate, after
    * the market, the topic, the recording and the style had all been chosen.
    */
-  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean; freeBlogLeft: number | null; freeRecordingLeft: number | null } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -608,12 +608,22 @@ function CreatePageInner() {
   // Paste tab upload-based script generation
   const [pasteUploadGenerating, setPasteUploadGenerating] = useState(false);
 
+  // Read on arrival, and again once a camera take is saved: that is what uses
+  // the one free recording, and the card should say so without a reload.
   useEffect(() => {
+    if (cameraPhase !== "script" && cameraPhase !== "done") return;
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setAllowance({ short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited, trialLocked: !!d.trialLocked, trialStarted: d.trialStarted !== false }); })
+      .then((d) => {
+        if (d) setAllowance({
+          short: d.short ?? 0, long: d.long ?? 0, unlimited: !!d.unlimited,
+          trialLocked: !!d.trialLocked, trialStarted: d.trialStarted !== false,
+          freeBlogLeft: typeof d.freeBlogLeft === "number" ? d.freeBlogLeft : null,
+          freeRecordingLeft: typeof d.freeRecordingLeft === "number" ? d.freeRecordingLeft : null,
+        });
+      })
       .catch(() => { /* the screen still works; it just cannot warn early */ });
-  }, []);
+  }, [cameraPhase]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -1038,6 +1048,9 @@ function CreatePageInner() {
           // the setup step opens on it instead of on its default.
           ...(spoken?.onScreen === "voice_only" ? { renderMode: "voice_only" }
             : spoken?.onScreen === "avatar" ? { renderMode: "avatar_voice" } : {}),
+          // An article and no video. What the one free blog before the free
+          // video is spent on; the article that rides with a video is not.
+          ...(asBlog && { blogOnly: true }),
         }),
       });
       const data = await safeJson(res);
@@ -1377,9 +1390,9 @@ function CreatePageInner() {
    */
   function startFromEmail(article: PickedEmailArticle, kind: "blog" | "video") {
     // The same lock the blog tile has, with the same two answers.
-    if (kind === "blog" && trialLocked) {
+    if (kind === "blog" && blogLocked) {
       if (trialNotStarted) {
-        toast("Make your free video first — it unlocks articles, tools and the camera for 30 days.");
+        toast(BLOG_SPENT);
       } else {
         router.push("/billing");
       }
@@ -1953,6 +1966,22 @@ function CreatePageInner() {
    * past the free video that would have unlocked everything.
    */
   const trialNotStarted = trialLocked && allowance?.trialStarted === false;
+  /**
+   * The Blog and Record yourself cards, each with its own lock.
+   *
+   * They shared `trialLocked`, which was the whole rule: no free video, no
+   * blog and no camera. A new account now has one free blog and one free
+   * recording before that video, so each is locked only once its free one is
+   * used, or once the 30 days have run out. `free…Left` is null wherever it
+   * is not counted, which reads as "not the free one" here.
+   */
+  const freeBlogNow = trialNotStarted && (allowance?.freeBlogLeft ?? 0) > 0;
+  const freeRecordingNow = trialNotStarted && (allowance?.freeRecordingLeft ?? 0) > 0;
+  const blogLocked = trialLocked && !freeBlogNow;
+  const cameraLocked = trialLocked && !freeRecordingNow;
+  // Said when the free one is gone and the free video has not been made.
+  const BLOG_SPENT = "You've used your free blog. Make your free video — it unlocks unlimited blogs, tools and the camera for 30 days.";
+  const CAMERA_SPENT = "You've used your free recording. Make your free video — it unlocks unlimited recordings for 30 days.";
 
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
@@ -2332,7 +2361,7 @@ function CreatePageInner() {
               // from the words or tapped there, before anything is sent. A
               // locked kind is left alone here; pressing Send says why.
               onMakeChange={(kind) => {
-                if (kind !== "avatar" && trialLocked) return;
+                if ((kind === "blog" && blogLocked) || (kind === "camera" && cameraLocked)) return;
                 if (kind === "blog") {
                   if (blogOnly && inputMode === "script") return;
                   setBlogOnly(true);
@@ -2353,11 +2382,10 @@ function CreatePageInner() {
               // The same lock the cards in section 2 carry, with the same two
               // answers: the free video first, or billing.
               canMake={(kind) => {
-                if (kind === "avatar" || !trialLocked) return true;
+                if (kind === "avatar") return true;
+                if (!(kind === "blog" ? blogLocked : cameraLocked)) return true;
                 if (trialNotStarted) {
-                  toast(kind === "blog"
-                    ? "Make your free video first — it unlocks articles, tools and the camera for 30 days."
-                    : "Make your free video first — it unlocks the camera for 30 days.");
+                  toast(kind === "blog" ? BLOG_SPENT : CAMERA_SPENT);
                 } else {
                   router.push("/billing");
                 }
@@ -2564,11 +2592,12 @@ function CreatePageInner() {
               // "Your voice" rather than "your camera": the camera is implied
               // by the label, and what actually differs from the other tile is
               // whose voice comes out of the video.
-              desc: trialNotStarted
-                ? "Unlocked by your free video"
-                : trialLocked ? "Free trial ended — pick a plan" : "Camera + teleprompter",
+              desc: !cameraLocked
+                ? "Camera + teleprompter"
+                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
               free: true,
-              cost: trialLocked ? "Locked" : "Free",
+              // "1 free" before the free video: the one take a new account has.
+              cost: cameraLocked ? "Locked" : freeRecordingNow ? "1 free" : "Free",
             },
             {
               key: "blog" as const,
@@ -2581,13 +2610,11 @@ function CreatePageInner() {
               // Kept as "Blog post" rather than given a "Video —" prefix: it is
               // the one output on this row that is not a video, and the odd one
               // out is the point.
-              desc: trialNotStarted
-                ? "Unlocked by your free video"
-                : trialLocked
-                  ? "Free trial ended — pick a plan"
-                  : "New, or paste your own",
+              desc: !blogLocked
+                ? "New, or paste your own"
+                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
               free: true,
-              cost: trialLocked ? "Locked" : "Included",
+              cost: blogLocked ? "Locked" : freeBlogNow ? "1 free" : "Included",
             },
             {
               // A fourth thing to create, at the owner's direction. It sat in
@@ -2616,7 +2643,7 @@ function CreatePageInner() {
                 type="button"
                 onClick={() => {
                   if (key === "blog") {
-                    if (trialLocked) {
+                    if (blogLocked) {
                       /**
                        * Where the lock actually points.
                        *
@@ -2627,7 +2654,7 @@ function CreatePageInner() {
                        * they just pressed.
                        */
                       if (trialNotStarted) {
-                        toast("Make your free video first — it unlocks articles, tools and the camera for 30 days.");
+                        toast(BLOG_SPENT);
                         setBlogOnly(false);
                         setInputMode("script");
                         setLastSparkTab("script");
@@ -2655,9 +2682,9 @@ function CreatePageInner() {
                     setCardPick({ kind: "blog", n: Date.now() });
                     return;
                   }
-                  if (key === "film" && trialLocked) {
+                  if (key === "film" && cameraLocked) {
                     if (trialNotStarted) {
-                      toast("Make your free video first — it unlocks the camera for 30 days.");
+                      toast(CAMERA_SPENT);
                       setBlogOnly(false);
                       setInputMode("script");
                       setLastSparkTab("script");

@@ -9,7 +9,7 @@ import {
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { targetWords, maxWords, clampScript, type VideoLength } from "@/lib/utils/video-length";
-import { freeTrialLocked } from "@/lib/utils/free-trial";
+import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     videoPlatform,
     renderMode,
     regenerateOnly,
+    blogOnly,
   } = body as {
     videoType: LocationVideoType;
     city: string;
@@ -89,6 +90,9 @@ export async function POST(req: NextRequest) {
      * decides whether to keep it, exactly like every other script edit.
      */
     regenerateOnly?: boolean;
+    /** The Create page's Blog route: an article and no video. What the one
+     *  free blog before the free video can be spent on. */
+    blogOnly?: boolean;
   };
 
   // Basic validation
@@ -139,8 +143,19 @@ export async function POST(req: NextRequest) {
    * render.
    */
   const p = profile as { role?: string | null; subscription_tier?: string | null; first_video_generated_at?: string | null };
-  const blogAllowed = p.role === "admin"
+  const trialOpen = p.role === "admin"
     || !freeTrialLocked(p.first_video_generated_at, p.subscription_tier);
+  /**
+   * The one free blog, before the free video.
+   *
+   * Only for a request that is for a blog and nothing else, said by the Create
+   * page. The article that rides along with a video script stays behind the
+   * video, or the "both doors" above would be open again: pick an avatar,
+   * generate, never render, and have an article every time.
+   */
+  const freeBlog = !trialOpen && blogOnly === true && !regenerateOnly
+    && isPreVideoAccount(p) && (await freeBlogAvailable(user.id));
+  const blogAllowed = trialOpen || freeBlog;
 
   // ── Call Perplexity ─────────────────────────────────────────────────────────
   // Script length follows the video the user asked for: a long video needs a
@@ -317,6 +332,9 @@ export async function POST(req: NextRequest) {
   }
 
   await ensureSparkFor(admin, user.id, (project as { id: string }).id);
+
+  // The free blog is used once there is one: written and saved, not asked for.
+  if (freeBlog && parsed.blog_body?.trim()) await markFreeBlog(user.id);
 
   await admin.from("api_usage_log").insert({
     user_id: user.id,
