@@ -405,14 +405,18 @@ export default function HelpPage() {
             <Step n={13} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
-              holds a <strong>blog article</strong> — usually 800 to 1,200 words, titled with the question a
+              holds a <strong>blog article</strong> — usually 1,000 to 1,500 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
-              and two <strong>FAQ sections</strong> at the end. That is the shape an AI assistant quotes —{" "}
-              <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
+              and a <strong>Frequently Asked Questions</strong> section of six questions at the end, chosen
+              from what people are asking about that subject in your town. That is the shape an AI
+              assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               <strong>Header image</strong> makes the picture that sits above the headline — a real
               photograph of the kind of place the article is about, with no words drawn into it —
               and <strong>Copy as HTML</strong> then carries it across with the text, so what you
-              paste into your site arrives with its image already in place. That gives one recording two places to
+              paste into your site arrives with its image already in place. The same paste includes
+              the article&apos;s <strong>schema</strong>, the hidden description that tells search and
+              answer engines what the article is, who wrote it, and which parts are questions and
+              answers. Some website builders remove it when you paste; the article is unaffected. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
               you can write one without making a video at all — pick <strong>Blog</strong> when the

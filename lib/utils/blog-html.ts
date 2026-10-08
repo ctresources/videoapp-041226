@@ -10,6 +10,55 @@
  * Copy as HTML gives identical output from either. There used to be two, and
  * they drifted: the Spark card's had no headline, no H3 and no header image.
  */
+/** What the schema says about the article beyond its own words. */
+export interface ArticleSchemaInfo {
+  /** The agent, as the author. */
+  author?: string | null;
+  /** "City, ST". */
+  place?: string | null;
+  /** When it was written, any date string; today if absent. */
+  date?: string | null;
+}
+
+/**
+ * The question-and-answer pairs an article carries, for its FAQ schema.
+ *
+ * The "Frequently Asked Questions" section when there is one (article-faq.ts
+ * fixes that heading so it can be found). Articles written before that had
+ * their FAQs under question headings of their own, indistinguishable from any
+ * other section, so for those every "H3:" question with an answer under it
+ * counts: each is a question and its answer, visible on the page, which is
+ * what the markup is for.
+ */
+export function articleFaqs(body: string): { q: string; a: string }[] {
+  const lines = (body || "").split("\n").map((l) => l.trim());
+  const hasFaqSection = lines.some((l) => /^H2:\s*(frequently asked questions|faqs?)\b/i.test(l));
+  const out: { q: string; a: string }[] = [];
+  let inFaq = !hasFaqSection;
+  let q = "";
+  let a: string[] = [];
+  const close = () => {
+    if (q && a.length) out.push({ q, a: a.join(" ") });
+    q = ""; a = [];
+  };
+  for (const line of lines) {
+    if (/^H2:\s*/.test(line)) {
+      close();
+      if (hasFaqSection) inFaq = /^H2:\s*(frequently asked questions|faqs?)\b/i.test(line);
+      continue;
+    }
+    if (/^H3:\s*/.test(line)) {
+      close();
+      const text = line.replace(/^H3:\s*/, "");
+      if (inFaq && /\?\s*$/.test(text)) q = text;
+      continue;
+    }
+    if (q && line) a.push(line);
+  }
+  close();
+  return out;
+}
+
 export function blogAsHtml(sections: {
   headline?: string;
   /** Made in the image generator; goes first, above the <h1>. */
@@ -17,7 +66,12 @@ export function blogAsHtml(sections: {
   intro: string;
   body: string;
   conclusion: string;
-}): string {
+},
+/**
+ * Given when the HTML is for pasting into a site: the article's schema is
+ * appended. Left out for a preview drawn inside the app.
+ */
+schema?: ArticleSchemaInfo): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const attr = (s: string) => esc(s).replace(/"/g, "&quot;");
@@ -61,6 +115,56 @@ export function blogAsHtml(sections: {
       para.push(line);
     }
     flush();
+  }
+
+  /**
+   * Schema, in the post itself rather than behind a second button, at the
+   * owner's ask: one paste carries the article and what describes it.
+   *
+   * Two things a machine reading the page can use: what the article is, who
+   * wrote it and when (BlogPosting), and its questions and answers as
+   * questions and answers (FAQPage). Only what is visibly on the page is
+   * described. There is no entry for the video, because this HTML does not
+   * put the video on the page, and markup for something that is not there is
+   * what search engines penalise.
+   *
+   * Some site builders strip <script> from pasted HTML. Nothing breaks when
+   * they do: the article is unchanged and the schema is simply absent.
+   */
+  if (schema) {
+    const graph: Record<string, unknown>[] = [];
+    const headline = sections.headline?.trim();
+    const parsed = schema.date ? new Date(schema.date) : new Date();
+    const date = (Number.isNaN(parsed.getTime()) ? new Date() : parsed).toISOString().slice(0, 10);
+    if (headline) {
+      const firstPara = (sections.intro || "").split(/\n\s*\n/)[0]?.replace(/\s+/g, " ").trim() ?? "";
+      const description = firstPara.length > 200 ? `${firstPara.slice(0, 197).replace(/\s+\S*$/, "")}…` : firstPara;
+      graph.push({
+        "@type": "BlogPosting",
+        headline,
+        ...(description ? { description } : {}),
+        ...(sections.headerUrl?.startsWith("https://") ? { image: sections.headerUrl } : {}),
+        datePublished: date,
+        ...(schema.author?.trim() ? { author: { "@type": "Person", name: schema.author.trim() } } : {}),
+        ...(schema.place?.trim() ? { contentLocation: { "@type": "Place", name: schema.place.trim() } } : {}),
+      });
+    }
+    const faqs = articleFaqs(sections.body);
+    if (faqs.length) {
+      graph.push({
+        "@type": "FAQPage",
+        mainEntity: faqs.map(({ q, a }) => ({
+          "@type": "Question",
+          name: q,
+          acceptedAnswer: { "@type": "Answer", text: a },
+        })),
+      });
+    }
+    if (graph.length) {
+      // "<" escaped so nothing in the article's words can close the tag early.
+      const json = JSON.stringify({ "@context": "https://schema.org", "@graph": graph }).replace(/</g, "\\u003c");
+      blocks.push(`<script type="application/ld+json">${json}</script>`);
+    }
   }
   return blocks.join("\n");
 }

@@ -296,10 +296,16 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
     act("publish", () => patchSpark({ blog_status: "ready" }), "Article moved back to Ready.");
   }
 
-  async function loadArticle(): Promise<{ intro: string; body: string; conclusion: string; headline: string; headerUrl: string } | null> {
+  async function loadArticle(): Promise<{
+    intro: string; body: string; conclusion: string; headline: string; headerUrl: string;
+    author?: string; place?: string; written?: string;
+  } | null> {
     try {
       const data = await send(`/api/campaigns/blog?campaignId=${encodeURIComponent(c.id)}`, "GET");
-      return data.blog as { intro: string; body: string; conclusion: string; headline: string; headerUrl: string };
+      return data.blog as {
+        intro: string; body: string; conclusion: string; headline: string; headerUrl: string;
+        author?: string; place?: string; written?: string;
+      };
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't load the article.");
       return null;
@@ -312,8 +318,12 @@ export function SparkCard({ campaign: c, allCampaigns, series, timeZone: tz, you
     if (blog) {
       // The Spark's own article title wins, since it is editable here; the
       // written headline stands in when none has been set.
-      await navigator.clipboard.writeText(blogAsHtml({ ...blog, headline: c.blog.title || blog.headline }));
-      toast.success("Blog HTML copied. Paste it into your website or CRM's HTML view.");
+      await navigator.clipboard.writeText(blogAsHtml(
+        { ...blog, headline: c.blog.title || blog.headline },
+        // With its schema, the same as Copy as HTML in the editor.
+        { author: blog.author, place: blog.place, date: blog.written },
+      ));
+      toast.success("Blog HTML copied, with its schema. Paste it into your website or CRM's HTML view.");
     }
     setBusy(null);
   }

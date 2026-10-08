@@ -2878,7 +2878,7 @@ function CreatePageInner() {
       {step === "input" && blogOnly && (
         <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
           <strong className="font-semibold text-spark-ink">No video will be made.</strong>{" "}
-          You&rsquo;ll get an article of usually 800 to 1,200 words with headings, ready to paste into your site — plus
+          You&rsquo;ll get an article of usually 1,000 to 1,500 words with headings and six FAQs, ready to paste into your site — plus
           the title, description and hashtags to go with it.
         </p>
       )}
@@ -3210,7 +3210,7 @@ function CreatePageInner() {
                       // the cards above.
                       ? (importingAsIs
                           ? "Saved as you wrote it. We add the headline, description and hashtags."
-                          : "800 to 1,200 words with headings, ready to paste into your site.")
+                          : "1,000 to 1,500 words with headings and FAQs, ready to paste into your site.")
                       : "We'll write the script first, then you pick how it looks."
           }
         >

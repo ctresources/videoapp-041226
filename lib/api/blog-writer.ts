@@ -1,4 +1,5 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { faqInstruction } from "@/lib/api/article-faq";
 import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
 import { expandShortArticle } from "@/lib/api/blog-length";
 import { briefBlock } from "@/lib/api/brief-context";
@@ -97,7 +98,7 @@ WHO IT IS FOR AND WHY (the same brief the video was written to):${brief}
 
 ---
 
-Write a blog article for a real estate agent's own website, between 800 and 1,200 words total. An article under 800 words is unfinished. It accompanies a video on the same subject, so it must stand entirely on its own — never refer to "the video", "this clip", "watch above" or anything the reader cannot see.
+Write a blog article for a real estate agent's own website, between 1,000 and 1,500 words total. An article under 800 words is unfinished. It accompanies a video on the same subject, so it must stand entirely on its own — never refer to "the video", "this clip", "watch above" or anything the reader cannot see.
 
 SUBJECT: ${input.title}
 ${where ? `LOCATION: ${where}` : ""}
@@ -112,7 +113,7 @@ SEO, GEO AND AEO (this is the point of the article — it is written for three s
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): open with two or three plain declarative sentences that state the subject and the place outright, in language an AI assistant can quote back as an answer to a question. No scene-setting, no rhetorical questions. Build on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it.
 - AEO (answer engines, voice search, featured snippets): give the body 4–6 sections, each headed with a line beginning exactly "H2: ". Write each heading as the question a reader would actually type or say out loud — for example "H2: What is happening to prices in ${place}?" rather than "H2: Market conditions". Answer each heading in the FIRST sentence under it, then support the answer. An answer engine reads the first sentence; a section that warms up before answering is a section it skips.
 - SUBHEADINGS: where a section covers more than one distinct point, break it with lines beginning exactly "H3: ". Write those as questions too, narrower than the H2 above them. Use them where they earn their place — a section with one idea does not need one.
-- FAQ: after the body's sections, add exactly two FAQ sections, each headed with a line beginning exactly "H2: " and then a question a reader would actually ask about ${place}. Under each, put two or three question-and-answer pairs: the question on its own line beginning exactly "H3: ", and the answer directly beneath it, opening with a complete one-sentence answer before any elaboration. These are the paragraphs an answer engine is most likely to quote on their own, so each answer has to make sense with nothing around it — name the place and the specifics rather than saying "this area" or "as mentioned above".
+${faqInstruction(place, "the script")}
 - Keep every figure, date and proper noun exactly as the script gave it. Do not round, do not invent, and do not add a statistic the script does not contain. Where the script is vague, stay vague — a made-up number is worse than a missing one.
 - Close the conclusion with the single practical next step a reader should take.
 - GENERICITY CHECK, before you finish: reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighbourhoods, streets, price bands and comparisons the script gives you that make it true only here. Do not invent detail to pass this check; where the script is thin on a point, cut the point rather than fake it.
@@ -134,7 +135,7 @@ Return ONLY a JSON object:
 {
   "headline": "the article's title, written as the question a reader would type or say out loud, naming ${place}, under 70 characters",
   "intro": "opening, at least 120 words, no heading",
-  "body": "the H2 sections with their H3 subheadings, then the two FAQ sections, each H2 section at least 110 words, 650 to 950 words in all",
+  "body": "the H2 sections with their H3 subheadings, each at least 110 words and 650 to 950 words between them, then the Frequently Asked Questions section with its six questions",
   "conclusion": "closing, at least 100 words, no heading"
 }`;
 
@@ -154,7 +155,7 @@ Return ONLY a JSON object:
           model: "sonar",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
-          max_tokens: 3200,
+          max_tokens: 3800,
         }),
       });
       if (res.status !== 429 || attempt === 1) break;

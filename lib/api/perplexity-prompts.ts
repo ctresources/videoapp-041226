@@ -9,6 +9,7 @@ import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { isMarketUpdateTopic, MARKET_SOURCES_BLOG, MARKET_SOURCES_SCRIPT } from "@/lib/api/market-sources";
+import { faqInstruction } from "@/lib/api/article-faq";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -93,14 +94,15 @@ export interface LocationParams {
 function blogSections(place: string): string {
   return `BLOG POST INTRO: [100-150 words opening the article on the same subject as the video. Open with two or three plain declarative sentences that state the subject and ${place} outright, in language an AI assistant can quote back as an answer to a question. No scene-setting and no rhetorical questions.]
 
-BLOG POST BODY: [650-900 words on the SAME subject the video covers, written to be read rather than heard. The whole article, intro plus body plus conclusion, must land between 800 and 1,200 words. 1,200 is a ceiling, not a target: stop when the ground is covered.
+BLOG POST BODY: [650-900 words of sections on the SAME subject the video covers, written to be read rather than heard, and then the FAQ section described below, which is on top of those words. The whole article, intro plus body plus FAQ plus conclusion, must land between 1,000 and 1,500 words. 1,500 is a ceiling, not a target: stop when the ground is covered.
 
 This article is written for three surfaces at once — SEO, GEO and AEO — and the rules below are how it wins each:
 - SEO (Google and Bing): name ${place} naturally throughout, along with any neighborhoods, streets and landmarks. This is a local search page and the place name is what it has to rank on.
 - GEO (generative engines — ChatGPT, Perplexity, Gemini): write clear factual sentences built on explicit named entities — the town, the year, real figures — so an assistant can lift a sentence and cite it. Keep every figure, date and proper noun exactly as your research gave it. Do not round and do not invent; a made-up number is worse than a missing one.
 - AEO (answer engines, voice search, featured snippets): use 4-6 section headings, each on its own line and prefixed exactly "H2: ". Write each heading as the question a reader would actually type or say out loud ("H2: What is happening to prices in ${place}?"), not as a label ("H2: Market conditions"). Answer each heading in the FIRST sentence under it and then support the answer — an answer engine reads the first sentence, and a section that warms up before answering is a section it skips.
+${faqInstruction(place, "your research")}
 
-Under each heading, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.
+Under each of the 4-6 section headings, 2-4 short paragraphs. This is the long version of the video: same ground, but with the figures, comparisons, neighborhood names and detail a short script had no room for. Plain text only — no markdown, no asterisks, no bullet characters, no emoji.
 
 GENERICITY CHECK (do this before you finish): reread the article and ask whether it could be republished for a different town by changing only the town name. If it could, it is too generic — go back and add the neighborhoods, streets, price bands, commute times and comparisons that make it true only here. Do not invent facts to pass this check; if you do not have local detail on a point, cut the point rather than fake it.]
 
@@ -121,8 +123,9 @@ function lengthSpec(targetWords?: number, hardMaxWords?: number): { instruction:
   // sources sharing the response, plus ~1,300 words of blog article on top —
   // that is the bulk of the budget now, and leaving it out truncated the
   // response before the sections that come after it.
-  const BLOG_TOKENS = Math.round(1300 * 1.4);
-  const maxTokens = Math.min(6000, Math.round(words * 1.4) + 900 + BLOG_TOKENS);
+  // 1,650 now: the article runs to 1,500 words with its six FAQs.
+  const BLOG_TOKENS = Math.round(1650 * 1.4);
+  const maxTokens = Math.min(6600, Math.round(words * 1.4) + 900 + BLOG_TOKENS);
 
   const depth =
     words >= 900

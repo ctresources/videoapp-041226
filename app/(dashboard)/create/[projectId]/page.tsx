@@ -75,6 +75,8 @@ interface AvatarLook {
 type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
 
 interface AiScript {
+  /** "City, ST" the script was written about, when the writer recorded one. */
+  location?: string;
   title: string;
   hook: string;
   hooks: string[];
@@ -1989,9 +1991,14 @@ export default function ProjectEditorPage() {
       intro: script.blog_intro || "",
       body: script.blog_body || "",
       conclusion: script.blog_conclusion || "",
+    }, {
+      // The schema that goes with it: who wrote it, where it is about, when.
+      author: contactInfo?.full_name,
+      place: script.location,
+      date: project?.created_at,
     });
     navigator.clipboard.writeText(html);
-    toast.success("Blog HTML copied. Paste into your site's HTML view.");
+    toast.success("Blog HTML copied, with its schema. Paste into your site's HTML view.");
   }
 
   // ── Email version ───────────────────────────────────────────────
@@ -3837,7 +3844,7 @@ export default function ProjectEditorPage() {
               {expandedSections.blog && !(script.blog_intro || script.blog_body) && (
                 <div className="px-2 pb-1">
                   <p className="text-xs leading-[1.5] text-slate-500">
-                    An article of usually 800 to 1,200 words on the same subject as this video, written to be read
+                    An article of usually 1,000 to 1,500 words on the same subject as this video, written to be read
                     rather than heard, with question-shaped headings that search and answer
                     engines can quote. Paste it straight into your website — the copy button
                     gives you the HTML.

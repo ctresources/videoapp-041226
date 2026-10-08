@@ -20,7 +20,8 @@ import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
  */
 
 export const ARTICLE_MIN_WORDS = 800;
-export const ARTICLE_MAX_WORDS = 1200;
+/** 1,500 since the article gained six FAQs: about 350 words the old 1,200 had no room for. */
+export const ARTICLE_MAX_WORDS = 1500;
 /** Under this, the article gets its one expand pass. */
 export const ARTICLE_EXPAND_BELOW = 700;
 
@@ -78,6 +79,7 @@ HOW TO ADD LENGTH (depth, never padding):
 - Under each heading, add the detail the source supports and the draft skipped: what each named feature means day to day, how the rooms or the points connect, and the specifics of the place the source gives.
 - Intro at least 120 words, every H2 section at least 110 words, conclusion at least 100 words.
 - Never add a fact, figure, name or claim the source does not contain. Where the source runs out, stop rather than invent.
+- Keep the "H2: Frequently Asked Questions" section, its six "H3: " questions and their answers. Add length in the sections above it, not by lengthening the answers.
 - Where the draft says whose figure a number is ("According to Redfin", "Realtor.com reports"), keep that with the number. Keep a closing line that begins "Sources:" exactly as written, as the last line of the conclusion.
 - Never repeat a point already made, and never add filler about how stunning, perfect or beautiful something is.
 ${opts.closingRule}
@@ -112,7 +114,7 @@ Return ONLY a JSON object with the same three keys:
           messages: [{ role: "user", content: prompt }],
           temperature: 0.6,
           // 1,200 words across three JSON strings, escaped newlines included.
-          max_tokens: 3200,
+          max_tokens: 3800,
         }),
       });
       if (res.status !== 429 || attempt === 1) break;
