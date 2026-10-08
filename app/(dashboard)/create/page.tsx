@@ -31,7 +31,7 @@ import {
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
-import { VoiceBriefSession } from "@/components/create/voice-brief-session";
+import { VoiceBriefSession, type BriefMake } from "@/components/create/voice-brief-session";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -484,6 +484,9 @@ function CreatePageInner() {
    * sitting visible in the box above it.
    */
   const [briefHasDraft, setBriefHasDraft] = useState(false);
+  // The card last pressed in section 2, handed to the topic box so the strip
+  // under it says the same thing the cards do.
+  const [cardPick, setCardPick] = useState<{ kind: BriefMake; n: number } | undefined>();
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -2324,6 +2327,29 @@ function CreatePageInner() {
               off={!topicApplies}
               onWake={topicWake}
               settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
+              picked={cardPick}
+              // The cards in section 2 follow what the box is making, read
+              // from the words or tapped there, before anything is sent. A
+              // locked kind is left alone here; pressing Send says why.
+              onMakeChange={(kind) => {
+                if (kind !== "avatar" && trialLocked) return;
+                if (kind === "blog") {
+                  if (blogOnly && inputMode === "script") return;
+                  setBlogOnly(true);
+                  // As the Blog card does: the format picker is hidden there.
+                  setLocLength("standard");
+                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
+                } else if (kind === "camera") {
+                  if (inputMode === "camera" && cameraSource === "speak" && !blogOnly) return;
+                  setBlogOnly(false);
+                  setInputMode("camera");
+                  setCameraSource("speak");
+                } else {
+                  if (!blogOnly && inputMode === "script") return;
+                  setBlogOnly(false);
+                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
+                }
+              }}
               // The same lock the cards in section 2 carry, with the same two
               // answers: the free video first, or billing.
               canMake={(kind) => {
@@ -2626,6 +2652,7 @@ function CreatePageInner() {
                       setInputMode("script");
                       setLastSparkTab("script");
                     }
+                    setCardPick({ kind: "blog", n: Date.now() });
                     return;
                   }
                   if (key === "film" && trialLocked) {
@@ -2652,6 +2679,7 @@ function CreatePageInner() {
                       // A listing named to the mic sets lastSparkTab too.
                       : lastSparkTab === "camera" || lastSparkTab === "listing" ? "script" : lastSparkTab
                   );
+                  setCardPick({ kind: key === "film" ? "camera" : "avatar", n: Date.now() });
                 }}
                 aria-pressed={active}
                 className={`flex min-h-[96px] items-center rounded-[14px] px-4 py-3.5 text-left transition-colors lg:min-h-0 lg:px-2 lg:py-3 ${

@@ -195,6 +195,18 @@ interface Props {
    */
   canMake?: (kind: BriefMake) => boolean;
   /**
+   * Told as soon as it is known what is being made, before anything is sent:
+   * read from the words in the box, or tapped here. For the page to light the
+   * matching card. The owner typed "create a blog", saw "Making: Blog" under
+   * the box, and the cards below still had Avatar video lit.
+   */
+  onMakeChange?: (kind: BriefMake) => void;
+  /**
+   * A card pressed on the page, so the box follows it the other way. Carries
+   * a nonce because pressing the same card twice must still land.
+   */
+  picked?: { kind: BriefMake; n: number };
+  /**
    * The thing has been written and is waiting on the page: a camera script in
    * its teleprompter. The box stops offering to make it, since a tap there
    * would write over a script that may have been edited.
@@ -219,7 +231,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, settled = false }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, settled = false, onMakeChange, picked }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -252,6 +264,12 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const makeRef = useRef<BriefMake | null>(null);
   /** Change was pressed: show all three, whatever was chosen or said. */
   const [askAll, setAskAll] = useState(false);
+  /**
+   * The words a pressed card overrode. A card pressed after "create a blog"
+   * was typed is the newer instruction, so the words are not read for what to
+   * make until they change.
+   */
+  const [cardOver, setCardOver] = useState<string | null>(null);
 
   // `send` reads the transcript through a ref so it never closes over a stale
   // turn list — the recogniser's callback outlives the render that made it.
@@ -516,16 +534,43 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     if (canMake && !canMake(kind)) return;
     makeRef.current = kind;
     setMake(kind);
+    // The box is about to empty, so the page is told here, not by the effect
+    // that watches the words.
+    onMakeChangeRef.current?.(kind);
     submitDraft();
   }
 
   // What the strip under the box offers. A choice already made, or one the
   // words in the box state, is shown with a plain Send; Change asks again.
+  //
+  // The words win over an earlier choice: "make a video with my avatar", typed
+  // after a blog was made, means a video. A card pressed since those words
+  // were typed wins over them, until they are edited.
   const said = saidMake(draft);
-  const making: BriefMake | null = askAll ? null : (make ?? said.kind);
+  const saidKind = cardOver !== null && cardOver === draft ? null : said.kind;
+  const making: BriefMake | null = askAll ? null : (saidKind ?? make);
   const offered = !askAll && !make && said.video
     ? MAKES.filter((m) => m.kind !== "blog")
     : MAKES;
+
+  // Tell the page, so its cards agree with what the strip under the box says.
+  // Only while words are in the box, and not where the box is switched off.
+  const onMakeChangeRef = useRef(onMakeChange);
+  onMakeChangeRef.current = onMakeChange;
+  const announce = !off && !!draft.trim() ? making : null;
+  useEffect(() => {
+    if (announce) onMakeChangeRef.current?.(announce);
+  }, [announce]);
+
+  // A card pressed on the page: the box follows it.
+  useEffect(() => {
+    if (!picked?.n) return;
+    makeRef.current = picked.kind;
+    setMake(picked.kind);
+    setAskAll(false);
+    setCardOver(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked?.n]);
 
   /** One of the three, tapped once the brief is already complete: go. */
   function chooseAndGo(kind: BriefMake) {
@@ -533,6 +578,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     if (canMake && !canMake(kind)) return;
     makeRef.current = kind;
     setMake(kind);
+    onMakeChangeRef.current?.(kind);
     const got = withMake(slotsRef.current, kind);
     setSlots(got);
     onSlots(got);
@@ -658,7 +704,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         </button>
         <div className="min-w-0 flex-1">
           <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
-            Type a topic, optionally speak it, or choose a suggested idea.
+            Speak, Type or choose suggested idea
           </h2>
           {(status || lastAssistant) && (
             <p
