@@ -183,6 +183,9 @@ export async function POST(req: NextRequest) {
 
   await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
+  // The free blog is used once the article is saved, not when it is asked for.
+  if (freeBlog) await markFreeBlog(user.id);
+
   await admin.from("api_usage_log").insert({
     user_id: user.id,
     api_provider: "perplexity",
