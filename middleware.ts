@@ -175,5 +175,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Video files are let through with the images. Without mp4 here the landing
+  // page's own demo (/demo.mp4) was sent to /login for anyone signed out,
+  // which is everyone the landing page is for.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
 };
