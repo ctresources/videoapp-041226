@@ -2299,10 +2299,20 @@ function CreatePageInner() {
               disabled={locGenerating || cameraScriptGenerating}
               off={!topicApplies}
               onWake={topicWake}
-              // Both follow the card chosen in section 2, and match the
-              // button in the bar at the bottom.
-              making={inputMode === "camera" ? "a script to record yourself" : blogOnly ? "a blog" : "an avatar video script"}
-              nextLabel={inputMode === "camera" ? "Write my script" : blogOnly ? "Write the blog" : "Next"}
+              settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
+              // The same lock the cards in section 2 carry, with the same two
+              // answers: the free video first, or billing.
+              canMake={(kind) => {
+                if (kind === "avatar" || !trialLocked) return true;
+                if (trialNotStarted) {
+                  toast(kind === "blog"
+                    ? "Make your free video first — it unlocks articles, tools and the camera for 30 days."
+                    : "Make your free video first — it unlocks the camera for 30 days.");
+                } else {
+                  router.push("/billing");
+                }
+                return false;
+              }}
               onSwitchToTyping={() => { /* the box already takes typing */ }}
               // Only ever fills blanks it has an answer for — a null slot
               // must not wipe something already typed or picked from a chip.

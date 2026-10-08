@@ -59,6 +59,25 @@ interface Turn {
   content: string;
 }
 
+/** The three things a topic can become, as the box offers them. */
+export type BriefMake = "avatar" | "camera" | "blog";
+
+const MAKES: { kind: BriefMake; label: string }[] = [
+  { kind: "avatar", label: "Avatar video" },
+  { kind: "camera", label: "Record yourself" },
+  { kind: "blog", label: "Blog" },
+];
+
+/**
+ * A choice tapped in the box, written into the brief as if it had been said.
+ * The page already knows what "create a blog" and "I'll record it myself" mean
+ * when they are spoken, so a tap takes the same road and there is one of them.
+ */
+function withMake(slots: BriefSlots, make: BriefMake | null): BriefSlots {
+  if (!make) return slots;
+  return { ...slots, output: make === "blog" ? "blog" : "video", onScreen: make === "blog" ? null : make };
+}
+
 interface Props {
   /** Applies whatever the conversation has established. */
   onSlots: (slots: BriefSlots) => void;
@@ -138,16 +157,17 @@ interface Props {
    */
   onWake?: () => void;
   /**
-   * What Send is about to write, as it reads in a sentence: "an avatar video
-   * script", "a blog". Follows the card that is chosen on the page, which this
-   * panel cannot see.
+   * Asked as one of the three things to make is tapped: whether this account
+   * may make it. The page owns the answer (and says why not, when not), since
+   * the same lock sits on its cards.
    */
-  making?: string;
+  canMake?: (kind: BriefMake) => boolean;
   /**
-   * The name of the page's own button, for the moment a typed brief is
-   * complete and that button is the next thing to press.
+   * The thing has been written and is waiting on the page: a camera script in
+   * its teleprompter. The box stops offering to make it, since a tap there
+   * would write over a script that may have been edited.
    */
-  nextLabel?: string;
+  settled?: boolean;
 }
 
 /**
@@ -167,7 +187,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, making = "a script", nextLabel = "Next" }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, settled = false }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -188,18 +208,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // for the `thinking` state to land.
   const busyRef = useRef(false);
   /**
-   * Whether what is in the box was spoken.
+   * What to make, once it has been chosen in the box.
    *
-   * The mic used to send its sentence the moment you stopped talking, and go
-   * ahead if it was complete: one sentence, one draft. The words wait in the
-   * box now, so a misheard town can be fixed first, and Send is what sends
-   * them. It still goes ahead when they are complete, because saying "create a
-   * blog about…" was an instruction. Typed words keep the read-back they
-   * always had, since typing a topic is building a brief, not giving an order.
-   *
-   * In state, not a ref: while it is true the box says what Send will do.
+   * Send used to decide by itself: whatever card was lit further down the
+   * page, an avatar video unless something else had been pressed. The owner
+   * spoke a topic, pressed Send, and was never asked. So the box asks, before
+   * anything is sent, and the answer rides with every turn after it. In a ref
+   * as well, because `send` outlives the render that made it.
    */
-  const [spoken, setSpoken] = useState(false);
+  const [make, setMake] = useState<BriefMake | null>(null);
+  const makeRef = useRef<BriefMake | null>(null);
 
   // `send` reads the transcript through a ref so it never closes over a stale
   // turn list — the recogniser's callback outlives the render that made it.
@@ -244,16 +262,20 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         throw new Error((data.error as string) || `Brief failed (${res.status})`);
       }
 
-      onSlots(data.slots as BriefSlots);
-      setSlots(data.slots as BriefSlots);
+      const got = withMake(data.slots as BriefSlots, makeRef.current);
+      onSlots(got);
+      setSlots(got);
       setTurns((t) => [...t, { role: "assistant", content: data.reply as string }]);
       onReplyRef.current?.(typeof data.reply === "string" ? data.reply : "");
-      const got = data.slots as BriefSlots;
       // A command goes as soon as it is complete, with no wake word: it was an
       // instruction when it was said. Latched like the button, so nothing can
       // fire a second generation while this one is starting.
+      //
+      // But only once it is known what to make, tapped here or said in the
+      // sentence. Otherwise it stops, and the box asks.
       const complete = !!(got.topic && got.city && got.state);
-      if (data.ready === true || (opts?.go && complete && !sparkingRef.current)) {
+      const knowsWhat = !!(got.output || got.onScreen);
+      if (data.ready === true || (opts?.go && complete && knowsWhat && !sparkingRef.current)) {
         sparkingRef.current = true;
         setSparking(true);
         onReady(got);
@@ -366,7 +388,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
        */
       setDraft(text);
       setJustHeard(true);
-      setSpoken(true);
     },
     onUnsupported: onSwitchToTyping,
     disabled: disabled || thinking,
@@ -437,8 +458,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   function submitDraft() {
     const text = draft.trim();
     if (!text || thinking || disabled || off) return;
-    const wasSpoken = spoken;
-    setSpoken(false);
     setDraft("");
     setJustHeard(false);
     // Typed or spoken, the wake word does the same thing.
@@ -450,7 +469,32 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
     // Goes as another turn. The session re-reads the whole conversation each
     // time, so a corrected sentence overrides what it heard before — the same
     // mechanism that makes "actually, make it sellers" work.
-    send(text, wasSpoken ? { go: true } : undefined);
+    // With the choice made it goes ahead when complete. Without one (Enter in
+    // the box, before any button) it is read back, and the box asks then.
+    send(text, makeRef.current ? { go: true } : undefined);
+  }
+
+  /** One of the three, tapped while words wait in the box: choose, and send. */
+  function chooseAndSend(kind: BriefMake) {
+    if (!draft.trim() || thinking || disabled || off) return;
+    if (canMake && !canMake(kind)) return;
+    makeRef.current = kind;
+    setMake(kind);
+    submitDraft();
+  }
+
+  /** One of the three, tapped once the brief is already complete: go. */
+  function chooseAndGo(kind: BriefMake) {
+    if (sparkingRef.current || busyRef.current || disabled) return;
+    if (canMake && !canMake(kind)) return;
+    makeRef.current = kind;
+    setMake(kind);
+    const got = withMake(slotsRef.current, kind);
+    setSlots(got);
+    onSlots(got);
+    sparkingRef.current = true;
+    setSparking(true);
+    onReady(got);
   }
 
   // What voice has captured so far, condensed to one line — the compact
@@ -592,8 +636,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         onChange={(e) => {
           setDraft(e.target.value);
           setJustHeard(false);
-          // Emptied and started again by hand: no longer something said.
-          if (!e.target.value.trim()) setSpoken(false);
         }}
         // Locked only while the mic is running, where the recogniser owns the
         // value and a keystroke would be overwritten on the next result.
@@ -614,31 +656,62 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
         }`}
       />
 
-      {/* Words that were spoken, waiting to be sent.
-          The owner tried it and stopped here: the words were in the box, and
-          nothing said whether to press Send or whether the rest of the page
-          still had to be filled in. So it says both, beside the button, and
-          names what Send will write, since that depends on a card further down
-          the page. It cannot say "I have everything" yet: the words are only
-          read once they are sent. */}
-      {spoken && !listening && !!draft.trim() ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5">
-          <div className="min-w-0 flex-1 basis-[220px]">
-            <p className="text-[15px] font-semibold leading-snug text-spark-ink">
-              Check your words, then press Send.
-            </p>
-            <p className="mt-0.5 text-[13.5px] leading-snug text-spark-ink-muted">
-              I&rsquo;ll write {making} and ask if anything is missing. The steps below are optional.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={submitDraft}
-            disabled={thinking || disabled || off}
-            className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-          >
-            Send
-          </button>
+      {/* Words waiting in the box, spoken or typed.
+          The owner tried it and stopped here twice. First nothing said whether
+          to press Send, or whether the rest of the page still had to be
+          filled in. Then Send wrote an avatar video without asking what was
+          wanted. So this is where it is asked, before anything goes: the three
+          things a topic can become, and tapping one sends. It cannot say "I
+          have everything" yet, because the words are only read once sent.
+
+          Once chosen, answering a follow-up ("which town?") is a plain Send:
+          the choice is kept, shown, and can be changed. */}
+      {!listening && !!draft.trim() ? (
+        <div className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-3">
+          {make ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="min-w-0 flex-1 basis-[200px] text-[15px] font-semibold leading-snug text-spark-ink">
+                Making: {MAKES.find((m) => m.kind === make)?.label}.{" "}
+                <button
+                  type="button"
+                  onClick={() => { makeRef.current = null; setMake(null); }}
+                  className="font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
+                >
+                  Change
+                </button>
+              </p>
+              <button
+                type="button"
+                onClick={submitDraft}
+                disabled={thinking || disabled || off}
+                className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+              >
+                Send
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-[15px] font-semibold leading-snug text-spark-ink">
+                Check your words, then choose what to make.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {MAKES.map(({ kind, label }) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => chooseAndSend(kind)}
+                    disabled={thinking || disabled || off}
+                    className="rounded-full bg-spark-blue px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[13.5px] leading-snug text-spark-ink-muted">
+                I&rsquo;ll start writing and ask if anything is missing. The steps below are optional.
+              </p>
+            </>
+          )}
         </div>
       ) : (
       <div className="flex items-center gap-2.5">
@@ -654,18 +727,6 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           </p>
         )}
         {(!summary || briefReady) && <span className="flex-1" />}
-
-        {/* Only when it has something to send. */}
-        {!listening && !!draft.trim() && (
-          <button
-            type="button"
-            onClick={submitDraft}
-            disabled={thinking || disabled || off}
-            className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-          >
-            Send
-          </button>
-        )}
       </div>
       )}
 
@@ -682,25 +743,37 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           so the first thing you were told was how to fire a render of a brief
           that had no town and no subject yet. Now it appears when the brief is
           actually complete, and says what it will do. */}
-      {briefReady && !listening && !thinking && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[13px] text-spark-ink">
-          <CheckCircle size={14} className="flex-none text-spark-blue" />
-          {sparking ? (
-            <span className="font-medium">
-              I have everything. Writing it now, about a minute.
-            </span>
-          ) : (
-            /* No button here, but the name of the one to press.
-             *
-             * This panel used to carry its own button, while the page footer
-             * carried the same action; the footer kept it because it never
-             * scrolls away. What was left said only "That's everything I
-             * need", which is true and does not say what to do about it. */
-            <span className="font-medium">
-              I have everything. Press <strong className="font-bold">{nextLabel}</strong> at the bottom to continue.
-            </span>
-          )}
-        </div>
+      {briefReady && !listening && !thinking && !draft.trim() && (sparking || (!off && !settled)) && (
+        sparking ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[14px] text-spark-ink">
+            <CheckCircle size={15} className="flex-none text-spark-blue" />
+            <span className="font-medium">I have everything. Writing it now, about a minute.</span>
+          </div>
+        ) : (
+          /* Complete, and not yet told what to make: sent with Enter before
+             any button, or said on the home screen without saying which. The
+             same three, and a tap starts it. This used to say only "That's
+             everything I need", which was true and did not say what to do. */
+          <div className="rounded-[12px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-3">
+            <p className="flex items-center gap-2 text-[15px] font-semibold leading-snug text-spark-ink">
+              <CheckCircle size={15} className="flex-none text-spark-blue" />
+              I have everything. What should I make?
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MAKES.map(({ kind, label }) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => chooseAndGo(kind)}
+                  disabled={disabled}
+                  className="rounded-full bg-spark-blue px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
       )}
     </div>
   );
