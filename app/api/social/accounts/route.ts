@@ -29,7 +29,7 @@ export async function GET() {
   // avoids the RLS surprises the admin path used to produce here.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("youtube_channel_id, youtube_channel_name, youtube_channel_thumbnail, subscription_tier, role, social_profile_created_at")
+    .select("youtube_channel_id, youtube_channel_name, youtube_channel_thumbnail, youtube_refresh_token, subscription_tier, role, social_profile_created_at")
     .eq("id", user.id)
     .single();
 
@@ -39,6 +39,8 @@ export async function GET() {
     youtube_channel_id: string | null;
     youtube_channel_name: string | null;
     youtube_channel_thumbnail: string | null;
+    /** Read only to see whether there is one. Never sent on. */
+    youtube_refresh_token: string | null;
     subscription_tier: string | null;
     role: string | null;
     social_profile_created_at: string | null;
@@ -55,6 +57,9 @@ export async function GET() {
         // which one is connected — the id is the only unambiguous answer.
         channelId: p.youtube_channel_id,
         avatarUrl: p.youtube_channel_thumbnail || undefined,
+        // The channel is known but its connection is gone: Google ended it,
+        // and the token was cleared when that was found out (youtube.ts).
+        needsReconnect: !p.youtube_refresh_token,
         source: "native" as const,
       }]
     : [];

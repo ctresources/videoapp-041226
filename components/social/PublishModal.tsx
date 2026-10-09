@@ -405,8 +405,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // whose sign-in expired starts unselected: it would only fail.
         let others = 0;
         setSelectedIds(accs.filter((a) => {
-          if (a.source !== "partner") return true;
           if (a.needsReconnect) return false;
+          if (a.source !== "partner") return true;
           if (limit !== null && others >= limit) return false;
           others += 1;
           return true;
@@ -415,6 +415,15 @@ ${hashes.join(" ")}` : hashes.join(" ");
       })
       .catch(() => setLoadingAccounts(false));
   }, []);
+
+  /**
+   * YouTube's connection has ended and has to be made again.
+   *
+   * Known either from the accounts list or from a publish that has just been
+   * refused for it. Shown above the button with the way to fix it: the toast
+   * that used to be all there was is gone in nine seconds.
+   */
+  const youtubeNeedsReconnect = accounts.some((a) => a.source === "native" && a.needsReconnect);
 
   function toggleAccount(id: string) {
     const account = accounts.find((a) => a.id === id);
@@ -499,11 +508,20 @@ ${hashes.join(" ")}` : hashes.join(" ");
       // A 200 does not mean every target succeeded — one platform can fail
       // while another goes out. Surface the ones that didn't rather than
       // letting the success toast speak for all of them.
-      const failed: Array<{ platform: string; error?: string }> = (data.results || [])
+      const failed: Array<{ platform: string; error?: string; code?: string }> = (data.results || [])
         .filter((r: { status: string }) => r.status === "failed");
       for (const f of failed) {
-        toast.error(`${f.platform}: ${f.error || "failed to post"}`, { duration: 8000 });
+        // The reconnect sentence already says which platform; the others
+        // name theirs because their text is the provider's own.
+        toast.error(f.code === "youtube_reconnect" ? (f.error || "YouTube needs reconnecting") : `${f.platform}: ${f.error || "failed to post"}`, { duration: 8000 });
       }
+      if (failed.some((f) => f.code === "youtube_reconnect")) {
+        setAccounts((prev) => prev.map((a) => (a.source === "native" ? { ...a, needsReconnect: true } : a)));
+        setSelectedIds((prev) => prev.filter((id) => id !== "native_youtube"));
+      }
+      // Nothing went anywhere: this is still the form, not the "published"
+      // screen, which used to appear whether or not anything had been.
+      if (failed.length > 0 && failed.length === (data.results || []).length) return;
 
       setPosted(true);
       // null = YouTube wasn't part of this publish, so there is nothing to say
@@ -1034,6 +1052,24 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   three or four minutes. Publishing now sends the plain presenter version.
                   Close this, wait, and refresh to get the finished one.
                 </p>
+              </div>
+            )}
+
+            {youtubeNeedsReconnect && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-[1.45] text-amber-800">
+                    Your YouTube connection has expired, so this can&apos;t be published there yet.
+                    Reconnect it, then come back and publish. Your video is saved.
+                  </p>
+                  <a
+                    href="/api/auth/youtube"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-700"
+                  >
+                    Reconnect YouTube
+                  </a>
+                </div>
               </div>
             )}
 

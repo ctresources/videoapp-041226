@@ -56,6 +56,26 @@ export async function exchangeCode(code: string): Promise<{
   return res.json();
 }
 
+/** What the agent is told when Google has ended their YouTube connection. */
+export const YOUTUBE_RECONNECT_MESSAGE =
+  "Your YouTube connection has expired. Reconnect YouTube in Settings, then publish again.";
+
+/**
+ * Google will not renew this connection, and never will again.
+ *
+ * `invalid_grant` on a refresh is final: the connection was revoked, or it
+ * was one of the temporary ones issued while the app was still in testing,
+ * which Google stops honouring. Retrying cannot help; only connecting again
+ * can. Its own error so every caller can say that, where they used to print
+ * Google's JSON at someone trying to publish a video.
+ */
+export class YouTubeReconnectError extends Error {
+  constructor() {
+    super(YOUTUBE_RECONNECT_MESSAGE);
+    this.name = "YouTubeReconnectError";
+  }
+}
+
 export async function refreshAccessToken(refreshToken: string): Promise<{
   access_token: string;
   expires_in: number;
@@ -70,7 +90,14 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
       grant_type: "refresh_token",
     }),
   });
-  if (!res.ok) throw new Error(`Token refresh failed: ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (/"invalid_grant"/.test(body)) {
+      console.warn("[youtube] refresh refused as invalid_grant: the connection has to be made again");
+      throw new YouTubeReconnectError();
+    }
+    throw new Error(`Token refresh failed: ${body}`);
+  }
   return res.json();
 }
 
@@ -123,11 +150,14 @@ export async function getValidAccessToken(
 ): Promise<string> {
   const { data: profile } = await admin
     .from("profiles")
-    .select("youtube_access_token, youtube_refresh_token, youtube_token_expires_at")
+    .select("youtube_access_token, youtube_refresh_token, youtube_token_expires_at, youtube_channel_id")
     .eq("id", userId)
     .single();
 
   if (!profile?.youtube_refresh_token) {
+    // A channel on record with no token is one whose connection Google ended
+    // (see below), which is a different thing to say than "never connected".
+    if (profile?.youtube_channel_id) throw new YouTubeReconnectError();
     throw new Error("YouTube not connected. Go to Settings → Social Accounts to connect.");
   }
 
@@ -157,7 +187,28 @@ export async function getValidAccessToken(
     return accessToken;
   }
 
-  const tokens = await refreshAccessToken(refreshToken);
+  let tokens: Awaited<ReturnType<typeof refreshAccessToken>>;
+  try {
+    tokens = await refreshAccessToken(refreshToken);
+  } catch (err) {
+    if (err instanceof YouTubeReconnectError) {
+      /**
+       * Forget the dead token, keep the channel.
+       *
+       * Settings read "Connected" off the channel's name, so a connection
+       * Google had ended months ago went on looking fine until a publish
+       * failed. With the token gone and the channel kept, the app can say
+       * which channel needs connecting again. Only if the row still holds
+       * this token: one connected a moment ago must not be wiped.
+       */
+      await admin
+        .from("profiles")
+        .update({ youtube_access_token: null, youtube_refresh_token: null, youtube_token_expires_at: null })
+        .eq("id", userId)
+        .eq("youtube_refresh_token", profile.youtube_refresh_token);
+    }
+    throw err;
+  }
   const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
   // ?? falls back to the raw value when no key is configured, preserving the

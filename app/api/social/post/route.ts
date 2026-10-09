@@ -1,7 +1,7 @@
 import { isAiMadeVideo } from "@/lib/utils/ai-made";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes } from "@/lib/api/youtube";
+import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes, YouTubeReconnectError } from "@/lib/api/youtube";
 import { thumbnailCardPng } from "@/lib/api/thumbnail-card";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
   // apart from an error string — so it surfaced neither.
   // `ref` is set on a post handed to another platform, which finishes later:
   // it is what the Publish window asks /api/social/status about.
-  const results: Array<{ platform: string; status: string; url?: string; error?: string; ref?: string }> = [];
+  const results: Array<{ platform: string; status: string; url?: string; error?: string; ref?: string; code?: string }> = [];
 
   // Whether the project's generated thumbnail actually landed on YouTube.
   // Reported back rather than promised up front: setting a custom thumbnail
@@ -264,7 +264,13 @@ export async function POST(req: NextRequest) {
         console.error(`[social/post] could not record the failure: ${failLogErr.message}`);
       }
 
-      results.push({ platform: "youtube", status: "failed", error: msg });
+      results.push({
+        platform: "youtube",
+        status: "failed",
+        error: msg,
+        // So the Publish window can offer the way to fix it, not just say it.
+        ...(err instanceof YouTubeReconnectError && { code: "youtube_reconnect" }),
+      });
     }
   }
 

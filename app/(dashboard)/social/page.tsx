@@ -22,6 +22,8 @@ interface SocialAccount {
   /** The real UC… channel id — native YouTube only. */
   channelId?: string | null;
   avatarUrl?: string;
+  /** Google ended this connection; it has to be made again before publishing. */
+  needsReconnect?: boolean;
   source?: "native";
 }
 
@@ -95,10 +97,15 @@ function SocialPageContent() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold text-brand-text">YouTube</h3>
-              {youtubeConnected && (
+              {youtubeConnected && !youtubeChannel?.needsReconnect && (
                 <Badge variant="success" className="text-xs gap-1">
                   <CheckCircle size={11} /> Connected
                 </Badge>
+              )}
+              {youtubeConnected && youtubeChannel?.needsReconnect && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  <AlertTriangle size={11} /> Needs reconnecting
+                </span>
               )}
             </div>
 
@@ -129,6 +136,23 @@ function SocialPageContent() {
                 </Button>
               </div>
             ) : null}
+
+            {/* The channel is still on record but Google has ended the
+                connection. Said here, where it used to say "Connected" until
+                a publish failed. */}
+            {youtubeConnected && youtubeChannel?.needsReconnect && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm leading-[1.45] text-amber-900">
+                  This connection has expired, so videos can&apos;t be published to this channel until
+                  you connect it again. Videos you have already published are not affected.
+                </p>
+                <a href="/api/auth/youtube" className="mt-2 inline-block">
+                  <Button className="gap-2">
+                    <PlayCircle size={15} /> Reconnect YouTube
+                  </Button>
+                </a>
+              </div>
+            )}
 
             {/* Surfaced at connect time, not after the first publish comes back
                 without a thumbnail. YouTube only accepts custom thumbnails on
