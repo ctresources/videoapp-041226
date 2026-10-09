@@ -4,6 +4,7 @@ import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
+import { makeSceneClips, planScenes, SCENES_MIN } from "@/lib/api/scene-clips";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -21,6 +22,16 @@ export interface StoreOptions {
    * win over stock.
    */
   clipUrls?: string[] | null;
+  /**
+   * The script, when the background should be made for it.
+   *
+   * Set on a Direct Video render that came with no photos. Scenes are then
+   * generated to match the words and used in place of the stock clips, which
+   * stay as the fallback: a free stock library has two or three loosely
+   * related clips for most scripts, and the same aerial turned up behind
+   * video after video.
+   */
+  sceneScript?: string | null;
   /** Target frame size, needed for photo compositing. */
   dimension?: { width: number; height: number } | null;
   /**
@@ -76,6 +87,33 @@ export async function downloadAndStoreVideo(
   videoId: string,
   opts: StoreOptions = {},
 ): Promise<string | null> {
+  return (await storeVideoDetailed(sourceUrl, videoId, opts)).url;
+}
+
+/**
+ * What became of a request to store a render.
+ *
+ * "stored"    this call did the work; `url` is the finished file.
+ * "elsewhere" another call holds the claim. `url` is the finished file if
+ *             that call has already published it, and null while it is still
+ *             working, in which case it will publish and this caller must not.
+ * "failed"    nothing could be stored; `url` is null and the caller falls
+ *             back to the source it already has.
+ *
+ * The plain function above flattens the last two into null, which is fine
+ * for a caller that has already published something. The webhook no longer
+ * does, so it has to be able to tell "wait" from "give up".
+ */
+export interface StoreResult {
+  url: string | null;
+  state: "stored" | "elsewhere" | "failed";
+}
+
+export async function storeVideoDetailed(
+  sourceUrl: string,
+  videoId: string,
+  opts: StoreOptions = {},
+): Promise<StoreResult> {
   const admin = createAdminClient();
 
   /**
@@ -115,7 +153,7 @@ export async function downloadAndStoreVideo(
       `[store-video] ${videoId}: no user_id on the video row — refusing to store an ` +
       `unscoped file. The source URL is unchanged; fix the row's ownership and store again.`,
     );
-    return null;
+    return { url: null, state: "failed" };
   }
 
   const path = `${userId}/${videoId}.mp4`;
@@ -133,7 +171,7 @@ export async function downloadAndStoreVideo(
       .eq("id", videoId)
       .single();
     console.log(`[store-video] ${videoId}: already claimed or finished, skipping`);
-    return (row?.video_url as string | null) ?? null;
+    return { url: (row?.video_url as string | null) ?? null, state: "elsewhere" };
   }
 
   /**
@@ -174,7 +212,7 @@ export async function downloadAndStoreVideo(
     console.log(`[store-video] Stored raw ${videoId} → ${publicUrl}`);
   } catch (err) {
     console.error("[store-video] Failed for", videoId, err instanceof Error ? err.message : err);
-    return null;
+    return { url: null, state: "failed" };
   }
 
   // ── Post-processing ───────────────────────────────────────────────────────
@@ -214,9 +252,24 @@ export async function downloadAndStoreVideo(
     // photos under a three-minute script looped every 24 seconds with nothing
     // able to break it up. Appending clips lengthens and varies the sequence;
     // the user's own photos still lead.
+    let clipUrls = opts.clipUrls ?? [];
+    if (opts.sceneScript && !(opts.photoUrls?.length) && opts.dimension) {
+      const scenes = await sceneBackground(videoId, opts.sceneScript, opts.dimension);
+      if (scenes.length > 0) {
+        clipUrls = scenes;
+        await mergeMetadata(admin, videoId, { scene_clips: scenes.length });
+        await admin.from("api_usage_log").insert({
+          user_id: userId,
+          api_provider: "heygen",
+          endpoint: "scene-background",
+          credits_used: 0,
+          response_status: 200,
+        });
+      }
+    }
     const broll = [
       ...(opts.photoUrls ?? []).map((url) => ({ url, kind: "photo" as const })),
-      ...(opts.clipUrls ?? []).map((url) => ({ url, kind: "clip" as const })),
+      ...clipUrls.map((url) => ({ url, kind: "clip" as const })),
     ];
 
     let brollApplied = false;
@@ -373,7 +426,43 @@ export async function downloadAndStoreVideo(
     console.warn(`[store-video] ${videoId}: cost reading failed:`, err instanceof Error ? err.message : err);
   }
 
-  return publicUrl;
+  return { url: publicUrl, state: "stored" };
+}
+
+/**
+ * A background made for this script: a few short realistic scenes.
+ *
+ * Only for a video that came with no photos. The scene maker's own rules
+ * apply (scene-clips.ts): ordinary American homes and rooms, no people, no
+ * lettering, never a named place or a real property.
+ *
+ * Returns nothing rather than throwing, and the caller keeps its stock clips.
+ * It is given two and a half minutes at most: this runs between the render
+ * arriving and the video being shown, and every second here is one the agent
+ * spends looking at "rendering".
+ */
+async function sceneBackground(
+  videoId: string,
+  script: string,
+  dimension: { width: number; height: number },
+): Promise<string[]> {
+  const started = Date.now();
+  try {
+    const seconds = script.split(/\s+/).filter(Boolean).length / 2.4;
+    const count = Math.max(4, Math.min(6, Math.ceil(seconds / 8)));
+    const plan = await planScenes(script, count);
+    const made = (await makeSceneClips(plan, 8, dimension.height > dimension.width ? "9:16" : "16:9", started + 150_000))
+      .filter((c): c is NonNullable<typeof c> => !!c);
+    if (made.length < SCENES_MIN) {
+      console.warn(`[store-video] ${videoId}: only ${made.length} scene(s) could be made — using stock footage`);
+      return [];
+    }
+    console.log(`[store-video] ${videoId}: ${made.length} scene(s) made for the background in ${Math.round((Date.now() - started) / 1000)}s`);
+    return made.map((c) => c.url);
+  } catch (err) {
+    console.warn(`[store-video] ${videoId}: scenes failed, using stock footage:`, err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 /**

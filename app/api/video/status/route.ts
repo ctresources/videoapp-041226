@@ -366,8 +366,35 @@ export async function GET(req: NextRequest) {
               videoUrl = finalUrl;
               console.log(`[status] HeyGen Direct ${renderId} completed`);
             } else {
-              // Another poll is finalizing — report in-progress, keep polling.
-              status = "rendering";
+              /**
+               * Being finished elsewhere, normally by the webhook. Report
+               * in-progress and keep polling.
+               *
+               * Unless that finish started long ago and never ended. The
+               * webhook no longer publishes the plain render up front, so a
+               * function that died half way through would leave this row
+               * "rendering" until the timeout fails and refunds a video that
+               * exists. After fifteen minutes, which is also when the claim on
+               * it goes stale, the plain render is published instead. The
+               * Videos page then repairs it into the finished one.
+               */
+              const startedAt = typeof storedMeta.post_processing_started_at === "string"
+                ? Date.parse(storedMeta.post_processing_started_at)
+                : NaN;
+              if (!video.video_url && Number.isFinite(startedAt) && Date.now() - startedAt > 15 * 60 * 1000) {
+                await admin
+                  .from("generated_videos")
+                  .update({ render_status: "completed", video_url: videoStatus.videoUrl })
+                  .eq("id", video.id);
+                if (video.project_id) {
+                  await admin.from("projects").update({ status: "ready" }).eq("id", video.project_id);
+                }
+                status = "completed";
+                videoUrl = videoStatus.videoUrl;
+                console.warn(`[status] ${video.id}: finishing stalled for 15 minutes — published the plain render`);
+              } else {
+                status = "rendering";
+              }
             }
           } else if (videoStatus.status === "failed") {
             status = "failed";

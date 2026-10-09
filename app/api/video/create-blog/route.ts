@@ -20,7 +20,7 @@ import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { cropPhotosToAspect } from "@/lib/utils/crop-photos";
 import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
-import { topTerms } from "@/lib/utils/script-keywords";
+import { footageTerms } from "@/lib/utils/script-keywords";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
@@ -1124,7 +1124,7 @@ export async function POST(req: NextRequest) {
        * for emphasis rather than for search and is not what broke.
        */
       const brollKeywords = Array.from(
-        new Set([...topTerms(safeScript, 4), ...aiKeywords]),
+        new Set([...footageTerms(safeScript, 4), ...aiKeywords]),
       ).slice(0, 5);
 
       const stockClips = await stockBrollFor({
@@ -1155,6 +1155,11 @@ export async function POST(req: NextRequest) {
             // because a handful of photos under a long script just looped.
             ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
             ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
+            // With no photos of their own, the background is made for this
+            // script when the render comes back (store-video), and the stock
+            // clips above are what it falls back to. The words are kept here
+            // because that step has the video and not the project.
+            ...(directPhotos.length === 0 && !isLongForm && { scene_script: safeScript.slice(0, 2000) }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves
             // at a readable size. Recorded so the store step knows to.
             captions_enabled: captions !== false,

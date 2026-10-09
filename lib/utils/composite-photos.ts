@@ -69,14 +69,13 @@ const MAX_LONG_EDGE = 1280;
  * Measuring against the short edge keeps captions the same visual size in
  * landscape and portrait; using height would make them huge in a 9:16 frame.
  */
-const CAPTION_SCALE = 0.055;
+const CAPTION_SCALE = 0.065;
 
 /**
  * How far captions sit above the bottom edge, as a fraction of height. Larger
  * when an avatar PiP is present so lines clear the corner inset.
  */
 const CAPTION_MARGIN = 0.08;
-const CAPTION_MARGIN_WITH_PIP = 0.12;
 
 /**
  * Escape a path for use inside a filter-graph argument.
@@ -94,21 +93,94 @@ function escapeForFilter(p: string): string {
   return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
 
+/**
+ * The font captions are drawn in, and where it is.
+ *
+ * The style used to ask for Arial and nothing else. On a laptop that is a
+ * font the system has. The server has no fonts and no fontconfig, so the
+ * caption filter found nothing to draw with, drew nothing, and reported
+ * success: every video through this path came back with no captions and
+ * nothing in the log to say why. A font shipped with the app and named to
+ * the filter by directory needs neither.
+ *
+ * The name is the font's own family name, which is what the filter matches
+ * on; "Montserrat" alone does not find this file.
+ */
+const CAPTION_FONT_FILE = "Montserrat-SemiBold.ttf";
+const CAPTION_FONT_NAME = "Montserrat SemiBold";
+
+/** Copies the caption font beside the job and returns that directory, or null if it did not ship. */
+async function captionFontDir(workDir: string): Promise<string | null> {
+  for (const base of [join(process.cwd(), "fonts"), join(process.cwd(), "public", "fonts")]) {
+    try {
+      const dest = join(workDir, "capfonts");
+      await fs.mkdir(dest, { recursive: true });
+      await fs.copyFile(join(base, CAPTION_FONT_FILE), join(dest, CAPTION_FONT_FILE));
+      return dest;
+    } catch { /* not there; try the next */ }
+  }
+  console.error(`[composite-photos] ${CAPTION_FONT_FILE} is not in this function's bundle — captions will not be drawn`);
+  return null;
+}
+
+/** The caption filter, pointed at the font. */
+function subtitlesFilter(srtPath: string, fontsDir: string | null, style: string): string {
+  return `subtitles='${escapeForFilter(srtPath)}'` +
+    (fontsDir ? `:fontsdir='${escapeForFilter(fontsDir)}'` : "") +
+    `:force_style='${style}'`;
+}
+
+/**
+ * Which font the filter actually chose, from its own output.
+ *
+ * Logged on every captioned render, because the failure this guards against
+ * is silent: the encode succeeds either way.
+ */
+function fontReport(stderr: string[]): string {
+  const line = stderr.filter((l) => /fontselect/i.test(l)).pop();
+  return line ? line.replace(/^\[[^\]]*\]\s*/, "").slice(0, 160) : "the filter did not say which font it used";
+}
+
 /** ASS style string for burned captions at a readable size. */
 function captionStyle(outW: number, outH: number, hasPip: boolean): string {
-  const fontSize = Math.round(Math.min(outW, outH) * CAPTION_SCALE);
-  const marginV = Math.round(outH * (hasPip ? CAPTION_MARGIN_WITH_PIP : CAPTION_MARGIN));
+  /**
+   * Sizes are worked out in pixels and then converted, because the filter
+   * does not take pixels.
+   *
+   * An .srt has no canvas of its own, so the filter lays it out on a nominal
+   * 384x288 one and scales that to the video. Every number in this style is
+   * read on that canvas. Given as pixels they came out two and a half times
+   * too large on a 720p frame: text a seventh of the picture high, sitting a
+   * third of the way up it. Nobody saw it, because on the server the captions
+   * were not drawing at all.
+   */
+  const y = 288 / outH;
+  const x = 384 / outW;
+  const fontPx = Math.min(outW, outH) * CAPTION_SCALE;
+  const sidePx = outW * 0.04;
+  let bottomPx = outH * CAPTION_MARGIN;
+  let rightPx = sidePx;
+  if (hasPip) {
+    // The speaker's circle is in the bottom right corner: 30% of the width,
+    // 3% in from the edges (see pass 2). On a wide frame the captions sit
+    // beside it; on a tall one there is no room beside, so they sit above.
+    const inset = outW * 0.3 + outW * 0.03 * 2;
+    if (outW >= outH) rightPx = inset;
+    else bottomPx = inset + outH * 0.02;
+  }
   return [
-    `FontName=Arial`,
-    `FontSize=${fontSize}`,
+    `FontName=${CAPTION_FONT_NAME}`,
+    `FontSize=${Math.max(8, Math.round(fontPx * y))}`,
     `Bold=1`,
     `PrimaryColour=&H00FFFFFF`,   // white text
     `OutlineColour=&H00000000`,   // black outline, for legibility over footage
     `BorderStyle=1`,
-    `Outline=3`,
+    `Outline=${Math.max(1, Math.round(fontPx * 0.09 * y))}`,
     `Shadow=1`,
-    `Alignment=2`,                // bottom-centre
-    `MarginV=${marginV}`,
+    `Alignment=2`,                // bottom-centre, between the side margins
+    `MarginL=${Math.round(sidePx * x)}`,
+    `MarginR=${Math.round(rightPx * x)}`,
+    `MarginV=${Math.round(bottomPx * y)}`,
   ].join(",");
 }
 
@@ -269,6 +341,8 @@ export async function compositePhotos(
         .on("error", (err) => reject(err))
         .save(maskPath);
     });
+    const fontsDir = srtPath ? await captionFontDir(dir) : null;
+    const pass2Log: string[] = [];
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(videoPath)
@@ -284,9 +358,10 @@ export async function compositePhotos(
           // Captions burn last so they sit over the avatar inset, not under it.
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +
             (srtPath
-              ? `[comp];[comp]subtitles='${escapeForFilter(srtPath)}':force_style='${captionStyle(outW, outH, true)}'[outv]`
+              ? `[comp];[comp]${subtitlesFilter(srtPath, fontsDir, captionStyle(outW, outH, true))}[outv]`
               : `[outv]`),
         ])
+        .on("stderr", (line: string) => { if (/fontselect|font provider/i.test(line)) pass2Log.push(line); })
         // This encodes the full length of the avatar video — the one step that
         // has to stay inside the function's time budget.
         //
@@ -321,7 +396,8 @@ export async function compositePhotos(
     console.log(
       `[composite-photos] Composited ${photoCount} photo(s) + ${n - photoCount} clip(s) ` +
       `into ${outW}x${outH} video in ${Math.round((Date.now() - startedAt) / 1000)}s ` +
-      `(${(out.length / 1024 / 1024).toFixed(1)} MB)`,
+      `(${(out.length / 1024 / 1024).toFixed(1)} MB)` +
+      (srtPath ? ` · captions: ${fontReport(pass2Log)}` : " · no captions"),
     );
     return out;
   } catch (err) {
@@ -357,12 +433,15 @@ export async function burnSubtitles(
     const outPath = join(dir, "out.mp4");
     await fs.writeFile(inPath, videoBuffer);
 
+    const fontsDir = await captionFontDir(dir);
+    const burnLog: string[] = [];
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(inPath)
         .complexFilter([
-          `[0:v]subtitles='${escapeForFilter(srtPath)}':force_style='${captionStyle(width, height, false)}'[outv]`,
+          `[0:v]${subtitlesFilter(srtPath, fontsDir, captionStyle(width, height, false))}[outv]`,
         ])
+        .on("stderr", (line: string) => { if (/fontselect|font provider/i.test(line)) burnLog.push(line); })
         .outputOptions([
           "-map", "[outv]",
           "-map", "0:a?",
@@ -379,7 +458,7 @@ export async function burnSubtitles(
     });
 
     const out = await fs.readFile(outPath);
-    console.log(`[composite-photos] Burned captions into ${width}x${height} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB)`);
+    console.log(`[composite-photos] Burned captions into ${width}x${height} video in ${Math.round((Date.now() - startedAt) / 1000)}s (${(out.length / 1024 / 1024).toFixed(1)} MB) · ${fontReport(burnLog)}`);
     return out;
   } catch (err) {
     console.error("[composite-photos] Caption burn failed, keeping plain video:", err instanceof Error ? err.message : err);

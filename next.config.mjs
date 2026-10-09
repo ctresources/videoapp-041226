@@ -12,6 +12,10 @@ const nextConfig = {
       // fails at render time, not at build time.
       "/api/tools/image": ["./fonts/**"],
       "/api/video/webhook": ["./fonts/**"],
+      // The repair path and the status poll finish a render the same way the
+      // webhook does, captions included, so they need the caption font too.
+      "/api/video/refresh-url": ["./fonts/**"],
+      "/api/video/status": ["./fonts/**"],
       // The FFmpeg binary is resolved from inside node_modules at runtime,
       // which is the shape of dependency Next's tracing is worst at following
       // — so it is named explicitly rather than hoped for. Without this the
@@ -33,6 +37,14 @@ const nextConfig = {
         "./public/fonts/**",
         "./fonts/**",
       ],
+      // The same renderer, for a blog's moving header and teaser.
+      "/api/ai/blog-motion": [
+        "./node_modules/@ffmpeg-installer/**",
+        "./public/fonts/**",
+        "./fonts/**",
+      ],
+      // Joins the scenes that play behind a camera recording.
+      "/api/video/scene-footage": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

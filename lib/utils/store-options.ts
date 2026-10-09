@@ -41,6 +41,7 @@ export async function buildStoreOptions(
     musicUrl: (meta.music_url as string | undefined) || null,
     photoUrls: Array.isArray(meta.photo_urls) ? (meta.photo_urls as string[]) : null,
     clipUrls: Array.isArray(meta.stock_clip_urls) ? (meta.stock_clip_urls as string[]) : null,
+    sceneScript: typeof meta.scene_script === "string" && meta.scene_script.trim() ? meta.scene_script : null,
     dimension: (meta.dimension as { width: number; height: number } | undefined) || null,
     subtitleUrl,
     // Carried through so store-video can ask again — the sidecar SRT is not

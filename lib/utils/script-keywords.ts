@@ -105,3 +105,29 @@ export function topTerms(text: string, limit = 5): string[] {
   }
   return picked;
 }
+
+/**
+ * Words that are not pictures.
+ *
+ * A stock search takes its query literally. A script that says "one Spark,
+ * more ways to be seen" searched for "spark" and came back with a bonfire at
+ * night, behind a real estate agent talking about consistency. The product's
+ * own name is the worst case, because it is the word a script about the
+ * product repeats most; the rest are the marketing abstractions that return
+ * whatever a stock library has filed under them.
+ */
+const NOT_FOOTAGE = new Set([
+  "spark", "sparks", "sparkreels", "sparkreel", "reel", "reels", "studio",
+  "visibility", "visible", "content", "video", "videos", "shorts", "blog", "blogs",
+  "idea", "ideas", "voice", "avatar", "camera", "speak", "share", "trust",
+  "expert", "experts", "consistent", "consistency", "knowledge", "time",
+  "social", "media", "post", "posts", "click", "online", "brand", "marketing",
+  "create", "creating", "first", "ways", "seen", "challenge", "simply",
+]);
+
+/** topTerms, without the ones a stock library would take the wrong way. */
+export function footageTerms(text: string, limit = 5): string[] {
+  return topTerms(text, limit + 8)
+    .filter((term) => !term.split(" ").some((w) => NOT_FOOTAGE.has(w)))
+    .slice(0, limit);
+}

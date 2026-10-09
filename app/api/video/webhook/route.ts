@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
-import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { downloadAndStoreVideo, storeVideoDetailed } from "@/lib/utils/store-video";
 import { buildStoreOptions } from "@/lib/utils/store-options";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
@@ -427,38 +427,52 @@ export async function POST(req: NextRequest) {
   // Try to match by: callback_id (most reliable) → video_id → session_id
   let video: { id: string; project_id: string | null; user_id: string; video_type: string; metadata: Record<string, unknown> | null } | null = null;
 
+  /**
+   * A finished render is found here, and published further down.
+   *
+   * These lookups used to be updates that stamped the row "completed" with
+   * the render's own address the moment the event arrived. Everything that
+   * makes it the video the agent asked for happens after that: the b-roll
+   * behind them, the captions, the music. For as long as that took, which is
+   * half a minute on a short video and several on a long one, the app showed
+   * the bare render as the finished video: someone talking to camera with
+   * nothing behind them. The page had usually stopped checking by the time
+   * the real one replaced it.
+   *
+   * So a success with a file is only looked up, and the row stays
+   * "rendering" until the finished file is stored. A failure, or a success
+   * with no file, is written straight away as before: there is nothing to
+   * wait for.
+   */
+  const holdUntilStored = success && !!videoUrl;
+  const ROW = "id, project_id, user_id, video_type, metadata";
+  const firstWrite = { render_status: renderStatus, video_url: videoUrl || null };
+
   if (callbackId) {
-    const { data } = await admin
-      .from("generated_videos")
-      .update({ render_status: renderStatus, video_url: videoUrl || null })
-      .eq("id", callbackId)
-      .select("id, project_id, user_id, video_type, metadata")
-      .single();
+    const { data } = holdUntilStored
+      ? await admin.from("generated_videos").select(ROW).eq("id", callbackId).single()
+      : await admin.from("generated_videos").update(firstWrite).eq("id", callbackId).select(ROW).single();
     video = data;
   }
 
   if (!video && videoId) {
-    const { data } = await admin
-      .from("generated_videos")
-      .update({ render_status: renderStatus, video_url: videoUrl || null })
-      .eq("render_job_id", videoId)
-      .select("id, project_id, user_id, video_type, metadata")
-      .single();
+    const { data } = holdUntilStored
+      ? await admin.from("generated_videos").select(ROW).eq("render_job_id", videoId).single()
+      : await admin.from("generated_videos").update(firstWrite).eq("render_job_id", videoId).select(ROW).single();
     video = data;
   }
 
   if (!video && sessionId) {
-    const { data } = await admin
-      .from("generated_videos")
-      .update({
-        render_status: renderStatus,
-        video_url: videoUrl || null,
-        // Update render_job_id to the actual video_id for future reference
-        ...(videoId && success ? { render_job_id: videoId } : {}),
-      })
-      .eq("render_job_id", sessionId)
-      .select("id, project_id, user_id, video_type, metadata")
-      .single();
+    // Update render_job_id to the actual video_id for future reference
+    const jobId = videoId && success ? { render_job_id: videoId } : null;
+    const { data } = holdUntilStored && !jobId
+      ? await admin.from("generated_videos").select(ROW).eq("render_job_id", sessionId).single()
+      : await admin
+          .from("generated_videos")
+          .update({ ...(holdUntilStored ? {} : firstWrite), ...(jobId ?? {}) })
+          .eq("render_job_id", sessionId)
+          .select(ROW)
+          .single();
     video = data;
   }
 
@@ -485,7 +499,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Update parent project status ──────────────────────────────────────────
-  if (video.project_id) {
+  // A render still being finished is not "ready" yet either; see below.
+  if (video.project_id && !holdUntilStored) {
     await admin
       .from("projects")
       .update({ status: success && !successWithoutFile ? "ready" : "error" })
@@ -503,9 +518,35 @@ export async function POST(req: NextRequest) {
     //  - music_url: background music mixed under the voiceover.
     //  - captions: burned in at a readable size from the sidecar SRT, or from
     //    a transcript when HeyGen has no SRT to give.
-    const storeOpts = await buildStoreOptions(video.metadata, videoId);
-    const permanentUrl = await downloadAndStoreVideo(videoUrl, video.id, storeOpts);
-    if (permanentUrl) finalVideoUrl = permanentUrl;
+    let result: Awaited<ReturnType<typeof storeVideoDetailed>>;
+    try {
+      const storeOpts = await buildStoreOptions(video.metadata, videoId);
+      result = await storeVideoDetailed(videoUrl, video.id, storeOpts);
+    } catch (err) {
+      // Nothing in there is meant to throw. If it does, the agent still gets
+      // their render, plain, which is what they got before any of this ran.
+      console.error(`[webhook] storing ${video.id} threw:`, err instanceof Error ? err.message : err);
+      result = { url: null, state: "failed" };
+    }
+
+    // This event is delivered several times over, seconds apart. One delivery
+    // does the work; the others find it claimed. While that one is still
+    // working there is nothing to publish, and it will do the rest itself.
+    if (result.state === "elsewhere" && !result.url) {
+      console.log(`[webhook] ${video.id} is being finished by another delivery of ${eventType}; leaving it to that one`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
+    // Published once, finished: the stored file, or the plain render when
+    // storing failed outright.
+    finalVideoUrl = result.url || videoUrl;
+    await admin
+      .from("generated_videos")
+      .update({ render_status: "completed", video_url: finalVideoUrl })
+      .eq("id", video.id);
+    if (video.project_id) {
+      await admin.from("projects").update({ status: "ready" }).eq("id", video.project_id);
+    }
   }
 
   // ── Fire CRM webhooks on video completion ─────────────────────────────────
