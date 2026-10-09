@@ -334,6 +334,7 @@ export default function OnboardingPage() {
                   userId={userId}
                   currentVoiceId={voiceId}
                   currentHeygenVoiceId={heygenVoiceId}
+                  agentName={fullName}
                   onUpdate={(eleven, heygen) => { setVoiceId(eleven); setHeygenVoiceId(heygen); }}
                 />
               )}

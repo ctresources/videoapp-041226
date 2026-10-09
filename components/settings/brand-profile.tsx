@@ -743,12 +743,17 @@ function DigitalTwinCreator({
   );
 }
 
+/** What stands in the read-aloud script where the agent's name goes, until we know it. */
+const NAME_BLANK = "[your name]";
+
 // ── Voice Clone uploader (record + upload) ───────────────────────────────────
-export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUpdate }: {
+export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceId, onUpdate, agentName }: {
   userId: string;
   currentVoiceId: string | null;
   currentHeygenVoiceId: string | null;
   onUpdate: (elevenLabsId: string | null, heygenId: string | null) => void;
+  /** Their name, for the script they read aloud. Without it the script asks them to fill it in. */
+  agentName?: string | null;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -761,8 +766,15 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   const [heygenVoiceId, setHeygenVoiceId] = useState(currentHeygenVoiceId);
   const [submitting, setSubmitting] = useState(false);
   const [sampleScript, setSampleScript] = useState(
-    `Hi, my name is [your name] and I'm a real estate agent. I help buyers and sellers navigate the market with confidence. Whether you're looking for your first home, upgrading to something bigger, or selling to start a new chapter — I'm here to guide you every step of the way. With years of local market experience, I know how to get results for my clients. Let's find your perfect home together. Give me a call anytime — I'd love to help.`
+    `Hi, my name is ${agentName?.trim() || NAME_BLANK} and I'm a real estate agent. I help buyers and sellers navigate the market with confidence. Whether you're looking for your first home, upgrading to something bigger, or selling to start a new chapter — I'm here to guide you every step of the way. With years of local market experience, I know how to get results for my clients. Let's find your perfect home together. Give me a call anytime — I'd love to help.`
   );
+
+  // The name can arrive after the card does. It goes into the blank if the
+  // blank is still there, and never over anything they have typed.
+  useEffect(() => {
+    const name = agentName?.trim();
+    if (name) setSampleScript((t) => (t.includes(NAME_BLANK) ? t.replace(NAME_BLANK, name) : t));
+  }, [agentName]);
 
   // Recording state
   const [recState, setRecState] = useState<"idle" | "recording" | "recorded">("idle");
@@ -989,19 +1001,24 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   return (
     <div className="flex flex-col gap-3">
 
-      {/* Tab switcher */}
-      <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+      {/* Tab switcher. Small and plain on purpose: as a full-width filled
+          bar reading "Record" it was the boldest thing on the card, and was
+          pressed as the way to start recording, which it is not. */}
+      <div role="tablist" aria-label="How to give us your voice" className="inline-flex self-start rounded-lg bg-slate-100 p-0.5">
         {(["record", "upload"] as const).map((t) => (
           <button
             key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => { setTab(t); discardRecording(); setMicError(null); }}
-            className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               tab === t
-                ? "bg-primary-600 text-white"
-                : "bg-white text-slate-500 hover:bg-slate-50"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t === "record" ? <><Mic size={12} /> Record</>  : <><Upload size={12} /> Upload file</>}
+            {t === "record" ? <><Mic size={12} /> Record my voice</> : <><Upload size={12} /> Upload a file</>}
           </button>
         ))}
       </div>
@@ -1084,16 +1101,17 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
           {/* Idle — ready to record */}
           {recState === "idle" && !micError && (
             <button
+              type="button"
               onClick={() => startRecording()}
-              className="flex items-center gap-3 w-full p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-red-300 hover:bg-red-50/30 transition-all"
+              className="flex w-full items-center justify-center gap-3 rounded-xl bg-primary-600 px-4 py-3.5 text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
-                <Mic size={18} className="text-red-500" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-slate-700">Click to start recording</p>
-                <p className="text-xs text-slate-400">Read the script above · quiet room · no background noise</p>
-              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <Mic size={18} />
+              </span>
+              <span className="text-left">
+                <span className="block text-[15px] font-semibold">Start recording</span>
+                <span className="block text-xs text-white/85">Read the script above · quiet room · no background noise</span>
+              </span>
             </button>
           )}
 

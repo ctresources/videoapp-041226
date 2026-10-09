@@ -335,6 +335,7 @@ export default function SettingsPage() {
             userId={user.id}
             currentVoiceId={brandData.voice_clone_id ?? null}
             currentHeygenVoiceId={brandData.heygen_voice_id ?? null}
+            agentName={brandData.full_name}
             onUpdate={(elevenLabsId, heygenId) => {
               setBrandData((prev) => prev ? {
                 ...prev,
