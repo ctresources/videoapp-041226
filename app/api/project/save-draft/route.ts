@@ -23,12 +23,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const {
-    projectId, script, cta, hook, title,
+    projectId, script, cta, ctaOff, hook, title,
     videoType, photoUrls, musicId, musicUrl, captions, renderMode, lookId,
   } = await req.json() as {
     projectId?: string;
     script?: string;
     cta?: string;
+    /** "No call to action": the wording is kept, and not spoken. */
+    ctaOff?: boolean;
     hook?: string;
     title?: string;
     /** reel_9x16 | youtube_16x9 | youtube_long — the shape picker. */
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
     ...aiScript,
     ...(script !== undefined && { script }),
     ...(cta !== undefined && { cta }),
+    ...(typeof ctaOff === "boolean" && { cta_off: ctaOff }),
     ...(hook !== undefined && { hook }),
     // The setup screen's own choices. video_platform is the existing key the
     // editor already reads on load, so the shape rejoins the field it was

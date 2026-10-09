@@ -338,9 +338,10 @@ export default function HelpPage() {
             </Step>
             <Step n={9} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
-              disagree. Edit the script freely; a live word counter keeps you inside the cap. Set your{" "}
-              <strong>Call To Action</strong>, or choose <strong>None</strong> if this one shouldn&apos;t ask
-              for anything. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
+              disagree. Edit the script freely; a live word counter keeps you inside the cap. Your{" "}
+              <strong>Call To Action</strong> is on the next screen, above Video setup: it is spoken
+              after your script, so edit it there, or tick <strong>No call to action</strong> to end
+              the video on your script. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
               it discards your edits.
             </Step>
             <Step n={10} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>

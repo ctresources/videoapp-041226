@@ -448,6 +448,19 @@ export default function ProjectEditorPage() {
     };
   }, [videoMenuOpen]);
   const [editedCta, setEditedCta] = useState("");
+  /**
+   * "No call to action", and the closing line as it will actually be used.
+   *
+   * The box is filled from the agent's profile default, so the only way to
+   * end a video on the script was to know to delete it, and on a script the
+   * AI wrote even that did not work: an empty box fell back to the closing
+   * line the AI had written. The switch says it, and everything that speaks,
+   * sends or counts the closing line reads activeCta, so an empty box and a
+   * switched-off one both mean none. The wording stays in the box, so
+   * switching it back on brings it back as it was.
+   */
+  const [ctaOff, setCtaOff] = useState(false);
+  const activeCta = ctaOff ? "" : editedCta.trim();
   const [selectedHook, setSelectedHook] = useState<string>("");
   // Editable AI-generated title/description — persisted to the project on
   // generate/save-draft so the video render and Publish use the user's wording.
@@ -529,7 +542,7 @@ export default function ProjectEditorPage() {
    * likely way branding reaches the audio. Derived rather than cleared:
    * unticking the box brings their own wording back exactly as they left it.
    */
-  const spokenCta = tpUnbranded ? "" : editedCta;
+  const spokenCta = tpUnbranded ? "" : activeCta;
   const recordedChunksRef = useRef<Blob[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
@@ -934,7 +947,9 @@ export default function ProjectEditorPage() {
         draft_music_url?: string | null;
         draft_captions?: boolean;
         draft_look_id?: string;
+        cta_off?: boolean;
       };
+      setCtaOff(aiS.cta_off === true);
       setEditedScript(aiS.script || "");
       // Honour the format chosen before the script was written, so an ~8-minute
       // script doesn't land on a standard format and get trimmed, and a reel
@@ -1149,6 +1164,7 @@ export default function ProjectEditorPage() {
           projectId: project.id,
           script: editedScript,
           cta: editedCta,
+          ctaOff,
           hook: selectedHook,
           // The setup screen's own choices, which a draft used to drop on the
           // floor. Photo order is sent as the grid order because that is what
@@ -1466,7 +1482,10 @@ export default function ProjectEditorPage() {
       // card renders it); anything in this script gets spoken by the avatar.
       const bodyScript = editedScript || project.ai_script?.script || "";
       const hook = selectedHook || project.ai_script?.hook || "";
-      const cta = editedCta || (project.ai_script as AiScript | null)?.cta || "";
+      // What is in the box, or nothing. It used to fall back to the script's
+      // own closing line when the box was empty, so emptying it did not
+      // remove the ask from a script the AI had written.
+      const cta = activeCta;
       // CTA is sent separately so the server can clamp the body without ever
       // cutting the CTA off the end of the spoken script.
       // Drops the body's own opening line when it repeats the hook. The prompt
@@ -1830,7 +1849,7 @@ export default function ProjectEditorPage() {
   function handleRecordOnCamera(text?: string) {
     // Same de-duplication as the render path: a teleprompter that shows the
     // opening line twice makes someone read it twice.
-    const combined = (text ?? [joinHookAndScript(selectedHook, editedScript), editedCta.trim()]
+    const combined = (text ?? [joinHookAndScript(selectedHook, editedScript), activeCta]
       .filter(Boolean)
       .join("\n\n")).trim();
     if (!combined) return;
@@ -1930,7 +1949,7 @@ export default function ProjectEditorPage() {
 
     setArticleScriptWriting(true);
     try {
-      const ctaWords = editedCta.trim().split(/\s+/).filter(Boolean).length;
+      const ctaWords = activeCta.split(/\s+/).filter(Boolean).length;
       const cap = isLong ? LONG_MAX_WORDS : standardMaxWords();
       const res = await fetch("/api/ai/script-from-text", {
         method: "POST",
@@ -2816,29 +2835,61 @@ export default function ProjectEditorPage() {
               rest of what goes into the video. */}
           {/* CTA */}
           <Card padding="sm">
-            <div className="flex items-center justify-between px-2 py-1 mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-2 py-1 mb-2">
               <div className="flex items-center gap-2">
                 <CheckCircle size={16} className="text-accent-500" />
                 <h3 className="font-semibold text-sm text-brand-text">Call to Action</h3>
               </div>
+              <div className="flex items-center gap-4">
+              {/* The way to end on the script. Saved at once, with the wording
+                  and the hook as they stand, so coming back to this page does
+                  not quietly bring the closing line back. */}
+              <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={ctaOff}
+                  onChange={(e) => {
+                    const off = e.target.checked;
+                    setCtaOff(off);
+                    if (!project) return;
+                    void fetch("/api/project/save-draft", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ projectId: project.id, cta: editedCta, hook: selectedHook, ctaOff: off }),
+                    }).catch(() => { /* still applies to this visit */ });
+                  }}
+                  className="h-4 w-4 accent-primary-600"
+                />
+                No call to action
+              </label>
               <button
+                disabled={ctaOff}
                 onClick={() => {
                   const contactLine = buildContactLine();
                   const full = contactLine ? `${editedCta}\n\n${contactLine}` : editedCta;
                   copyToClipboard(full, "CTA");
                 }}
-                className="flex items-center gap-1 text-xs text-primary-500 hover:underline"
+                className="flex items-center gap-1 text-xs text-primary-500 hover:underline disabled:opacity-40 disabled:no-underline"
               >
                 <Copy size={12} /> Copy with contact
               </button>
+              </div>
             </div>
             <textarea
               value={editedCta}
               onChange={(e) => setEditedCta(e.target.value)}
               rows={3}
+              disabled={ctaOff}
               placeholder="e.g. Call or text me to get started, I'd love to help!"
-              className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100"
+              className={`w-full text-sm bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100 ${ctaOff ? "text-slate-400 line-through decoration-slate-300" : "text-slate-700"}`}
             />
+            <p className="mt-1.5 px-1 text-xs text-slate-500">
+              {ctaOff
+                ? "Off. The video ends on your script and nothing here is spoken. Untick to bring your wording back."
+                : activeCta
+                  ? `Spoken at the end, after your script. ${activeCta.split(/\s+/).filter(Boolean).length} words, about ${Math.max(1, Math.round(activeCta.split(/\s+/).filter(Boolean).length / 2.4))} seconds.`
+                  : "Empty, so the video ends on your script."}
+            </p>
             {buildContactLine() ? (
               <div className="flex items-center justify-between gap-2 mt-2 px-1">
                 <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
@@ -3779,7 +3830,7 @@ export default function ProjectEditorPage() {
                           .join("\n\n");
                         const articleWords = articleText.split(/\s+/).filter(Boolean).length;
                         // Everything that gets spoken, for the length shown.
-                        const scriptWords = [editedScript, editedCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
+                        const scriptWords = [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
                         /**
                          * Whether there is a SCRIPT, which is a different
                          * question. Every project carries a closing CTA whether
@@ -3872,7 +3923,7 @@ export default function ProjectEditorPage() {
                                       // render that would publish it.
                                       if (script) {
                                         handleRecordOnCamera(
-                                          [joinHookAndScript(selectedHook, script), editedCta.trim()]
+                                          [joinHookAndScript(selectedHook, script), activeCta]
                                             .filter(Boolean).join("\n\n").trim(),
                                         );
                                       }
@@ -4370,11 +4421,11 @@ export default function ProjectEditorPage() {
                     No closing ask and no contact details. End on the property.
                   </p>
                 </div>
-              ) : (
+              ) : !activeCta ? null : (
                 <div>
                   <p className="text-white/30 text-xs uppercase tracking-widest mb-3 text-center">Call to Action</p>
                   <p className="text-white text-3xl md:text-4xl leading-relaxed font-semibold text-center">
-                    <FlowWords text={editedCta} offset={tpHookLen + tpScriptLen} />
+                    <FlowWords text={activeCta} offset={tpHookLen + tpScriptLen} />
                   </p>
                   {buildContactLine() && (
                     <p className="text-white/60 text-2xl leading-relaxed text-center mt-3">
