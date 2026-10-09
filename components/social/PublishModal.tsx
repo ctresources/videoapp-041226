@@ -122,6 +122,8 @@ export function PublishModal({
   // is how it went unfixed.
   const [badgeCity, setBadgeCity] = useState("");
   const [badgeState, setBadgeState] = useState("");
+  /** Changed since the last build. An emptied pair of boxes then means "no badge". */
+  const [badgeDirty, setBadgeDirty] = useState(false);
   /**
    * The words printed across the image — the biggest thing on it, and the last
    * thing here that could not be changed.
@@ -297,6 +299,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
           // instead of reverting to what the project used to say.
           ...(badgeCity.trim() ? { city: badgeCity.trim() } : {}),
           ...(badgeState.trim() ? { state: badgeState.trim() } : {}),
+          // Emptied on purpose: no badge. The project remembers, so the next
+          // build, which sends nothing here, does not bring it back.
+          ...(badgeDirty && !badgeCity.trim() && !badgeState.trim() ? { noMarket: true } : {}),
           // Sent on every build for the same reason the market is: a backdrop
           // swap should change the backdrop, not quietly rewrite the words
           // someone chose.
@@ -312,6 +317,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Couldn't build the thumbnail");
       setPhotoThumb(data.url);
+      // What the badge says now, which is blank when it was left off.
+      if (typeof data.city === "string") setBadgeCity(data.city);
+      if (typeof data.state === "string") setBadgeState(data.state);
+      setBadgeDirty(false);
       // What the image says, including when the generator wrote it — so the
       // box stops saying "AI writes it" about words that now exist.
       if (data.headline) setHeadline(data.headline);
@@ -809,20 +818,23 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     <div className="mt-2 flex items-center gap-1.5">
                       <input
                         value={badgeCity}
-                        onChange={(e) => setBadgeCity(e.target.value)}
+                        onChange={(e) => { setBadgeCity(e.target.value); setBadgeDirty(true); }}
                         placeholder="City or area on the badge"
                         className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
                       />
                       <input
                         value={badgeState}
-                        onChange={(e) => setBadgeState(e.target.value.toUpperCase().slice(0, 2))}
+                        onChange={(e) => { setBadgeState(e.target.value.toUpperCase().slice(0, 2)); setBadgeDirty(true); }}
                         placeholder="ST"
                         className="w-12 rounded-lg border border-slate-200 px-2 py-1.5 text-xs uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
                       />
                       <button
                         type="button"
                         onClick={() => buildPhotoThumb(activePhoto || photos[0] || "")}
-                        disabled={thumbBusy || !badgeCity.trim()}
+                        // Empty is allowed once the boxes have been changed:
+                        // that is how the badge is taken off.
+                        disabled={thumbBusy || (!badgeCity.trim() && !badgeDirty)}
+                        title={!badgeCity.trim() && !badgeState.trim() && badgeDirty ? "Update with no market badge" : undefined}
                         className="flex-none rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
                       >
                         {thumbBusy ? "…" : "Update"}

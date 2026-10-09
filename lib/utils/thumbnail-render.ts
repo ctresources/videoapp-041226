@@ -238,6 +238,18 @@ export interface RenderThumbnailOptions {
    */
   city?: string;
   state?: string;
+  /**
+   * No market at all: no badge, and a picture that is not themed to a town.
+   *
+   * A blank market used to mean "work one out", and there was always one to
+   * find, ending at the agent's home market. So the boxes could be empty and
+   * the thumbnail still said a town, with no way to take it off. Not every
+   * video is about a place.
+   *
+   * Remembered on the project, so a later rebuild (a new backdrop, new words)
+   * does not bring the badge back. Typing a market turns it off again.
+   */
+  noMarket?: boolean;
 }
 
 /**
@@ -253,7 +265,7 @@ export interface RenderThumbnailOptions {
  */
 export async function renderAndSaveThumbnail(
   opts: RenderThumbnailOptions,
-): Promise<{ url: string; headline: string; backgroundUrl: string; scene: string }> {
+): Promise<{ url: string; headline: string; backgroundUrl: string; scene: string; city: string; state: string }> {
   const admin = createAdminClient();
 
   const { data: profile } = await admin
@@ -318,8 +330,12 @@ export async function renderAndSaveThumbnail(
   const textMarket = extractMarketFromText([sourceTitle, opts.headline].filter(Boolean).join(" "));
   const typedCity = opts.city?.trim() || "";
   const typedState = opts.state?.trim() || "";
-  const city = typedCity || projCity || textMarket?.city || p?.location_city || undefined;
-  const state = typedState || projState || textMarket?.state || p?.location_state || undefined;
+  // Unless there is to be none: asked for now, or asked for before on this
+  // project and not since replaced by a typed one.
+  const noMarket = !typedCity && !typedState &&
+    (opts.noMarket === true || (opts.noMarket === undefined && projectSeoData?.thumbnail_no_market === true));
+  const city = noMarket ? undefined : typedCity || projCity || textMarket?.city || p?.location_city || undefined;
+  const state = noMarket ? undefined : typedState || projState || textMarket?.state || p?.location_state || undefined;
 
   // A typed market is a correction to the project, not just to this image.
   // Written before the render so a failed render still keeps the fix.
@@ -572,11 +588,14 @@ export async function renderAndSaveThumbnail(
           // a rebuild over a chosen photo has no scene and must not erase the
           // last one, which is still what the box should offer.
           ...(sceneUsed ? { thumbnail_scene: sceneUsed } : {}),
+          // Whether the badge was left off on purpose; see noMarket.
+          thumbnail_no_market: noMarket,
         },
       })
       .eq("id", opts.projectId)
       .eq("user_id", opts.userId);
   }
 
-  return { url: publicUrl, headline: headlineText, backgroundUrl, scene: sceneUsed };
+  // The market that was printed, so the boxes that edit it can show it.
+  return { url: publicUrl, headline: headlineText, backgroundUrl, scene: sceneUsed, city: city ?? "", state: state ?? "" };
 }

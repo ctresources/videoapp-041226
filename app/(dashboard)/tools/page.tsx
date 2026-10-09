@@ -1506,6 +1506,13 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   // Typed market for the badge. Empty means "whatever the video already says".
   const [badgeCity, setBadgeCity] = useState("");
   const [badgeState, setBadgeState] = useState("");
+  /**
+   * Whether the market boxes have been changed since the thumbnail on screen
+   * was made. Only a change is sent: the boxes are filled with whatever was
+   * printed, and sending that back as if it had been typed would write a
+   * worked-out market onto the project as a correction.
+   */
+  const [badgeDirty, setBadgeDirty] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
 
@@ -1583,6 +1590,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     if (!project) return;
     setBadgeCity(project.location_city || "");
     setBadgeState(project.location_state || "");
+    setBadgeDirty(false);
   }, [projectId, projects]);
 
   // reuseBackground=true re-renders just the text/photo over the same scene —
@@ -1604,8 +1612,14 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
           photoUrl: photoUrl || undefined,
           photoSide,
           backgroundUrl: customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
-          city: badgeCity.trim() || undefined,
-          state: badgeState.trim() || undefined,
+          // The boxes mean what they show. Changed and emptied is "no badge";
+          // changed and filled is that market; untouched says nothing, and the
+          // thumbnail keeps the market it had.
+          ...(badgeDirty
+            ? (!badgeCity.trim() && !badgeState.trim()
+              ? { noMarket: true }
+              : { city: badgeCity.trim() || undefined, state: badgeState.trim() || undefined })
+            : {}),
         }),
       });
       const data = await res.json();
@@ -1616,6 +1630,11 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       setThumbUrl(data.url);
       if (data.headline) setHeadline(data.headline);
       if (data.backgroundUrl) setBgUrl(data.backgroundUrl);
+      // What was printed, into the boxes that edit it. They used to sit empty
+      // under a thumbnail that named a town.
+      setBadgeCity(typeof data.city === "string" ? data.city : "");
+      setBadgeState(typeof data.state === "string" ? data.state : "");
+      setBadgeDirty(false);
       toast.success(projectId ? "Thumbnail generated and saved to the project!" : "Thumbnail generated!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to generate thumbnail");
@@ -1814,7 +1833,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
               <input
                 type="text"
                 value={badgeCity}
-                onChange={(e) => setBadgeCity(e.target.value)}
+                onChange={(e) => { setBadgeCity(e.target.value); setBadgeDirty(true); }}
                 onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
                 placeholder="City or area"
                 className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
@@ -1822,14 +1841,14 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
               <input
                 type="text"
                 value={badgeState}
-                onChange={(e) => setBadgeState(e.target.value.toUpperCase().slice(0, 2))}
+                onChange={(e) => { setBadgeState(e.target.value.toUpperCase().slice(0, 2)); setBadgeDirty(true); }}
                 onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
                 placeholder="ST"
                 className="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
               />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Leave blank to use this video&rsquo;s market. Changing it here also updates the video&rsquo;s market, so titles and descriptions match.
+              This is what the badge says. Clear both boxes and press Update to leave the badge off. Changing the market here also updates the video&rsquo;s market, so titles and descriptions match.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-3">

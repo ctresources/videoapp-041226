@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state, scene } = (await req.json()) as {
+  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state, scene, noMarket } = (await req.json()) as {
     headline?: string; topic?: string; projectId?: string; photoUrl?: string; backgroundUrl?: string; photoSide?: string;
-    city?: string; state?: string; scene?: string;
+    city?: string; state?: string; scene?: string; noMarket?: boolean;
   };
 
   try {
@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
       photoSide: photoSide === "left" ? "left" : "right",
       city: city || undefined,
       state: state || undefined,
+      // Only ever true or absent: absent leaves the project's own choice alone.
+      noMarket: noMarket === true ? true : undefined,
       scene: scene || undefined,
     });
     return NextResponse.json(result);
