@@ -1146,6 +1146,30 @@ export async function searchBackgroundMusic(
  * A 404 is success: the voice is gone, which is the whole point, and a delete
  * that has already happened must not read as a failure to the caller.
  */
+/**
+ * Whether a voice we have on record no longer exists on the account.
+ *
+ * True only when the service says so in as many words. A timeout, a 500 or
+ * anything else unreadable is "don't know", and don't know is treated as
+ * still there: the cost of being wrong that way is one refused render, and
+ * the cost of being wrong the other way is throwing away a working voice.
+ */
+export async function voiceIsGone(voiceId: string): Promise<boolean> {
+  if (!voiceId) return false;
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/voices/${encodeURIComponent(voiceId)}`, {
+      headers: { "x-api-key": getApiKey() },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status === 404) return true;
+    if (res.ok) return false;
+    const body = await res.text().catch(() => "");
+    return /voice_not_found/i.test(body);
+  } catch {
+    return false;
+  }
+}
+
 export async function deleteVoice(voiceId: string): Promise<boolean> {
   if (!voiceId) return true;
   try {

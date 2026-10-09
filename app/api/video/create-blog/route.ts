@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
+import { ensureVoiceForRender, VoiceGoneError } from "@/lib/utils/voice-slot";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateVideoAgent,
@@ -1498,6 +1498,12 @@ export async function POST(req: NextRequest) {
 
     const msg = err instanceof Error ? err.message : "Video generation failed";
     console.error("[create-blog] error:", msg);
+
+    // Our own sentence, already written for the agent: their voice is gone
+    // and has to be recorded again. Nothing was sent to render or charged.
+    if (err instanceof VoiceGoneError) {
+      return NextResponse.json({ error: msg, code: "voice_gone" }, { status: 409 });
+    }
 
     /**
      * The account being busy is not the user's video being broken.

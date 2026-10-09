@@ -27,7 +27,9 @@ const RULES: Rule[] = [
       "We couldn't load one of the images for this video. Check your logo and photos in Settings, then try again.",
   },
   {
-    match: /voice_unavailable|voice_expired|voice.*(not available|failed processing)/i,
+    // "Voice not found" arrives as an invalid_parameter, so it has to be
+    // caught here, above that rule, or it reads as a problem with photos.
+    match: /voice_unavailable|voice_expired|voice_not_found|voice not found|invalid voice_id|voice.*(not available|failed processing)/i,
     message:
       "Your voice isn't available right now. Re-record it in Settings, then try again.",
   },

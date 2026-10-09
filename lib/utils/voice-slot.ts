@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cloneVoice, deleteVoice, resolveVoiceId } from "@/lib/api/heygen";
+import { cloneVoice, deleteVoice, resolveVoiceId, voiceIsGone } from "@/lib/api/heygen";
 
 /**
  * Voice clone slots, recycled.
@@ -26,6 +26,26 @@ import { cloneVoice, deleteVoice, resolveVoiceId } from "@/lib/api/heygen";
 
 /** The bucket the sample lives in. Private — see the migration's note on why. */
 const SAMPLE_BUCKET = "voice-recordings";
+
+/** What the agent is told when their voice is gone and there is nothing to rebuild it from. */
+export const VOICE_GONE_MESSAGE =
+  "Your voice clone is no longer available, so this video wasn't started and nothing was taken from your plan. " +
+  "Record your voice again in Settings, then try again.";
+
+/**
+ * The profile named a voice that no longer exists, and no sample was kept.
+ *
+ * Its own error because the two things a caller might otherwise do are both
+ * wrong: send the dead id (the render is refused, with a message about
+ * "setup") or quietly use a stock voice (a video in a stranger's voice, for
+ * someone whose Settings page said they had their own).
+ */
+export class VoiceGoneError extends Error {
+  constructor() {
+    super(VOICE_GONE_MESSAGE);
+    this.name = "VoiceGoneError";
+  }
+}
 
 export interface VoiceProfile {
   id: string;
@@ -72,10 +92,35 @@ export async function saveVoiceSample(
  * that never renders is a support ticket.
  */
 export async function ensureVoiceForRender(profile: VoiceProfile): Promise<string | null> {
-  if (profile.heygen_voice_id) return profile.heygen_voice_id;
+  const admin = createAdminClient();
+
+  if (profile.heygen_voice_id) {
+    /**
+     * Checked, not trusted.
+     *
+     * The id used to be handed straight back. A voice can go missing without
+     * this app doing it (removed on the service's side, or by a clean-up that
+     * never reached this profile), and then every render was refused for a
+     * reason nobody could see, while Settings went on saying the voice was
+     * there. One lookup per render is the price of knowing.
+     */
+    if (!(await voiceIsGone(profile.heygen_voice_id))) return profile.heygen_voice_id;
+
+    // Forget it, so Settings stops saying there is a voice. Only if the
+    // profile still names this one: a new voice recorded a moment ago is not
+    // to be wiped by a check on the old.
+    await admin
+      .from("profiles")
+      .update({ heygen_voice_id: null })
+      .eq("id", profile.id)
+      .eq("heygen_voice_id", profile.heygen_voice_id);
+    console.warn(`[voice-slot] voice on record for ${profile.id} no longer exists; cleared`);
+
+    // With a sample it is rebuilt below, exactly as a retired one is.
+    if (!profile.voice_sample_url) throw new VoiceGoneError();
+  }
   if (!profile.voice_sample_url) return resolveVoiceId(null);
 
-  const admin = createAdminClient();
   const { data, error } = await admin.storage
     .from(SAMPLE_BUCKET)
     .download(profile.voice_sample_url);
