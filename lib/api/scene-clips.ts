@@ -74,6 +74,28 @@ const LOOK = [
   "Audio: quiet natural room tone or light outdoor ambience only. No speech. No music.",
 ].join(" ");
 
+/**
+ * The same look, for a background that has to show what is being talked
+ * about, which is often someone doing something.
+ *
+ * The owner's choice (2026-10-09), made for the scenes behind an avatar
+ * video: people may appear, from behind or at a distance, never a face. The
+ * line about who they are is the fair-housing one. A scene that describes its
+ * people is choosing them, and nothing here should.
+ */
+const LOOK_DISTANT_PEOPLE = LOOK
+  .replace(
+    "No people at all: no faces, no hands, no figures, no silhouettes, no reflections of people.",
+    "Any person is seen only from behind or at a distance, at work or walking away, never posed: no face turned towards the camera, no close-up of a face, no eye contact. " +
+    "Any phone, laptop or camera screen shows only a soft glow or blurred shapes, never words, pictures of people or an interface.",
+  )
+  // The speaker sits in a circle over the bottom right corner of this picture.
+  + " Compose with the subject in the left two thirds of the frame; the bottom right corner will be covered, so nothing important is there."
+  + " One continuous shot: no cuts, no dissolves, no change of scene.";
+
+/** Which of the two a clip is shot in. */
+export type SceneLook = "no-people" | "distant-people";
+
 /** Used when the planner cannot be reached. Plain, safe, and true of any market. */
 const STOCK_SCENES = [
   "The front of a tidy house with a freshly painted front door, potted plants either side of the step, and a few leaves drifting across the path.",
@@ -125,7 +147,62 @@ Hard limits, every scene:
   return scenes;
 }
 
-async function generateOnce(description: string, seconds: number, aspect: SceneAspect, giveUpAt: number): Promise<SceneClip> {
+/**
+ * One picture for each stretch of narration, showing what that stretch is
+ * about.
+ *
+ * planScenes above is for a reel about property and keeps to homes. This one
+ * is for the background behind someone talking, where the subject is whatever
+ * they are talking about: a script about making content was getting a porch
+ * and a kitchen, because rooms were all the planner was allowed.
+ *
+ * Returns exactly one description per beat, or nothing at all if the planner
+ * could not be reached, so the caller can fall back rather than show pictures
+ * that were not chosen for these words.
+ */
+export async function planScenesForBeats(beats: string[]): Promise<string[]> {
+  const n = beats.length;
+  if (n === 0) return [];
+  const system = `You choose the pictures that play behind a real-estate professional who is talking to camera. Their narration is below, cut into ${n} numbered parts. While each part is spoken, one short clip plays. For each part, describe what that clip shows.
+
+Return ONLY a JSON object: {"scenes": ["...", "..."]} with exactly ${n} strings, one per numbered part, in order.
+
+The rule that matters most: each clip shows THE THING THAT PART IS ABOUT. Read the part, decide what a viewer should be looking at while hearing it, and describe that. If the part is about recording a video, show a phone on a tripod. If it is about not having time, show a full desk and a clock. If it is about a house, a kitchen or a street, show that. Do not default to rooms and houses: show a home only when the part is about homes or places.
+
+Each string is one or two plain sentences, at most 40 words, describing ONE simple scene a camera on a tripod could be pointed at.
+
+What may appear:
+- The tools and places of the work: a phone on a tripod, a ring light, a microphone, a laptop, a notebook, a calendar, a desk, a front door with a lockbox, house keys, a yard sign post, a car in a driveway.
+- People, but only from behind or at a distance: someone at a desk seen over their shoulder, hands holding a phone, a figure walking up a path. Never a face towards the camera.
+- Homes, rooms and streets, when the part is about them: a generic American home or neighbourhood.
+
+Hard limits, every scene:
+- Never describe who a person is: no age, race, ethnicity, gender, family, religion or disability. Say "a person" or "someone" and nothing more about them.
+- No readable words or numbers anywhere: no signs with text, no documents you could read, no charts, no price tags, no house numbers. Screens show only a soft glow or blurred shapes.
+- No brands, logos or app interfaces. Do not show or name the product being talked about.
+- No real, nameable place, building or landmark, even if the narration names a town. Not a specific property.
+- No two scenes alike.`;
+
+  let out: Record<string, unknown> | null = null;
+  try {
+    out = await chatJson(
+      system,
+      [{ role: "user", content: `NARRATION:\n${beats.map((b, i) => `${i + 1}. ${b.slice(0, 400)}`).join("\n")}` }],
+      { maxTokens: 1400, temperature: 0.4, label: "scene-plan-beats" },
+    );
+  } catch (err) {
+    console.warn("[scenes] beat plan failed:", err instanceof Error ? err.message : err);
+    return [];
+  }
+  const raw = Array.isArray(out?.scenes) ? (out!.scenes as unknown[]) : [];
+  const scenes = raw
+    .filter((x): x is string => typeof x === "string" && x.trim().length > 12)
+    .map((x) => x.trim().slice(0, 400));
+  // One per beat or it is not a plan for these beats.
+  return scenes.length === n ? scenes : [];
+}
+
+async function generateOnce(description: string, seconds: number, aspect: SceneAspect, giveUpAt: number, look: SceneLook = "no-people"): Promise<SceneClip> {
   const headers = { "x-api-key": apiKey(), "Content-Type": "application/json" };
   const create = await fetch(`${API}/v3/models/videos`, {
     method: "POST",
@@ -133,7 +210,7 @@ async function generateOnce(description: string, seconds: number, aspect: SceneA
     body: JSON.stringify({
       model: MODEL,
       mode: "text_to_video",
-      prompt: `${description} ${LOOK}`,
+      prompt: `${description} ${look === "distant-people" ? LOOK_DISTANT_PEOPLE : LOOK}`,
       duration: seconds,
       resolution: "768p",
       aspect_ratio: aspect,
@@ -179,11 +256,15 @@ async function generateOnce(description: string, seconds: number, aspect: SceneA
  */
 export async function makeSceneClips(
   scenes: string[],
-  secondsEach: number,
+  /** One length for every clip, or a length for each. */
+  secondsEach: number | number[],
   aspect: SceneAspect,
   giveUpAt: number,
+  look: SceneLook = "no-people",
 ): Promise<(SceneClip | null)[]> {
-  const seconds = Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, Math.ceil(secondsEach)));
+  const clamp = (v: number) => Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, Math.ceil(v)));
+  const lengths = scenes.map((_, i) => clamp(Array.isArray(secondsEach) ? (secondsEach[i] ?? CLIP_MIN_SECONDS) : secondsEach));
+  const seconds = Array.isArray(secondsEach) ? Math.round(lengths.reduce((a, b) => a + b, 0) / Math.max(1, lengths.length)) : lengths[0] ?? CLIP_MIN_SECONDS;
   const out: (SceneClip | null)[] = new Array(scenes.length).fill(null);
   let next = 0;
 
@@ -194,7 +275,7 @@ export async function makeSceneClips(
         // Not worth starting a clip there is no time to wait for.
         if (giveUpAt - Date.now() < 20_000) break;
         try {
-          out[i] = await generateOnce(scenes[i], seconds, aspect, giveUpAt);
+          out[i] = await generateOnce(scenes[i], lengths[i], aspect, giveUpAt, look);
         } catch (err) {
           console.warn(`[scenes] scene ${i + 1}, try ${attempt}: ${err instanceof Error ? err.message : err}`);
         }
@@ -205,7 +286,7 @@ export async function makeSceneClips(
   const started = Date.now();
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, scenes.length) }, worker));
   console.log(
-    `[scenes] ${out.filter(Boolean).length}/${scenes.length} clips at ${seconds}s each in ${Math.round((Date.now() - started) / 1000)}s`,
+    `[scenes] ${out.filter(Boolean).length}/${scenes.length} clips at ${Array.isArray(secondsEach) ? "about " : ""}${seconds}s each in ${Math.round((Date.now() - started) / 1000)}s`,
   );
   return out;
 }

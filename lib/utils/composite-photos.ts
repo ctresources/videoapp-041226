@@ -208,6 +208,14 @@ export type BackgroundKind = "photo" | "clip";
 export interface BackgroundItem {
   url: string;
   kind: BackgroundKind;
+  /**
+   * Exactly how long this one is on screen, for a clip chosen for a
+   * particular stretch of the narration. Without it a photo holds for
+   * SECONDS_PER_PHOTO and a clip plays up to SECONDS_PER_CLIP.
+   */
+  seconds?: number;
+  /** The clip is shorter than `seconds` and has to run again to fill it. */
+  loop?: boolean;
 }
 
 /**
@@ -261,17 +269,36 @@ export async function compositePhotos(
     // phone photos coming out sideways.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sharp = ((await import("sharp")) as any).default;
-    const downloaded: { path: string; kind: BackgroundKind }[] = [];
+    const downloaded: { path: string; kind: BackgroundKind; seconds?: number; loop?: boolean }[] = [];
+    /**
+     * Time owed by a timed clip that would not download.
+     *
+     * A timed sequence is cut to the narration, so dropping one clip would
+     * pull every later picture early. Its time goes to the clip before it,
+     * which then runs on, or to the next one if it was the first.
+     */
+    let owed = 0;
+    const lost = (i: number) => {
+      const t = sources[i].seconds;
+      if (!t) return;
+      const before = downloaded[downloaded.length - 1];
+      if (before?.seconds) { before.seconds += t; before.loop = true; }
+      else owed += t;
+    };
     for (let i = 0; i < sources.length; i++) {
       const { url, kind } = sources[i];
       try {
         const res = await fetch(url);
-        if (!res.ok) continue;
+        if (!res.ok) { lost(i); continue; }
         const raw = Buffer.from(await res.arrayBuffer());
         if (kind === "clip") {
           const p = join(dir, `clip-${i}.mp4`);
           await fs.writeFile(p, raw);
-          downloaded.push({ path: p, kind });
+          const timed = sources[i].seconds;
+          downloaded.push(timed
+            ? { path: p, kind, seconds: timed + owed, loop: sources[i].loop || owed > 0 }
+            : { path: p, kind });
+          if (timed) owed = 0;
         } else {
           const p = join(dir, `photo-${i}.jpg`);
           await fs.writeFile(p, await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer());
@@ -281,6 +308,7 @@ export async function compositePhotos(
         // Named so a systematically failing format is visible in the logs
         // instead of showing up as a bare avatar video nobody can explain.
         console.warn(`[composite-photos] skipped ${kind} ${i} (${sources[i].url.slice(-40)}): ${err instanceof Error ? err.message : err}`);
+        lost(i);
       }
     }
     if (downloaded.length === 0) throw new Error("No b-roll sources could be downloaded");
@@ -289,8 +317,12 @@ export async function compositePhotos(
     // ── Pass 1: build the background track (video only) ──────────────────────
     await new Promise<void>((resolve, reject) => {
       const cmd = ffmpeg();
-      for (const { path: p, kind } of downloaded) {
-        if (kind === "photo") {
+      for (const { path: p, kind, seconds: timed, loop } of downloaded) {
+        if (kind === "clip" && timed) {
+          // On screen for exactly its stretch of the narration. Run again
+          // only when it is shorter than that, which is the rare case.
+          cmd.input(p).inputOptions([...(loop ? ["-stream_loop", "-1"] : []), "-t", timed.toFixed(3)]);
+        } else if (kind === "photo") {
           // A still needs -loop/-t to occupy time.
           cmd.input(p).inputOptions(["-loop", "1", "-t", String(SECONDS_PER_PHOTO)]);
         } else {

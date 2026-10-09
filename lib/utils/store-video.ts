@@ -4,7 +4,8 @@ import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { compositePhotos, burnSubtitles } from "@/lib/utils/composite-photos";
 import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
-import { makeSceneClips, planScenes, SCENES_MIN } from "@/lib/api/scene-clips";
+import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MIN } from "@/lib/api/scene-clips";
+import { beatsFromSrt } from "@/lib/utils/script-beats";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -252,12 +253,14 @@ export async function storeVideoDetailed(
     // photos under a three-minute script looped every 24 seconds with nothing
     // able to break it up. Appending clips lengthens and varies the sequence;
     // the user's own photos still lead.
-    let clipUrls = opts.clipUrls ?? [];
+    let clips: { url: string; seconds?: number; loop?: boolean }[] = (opts.clipUrls ?? []).map((url) => ({ url }));
     if (opts.sceneScript && !(opts.photoUrls?.length) && opts.dimension) {
-      const scenes = await sceneBackground(videoId, opts.sceneScript, opts.dimension);
+      // The captions say when each sentence is spoken, which is what lets a
+      // scene be cut to it. With none, the scenes are still made, untimed.
+      const scenes = await sceneBackground(videoId, opts.sceneScript, opts.dimension, srt ?? opts.cachedSrt ?? null);
       if (scenes.length > 0) {
-        clipUrls = scenes;
-        await mergeMetadata(admin, videoId, { scene_clips: scenes.length });
+        clips = scenes;
+        await mergeMetadata(admin, videoId, { scene_clips: scenes.length, scenes_timed: scenes.some((c) => !!c.seconds) });
         await admin.from("api_usage_log").insert({
           user_id: userId,
           api_provider: "heygen",
@@ -269,7 +272,7 @@ export async function storeVideoDetailed(
     }
     const broll = [
       ...(opts.photoUrls ?? []).map((url) => ({ url, kind: "photo" as const })),
-      ...clipUrls.map((url) => ({ url, kind: "clip" as const })),
+      ...clips.map((c) => ({ ...c, kind: "clip" as const })),
     ];
 
     let brollApplied = false;
@@ -429,12 +432,22 @@ export async function storeVideoDetailed(
   return { url: publicUrl, state: "stored" };
 }
 
+/** The most seconds of scene one video has made for it, which is what bounds its cost. */
+const SCENE_SECONDS_BUDGET = 96;
+
 /**
- * A background made for this script: a few short realistic scenes.
+ * A background made for this script: short realistic scenes.
  *
- * Only for a video that came with no photos. The scene maker's own rules
- * apply (scene-clips.ts): ordinary American homes and rooms, no people, no
- * lettering, never a named place or a real property.
+ * Only for a video that came with no photos. Two ways, in order:
+ *
+ * Matched. With a caption file, the narration is cut into its sentences and
+ * each gets a scene of what it is about, on screen for exactly as long as it
+ * is spoken. People may appear, from behind or at a distance (the owner's
+ * choice; see scene-clips.ts).
+ *
+ * Unmatched. With no timings to cut to, a handful of scenes played in turn,
+ * which is all this did at first. It put a porch and a kitchen behind a
+ * script about making videos.
  *
  * Returns nothing rather than throwing, and the caller keeps its stock clips.
  * It is given two and a half minutes at most: this runs between the render
@@ -445,20 +458,61 @@ async function sceneBackground(
   videoId: string,
   script: string,
   dimension: { width: number; height: number },
-): Promise<string[]> {
+  srt: string | null,
+): Promise<{ url: string; seconds?: number; loop?: boolean }[]> {
   const started = Date.now();
+  const aspect = dimension.height > dimension.width ? "9:16" as const : "16:9" as const;
   try {
+    const beats = srt ? beatsFromSrt(srt) : [];
+    const plan = beats.length >= SCENES_MIN ? await planScenesForBeats(beats.map((b) => b.text)) : [];
+
+    if (plan.length === beats.length && plan.length >= SCENES_MIN) {
+      // How long each is on screen. The last runs half a second past the
+      // final word, so the picture does not give out before the video does.
+      // No more than that: a clip asked to run past its own length starts
+      // again, and a jump back to its first frame is worse than a short tail.
+      const onScreen = beats.map((b, i) => b.end - b.start + (i === beats.length - 1 ? 0.5 : 0));
+      // How long a clip to make for it: its time on screen, within what the
+      // model makes well, and within the budget for the whole video.
+      const cap = Math.max(5, Math.floor(SCENE_SECONDS_BUDGET / beats.length));
+      const lengths = onScreen.map((t) => Math.min(cap, Math.ceil(t)));
+      const made = await makeSceneClips(plan, lengths, aspect, started + 150_000, "distant-people");
+      const got = made.filter(Boolean).length;
+      if (got >= Math.max(SCENES_MIN, Math.ceil(beats.length / 2))) {
+        const out: { url: string; seconds: number; loop: boolean }[] = [];
+        let owed = 0;
+        made.forEach((clip, i) => {
+          if (!clip) {
+            // Its sentence is covered by the scene before it, or the next.
+            if (out.length) { out[out.length - 1].seconds += onScreen[i]; out[out.length - 1].loop = true; }
+            else owed += onScreen[i];
+            return;
+          }
+          const t = onScreen[i] + owed;
+          owed = 0;
+          out.push({ url: clip.url, seconds: t, loop: t > clip.seconds - 0.2 });
+        });
+        console.log(
+          `[store-video] ${videoId}: ${got}/${beats.length} scene(s) matched to the narration in ${Math.round((Date.now() - started) / 1000)}s ` +
+          `(${onScreen.map((t) => t.toFixed(1)).join(", ")}s)`,
+        );
+        return out;
+      }
+      console.warn(`[store-video] ${videoId}: only ${got}/${beats.length} matched scene(s) could be made — using stock footage`);
+      return [];
+    }
+
     const seconds = script.split(/\s+/).filter(Boolean).length / 2.4;
     const count = Math.max(4, Math.min(6, Math.ceil(seconds / 8)));
-    const plan = await planScenes(script, count);
-    const made = (await makeSceneClips(plan, 8, dimension.height > dimension.width ? "9:16" : "16:9", started + 150_000))
+    const loose = await planScenes(script, count);
+    const made = (await makeSceneClips(loose, 8, aspect, started + 150_000))
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (made.length < SCENES_MIN) {
       console.warn(`[store-video] ${videoId}: only ${made.length} scene(s) could be made — using stock footage`);
       return [];
     }
-    console.log(`[store-video] ${videoId}: ${made.length} scene(s) made for the background in ${Math.round((Date.now() - started) / 1000)}s`);
-    return made.map((c) => c.url);
+    console.log(`[store-video] ${videoId}: ${made.length} scene(s) made for the background in ${Math.round((Date.now() - started) / 1000)}s (not timed: no captions to cut to)`);
+    return made.map((c) => ({ url: c.url }));
   } catch (err) {
     console.warn(`[store-video] ${videoId}: scenes failed, using stock footage:`, err instanceof Error ? err.message : err);
     return [];
