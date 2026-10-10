@@ -1193,7 +1193,18 @@ export async function POST(req: NextRequest) {
       // the screen with the user's photos rather than carrying it alone.
       // SHORT Direct Video renders are 1-4 min, where the delta is a few dollars
       // and the face fills the frame — so those keep the best engine available.
-      const preferredEngine = isLongForm
+      //
+      // IN A CIRCLE, the face does not fill the frame, and that changes the
+      // sum for shorts too. With photos, stock clips or scenes behind them the
+      // agent is a corner circle a third of the frame wide (composite-photos),
+      // where the difference between the models is hard to see and the
+      // difference in price is not: $2.60 a minute against $3.00 for a photo
+      // avatar, $1.00 against $4.00 for a twin. The owner chose the cheaper
+      // model for these (2026-10-10). A short video with nothing to put
+      // behind the agent is the only one left where the face is the picture,
+      // and that needs a long script with no photos, which is already III.
+      const inCircle = directPhotos.length > 0 || stockClips.length > 0 || !isLongForm;
+      const preferredEngine = isLongForm || inCircle
         ? ("avatar_iii" as const)
         : isDigitalTwin
           ? ("avatar_v" as const)
@@ -1218,7 +1229,7 @@ export async function POST(req: NextRequest) {
         // Cheapest supported first for long form, where minutes multiply;
         // best supported first for shorts, where the face carries the frame
         // and IV and V cost the same anyway.
-        const order = isLongForm
+        const order = isLongForm || inCircle
           ? ["avatar_iii", "avatar_iv", "avatar_v"]
           : ["avatar_v", "avatar_iv", "avatar_iii"];
         const fallback = order.find((e) => look.engines!.includes(e));
