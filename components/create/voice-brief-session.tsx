@@ -100,6 +100,10 @@ const SAID_SCENES = /\bscenes?\s+(?:reel|video|short)s?\b|\bfaceless\b/;
 // phone. Unless they also said who is in it: "a reel with my avatar" and
 // "record a reel" are those, in that shape (see saidMake).
 const SAID_REEL = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+reels?\\b|^\\s*(?:an?\\s+)?(?:short\\s+|quick\\s+)?reels?\\b`);
+// And "a real about": what the microphone writes when it hears "a reel
+// about". Only before a word a topic follows, so "a real estate video" and
+// "make a real difference" are left as the words they are.
+const HEARD_REAL = new RegExp(`\\b${MAKE_VERB}\\b\\s+(?:an?|another|my)\\s+(?:short\\s+|quick\\s+|new\\s+)?real\\s+(?:about|on|for|of|explaining|showing|that)\\b`);
 
 function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   const t = text.toLowerCase().replace(/[’‘]/g, "'");
@@ -108,7 +112,7 @@ function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   if (SAID_BLOG.test(t)) kinds.push("blog");
   if (SAID_CAMERA.test(t)) kinds.push("camera");
   if (SAID_AVATAR.test(t)) kinds.push("avatar");
-  if (SAID_SCENES.test(t) || (kinds.length === 0 && SAID_REEL.test(t))) kinds.push("scenes");
+  if (SAID_SCENES.test(t) || (kinds.length === 0 && (SAID_REEL.test(t) || HEARD_REAL.test(t)))) kinds.push("scenes");
   // Exactly one, and not a blog said alongside a video: that is two things.
   if (kinds.length === 1 && !(kinds[0] === "blog" && video)) return { kind: kinds[0], video: false };
   if (kinds.length === 0 && video) return { kind: null, video: true };
@@ -217,6 +221,17 @@ interface Props {
    */
   picked?: { kind: BriefMake; n: number };
   /**
+   * The page's own choices of what to make, drawn between the box and Send.
+   *
+   * The box asked what to make with four buttons, and the page asked again
+   * with a row of cards two sections down: the same question twice. With
+   * this, the cards are the one place it is asked, and the strip under them
+   * only says which is chosen and offers Send.
+   */
+  picker?: React.ReactNode;
+  /** Which of them is chosen on the page now. Null where none of the four is. */
+  selected?: BriefMake | null;
+  /**
    * The thing has been written and is waiting on the page: a camera script in
    * its teleprompter. The box stops offering to make it, since a tap there
    * would write over a script that may have been edited.
@@ -241,7 +256,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, settled = false, onMakeChange, picked }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, settled = false, onMakeChange, picked }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -558,7 +573,11 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // were typed wins over them, until they are edited.
   const said = saidMake(draft);
   const saidKind = cardOver !== null && cardOver === draft ? null : said.kind;
-  const making: BriefMake | null = askAll ? null : (saidKind ?? make);
+  // With the cards in the box, the one that is lit is the answer unless the
+  // words say otherwise, so there is always something to send as.
+  const making: BriefMake | null = picker
+    ? (saidKind ?? selected ?? make)
+    : askAll ? null : (saidKind ?? make);
   const offered = !askAll && !make && said.video
     ? MAKES.filter((m) => m.kind !== "blog")
     : MAKES;
@@ -759,6 +778,18 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
         }`}
       />
+      </div>
+
+      {/* What to make. Outside the part that dims: when the box does not
+          apply (a listing, say), these are how you get back to where it does. */}
+      {picker && (
+        <div>
+          <p className="mb-1.5 text-[13.5px] font-semibold text-spark-ink">What are you sparking?</p>
+          {picker}
+        </div>
+      )}
+
+      <div className={`flex flex-col gap-2 ${off ? "pointer-events-none select-none opacity-45" : ""}`}>
 
       {/* Words waiting in the box, spoken or typed.
           The owner tried it and stopped here twice. First nothing said whether
@@ -778,6 +809,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                 Check your words, then press Send.
                 <span className="mt-0.5 block text-[13.5px] font-normal text-spark-ink-muted">
                   Making: <strong className="font-semibold text-spark-ink">{MAKES.find((m) => m.kind === making)?.label}</strong>.{" "}
+                  {picker ? "Choose another above to change it." : (
                   <button
                     type="button"
                     onClick={() => { makeRef.current = null; setMake(null); setAskAll(true); }}
@@ -785,6 +817,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                   >
                     Change
                   </button>
+                  )}
                 </span>
               </p>
               <button
@@ -878,7 +911,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
               I have everything. What should I make?
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {MAKES.map(({ kind, label }) => (
+              {(picker && selected ? MAKES.filter((m) => m.kind === selected) : MAKES).map(({ kind, label }) => (
                 <button
                   key={kind}
                   type="button"

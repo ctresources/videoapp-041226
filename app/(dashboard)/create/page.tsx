@@ -1898,6 +1898,13 @@ function CreatePageInner() {
   // this one moved to the top and could do both jobs.
   // A Scenes Reel is the reel builder's third kind, shown as a card of its own.
   const scenesRoute = inputMode === "listing" && listingMode === "scenes" && !blogOnly;
+  // Which of the box's four the page is on, for the strip under the box to
+  // name. A listing or a photo reel is none of them: the box is off there.
+  const selectedMake: BriefMake | null =
+    inputMode === "listing" ? (scenesRoute ? "scenes" : null)
+      : blogOnly ? "blog"
+        : inputMode === "camera" ? "camera"
+          : "avatar";
   const topicApplies =
     (inputMode === "script" && !(blogOnly && blogSrcOpen))
     || (cameraFromTopic && !cameraSourceLocked)
@@ -2367,6 +2374,227 @@ function CreatePageInner() {
               onWake={topicWake}
               settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
               picked={cardPick}
+              selected={selectedMake}
+              // The page's choice of what to make, asked here and nowhere else.
+              picker={step === "input" && !cameraHandoff ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Avatar first, because avatar is what the page opens on.
+              inputMode starts at "script", so this tile is already lit when
+              you arrive — and a selected control sitting second, to the right
+              of an unselected one, reads as something you changed rather than
+              the default you were given. First position and highlighted say
+              the same thing; second position and highlighted disagree. */}
+          {([
+            {
+              key: "spark" as const,
+              // Both video tiles share the "Video —" prefix so they read as two
+              // kinds of one thing, which is what they are. They stay separate
+              // tiles because what differs is cost and gating, not format: this
+              // one spends a video from the plan, the other is free, and the
+              // trial lock hits one and not the other. A single Video tile
+              // would push that choice into a second step and move the price
+              // away from the moment of choosing.
+              // Named as things you do, not as kinds of video. "Video — My
+              // Avatar" and "Video — My Camera" shared a prefix so they would
+              // read as two of one thing; as verbs each says what happens
+              // when you choose it, which is what someone arriving wants.
+              // Short, at the owner's choice: four across leaves each card
+              // about 174px, and the longer names ("Create an avatar video")
+              // each wrapped to two or three lines.
+              label: "Avatar video",
+              Icon: SquareUser,
+              desc: "Avatar + cloned voice",
+              free: false,
+              cost: "Uses 1 video",
+            },
+            {
+              key: "film" as const,
+              label: "Record yourself",
+              Icon: Camera,
+              // Said here because the alternative is finding out at the end.
+              // Nothing checks the window before the camera opens, so a locked
+              // user could record fifteen minutes, watch the upload succeed,
+              // and meet the 403 only at the save — with the take gone and no
+              // copy anywhere but the tab they are about to close.
+              // "Your voice" rather than "your camera": the camera is implied
+              // by the label, and what actually differs from the other tile is
+              // whose voice comes out of the video.
+              desc: !cameraLocked
+                ? "Camera + teleprompter"
+                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
+              free: true,
+              // "1 free" before the free video: the one take a new account has.
+              cost: cameraLocked ? "Locked" : freeRecordingNow ? "1 free" : "Free",
+            },
+            {
+              // A card of its own, at the owner's direction (2026-10-09). It
+              // was the third tab inside Listings & photos, which is about
+              // property pictures and where nobody looks for a reel made
+              // from a topic. It is the quickest video here and the least
+              // costly to make, and suits Reels and Shorts.
+              key: "scenes" as const,
+              label: "Scenes Reel",
+              Icon: Clapperboard,
+              // "Voice only" is what this is, and where people look for it.
+              desc: "Voice only, over AI scenes",
+              free: false,
+              cost: "Uses 1 video",
+            },
+            {
+              key: "blog" as const,
+              label: "Blog",
+              Icon: FileText,
+              // Said on the tile, before a minute is spent writing a script
+              // that arrives with no article attached and nothing explaining
+              // the gap. The 30-day window is the same one camera recording
+              // and the AI Tools run on.
+              // Kept as "Blog post" rather than given a "Video —" prefix: it is
+              // the one output on this row that is not a video, and the odd one
+              // out is the point.
+              desc: !blogLocked
+                ? "New, or paste your own"
+                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
+              free: true,
+              cost: blogLocked ? "Locked" : freeBlogNow ? "1 free" : "Included",
+            },
+            {
+              // A fourth thing to create, at the owner's direction. It sat in
+              // the row below as an answer to "How should your script begin?",
+              // which it is not: a photo reel has no script at all, and a
+              // listing video's is written from the listing, not chosen here.
+              key: "listing" as const,
+              label: "Listings & photos",
+              Icon: Building2,
+              desc: "Listing video or photo reel",
+              free: true,
+              // Not "Free". A Classic reel is; a Cinematic reel and a listing
+              // video each use one video. The card under it says which.
+              // Short enough for one of five cards: "Free or 1 video" ran
+              // under the arrow beside it.
+              cost: "From free",
+            },
+          ]).map(({ key, label, Icon, desc, free, cost }) => {
+            const active = key === "blog"
+              ? blogOnly
+              : blogOnly ? false
+                : key === "film" ? inputMode === "camera"
+                  : key === "scenes" ? inputMode === "listing" && listingMode === "scenes"
+                    : key === "listing" ? inputMode === "listing" && listingMode !== "scenes"
+                      : inputMode !== "camera" && inputMode !== "listing";
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  if (key === "blog") {
+                    if (blogLocked) {
+                      /**
+                       * Where the lock actually points.
+                       *
+                       * Billing is the answer to "my 30 days ran out". To an
+                       * account that has not started them it is the wrong
+                       * shop: the thing that unlocks this is the free video,
+                       * which is the tile immediately to the left of the one
+                       * they just pressed.
+                       */
+                      if (trialNotStarted) {
+                        toast(BLOG_SPENT);
+                        setBlogOnly(false);
+                        setInputMode("script");
+                        setLastSparkTab("script");
+                        return;
+                      }
+                      router.push("/billing");
+                      return;
+                    }
+                    setBlogOnly(true);
+                    // Something attached on the video route comes with it, and
+                    // comes in view: this route only shows an attachment under
+                    // its own source tile.
+                    if (blogSrcText.trim()) setBlogSrcOpen(true);
+                    // The format picker is hidden on this route, so a Longform
+                    // pick made before switching must not carry over unseen.
+                    setLocLength("standard");
+                    // Neither of the two routes a blog cannot come from. The
+                    // camera records rather than writes, and a pasted script
+                    // is words you already have — nothing to research, nothing
+                    // to expand.
+                    if (inputMode === "camera" || inputMode === "paste") {
+                      setInputMode("script");
+                      setLastSparkTab("script");
+                    }
+                    setCardPick({ kind: "blog", n: Date.now() });
+                    return;
+                  }
+                  if (key === "film" && cameraLocked) {
+                    if (trialNotStarted) {
+                      toast(CAMERA_SPENT);
+                      setBlogOnly(false);
+                      setInputMode("script");
+                      setLastSparkTab("script");
+                      return;
+                    }
+                    router.push("/billing");
+                    return;
+                  }
+                  setBlogOnly(false);
+                  if (key === "scenes") {
+                    setInputMode("listing");
+                    setListingMode("scenes");
+                    setCardPick({ kind: "scenes", n: Date.now() });
+                    return;
+                  }
+                  if (key === "listing") {
+                    // lastSparkTab is left alone: it is where the avatar card
+                    // returns to, and that is no longer here.
+                    setInputMode("listing");
+                    // The Scenes Reel has its own card; this one is the two
+                    // things made from property pictures.
+                    if (listingMode === "scenes") setListingMode("listing");
+                    return;
+                  }
+                  setInputMode(
+                    key === "film"
+                      ? "camera"
+                      // A listing named to the mic sets lastSparkTab too.
+                      : lastSparkTab === "camera" || lastSparkTab === "listing" ? "script" : lastSparkTab
+                  );
+                  setCardPick({ kind: key === "film" ? "camera" : "avatar", n: Date.now() });
+                }}
+                aria-pressed={active}
+                className={`flex items-center rounded-[14px] px-3 py-2.5 text-left transition-colors sm:px-4 sm:py-3.5 lg:px-2 lg:py-3 ${
+                  active
+                    ? "border-[1.5px] border-spark-amber bg-white"
+                    : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
+                }`}
+              >
+                {/* An icon again, at the owner's request, but in the line with
+                    the name rather than above it. Above, three glyphs were a
+                    row of decoration competing with the labels and pushing
+                    them down the card. Beside the name, each one is part of
+                    the label it belongs to and costs no height. */}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:items-center lg:gap-1.5 lg:text-[14px]">
+                    <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
+                    <span className="min-w-0">{label}</span>
+                  </span>
+                  <span className="mt-1 block text-[12px] leading-[1.3] text-spark-ink-muted sm:text-[13.5px] lg:text-[12.5px]">{desc}</span>
+                  {/* Under the description rather than beside the label. Next
+                      to it, the badge set the width the label had to wrap
+                      around; here each tile reads top to bottom — what it is,
+                      what it does, what it costs. The arrow is the design's
+                      way of saying the card is a way in. It still only
+                      chooses: nothing is made by pressing a card. */}
+                  <span className="mt-2 flex items-center justify-between gap-2">
+                    <CostPill free={free} emphasis>{cost}</CostPill>
+                    <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+              ) : undefined}
               // The cards in section 2 follow what the box is making, read
               // from the words or tapped there, before anything is sent. A
               // locked kind is left alone here; pressing Send says why.
@@ -2576,225 +2804,8 @@ function CreatePageInner() {
           out among three answers to "where do the words come from". */}
       {/* "Sparking", not "making" — the product's own verb, the one in the
           headline above and on the button at the end. */}
-      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" question="What are you sparking?" />}
-      {step === "input" && !cameraHandoff && (
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Avatar first, because avatar is what the page opens on.
-              inputMode starts at "script", so this tile is already lit when
-              you arrive — and a selected control sitting second, to the right
-              of an unselected one, reads as something you changed rather than
-              the default you were given. First position and highlighted say
-              the same thing; second position and highlighted disagree. */}
-          {([
-            {
-              key: "spark" as const,
-              // Both video tiles share the "Video —" prefix so they read as two
-              // kinds of one thing, which is what they are. They stay separate
-              // tiles because what differs is cost and gating, not format: this
-              // one spends a video from the plan, the other is free, and the
-              // trial lock hits one and not the other. A single Video tile
-              // would push that choice into a second step and move the price
-              // away from the moment of choosing.
-              // Named as things you do, not as kinds of video. "Video — My
-              // Avatar" and "Video — My Camera" shared a prefix so they would
-              // read as two of one thing; as verbs each says what happens
-              // when you choose it, which is what someone arriving wants.
-              // Short, at the owner's choice: four across leaves each card
-              // about 174px, and the longer names ("Create an avatar video")
-              // each wrapped to two or three lines.
-              label: "Avatar video",
-              Icon: SquareUser,
-              desc: "Avatar + cloned voice",
-              free: false,
-              cost: "Uses 1 video",
-            },
-            {
-              key: "film" as const,
-              label: "Record yourself",
-              Icon: Camera,
-              // Said here because the alternative is finding out at the end.
-              // Nothing checks the window before the camera opens, so a locked
-              // user could record fifteen minutes, watch the upload succeed,
-              // and meet the 403 only at the save — with the take gone and no
-              // copy anywhere but the tab they are about to close.
-              // "Your voice" rather than "your camera": the camera is implied
-              // by the label, and what actually differs from the other tile is
-              // whose voice comes out of the video.
-              desc: !cameraLocked
-                ? "Camera + teleprompter"
-                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
-              free: true,
-              // "1 free" before the free video: the one take a new account has.
-              cost: cameraLocked ? "Locked" : freeRecordingNow ? "1 free" : "Free",
-            },
-            {
-              // A card of its own, at the owner's direction (2026-10-09). It
-              // was the third tab inside Listings & photos, which is about
-              // property pictures and where nobody looks for a reel made
-              // from a topic. It is the quickest video here and the least
-              // costly to make, and suits Reels and Shorts.
-              key: "scenes" as const,
-              label: "Scenes Reel",
-              Icon: Clapperboard,
-              desc: "Your voice over AI scenes",
-              free: false,
-              cost: "Uses 1 video",
-            },
-            {
-              key: "blog" as const,
-              label: "Blog",
-              Icon: FileText,
-              // Said on the tile, before a minute is spent writing a script
-              // that arrives with no article attached and nothing explaining
-              // the gap. The 30-day window is the same one camera recording
-              // and the AI Tools run on.
-              // Kept as "Blog post" rather than given a "Video —" prefix: it is
-              // the one output on this row that is not a video, and the odd one
-              // out is the point.
-              desc: !blogLocked
-                ? "New, or paste your own"
-                : trialNotStarted ? "More with your free video" : "Free trial ended — pick a plan",
-              free: true,
-              cost: blogLocked ? "Locked" : freeBlogNow ? "1 free" : "Included",
-            },
-            {
-              // A fourth thing to create, at the owner's direction. It sat in
-              // the row below as an answer to "How should your script begin?",
-              // which it is not: a photo reel has no script at all, and a
-              // listing video's is written from the listing, not chosen here.
-              key: "listing" as const,
-              label: "Listings & photos",
-              Icon: Building2,
-              desc: "Listing video or photo reel",
-              free: true,
-              // Not "Free". A Classic reel is; a Cinematic reel and a listing
-              // video each use one video. The card under it says which.
-              // Short enough for one of five cards: "Free or 1 video" ran
-              // under the arrow beside it.
-              cost: "From free",
-            },
-          ]).map(({ key, label, Icon, desc, free, cost }) => {
-            const active = key === "blog"
-              ? blogOnly
-              : blogOnly ? false
-                : key === "film" ? inputMode === "camera"
-                  : key === "scenes" ? inputMode === "listing" && listingMode === "scenes"
-                    : key === "listing" ? inputMode === "listing" && listingMode !== "scenes"
-                      : inputMode !== "camera" && inputMode !== "listing";
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  if (key === "blog") {
-                    if (blogLocked) {
-                      /**
-                       * Where the lock actually points.
-                       *
-                       * Billing is the answer to "my 30 days ran out". To an
-                       * account that has not started them it is the wrong
-                       * shop: the thing that unlocks this is the free video,
-                       * which is the tile immediately to the left of the one
-                       * they just pressed.
-                       */
-                      if (trialNotStarted) {
-                        toast(BLOG_SPENT);
-                        setBlogOnly(false);
-                        setInputMode("script");
-                        setLastSparkTab("script");
-                        return;
-                      }
-                      router.push("/billing");
-                      return;
-                    }
-                    setBlogOnly(true);
-                    // Something attached on the video route comes with it, and
-                    // comes in view: this route only shows an attachment under
-                    // its own source tile.
-                    if (blogSrcText.trim()) setBlogSrcOpen(true);
-                    // The format picker is hidden on this route, so a Longform
-                    // pick made before switching must not carry over unseen.
-                    setLocLength("standard");
-                    // Neither of the two routes a blog cannot come from. The
-                    // camera records rather than writes, and a pasted script
-                    // is words you already have — nothing to research, nothing
-                    // to expand.
-                    if (inputMode === "camera" || inputMode === "paste") {
-                      setInputMode("script");
-                      setLastSparkTab("script");
-                    }
-                    setCardPick({ kind: "blog", n: Date.now() });
-                    return;
-                  }
-                  if (key === "film" && cameraLocked) {
-                    if (trialNotStarted) {
-                      toast(CAMERA_SPENT);
-                      setBlogOnly(false);
-                      setInputMode("script");
-                      setLastSparkTab("script");
-                      return;
-                    }
-                    router.push("/billing");
-                    return;
-                  }
-                  setBlogOnly(false);
-                  if (key === "scenes") {
-                    setInputMode("listing");
-                    setListingMode("scenes");
-                    setCardPick({ kind: "scenes", n: Date.now() });
-                    return;
-                  }
-                  if (key === "listing") {
-                    // lastSparkTab is left alone: it is where the avatar card
-                    // returns to, and that is no longer here.
-                    setInputMode("listing");
-                    // The Scenes Reel has its own card; this one is the two
-                    // things made from property pictures.
-                    if (listingMode === "scenes") setListingMode("listing");
-                    return;
-                  }
-                  setInputMode(
-                    key === "film"
-                      ? "camera"
-                      // A listing named to the mic sets lastSparkTab too.
-                      : lastSparkTab === "camera" || lastSparkTab === "listing" ? "script" : lastSparkTab
-                  );
-                  setCardPick({ kind: key === "film" ? "camera" : "avatar", n: Date.now() });
-                }}
-                aria-pressed={active}
-                className={`flex min-h-[96px] items-center rounded-[14px] px-4 py-3.5 text-left transition-colors lg:min-h-0 lg:px-2 lg:py-3 ${
-                  active
-                    ? "border-[1.5px] border-spark-amber bg-white"
-                    : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
-                }`}
-              >
-                {/* An icon again, at the owner's request, but in the line with
-                    the name rather than above it. Above, three glyphs were a
-                    row of decoration competing with the labels and pushing
-                    them down the card. Beside the name, each one is part of
-                    the label it belongs to and costs no height. */}
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink lg:items-center lg:gap-1.5 lg:text-[14px]">
-                    <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
-                    <span className="min-w-0">{label}</span>
-                  </span>
-                  <span className="mt-1 block text-[13.5px] leading-[1.3] text-spark-ink-muted lg:text-[12.5px]">{desc}</span>
-                  {/* Under the description rather than beside the label. Next
-                      to it, the badge set the width the label had to wrap
-                      around; here each tile reads top to bottom — what it is,
-                      what it does, what it costs. The arrow is the design's
-                      way of saying the card is a way in. It still only
-                      chooses: nothing is made by pressing a card. */}
-                  <span className="mt-2 flex items-center justify-between gap-2">
-                    <CostPill free={free} emphasis>{cost}</CostPill>
-                    <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* The cards that were here are in the Topic card now, between the box
+          and Send: one place that asks what to make. See `picker` above. */}
 
       {/* What has been emailed in used to be a line of its own here, under the
           cards. It is the last tile of the source row below now (emailTile),
@@ -2809,7 +2820,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7" eyebrow="3 · Script source" question="How should your script begin?" />
+          <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -2863,7 +2874,7 @@ function CreatePageInner() {
         <>
         <SectionHead
           className="mt-7"
-          eyebrow={blogOnly ? "3 · Source" : "3 · Script source"}
+          eyebrow={blogOnly ? "2 · Source" : "2 · Script source"}
           // "Where", not "What": the answers are origins — the writer, your
           // listings — and "come from" already carries the what.
           question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
@@ -3092,7 +3103,7 @@ function CreatePageInner() {
           {/* What is left of the old third section now that its topic box is
               section 1: the place, the audience and the shape. It had no
               heading of its own because it sat directly under that box. */}
-          <SectionHead eyebrow="4 · Details" question="Where is it, and who is it for?" />
+          <SectionHead eyebrow="3 · Details" question="Where is it, and who is it for?" />
 
           {/* ── Where / Who / What ──
               One shaded panel of questions, as in the design, rather than a
@@ -3478,7 +3489,7 @@ function CreatePageInner() {
               count it used to carry belongs to the whole page and is in the
               topbar; the tab name is the lit tile directly above. */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            4 · Your script
+            3 · Your script
           </p>
           {/* One column, top to bottom.
               Two columns asked which side to begin on and answered neither:
@@ -4327,7 +4338,7 @@ function CreatePageInner() {
                 take those are hidden, and a page that opens at "3" reads as
                 one you have lost your place in. */}
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-              {cameraHandoff ? "Where it's set" : "4 · What we're writing"}
+              {cameraHandoff ? "Where it's set" : "3 · What we're writing"}
             </p>
 
             {/* Market for THIS video. Without it the CTA and end card silently
@@ -4475,7 +4486,7 @@ function CreatePageInner() {
             <div id="camera-script" className="scroll-mt-20" />
             {cameraPhase === "script" && (
               <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-                {cameraHandoff ? "How it records" : "5 · How it records"}
+                {cameraHandoff ? "How it records" : "4 · How it records"}
               </p>
             )}
 
