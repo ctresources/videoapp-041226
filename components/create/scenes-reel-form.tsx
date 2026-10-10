@@ -9,16 +9,19 @@ import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { WPM } from "@/lib/utils/video-length";
 
 /** The longest a Scenes reel runs, and what that is in words at reading pace. */
-const MAX_SECONDS = 90;
+const MAX_SECONDS = 180;
 const MAX_WORDS = Math.floor((MAX_SECONDS / 60) * WPM);
 /**
  * The lengths the writer can be asked for, each comfortably inside its time.
- * Thirty seconds is the one most reels and shorts want; ninety is the limit.
+ * Thirty seconds is the one most reels and shorts want; three minutes is the
+ * limit, and is possible because the reel is built after the page is left.
  */
 const LENGTHS = [
-  { seconds: 30, words: 65, note: "Reels, Shorts" },
-  { seconds: 60, words: 130, note: "One idea, in full" },
-  { seconds: 90, words: 195, note: "The longest" },
+  { seconds: 30, words: 65, label: "30 sec" },
+  { seconds: 60, words: 130, label: "60 sec" },
+  { seconds: 90, words: 195, label: "90 sec" },
+  { seconds: 120, words: 265, label: "2 min" },
+  { seconds: 180, words: 400, label: "3 min" },
 ] as const;
 
 const SHAPES = [
@@ -38,8 +41,9 @@ const SHAPES = [
  * same renderer as the photo reel, so captions, music and the closing card
  * are the ones that reel has.
  *
- * It is a short thing on purpose. The whole reel is made in one request, and
- * ninety seconds of it is what fits; a longer script is an avatar video.
+ * Up to three minutes. It is built after the reply has gone (see the reel
+ * route), so nothing here waits for it: the page says it is building and
+ * My Sparks shows it when it is done.
  *
  * It says plainly what the pictures are. They are generated and generic, any
  * people in them are seen from behind or at a distance, they are never of the
@@ -63,7 +67,8 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
 }) {
   const [ownTopic, setTopic] = useState("");
   const topic = topicFromPage ?? ownTopic;
-  const [lengthSeconds, setLengthSeconds] = useState<number>(vertical ? 60 : 90);
+  // Vertical is a minute and horizontal up to three, as the format says.
+  const [lengthSeconds, setLengthSeconds] = useState<number>(vertical ? 60 : 180);
   const [script, setScript] = useState("");
   const [writing, setWriting] = useState(false);
   const [city, setCity] = useState(initialCity ?? "");
@@ -181,21 +186,14 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
         throw new Error(
           data.error
             || (timedOut
-              ? "That reel took too long to build, so nothing was taken from your plan. Try a shorter script."
+              ? "That reel could not be started, so nothing was taken from your plan. Try again."
               : `Could not build that reel (error ${res.status}).`),
         );
       }
+      // It is building now, after the reply: My Sparks shows it rendering,
+      // then finished. Nothing here has to stay open.
       setSavedId(data.videoId as string);
-      const s = data.scenes;
-      toast.success(
-        s && s.made < s.asked
-          ? `Scenes reel is ready, with ${s.made} of ${s.asked} scenes. It's in My Sparks.`
-          : "Scenes reel is ready. It's in My Sparks.",
-        { duration: 7000 },
-      );
-      if (data.voice === "stock" && hasVoiceClone) {
-        toast("Your voice clone couldn't be used this time, so a stock voice read the script.", { duration: 8000, icon: "🎙️" });
-      }
+      toast.success("Your Scenes Reel is building. You'll find it in My Sparks.", { duration: 7000 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not build that reel");
     } finally {
@@ -251,19 +249,18 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
       {/* ── Length ── */}
       <div>
         <p className={label}>Length <span className="font-normal text-spark-ink-faint">· how long a script to write</span></p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-5 gap-1.5">
           {LENGTHS.map((l) => (
             <button
               key={l.seconds}
               type="button"
               onClick={() => setLengthSeconds(l.seconds)}
               aria-pressed={lengthSeconds === l.seconds}
-              className={`rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+              className={`rounded-lg border px-1.5 py-1.5 text-center text-[12px] font-bold text-spark-ink transition-colors ${
                 lengthSeconds === l.seconds ? "border-spark-amber bg-spark-amber-tint" : "border-spark-rule bg-white hover:border-spark-rule-dim"
               }`}
             >
-              <span className="block text-[12px] font-bold text-spark-ink">{l.seconds} seconds</span>
-              <span className="block text-[10.5px] text-spark-ink-faint">{l.note}</span>
+              {l.label}
             </button>
           ))}
         </div>
@@ -391,11 +388,13 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
 
       {savedId ? (
         <div className="space-y-2">
-          <p className="text-center text-[13px] font-semibold text-spark-ink">Saved to My Sparks</p>
+          <p className="text-center text-[13px] font-semibold text-spark-ink">
+            Building now, about {Math.max(2, Math.round((seconds / 60) * 3 + 1))} minutes. You can leave this page.
+          </p>
           <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)} className="block">
             <Button size="lg" className="w-full gap-2">
               {openingVideo ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
-              {openingVideo ? "Opening…" : "View your reel"}
+              {openingVideo ? "Opening…" : "Go to My Sparks"}
             </Button>
           </a>
           <button
@@ -409,16 +408,10 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
       ) : (
         <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
           {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
-          {rendering ? "Building your reel…" : "Build the Scenes reel"}
+          {rendering ? "Starting…" : "Build the Scenes reel"}
         </Button>
       )}
 
-      {rendering && (
-        <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-          Reading the script in your voice, making the scenes, then putting the reel together. This takes
-          two to five minutes, longer for a longer reel; keep this page open until it finishes.
-        </p>
-      )}
     </div>
   );
 }

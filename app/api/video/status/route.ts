@@ -199,10 +199,21 @@ export async function GET(req: NextRequest) {
       const isLongRender =
         storedMeta.credit_kind === "long" ||
         String(video.video_type ?? "").includes("long");
-      const timeoutMin = isLongRender ? 90 : 45;
+      /**
+       * Built by our own function (a Scenes Reel), not by the render service.
+       *
+       * There is nothing to ask anyone about it: the function that is
+       * building it writes the row when it finishes or fails. What it cannot
+       * write is that it died. A function runs for thirteen minutes at most,
+       * so past sixteen with the row still "rendering" it is not coming back.
+       */
+      const builtHere = video.render_provider === "ffmpeg";
+      const timeoutMin = builtHere ? 16 : isLongRender ? 90 : 45;
       if (ageMs > timeoutMin * 60 * 1000) {
         status = "failed";
-        errorMsg = `Render timed out after ${timeoutMin} minutes`;
+        errorMsg = builtHere
+          ? "That reel took too long to build. Nothing was taken from your plan. Try again."
+          : `Render timed out after ${timeoutMin} minutes`;
         // Persist the reason like the other fail branches do, or this one reads
         // back as a bare "Render failed" once the live poll is gone.
         await admin
@@ -221,7 +232,9 @@ export async function GET(req: NextRequest) {
       try {
         const provider = video.render_provider as string;
 
-        if (provider === "heygen_agent") {
+        if (provider === "ffmpeg") {
+          // Still building; see builtHere above. The row is the whole answer.
+        } else if (provider === "heygen_agent") {
           // ── Two-step v3 polling ─────────────────────────────────────────
           // Step 1: poll the agent session to get video_id
           const session = await getVideoAgentSession(renderId);

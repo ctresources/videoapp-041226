@@ -1487,13 +1487,14 @@ export default function ProjectEditorPage() {
    * exactly what the Scenes Reel makes: their voice over a scene for each
    * sentence. It is ready in a few minutes where the render it replaces took
    * ten, and costs a fraction to make. So that is what "Voice only" builds,
-   * whenever it can: up to ninety seconds, not Longform, no photos or
+   * whenever it can: up to three minutes, not Longform, no photos or
    * document attached (those are the pictures, or the facts, they chose),
    * and not a listing, whose pictures are the listing's.
    *
    * Anything else is rendered as it always was.
    */
-  const SCENES_VOICE_MAX_WORDS = 210;
+  // Three minutes, the Scenes Reel's limit, which is also the standard cap.
+  const SCENES_VOICE_MAX_WORDS = 420;
   const scenesSpoken = [
     joinHookAndScript(selectedHook || project?.ai_script?.hook || "", editedScript || project?.ai_script?.script || ""),
     activeCta,
@@ -1566,7 +1567,7 @@ export default function ProjectEditorPage() {
         });
         // A timeout does not answer in JSON.
         const raw = await built.text();
-        let data: { videoId?: string; error?: string; code?: string; kind?: string; tier?: string; voice?: "yours" | "stock" } = {};
+        let data: { videoId?: string; renderJobId?: string; error?: string; code?: string; kind?: string; tier?: string } = {};
         try { data = raw ? JSON.parse(raw) : {}; } catch { /* handled below */ }
         if (!built.ok) {
           if (built.status === 402 && data.code === "out_of_videos") {
@@ -1574,20 +1575,14 @@ export default function ProjectEditorPage() {
             setEditorStep(3);
             return;
           }
-          throw new Error(
-            data.error
-              || (built.status === 504
-                ? "That took too long to build, so nothing was taken from your plan. Try again."
-                : `Video generation failed (${built.status})`),
-          );
+          throw new Error(data.error || `Video generation failed (${built.status})`);
         }
         if (!data.videoId) throw new Error("Invalid response from the video builder");
+        // It builds after the reply now. The progress card follows it by its
+        // job name, as it follows a render, and says when it is done.
+        setRenderJobId(data.renderJobId ?? null);
         setRenderedVideoId(data.videoId);
-        setRenderComplete(true);
-        toast.success("Your video is ready. It's in My Sparks.", { duration: 5000 });
-        if (data.voice === "stock") {
-          toast("Your voice clone couldn't be used this time, so a stock voice read the script.", { duration: 8000, icon: "🎙️" });
-        }
+        toast.success("Your video is building. You'll see it in My Sparks shortly.", { duration: 5000 });
         return;
       }
 
@@ -3571,7 +3566,7 @@ export default function ProjectEditorPage() {
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
                 note={scenesBuild
-                  ? "Takes 2 to 5 minutes. Your voice reads the script, a scene is made for each sentence, and they are put together. It keeps building if you close this page. You'll find it in My Sparks."
+                  ? "Takes 2 to 10 minutes, by length. It keeps building if you close this page. You'll find it in My Sparks."
                   : `Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Sparks.`}
               />
             );
@@ -4283,7 +4278,7 @@ export default function ProjectEditorPage() {
                     selfRecord
                       ? "Free. Your photos play as b-roll while you read"
                       : voiceOnlyAsScenes
-                        ? "Takes 2-5 minutes · your voice over a scene for each sentence"
+                        ? "Takes 2-10 minutes · your voice over a scene for each sentence"
                         : `Takes ${renderEta({ pastedScript: circleStyle, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
                   )
                   : editorStep === 4 ? (

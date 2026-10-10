@@ -30,6 +30,8 @@ import { speakLongInVoice } from "@/lib/api/long-speech";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
+import { randomUUID } from "crypto";
 
 // A minute of 1080x1920 with twelve photos measured near three minutes on this
 // hardware. 300 is what the plan allows and what the longest reel needs.
@@ -177,6 +179,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  /**
+   * A Scenes Reel is built after the reply has gone.
+   *
+   * It used to be built while the page waited: two to five minutes with the
+   * tab open, and ninety seconds was as long a reel as that could hold. Now
+   * its rows are made first, marked as rendering, the reply goes back at
+   * once, and the build runs on (waitUntil, below). My Sparks shows it
+   * rendering and then finished, the way it shows an avatar video.
+   *
+   * `pending` is those rows. When it is set, the build fills them in at the
+   * end where it would otherwise have created them.
+   */
+  let pending: { projectId: string; videoId: string } | null = null;
+
+  const build = async (): Promise<NextResponse> => {
   try {
     // ── Audio, from whichever of the three routes was chosen ────────────────
     let audioBuffer: Buffer;
@@ -317,11 +334,21 @@ export async function POST(req: NextRequest) {
     let scenesAsked = 0;
     /** When each scene comes on, where the scenes were cut to the sentences. */
     let segmentStarts: number[] | undefined;
+    /**
+     * A long Scenes Reel is rendered in the smaller frame.
+     *
+     * Three minutes at full size took 492 seconds to render on a desktop and
+     * the server is nearly twice as slow, which is past what one function is
+     * allowed. The smaller frame took 194. The scenes are generated smaller
+     * than either, so it costs the picture nothing; see `compact`.
+     */
+    let compactRender = false;
     if (scenes) {
       const seconds = await audioBufferSeconds(audioBuffer);
+      compactRender = seconds > 95;
       if (seconds > SCENES_MAX_SECONDS + 4) {
         return NextResponse.json(
-          { error: `A Scenes reel runs up to ${SCENES_MAX_SECONDS} seconds and this script reads at about ${Math.round(seconds)}. Shorten it to roughly ${Math.round(SCENES_MAX_SECONDS * 2.35)} words.` },
+          { error: `A Scenes reel runs up to ${Math.round(SCENES_MAX_SECONDS / 60)} minutes and this script reads at about ${Math.round(seconds)} seconds. Shorten it to roughly ${Math.round(SCENES_MAX_SECONDS * 2.35)} words.` },
           { status: 400 },
         );
       }
@@ -330,8 +357,9 @@ export async function POST(req: NextRequest) {
         { error: "Not enough scenes could be made this time, so nothing was taken from your plan. Try again in a minute." },
         { status: 502 },
       );
-      // Clips are given two and a half minutes from here; the render has the rest.
-      const giveUpAt = Date.now() + 150_000;
+      // Clips are given two to four minutes from here; the render has the rest.
+      // Longer for a longer reel, which has more of them to make.
+      const giveUpAt = Date.now() + Math.min(240_000, 120_000 + Math.round(seconds) * 700);
 
       /**
        * A scene for each sentence, on screen while it is spoken.
@@ -453,6 +481,7 @@ export async function POST(req: NextRequest) {
         // A generated scene is not played backwards; see the renderer.
         ...(scenes && { reverseAlternate: false }),
         ...(segmentStarts && { segmentStarts }),
+        ...(compactRender && { compact: true }),
         // Trimmed to the photos that survived the cap, so a caption cannot end
         // up on the photo after the one it was written for.
         photoCaptions: (scenes ? [] : body.photoCaptions ?? [])
@@ -554,6 +583,15 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id);
       project = { id: ownProject.id };
       projErr = error;
+    } else if (pending) {
+      // Made when the build began. Ready now, with its post copy.
+      const { error } = await admin
+        .from("projects")
+        .update({ status: "ready", ...(seoData && { seo_data: seoData }) })
+        .eq("id", pending.projectId)
+        .eq("user_id", user.id);
+      project = { id: pending.projectId };
+      projErr = error;
     } else {
     const made = await admin
       .from("projects")
@@ -582,9 +620,7 @@ export async function POST(req: NextRequest) {
     // Never throws, so it cannot cost the reel that was just created.
     await ensureSparkFor(admin, user.id, (project as { id: string }).id);
 
-    const { data: videoRow, error: vidErr } = await admin
-      .from("generated_videos")
-      .insert({
+    const videoFields = {
         project_id: (project as { id: string }).id,
         user_id: user.id,
         video_url: publicUrl,
@@ -603,10 +639,25 @@ export async function POST(req: NextRequest) {
             cinematic_seconds: Math.round(clips.reduce((sum, c) => sum + (c?.seconds ?? 0), 0)),
           }),
           ...(charged && { credit_cost: 1, credit_kind: "short", credit_source: charged.source }),
+          // Kept here now that a background build has no page to tell.
+          ...(voiceUsed && { voice: voiceUsed }),
         },
-      })
-      .select("id")
-      .single();
+      };
+    let videoRow: { id: string } | null = null;
+    let vidErr: { message: string } | null = null;
+    if (pending) {
+      const { error } = await admin
+        .from("generated_videos")
+        .update(videoFields)
+        .eq("id", pending.videoId)
+        .eq("user_id", user.id);
+      videoRow = { id: pending.videoId };
+      vidErr = error;
+    } else {
+      const made = await admin.from("generated_videos").insert(videoFields).select("id").single();
+      videoRow = made.data as { id: string } | null;
+      vidErr = made.error;
+    }
     if (vidErr || !videoRow) throw new Error(vidErr?.message || "Could not save the video");
 
     if (cinematic || scenes) {
@@ -635,4 +686,93 @@ export async function POST(req: NextRequest) {
     console.error("[photo-reel]", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+  };
+
+  // A photo reel is quick, and is built while the page waits, as it was.
+  if (!scenes) return build();
+
+  // Said now, while there is someone to say it to. The build checks the
+  // spoken length again once the speech exists.
+  const scriptWords = (body.script ?? "").trim().split(/\s+/).filter(Boolean).length;
+  if (scriptWords > Math.round(SCENES_MAX_SECONDS * 2.6)) {
+    return NextResponse.json(
+      { error: `A Scenes reel runs up to ${Math.round(SCENES_MAX_SECONDS / 60)} minutes and this script is ${scriptWords} words. Shorten it to roughly ${Math.round(SCENES_MAX_SECONDS * 2.35)}.` },
+      { status: 400 },
+    );
+  }
+
+  // The rows it will fill in, so there is something in My Sparks from the
+  // moment the button is pressed.
+  let reelProjectId = ownProject?.id ?? null;
+  if (!reelProjectId) {
+    const { data: proj, error: projErr } = await admin
+      .from("projects")
+      .insert({
+        user_id: user.id,
+        title,
+        project_type: "location_script",
+        // What a Spark is while its avatar video renders, too.
+        status: "generating",
+        ...(body.city && { location_city: body.city }),
+        ...(body.state && { location_state: body.state }),
+        ai_script: { title, script: (body.script ?? "").trim(), hook: "", cta: "", keywords: [] },
+      })
+      .select("id")
+      .single();
+    if (projErr || !proj) {
+      return NextResponse.json({ error: projErr?.message || "Could not start that reel" }, { status: 500 });
+    }
+    reelProjectId = (proj as { id: string }).id;
+    await ensureSparkFor(admin, user.id, reelProjectId);
+  }
+  // A name My Sparks can ask about while it waits: the status route looks a
+  // render up by this.
+  const jobId = `reel-${randomUUID()}`;
+  const { data: row, error: rowErr } = await admin
+    .from("generated_videos")
+    .insert({
+      project_id: reelProjectId,
+      user_id: user.id,
+      video_type: videoType,
+      render_provider: "ffmpeg",
+      render_status: "rendering",
+      render_job_id: jobId,
+      metadata: { source: "scenes-reel", building: true },
+    })
+    .select("id")
+    .single();
+  if (rowErr || !row) {
+    return NextResponse.json({ error: rowErr?.message || "Could not start that reel" }, { status: 500 });
+  }
+  const videoId = (row as { id: string }).id;
+  pending = { projectId: reelProjectId, videoId };
+
+  /** The build did not make a reel. Said on the row, where My Sparks reads it; nothing was charged. */
+  const failed = async (reason: string) => {
+    const message = /nothing was taken/i.test(reason) ? reason : `${reason} Nothing was taken from your plan.`;
+    console.error(`[photo-reel] scenes reel ${videoId} failed: ${reason}`);
+    await admin
+      .from("generated_videos")
+      .update({
+        render_status: "failed",
+        metadata: { source: "scenes-reel", render_error: reason, render_message: message },
+      })
+      .eq("id", videoId)
+      // Never over a reel that was saved: only one still waiting.
+      .eq("render_status", "rendering");
+    // A Spark that existed before this keeps its own status; one made for it does not.
+    if (!ownProject) await admin.from("projects").update({ status: "error" }).eq("id", reelProjectId);
+  };
+
+  waitUntil(
+    build()
+      .then(async (res) => {
+        if (res.ok) return;
+        const said = (await res.json().catch(() => null)) as { error?: string } | null;
+        await failed(said?.error || "That reel could not be built.");
+      })
+      .catch((err) => failed(err instanceof Error ? err.message : "That reel could not be built.")),
+  );
+
+  return NextResponse.json({ videoId, renderJobId: jobId, title, background: true });
 }

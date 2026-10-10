@@ -740,6 +740,16 @@ export interface SlideshowParams {
    */
   segmentStarts?: number[];
   /**
+   * Render at two thirds of the usual size: 720 wide where it is 1080.
+   *
+   * For a long Scenes Reel. Rendering takes about twice the reel's length on
+   * the server, so a three minute reel at full size would spend most of the
+   * function's allowance on the render alone. The scenes it is made of are
+   * generated at 768 lines, so the larger frame was only ever an enlargement
+   * of them; what is given up is a little sharpness in the type.
+   */
+  compact?: boolean;
+  /**
    * A closing card over the last few seconds — the ask, once the pictures have
    * done their work. Omitted entirely when absent, rather than drawn empty.
    */
@@ -817,7 +827,22 @@ export async function renderPhotoSlideshow(
   params: SlideshowParams,
   videoType: VideoType,
 ): Promise<Buffer> {
-  const cfg = FORMAT_CONFIGS[videoType];
+  const full = FORMAT_CONFIGS[videoType];
+  // Every measurement in a format is in pixels, so a smaller frame is the
+  // same layout with each of them scaled. Width and height stay even: the
+  // encoder refuses odd ones.
+  const k = 2 / 3;
+  const even = (v: number) => Math.round((v * k) / 2) * 2;
+  const cfg: FormatConfig = params.compact
+    ? {
+        ...full,
+        width: even(full.width), height: even(full.height),
+        titleFontSize: Math.round(full.titleFontSize * k), captionFontSize: Math.round(full.captionFontSize * k),
+        logoSize: even(full.logoSize), avatarSize: even(full.avatarSize),
+        avatarX: Math.round(full.avatarX * k), avatarY: Math.round(full.avatarY * k),
+        nameY: Math.round(full.nameY * k),
+      }
+    : full;
   const renderTmpDir = join(tmpdir(), `slideshow-${randomUUID()}`);
   await fs.mkdir(renderTmpDir, { recursive: true });
 

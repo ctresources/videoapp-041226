@@ -4078,7 +4078,7 @@ function CreatePageInner() {
                   {blogOnly
                     ? "Import from Zillow · Upload photos · Enter manually"
                     : listingMode === "scenes"
-                      ? "No photos, no camera · your voice over scenes matched to each sentence · up to 90 seconds · uses 1 short video"
+                      ? "No photos, no camera · your voice over scenes matched to each sentence · up to 3 minutes · uses 1 short video"
                     : listingMode === "reel"
                       ? "Your photos, with music or your voice · Classic is free, Cinematic uses 1 short video"
                       : "Upload Photos · Import From Zillow · Enter Manually"}
@@ -4198,7 +4198,7 @@ function CreatePageInner() {
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Nothing spent. Turn it into a video afterwards if you want one</li>
               </>) : listingMode === "scenes" ? (<>
-                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script of 30, 60 or 90 seconds, written from your topic or typed by you</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script from 30 seconds to 3 minutes, written from your topic or typed by you</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your voice clone reading it</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A realistic scene for each sentence, made with AI and on screen while it is spoken. Any people are seen from behind or at a distance</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Captions, music, and a closing card with your ask and phone number</li>

@@ -32,9 +32,12 @@ const MODEL = "heygen-video-1";
 
 /** Fewer than this is not a reel, and is not charged for. */
 export const SCENES_MIN = 3;
-export const SCENES_MAX = 14;
-/** The longest narration a Scenes reel takes. */
-export const SCENES_MAX_SECONDS = 90;
+export const SCENES_MAX = 24;
+/**
+ * The longest narration a Scenes reel takes. Three minutes, since the reel is
+ * built after the reply has gone and no page has to stay open for it.
+ */
+export const SCENES_MAX_SECONDS = 180;
 /** The provider makes clips of 5 to 15 seconds; past 10 a scene starts to wander. */
 const CLIP_MIN_SECONDS = 5;
 const CLIP_MAX_SECONDS = 10;
