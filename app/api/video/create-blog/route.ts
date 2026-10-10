@@ -538,7 +538,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode } = await req.json();
+  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode, avatarStyle } = await req.json();
 
   /**
    * "Nobody on screen" is a decision, not an omission.
@@ -645,12 +645,29 @@ export async function POST(req: NextRequest) {
    * the agent builds a different kind of video altogether. Read off the
    * project like verbatim is, so it holds whichever page asks for the render.
    */
-  const isCircleProject = (aiScript as { avatar_style?: string } | null)?.avatar_style === "circle";
-  const useDirectVideo = (engineIsDirect || isVerbatimProject || isCircleProject) && !voiceOnly;
+  const savedStyle = (aiScript as { avatar_style?: string } | null)?.avatar_style;
+  // What the setup screen asked for this time, or what the project last had.
+  const styleAsked = avatarStyle === "full" || avatarStyle === "circle" ? avatarStyle : savedStyle;
+  const isCircleProject = styleAsked === "circle";
+  /**
+   * "Avatar full video", asked for by name.
+   *
+   * It can be chosen for a pasted script now, which used to go to Direct
+   * Video whatever was asked: the owner wanted their own script with the
+   * agent doing the b-roll. The agent is told to speak a script word for
+   * word and does at these lengths; the one that came back as a teaser was
+   * several times longer than the script cap that applies here. A long video
+   * is still Direct Video: the agent cannot carry a script that size.
+   */
+  const wantsFull = styleAsked === "full" && !isLongForm;
+  const useDirectVideo = (isLongForm || (!wantsFull && (engineIsDirect || isVerbatimProject || isCircleProject))) && !voiceOnly;
   if (voiceOnly && (engineIsDirect || isVerbatimProject)) {
     console.log(`[create-blog] project=${projectId} asked for voice only — not using Direct Video, which would supply a face`);
   }
-  if (isVerbatimProject && !engineIsDirect) {
+  if (isVerbatimProject && wantsFull) {
+    console.log(`[create-blog] project=${projectId} is a pasted script sent to the Video Agent, as asked (Avatar full video)`);
+  }
+  if (isVerbatimProject && !engineIsDirect && !wantsFull) {
     console.log(`[create-blog] project=${projectId} is verbatim — Direct Video, whatever the request asked for`);
   }
   const seoData = project.seo_data as Record<string, unknown> | null;

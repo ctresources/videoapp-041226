@@ -395,6 +395,16 @@ export default function ProjectEditorPage() {
   // Previously this started null and forced a choice, which meant a wrong
   // choice produced a stock-footage video with no hint why.
   const [renderMode, setRenderMode] = useState<"voice_only" | "avatar_voice">("avatar_voice");
+  /**
+   * Which avatar video.
+   *
+   * "full" is made whole by the Video Agent: on screen with b-roll and
+   * graphics it chooses. "circle" is Direct Video: a corner circle over a
+   * scene for each sentence, or over their photos, speaking the script
+   * exactly. Any script can be either now. A pasted script opens on the
+   * circle, as it always rendered; one the AI wrote opens on full.
+   */
+  const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("full");
   /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
   const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
   /**
@@ -965,6 +975,11 @@ export default function ProjectEditorPage() {
       // silently reset to the avatar default.
       if (aiS.render_mode === "voice_only" || aiS.render_mode === "avatar_voice") {
         setRenderMode(aiS.render_mode);
+      }
+      {
+        const saved = (aiS as { avatar_style?: string }).avatar_style;
+        const pasted = (aiS as { verbatim?: boolean }).verbatim === true || source === "paste";
+        setAvatarStyle(saved === "full" || saved === "circle" ? saved : pasted ? "circle" : "full");
       }
       // The rest of the setup screen, restored from a saved draft. Everything
       // above this was already round-tripping; these six were React state only,
@@ -1593,7 +1608,10 @@ export default function ProjectEditorPage() {
           // Pasted scripts render via Direct Video so the avatar speaks the
           // FULL script verbatim — the Video Agent summarizes long scripts
           // (an 2900-char story came out as an 8-second teaser).
-          ...((source === "paste" || circleStyle) && { engine: "direct" }),
+          ...(circleStyle && { engine: "direct" }),
+          // Said outright as well, so the server is not left to infer it from
+          // where the script came from.
+          avatarStyle: circleStyle ? "circle" : "full",
           /**
            * Who is on screen, stated rather than implied.
            *
@@ -1712,29 +1730,52 @@ export default function ProjectEditorPage() {
             the same question. It is the one that makes everything under this
             heading — which look, which photos, which format — stop mattering,
             so it belongs in the choice itself. */}
-        <div className="grid gap-1.5 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
           {[
+            // The same four for every script, pasted or written for them, in
+            // the names the page before this one uses.
             {
+              key: "full",
+              mode: "avatar_voice" as const,
+              style: "full" as const,
+              label: "Avatar full video",
+              desc: fullBlocked ? "Up to 3 minutes" : "B-roll and graphics made for you",
+              blocked: fullBlocked,
+            },
+            {
+              key: "circle",
+              mode: "avatar_voice" as const,
+              style: "circle" as const,
+              label: "Avatar in circle",
+              desc: "You in a corner, over scenes or your photos",
+              blocked: false,
+            },
+            {
+              key: "voice",
               mode: "voice_only" as const,
+              style: null,
               label: "Voice over only",
               // Short ones are built as a Scenes Reel; see voiceOnlyAsScenes.
-              desc: "Your voice over scenes for each sentence, no face on screen",
+              desc: "Your voice over AI scenes",
+              blocked: false,
             },
             {
-              mode: "avatar_voice" as const,
-              // The two avatar videos, named as the page before names them.
-              label: circleLook ? "Avatar in circle" : "Avatar full video",
-              desc: "Your look on screen. Pick one below",
-            },
-            {
+              key: "self",
               mode: "self" as const,
+              style: null,
               label: "I'll record it",
-              desc: "You on camera, free. Uses nothing from your plan",
+              desc: "You on camera, free",
+              blocked: false,
             },
-          ].map(({ mode, label, desc }) => (
+          ].map(({ key, mode, style, label, desc, blocked }) => {
+            const on = mode === "self"
+              ? selfRecord
+              : !selfRecord && renderMode === mode && (style === null || (style === "circle") === circleStyle);
+            return (
             <button
-              key={mode}
+              key={key}
               type="button"
+              disabled={blocked}
               // "self" is not a render mode — nothing server-side accepts it.
               // It only decides what this page shows, and the footer turns into
               // Open Camera. The two real modes still set renderMode.
@@ -1742,6 +1783,7 @@ export default function ProjectEditorPage() {
                 if (mode === "self") { setSelfRecord(true); return; }
                 setSelfRecord(false);
                 setRenderMode(mode);
+                if (style) setAvatarStyle(style);
                 /**
                  * Written to the project, not just to this component.
                  *
@@ -1760,13 +1802,13 @@ export default function ProjectEditorPage() {
                   fetch("/api/project/save-draft", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ projectId: project.id, renderMode: mode }),
+                    body: JSON.stringify({ projectId: project.id, renderMode: mode, ...(style && { avatarStyle: style }) }),
                   }).catch(() => { /* the render still carries the mode */ });
                 }
               }}
-              aria-pressed={mode === "self" ? selfRecord : !selfRecord && renderMode === mode}
-              className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
-                (mode === "self" ? selfRecord : !selfRecord && renderMode === mode)
+              aria-pressed={on}
+              className={`flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                on
                   ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                   : "border border-spark-rule bg-white hover:border-spark-rule-dim"
               }`}
@@ -1774,7 +1816,8 @@ export default function ProjectEditorPage() {
               <span className="text-[11.5px] font-medium text-spark-ink">{label}</span>
               <span className="text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</span>
             </button>
-          ))}
+            );
+          })}
         </div>
         {/* Says out loud that these are two different exits, not three
             settings on one.
@@ -1785,7 +1828,7 @@ export default function ProjectEditorPage() {
         <p className="text-[10.5px] leading-[1.45] text-spark-ink-faint">
           {selfRecord
             ? "You'll finish in the camera, not on this screen. Your script and photos come with you, and nothing here is spent."
-            : "The first two render here and use one video from your plan. I'll record it takes you to the camera instead — free, and you finish there."}
+            : "The first three use one video from your plan. I'll record it is free and finishes in the camera."}
         </p>
       </div>
     );
@@ -2565,8 +2608,14 @@ export default function ProjectEditorPage() {
    * script on the page before it was written, or a script that was pasted,
    * which has always rendered that way.
    */
-  const circleStyle = (project?.ai_script as { avatar_style?: string } | null | undefined)?.avatar_style === "circle";
-  const circleLook = isPaste || circleStyle || (project?.ai_script as { verbatim?: boolean } | null | undefined)?.verbatim === true;
+  /**
+   * Avatar full video is the Video Agent's, and it has limits the circle does
+   * not: it is not made for a Longform video, and it cuts a script past the
+   * standard cap. Where it cannot be had, the circle is what renders.
+   */
+  const fullBlocked = selectedVideoType === "youtube_long"
+    || [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length > standardMaxWords();
+  const circleStyle = avatarStyle === "circle" || fullBlocked;
 
   const seo = project.seo_data as SeoData | null;
 
@@ -3083,7 +3132,7 @@ export default function ProjectEditorPage() {
             {(looksLoading || looks.length > 0) && renderMode === "voice_only" && (
               <p className="text-xs text-slate-500 mb-5">
                 <span className="font-medium text-slate-600">Voice over only:</span> no one on screen.
-                Want to appear in this one? Pick <strong>{circleLook ? "Avatar in circle" : "Avatar full video"}</strong> above.
+                Want to appear in this one? Pick an Avatar choice above.
               </p>
             )}
             {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && (
@@ -3486,7 +3535,7 @@ export default function ProjectEditorPage() {
           {/* ── Step 4 · Generating ── */}
           {editorStep === 4 && (() => {
             const eta = renderEta({
-              pastedScript: isPaste || circleStyle,
+              pastedScript: circleStyle,
               longForm: selectedVideoType === "youtube_long",
               photoCount: uploadedPhotos.length,
             });
@@ -4235,7 +4284,7 @@ export default function ProjectEditorPage() {
                       ? "Free. Your photos play as b-roll while you read"
                       : voiceOnlyAsScenes
                         ? "Takes 2-5 minutes · your voice over a scene for each sentence"
-                        : `Takes ${renderEta({ pastedScript: isPaste || circleStyle, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                        : `Takes ${renderEta({ pastedScript: circleStyle, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
                   )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"

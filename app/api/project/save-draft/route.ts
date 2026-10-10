@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const {
     projectId, script, cta, ctaOff, hook, title,
-    videoType, photoUrls, musicId, musicUrl, captions, renderMode, lookId,
+    videoType, photoUrls, musicId, musicUrl, captions, renderMode, lookId, avatarStyle,
   } = await req.json() as {
     projectId?: string;
     script?: string;
@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
     captions?: boolean;
     renderMode?: string;
     lookId?: string;
+    /** Which avatar video: "full" (b-roll and graphics made for it) or "circle" (a corner circle over scenes). */
+    avatarStyle?: string;
   };
   if (!projectId) return NextResponse.json({ error: "projectId required" }, { status: 400 });
 
@@ -85,6 +87,7 @@ export async function POST(req: NextRequest) {
       ? { render_mode: renderMode }
       : {}),
     ...(lookId !== undefined && { draft_look_id: lookId }),
+    ...(avatarStyle === "full" || avatarStyle === "circle" ? { avatar_style: avatarStyle } : {}),
     // Marks that these values were saved by the user — the editor prefers them
     // over the resolved default CTA / first suggested hook when reloading.
     user_edited: true,
