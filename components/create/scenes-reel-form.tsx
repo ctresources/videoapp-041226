@@ -9,10 +9,17 @@ import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { WPM } from "@/lib/utils/video-length";
 
 /** The longest a Scenes reel runs, and what that is in words at reading pace. */
-const MAX_SECONDS = 60;
+const MAX_SECONDS = 90;
 const MAX_WORDS = Math.floor((MAX_SECONDS / 60) * WPM);
-/** What the writer is asked for: comfortably inside the minute. */
-const WRITE_WORDS = 125;
+/**
+ * The lengths the writer can be asked for, each comfortably inside its time.
+ * Thirty seconds is the one most reels and shorts want; ninety is the limit.
+ */
+const LENGTHS = [
+  { seconds: 30, words: 65, note: "Reels, Shorts" },
+  { seconds: 60, words: 130, note: "One idea, in full" },
+  { seconds: 90, words: 195, note: "The longest" },
+] as const;
 
 const SHAPES = [
   { key: "reel_9x16", label: "Reel 9:16", note: "Reels, Shorts, TikTok" },
@@ -29,15 +36,30 @@ const SHAPES = [
  * same renderer as the photo reel, so captions, music and the closing card
  * are the ones that reel has.
  *
- * It is a short thing on purpose. The whole reel is made in one request, and a
- * minute of it is what fits; a longer script is a voice-only or avatar video.
+ * It is a short thing on purpose. The whole reel is made in one request, and
+ * ninety seconds of it is what fits; a longer script is an avatar video.
  *
- * It says plainly what the pictures are. They are generated, generic and
- * unpeopled, they are never of the town or a property, and the reel is
- * labelled AI-made when it is published.
+ * It says plainly what the pictures are. They are generated and generic, any
+ * people in them are seen from behind or at a distance, they are never of the
+ * town or a property, and the reel is labelled AI-made when it is published.
+ *
+ * It has its own card on the Create page now, and takes its topic from the
+ * Topic box at the top of that page, the same box the mic writes into. With
+ * no `topic` passed it keeps a topic field of its own.
  */
-export function ScenesReelForm({ city: initialCity, state: initialState }: { city?: string; state?: string }) {
-  const [topic, setTopic] = useState("");
+export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting }: {
+  city?: string;
+  state?: string;
+  /** The page's topic. When given, this is the topic and there is no field here. */
+  topic?: string;
+  /** Changes when the page wants the script written now: the mic said to make this. */
+  writeSignal?: number;
+  /** Tells the page while a script is being written, so the mic waits for it. */
+  onWriting?: (busy: boolean) => void;
+}) {
+  const [ownTopic, setTopic] = useState("");
+  const topic = topicFromPage ?? ownTopic;
+  const [lengthSeconds, setLengthSeconds] = useState<number>(60);
   const [script, setScript] = useState("");
   const [writing, setWriting] = useState(false);
   const [city, setCity] = useState(initialCity ?? "");
@@ -72,6 +94,10 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
     return () => { cancelled = true; };
   }, []);
 
+  // The market can be said to the mic after this is on screen.
+  useEffect(() => { if (initialCity) setCity(initialCity); }, [initialCity]);
+  useEffect(() => { if (initialState) setState(initialState); }, [initialState]);
+
   const words = script.trim().split(/\s+/).filter(Boolean).length;
   const seconds = Math.round((words / WPM) * 60);
   const tooLong = words > MAX_WORDS;
@@ -80,14 +106,20 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
 
   /** A script written from the topic, at a length that fits. Free: nothing is made yet. */
   async function writeScript() {
-    if (!topic.trim() || writing) return;
+    if (!topic.trim() || writing) { onWriting?.(false); return; }
     setWriting(true);
+    onWriting?.(true);
     setError(null);
     try {
       const res = await fetch("/api/ai/generate-camera-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), targetWords: WRITE_WORDS, city, state }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          targetWords: LENGTHS.find((l) => l.seconds === lengthSeconds)?.words ?? 130,
+          city,
+          state,
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.script) throw new Error((data?.error as string) || "Could not write that script");
@@ -97,8 +129,17 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
       setError(err instanceof Error ? err.message : "Could not write that script");
     } finally {
       setWriting(false);
+      onWriting?.(false);
     }
   }
+
+  // The mic said to make a Scenes Reel: write it, as pressing the button would.
+  useEffect(() => {
+    if (!writeSignal) return;
+    void writeScript();
+    // Only when the page signals; the words are read as they are then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [writeSignal]);
 
   async function render() {
     setRendering(true);
@@ -173,21 +214,54 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
       {/* ── Topic ── */}
       <div>
         <p className={label}>
-          Topic <span className="font-normal text-spark-ink-faint">· we write about a minute from it, or skip this and write your own below</span>
+          Topic{" "}
+          <span className="font-normal text-spark-ink-faint">
+            {topicFromPage !== undefined
+              ? "· from the Topic box at the top of the page. Or skip this and write your own script below"
+              : "· we write the script from it, or skip this and write your own below"}
+          </span>
         </p>
         <div className="flex gap-2">
-          <input
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void writeScript(); } }}
-            placeholder="Three things to fix before listing this fall"
-            maxLength={200}
-            className={`min-w-0 flex-1 ${field}`}
-          />
+          {topicFromPage !== undefined ? (
+            // Shown, not asked for again: the page already has one topic box.
+            <p className={`min-w-0 flex-1 truncate border-dashed ${field} ${topic.trim() ? "" : "text-spark-ink-faint"}`}>
+              {topic.trim() || "Say or type a topic in the box at the top"}
+            </p>
+          ) : (
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void writeScript(); } }}
+              placeholder="Three things to fix before listing this fall"
+              maxLength={200}
+              className={`min-w-0 flex-1 ${field}`}
+            />
+          )}
           <Button type="button" variant="outline" onClick={() => void writeScript()} loading={writing} disabled={!topic.trim()} className="gap-1.5">
             {!writing && <Sparkles size={14} />}
             {writing ? "Writing…" : script.trim() ? "Rewrite" : "Write it"}
           </Button>
+        </div>
+      </div>
+
+      {/* ── Length ── */}
+      <div>
+        <p className={label}>Length <span className="font-normal text-spark-ink-faint">· how long a script to write</span></p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {LENGTHS.map((l) => (
+            <button
+              key={l.seconds}
+              type="button"
+              onClick={() => setLengthSeconds(l.seconds)}
+              aria-pressed={lengthSeconds === l.seconds}
+              className={`rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+                lengthSeconds === l.seconds ? "border-spark-amber bg-spark-amber-tint" : "border-spark-rule bg-white hover:border-spark-rule-dim"
+              }`}
+            >
+              <span className="block text-[12px] font-bold text-spark-ink">{l.seconds} seconds</span>
+              <span className="block text-[10.5px] text-spark-ink-faint">{l.note}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -304,8 +378,9 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
 
       {/* Said before the button, because it is what they are agreeing to. */}
       <p className="rounded-lg bg-[#f4f2e8] px-3 py-2 text-[11.5px] leading-[1.5] text-spark-ink-soft">
-        The pictures are <strong className="font-semibold">made with AI</strong> from your script: ordinary homes, rooms and
-        streets with no people in them. They are not your town and not a real property, and{" "}
+        The pictures are <strong className="font-semibold">made with AI</strong>, one for each sentence of your script,
+        showing what that sentence is about. Any people are seen from behind or at a distance. They are not
+        your town and not a real property, and{" "}
         <strong className="font-semibold">&ldquo;Scenes made with AI.&rdquo;</strong> is added to the description.
         Uses <strong className="font-semibold">one short video</strong> from your plan, taken only once the reel is made.
       </p>
@@ -336,8 +411,8 @@ export function ScenesReelForm({ city: initialCity, state: initialState }: { cit
 
       {rendering && (
         <p className="text-[11px] leading-[1.45] text-spark-ink-faint">
-          Making the scenes, then putting the reel together. This takes about three to four minutes;
-          keep this page open until it finishes.
+          Reading the script in your voice, making the scenes, then putting the reel together. This takes
+          two to five minutes, longer for a longer reel; keep this page open until it finishes.
         </p>
       )}
     </div>

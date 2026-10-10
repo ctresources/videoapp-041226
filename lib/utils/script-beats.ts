@@ -37,7 +37,7 @@ function seconds(stamp: string): number {
 export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12): Beat[] {
   // Every word with a time. A cue only times its first and last word, so the
   // ones between are spread evenly across it, which is near enough for a cut.
-  const words: { w: string; at: number; until: number }[] = [];
+  const words: TimedWord[] = [];
   for (const cue of parseSrt(srt)) {
     const from = seconds(cue.start);
     const to = Math.max(from, seconds(cue.end));
@@ -50,6 +50,35 @@ export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12): Beat[]
       });
     });
   }
+  return beatsFromTimed(words, minSeconds, maxBeats, Infinity);
+}
+
+/**
+ * The same, from speech that came with a time for every word.
+ *
+ * @param maxSeconds a beat longer than this is cut in two at a word, so one
+ *   long sentence gets two pictures. A clip is only made up to about ten
+ *   seconds; past that it would have to hold its last frame.
+ */
+export function beatsFromWords(
+  spoken: { word: string; start: number; end: number }[],
+  minSeconds = 4,
+  maxBeats = 12,
+  maxSeconds = Infinity,
+): Beat[] {
+  return beatsFromTimed(
+    spoken
+      .filter((x) => x.word.trim() && Number.isFinite(x.start) && Number.isFinite(x.end))
+      .map((x) => ({ w: x.word.trim(), at: x.start, until: Math.max(x.start, x.end) })),
+    minSeconds,
+    maxBeats,
+    maxSeconds,
+  );
+}
+
+type TimedWord = { w: string; at: number; until: number };
+
+function beatsFromTimed(words: TimedWord[], minSeconds: number, maxBeats: number, maxSeconds: number): Beat[] {
   if (words.length === 0) return [];
 
   // Sentences. A word that ends one is followed by a break; "SparkReels.ai"
@@ -93,6 +122,28 @@ export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12): Beat[]
       if (span < least) { least = span; at = i; }
     }
     beats = [...beats.slice(0, at), join(beats[at], beats[at + 1]), ...beats.slice(at + 2)];
+  }
+
+  // Too long: cut at the word nearest the middle, and again if need be. The
+  // words are found again by their times, which is all a beat keeps of them.
+  if (Number.isFinite(maxSeconds)) {
+    const cut = (b: Beat): Beat[] => {
+      if (b.end - b.start <= maxSeconds) return [b];
+      const inside = words.filter((x) => x.at >= b.start - 0.001 && x.until <= b.end + 0.001);
+      if (inside.length < 4) return [b];
+      const middle = (b.start + b.end) / 2;
+      let at = 1;
+      for (let i = 1; i < inside.length - 1; i++) {
+        if (Math.abs(inside[i].at - middle) < Math.abs(inside[at].at - middle)) at = i;
+      }
+      const left = inside.slice(0, at);
+      const right = inside.slice(at);
+      return [
+        ...cut({ text: left.map((x) => x.w).join(" "), start: left[0].at, end: left[left.length - 1].until }),
+        ...cut({ text: right.map((x) => x.w).join(" "), start: right[0].at, end: right[right.length - 1].until }),
+      ];
+    };
+    beats = beats.flatMap(cut);
   }
 
   // One unbroken run from zero: a pause belongs to the picture before it,

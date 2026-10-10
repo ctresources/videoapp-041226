@@ -41,7 +41,7 @@ export interface BriefSlots {
   /** What was asked for, when it was said: "create a blog", "make a video". */
   output?: "blog" | "video" | null;
   /** Who is on screen, when it was said: the avatar, voice only, or the agent on camera. */
-  onScreen?: "avatar" | "voice_only" | "camera" | null;
+  onScreen?: "avatar" | "voice_only" | "camera" | "scenes" | null;
   /** Why it is being made, as one of the Create page's five reasons. */
   purpose?: "found" | "answer" | "appointment" | "topofmind" | "announce" | null;
   /** A forwarded email to make it from, when they asked for one by name. */
@@ -59,12 +59,14 @@ interface Turn {
   content: string;
 }
 
-/** The three things a topic can become, as the box offers them. */
-export type BriefMake = "avatar" | "camera" | "blog";
+/** The four things a topic can become, as the box offers them. */
+export type BriefMake = "avatar" | "camera" | "scenes" | "blog";
 
 const MAKES: { kind: BriefMake; label: string }[] = [
   { kind: "avatar", label: "Avatar video" },
   { kind: "camera", label: "Record yourself" },
+  // Your voice over scenes made for the script, with nobody on screen.
+  { kind: "scenes", label: "Scenes Reel" },
   { kind: "blog", label: "Blog" },
 ];
 
@@ -91,6 +93,9 @@ const SAID_BLOG = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:blo
 const SAID_VIDEO = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:video|reel|short)\\b|^\\s*(?:an?\\s+)?(?:short\\s+|long\\s+|quick\\s+)?(?:video|reel)\\b`);
 const SAID_CAMERA = /\b(?:record(?:ing)?\s+(?:it\s+|this\s+|that\s+|one\s+)?(?:myself|my\s+self)|record\s+(?:a|my|this|the)\s+(?:short\s+|long\s+|quick\s+)?(?:video|reel|short)|i(?:'ll| will|'m going to| am going to| want to)\s+(?:record|film|shoot)|film\s+(?:it\s+|this\s+)?myself|on\s+camera|teleprompter)\b/;
 const SAID_AVATAR = /\b(?:my|an|the)\s+avatar\b|\bavatar\s+video\b/;
+// By its name, or by what creators call it. Not "reel" alone: "a short reel
+// with my avatar" is a shape of avatar video, and is read as one below.
+const SAID_SCENES = /\bscenes?\s+(?:reel|video|short)s?\b|\bfaceless\b/;
 
 function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   const t = text.toLowerCase().replace(/[’‘]/g, "'");
@@ -99,6 +104,7 @@ function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   if (SAID_BLOG.test(t)) kinds.push("blog");
   if (SAID_CAMERA.test(t)) kinds.push("camera");
   if (SAID_AVATAR.test(t)) kinds.push("avatar");
+  if (SAID_SCENES.test(t)) kinds.push("scenes");
   // Exactly one, and not a blog said alongside a video: that is two things.
   if (kinds.length === 1 && !(kinds[0] === "blog" && video)) return { kind: kinds[0], video: false };
   if (kinds.length === 0 && video) return { kind: null, video: true };
@@ -591,7 +597,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // stand-in for the big centered heading the old design used.
   const summary = [
     slots.output === "blog" ? "blog" : slots.output === "video" ? "video" : null,
-    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice only" : slots.onScreen === "camera" ? "you on camera" : null,
+    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice only" : slots.onScreen === "camera" ? "you on camera" : slots.onScreen === "scenes" ? "a Scenes Reel" : null,
     slots.city && slots.state ? `${slots.city}, ${slots.state}` : slots.city,
     slots.topic,
     slots.emailSubject ? "from your email" : null,

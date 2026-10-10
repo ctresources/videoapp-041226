@@ -11,7 +11,7 @@ import {
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe, Mail,
-  SquareUser, Camera,
+  SquareUser, Camera, Clapperboard,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
@@ -488,6 +488,11 @@ function CreatePageInner() {
   // The card last pressed in section 2, handed to the topic box so the strip
   // under it says the same thing the cards do.
   const [cardPick, setCardPick] = useState<{ kind: BriefMake; n: number } | undefined>();
+  // The Scenes Reel card. It is built by the reel form, which writes its own
+  // script: the mic tells it when to (scenesWrite), and it says while it is
+  // writing (scenesWriting) so the mic waits as it does for the other kinds.
+  const [scenesWrite, setScenesWrite] = useState(0);
+  const [scenesWriting, setScenesWriting] = useState(false);
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -974,7 +979,7 @@ function CreatePageInner() {
     city?: string | null; state?: string | null; topic?: string | null;
     audience?: string | null; tone?: string | null; purpose?: string | null;
     length?: "standard" | "long" | null; platform?: "reel" | "youtube" | null;
-    output?: "blog" | "video" | null; onScreen?: "avatar" | "voice_only" | "camera" | null;
+    output?: "blog" | "video" | null; onScreen?: "avatar" | "voice_only" | "camera" | "scenes" | null;
     emailId?: string | null;
   }) {
     const city = (spoken?.city ?? locCity).trim();
@@ -1891,9 +1896,13 @@ function CreatePageInner() {
   // sources each say what the thing is about themselves. The camera side had
   // a topic box of its own in the camera card, a second one on the page, until
   // this one moved to the top and could do both jobs.
+  // A Scenes Reel is the reel builder's third kind, shown as a card of its own.
+  const scenesRoute = inputMode === "listing" && listingMode === "scenes" && !blogOnly;
   const topicApplies =
     (inputMode === "script" && !(blogOnly && blogSrcOpen))
-    || (cameraFromTopic && !cameraSourceLocked);
+    || (cameraFromTopic && !cameraSourceLocked)
+    // A Scenes Reel starts from a topic too, and has no topic box of its own.
+    || scenesRoute;
   // For the parts of section 1 that switch off when it does not apply: out of
   // reach of the pointer and, with `inert`, out of the tab order too. React 18
   // drops `inert={true}` and only passes the attribute through as a string,
@@ -2353,7 +2362,7 @@ function CreatePageInner() {
                 and handing a finished sentence down, so what is said shows in
                 the box and can be corrected before it is sent. */}
             <VoiceBriefSession
-              disabled={locGenerating || cameraScriptGenerating}
+              disabled={locGenerating || cameraScriptGenerating || scenesWriting}
               off={!topicApplies}
               onWake={topicWake}
               settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
@@ -2374,6 +2383,11 @@ function CreatePageInner() {
                   setBlogOnly(false);
                   setInputMode("camera");
                   setCameraSource("speak");
+                } else if (kind === "scenes") {
+                  if (scenesRoute) return;
+                  setBlogOnly(false);
+                  setInputMode("listing");
+                  setListingMode("scenes");
                 } else {
                   if (!blogOnly && inputMode === "script") return;
                   setBlogOnly(false);
@@ -2383,7 +2397,8 @@ function CreatePageInner() {
               // The same lock the cards in section 2 carry, with the same two
               // answers: the free video first, or billing.
               canMake={(kind) => {
-                if (kind === "avatar") return true;
+                // A Scenes Reel is checked against the plan when it is built.
+                if (kind === "avatar" || kind === "scenes") return true;
                 if (!(kind === "blog" ? blogLocked : cameraLocked)) return true;
                 if (trialNotStarted) {
                   toast(kind === "blog" ? BLOG_SPENT : CAMERA_SPENT);
@@ -2434,6 +2449,18 @@ function CreatePageInner() {
               }}
               onReady={(sl) => {
                 if (locGenerating || cameraScriptGenerating) return;
+                // A Scenes Reel: its card writes the script from this topic,
+                // and stops there for them to read before anything is built.
+                if (sl.onScreen === "scenes" && sl.output !== "blog") {
+                  setBlogOnly(false);
+                  setInputMode("listing");
+                  setListingMode("scenes");
+                  if (sl.topic) { setLocCustomTopic(sl.topic); setTopicTemplateRaw(null); }
+                  setScenesWriting(true);
+                  setScenesWrite(Date.now());
+                  setTimeout(() => document.getElementById("scenes-reel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+                  return;
+                }
                 if (inputMode === "camera") {
                   // What was asked for wins over which route the page happened
                   // to be on: a blog, or a video with the avatar or voice
@@ -2551,7 +2578,7 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" question="What are you sparking?" />}
       {step === "input" && !cameraHandoff && (
-        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2601,6 +2628,19 @@ function CreatePageInner() {
               cost: cameraLocked ? "Locked" : freeRecordingNow ? "1 free" : "Free",
             },
             {
+              // A card of its own, at the owner's direction (2026-10-09). It
+              // was the third tab inside Listings & photos, which is about
+              // property pictures and where nobody looks for a reel made
+              // from a topic. It is the quickest video here and the least
+              // costly to make, and suits Reels and Shorts.
+              key: "scenes" as const,
+              label: "Scenes Reel",
+              Icon: Clapperboard,
+              desc: "Your voice over AI scenes",
+              free: false,
+              cost: "Uses 1 video",
+            },
+            {
               key: "blog" as const,
               label: "Blog",
               Icon: FileText,
@@ -2625,19 +2665,22 @@ function CreatePageInner() {
               key: "listing" as const,
               label: "Listings & photos",
               Icon: Building2,
-              desc: "Video, photos or scenes",
+              desc: "Listing video or photo reel",
               free: true,
               // Not "Free". A Classic reel is; a Cinematic reel and a listing
               // video each use one video. The card under it says which.
-              cost: "Free or 1 video",
+              // Short enough for one of five cards: "Free or 1 video" ran
+              // under the arrow beside it.
+              cost: "From free",
             },
           ]).map(({ key, label, Icon, desc, free, cost }) => {
             const active = key === "blog"
               ? blogOnly
               : blogOnly ? false
                 : key === "film" ? inputMode === "camera"
-                  : key === "listing" ? inputMode === "listing"
-                    : inputMode !== "camera" && inputMode !== "listing";
+                  : key === "scenes" ? inputMode === "listing" && listingMode === "scenes"
+                    : key === "listing" ? inputMode === "listing" && listingMode !== "scenes"
+                      : inputMode !== "camera" && inputMode !== "listing";
             return (
               <button
                 key={key}
@@ -2695,10 +2738,19 @@ function CreatePageInner() {
                     return;
                   }
                   setBlogOnly(false);
+                  if (key === "scenes") {
+                    setInputMode("listing");
+                    setListingMode("scenes");
+                    setCardPick({ kind: "scenes", n: Date.now() });
+                    return;
+                  }
                   if (key === "listing") {
                     // lastSparkTab is left alone: it is where the avatar card
                     // returns to, and that is no longer here.
                     setInputMode("listing");
+                    // The Scenes Reel has its own card; this one is the two
+                    // things made from property pictures.
+                    if (listingMode === "scenes") setListingMode("listing");
                     return;
                   }
                   setInputMode(
@@ -2722,7 +2774,7 @@ function CreatePageInner() {
                     them down the card. Beside the name, each one is part of
                     the label it belongs to and costs no height. */}
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink lg:items-center lg:gap-1.5 lg:whitespace-nowrap lg:text-[15px]">
+                  <span className="flex items-start gap-2 text-[18px] font-bold leading-[1.2] text-spark-ink lg:items-center lg:gap-1.5 lg:text-[14px]">
                     <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
                     <span className="min-w-0">{label}</span>
                   </span>
@@ -3969,7 +4021,7 @@ function CreatePageInner() {
                   {blogOnly
                     ? "Import from Zillow · Upload photos · Enter manually"
                     : listingMode === "scenes"
-                      ? "No photos needed · your voice over scenes made from the script · uses 1 short video"
+                      ? "No photos, no camera · your voice over scenes matched to each sentence · up to 90 seconds · uses 1 short video"
                     : listingMode === "reel"
                       ? "Your photos, with music or your voice · Classic is free, Cinematic uses 1 short video"
                       : "Upload Photos · Import From Zillow · Enter Manually"}
@@ -3983,16 +4035,14 @@ function CreatePageInner() {
                 share their input — a set of property pictures.
                 Not on the blog route: a reel is a video, and this card sat
                 directly under "No video will be made". */}
-            {!blogOnly && (
-            <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+            {!blogOnly && listingMode !== "scenes" && (
+            <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
                 // "free" alone was true until Cinematic, which uses a video.
                 { key: "reel" as const, label: "Photos only reel", sub: "photos into a video · Classic is free" },
-                // The one thing here that is not about a listing. It lives in
-                // this card because it is made by the reel builder, and it is
-                // where the owner looks for reels.
-                { key: "scenes" as const, label: "Scenes reel", sub: "no photos · a topic into a video" },
+                // The Scenes Reel was a third tab here. It has a card of its
+                // own in section 2 now, and this card shows only its form.
               ]).map(({ key, label, sub }) => (
                 <button
                   key={key}
@@ -4020,7 +4070,15 @@ function CreatePageInner() {
                 Kept mounted only while selected, so each switch is a fresh
                 mount that re-reads the listing's current photos. */}
             {listingMode === "scenes" && !blogOnly && (
-              <ScenesReelForm city={locCity || undefined} state={locState || undefined} />
+              <div id="scenes-reel" className="scroll-mt-24">
+                <ScenesReelForm
+                  city={locCity || undefined}
+                  state={locState || undefined}
+                  topic={locCustomTopic}
+                  writeSignal={scenesWrite}
+                  onWriting={setScenesWriting}
+                />
+              </div>
             )}
             {listingMode === "reel" && !blogOnly && (
               <PhotoReelForm
@@ -4082,9 +4140,9 @@ function CreatePageInner() {
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Nothing spent. Turn it into a video afterwards if you want one</li>
               </>) : listingMode === "scenes" ? (<>
-                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script of about a minute, written from your topic or typed by you</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script of 30, 60 or 90 seconds, written from your topic or typed by you</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your voice clone reading it</li>
-                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Three to eight realistic scenes made with AI to match what is said, with no people in them</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A realistic scene for each sentence, made with AI and on screen while it is spoken. Any people are seen from behind or at a distance</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Captions, music, and a closing card with your ask and phone number</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags auto-generated for publishing, labelled as made with AI</li>
               </>) : listingMode === "reel" ? (<>
@@ -4108,7 +4166,7 @@ function CreatePageInner() {
               {blogOnly
                 ? "Tip: Zillow import fills in the details in seconds. Just paste the listing URL."
                 : listingMode === "scenes"
-                  ? "Tip: the scenes are generic on purpose. For a real property, use Photos only reel with its own photos."
+                  ? "Tip: the scenes are generic on purpose. For a real property, use Listings & photos with its own photos."
                 : listingMode === "reel"
                   ? "Tip: photo 1 opens the reel. Use the arrows to put your strongest shot first."
                   : "Tip: Zillow import fills everything in seconds. Just paste the listing URL."}

@@ -17,21 +17,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { generateSpeechWithTimestamps } from "@/lib/api/elevenlabs";
 import { generateSeoData } from "@/lib/api/perplexity";
-import { searchBackgroundMusic, speakInVoice } from "@/lib/api/heygen";
+import { searchBackgroundMusic } from "@/lib/api/heygen";
 import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type VideoType } from "@/lib/api/ffmpeg-render";
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
 import { CINEMATIC_DISCLOSURE, SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { formatPhone } from "@/lib/utils/format-phone";
-import { makeSceneClips, planScenes, SCENES_MAX, SCENES_MAX_SECONDS, SCENES_MIN, type SceneAspect } from "@/lib/api/scene-clips";
+import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MAX, SCENES_MAX_SECONDS, SCENES_MIN, type SceneAspect } from "@/lib/api/scene-clips";
+import { beatsFromWords } from "@/lib/utils/script-beats";
+import { speakLongInVoice } from "@/lib/api/long-speech";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
 
 // A minute of 1080x1920 with twelve photos measured near three minutes on this
 // hardware. 300 is what the plan allows and what the longest reel needs.
-export const maxDuration = 300;
+// A ninety second Scenes reel is its speech, a dozen scenes and a render of
+// about twice its own length. That is past 300 seconds; 800 is what the
+// project's functions are allowed, and what the webhook already runs at.
+export const maxDuration = 800;
 
 const FORMATS: Record<string, VideoType> = {
   reel_9x16: "reel_9x16",
@@ -153,6 +158,8 @@ export async function POST(req: NextRequest) {
     /** Known only for a music-only reel, whose length was chosen. Lets a 7, 12 or 30 second reel post as video where 30 seconds is the limit. */
     let reelSeconds: number | null = null;
     let wordTimestamps: WordTimestamp[] = [];
+    /** When each word of a written script is spoken, kept whether or not captions were asked for: a Scenes reel cuts its scenes to it. */
+    let timingWords: WordTimestamp[] = [];
     let spokenScript = "";
     /** Which voice read a typed script, for the form to say so. Unset when nothing was read. */
     let voiceUsed: "yours" | "stock" | null = null;
@@ -215,7 +222,9 @@ export async function POST(req: NextRequest) {
           const { data: now } = await admin.from("profiles").select("heygen_voice_id").eq("id", user.id).single();
           const mine = (now as { heygen_voice_id: string | null } | null)?.heygen_voice_id;
           if (own && mine && own === mine) {
-            speech = await speakInVoice(text, own);
+            // In parts, spoken together: one request for a long script does
+            // not come back in time, and the reel was read by a stock voice.
+            speech = await speakLongInVoice(text, own);
             voiceUsed = "yours";
           }
         } catch (e) {
@@ -230,6 +239,7 @@ export async function POST(req: NextRequest) {
       // Free and exact here: the timings arrive with the audio, so captions on
       // a written script cost nothing and never mishear a street name. Where a
       // voice came back without them, the audio is listened to instead.
+      timingWords = speech.wordTimestamps;
       wordTimestamps = body.captions ? speech.wordTimestamps : [];
       if (body.captions && !wordTimestamps.length) {
         try {
@@ -280,31 +290,60 @@ export async function POST(req: NextRequest) {
      */
     let segmentUrls: string[] = photoUrls;
     let scenesAsked = 0;
+    /** When each scene comes on, where the scenes were cut to the sentences. */
+    let segmentStarts: number[] | undefined;
     if (scenes) {
       const seconds = await audioBufferSeconds(audioBuffer);
-      if (seconds > SCENES_MAX_SECONDS + 3) {
+      if (seconds > SCENES_MAX_SECONDS + 4) {
         return NextResponse.json(
-          { error: `A Scenes reel runs up to ${SCENES_MAX_SECONDS} seconds and this script reads at about ${Math.round(seconds)}. Shorten it to roughly 140 words.` },
+          { error: `A Scenes reel runs up to ${SCENES_MAX_SECONDS} seconds and this script reads at about ${Math.round(seconds)}. Shorten it to roughly ${Math.round(SCENES_MAX_SECONDS * 2.35)} words.` },
           { status: 400 },
         );
       }
-      scenesAsked = Math.min(SCENES_MAX, Math.max(SCENES_MIN, Math.round(seconds / 7)));
       const aspect: SceneAspect = videoType === "youtube_16x9" ? "16:9" : videoType === "short_1x1" ? "1:1" : "9:16";
-      const plan = await planScenes(spokenScript, scenesAsked);
-      // Clips may run until 150 seconds into the request; the render needs the rest.
-      const made = (await makeSceneClips(plan, seconds / scenesAsked, aspect, requestStarted + 150_000))
-        .filter((c): c is NonNullable<typeof c> => !!c);
-      if (made.length < SCENES_MIN) {
-        return NextResponse.json(
-          { error: "Not enough scenes could be made this time, so nothing was taken from your plan. Try again in a minute." },
-          { status: 502 },
-        );
+      const notEnough = () => NextResponse.json(
+        { error: "Not enough scenes could be made this time, so nothing was taken from your plan. Try again in a minute." },
+        { status: 502 },
+      );
+      // Clips are given two and a half minutes from here; the render has the rest.
+      const giveUpAt = Date.now() + 150_000;
+
+      /**
+       * A scene for each sentence, on screen while it is spoken.
+       *
+       * The scenes used to be a handful that shared the time evenly, chosen by
+       * a planner that only knew homes and rooms. They follow the narration
+       * now, as the scenes behind an avatar video do: the speech comes with a
+       * time for every word, so it is cut into its sentences, each is given a
+       * picture of what it is about, and that picture comes on when the
+       * sentence starts. People may appear, from behind or at a distance.
+       */
+      const beats = timingWords.length > 0 ? beatsFromWords(timingWords, 4, SCENES_MAX, 10) : [];
+      const matched = beats.length >= SCENES_MIN ? await planScenesForBeats(beats.map((b) => b.text)) : [];
+      if (matched.length === beats.length && matched.length >= SCENES_MIN) {
+        scenesAsked = beats.length;
+        const lengths = beats.map((b, i) => (i === beats.length - 1 ? seconds : beats[i + 1].start) - b.start);
+        const made = await makeSceneClips(matched, lengths, aspect, giveUpAt, "distant-people");
+        const kept = made.map((c, i) => ({ c, i })).filter((x): x is { c: NonNullable<typeof x.c>; i: number } => !!x.c);
+        if (kept.length < Math.max(SCENES_MIN, Math.ceil(beats.length / 2))) return notEnough();
+        clips = kept.map(({ c }) => ({ ...c, similarity: 1 }));
+        // A scene that could not be made leaves its sentence to the one before.
+        segmentStarts = kept.map(({ i }, k) => (k === 0 ? 0 : beats[i].start));
+        segmentUrls = kept.map(() => "");
+        moving = kept.length;
+      } else {
+        // No timings to cut to, or no plan: the scenes share the time evenly.
+        scenesAsked = Math.min(SCENES_MAX, Math.max(SCENES_MIN, Math.round(seconds / 7)));
+        const plan = await planScenes(spokenScript, scenesAsked);
+        const made = (await makeSceneClips(plan, seconds / scenesAsked, aspect, giveUpAt))
+          .filter((c): c is NonNullable<typeof c> => !!c);
+        if (made.length < SCENES_MIN) return notEnough();
+        // The renderer takes a clip per segment, in place of a photo. There is no
+        // photo behind these, so the list that stands for them is empty strings.
+        clips = made.map((c) => ({ ...c, similarity: 1 }));
+        segmentUrls = made.map(() => "");
+        moving = made.length;
       }
-      // The renderer takes a clip per segment, in place of a photo. There is no
-      // photo behind these, so the list that stands for them is empty strings.
-      clips = made.map((c) => ({ ...c, similarity: 1 }));
-      segmentUrls = made.map(() => "");
-      moving = made.length;
     }
     /**
      * Whether this is worth a video from their plan. More than half the photos
@@ -387,6 +426,7 @@ export async function POST(req: NextRequest) {
         ...(moving > 0 && { clips }),
         // A generated scene is not played backwards; see the renderer.
         ...(scenes && { reverseAlternate: false }),
+        ...(segmentStarts && { segmentStarts }),
         // Trimmed to the photos that survived the cap, so a caption cannot end
         // up on the photo after the one it was written for.
         photoCaptions: (scenes ? [] : body.photoCaptions ?? [])

@@ -731,6 +731,15 @@ export interface SlideshowParams {
    */
   reverseAlternate?: boolean;
   /**
+   * When each segment comes on, in seconds, one per segment and rising; the
+   * first is 0.
+   *
+   * Without it the segments share the time evenly, which is right for photos
+   * and wrong for a picture chosen for a particular sentence: it would arrive
+   * whenever its turn came, not when the sentence did.
+   */
+  segmentStarts?: number[];
+  /**
    * A closing card over the last few seconds — the ask, once the pictures have
    * done their work. Omitted entirely when absent, rather than drawn empty.
    */
@@ -977,7 +986,16 @@ async function buildSlideshowAndRun(
   const FADE_DUR = Math.max(0.12, Math.min(0.5, roughSeg * 0.25));
   // Per-photo duration accounting for crossfade overlap
   const segDur = N > 1 ? (audioDuration + (N - 1) * FADE_DUR) / N : audioDuration;
-  const frames = Math.ceil(segDur * 30);
+  // Where each segment starts and how long its picture has to run. Even
+  // shares unless the caller timed them (see segmentStarts). A timed segment
+  // runs until the next has finished dissolving in over it.
+  const timed = Array.isArray(params.segmentStarts) && params.segmentStarts.length === N && N > 1;
+  const segStart = (i: number): number =>
+    timed ? (i === 0 ? 0 : Math.max(0, Math.min(audioDuration - 0.5, params.segmentStarts![i]))) : i * (segDur - FADE_DUR);
+  const segLen = (i: number): number =>
+    timed
+      ? Math.max(0.5, (i === N - 1 ? audioDuration : segStart(i + 1) + FADE_DUR) - segStart(i))
+      : segDur;
 
   const filterParts: string[] = [];
 
@@ -1019,8 +1037,8 @@ async function buildSlideshowAndRun(
       if (!text) return null;
       // Held from the moment this photo starts arriving to the moment the next
       // one has finished covering it, matching the overlay windows exactly.
-      const from = i * (segDur - FADE_DUR);
-      const to = i === N - 1 ? audioDuration : (i + 1) * (segDur - FADE_DUR) + FADE_DUR;
+      const from = segStart(i);
+      const to = i === N - 1 ? audioDuration : segStart(i + 1) + FADE_DUR;
       return { text, from, to };
     })
     .filter((c): c is { text: string; from: number; to: number } => c !== null);
@@ -1072,9 +1090,9 @@ async function buildSlideshowAndRun(
        * is held near normal and the move is cut short instead. Past the top
        * of the range the last frame simply holds.
        */
-      const factor = Math.min(1.6, Math.max(0.8, segDur / Math.max(0.5, clip.seconds)));
+      const factor = Math.min(1.6, Math.max(0.8, segLen(i) / Math.max(0.5, clip.seconds)));
       const timing = `setpts=${factor.toFixed(4)}*(PTS-STARTPTS),fps=30`;
-      const tail = `setsar=1,trim=duration=${segDur.toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`;
+      const tail = `setsar=1,trim=duration=${segLen(i).toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`;
 
       /**
        * A clip is made in its photo's own shape, never cut to the reel's
@@ -1118,7 +1136,7 @@ async function buildSlideshowAndRun(
       `[${i}:v]scale=${kbW}:${kbH}:force_original_aspect_ratio=increase,` +
       `crop=${kbW}:${kbH},` +
       `zoompan=z=${zoomExpr}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
-      `d=${frames}:s=${width}x${height}:fps=30[photo${i}]`,
+      `d=${Math.ceil(segLen(i) * 30)}:s=${width}x${height}:fps=30[photo${i}]`,
     );
   }
 
@@ -1146,7 +1164,7 @@ async function buildSlideshowAndRun(
   const dissolveBase = `[${bgInputIdx}:v]`;
   let overlayChain = dissolveBase;
   for (let i = 0; i < N; i++) {
-    const start = i * (segDur - FADE_DUR);
+    const start = segStart(i);
     // Photo 0 is already on the black ground, so it needs no fade — the reel
     // opens on the picture rather than dissolving up out of nothing.
     const alphaFade = i === 0 ? "" : `fade=t=in:st=0:d=${FADE_DUR}:alpha=1,`;
@@ -1171,7 +1189,7 @@ async function buildSlideshowAndRun(
      */
     const end = i === N - 1
       ? audioDuration
-      : (i + 1) * (segDur - FADE_DUR) + FADE_DUR;
+      : segStart(i + 1) + FADE_DUR;
     const window = `:enable=between(t\\,${start.toFixed(3)}\\,${end.toFixed(3)})`;
 
     const outLabel = i === N - 1 ? "slideshow" : `ov${i}`;
@@ -1522,7 +1540,7 @@ async function buildSlideshowAndRun(
     photoPaths.forEach((photoPath, i) => {
       // A clip is a video already: it is read once, not looped like a still.
       if (clips[i]) cmd.input(photoPath);
-      else cmd.input(photoPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(segDur) + 2}`]);
+      else cmd.input(photoPath).inputOptions(["-loop", "1", "-t", `${Math.ceil(segLen(i)) + 2}`]);
     });
     cmd.input(audioPath);
     if (logoPath) cmd.input(logoPath);

@@ -1202,13 +1202,15 @@ export async function deleteVoice(voiceId: string): Promise<boolean> {
 export async function speakInVoice(
   text: string,
   voiceId: string,
+  /** How long to wait for the speech. It is made at about speaking pace. */
+  timeoutMs = 60_000,
 ): Promise<{ audioBuffer: Buffer; wordTimestamps: { word: string; start: number; end: number }[] }> {
   const res = await fetch(`${HEYGEN_API}/v3/voices/speech`, {
     method: "POST",
     headers: { "x-api-key": getApiKey(), "Content-Type": "application/json" },
     // The limit is 5,000 characters; a reel's script is a few sentences.
     body: JSON.stringify({ text: text.slice(0, 5000), voice_id: voiceId }),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const body = await res.json().catch(() => null) as {
     data?: { audio_url?: string; word_timestamps?: { word: string; start: number; end: number }[] | null };

@@ -32,9 +32,9 @@ const MODEL = "heygen-video-1";
 
 /** Fewer than this is not a reel, and is not charged for. */
 export const SCENES_MIN = 3;
-export const SCENES_MAX = 8;
+export const SCENES_MAX = 14;
 /** The longest narration a Scenes reel takes. */
-export const SCENES_MAX_SECONDS = 60;
+export const SCENES_MAX_SECONDS = 90;
 /** The provider makes clips of 5 to 15 seconds; past 10 a scene starts to wander. */
 const CLIP_MIN_SECONDS = 5;
 const CLIP_MAX_SECONDS = 10;
@@ -89,12 +89,17 @@ const LOOK_DISTANT_PEOPLE = LOOK
     "Any person is seen only from behind or at a distance, at work or walking away, never posed: no face turned towards the camera, no close-up of a face, no eye contact. " +
     "Any phone, laptop or camera screen shows only a soft glow or blurred shapes, never words, pictures of people or an interface.",
   )
-  // The speaker sits in a circle over the bottom right corner of this picture.
-  + " Compose with the subject in the left two thirds of the frame; the bottom right corner will be covered, so nothing important is there."
   + " One continuous shot: no cuts, no dissolves, no change of scene.";
 
-/** Which of the two a clip is shot in. */
-export type SceneLook = "no-people" | "distant-people";
+/**
+ * And for a picture with the speaker over it: behind an avatar video they sit
+ * in a circle in the bottom right corner. A Scenes reel has nobody there.
+ */
+const LOOK_BEHIND_SPEAKER = LOOK_DISTANT_PEOPLE
+  + " Compose with the subject in the left two thirds of the frame; the bottom right corner will be covered, so nothing important is there.";
+
+/** Which of these a clip is shot in. */
+export type SceneLook = "no-people" | "distant-people" | "behind-speaker";
 
 /** Used when the planner cannot be reached. Plain, safe, and true of any market. */
 const STOCK_SCENES = [
@@ -163,7 +168,7 @@ Hard limits, every scene:
 export async function planScenesForBeats(beats: string[]): Promise<string[]> {
   const n = beats.length;
   if (n === 0) return [];
-  const system = `You choose the pictures that play behind a real-estate professional who is talking to camera. Their narration is below, cut into ${n} numbered parts. While each part is spoken, one short clip plays. For each part, describe what that clip shows.
+  const system = `You choose the pictures for a short video made by a real-estate professional, who narrates it. Their narration is below, cut into ${n} numbered parts. While each part is spoken, one short clip plays. For each part, describe what that clip shows.
 
 Return ONLY a JSON object: {"scenes": ["...", "..."]} with exactly ${n} strings, one per numbered part, in order.
 
@@ -210,7 +215,7 @@ async function generateOnce(description: string, seconds: number, aspect: SceneA
     body: JSON.stringify({
       model: MODEL,
       mode: "text_to_video",
-      prompt: `${description} ${look === "distant-people" ? LOOK_DISTANT_PEOPLE : LOOK}`,
+      prompt: `${description} ${look === "behind-speaker" ? LOOK_BEHIND_SPEAKER : look === "distant-people" ? LOOK_DISTANT_PEOPLE : LOOK}`,
       duration: seconds,
       resolution: "768p",
       aspect_ratio: aspect,

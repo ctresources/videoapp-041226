@@ -476,7 +476,7 @@ async function sceneBackground(
       // model makes well, and within the budget for the whole video.
       const cap = Math.max(5, Math.floor(SCENE_SECONDS_BUDGET / beats.length));
       const lengths = onScreen.map((t) => Math.min(cap, Math.ceil(t)));
-      const made = await makeSceneClips(plan, lengths, aspect, started + 150_000, "distant-people");
+      const made = await makeSceneClips(plan, lengths, aspect, started + 150_000, "behind-speaker");
       const got = made.filter(Boolean).length;
       if (got >= Math.max(SCENES_MIN, Math.ceil(beats.length / 2))) {
         const out: { url: string; seconds: number; loop: boolean }[] = [];
