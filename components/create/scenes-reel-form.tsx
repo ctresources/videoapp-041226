@@ -49,7 +49,7 @@ const SHAPES = [
  * Topic box at the top of that page, the same box the mic writes into. With
  * no `topic` passed it keeps a topic field of its own.
  */
-export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting }: {
+export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting, vertical = true }: {
   city?: string;
   state?: string;
   /** The page's topic. When given, this is the topic and there is no field here. */
@@ -58,16 +58,18 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
   writeSignal?: number;
   /** Tells the page while a script is being written, so the mic waits for it. */
   onWriting?: (busy: boolean) => void;
+  /** The format chosen on the page. Vertical is a minute; horizontal runs the full ninety seconds. */
+  vertical?: boolean;
 }) {
   const [ownTopic, setTopic] = useState("");
   const topic = topicFromPage ?? ownTopic;
-  const [lengthSeconds, setLengthSeconds] = useState<number>(60);
+  const [lengthSeconds, setLengthSeconds] = useState<number>(vertical ? 60 : 90);
   const [script, setScript] = useState("");
   const [writing, setWriting] = useState(false);
   const [city, setCity] = useState(initialCity ?? "");
   const [state, setState] = useState(initialState ?? "");
   const [title, setTitle] = useState("");
-  const [format, setFormat] = useState<string>("reel_9x16");
+  const [format, setFormat] = useState<string>(vertical ? "reel_9x16" : "youtube_16x9");
   const [musicId, setMusicId] = useState("inspiring");
   const [captions, setCaptions] = useState(true);
   const [endCard, setEndCard] = useState(true);

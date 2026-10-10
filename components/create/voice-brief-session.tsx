@@ -59,10 +59,18 @@ interface Turn {
   content: string;
 }
 
-/** The four things a topic can become, as the box offers them. */
-export type BriefMake = "avatar" | "camera" | "scenes" | "blog";
+/**
+ * What a topic can become.
+ *
+ * "video" is a video whose kind has not been chosen yet: the page has one
+ * Video / Reel card, and which of the two it is (the avatar, or their voice
+ * over scenes) is asked on the page after Send. The two are still kinds of
+ * their own, for when the words say which.
+ */
+export type BriefMake = "video" | "avatar" | "camera" | "scenes" | "blog";
 
 const MAKES: { kind: BriefMake; label: string }[] = [
+  { kind: "video", label: "Video / Reel" },
   { kind: "avatar", label: "Avatar video" },
   { kind: "camera", label: "Record yourself" },
   // Your voice over scenes made for the script, with nobody on screen.
@@ -121,7 +129,10 @@ function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
 
 function withMake(slots: BriefSlots, make: BriefMake | null): BriefSlots {
   if (!make) return slots;
-  return { ...slots, output: make === "blog" ? "blog" : "video", onScreen: make === "blog" ? null : make };
+  if (make === "blog") return { ...slots, output: "blog", onScreen: null };
+  // A video, with who is on screen left as the words had it: asked next.
+  if (make === "video") return { ...slots, output: "video" };
+  return { ...slots, output: "video", onScreen: make };
 }
 
 interface Props {
@@ -243,6 +254,12 @@ interface Props {
   /** Takes them to those cards, for "Change". */
   onShowChoices?: () => void;
   /**
+   * Whether the page already has a format chosen. Given at all, it means this
+   * asks for one when a video has none: the script's length follows it now
+   * (a vertical one is about a minute), so it is not something to default.
+   */
+  formatSet?: boolean;
+  /**
    * The thing has been written and is waiting on the page: a camera script in
    * its teleprompter. The box stops offering to make it, since a tap there
    * would write over a script that may have been edited.
@@ -267,7 +284,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, choicesOnPage = false, onShowChoices, settled = false, onMakeChange, picked }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, choicesOnPage = false, onShowChoices, formatSet, settled = false, onMakeChange, picked }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -361,9 +378,9 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
       //
       // But only once it is known what to make, tapped here or said in the
       // sentence. Otherwise it stops, and the box asks.
-      const complete = !!(got.topic && got.city && got.state);
+      const complete = !!(got.topic && got.city && got.state) && !lacksFormatRef.current(makeRef.current, got);
       const knowsWhat = !!(got.output || got.onScreen);
-      if (data.ready === true || (opts?.go && complete && knowsWhat && !sparkingRef.current)) {
+      if (complete && (data.ready === true || (opts?.go && knowsWhat && !sparkingRef.current))) {
         sparkingRef.current = true;
         setSparking(true);
         onReady(got);
@@ -387,7 +404,18 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
   // Everything the script actually needs. Until these are in, saying the wake
   // word would start a render of a brief with no place or no subject.
-  const briefReady = !!(slots.topic && slots.city && slots.state);
+  const formatSetRef = useRef(formatSet);
+  formatSetRef.current = formatSet;
+  // `send` is made before this is, and reads it when a reply comes back.
+  const lacksFormatRef = useRef<(kind: BriefMake | null, got: BriefSlots) => boolean>(() => false);
+  /** A video being made with no shape said or picked. Not asked of a blog, or of the camera, which has its own. */
+  const lacksFormat = (kind: BriefMake | null, got: BriefSlots) =>
+    formatSetRef.current !== undefined
+    && kind !== "blog" && kind !== "camera"
+    && !(got.platform || got.length === "long" || formatSetRef.current);
+  lacksFormatRef.current = lacksFormat;
+  const formatMissing = lacksFormat(makeRef.current ?? selected ?? null, slots);
+  const briefReady = !!(slots.topic && slots.city && slots.state) && !formatMissing;
 
   // `sparking` (declared above `send`) is latched the moment we hand over, so
   // a second click or a repeated wake word cannot fire two generations in the
@@ -587,12 +615,16 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // With the cards in the box, the one that is lit is the answer unless the
   // words say otherwise, so there is always something to send as.
   const pageChooses = !!picker || choicesOnPage;
+  // "Make a video about…" said with the Blog card lit is a video.
+  const saidVideo: BriefMake | null = said.video && (selected === "blog" || selected == null) ? "video" : null;
   const making: BriefMake | null = pageChooses
-    ? (saidKind ?? selected ?? make)
+    ? (saidKind ?? saidVideo ?? selected ?? make)
     : askAll ? null : (saidKind ?? make);
+  // Asked by name where this asks at all: the undecided "video" is the page's.
+  const NAMED = MAKES.filter((m) => m.kind !== "video");
   const offered = !askAll && !make && said.video
-    ? MAKES.filter((m) => m.kind !== "blog")
-    : MAKES;
+    ? NAMED.filter((m) => m.kind !== "blog")
+    : NAMED;
 
   // Tell the page, so its cards agree with what the strip under the box says.
   // Only while words are in the box, and not where the box is switched off.
@@ -656,10 +688,36 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
    * to the box the answer goes in, with what to do about it.
    */
   const hasSpokenTurn = turns.some((t) => t.role === "user");
-  const missing = [
+  const missingParts = [
     !slots.topic ? "what it's about" : null,
     !slots.city ? "the town" : !slots.state ? "the state" : null,
-  ].filter(Boolean).join(" and ");
+    formatMissing ? "the format" : null,
+  ].filter((x): x is string => !!x);
+  const missing = missingParts.length > 2
+    ? `${missingParts.slice(0, -1).join(", ")} and ${missingParts[missingParts.length - 1]}`
+    : missingParts.join(" and ");
+
+  /**
+   * A format, tapped. The one missing thing that is a choice of three, so it
+   * is offered as three buttons beside being asked for in words. With the
+   * rest of the brief in, it goes.
+   */
+  function pickFormat(f: "reel" | "youtube" | "long") {
+    if (sparkingRef.current || busyRef.current || disabled) return;
+    const kind = makeRef.current ?? selected ?? null;
+    const got = withMake(
+      { ...slotsRef.current, platform: f === "long" ? "youtube" : f, length: f === "long" ? "long" : (slotsRef.current.length ?? "standard") },
+      kind,
+    );
+    setSlots(got);
+    onSlots(got);
+    if (got.topic && got.city && got.state) {
+      makeRef.current = kind;
+      sparkingRef.current = true;
+      setSparking(true);
+      onReady(got);
+    }
+  }
 
   // The mic dims with the box unless tapping it can switch the route on.
   const micOff = off && !onWake;
@@ -848,7 +906,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           ) : (
             <>
               <p className="text-[15px] font-semibold leading-snug text-spark-ink">
-                {offered.length < MAKES.length
+                {offered.length < NAMED.length
                   ? "Check your words, then choose which kind of video."
                   : "Check your words, then choose what to make."}
               </p>
@@ -864,7 +922,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                     {label}
                   </button>
                 ))}
-                {offered.length < MAKES.length && (
+                {offered.length < NAMED.length && (
                   <button
                     type="button"
                     onClick={() => setAskAll(true)}
@@ -899,9 +957,32 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
 
       {/* Sent, and something is still missing. */}
       {hasSpokenTurn && !briefReady && !!missing && !thinking && !listening && !draft.trim() && (
-        <p className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5 text-[15px] font-semibold leading-snug text-spark-ink">
-          I still need {missing}. Say it or type it, then press Send.
-        </p>
+        <div className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5">
+          <p className="text-[15px] font-semibold leading-snug text-spark-ink">
+            I still need {missing}.{" "}
+            {formatMissing && missingParts.length === 1 ? "Tap one, or say it." : "Say it or type it, then press Send."}
+          </p>
+          {formatMissing && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {([
+                { f: "reel" as const, label: "Vertical" },
+                { f: "youtube" as const, label: "Horizontal" },
+                // A Scenes Reel runs ninety seconds at most.
+                ...((makeRef.current ?? selected) === "scenes" ? [] : [{ f: "long" as const, label: "Longform" }]),
+              ]).map(({ f, label }) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => pickFormat(f)}
+                  disabled={disabled}
+                  className="rounded-full bg-spark-blue px-5 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       </div>
 
@@ -927,7 +1008,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
               I have everything. What should I make?
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {(pageChooses && selected ? MAKES.filter((m) => m.kind === selected) : MAKES).map(({ kind, label }) => (
+              {(pageChooses && selected ? MAKES.filter((m) => m.kind === selected) : NAMED).map(({ kind, label }) => (
                 <button
                   key={kind}
                   type="button"

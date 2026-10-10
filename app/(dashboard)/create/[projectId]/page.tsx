@@ -1366,6 +1366,8 @@ export default function ProjectEditorPage() {
           tone: s.tone || undefined,
           ctaPreference: s.cta_preference || undefined,
           videoLength: s.video_length || "standard",
+          // A vertical video's script is about a minute; written again, it still is.
+          ...(s.video_platform === "reel" && s.video_length !== "long" && { shortScript: true }),
           regenerateOnly: true,
         }),
       });

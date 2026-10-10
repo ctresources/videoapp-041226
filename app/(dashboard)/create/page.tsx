@@ -32,7 +32,7 @@ import {
   TEMPLATE_COUNT,
   substitutePlaceholders,
 } from "@/components/create/content-templates";
-import { VoiceBriefSession, type BriefMake } from "@/components/create/voice-brief-session";
+import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components/create/voice-brief-session";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -498,6 +498,16 @@ function CreatePageInner() {
   // writing (scenesWriting) so the mic waits as it does for the other kinds.
   const [scenesWrite, setScenesWrite] = useState(0);
   const [scenesWriting, setScenesWriting] = useState(false);
+  /**
+   * The page after Send, for a video: which kind.
+   *
+   * The owner wanted one Video / Reel card and the choice between its two
+   * kinds on the next page, before the script is written, so the script can
+   * be written to suit. Open while this is set; `slots` is what the mic had
+   * gathered, or null when the footer's button opened it and the page's own
+   * fields are the brief.
+   */
+  const [videoChooser, setVideoChooser] = useState<{ slots: BriefSlots | null } | null>(null);
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -1055,6 +1065,7 @@ function CreatePageInner() {
           purpose: spoken?.purpose || locPurpose || undefined,
           videoLength: length,
           videoPlatform: platform,
+          ...(platform === "reel" && length !== "long" && !asBlog && { shortScript: true }),
           // Who is on screen, when the brief said. Saved on the project, so
           // the setup step opens on it instead of on its default.
           ...(spoken?.onScreen === "voice_only" ? { renderMode: "voice_only" }
@@ -1909,7 +1920,18 @@ function CreatePageInner() {
     inputMode === "listing" ? (scenesRoute ? "scenes" : null)
       : blogOnly ? "blog"
         : inputMode === "camera" ? "camera"
-          : "avatar";
+          : "video";
+
+  /** A Scenes Reel from this brief: its form writes the script and stops for it to be read. */
+  function startScenes(sl: BriefSlots | null) {
+    setBlogOnly(false);
+    setInputMode("listing");
+    setListingMode("scenes");
+    if (sl?.topic) { setLocCustomTopic(sl.topic); setTopicTemplateRaw(null); }
+    setScenesWriting(true);
+    setScenesWrite(Date.now());
+    setTimeout(() => document.getElementById("scenes-reel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  }
   const topicApplies =
     (inputMode === "script" && !(blogOnly && blogSrcOpen))
     || (cameraFromTopic && !cameraSourceLocked)
@@ -2213,6 +2235,59 @@ function CreatePageInner() {
     // desktop and touching both screen edges on a phone.
     <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
+      {/* The page after Send, for a video: which of its two kinds. Asked
+          before the script is written, so the script is written to suit: the
+          owner's choice (2026-10-10). Over the whole screen, like a page of
+          its own, with the way back at the top. */}
+      {videoChooser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#f4f2e8]" role="dialog" aria-modal="true" aria-label="Choose your video">
+          <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+            <button
+              type="button"
+              onClick={() => setVideoChooser(null)}
+              disabled={locGenerating}
+              className="text-[15px] font-semibold text-spark-blue hover:text-spark-blue-deep disabled:opacity-50"
+            >
+              &larr; Back
+            </button>
+            <h1 className="mt-4 text-[24px] font-semibold leading-tight tracking-[-0.01em] text-spark-ink">Choose your video</h1>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {([
+                { kind: "avatar" as const, Icon: SquareUser, label: "Avatar + voice", desc: "You on screen, in your cloned voice" },
+                { kind: "scenes" as const, Icon: Clapperboard, label: "Voice only", desc: "Scenes Reel: your voice over AI scenes" },
+              ]).map(({ kind, Icon, label, desc }) => (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={locGenerating}
+                  onClick={() => {
+                    const sl = videoChooser.slots;
+                    if (kind === "scenes") {
+                      setVideoChooser(null);
+                      startScenes(sl);
+                      return;
+                    }
+                    // Stays open while the script is written, then the editor opens.
+                    void handleGenerateScript({ ...(sl ?? {}), onScreen: "avatar" });
+                  }}
+                  className="flex flex-col items-start gap-1.5 rounded-[16px] border-[1.5px] border-spark-rule bg-white px-5 py-5 text-left transition-colors hover:border-spark-amber disabled:opacity-60"
+                >
+                  <Icon strokeWidth={1.9} className="h-7 w-7 text-[#A3660F]" aria-hidden />
+                  <span className="text-[19px] font-bold leading-tight text-spark-ink">{label}</span>
+                  <span className="text-[14.5px] leading-[1.35] text-spark-ink-muted">{desc}</span>
+                  <span className="mt-1"><CostPill free={false} emphasis>Uses 1 video</CostPill></span>
+                </button>
+              ))}
+            </div>
+            {locGenerating && (
+              <p className="mt-5 flex items-center gap-2 text-[15px] font-medium text-spark-ink">
+                <Loader2 size={16} className="animate-spin" /> Writing your script, about a minute.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
         <button
@@ -2368,7 +2443,10 @@ function CreatePageInner() {
                 and handing a finished sentence down, so what is said shows in
                 the box and can be corrected before it is sent. */}
             <VoiceBriefSession
-              disabled={locGenerating || cameraScriptGenerating || scenesWriting}
+              // Held while the next page is open, so closing it frees the box again.
+              disabled={locGenerating || cameraScriptGenerating || scenesWriting || !!videoChooser}
+              // Asked for when a video has none: its script's length follows it.
+              formatSet={formatTouched}
               off={!topicApplies}
               onWake={topicWake}
               settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
@@ -2399,6 +2477,11 @@ function CreatePageInner() {
                   setBlogOnly(false);
                   setInputMode("listing");
                   setListingMode("scenes");
+                } else if (kind === "video") {
+                  // Either kind of video is already this card.
+                  if (!blogOnly && (inputMode === "script" || inputMode === "paste" || scenesRoute)) return;
+                  setBlogOnly(false);
+                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
                 } else {
                   if (!blogOnly && inputMode === "script") return;
                   setBlogOnly(false);
@@ -2409,7 +2492,7 @@ function CreatePageInner() {
               // answers: the free video first, or billing.
               canMake={(kind) => {
                 // A Scenes Reel is checked against the plan when it is built.
-                if (kind === "avatar" || kind === "scenes") return true;
+                if (kind === "video" || kind === "avatar" || kind === "scenes") return true;
                 if (!(kind === "blog" ? blogLocked : cameraLocked)) return true;
                 if (trialNotStarted) {
                   toast(kind === "blog" ? BLOG_SPENT : CAMERA_SPENT);
@@ -2460,16 +2543,10 @@ function CreatePageInner() {
               }}
               onReady={(sl) => {
                 if (locGenerating || cameraScriptGenerating) return;
-                // A Scenes Reel: its card writes the script from this topic,
-                // and stops there for them to read before anything is built.
-                if (sl.onScreen === "scenes" && sl.output !== "blog") {
-                  setBlogOnly(false);
-                  setInputMode("listing");
-                  setListingMode("scenes");
-                  if (sl.topic) { setLocCustomTopic(sl.topic); setTopicTemplateRaw(null); }
-                  setScenesWriting(true);
-                  setScenesWrite(Date.now());
-                  setTimeout(() => document.getElementById("scenes-reel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+                // A Scenes Reel, by name or as "voice only", which is the same
+                // thing up to ninety seconds.
+                if ((sl.onScreen === "scenes" || (sl.onScreen === "voice_only" && sl.length !== "long")) && sl.output !== "blog") {
+                  startScenes(sl);
                   return;
                 }
                 if (inputMode === "camera") {
@@ -2495,6 +2572,13 @@ function CreatePageInner() {
                   setCameraSource("speak");
                   setCameraVoiceTopic(sl.topic);
                   void handleCameraScriptFromTopic(sl.topic, sl);
+                  return;
+                }
+                // A video, and nothing said about who is in it: asked on the
+                // next page. Not for a long one, which only the avatar makes,
+                // or with something attached, which the script is written from.
+                if (sl.output !== "blog" && !blogOnly && !sl.onScreen && sl.length !== "long" && !sl.emailId && !blogSrcText.trim()) {
+                  setVideoChooser({ slots: sl });
                   return;
                 }
                 handleGenerateScript(sl);
@@ -2591,7 +2675,7 @@ function CreatePageInner() {
           between the box and Send, and the owner found that too busy. */}
       {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" />}
       {step === "input" && !cameraHandoff && (
-        <div id="make-cards" className="mt-2.5 grid scroll-mt-24 grid-cols-2 gap-2 rounded-[14px] sm:grid-cols-3 lg:grid-cols-5">
+        <div id="make-cards" className="mt-2.5 grid scroll-mt-24 grid-cols-2 gap-2 rounded-[14px] sm:grid-cols-4">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2615,9 +2699,11 @@ function CreatePageInner() {
               // Short, at the owner's choice: four across leaves each card
               // about 174px, and the longer names ("Create an avatar video")
               // each wrapped to two or three lines.
-              label: "Avatar video",
-              Icon: SquareUser,
-              desc: "Avatar + cloned voice",
+              // One card for both kinds of rendered video, at the owner's ask
+              // (2026-10-10): which of the two is chosen on the page after.
+              label: "Video / Reel",
+              Icon: Clapperboard,
+              desc: "Avatar or voice only",
               free: false,
               cost: "Uses 1 video",
             },
@@ -2639,20 +2725,6 @@ function CreatePageInner() {
               free: true,
               // "1 free" before the free video: the one take a new account has.
               cost: cameraLocked ? "Locked" : freeRecordingNow ? "1 free" : "Free",
-            },
-            {
-              // A card of its own, at the owner's direction (2026-10-09). It
-              // was the third tab inside Listings & photos, which is about
-              // property pictures and where nobody looks for a reel made
-              // from a topic. It is the quickest video here and the least
-              // costly to make, and suits Reels and Shorts.
-              key: "scenes" as const,
-              label: "Scenes Reel",
-              Icon: Clapperboard,
-              // "Voice only" is what this is, and where people look for it.
-              desc: "Voice only, over AI scenes",
-              free: false,
-              cost: "Uses 1 video",
             },
             {
               key: "blog" as const,
@@ -2692,9 +2764,9 @@ function CreatePageInner() {
               ? blogOnly
               : blogOnly ? false
                 : key === "film" ? inputMode === "camera"
-                  : key === "scenes" ? inputMode === "listing" && listingMode === "scenes"
-                    : key === "listing" ? inputMode === "listing" && listingMode !== "scenes"
-                      : inputMode !== "camera" && inputMode !== "listing";
+                  : key === "listing" ? inputMode === "listing" && listingMode !== "scenes"
+                    // Video / Reel: the avatar route, or a Scenes Reel under way.
+                    : scenesRoute || (inputMode !== "camera" && inputMode !== "listing");
             return (
               <button
                 key={key}
@@ -2752,9 +2824,8 @@ function CreatePageInner() {
                     return;
                   }
                   setBlogOnly(false);
-                  if (key === "scenes") {
-                    setInputMode("listing");
-                    setListingMode("scenes");
+                  if (key === "spark" && scenesRoute) {
+                    // Already a video, of the kind chosen on the page after.
                     setCardPick({ kind: "scenes", n: Date.now() });
                     return;
                   }
@@ -2773,7 +2844,7 @@ function CreatePageInner() {
                       // A listing named to the mic sets lastSparkTab too.
                       : lastSparkTab === "camera" || lastSparkTab === "listing" ? "script" : lastSparkTab
                   );
-                  setCardPick({ kind: key === "film" ? "camera" : "avatar", n: Date.now() });
+                  setCardPick({ kind: key === "film" ? "camera" : "video", n: Date.now() });
                 }}
                 aria-pressed={active}
                 className={`flex items-center rounded-[14px] px-3 py-2.5 text-left transition-colors sm:px-4 sm:py-3.5 lg:px-2 lg:py-3 ${
@@ -2788,7 +2859,7 @@ function CreatePageInner() {
                     them down the card. Beside the name, each one is part of
                     the label it belongs to and costs no height. */}
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-start gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:items-center lg:gap-1.5 lg:text-[14px]">
+                  <span className="flex items-start gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:items-center lg:gap-1.5 lg:text-[15px]">
                     <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
                     <span className="min-w-0">{label}</span>
                   </span>
@@ -3201,7 +3272,7 @@ function CreatePageInner() {
                       // Shorts tiles are called Shorts, so the sub-line is the
                       // only thing telling them apart — and "9:16" says less
                       // about which to pick than "Reels, Shorts + TikTok".
-                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "Up to 3 min · Reels, Shorts + TikTok", w: "11px", h: "17px" },
+                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "About 60 sec · Reels, Shorts + TikTok", w: "11px", h: "17px" },
                       { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 3 min · YouTube + websites", w: "20px", h: "12px" },
                       { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
@@ -3300,7 +3371,12 @@ function CreatePageInner() {
             // chosen, the primary action is saving that article — the footer
             // has to do what the panel above says, or the two disagree about
             // what pressing the big button means.
-            onClick={() => (importingAsIs ? handleImportArticleAsIs() : handleGenerateScript())}
+            onClick={() => {
+              if (importingAsIs) { void handleImportArticleAsIs(); return; }
+              // The same question the mic's Send leads to, for the same cases.
+              if (!blogOnly && locLength !== "long" && !blogSrcText.trim()) { setVideoChooser({ slots: null }); return; }
+              void handleGenerateScript();
+            }}
             loading={locGenerating || blogImporting}
             disabled={!canContinue}
             size="lg"
@@ -4049,6 +4125,7 @@ function CreatePageInner() {
                   topic={locCustomTopic}
                   writeSignal={scenesWrite}
                   onWriting={setScenesWriting}
+                  vertical={!formatTouched || locPlatform === "reel"}
                 />
               </div>
             )}
