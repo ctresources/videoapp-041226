@@ -337,6 +337,8 @@ export default function ProjectEditorPage() {
   // saying "Rendering — you can close this page" and the only route to the
   // finished video was the My Content link in the nav.
   const [renderComplete, setRenderComplete] = useState(false);
+  /** The build under way is a Voice only video made as scenes (see voiceOnlyAsScenes), for the progress card to say so. */
+  const [scenesBuild, setScenesBuild] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   // The chosen format's row, read in the two places that describe it — the
@@ -1461,9 +1463,40 @@ export default function ProjectEditorPage() {
     }
   }
 
+  /**
+   * Voice only, as a Scenes Reel.
+   *
+   * A short script with nobody on screen and no pictures of their own is
+   * exactly what the Scenes Reel makes: their voice over a scene for each
+   * sentence. It is ready in a few minutes where the render it replaces took
+   * ten, and costs a fraction to make. So that is what "Voice only" builds,
+   * whenever it can: up to ninety seconds, not Longform, no photos or
+   * document attached (those are the pictures, or the facts, they chose),
+   * and not a listing, whose pictures are the listing's.
+   *
+   * Anything else is rendered as it always was.
+   */
+  const SCENES_VOICE_MAX_WORDS = 210;
+  const scenesSpoken = [
+    joinHookAndScript(selectedHook || project?.ai_script?.hook || "", editedScript || project?.ai_script?.script || ""),
+    activeCta,
+  ].filter(Boolean).join("\n\n");
+  const scenesSpokenWords = scenesSpoken.trim().split(/\s+/).filter(Boolean).length;
+  const voiceOnlyAsScenes = !!project
+    && !selfRecord
+    && renderMode === "voice_only"
+    && selectedVideoType !== "youtube_long"
+    && uploadedPhotos.length === 0
+    && !pdfUrl && !pdfText
+    && project.project_type !== "listing_video"
+    && scenesSpokenWords >= 8
+    && scenesSpokenWords <= SCENES_VOICE_MAX_WORDS;
+
   async function handleGenerateVideo() {
     if (!project) return;
     setVideoGenerating(true);
+    setScenesBuild(voiceOnlyAsScenes);
+    setRenderComplete(false);
     // Move to the generating step immediately. The render outlives this page,
     // so the step reflects that the work has started, not that it finished.
     setEditorStep(4);
@@ -1493,6 +1526,53 @@ export default function ProjectEditorPage() {
       // still has it, and those projects should not have to be regenerated to
       // stop the video saying its first sentence twice.
       const fullScript = joinHookAndScript(hook, bodyScript);
+
+      if (voiceOnlyAsScenes) {
+        // Built in this one request, and attached to this Spark. There is no
+        // job to poll: the answer is the finished video.
+        const built = await fetch("/api/video/photo-reel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scenes: true,
+            projectId: project.id,
+            title: (editedTitle || project.title || "").slice(0, 120),
+            format: selectedVideoType,
+            script: [fullScript, cta].filter(Boolean).join("\n\n"),
+            captions: burnCaptions,
+            ...(musicUrl && { musicUrl }),
+            endCard: true,
+            endCardHeadline: "Let's connect",
+            city: project.location_city ?? undefined,
+            state: project.location_state ?? undefined,
+          }),
+        });
+        // A timeout does not answer in JSON.
+        const raw = await built.text();
+        let data: { videoId?: string; error?: string; code?: string; kind?: string; tier?: string; voice?: "yours" | "stock" } = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch { /* handled below */ }
+        if (!built.ok) {
+          if (built.status === 402 && data.code === "out_of_videos") {
+            setOutOfVideos({ kind: "short", tier: data.tier ?? "free" });
+            setEditorStep(3);
+            return;
+          }
+          throw new Error(
+            data.error
+              || (built.status === 504
+                ? "That took too long to build, so nothing was taken from your plan. Try again."
+                : `Video generation failed (${built.status})`),
+          );
+        }
+        if (!data.videoId) throw new Error("Invalid response from the video builder");
+        setRenderedVideoId(data.videoId);
+        setRenderComplete(true);
+        toast.success("Your video is ready. It's in My Sparks.", { duration: 5000 });
+        if (data.voice === "stock") {
+          toast("Your voice clone couldn't be used this time, so a stock voice read the script.", { duration: 8000, icon: "🎙️" });
+        }
+        return;
+      }
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -1635,7 +1715,8 @@ export default function ProjectEditorPage() {
             {
               mode: "voice_only" as const,
               label: "Voice only",
-              desc: "B-roll from your script, no face on screen",
+              // Short ones are built as a Scenes Reel; see voiceOnlyAsScenes.
+              desc: "Your voice over scenes for each sentence, no face on screen",
             },
             {
               mode: "avatar_voice" as const,
@@ -3419,6 +3500,9 @@ export default function ProjectEditorPage() {
                 // The first two genuinely finished before this screen existed.
                 activeIndex={2}
                 renderJobId={renderJobId}
+                // A Voice only video built as scenes has no job to poll; the
+                // page learns the outcome from the request it is waiting on.
+                outcome={scenesBuild && renderComplete ? "completed" : null}
                 // Fires once per mount, guarded inside RenderPipeline.
                 onSettled={(s) => {
                   setRenderFailed(s === "failed");
@@ -3427,7 +3511,9 @@ export default function ProjectEditorPage() {
                   // enough that nobody is watching the screen when it lands.
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
-                note={`Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Sparks.`}
+                note={scenesBuild
+                  ? "Takes 2 to 5 minutes. Your voice reads the script, a scene is made for each sentence, and they are put together. It keeps building if you close this page. You'll find it in My Sparks."
+                  : `Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Sparks.`}
               />
             );
           })()}
@@ -4137,7 +4223,9 @@ export default function ProjectEditorPage() {
                 : editorStep === 3 ? (
                     selfRecord
                       ? "Free. Your photos play as b-roll while you read"
-                      : `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                      : voiceOnlyAsScenes
+                        ? "Takes 2-5 minutes · your voice over a scene for each sentence"
+                        : `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
                   )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"

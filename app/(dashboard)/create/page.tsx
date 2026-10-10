@@ -2355,7 +2355,7 @@ function CreatePageInner() {
             ]}
             chipsHint={blogOnly
               ? "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d."
-              : "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d, \u201ca short reel\u201d."}
+              : "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d, \u201cvertical\u201d."}
           >
             {/* One card: the big mic, and under it the box its words land in.
                 The mic belongs to the session now rather than sitting above it

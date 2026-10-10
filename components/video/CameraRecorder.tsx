@@ -1942,8 +1942,9 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                         {scenesBusy ? "Making scenes, about three minutes…" : "No footage? Make scenes from my script"}
                       </button>
                       <p className="text-[11px] leading-[1.45] text-slate-400">
-                        Up to six short realistic scenes made with AI to match your script: ordinary homes and
-                        rooms, no people, never your town or a real property. Uses{" "}
+                        Realistic scenes made with AI, one for each part of your script and in its order,
+                        showing what that part is about. Any people are seen from behind or at a distance;
+                        never your town or a real property. Uses{" "}
                         <strong className="font-semibold text-slate-500">one short video</strong> from your plan,
                         and the take is labelled as made with AI when you publish it.
                       </p>

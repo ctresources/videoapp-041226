@@ -93,9 +93,13 @@ const SAID_BLOG = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:blo
 const SAID_VIDEO = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+(?:video|reel|short)\\b|^\\s*(?:an?\\s+)?(?:short\\s+|long\\s+|quick\\s+)?(?:video|reel)\\b`);
 const SAID_CAMERA = /\b(?:record(?:ing)?\s+(?:it\s+|this\s+|that\s+|one\s+)?(?:myself|my\s+self)|record\s+(?:a|my|this|the)\s+(?:short\s+|long\s+|quick\s+)?(?:video|reel|short)|i(?:'ll| will|'m going to| am going to| want to)\s+(?:record|film|shoot)|film\s+(?:it\s+|this\s+)?myself|on\s+camera|teleprompter)\b/;
 const SAID_AVATAR = /\b(?:my|an|the)\s+avatar\b|\bavatar\s+video\b/;
-// By its name, or by what creators call it. Not "reel" alone: "a short reel
-// with my avatar" is a shape of avatar video, and is read as one below.
+// By its name, or by what creators call it.
 const SAID_SCENES = /\bscenes?\s+(?:reel|video|short)s?\b|\bfaceless\b/;
+// "Make a reel about…" is one too. The shapes are called vertical and
+// horizontal now, so a reel is a thing to make and not a way to hold the
+// phone. Unless they also said who is in it: "a reel with my avatar" and
+// "record a reel" are those, in that shape (see saidMake).
+const SAID_REEL = new RegExp(`\\b${MAKE_VERB}\\b(?:\\s+[\\w'-]+){0,4}?\\s+reels?\\b|^\\s*(?:an?\\s+)?(?:short\\s+|quick\\s+)?reels?\\b`);
 
 function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   const t = text.toLowerCase().replace(/[’‘]/g, "'");
@@ -104,7 +108,7 @@ function saidMake(text: string): { kind: BriefMake | null; video: boolean } {
   if (SAID_BLOG.test(t)) kinds.push("blog");
   if (SAID_CAMERA.test(t)) kinds.push("camera");
   if (SAID_AVATAR.test(t)) kinds.push("avatar");
-  if (SAID_SCENES.test(t)) kinds.push("scenes");
+  if (SAID_SCENES.test(t) || (kinds.length === 0 && SAID_REEL.test(t))) kinds.push("scenes");
   // Exactly one, and not a blog said alongside a video: that is two things.
   if (kinds.length === 1 && !(kinds[0] === "blog" && video)) return { kind: kinds[0], video: false };
   if (kinds.length === 0 && video) return { kind: null, video: true };

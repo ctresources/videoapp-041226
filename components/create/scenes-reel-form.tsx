@@ -22,8 +22,10 @@ const LENGTHS = [
 ] as const;
 
 const SHAPES = [
-  { key: "reel_9x16", label: "Reel 9:16", note: "Reels, Shorts, TikTok" },
-  { key: "youtube_16x9", label: "Wide 16:9", note: "YouTube, websites" },
+  // Vertical and Horizontal, as everywhere else. "Reel" named a shape here
+  // and a kind of video one card over, and was heard as either.
+  { key: "reel_9x16", label: "Vertical 9:16", note: "Reels, Shorts, TikTok" },
+  { key: "youtube_16x9", label: "Horizontal 16:9", note: "YouTube, websites" },
   { key: "short_1x1", label: "Square 1:1", note: "Feeds" },
 ] as const;
 

@@ -19,8 +19,8 @@ const MAX_PHOTOS = 12;
  * who knows where they are posting it.
  */
 const FORMATS = [
-  { id: "reel_9x16", label: "Reel", ratio: "9:16", note: "Instagram, TikTok, Shorts" },
-  { id: "youtube_16x9", label: "Wide", ratio: "16:9", note: "YouTube, websites" },
+  { id: "reel_9x16", label: "Vertical", ratio: "9:16", note: "Instagram, TikTok, Shorts" },
+  { id: "youtube_16x9", label: "Horizontal", ratio: "16:9", note: "YouTube, websites" },
 ] as const;
 
 /**

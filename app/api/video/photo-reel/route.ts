@@ -93,6 +93,16 @@ export async function POST(req: NextRequest) {
      * `script`, runs up to a minute, and counts as one short video.
      */
     scenes?: boolean;
+    /**
+     * A Spark this reel belongs to, when it is that Spark's video.
+     *
+     * "Voice only" on the video setup screen builds a short script this way.
+     * The script, the title and the post copy were written there already, so
+     * the reel is attached to that project and none of them is written again.
+     */
+    projectId?: string;
+    /** A chosen music track's address, used as it is in place of a search. */
+    musicUrl?: string;
     /** The property, if this reel is about one. */
     address?: string;
     city?: string;
@@ -127,6 +137,21 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
+
+  // Theirs, or it is not attached to anything.
+  let ownProject: { id: string; seo_data: Record<string, unknown> | null } | null = null;
+  if (body.projectId) {
+    const { data: row } = await admin
+      .from("projects")
+      .select("id, user_id, seo_data")
+      .eq("id", body.projectId)
+      .maybeSingle();
+    const found = row as { id: string; user_id: string; seo_data: Record<string, unknown> | null } | null;
+    if (!found || found.user_id !== user.id) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    ownProject = { id: found.id, seo_data: found.seo_data };
+  }
 
   /**
    * A Cinematic reel counts as one short video, so it needs one to count.
@@ -354,8 +379,8 @@ export async function POST(req: NextRequest) {
     const earnedItsCharge = scenes || (cinematic && moving * 2 > photoUrls.length);
 
     // ── Music bed ───────────────────────────────────────────────────────────
-    let musicUrl: string | null = null;
-    if (body.musicQuery) {
+    let musicUrl: string | null = body.musicUrl?.startsWith("https://") ? body.musicUrl : null;
+    if (!musicUrl && body.musicQuery) {
       try {
         musicUrl = (await searchBackgroundMusic(body.musicQuery, 1))[0]?.audio_url ?? null;
       } catch (e) {
@@ -407,7 +432,8 @@ export async function POST(req: NextRequest) {
      */
     const titleIsReal = (body.title ?? "").trim().length > 3;
     const seoPromise: Promise<Awaited<ReturnType<typeof generateSeoData>> | null> =
-      seoSource.length > 20 || titleIsReal
+      // A Spark that already exists has its post copy; see projectId.
+      !ownProject && (seoSource.length > 20 || titleIsReal)
         ? Promise.race([
             generateSeoData(title, seoSource || title, [body.city, body.state].filter(Boolean) as string[]),
             new Promise<null>((resolve) => setTimeout(() => resolve(null), 30_000)),
@@ -509,7 +535,27 @@ export async function POST(req: NextRequest) {
         ? { youtube_title: title, youtube_description: disclosure }
         : null;
 
-    const { data: project, error: projErr } = await admin
+    let project: { id: string } | null = null;
+    let projErr: { message: string } | null = null;
+    if (ownProject) {
+      // Its own script and post copy stand. Only what this made is added:
+      // that it is ready, and the line saying the scenes were generated.
+      const had = ownProject.seo_data ?? {};
+      const said = typeof had.youtube_description === "string" ? had.youtube_description : "";
+      const { error } = await admin
+        .from("projects")
+        .update({
+          status: "ready",
+          ...(moving > 0 && !said.includes(disclosure) && {
+            seo_data: { ...had, youtube_description: [said.trim(), disclosure].filter(Boolean).join("\n\n") },
+          }),
+        })
+        .eq("id", ownProject.id)
+        .eq("user_id", user.id);
+      project = { id: ownProject.id };
+      projErr = error;
+    } else {
+    const made = await admin
       .from("projects")
       .insert({
         user_id: user.id,
@@ -528,6 +574,9 @@ export async function POST(req: NextRequest) {
       })
       .select("id")
       .single();
+      project = made.data as { id: string } | null;
+      projErr = made.error;
+    }
     if (projErr || !project) throw new Error(projErr?.message || "Could not create the project");
 
     // Never throws, so it cannot cost the reel that was just created.

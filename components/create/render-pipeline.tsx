@@ -67,6 +67,11 @@ interface RenderPipelineProps {
   renderJobId?: string | null;
   /** Told when the render finishes, so the page can offer what comes next. */
   onSettled?: (state: "completed" | "failed") => void;
+  /**
+   * The outcome, where the page already knows it. A video built in one
+   * request has no job to poll: the page is waiting on the answer itself.
+   */
+  outcome?: "completed" | "failed" | null;
 }
 
 /**
@@ -86,8 +91,11 @@ export function RenderPipeline({
   note,
   renderJobId = null,
   onSettled,
+  outcome = null,
 }: RenderPipelineProps) {
-  const { state, error } = useRenderStatus(renderJobId);
+  const polled = useRenderStatus(renderJobId);
+  const state = outcome ?? polled.state;
+  const error = polled.error;
   const complete = state === "completed";
   const failed = state === "failed";
 

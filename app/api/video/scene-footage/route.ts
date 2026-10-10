@@ -19,7 +19,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cameraGateResponse } from "@/lib/utils/free-trial";
-import { makeSceneClips, planScenes, SCENES_MIN } from "@/lib/api/scene-clips";
+import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MIN, type SceneLook } from "@/lib/api/scene-clips";
+import { beatsFromWords } from "@/lib/utils/script-beats";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
 import { joinSceneClips } from "@/lib/api/scene-footage";
 import { NextRequest, NextResponse } from "next/server";
@@ -67,9 +68,29 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // The first part of a long script is enough to plan six scenes from.
-    const plan = await planScenes(script.slice(0, 2000), SCENES);
-    const made = (await makeSceneClips(plan, SECONDS_EACH, vertical ? "9:16" : "16:9", started + 170_000))
+    /**
+     * A scene for each part of the script, in the order it will be read.
+     *
+     * Nothing has been said yet, so there are no real timings to cut to. The
+     * words are timed at teleprompter pace instead, which is near enough to
+     * put the scenes in the script's order and give each about the share of
+     * time its sentences take. Read at that pace, the picture follows the
+     * words; read slower or faster, it runs a little ahead or behind.
+     *
+     * The same rules as the Scenes Reel: what the sentence is about, with
+     * people only from behind or at a distance. If the plan cannot be made,
+     * the six plain scenes this used before.
+     */
+    const spoken = script.slice(0, 6000).split(/\s+/).filter(Boolean);
+    const beats = beatsFromWords(spoken.map((word, i) => ({ word, start: i / 2.4, end: (i + 1) / 2.4 })), 4, 12, 10);
+    const matched = beats.length >= SCENES_MIN ? await planScenesForBeats(beats.map((b) => b.text)) : [];
+    const follows = matched.length === beats.length && matched.length >= SCENES_MIN;
+    // Ninety-six seconds of scene at most, shared out; it loops under a longer take.
+    const share = Math.max(5, Math.floor(96 / Math.max(1, beats.length)));
+    const plan = follows ? matched : await planScenes(script.slice(0, 2000), SCENES);
+    const lengths: number | number[] = follows ? beats.map((b) => Math.min(share, Math.ceil(b.end - b.start))) : SECONDS_EACH;
+    const look: SceneLook = follows ? "distant-people" : "no-people";
+    const made = (await makeSceneClips(plan, lengths, vertical ? "9:16" : "16:9", started + 170_000, look))
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (made.length < SCENES_MIN) {
       return NextResponse.json(
