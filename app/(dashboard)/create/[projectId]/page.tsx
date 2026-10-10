@@ -1593,7 +1593,7 @@ export default function ProjectEditorPage() {
           // Pasted scripts render via Direct Video so the avatar speaks the
           // FULL script verbatim — the Video Agent summarizes long scripts
           // (an 2900-char story came out as an 8-second teaser).
-          ...(source === "paste" && { engine: "direct" }),
+          ...((source === "paste" || circleStyle) && { engine: "direct" }),
           /**
            * Who is on screen, stated rather than implied.
            *
@@ -1716,13 +1716,14 @@ export default function ProjectEditorPage() {
           {[
             {
               mode: "voice_only" as const,
-              label: "Voice only",
+              label: "Voice over only",
               // Short ones are built as a Scenes Reel; see voiceOnlyAsScenes.
               desc: "Your voice over scenes for each sentence, no face on screen",
             },
             {
               mode: "avatar_voice" as const,
-              label: "Avatar + voice",
+              // The two avatar videos, named as the page before names them.
+              label: circleLook ? "Avatar in circle" : "Avatar full video",
               desc: "Your look on screen. Pick one below",
             },
             {
@@ -2559,6 +2560,13 @@ export default function ProjectEditorPage() {
   // generate button was renamed in one and not the other and shipped saying
   // the wrong thing for a whole commit. One layout, three exceptions.
   const isPaste = source === "paste";
+  /**
+   * This project renders as "Avatar in circle": chosen for an AI-written
+   * script on the page before it was written, or a script that was pasted,
+   * which has always rendered that way.
+   */
+  const circleStyle = (project?.ai_script as { avatar_style?: string } | null | undefined)?.avatar_style === "circle";
+  const circleLook = isPaste || circleStyle || (project?.ai_script as { verbatim?: boolean } | null | undefined)?.verbatim === true;
 
   const seo = project.seo_data as SeoData | null;
 
@@ -3074,8 +3082,8 @@ export default function ProjectEditorPage() {
                 stays in state, and switching back brings it back as it was. */}
             {(looksLoading || looks.length > 0) && renderMode === "voice_only" && (
               <p className="text-xs text-slate-500 mb-5">
-                <span className="font-medium text-slate-600">Voice only:</span> no one on screen.
-                Want to appear in this one? Pick <strong>Avatar + voice</strong> above.
+                <span className="font-medium text-slate-600">Voice over only:</span> no one on screen.
+                Want to appear in this one? Pick <strong>{circleLook ? "Avatar in circle" : "Avatar full video"}</strong> above.
               </p>
             )}
             {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && (
@@ -3436,7 +3444,7 @@ export default function ProjectEditorPage() {
                   happen. */}
               {selfRecord
                 ? "you on camera"
-                : renderMode === "avatar_voice" ? "avatar on screen" : "voice only"}
+                : renderMode === "avatar_voice" ? "avatar on screen" : "voice over only"}
               {" · "}
               {selectedMusicId === "none"
                 ? "no music"
@@ -3478,7 +3486,7 @@ export default function ProjectEditorPage() {
           {/* ── Step 4 · Generating ── */}
           {editorStep === 4 && (() => {
             const eta = renderEta({
-              pastedScript: isPaste,
+              pastedScript: isPaste || circleStyle,
               longForm: selectedVideoType === "youtube_long",
               photoCount: uploadedPhotos.length,
             });
@@ -4227,7 +4235,7 @@ export default function ProjectEditorPage() {
                       ? "Free. Your photos play as b-roll while you read"
                       : voiceOnlyAsScenes
                         ? "Takes 2-5 minutes · your voice over a scene for each sentence"
-                        : `Takes ${renderEta({ pastedScript: isPaste, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                        : `Takes ${renderEta({ pastedScript: isPaste || circleStyle, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
                   )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"

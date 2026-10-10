@@ -11,7 +11,7 @@ import {
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe, Mail,
-  SquareUser, Camera, Clapperboard,
+  SquareUser, Camera, Clapperboard, CircleUser,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
@@ -996,6 +996,8 @@ function CreatePageInner() {
     length?: "standard" | "long" | null; platform?: "reel" | "youtube" | null;
     output?: "blog" | "video" | null; onScreen?: "avatar" | "voice_only" | "camera" | "scenes" | null;
     emailId?: string | null;
+    /** "Avatar in circle", chosen on the page before the script is written. */
+    avatarStyle?: "circle";
   }) {
     const city = (spoken?.city ?? locCity).trim();
     const state = (spoken?.state ?? locState).trim();
@@ -1066,6 +1068,7 @@ function CreatePageInner() {
           videoLength: length,
           videoPlatform: platform,
           ...(platform === "reel" && length !== "long" && !asBlog && { shortScript: true }),
+          ...(spoken?.avatarStyle === "circle" && !asBlog && { avatarStyle: "circle", renderMode: "avatar_voice" }),
           // Who is on screen, when the brief said. Saved on the project, so
           // the setup step opens on it instead of on its default.
           ...(spoken?.onScreen === "voice_only" ? { renderMode: "voice_only" }
@@ -2251,10 +2254,12 @@ function CreatePageInner() {
               &larr; Back
             </button>
             <h1 className="mt-4 text-[24px] font-semibold leading-tight tracking-[-0.01em] text-spark-ink">Choose your video</h1>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               {([
-                { kind: "avatar" as const, Icon: SquareUser, label: "Avatar + voice", desc: "You on screen, in your cloned voice" },
-                { kind: "scenes" as const, Icon: Clapperboard, label: "Voice only", desc: "Scenes Reel: your voice over AI scenes" },
+                // The owner's names for the three (2026-10-10).
+                { kind: "avatar" as const, Icon: SquareUser, label: "Avatar full video", desc: "You on screen, with b-roll and graphics" },
+                { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle", desc: "You in a corner circle, over AI scenes" },
+                { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only", desc: "Scenes Reel: your voice over AI scenes" },
               ]).map(({ kind, Icon, label, desc }) => (
                 <button
                   key={kind}
@@ -2268,7 +2273,11 @@ function CreatePageInner() {
                       return;
                     }
                     // Stays open while the script is written, then the editor opens.
-                    void handleGenerateScript({ ...(sl ?? {}), onScreen: "avatar" });
+                    void handleGenerateScript({
+                      ...(sl ?? {}),
+                      onScreen: "avatar",
+                      ...(kind === "circle" && { avatarStyle: "circle" as const }),
+                    });
                   }}
                   className="flex flex-col items-start gap-1.5 rounded-[16px] border-[1.5px] border-spark-rule bg-white px-5 py-5 text-left transition-colors hover:border-spark-amber disabled:opacity-60"
                 >
@@ -2703,7 +2712,7 @@ function CreatePageInner() {
               // (2026-10-10): which of the two is chosen on the page after.
               label: "Video / Reel",
               Icon: Clapperboard,
-              desc: "Avatar or voice only",
+              desc: "Avatar or voice over",
               free: false,
               cost: "Uses 1 video",
             },

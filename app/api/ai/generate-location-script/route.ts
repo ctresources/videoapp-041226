@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     videoLength,
     videoPlatform,
     shortScript,
+    avatarStyle,
     renderMode,
     regenerateOnly,
     blogOnly,
@@ -91,6 +92,13 @@ export async function POST(req: NextRequest) {
     shortScript?: boolean;
     /** Who is on screen, when it was said in the brief. The editor opens on it. */
     renderMode?: "voice_only" | "avatar_voice";
+    /**
+     * "circle": the agent in a corner circle over scenes made for each
+     * sentence, which is how a pasted script has always rendered. Chosen on
+     * the page before the script is written, and kept on the project so the
+     * render knows.
+     */
+    avatarStyle?: "circle";
     /**
      * Redoing an existing project's script, not starting a new one. Skips the
      * project insert and returns { aiScript, seoData } directly — the same
@@ -249,6 +257,7 @@ export async function POST(req: NextRequest) {
     // from here (the listing form has always written it); absent, it keeps its
     // own default.
     ...(renderMode === "voice_only" || renderMode === "avatar_voice" ? { render_mode: renderMode } : {}),
+    ...(avatarStyle === "circle" && { avatar_style: "circle" }),
   };
 
   // Generate SEO/GEO/AEO-optimized YouTube metadata in parallel — non-blocking

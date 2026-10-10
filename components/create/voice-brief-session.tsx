@@ -664,7 +664,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   // stand-in for the big centered heading the old design used.
   const summary = [
     slots.output === "blog" ? "blog" : slots.output === "video" ? "video" : null,
-    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice only" : slots.onScreen === "camera" ? "you on camera" : slots.onScreen === "scenes" ? "a Scenes Reel" : null,
+    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice over only" : slots.onScreen === "camera" ? "you on camera" : slots.onScreen === "scenes" ? "a Scenes Reel" : null,
     slots.city && slots.state ? `${slots.city}, ${slots.state}` : slots.city,
     slots.topic,
     slots.emailSubject ? "from your email" : null,

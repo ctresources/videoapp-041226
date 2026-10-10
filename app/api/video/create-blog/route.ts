@@ -637,7 +637,16 @@ export async function POST(req: NextRequest) {
    * for no presenter is better served by the agent reading it over b-roll
    * than by a face nobody asked for.
    */
-  const useDirectVideo = (engineIsDirect || isVerbatimProject) && !voiceOnly;
+  /**
+   * "Avatar in circle", chosen for a script the AI wrote.
+   *
+   * The same look a pasted script gets: the agent in a corner circle, with a
+   * scene behind them for each sentence. It is this renderer that makes it;
+   * the agent builds a different kind of video altogether. Read off the
+   * project like verbatim is, so it holds whichever page asks for the render.
+   */
+  const isCircleProject = (aiScript as { avatar_style?: string } | null)?.avatar_style === "circle";
+  const useDirectVideo = (engineIsDirect || isVerbatimProject || isCircleProject) && !voiceOnly;
   if (voiceOnly && (engineIsDirect || isVerbatimProject)) {
     console.log(`[create-blog] project=${projectId} asked for voice only — not using Direct Video, which would supply a face`);
   }

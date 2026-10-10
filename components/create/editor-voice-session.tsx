@@ -159,7 +159,7 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
       : [
           voiceSet.videoType ? VIDEO_TYPE_LABELS[voiceSet.videoType] : null,
           voiceSet.renderMode
-            ? voiceSet.renderMode === "avatar_voice" ? "avatar on screen" : "voice only"
+            ? voiceSet.renderMode === "avatar_voice" ? "avatar on screen" : "voice over only"
             : null,
           voiceSet.musicId
             ? voiceSet.musicId === "none"
@@ -203,7 +203,7 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
               lastReply ||
               (scope === "script"
                 ? "“Make the opening punchier.” Or “cut the part about taxes.”"
-                : "“Make it vertical, voice only, upbeat music.” Or “make the opening punchier.”")}
+                : "“Make it vertical, voice over only, upbeat music.” Or “make the opening punchier.”")}
           </p>
 
           {spokenSettings.length > 0 && (
