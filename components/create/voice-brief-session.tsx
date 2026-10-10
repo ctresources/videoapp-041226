@@ -232,6 +232,17 @@ interface Props {
   /** Which of them is chosen on the page now. Null where none of the four is. */
   selected?: BriefMake | null;
   /**
+   * The page asks what to make itself, in its own row of cards, so this does
+   * not ask again: the strip names the card that is lit and offers Send.
+   *
+   * The cards were tried inside this card, between the box and Send, and the
+   * owner found it too busy. They are back in their own section; what stayed
+   * is that the question is asked once.
+   */
+  choicesOnPage?: boolean;
+  /** Takes them to those cards, for "Change". */
+  onShowChoices?: () => void;
+  /**
    * The thing has been written and is waiting on the page: a camera script in
    * its teleprompter. The box stops offering to make it, since a tap there
    * would write over a script that may have been edited.
@@ -256,7 +267,7 @@ interface Props {
  * A short summary line here is not that: it is a glance at what voice itself
  * has captured this conversation, not a duplicate of the form.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, settled = false, onMakeChange, picked }: Props) {
+export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, choicesOnPage = false, onShowChoices, settled = false, onMakeChange, picked }: Props) {
   // In a ref so `send` calls the current one without being rebuilt for it.
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
@@ -575,7 +586,8 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
   const saidKind = cardOver !== null && cardOver === draft ? null : said.kind;
   // With the cards in the box, the one that is lit is the answer unless the
   // words say otherwise, so there is always something to send as.
-  const making: BriefMake | null = picker
+  const pageChooses = !!picker || choicesOnPage;
+  const making: BriefMake | null = pageChooses
     ? (saidKind ?? selected ?? make)
     : askAll ? null : (saidKind ?? make);
   const offered = !askAll && !make && said.video
@@ -812,7 +824,11 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
                   {picker ? "Choose another above to change it." : (
                   <button
                     type="button"
-                    onClick={() => { makeRef.current = null; setMake(null); setAskAll(true); }}
+                    onClick={() => {
+                      // The cards are the way to change it, where the page has them.
+                      if (choicesOnPage) { onShowChoices?.(); return; }
+                      makeRef.current = null; setMake(null); setAskAll(true);
+                    }}
                     className="font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
                   >
                     Change
@@ -911,7 +927,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
               I have everything. What should I make?
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {(picker && selected ? MAKES.filter((m) => m.kind === selected) : MAKES).map(({ kind, label }) => (
+              {(pageChooses && selected ? MAKES.filter((m) => m.kind === selected) : MAKES).map(({ kind, label }) => (
                 <button
                   key={kind}
                   type="button"

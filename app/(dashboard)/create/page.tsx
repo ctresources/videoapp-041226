@@ -140,7 +140,9 @@ const TRY_LINES = [
  * a misheard street name is a keystroke to fix rather than a brief to redo.
  */
 function SectionHead({ eyebrow, question, aside, className = "" }: {
-  eyebrow: string; question: string;
+  eyebrow: string;
+  /** Optional since the owner took the questions off: "too much text". */
+  question?: string;
   /** Runs on the same line as the question, in muted type. For the one thing
    *  worth saying beside it — on Topic details, that there is a list below so
    *  nobody has to invent something in front of an empty box. On its own line
@@ -150,9 +152,11 @@ function SectionHead({ eyebrow, question, aside, className = "" }: {
 }) {
   return (
     <div className={`flex flex-col gap-[3px] ${className}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
+      {/* A little larger when it stands alone: it is the whole heading then. */}
+      <p className={`font-semibold uppercase tracking-[0.16em] text-spark-amber ${question ? "text-[10px]" : "text-[12px]"}`}>
         {eyebrow}
       </p>
+      {question && (
       <p className="flex flex-wrap items-baseline gap-x-2.5 text-[17px] font-semibold leading-[1.2] tracking-[-0.01em] text-spark-ink">
         {question}
         {aside && (
@@ -161,6 +165,7 @@ function SectionHead({ eyebrow, question, aside, className = "" }: {
           </span>
         )}
       </p>
+      )}
     </div>
   );
 }
@@ -2306,14 +2311,8 @@ function CreatePageInner() {
       {step === "input" && !cameraHandoff && (
         <div className="mt-7 flex flex-col gap-3">
           <SectionHead
-            eyebrow="1 · Topic"
-            // Not "your video" or "your article": this is asked before the
-            // cards below have been chosen from.
-            // The owner's wording, both lines. "Content" for the same reason:
-            // it is a video or an article, and nobody has said which yet.
-            // The line that ran beside it, the three ways to fill the box, is
-            // beside the mic in the card now.
-            question="What would you like to create content about?"
+            // The owner's name for it, and no question under it any more.
+            eyebrow="1 · Content Topic"
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2375,9 +2374,224 @@ function CreatePageInner() {
               settled={inputMode === "camera" && !!cameraGeneratedScript.trim()}
               picked={cardPick}
               selected={selectedMake}
-              // The page's choice of what to make, asked here and nowhere else.
-              picker={step === "input" && !cameraHandoff ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              // Asked once, in the cards of section 2. The strip under the box
+              // names the one that is lit, and Change goes to them.
+              choicesOnPage
+              onShowChoices={() => showBriefControl("make-cards")}
+              // The cards in section 2 follow what the box is making, read
+              // from the words or tapped there, before anything is sent. A
+              // locked kind is left alone here; pressing Send says why.
+              onMakeChange={(kind) => {
+                if ((kind === "blog" && blogLocked) || (kind === "camera" && cameraLocked)) return;
+                if (kind === "blog") {
+                  if (blogOnly && inputMode === "script") return;
+                  setBlogOnly(true);
+                  // As the Blog card does: the format picker is hidden there.
+                  setLocLength("standard");
+                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
+                } else if (kind === "camera") {
+                  if (inputMode === "camera" && cameraSource === "speak" && !blogOnly) return;
+                  setBlogOnly(false);
+                  setInputMode("camera");
+                  setCameraSource("speak");
+                } else if (kind === "scenes") {
+                  if (scenesRoute) return;
+                  setBlogOnly(false);
+                  setInputMode("listing");
+                  setListingMode("scenes");
+                } else {
+                  if (!blogOnly && inputMode === "script") return;
+                  setBlogOnly(false);
+                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
+                }
+              }}
+              // The same lock the cards in section 2 carry, with the same two
+              // answers: the free video first, or billing.
+              canMake={(kind) => {
+                // A Scenes Reel is checked against the plan when it is built.
+                if (kind === "avatar" || kind === "scenes") return true;
+                if (!(kind === "blog" ? blogLocked : cameraLocked)) return true;
+                if (trialNotStarted) {
+                  toast(kind === "blog" ? BLOG_SPENT : CAMERA_SPENT);
+                } else {
+                  router.push("/billing");
+                }
+                return false;
+              }}
+              onSwitchToTyping={() => { /* the box already takes typing */ }}
+              // Only ever fills blanks it has an answer for — a null slot
+              // must not wipe something already typed or picked from a chip.
+              onSlots={(s) => {
+                if (s.city) setLocCity(s.city);
+                if (s.state) setLocState(s.state);
+                // Both topics, so the camera side has it whichever route this
+                // was said on.
+                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); setCameraVoiceTopic(s.topic); }
+                if (s.audience) setLocAudience(rememberAudience(s.audience));
+                if (s.tone) setLocTone(s.tone);
+                if (s.length) {
+                  setLocLength(s.length);
+                  setFormatTouched(true);
+                  // The brief speaks in standard/long; the teleprompter has
+                  // four lengths. Map onto the nearest and leave the four-way
+                  // picker for anything finer.
+                  setCameraScriptLength(s.length === "long" ? "full" : "standard");
+                }
+                if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
+                if (s.purpose) setLocPurpose(s.purpose);
+                // "Create a blog" and "make a video" pick the route out loud,
+                // the same as pressing its tile.
+                // Not while recording yourself: there the route only changes
+                // once the brief is done (onReady below), as it did when the
+                // camera had a topic box of its own.
+                if (s.output && inputMode !== "camera") setBlogOnly(s.output === "blog");
+                // "From my Ambler market report email": attached to the page,
+                // so the button at the bottom writes from it as well, and it
+                // can be seen and taken off again.
+                if (s.emailId && s.emailId !== blogSrcEmailId && inputMode !== "camera") {
+                  openEmail(s.emailId)
+                    .then((article) => attachEmail(article, { quiet: true }))
+                    .catch(() => { /* said when it is written, in handleGenerateScript */ });
+                }
+                // Long form renders landscape only. Said together, "long reel"
+                // has to resolve to something buildable, and the length is the
+                // half that changes the script.
+                if (s.length === "long") setLocPlatform("youtube");
+              }}
+              onReady={(sl) => {
+                if (locGenerating || cameraScriptGenerating) return;
+                // A Scenes Reel: its card writes the script from this topic,
+                // and stops there for them to read before anything is built.
+                if (sl.onScreen === "scenes" && sl.output !== "blog") {
+                  setBlogOnly(false);
+                  setInputMode("listing");
+                  setListingMode("scenes");
+                  if (sl.topic) { setLocCustomTopic(sl.topic); setTopicTemplateRaw(null); }
+                  setScenesWriting(true);
+                  setScenesWrite(Date.now());
+                  setTimeout(() => document.getElementById("scenes-reel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+                  return;
+                }
+                if (inputMode === "camera") {
+                  // What was asked for wins over which route the page happened
+                  // to be on: a blog, or a video with the avatar or voice
+                  // only, leaves the camera route and is made. Without this,
+                  // "create a blog about…" said here came back as a script to
+                  // read on camera and the blog was never written.
+                  if (sl.output === "blog" || sl.onScreen === "avatar" || sl.onScreen === "voice_only") {
+                    setInputMode("script");
+                    setLastSparkTab("script");
+                    setBlogOnly(sl.output === "blog");
+                    void handleGenerateScript({ ...sl, topic: sl.topic ?? cameraTopicText });
+                    return;
+                  }
+                  void handleCameraScriptFromTopic(sl.topic ?? cameraTopicText, sl);
+                  return;
+                }
+                // "I'll record it myself" is the camera route: the script goes
+                // to the teleprompter, not to a render.
+                if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
+                  setInputMode("camera");
+                  setCameraSource("speak");
+                  setCameraVoiceTopic(sl.topic);
+                  void handleCameraScriptFromTopic(sl.topic, sl);
+                  return;
+                }
+                handleGenerateScript(sl);
+              }}
+              // This panel's button and the one in the footer call the same
+              // handler, so they have to agree on what it does.
+              mode={blogOnly ? "blog" : "script"}
+              onDraftChange={setBriefHasDraft}
+              seed={sparkSeed}
+              command={voiceCommand}
+              onReply={() => setCommandPending(false)}
+            />
+          </ComposerCard>
+
+          {/* The six quick chips used to sit here, above the panel — a second
+              template picker stacked on the one below it, under a label
+              ("Start with a template or idea") that said almost exactly what
+              the panel's own title says. Every one of the six was already
+              inside it, one tab away. They are in the panel now, under its
+              title; the label moved up to the section question, where it
+              points at them. */}
+
+          {/* ── Spark an idea ──
+              Flush against the composer above it. The -mt-3 cancels this
+              column's gap: the card rounds at the top, the panel rounds at the
+              bottom, and between them there is a single shared rule. They fill
+              the same field, so a gap made choosing an idea look like a
+              different exercise from typing one. */}
+          <div className={`-mt-3 ${topicOffClass}`} {...topicOffProps}>
+          <SparkPanel
+            city={locCity || undefined}
+            state={locState || undefined}
+            // Also drops the topic into the composer, so a pick is the start of
+            // a sentence you can add to rather than a silent field change
+            // somewhere further down the page.
+            onSelect={(topic, raw) => {
+              setLocCustomTopic(topic);
+              setTopicTemplateRaw(raw);
+              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
+            }}
+            // A whole command rather than a topic, so it only goes in the box:
+            // sent from there, the brief works out that it asks for a blog.
+            tryLine="Create a blog about preparing a home for sale."
+            onUseTry={(text) => setSparkSeed((s) => ({ text, n: s.n + 1 }))}
+          />
+          </div>
+
+          {/* Something they already have, on the video route.
+              The blog route has had this since it had a source tile; a video
+              could only start from a topic, so a forwarded market report could
+              become an article and never a script. Same control, same
+              attachment. One line until it is wanted: opened, its first tab is
+              a box to paste into, and a second empty box under the topic box
+              reads as a second thing to fill in. */}
+          {/* Something attached while this topic box is up: an email named to
+              the mic ("from my Ambler market report email"), or a piece
+              carried over from the other route. Shown so it can be seen and
+              taken off. There is no way to ATTACH from here any more: on the
+              video route that lives in "Use my content", and on
+              the blog route under its own source tile. Offering it here as
+              well was the same thing in two places. */}
+          {blogSrcText && topicApplies && (
+            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
+              <Mail size={16} className="shrink-0 text-green-600" />
+              <span className="min-w-0 flex-1 truncate text-sm text-green-800">
+                Writing from: {blogSrcName}
+              </span>
+              <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
+                <X size={14} className="text-green-700" />
+              </button>
+            </div>
+          )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ── Row 1 · how it gets made ──
+          One row used to ask two questions: three tiles chose where the words
+          come from and the fourth chose who does the filming. That mix is why
+          the camera tab had to ask about the script a second time once you
+          were inside it. Split in two, each row asks one thing.
+
+          It is you either way, live or as your avatar speaking in your cloned
+          voice. What differs is whether you press record or we render it —
+          which is also the whole of what it costs, so each tile says so. */}
+      {/* Now that the nav verb is Create, this row is what you are creating
+          rather than only how you appear — so the blog belongs in it, beside
+          the two videos, not in the source row below where it was the odd one
+          out among three answers to "where do the words come from". */}
+      {/* "Sparking", not "making" — the product's own verb, the one in the
+          headline above and on the button at the end. */}
+      {/* Back in a section of their own. They were moved into the Topic card,
+          between the box and Send, and the owner found that too busy. */}
+      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" />}
+      {step === "input" && !cameraHandoff && (
+        <div id="make-cards" className="mt-2.5 grid scroll-mt-24 grid-cols-2 gap-2 rounded-[14px] sm:grid-cols-3 lg:grid-cols-5">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2594,218 +2808,7 @@ function CreatePageInner() {
             );
           })}
         </div>
-              ) : undefined}
-              // The cards in section 2 follow what the box is making, read
-              // from the words or tapped there, before anything is sent. A
-              // locked kind is left alone here; pressing Send says why.
-              onMakeChange={(kind) => {
-                if ((kind === "blog" && blogLocked) || (kind === "camera" && cameraLocked)) return;
-                if (kind === "blog") {
-                  if (blogOnly && inputMode === "script") return;
-                  setBlogOnly(true);
-                  // As the Blog card does: the format picker is hidden there.
-                  setLocLength("standard");
-                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
-                } else if (kind === "camera") {
-                  if (inputMode === "camera" && cameraSource === "speak" && !blogOnly) return;
-                  setBlogOnly(false);
-                  setInputMode("camera");
-                  setCameraSource("speak");
-                } else if (kind === "scenes") {
-                  if (scenesRoute) return;
-                  setBlogOnly(false);
-                  setInputMode("listing");
-                  setListingMode("scenes");
-                } else {
-                  if (!blogOnly && inputMode === "script") return;
-                  setBlogOnly(false);
-                  if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
-                }
-              }}
-              // The same lock the cards in section 2 carry, with the same two
-              // answers: the free video first, or billing.
-              canMake={(kind) => {
-                // A Scenes Reel is checked against the plan when it is built.
-                if (kind === "avatar" || kind === "scenes") return true;
-                if (!(kind === "blog" ? blogLocked : cameraLocked)) return true;
-                if (trialNotStarted) {
-                  toast(kind === "blog" ? BLOG_SPENT : CAMERA_SPENT);
-                } else {
-                  router.push("/billing");
-                }
-                return false;
-              }}
-              onSwitchToTyping={() => { /* the box already takes typing */ }}
-              // Only ever fills blanks it has an answer for — a null slot
-              // must not wipe something already typed or picked from a chip.
-              onSlots={(s) => {
-                if (s.city) setLocCity(s.city);
-                if (s.state) setLocState(s.state);
-                // Both topics, so the camera side has it whichever route this
-                // was said on.
-                if (s.topic) { setLocCustomTopic(s.topic); setTopicTemplateRaw(null); setCameraVoiceTopic(s.topic); }
-                if (s.audience) setLocAudience(rememberAudience(s.audience));
-                if (s.tone) setLocTone(s.tone);
-                if (s.length) {
-                  setLocLength(s.length);
-                  setFormatTouched(true);
-                  // The brief speaks in standard/long; the teleprompter has
-                  // four lengths. Map onto the nearest and leave the four-way
-                  // picker for anything finer.
-                  setCameraScriptLength(s.length === "long" ? "full" : "standard");
-                }
-                if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
-                if (s.purpose) setLocPurpose(s.purpose);
-                // "Create a blog" and "make a video" pick the route out loud,
-                // the same as pressing its tile.
-                // Not while recording yourself: there the route only changes
-                // once the brief is done (onReady below), as it did when the
-                // camera had a topic box of its own.
-                if (s.output && inputMode !== "camera") setBlogOnly(s.output === "blog");
-                // "From my Ambler market report email": attached to the page,
-                // so the button at the bottom writes from it as well, and it
-                // can be seen and taken off again.
-                if (s.emailId && s.emailId !== blogSrcEmailId && inputMode !== "camera") {
-                  openEmail(s.emailId)
-                    .then((article) => attachEmail(article, { quiet: true }))
-                    .catch(() => { /* said when it is written, in handleGenerateScript */ });
-                }
-                // Long form renders landscape only. Said together, "long reel"
-                // has to resolve to something buildable, and the length is the
-                // half that changes the script.
-                if (s.length === "long") setLocPlatform("youtube");
-              }}
-              onReady={(sl) => {
-                if (locGenerating || cameraScriptGenerating) return;
-                // A Scenes Reel: its card writes the script from this topic,
-                // and stops there for them to read before anything is built.
-                if (sl.onScreen === "scenes" && sl.output !== "blog") {
-                  setBlogOnly(false);
-                  setInputMode("listing");
-                  setListingMode("scenes");
-                  if (sl.topic) { setLocCustomTopic(sl.topic); setTopicTemplateRaw(null); }
-                  setScenesWriting(true);
-                  setScenesWrite(Date.now());
-                  setTimeout(() => document.getElementById("scenes-reel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
-                  return;
-                }
-                if (inputMode === "camera") {
-                  // What was asked for wins over which route the page happened
-                  // to be on: a blog, or a video with the avatar or voice
-                  // only, leaves the camera route and is made. Without this,
-                  // "create a blog about…" said here came back as a script to
-                  // read on camera and the blog was never written.
-                  if (sl.output === "blog" || sl.onScreen === "avatar" || sl.onScreen === "voice_only") {
-                    setInputMode("script");
-                    setLastSparkTab("script");
-                    setBlogOnly(sl.output === "blog");
-                    void handleGenerateScript({ ...sl, topic: sl.topic ?? cameraTopicText });
-                    return;
-                  }
-                  void handleCameraScriptFromTopic(sl.topic ?? cameraTopicText, sl);
-                  return;
-                }
-                // "I'll record it myself" is the camera route: the script goes
-                // to the teleprompter, not to a render.
-                if (sl.onScreen === "camera" && sl.output !== "blog" && sl.topic) {
-                  setInputMode("camera");
-                  setCameraSource("speak");
-                  setCameraVoiceTopic(sl.topic);
-                  void handleCameraScriptFromTopic(sl.topic, sl);
-                  return;
-                }
-                handleGenerateScript(sl);
-              }}
-              // This panel's button and the one in the footer call the same
-              // handler, so they have to agree on what it does.
-              mode={blogOnly ? "blog" : "script"}
-              onDraftChange={setBriefHasDraft}
-              seed={sparkSeed}
-              command={voiceCommand}
-              onReply={() => setCommandPending(false)}
-            />
-          </ComposerCard>
-
-          {/* The six quick chips used to sit here, above the panel — a second
-              template picker stacked on the one below it, under a label
-              ("Start with a template or idea") that said almost exactly what
-              the panel's own title says. Every one of the six was already
-              inside it, one tab away. They are in the panel now, under its
-              title; the label moved up to the section question, where it
-              points at them. */}
-
-          {/* ── Spark an idea ──
-              Flush against the composer above it. The -mt-3 cancels this
-              column's gap: the card rounds at the top, the panel rounds at the
-              bottom, and between them there is a single shared rule. They fill
-              the same field, so a gap made choosing an idea look like a
-              different exercise from typing one. */}
-          <div className={`-mt-3 ${topicOffClass}`} {...topicOffProps}>
-          <SparkPanel
-            city={locCity || undefined}
-            state={locState || undefined}
-            // Also drops the topic into the composer, so a pick is the start of
-            // a sentence you can add to rather than a silent field change
-            // somewhere further down the page.
-            onSelect={(topic, raw) => {
-              setLocCustomTopic(topic);
-              setTopicTemplateRaw(raw);
-              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
-            }}
-            // A whole command rather than a topic, so it only goes in the box:
-            // sent from there, the brief works out that it asks for a blog.
-            tryLine="Create a blog about preparing a home for sale."
-            onUseTry={(text) => setSparkSeed((s) => ({ text, n: s.n + 1 }))}
-          />
-          </div>
-
-          {/* Something they already have, on the video route.
-              The blog route has had this since it had a source tile; a video
-              could only start from a topic, so a forwarded market report could
-              become an article and never a script. Same control, same
-              attachment. One line until it is wanted: opened, its first tab is
-              a box to paste into, and a second empty box under the topic box
-              reads as a second thing to fill in. */}
-          {/* Something attached while this topic box is up: an email named to
-              the mic ("from my Ambler market report email"), or a piece
-              carried over from the other route. Shown so it can be seen and
-              taken off. There is no way to ATTACH from here any more: on the
-              video route that lives in "Use my content", and on
-              the blog route under its own source tile. Offering it here as
-              well was the same thing in two places. */}
-          {blogSrcText && topicApplies && (
-            <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
-              <Mail size={16} className="shrink-0 text-green-600" />
-              <span className="min-w-0 flex-1 truncate text-sm text-green-800">
-                Writing from: {blogSrcName}
-              </span>
-              <button type="button" onClick={clearSource} aria-label="Remove attachment" className="rounded p-0.5 hover:bg-green-100">
-                <X size={14} className="text-green-700" />
-              </button>
-            </div>
-          )}
-          </div>
-
-        </div>
       )}
-
-      {/* ── Row 1 · how it gets made ──
-          One row used to ask two questions: three tiles chose where the words
-          come from and the fourth chose who does the filming. That mix is why
-          the camera tab had to ask about the script a second time once you
-          were inside it. Split in two, each row asks one thing.
-
-          It is you either way, live or as your avatar speaking in your cloned
-          voice. What differs is whether you press record or we render it —
-          which is also the whole of what it costs, so each tile says so. */}
-      {/* Now that the nav verb is Create, this row is what you are creating
-          rather than only how you appear — so the blog belongs in it, beside
-          the two videos, not in the source row below where it was the odd one
-          out among three answers to "where do the words come from". */}
-      {/* "Sparking", not "making" — the product's own verb, the one in the
-          headline above and on the button at the end. */}
-      {/* The cards that were here are in the Topic card now, between the box
-          and Send: one place that asks what to make. See `picker` above. */}
 
       {/* What has been emailed in used to be a line of its own here, under the
           cards. It is the last tile of the source row below now (emailTile),
@@ -2820,7 +2823,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7" eyebrow="2 · Script source" question="How should your script begin?" />
+          <SectionHead className="mt-7" eyebrow="3 · Script Source" />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -2874,10 +2877,7 @@ function CreatePageInner() {
         <>
         <SectionHead
           className="mt-7"
-          eyebrow={blogOnly ? "2 · Source" : "2 · Script source"}
-          // "Where", not "What": the answers are origins — the writer, your
-          // listings — and "come from" already carries the what.
-          question={blogOnly ? "Where should the article come from?" : "How should your script begin?"}
+          eyebrow={blogOnly ? "3 · Source" : "3 · Script Source"}
         />
         {/* One more column when there is email to start from: three across on
             the video route, and four on the blog route, which already had
@@ -2979,17 +2979,8 @@ function CreatePageInner() {
           "uses 1 video" means has nothing to explain there. Nor on a handed-off
           take: the pills it explains are hidden, recording is free, and the
           banner above already says so. */}
-      {step === "input" && !blogOnly && !cameraHandoff && (
-        <p className="mt-2 text-[12.5px] leading-[1.45] text-spark-ink-muted">
-          {/* The pills above now carry which route costs what, so this line
-              stops repeating them and says the thing they cannot: that the
-              choice is not the charge. People hesitate over a script because
-              they think editing spends something. */}
-          &ldquo;Uses 1 video&rdquo; means one of your short or long videos from your plan.
-          Nothing is spent until you press <strong className="font-semibold text-spark-ink">Spark Video</strong> —
-          picking a route, writing a script and setting the video up are all free.
-        </p>
-      )}
+      {/* A line explaining "Uses 1 video" sat here. Taken out at the owner's
+          request (2026-10-10), with the section questions: too much text. */}
 
       {/* What the lit tile cannot say: what you actually end up with. Leaving
           the mode needs no instructions now that it is one of three tiles in
@@ -3103,7 +3094,7 @@ function CreatePageInner() {
           {/* What is left of the old third section now that its topic box is
               section 1: the place, the audience and the shape. It had no
               heading of its own because it sat directly under that box. */}
-          <SectionHead eyebrow="3 · Details" question="Where is it, and who is it for?" />
+          <SectionHead eyebrow="4 · Details" />
 
           {/* ── Where / Who / What ──
               One shaded panel of questions, as in the design, rather than a
@@ -3119,43 +3110,12 @@ function CreatePageInner() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                 City + State
               </p>
-              <p className="text-[14px] text-spark-ink-muted">
-                {locationSet ? "Set" : "Say it or type it"}
-              </p>
+              {locationSet && <p className="text-[14px] text-spark-ink-muted">Set</p>}
             </div>
 
-            {savedMarkets.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {savedMarkets.map((m) => {
-                  const isActive =
-                    (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() &&
-                    (m.state ?? "").toUpperCase() === locState.trim().toUpperCase();
-                  return (
-                    <div
-                      key={`${m.city}-${m.state}`}
-                      onClick={() => { setLocCity(m.city); setLocState(m.state); }}
-                      className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                        isActive
-                          ? "border-spark-amber bg-spark-amber text-white"
-                          : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber hover:text-spark-amber"
-                      }`}
-                    >
-                      {m.city}, {m.state}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeMarket(m.city, m.state); }}
-                        className={`ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[12px] transition-colors ${
-                          isActive ? "text-white hover:bg-spark-blue" : "text-spark-ink-faint hover:bg-spark-rule-soft"
-                        }`}
-                        aria-label={`Remove ${m.city}, ${m.state}`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {/* The saved markets were a row of chips here. Crossed out by the owner
+                with the rest, and confirmed (2026-10-10). The towns are still
+                saved: typing one of them fills in its state. */}
 
             <div className="flex gap-3">
               <div className="flex-1">
@@ -3232,9 +3192,8 @@ function CreatePageInner() {
                 <div id="brief-format" className="mt-6 scroll-mt-24">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                      Choose your format
+                      Choose format
                     </p>
-                    <p className="text-[14px] text-spark-ink-muted">Default, change it anytime</p>
                   </div>
                   <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {([
@@ -3307,7 +3266,9 @@ function CreatePageInner() {
               : locGenerating
                 ? "Researching the area and writing. This takes about a minute."
                 : !locationSet
-                  ? "Add the city and state above to carry on."
+                  // Said nothing here since the owner took the line out. The
+                  // button beside it stays dim until there is a city and state.
+                  ? ""
                   // The import route has no topic field on screen — the
                   // attachment is the topic — so the line has to ask for the
                   // thing that is actually missing.
@@ -3489,7 +3450,7 @@ function CreatePageInner() {
               count it used to carry belongs to the whole page and is in the
               topbar; the tab name is the lit tile directly above. */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-spark-amber">
-            3 · Your script
+            4 · Your script
           </p>
           {/* One column, top to bottom.
               Two columns asked which side to begin on and answered neither:
@@ -4338,7 +4299,7 @@ function CreatePageInner() {
                 take those are hidden, and a page that opens at "3" reads as
                 one you have lost your place in. */}
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-              {cameraHandoff ? "Where it's set" : "3 · What we're writing"}
+              {cameraHandoff ? "Where it's set" : "4 · What we're writing"}
             </p>
 
             {/* Market for THIS video. Without it the CTA and end card silently
@@ -4486,7 +4447,7 @@ function CreatePageInner() {
             <div id="camera-script" className="scroll-mt-20" />
             {cameraPhase === "script" && (
               <p className="mb-2 mt-5 border-t border-spark-rule-soft pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-spark-amber">
-                {cameraHandoff ? "How it records" : "4 · How it records"}
+                {cameraHandoff ? "How it records" : "5 · How it records"}
               </p>
             )}
 
