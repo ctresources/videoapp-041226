@@ -158,9 +158,21 @@ export default function HelpPage() {
                   <td className="py-2 pr-3">Words for your own site — no video made at all</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
+                {/* The three kinds of Video / Reel, by the names the "Choose your
+                    video" page and Video setup both use. */}
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar video · AI writes it</td>
-                  <td className="py-2 pr-3">You have a topic — AI does the rest</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar full video</td>
+                  <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 3 minutes</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar in circle</td>
+                  <td className="py-2 pr-3">You in a corner circle, over AI scenes that follow each sentence, or over your photos</td>
+                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Voice over only</td>
+                  <td className="py-2 pr-3">A Scenes Reel: no face, no photos, no camera. Your voice over AI scenes, up to 3 minutes</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 {/* One row where there were three (Paste my script, Shorten my
@@ -193,11 +205,6 @@ export default function HelpPage() {
                   <td className="py-2 pr-3">Each photo becomes a few seconds of real camera movement</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
-                <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Scenes reel</td>
-                  <td className="py-2 pr-3">No photos and no camera — a topic becomes a short video of AI-made scenes under your voice</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
-                </tr>
               </tbody>
             </table>
             <p className="text-xs text-slate-400 mt-1.5">
@@ -216,20 +223,32 @@ export default function HelpPage() {
                 they are not mistaken for the numbered steps of this guide. */}
             <Step n={7} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-              has four sections, top to bottom. <strong>1 · Topic</strong> — one card with the mic
-              and a box, where you say or type what it&apos;s about (step 8).{" "}
+              has four sections, top to bottom. <strong>1 · Content Topic</strong> — one card with
+              the mic and a box, where you say or type what it&apos;s about (step 8).{" "}
               <strong>2 · Create</strong> — four
-              cards: <strong>Avatar video</strong>, <strong>Record yourself</strong>,{" "}
+              cards: <strong>Video / Reel</strong>, <strong>Record yourself</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
-              <strong>3 · Script source</strong> — <strong>AI writes it</strong> from
+              <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, <strong>Use my content</strong>, or <strong>Imported content</strong> once
-              you have forwarded something in (step 6). A listing, a photos only reel or a scenes
-              reel skips this one (step 12). <strong>4 · Details</strong> — the city and state, who
-              it&apos;s for, and a video&apos;s shape.
+              you have forwarded something in (step 6). A listing or a photos only reel skips this
+              one (step 13). <strong>4 · Details</strong> — the city and state, who
+              it&apos;s for, and a video&apos;s format.
               <span className="block mt-1.5">
-                You don&apos;t have to work down all four. Give it a topic at the top, choose what to
-                make when it asks, and it starts writing. The sections underneath are there for when
-                you want to change something first.
+                You don&apos;t have to work down all four. Give it a topic at the top, press{" "}
+                <strong>Send</strong>, and it starts writing. The sections underneath are there for
+                when you want to change something first.
+              </span>
+              {/* The page between Send and the script, which is where the three
+                  kinds of video are chosen. */}
+              <span className="block mt-1.5">
+                <strong>Video / Reel</strong> is three kinds of video, and a page called{" "}
+                <strong>Choose your video</strong> asks which before the script is written, so the
+                script suits it. <strong>Avatar full video</strong> puts you on screen with b-roll
+                and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
+                circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
+                has nobody on screen: it is a Scenes Reel (step 11). Each uses one short video. If
+                your sentence already said which, such as &ldquo;with my avatar&rdquo; or
+                &ldquo;voice over only&rdquo;, the page is skipped.
               </span>
               {/* Sparks are named here because everything below refers to them,
                   and because one now exists the moment a project does — someone
@@ -273,7 +292,7 @@ export default function HelpPage() {
                 chips under the topic box, <strong>Topic</strong>, <strong>Town</strong>,{" "}
                 <strong>Audience</strong> and <strong>Format</strong>, turn blue as each one is
                 filled in. Tap one and it takes you to where that is set, or just say it:{" "}
-                <em>&ldquo;for first-time buyers&rdquo;</em>, <em>&ldquo;a short reel&rdquo;</em>. If your
+                <em>&ldquo;for first-time buyers&rdquo;</em>, <em>&ldquo;make it vertical&rdquo;</em>. If your
                 audience is not on the list — first responders, nurses relocating — choose{" "}
                 <strong>Add your own&hellip;</strong> at the bottom of Audience and type it. It is saved
                 to your account, so it is there on your phone and your computer, and choosing it again
@@ -289,28 +308,38 @@ export default function HelpPage() {
               same place. Tap
               the mic and say the whole thing in one sentence —{" "}
               <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
-              <em>&ldquo;Make a short YouTube video with my avatar and voice about the Riverside
+              <em>&ldquo;Make a vertical video with my avatar about the Riverside
               market&rdquo;</em> — and tap the mic again when you&apos;re done. Your words wait in the box,
               so a misheard town or street name is a quick fix before anything is sent.
-              {/* What the strip under the box does, which is the part the owner
-                  stopped at twice before it said so on the screen. */}
+              {/* What the strip under the box does. No buttons asking what to
+                  make any more: the lit card is the answer, and the box only
+                  asks for what is missing. */}
               <span className="block mt-1.5">
-                Under the box it then asks what to make, with three buttons:{" "}
-                <strong>Avatar video</strong>, <strong>Record yourself</strong> or{" "}
-                <strong>Blog</strong>. Tap one and it&apos;s sent. If your sentence already said, as both
-                examples above do, it skips the question and shows what it&apos;s making beside a{" "}
-                <strong>Send</strong> button, with <strong>Change</strong> if it read you wrong. It
-                takes the town, the topic and who it&apos;s for from what you said. A blog is written
-                straight away. A video stops at its script, so nothing
-                comes out of your plan until you choose to render it. If something is missing it says
-                so, such as <em>&ldquo;I still need the town&rdquo;</em>, and you say or type the answer
-                and press Send.
+                Under the box it shows what it&apos;s making, such as <strong>Making: Blog</strong>,
+                beside a <strong>Send</strong> button. That is the card lit up under{" "}
+                <strong>2 · Create</strong>, and <strong>Change</strong> takes you there to pick
+                another. It takes the town, the topic and who it&apos;s for from what you said. If
+                something is missing it asks: <em>&ldquo;I still need the town&rdquo;</em>, or the
+                format, with <strong>Vertical</strong>, <strong>Horizontal</strong> and{" "}
+                <strong>Longform</strong> buttons to tap. A blog and Record yourself are not asked
+                for a format.
+              </span>
+              <span className="block mt-1.5">
+                A blog is written straight away. A video stops at its script, so nothing comes out
+                of your plan until you choose to make it. The script&apos;s length follows the
+                format: about <strong>60 seconds</strong> for Vertical, up to{" "}
+                <strong>3 minutes</strong> for Horizontal, and up to <strong>8 minutes</strong> for
+                Longform.
+              </span>
+              <span className="block mt-1.5">
+                Say <em>&ldquo;make a reel about&hellip;&rdquo;</em> and it makes a Voice over only
+                Scenes Reel (step 11). Say who&apos;s in it, as in <em>&ldquo;a reel with my
+                avatar&rdquo;</em>, and it makes that instead.
               </span>
               {/* The cards and the box agree, in both directions. */}
               <span className="block mt-1.5">
-                The cards under <strong>2 · Create</strong> follow along. Say &ldquo;create a
-                blog&rdquo; and the Blog card is the one picked; tap a card yourself and the box
-                makes that instead.
+                The cards follow along. Say &ldquo;create a blog&rdquo; and the Blog card is the
+                one picked; tap a card yourself and the box makes that instead.
               </span>
               <span className="block mt-1.5">
                 You can start from an email you forwarded the same way:{" "}
@@ -344,20 +373,81 @@ export default function HelpPage() {
               the video on your script. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
               it discards your edits.
             </Step>
-            <Step n={10} title="Choose Format, Style & Avatar — Then Generate" icon={Video}>
+            <Step n={10} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
-              <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes with automatic
-              b-roll — or <strong>Longform 16:9</strong> (up to 8 minutes, using your own photos for visuals;
+              <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes — or{" "}
+              <strong>Longform 16:9</strong> (up to 8 minutes, using your own photos for visuals;
               long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own).
-              Then <strong>who&apos;s on screen</strong>: Voice only, Avatar + voice, or <strong>I&apos;ll record
-              it</strong>, which is the free way out of this screen — it hands your script and photos to the
-              camera instead of rendering. Attach photos or documents as b-roll, and hit{" "}
-              <strong>Spark Video</strong>. Rendering time follows the length of the <em>script</em>, not the
-              format — typically <strong>5–20 minutes</strong> for a short video, and up to an hour for a long
-              one. You can close the page and watch for it in My Sparks. If a render ever fails, your
-              allowance is refunded automatically.
+              {/* The same four for every script now, pasted or written. */}
+              <span className="block mt-1.5">
+                Then <strong>who&apos;s on screen</strong>, four choices that are the same for every
+                script, whether AI wrote it or you pasted your own:
+              </span>
+              <span className="block mt-1.5">
+                <strong>Avatar full video</strong> — you on screen, with b-roll and graphics made
+                for you. Up to 3 minutes, so it is not offered for Longform.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
+                exactly as written, over scenes made for each sentence or over your own photos.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made
+                for each sentence, or over your photos if you attached some. The quickest of the
+                three.
+              </span>
+              <span className="block mt-1.5">
+                <strong>I&apos;ll record it</strong> — the free way out of this screen. It hands your
+                script and photos to the camera instead of making a video.
+              </span>
+              <span className="block mt-1.5">
+                The first three use one video from your plan. Attach photos or documents as b-roll,
+                and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
+                <em>script</em>, not the format: Voice over only is usually ready in{" "}
+                <strong>2 to 10 minutes</strong>, an avatar video in <strong>5 to 20</strong>, and a
+                long one can take up to an hour. You can close the page and watch for it in My
+                Sparks. If a video fails, your allowance is refunded automatically.
+              </span>
             </Step>
-            <Step n={11} title="Record Yourself — The Free Option" icon={Camera}>
+            {/* Its own step: the owner wants it found, and it was the last
+                paragraph of the listings step. */}
+            <Step n={11} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
+              A <strong>Scenes Reel</strong> needs no photos, no camera and no face. Your voice
+              clone reads the script over short, realistic scenes made with AI, one for each
+              sentence, on screen while that sentence is spoken. It is the quickest video to make
+              and a good fit for Reels and Shorts.
+              <span className="block mt-1.5">
+                <strong>To make one:</strong> give the Topic card a topic, choose{" "}
+                <strong>Video / Reel</strong>, press <strong>Send</strong>, and pick{" "}
+                <strong>Voice over only</strong> on the Choose your video page. Or just say{" "}
+                <em>&ldquo;make a reel about winter selling tips in Springfield&rdquo;</em>.
+              </span>
+              <span className="block mt-1.5">
+                The script is written for you and waits to be read. Edit it, or tap{" "}
+                <strong>Rewrite</strong>. Choose a length — <strong>30 sec</strong>,{" "}
+                <strong>60 sec</strong>, <strong>90 sec</strong>, <strong>2 min</strong> or{" "}
+                <strong>3 min</strong> — <strong>Vertical</strong> or <strong>Horizontal</strong>,
+                captions, music and your closing card, then press{" "}
+                <strong>Build the Scenes reel</strong>.
+              </span>
+              <span className="block mt-1.5">
+                It builds on its own after that, so you can leave the page. It shows as rendering
+                in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
+                and then as finished: a few minutes for a short one, around ten for three minutes.
+                If it can&apos;t be built, My Sparks says so and nothing is taken from your plan.
+              </span>
+              {/* What the scenes are and are not, said plainly: it sits beside
+                  routes that show a real home. */}
+              <span className="block mt-1.5">
+                The scenes show what each sentence is about and change from one to the next:
+                close-ups, rooms, streets, different light. They are generic on purpose. People
+                appear only from behind or at a distance, there are no readable words, and it is
+                never your town or a real listing. For a real property use a Photos only reel with
+                its own photos (step 13). A Scenes Reel uses <strong>one short video</strong>, and{" "}
+                <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
+              </span>
+            </Step>
+            <Step n={12} title="Record Yourself — The Free Option" icon={Camera}>
               The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
               market, how long the script should be, and where the words come from: a topic, a PDF or link, a
               recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
@@ -376,9 +466,10 @@ export default function HelpPage() {
                 <strong>What plays behind you</strong> is one of three things, with you in the
                 corner. <strong>Your photos</strong>, if you attached any.{" "}
                 <strong>Play my footage behind me</strong>, a clip of your own. Or, with neither,{" "}
-                <strong>Make scenes from my script</strong>: up to six short realistic scenes made
-                with AI to match what you&apos;re about to say — ordinary homes and rooms, no people,
-                never your town or a real property. Scenes take about three minutes to make and use{" "}
+                <strong>Make scenes from my script</strong>: short realistic scenes made with AI,
+                one for each part of what you&apos;re about to say, in order. People appear only from
+                behind or at a distance, and it is never your town or a real property. Scenes take
+                about three minutes to make and use{" "}
                 <strong>one short video</strong> from your plan; photos and your own footage stay
                 free. Write the script first, because the scenes are made from it.
               </span>
@@ -404,16 +495,16 @@ export default function HelpPage() {
             {/* Its own step since the card moved up to row 1 and the reel
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
-            <Step n={12} title="Listings And Photos Only Reels" icon={ImageIcon}>
-              <strong>Listings &amp; photos</strong>, the fourth card, has three tabs. Two start
-              from a set of property pictures and the third needs no pictures at all.{" "}
+            <Step n={13} title="Listings And Photos Only Reels" icon={ImageIcon}>
+              <strong>Listings &amp; photos</strong>, the fourth card, has two tabs, and both start
+              from a set of property pictures.{" "}
               <strong>Listing video</strong> writes a tour from the listing —
               paste a listing link, upload photos or enter the details — and renders it in your voice,
               with your avatar on screen or the photos full-frame. It uses one short video.
               <span className="block mt-1.5">
                 <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
                 them, or paste a listing link and its photos are brought in for you — then pick the
-                shape (<strong>Reel 9:16</strong> or <strong>Wide 16:9</strong>), a length, music, and
+                format (<strong>Vertical</strong> or <strong>Horizontal</strong>), a length, music, and
                 whether it has a voiceover and a closing card with your ask and phone number. A
                 voiceover you type is read in <strong>your own voice clone</strong> once you have set
                 one up, and by a stock voice until then. Then choose the <strong>Motion</strong>:
@@ -437,20 +528,11 @@ export default function HelpPage() {
                 <strong>Make another reel</strong>, underneath, brings the build button back — on
                 Cinematic that is another short video.
               </span>
-              {/* The one with no pictures. Says plainly what the scenes are
-                  not, because the tab sits beside two that show a real home. */}
               <span className="block mt-1.5">
-                <strong>Scenes reel</strong> is for a topic, not a property. Type what it&apos;s about
-                and tap <strong>Write it</strong>, or write the script yourself — about a minute of
-                talking at most. It is read in your voice clone over a handful of realistic scenes made
-                with AI to match it, with captions, music and your closing card. The scenes are
-                generic on purpose: ordinary American homes and rooms, no people, never your town or
-                a real listing. For a real property use Photos only reel with its own photos. A
-                scenes reel uses <strong>one short video</strong>, and{" "}
-                <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
+                No photos to start from? That is a Scenes Reel (step 11).
               </span>
             </Step>
-            <Step n={13} title="Your Share Kit — And A Blog Post" icon={FileText}>
+            <Step n={14} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
               holds a <strong>blog article</strong> — usually 1,000 to 1,500 words, titled with the question a
@@ -504,7 +586,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={14} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={15} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
@@ -521,8 +603,14 @@ export default function HelpPage() {
                 happened and try again once it&apos;s sorted. The note clears itself once a later attempt
                 goes through.
               </span>
+              <span className="block mt-1.5">
+                <strong>If YouTube needs reconnecting</strong>, which happens when Google ends the
+                connection on its side, Publish says so and shows a{" "}
+                <strong>Reconnect YouTube</strong> link. Your channel is remembered; reconnect and
+                publish again.
+              </span>
             </Step>
-            <Step n={15} title="Everywhere Else" icon={Upload}>
+            <Step n={16} title="Everywhere Else" icon={Upload}>
               Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
               <strong> Instagram caption, LinkedIn post, and email blurb</strong> from the project&apos;s
               Title, Description &amp; Hashtags card.
@@ -536,7 +624,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={16} title="The Everyday Tools" icon={Wand2}>
+            <Step n={17} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
@@ -551,7 +639,7 @@ export default function HelpPage() {
             {/* The graphics tools, which were not described anywhere — and the
                 counting rule, which is the thing people actually need to know
                 before they press a button that spends something. */}
-            <Step n={17} title="Graphics Without A Designer" icon={ImageIcon}>
+            <Step n={18} title="Graphics Without A Designer" icon={ImageIcon}>
               The <strong>Image Generator</strong> makes a finished graphic: pick{" "}
               <strong>Just listed</strong>, <strong>Open house</strong>, <strong>Market update</strong>,{" "}
               <strong>Blog header</strong> or <strong>Blank</strong>, describe the picture you want, and
@@ -575,7 +663,7 @@ export default function HelpPage() {
                 you can change the text and colors yourself.
               </span>
             </Step>
-            <Step n={18} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            <Step n={19} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
               <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
@@ -583,7 +671,7 @@ export default function HelpPage() {
               teleprompter — and a short ready-to-paste <strong>answer</strong> for your website, written the
               way AI assistants extract and cite answers. Think of it as the step before everything else:
               Answer Blocks decides <em>what</em> is worth saying, and the Share Kit&apos;s blog article (step
-              13) is the long version of whatever you then make.
+              14) is the long version of whatever you then make.
             </Step>
           </div>
           <VideoPlaceholder label="AI Tools" />
@@ -597,7 +685,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Sparks, The Dashboard And Insights</h2>
           <div className="flex flex-col gap-4">
-            <Step n={19} title="What A Spark Is" icon={Sparkles}>
+            <Step n={20} title="What A Spark Is" icon={Sparkles}>
               A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
               video or videos made from it, the article, the captions, and where each has been
               published. One topic, one Spark — even if you make a short version, a long version and a
@@ -611,14 +699,14 @@ export default function HelpPage() {
                 article, the captions, the schedule and how it&apos;s performing.
               </span>
             </Step>
-            <Step n={20} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
+            <Step n={21} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
               <Link href="/dashboard" className="text-primary-600 font-medium hover:underline">Dashboard</Link>{" "}
               is the starting point, not a report. It shows what you have left — short videos, long
               videos, and whether camera recording is unlocked with the days remaining — a{" "}
               <strong>Getting Started</strong> checklist that disappears once you&apos;ve finished it,
               and your five most recent projects to pick back up.
             </Step>
-            <Step n={21} title="Spark Insights — What Happened After" icon={BarChart2}>
+            <Step n={22} title="Spark Insights — What Happened After" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
               is the opposite: it looks backwards. How many videos you&apos;ve made and published, a
               breakdown by platform and by video shape, and — for anything published to your connected
@@ -633,7 +721,7 @@ export default function HelpPage() {
                 today.
               </span>
             </Step>
-            <Step n={22} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+            <Step n={23} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
@@ -651,7 +739,7 @@ export default function HelpPage() {
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
             <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
-            <li><strong>No photos and no camera:</strong> a Scenes reel turns a topic into a short video, for one short video</li>
+            <li><strong>No photos and no camera:</strong> Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>
