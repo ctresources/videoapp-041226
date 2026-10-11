@@ -84,6 +84,21 @@ export default function HelpPage() {
             <Step n={3} title="Create Your AI Voice" icon={Mic}>
               In <strong>Settings → AI Voice Clone</strong>, record or upload about 30 seconds of your voice.
               Your AI videos will speak in <em>your</em> voice.
+              {/* The two tabs looked like buttons that did nothing; said here
+                  as what they are, with the one that starts it. */}
+              <span className="block mt-1.5">
+                The card has two tabs. <strong>Record my voice</strong> gives you a short script to
+                read aloud, which you can edit or replace with your own words. Press{" "}
+                <strong>Start recording</strong>, speak clearly and naturally for at least 30
+                seconds, press <strong>Stop Recording</strong>, then{" "}
+                <strong>Use this recording</strong>, or <strong>Re-record</strong> to try again.{" "}
+                <strong>Upload a file</strong> is for a recording you already have.
+              </span>
+              <span className="block mt-1.5">
+                If your voice clone ever stops being available, a video tells you before it is
+                made and nothing is taken from your plan. Record your voice again here and try
+                again.
+              </span>
             </Step>
             {/* The Digital Twin step is gone rather than reworded: training one
                 per customer needs HeyGen's Enterprise API, so a setup guide
@@ -653,6 +668,18 @@ export default function HelpPage() {
                 and costs nothing, and using <strong>My photo</strong> or one of your listing photos is
                 free. <strong>New background</strong> makes another photo, and counts as one.{" "}
                 <strong>Use as blog header</strong> sends it straight to the article it belongs to.
+              </span>
+              {/* Not described anywhere until now. The badge is the part people
+                  ask about: it used to come back even with both boxes empty. */}
+              <span className="block mt-1.5">
+                The <strong>Thumbnail Generator</strong> makes the cover picture for a video. Pick
+                the video, type the few words you want on it or leave that blank and AI writes
+                them, and choose the photo. Afterwards you can change the words or the photo and
+                press <strong>Update Thumbnail</strong>, which redraws it in seconds on the same
+                background. The <strong>Market Badge</strong> is the city and state shown on it.
+                Type a different one to change it, which also updates the video&apos;s market so its
+                title and description match, or clear both boxes and press Update Thumbnail to
+                leave the badge off.
               </span>
               <span className="block mt-1.5">
                 <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
