@@ -256,7 +256,7 @@ interface Props {
   /**
    * Whether the page already has a format chosen. Given at all, it means this
    * asks for one when a video has none: the script's length follows it now
-   * (a vertical one is about a minute), so it is not something to default.
+   * (a vertical one is up to 90 seconds), so it is not something to default.
    */
   formatSet?: boolean;
   /**

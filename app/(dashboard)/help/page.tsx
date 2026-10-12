@@ -362,7 +362,7 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 A blog is written straight away. A video stops at its script, so nothing comes out
                 of your plan until you choose to make it. The script&apos;s length follows the
-                format: about <strong>60 seconds</strong> for Vertical, up to{" "}
+                format: up to <strong>90 seconds</strong> for Vertical, up to{" "}
                 <strong>3 minutes</strong> for Horizontal, and up to <strong>8 minutes</strong> for
                 Longform.
               </span>

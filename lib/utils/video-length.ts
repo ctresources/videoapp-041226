@@ -48,6 +48,22 @@ export function standardMaxWords(_tier?: string | null): number {
   return 400; // ~2.8 min at 145 wpm
 }
 
+/**
+ * A VERTICAL video: up to 90 seconds.
+ *
+ * It was about a minute (135 words, capped at 155). Raised at the owner's
+ * request: 90 seconds is what they expect of a Reel, and nothing downstream
+ * needs it shorter. The 90-second figure people know is Facebook's limit for
+ * a post sent as the Reel type; a longer vertical video simply goes up as an
+ * ordinary video, and Instagram Reels and YouTube Shorts both run to three
+ * minutes.
+ *
+ * The cap is 90 seconds at WPM. The target sits a little under it, as the
+ * standard one does, so a script that runs slightly long is not cut.
+ */
+export const VERTICAL_TARGET_WORDS = 200;
+export const VERTICAL_MAX_WORDS = 217;
+
 /** Maximum runtime in minutes for a STANDARD video. */
 export function standardMaxMinutes(_tier?: string | null): number {
   return 4; // the slot; 400 words actually lands at ~2.8

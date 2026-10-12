@@ -8,7 +8,9 @@ import {
   LocationParams,
 } from "@/lib/api/perplexity-prompts";
 import { generateYoutubeMetadata } from "@/lib/api/perplexity";
-import { targetWords, maxWords, clampScript, type VideoLength } from "@/lib/utils/video-length";
+import {
+  targetWords, maxWords, clampScript, VERTICAL_TARGET_WORDS, VERTICAL_MAX_WORDS, type VideoLength,
+} from "@/lib/utils/video-length";
 import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -83,11 +85,11 @@ export async function POST(req: NextRequest) {
      *  preselect it; does not change the script, only the shape it renders in. */
     videoPlatform?: "reel" | "youtube";
     /**
-     * About a minute of script, where a standard one is nearly three.
+     * Up to 90 seconds of script, where a standard one is nearly three minutes.
      *
-     * Sent for a vertical video. The length follows the format now, at the
-     * owner's choice: a reel or a short is a minute, and a minute is also what
-     * can be built as voice over scenes.
+     * Sent for a vertical video. The length follows the format, at the
+     * owner's choice: it was a minute, and is 90 seconds since 2026-10-12.
+     * See VERTICAL_TARGET_WORDS.
      */
     shortScript?: boolean;
     /** Who is on screen, when it was said in the brief. The editor opens on it. */
@@ -181,11 +183,11 @@ export async function POST(req: NextRequest) {
   const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
   const length: VideoLength = videoLength === "long" ? "long" : "standard";
   const short = length === "standard" && shortScript === true && blogOnly !== true;
-  const words = short ? 135 : targetWords(length, tier);
+  const words = short ? VERTICAL_TARGET_WORDS : targetWords(length, tier);
   // The cap is stated in the prompt too. Asking for a target without naming the
   // limit is what produced 676-word scripts against a 522-word target, which
   // were then cut mid-sentence at render time.
-  const cap = short ? 155 : maxWords(length, tier);
+  const cap = short ? VERTICAL_MAX_WORDS : maxWords(length, tier);
 
   const params: LocationParams = {
     city, state, zip, month, year, customTopic,

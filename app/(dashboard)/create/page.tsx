@@ -3287,7 +3287,7 @@ function CreatePageInner() {
                       // "+ TikTok" came off: it pushed this one tile onto a
                       // second line, which made it taller than its neighbours
                       // and dropped their titles out of line with it.
-                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "About 60 sec · Reels, Shorts", w: "11px", h: "17px" },
+                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "Up to 90 sec · Reels, Shorts", w: "11px", h: "17px" },
                       { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 3 min · YouTube + websites", w: "20px", h: "12px" },
                       { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
