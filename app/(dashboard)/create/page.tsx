@@ -3192,12 +3192,9 @@ function CreatePageInner() {
               assume. It seeds the trending list too. */}
           <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5">
           <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
-                City + State
-              </p>
-              {locationSet && <p className="text-[14px] text-spark-ink-muted">Set</p>}
-            </div>
+            {/* A "City + State" heading sat here, over two fields labelled
+                "City or area" and "State". Taken off by the owner as saying
+                it twice. Whether the town is set shows on its chip above. */}
 
             {/* The saved markets were a row of chips here. Crossed out by the owner
                 with the rest, and confirmed (2026-10-10). The towns are still
@@ -3287,7 +3284,10 @@ function CreatePageInner() {
                       // Shorts tiles are called Shorts, so the sub-line is the
                       // only thing telling them apart — and "9:16" says less
                       // about which to pick than "Reels, Shorts + TikTok".
-                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "About 60 sec · Reels, Shorts + TikTok", w: "11px", h: "17px" },
+                      // "+ TikTok" came off: it pushed this one tile onto a
+                      // second line, which made it taller than its neighbours
+                      // and dropped their titles out of line with it.
+                      { p: "reel", l: "standard", title: "Vertical 9:16", sub: "About 60 sec · Reels, Shorts", w: "11px", h: "17px" },
                       { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 3 min · YouTube + websites", w: "20px", h: "12px" },
                       { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
@@ -3298,7 +3298,9 @@ function CreatePageInner() {
                           type="button"
                           onClick={() => { setLocPlatform(p); setLocLength(l); setFormatTouched(true); }}
                           aria-pressed={on}
-                          className={`relative flex min-h-[58px] flex-col justify-center gap-0.5 rounded-[12px] border bg-white px-3 py-2.5 text-left transition-colors ${
+                          // From the top, not centred: if a line ever does wrap,
+                          // the titles still sit level across the row.
+                          className={`relative flex min-h-[58px] flex-col justify-start gap-1 rounded-[12px] border bg-white px-3 py-2.5 text-left transition-colors ${
                             on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
                           }`}
                         >
@@ -3306,10 +3308,16 @@ function CreatePageInner() {
                             <span className="pointer-events-none absolute -inset-px rounded-[13px] border-[2.5px] border-spark-amber" />
                           )}
                           <span className="flex items-center gap-1.5">
-                            <span
-                              className={`flex-none rounded-[3px] border-[1.5px] ${on ? "border-spark-amber" : "border-spark-ink-faint"}`}
-                              style={{ width: w, height: h }}
-                            />
+                            {/* One box for all three shapes. The tall one is
+                                17px high and the wide ones 12, which gave the
+                                title rows different heights and the titles
+                                different left edges. */}
+                            <span className="flex h-[18px] w-[22px] flex-none items-center justify-center">
+                              <span
+                                className={`rounded-[3px] border-[1.5px] ${on ? "border-spark-amber" : "border-spark-ink-faint"}`}
+                                style={{ width: w, height: h }}
+                              />
+                            </span>
                             <span className="text-[14px] font-semibold leading-[1.1] text-spark-ink">{title}</span>
                           </span>
                           <span className="text-[12px] leading-[1.2] text-spark-ink-muted">{sub}</span>
