@@ -120,8 +120,8 @@ const features = [
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "YouTube Publishing",
-    description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. More platforms coming soon.",
+    title: "Publish Everywhere",
+    description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. Paid plans post it to Instagram, Facebook, LinkedIn, TikTok and more from the same window.",
     photo: "https://images.unsplash.com/photo-1502209877429-d7c6df9eb3f9?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -287,7 +287,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + 3 more platforms per video", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -298,7 +298,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -309,7 +309,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "1 social platform (YouTube)", "Other platforms coming soon", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
@@ -715,10 +715,10 @@ export default function LandingPage() {
             </a>
             <p className="text-lg text-slate-400 mt-3">No credit card · Takes about 5 minutes</p>
             {/* What the free video includes, said before signup rather than
-                found out after it. "Coming to" until the other platforms are
-                live; then it becomes "come with a paid plan". */}
+                found out after it. It read "are coming to paid plans" until
+                posting to the other platforms went live (2026-10-11). */}
             <p className="text-base text-slate-400 mt-1.5">
-              Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more are coming to paid plans.
+              Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more come with a paid plan.
             </p>
           </div>
         </div>
@@ -1073,7 +1073,7 @@ export default function LandingPage() {
             </a>
           </div>
           <p className="text-base text-blue-200 -mt-4 mb-8">
-            Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more are coming to paid plans.
+            Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more come with a paid plan.
           </p>
           <p className="text-blue-300 text-xl">First 100 agents · 1 free AI video · No credit card · Cancel anytime</p>
         </div>

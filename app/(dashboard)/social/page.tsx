@@ -210,7 +210,9 @@ function SocialPageContent() {
         )}
       </Card>
 
-      {/* ── Other platforms — not wired up yet ─────────────────────────────────────── */}
+      {/* ── Other platforms ──────────────────────────────────────────────────────────
+          Connected in Settings, which has the list and what each account
+          needs. This card said "Coming soon" until posting to them went live. */}
       <Card className="mb-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-secondary-50 rounded-xl flex items-center justify-center shrink-0">
@@ -219,12 +221,17 @@ function SocialPageContent() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold text-brand-text">Other Platforms</h3>
-              <Badge variant="default" className="text-xs">Coming soon</Badge>
             </div>
             <p className="text-sm text-slate-500">
-              Instagram, TikTok, LinkedIn, Facebook and more are on the way. YouTube publishes
-              from here today.
+              Instagram, Facebook, LinkedIn, TikTok, X, Threads and Google Business come with a
+              paid plan. Your free video publishes to YouTube.
             </p>
+            <Link
+              href="/settings/social"
+              className="mt-2 inline-block text-sm font-semibold text-primary-600 hover:underline"
+            >
+              Connect them in Settings
+            </Link>
           </div>
         </div>
       </Card>
