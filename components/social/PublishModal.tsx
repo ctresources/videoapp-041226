@@ -49,6 +49,13 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
 
 type Tab = "now" | "schedule";
 
+/** "Facebook", "YouTube and Facebook", "3 platforms": short enough for a button. */
+function namePlatforms(platforms: string[]): string {
+  const names = Array.from(new Set(platforms.map((p) => PLATFORM_META[p.toLowerCase()]?.label || p)));
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.length} platforms`;
+}
+
 export function PublishModal({
   videoId, videoTitle, defaultCaption = "", defaultDescription = "",
   defaultTags = [], thumbnailUrl: thumbnailUrlProp, onClose, onPublished
@@ -98,6 +105,9 @@ export function PublishModal({
   useEffect(() => () => { if (statusTimer.current) clearInterval(statusTimer.current); }, []);
   /** null = not attempted (no YouTube target), true/false = the real outcome. */
   const [thumbnailSet, setThumbnailSet] = useState<boolean | null>(null);
+  /** Where the last publish went: already live, and still being sent. The
+   *  finished screen said "live on YouTube" whatever had been chosen. */
+  const [outcome, setOutcome] = useState<{ live: string[]; sending: string[] }>({ live: [], sending: [] });
   /** Resolved for callers that pass no thumbnail — see the defaults fetch. */
   const [fetchedThumbnail, setFetchedThumbnail] = useState<string | null>(null);
   const thumbnailUrl = thumbnailUrlProp || fetchedThumbnail || undefined;
@@ -523,6 +533,11 @@ ${hashes.join(" ")}` : hashes.join(" ");
       // screen, which used to appear whether or not anything had been.
       if (failed.length > 0 && failed.length === (data.results || []).length) return;
 
+      const went = (data.results || []) as { platform: string; status: string }[];
+      setOutcome({
+        live: went.filter((r) => r.status === "published" || r.status === "posted").map((r) => r.platform),
+        sending: went.filter((r) => r.status === "posting").map((r) => r.platform),
+      });
       setPosted(true);
       // null = YouTube wasn't part of this publish, so there is nothing to say
       // about a thumbnail. false = it was, and the thumbnail didn't take.
@@ -580,12 +595,24 @@ ${hashes.join(" ")}` : hashes.join(" ");
               <CheckCircle size={28} className="text-green-500" />
             </div>
             <p className="font-semibold text-brand-text">
-              {tab === "schedule" ? "Post Scheduled!" : "Published Successfully!"}
+              {/* Another platform takes a few minutes to fetch and process the
+                  video, so with nothing live yet this is "on its way", not
+                  "published". */}
+              {tab === "schedule"
+                ? "Post Scheduled!"
+                : outcome.live.length > 0 || outcome.sending.length === 0 ? "Published Successfully!" : "On its way!"}
             </p>
             <p className="text-sm text-slate-500">
+              {/* Names where it went. It said "live on YouTube" for every
+                  publish, including one sent only to Facebook. */}
               {tab === "schedule"
                 ? `Your video will go public on ${new Date(`${scheduleDate}T${scheduleTime}`).toLocaleString()}`
-                : "Your video is live on YouTube."}
+                : [
+                    outcome.live.length > 0 ? `Your video is live on ${namePlatforms(outcome.live)}.` : "",
+                    outcome.sending.length > 0
+                      ? `${outcome.live.length > 0 ? "It is" : "Your video is"} on its way to ${namePlatforms(outcome.sending)}. That takes a few minutes, and we'll tell you here when it lands.`
+                      : "",
+                  ].filter(Boolean).join(" ") || "Your video is published."}
             </p>
             <Button onClick={onClose} className="mt-2">Done</Button>
           </div>
@@ -1082,7 +1109,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
               className="w-full gap-2"
             >
               {tab === "now"
-                ? <><Send size={16} /> {selectedIds.length > 0 ? "Publish to YouTube" : "Select a Platform"}</>
+                ? <><Send size={16} /> {selectedIds.length > 0
+                    ? `Publish to ${namePlatforms(accounts.filter((a) => selectedIds.includes(a.id)).map((a) => a.platform))}`
+                    : "Select a Platform"}</>
                 : <><Clock size={16} /> Schedule Post</>}
             </Button>
           </div>
