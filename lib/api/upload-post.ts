@@ -332,6 +332,24 @@ export async function publishPhoto(p: PublishCommon & { photo: string | { bytes:
   return accepted(data, p.requestId);
 }
 
+/** One photo, already read and encoded as a JPEG. */
+export interface PhotoFile { bytes: Uint8Array; filename: string }
+
+/** Hands several photos to one or more platforms as a single post. */
+export async function publishPhotos(p: PublishCommon & { photos: PhotoFile[] }): Promise<PublishAccepted> {
+  const form = baseForm(p);
+  for (const photo of p.photos) {
+    form.append("photos[]", new Blob([new Uint8Array(photo.bytes)], { type: "image/jpeg" }), photo.filename);
+  }
+  const data = await call<Record<string, unknown>>("/api/upload_photos", {
+    method: "POST",
+    body: form,
+    headers: { "Idempotency-Key": p.requestId },
+    timeoutMs: 90_000,
+  });
+  return accepted(data, p.requestId);
+}
+
 export interface PlatformResult {
   platform: string;
   /** Finished one way or the other; false while still queued or processing. */

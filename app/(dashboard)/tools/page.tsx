@@ -4,12 +4,13 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
+import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import {
   BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
   type BannerBlock, type BannerLayout, type BlockAdjust,
@@ -2655,6 +2656,8 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [uploading, setUploading] = useState(false);
   const bgFileRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<MadeImage[]>([]);
+  /** The finished graphic being posted, when the posting window is open. */
+  const [posting, setPosting] = useState<MadeImage | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   /** The last save, so the page can point at where the image landed. */
@@ -3145,6 +3148,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
                   { key: "download", label: "Download", icon: Download, onClick: () => download(img) },
+                  { key: "post", label: "Post it", icon: Send, onClick: () => setPosting(img) },
                   { key: "text", label: "Update text", icon: Type, onClick: () => rerender(img, false) },
                   ...(bgSource === "ai" ? [{ key: "bg", label: "New background", icon: RefreshCw, onClick: () => rerender(img, true) }] : []),
                   { key: "blog_header", label: "Use as blog header", icon: Newspaper, onClick: () => attach(img, "blog_header") },
@@ -3159,6 +3163,16 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
             </div>
           ))}
         </div>
+      )}
+      {posting && (
+        <PhotoPostDialog
+          photos={[posting.url]}
+          defaultCaption={headline}
+          // Only when the picture itself was generated. A graphic built on the
+          // agent's own photo is their photo with words on it.
+          aiMade={bgSource === "ai"}
+          onClose={() => setPosting(null)}
+        />
       )}
       {/* Where it went, and how to get there.
           Saving showed a toast and then nothing: the image was on the article

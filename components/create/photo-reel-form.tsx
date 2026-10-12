@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown, Link2 } from "lucide-react";
+import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown, Link2, Images } from "lucide-react";
+import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVideoPhoto, assertPhotoUploadAllowed, currentUserId } from "@/lib/utils/upload-photo";
@@ -175,6 +176,8 @@ export function PhotoReelForm({
     }
   }
   const [savedId, setSavedId] = useState<string | null>(null);
+  /** The same photos, posted as stills to swipe through instead of a video. */
+  const [postingPhotos, setPostingPhotos] = useState(false);
   /** Same as the camera's: View it is a full page navigation and the wait
    *  before My Content paints read as a dead button. */
   const [openingVideo, setOpeningVideo] = useState(false);
@@ -956,6 +959,21 @@ export function PhotoReelForm({
           {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
           {rendering ? "Building your reel…" : cinematic ? "Build the Cinematic reel" : "Build the reel"}
         </Button>
+      )}
+
+      {/* The other thing these photos can be: posted as they are, to swipe
+          through. No video is made and nothing comes out of the plan. */}
+      {photos.length > 0 && !rendering && (
+        <Button variant="outline" onClick={() => setPostingPhotos(true)} disabled={uploading} className="gap-2">
+          <Images size={15} /> Post these photos
+        </Button>
+      )}
+      {postingPhotos && (
+        <PhotoPostDialog
+          photos={photos.map((p) => p.url)}
+          defaultCaption={title.trim()}
+          onClose={() => setPostingPhotos(false)}
+        />
       )}
 
       {rendering && (

@@ -51,6 +51,22 @@ export const FIRST_COMMENT_PLATFORMS: readonly PartnerPlatform[] = [
   "instagram", "facebook", "linkedin", "threads", "tiktok",
 ];
 
+/**
+ * Where photos can be posted as they are: one, or several to swipe through.
+ *
+ * Not Google Business. A photo post there is one picture with a button, which
+ * is what a long video already becomes; a set of photos has no equivalent.
+ */
+export const PHOTO_PLATFORMS: readonly PartnerPlatform[] = [
+  "instagram", "facebook", "linkedin", "threads", "x", "tiktok",
+];
+
+/**
+ * The most photos Instagram takes in one post through its API. The others
+ * take at least the twelve the photo forms allow, so only Instagram is trimmed.
+ */
+export const INSTAGRAM_MAX_PHOTOS = 10;
+
 /** The id the Publish window and the post route use for one of these accounts. */
 export const partnerAccountId = (p: PartnerPlatform) => `social_${p}`;
 
