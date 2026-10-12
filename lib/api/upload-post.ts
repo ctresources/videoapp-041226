@@ -296,6 +296,23 @@ export async function publishStatus(ref: PublishAccepted): Promise<PlatformResul
   });
 }
 
+/**
+ * Cancels a scheduled post before it goes out. One job covers every platform
+ * it was scheduled to, so this cancels all of them together.
+ *
+ * False when the partner has no such job: it already ran, or was already
+ * cancelled. The caller has to find out which before saying anything.
+ */
+export async function cancelScheduled(jobId: string): Promise<boolean> {
+  try {
+    await call(`/api/uploadposts/schedule/${encodeURIComponent(jobId)}`, { method: "DELETE" });
+    return true;
+  } catch (err) {
+    if (err instanceof SocialPublishError && err.status === 404) return false;
+    throw err;
+  }
+}
+
 // ── Webhooks ────────────────────────────────────────────────────────────────
 
 /**

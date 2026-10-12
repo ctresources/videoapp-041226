@@ -25,6 +25,8 @@ interface ScheduledPost {
   caption?: string;
   videoTitle?: string;
   videoUrl?: string;
+  /** Other platforms scheduled in the same publish. They cancel with this one. */
+  alsoCancels?: string[];
 }
 
 // ─── Platform helpers ─────────────────────────────────────────────────────────
@@ -69,7 +71,7 @@ function PostPill({ post, onClick }: { post: ScheduledPost; onClick: () => void 
 function PostDrawer({ post, onClose, onCancel }: {
   post: ScheduledPost;
   onClose: () => void;
-  onCancel: (id: string) => void;
+  onCancel: (ids: string[]) => void;
 }) {
   const meta = getPlatform(post.platform);
   const Icon = meta.icon;
@@ -90,8 +92,14 @@ function PostDrawer({ post, onClose, onCancel }: {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Failed to cancel");
       }
-      toast.success("Post cancelled and removed from YouTube");
-      onCancel(post.id);
+      const body = await res.json().catch(() => ({}));
+      const names: string[] = Array.isArray(body.cancelled) ? body.cancelled : [];
+      toast.success(
+        post.platform.toLowerCase() === "youtube"
+          ? "Post cancelled and removed from YouTube"
+          : names.length > 0 ? `Cancelled: ${names.join(", ")}` : "Post cancelled",
+      );
+      onCancel(Array.isArray(body.cancelledIds) && body.cancelledIds.length > 0 ? body.cancelledIds : [post.id]);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not cancel post");
@@ -165,6 +173,12 @@ function PostDrawer({ post, onClose, onCancel }: {
             Cancel Scheduled Post
           </Button>
         )}
+        {/* Platforms scheduled together are one job, so they go together. */}
+        {post.status === "scheduled" && (post.alsoCancels?.length ?? 0) > 0 && (
+          <p className="text-xs text-slate-500 text-center">
+            Also cancels {post.alsoCancels!.join(" and ")}.
+          </p>
+        )}
         {post.videoUrl && (
           <a href={post.videoUrl} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" className="w-full gap-2">
@@ -214,8 +228,8 @@ export default function CalendarPage() {
     return posts.filter((p) => isSameDay(new Date(p.scheduledAt), day));
   }
 
-  function handleCancelPost(id: string) {
-    setPosts((prev) => prev.filter((p) => p.id !== id));
+  function handleCancelPost(ids: string[]) {
+    setPosts((prev) => prev.filter((p) => !ids.includes(p.id)));
   }
 
   // ─── Platform filter ────────────────────────────────────────────────────
