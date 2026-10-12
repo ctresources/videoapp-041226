@@ -109,10 +109,21 @@ export default function HelpPage() {
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
               edit it once and every video ends with a proven subscribe-and-contact close.
             </Step>
-            <Step n={5} title="Connect YouTube" icon={MonitorPlay}>
+            <Step n={5} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
               In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → Social Accounts</Link>,
               connect the Google account that owns your channel. One-time tip: verify your account by phone at
               youtube.com/verify so videos up to 15 minutes always upload smoothly.
+              {/* Added when posting to the other platforms went live. What each
+                  account has to be is said here because it is the usual reason
+                  a connection does not appear. */}
+              <span className="block mt-1.5">
+                On a paid plan the same screen has <strong>More platforms</strong>: Instagram, Facebook,
+                LinkedIn, TikTok, X, Threads and Google Business. Press{" "}
+                <strong>Connect accounts</strong>, pick the ones you use, and approve each on its own
+                site. Connect as many as you like. A few need the right kind of account: Instagram must
+                be a Business or Creator account linked to a Facebook Page, Facebook must be a Page
+                rather than your personal profile, and Google Business must be a verified profile.
+              </span>
             </Step>
             {/* Setup rather than creating, because the useful half is done once:
                 saving the address. After that it is a Forward button in whatever
@@ -625,10 +636,38 @@ export default function HelpPage() {
                 publish again.
               </span>
             </Step>
-            <Step n={16} title="Everywhere Else" icon={Upload}>
-              Download the MP4 for Instagram, Facebook, and LinkedIn — and grab the pre-written
-              <strong> Instagram caption, LinkedIn post, and email blurb</strong> from the project&apos;s
-              Title, Description &amp; Hashtags card.
+            {/* Rewritten when posting to the other platforms went live. It said
+                to download the MP4 and post it by hand, which is still there
+                at the end for anywhere that is not connected. */}
+            <Step n={16} title="Everywhere Else — From The Same Window" icon={Upload}>
+              The <strong>Publish</strong> window lists every account you connected in step 5. Tick the
+              ones this video should go to and the button names them — <strong>Publish to
+              Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
+              until you press it. <strong>Creator</strong> posts each video to YouTube plus three
+              others; <strong>Producer</strong> and <strong>Influencer</strong> post to all of them.
+              <span className="block mt-1.5">
+                <strong>Caption / Post Text</strong> appears as soon as you tick anything besides
+                YouTube. It starts with the caption and hashtags written for the video, and what you leave there is
+                what gets posted.
+              </span>
+              <span className="block mt-1.5">
+                YouTube is live the moment it finishes. The others take a few minutes to process the
+                video, so the window says <strong>On its way</strong> and tells you as each one lands,
+                or why one did not. You can close it; the post carries on either
+                way.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Google Business</strong> works differently. It takes no more than 30 seconds of
+                video and no phone numbers, so a longer video goes up as a photo post with your caption,
+                any phone number left out, and a <strong>Learn more</strong> button to your blog post or
+                the video. A video too long for one of the other platforms is skipped there, with the
+                reason shown.
+              </span>
+              <span className="block mt-1.5">
+                For anywhere you have not connected, download the MP4 and use the pre-written{" "}
+                <strong>Instagram caption, LinkedIn post, and email blurb</strong> from the
+                project&apos;s Title, Description &amp; Hashtags card.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Publishing" />
@@ -764,7 +803,7 @@ export default function HelpPage() {
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
-            <li><strong>Publish:</strong> one click to YouTube with title, description, and tags attached</li>
+            <li><strong>Publish:</strong> one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached</li>
             <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
             <li><strong>No photos and no camera:</strong> Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
