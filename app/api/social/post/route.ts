@@ -377,7 +377,13 @@ export async function POST(req: NextRequest) {
       }
 
       /** Sends one group, then writes a row per platform: waiting on success, failed on refusal. */
-      const handOff = async (platforms: PartnerPlatform[], text: string, send: (requestId: string) => Promise<PublishAccepted>) => {
+      const handOff = async (
+        platforms: PartnerPlatform[], text: string, send: (requestId: string) => Promise<PublishAccepted>,
+        // Where a platform was sent different words from the rest. LinkedIn
+        // gets the post written for it, and the row has to hold that text,
+        // because it is what "Edit caption" opens with.
+        textFor: Partial<Record<PartnerPlatform, string>> = {},
+      ) => {
         const requestId = randomUUID();
         let ref: string | null = null;
         let reason: string | null = null;
@@ -390,7 +396,7 @@ export async function POST(req: NextRequest) {
         for (const platform of platforms) {
           const { error: rowErr } = await admin.from("social_posts").insert({
             user_id: user.id, video_id: videoId, campaign_id: campaignId, platform,
-            video_title: postTitle, caption: text,
+            video_title: postTitle, caption: textFor[platform] ?? text,
             scheduled_at: scheduledAt || null, posted_at: null,
             post_status: ref ? (scheduledAt ? "scheduled" : "posting") : "failed",
             upload_request_id: ref,
@@ -435,7 +441,7 @@ export async function POST(req: NextRequest) {
         await handOff(asVideo, caption, (requestId) => publishVideo({
           username, platforms: asVideo, requestId, title: fitCaption(caption, 2200),
           description: caption, scheduledAt: scheduledAt || null, extra, videoUrl: video.video_url!,
-        }));
+        }), { linkedin: extra.linkedin_description });
       }
 
       if (google) {

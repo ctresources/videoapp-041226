@@ -50,6 +50,18 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
 
 type Tab = "now" | "schedule";
 
+/** One platform's latest post of this video, for "Where it's posted". */
+interface PostedRow {
+  id: string;
+  platform: string;
+  status: string;
+  at: string | null;
+  url: string | null;
+  error: string | null;
+  caption: string | null;
+  canEdit: boolean;
+}
+
 /** "Facebook", "YouTube and Facebook", "3 platforms": short enough for a button. */
 function namePlatforms(platforms: string[]): string {
   const names = Array.from(new Set(platforms.map((p) => PLATFORM_META[p.toLowerCase()]?.label || p)));
@@ -93,6 +105,40 @@ export function PublishModal({
    *  when the agent has saved one, because a link in a caption is not
    *  clickable on Instagram and a link in a comment is. */
   const [firstComment, setFirstComment] = useState("");
+  /** Where this video has already gone, and what happened there. */
+  const [history, setHistory] = useState<PostedRow[]>([]);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  function loadHistory() {
+    fetch(`/api/social/posts?videoId=${encodeURIComponent(videoId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.posts) setHistory(d.posts); })
+      .catch(() => { /* the list simply does not appear */ });
+  }
+  useEffect(() => { loadHistory(); }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function saveEdit() {
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch("/api/social/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit", postId: editing.id, caption: editing.text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "The caption couldn't be changed.");
+      setHistory((prev) => prev.map((h) => (h.id === editing.id ? { ...h, caption: data.caption ?? editing.text } : h)));
+      setEditing(null);
+      toast.success("Caption updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The caption couldn't be changed.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   /** Google Business only: post as an event with a date, such as an open house. */
   const [asEvent, setAsEvent] = useState(false);
   const [eventTitle, setEventTitle] = useState("");
@@ -499,16 +545,24 @@ ${hashes.join(" ")}` : hashes.join(" ");
     }, 6000);
   }
 
-  async function handleSubmit() {
-    if (!selectedIds.length) return toast.error("Select at least one account");
+  const handleSubmit = () => submit();
 
-    const scheduledAt = tab === "schedule" && scheduleDate
+  /**
+   * Publishes to whatever is ticked. With an account id it is a retry: that
+   * one account, now, whatever is ticked or scheduled below. A retry goes out
+   * the same way as any other post, so it is recorded and followed the same.
+   */
+  async function submit(onlyId?: string) {
+    const ids = onlyId ? [onlyId] : selectedIds;
+    if (!ids.length) return toast.error("Select at least one account");
+
+    const scheduledAt = !onlyId && tab === "schedule" && scheduleDate
       ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
       : undefined;
 
-    if (tab === "schedule" && !scheduleDate) return toast.error("Pick a date");
+    if (!onlyId && tab === "schedule" && !scheduleDate) return toast.error("Pick a date");
 
-    const toGoogle = accounts.some((a) => selectedIds.includes(a.id) && a.platform === "google_business");
+    const toGoogle = accounts.some((a) => ids.includes(a.id) && a.platform === "google_business");
     const event = asEvent && toGoogle
       ? { title: eventTitle.trim(), date: eventDate, start: eventStart, end: eventEnd }
       : undefined;
@@ -518,7 +572,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
     setLoading(true);
     try {
       const targets = accounts
-        .filter((a) => selectedIds.includes(a.id))
+        .filter((a) => ids.includes(a.id))
         .map((a) => ({
           accountId: a.id,
           platform: a.platform.toLowerCase(),
@@ -574,7 +628,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // only what is really live: a post handed to another platform is on
         // its way, not published, and is reported as each one lands.
         const sending = (data.results || []).filter((r: { status: string }) => r.status === "posting").length;
-        const okCount = selectedIds.length - failed.length - sending;
+        const okCount = ids.length - failed.length - sending;
         if (okCount > 0) toast.success(`Published to ${okCount} platform${okCount === 1 ? "" : "s"}! 🚀`);
         if (sending > 0) {
           toast(`Sending to ${sending} more platform${sending === 1 ? "" : "s"}. That takes a few minutes; we'll tell you as each one lands.`, { icon: "📤", duration: 7000 });
@@ -642,6 +696,87 @@ ${hashes.join(" ")}` : hashes.join(" ");
           </div>
         ) : (
           <div className="p-5 flex flex-col gap-4">
+            {/* Where this video has already gone. Shown first because it is
+                the answer to "did it post?", which nothing else on any screen
+                gives once this window has been closed. */}
+            {history.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-slate-500 mb-1.5">Where it&apos;s posted</p>
+                <ul className="space-y-2">
+                  {history.map((h) => {
+                    const meta = PLATFORM_META[h.platform] || PLATFORM_META.youtube;
+                    const Icon = meta.icon;
+                    const day = h.at ? new Date(h.at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+                    const account = accounts.find((a) => a.platform.toLowerCase() === h.platform && !a.needsReconnect);
+                    return (
+                      <li key={h.id} className="text-sm">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <Icon size={14} className={`shrink-0 ${meta.color}`} />
+                          <span className="font-medium text-brand-text">{meta.label}</span>
+                          <span className={`text-xs ${
+                            h.status === "failed" ? "font-semibold text-red-600"
+                              : h.status === "posted" ? "text-green-700" : "text-slate-500"
+                          }`}>
+                            {h.status === "posted" ? `Posted ${day}`
+                              : h.status === "failed" ? "Failed"
+                              : h.status === "scheduled" && h.at
+                                ? `Scheduled ${new Date(h.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+                                : "On its way"}
+                          </span>
+                          <span className="ml-auto flex items-center gap-3">
+                            {h.url && (
+                              <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-primary-600 hover:underline">
+                                View
+                              </a>
+                            )}
+                            {h.canEdit && editing?.id !== h.id && (
+                              <button
+                                type="button"
+                                onClick={() => setEditing({ id: h.id, text: h.caption ?? "" })}
+                                className="text-xs font-semibold text-primary-600 hover:underline"
+                              >
+                                Edit caption
+                              </button>
+                            )}
+                            {h.status === "failed" && account && (
+                              <button
+                                type="button"
+                                disabled={loading}
+                                onClick={() => { setTab("now"); submit(account.id); }}
+                                className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-brand-text hover:border-slate-400 disabled:opacity-50"
+                              >
+                                Retry
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        {h.status === "failed" && h.error && (
+                          <p className="mt-0.5 text-xs text-red-600">{h.error}</p>
+                        )}
+                        {editing?.id === h.id && (
+                          <div className="mt-1.5">
+                            <textarea
+                              value={editing.text}
+                              onChange={(e) => setEditing({ id: h.id, text: e.target.value })}
+                              rows={3}
+                              aria-label={`${meta.label} caption`}
+                              className="w-full text-sm px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                            />
+                            <div className="mt-1 flex items-center gap-2">
+                              <Button size="sm" onClick={saveEdit} loading={savingEdit} disabled={!editing.text.trim()}>Save</Button>
+                              <button type="button" onClick={() => setEditing(null)} className="text-xs font-medium text-slate-500 hover:text-slate-700">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
             {/* Title — always visible */}
             <div>
               <label className="text-xs font-medium text-slate-500 block mb-1">Title</label>

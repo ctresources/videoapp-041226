@@ -372,6 +372,26 @@ export async function publishStatus(ref: PublishAccepted): Promise<PlatformResul
   });
 }
 
+/**
+ * Changes the text of a post that is already up. Facebook and LinkedIn only:
+ * Instagram, TikTok and Threads do not allow it, and X allows it for thirty
+ * minutes on a paid account, which is not worth offering.
+ */
+export async function editPost(p: {
+  username: string; platform: "facebook" | "linkedin"; postId: string; text: string;
+}): Promise<void> {
+  await call("/api/uploadposts/posts/edit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      platform: p.platform,
+      user: p.username,
+      post_id: p.postId,
+      ...(p.platform === "facebook" ? { message: p.text } : { commentary: p.text }),
+    }),
+  });
+}
+
 export interface PostMetrics {
   /** The figures as the platform names them: views, reach, reactions, saves… */
   metrics: Record<string, unknown>;
