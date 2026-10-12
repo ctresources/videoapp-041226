@@ -199,7 +199,7 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry }: SparkPa
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-3">
           <p className="text-[15px] font-semibold text-spark-ink">
-            {open ? "All topics, ideas & templates" : "Need an Idea for a Topic?"}
+            {open ? "All topics, ideas & templates" : "Need a topic idea?"}
           </p>
           {/* Beside the heading rather than at the end of the chips, where it
               wrapped onto the same line as More ideas and the two read as a

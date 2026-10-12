@@ -2453,9 +2453,9 @@ function CreatePageInner() {
                 { label: "Format", ok: formatTouched, onClick: () => showBriefControl("brief-format") },
               ]),
             ]}
-            chipsHint={blogOnly
-              ? "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d."
-              : "Tap one to set it, or just say it: \u201cfor first-time buyers\u201d, \u201cvertical\u201d."}
+            // The owner's wording. It carried two spoken examples, and a
+            // second version for blogs; both went as "too much wording".
+            chipsHint="Tap or say to set it"
           >
             {/* One card: the big mic, and under it the box its words land in.
                 The mic belongs to the session now rather than sitting above it
