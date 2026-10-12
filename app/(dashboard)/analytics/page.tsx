@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
-import { BarChart2, Video, Share2, TrendingUp, Eye, Heart, MessageCircle, Clock } from "lucide-react";
+import { BarChart2, Video, Share2, TrendingUp, Eye, Heart, MessageCircle, Clock, Repeat2 } from "lucide-react";
+import { partnerPlatform } from "@/lib/utils/social-platforms";
 
 async function getAnalyticsData() {
   const supabase = await createClient();
@@ -15,7 +16,7 @@ async function getAnalyticsData() {
       .order("created_at", { ascending: false }),
     supabase
       .from("social_posts")
-      .select("id, platform, post_status, posted_at, created_at, video_title, platform_post_id")
+      .select("id, platform, post_status, posted_at, created_at, video_title, platform_post_id, post_url")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -23,11 +24,12 @@ async function getAnalyticsData() {
       .select("credits_remaining, subscription_tier, created_at")
       .eq("id", user.id)
       .single(),
-    // The latest figures the daily cron pulled from YouTube. Read through the
-    // caller's session, which RLS limits to their own rows.
+    // The latest figures the daily jobs pulled: YouTube's, and since October
+    // the other platforms'. Read through the caller's session, which RLS
+    // limits to their own rows.
     supabase
       .from("video_stats")
-      .select("social_post_id, views, likes, comments, fetched_at")
+      .select("social_post_id, views, likes, comments, shares, metrics, fetched_at")
       .eq("user_id", user.id),
   ]);
 
@@ -68,12 +70,28 @@ export default async function AnalyticsPage() {
 
   const { videos, posts, stats } = data;
 
-  interface StatRow { social_post_id: string; views: number; likes: number; comments: number; fetched_at: string }
-  interface PostRow { id: string; video_title: string | null; platform_post_id: string | null; posted_at: string | null; post_status: string }
-  const statRows = stats as StatRow[];
+  interface StatRow {
+    social_post_id: string; views: number; likes: number; comments: number; shares: number | null;
+    metrics: { unavailable?: boolean } | null; fetched_at: string;
+  }
+  interface PostRow {
+    id: string; platform: string; video_title: string | null; platform_post_id: string | null;
+    post_url: string | null; posted_at: string | null; post_status: string;
+  }
+  const allStats = stats as StatRow[];
+  // A platform that reports nothing for a post (a personal LinkedIn profile)
+  // is listed with dashes rather than left out, and never counted as zeros.
+  const none = (s: StatRow) => s.metrics?.unavailable === true;
+  const statRows = allStats.filter((s) => !none(s));
   const totalViews = statRows.reduce((n, s) => n + s.views, 0);
   const totalLikes = statRows.reduce((n, s) => n + s.likes, 0);
   const totalComments = statRows.reduce((n, s) => n + s.comments, 0);
+  const totalShares = statRows.reduce((n, s) => n + (s.shares ?? 0), 0);
+  const platformName = (p: string) => (p === "youtube" ? "YouTube" : partnerPlatform(p)?.label ?? p);
+  const linkFor = (p: PostRow) =>
+    p.platform === "youtube"
+      ? (p.platform_post_id ? `https://www.youtube.com/watch?v=${p.platform_post_id}` : null)
+      : p.post_url;
   const lastFetched = statRows.length
     ? new Date(Math.max(...statRows.map((s) => new Date(s.fetched_at).getTime())))
     : null;
@@ -81,10 +99,11 @@ export default async function AnalyticsPage() {
   // Joined here rather than in the query: one row per post, newest numbers
   // first, so the table reads as "what is doing well" rather than a list.
   const postById = new Map((posts as PostRow[]).map((p) => [p.id, p]));
-  const ranked = statRows
+  const ranked = allStats
     .map((s) => ({ stat: s, post: postById.get(s.social_post_id) }))
     .filter((r): r is { stat: StatRow; post: PostRow } => !!r.post)
-    .sort((a, b) => b.stat.views - a.stat.views);
+    // The ones with no figures go last, whatever their zeros say.
+    .sort((a, b) => Number(none(a.stat)) - Number(none(b.stat)) || b.stat.views - a.stat.views);
 
   const completedVideos = videos.filter((v: { render_status: string }) => v.render_status === "completed").length;
   const publishedPosts  = posts.filter((p: { post_status: string }) => p.post_status === "posted").length;
@@ -181,7 +200,7 @@ export default async function AnalyticsPage() {
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <h3 className="font-semibold text-brand-text flex items-center gap-2">
             <Eye size={16} className="text-slate-400" />
-            YouTube Performance
+            Performance
           </h3>
           <span className="text-xs text-slate-400 ml-auto">
             {lastFetched
@@ -190,18 +209,19 @@ export default async function AnalyticsPage() {
           </span>
         </div>
 
-        {statRows.length === 0 ? (
+        {allStats.length === 0 ? (
           <p className="text-sm text-slate-400">
-            Numbers appear the day after a video publishes to your connected channel. Videos
+            Numbers appear the day after a video publishes to a connected account. Videos
             published before September aren&apos;t counted.
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               {([
                 ["Views", totalViews, Eye, "text-primary-500"],
                 ["Likes", totalLikes, Heart, "text-spark-amber"],
                 ["Comments", totalComments, MessageCircle, "text-green-600"],
+                ["Shares", totalShares, Repeat2, "text-spark-blue"],
               ] as [string, number, React.ElementType, string][]).map(([label, value, Icon, color]) => (
                 <div key={label} className="bg-slate-50 rounded-xl p-3">
                   <Icon size={14} className={`${color} mb-1`} />
@@ -216,18 +236,20 @@ export default async function AnalyticsPage() {
                 <thead>
                   <tr className="text-xs text-slate-400">
                     <th className="text-left font-medium pb-2">Video</th>
+                    <th className="text-left font-medium pb-2">Where</th>
                     <th className="text-right font-medium pb-2">Views</th>
                     <th className="text-right font-medium pb-2">Likes</th>
                     <th className="text-right font-medium pb-2">Comments</th>
+                    <th className="text-right font-medium pb-2">Shares</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranked.map(({ stat, post }) => (
                     <tr key={stat.social_post_id} className="border-t border-slate-100">
                       <td className="py-2 pr-3 text-slate-700">
-                        {post.platform_post_id ? (
+                        {linkFor(post) ? (
                           <a
-                            href={`https://www.youtube.com/watch?v=${post.platform_post_id}`}
+                            href={linkFor(post)!}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:text-primary-600 hover:underline"
@@ -238,9 +260,14 @@ export default async function AnalyticsPage() {
                           post.video_title || "Untitled video"
                         )}
                       </td>
-                      <td className="py-2 text-right tabular-nums text-slate-700">{stat.views.toLocaleString()}</td>
-                      <td className="py-2 text-right tabular-nums text-slate-500">{stat.likes.toLocaleString()}</td>
-                      <td className="py-2 text-right tabular-nums text-slate-500">{stat.comments.toLocaleString()}</td>
+                      <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{platformName(post.platform)}</td>
+                      <td className="py-2 text-right tabular-nums text-slate-700">{none(stat) ? "—" : stat.views.toLocaleString()}</td>
+                      <td className="py-2 text-right tabular-nums text-slate-500">{none(stat) ? "—" : stat.likes.toLocaleString()}</td>
+                      <td className="py-2 text-right tabular-nums text-slate-500">{none(stat) ? "—" : stat.comments.toLocaleString()}</td>
+                      {/* YouTube reports no share count, so a dash there too, not a zero. */}
+                      <td className="py-2 text-right tabular-nums text-slate-500">
+                        {none(stat) || post.platform === "youtube" ? "—" : (stat.shares ?? 0).toLocaleString()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

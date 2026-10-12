@@ -296,6 +296,55 @@ export async function publishStatus(ref: PublishAccepted): Promise<PlatformResul
   });
 }
 
+export interface PostMetrics {
+  /** The figures as the platform names them: views, reach, reactions, saves… */
+  metrics: Record<string, unknown>;
+  platformPostId?: string;
+  url?: string;
+}
+
+/**
+ * What one platform reports for one post.
+ *
+ * Asked by the request the post was sent under when we have it, and by the
+ * platform's own id for the post otherwise (a scheduled post is stored under
+ * its job, not its request). Null when the platform gave no figures: some
+ * never do, and the rest can take hours after posting.
+ */
+export async function postMetrics(p: {
+  username: string; platform: string; requestId?: string; platformPostId?: string;
+}): Promise<PostMetrics | null> {
+  const read = (data: Record<string, unknown>): PostMetrics | null => {
+    const platforms = (data.platforms ?? {}) as Record<string, Record<string, unknown> | undefined>;
+    const entry = platforms[p.platform];
+    const metrics = entry?.post_metrics;
+    if (!entry || !metrics || typeof metrics !== "object") return null;
+    return {
+      metrics: metrics as Record<string, unknown>,
+      platformPostId: typeof entry.platform_post_id === "string" ? entry.platform_post_id : undefined,
+      url: typeof entry.post_url === "string" ? entry.post_url : undefined,
+    };
+  };
+
+  if (p.requestId) {
+    try {
+      const found = read(await call(`/api/uploadposts/post-analytics/${encodeURIComponent(p.requestId)}?platform=${encodeURIComponent(p.platform)}`));
+      if (found) return found;
+    } catch (err) {
+      if (!(err instanceof SocialPublishError && err.status === 404)) throw err;
+    }
+  }
+  if (p.platformPostId) {
+    const query = `platform_post_id=${encodeURIComponent(p.platformPostId)}&platform=${encodeURIComponent(p.platform)}&user=${encodeURIComponent(p.username)}`;
+    try {
+      return read(await call(`/api/uploadposts/post-analytics?${query}`));
+    } catch (err) {
+      if (!(err instanceof SocialPublishError && err.status === 404)) throw err;
+    }
+  }
+  return null;
+}
+
 /**
  * Cancels a scheduled post before it goes out. One job covers every platform
  * it was scheduled to, so this cancels all of them together.
