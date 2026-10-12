@@ -93,6 +93,12 @@ export function PublishModal({
    *  when the agent has saved one, because a link in a caption is not
    *  clickable on Instagram and a link in a comment is. */
   const [firstComment, setFirstComment] = useState("");
+  /** Google Business only: post as an event with a date, such as an open house. */
+  const [asEvent, setAsEvent] = useState(false);
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventStart, setEventStart] = useState("");
+  const [eventEnd, setEventEnd] = useState("");
   const [title, setTitle] = useState(videoTitle);
   const [description, setDescription] = useState(() => withTags(defaultDescription));
   const [privacy, setPrivacy] = useState<"public" | "unlisted" | "private">("public");
@@ -502,6 +508,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
 
     if (tab === "schedule" && !scheduleDate) return toast.error("Pick a date");
 
+    const toGoogle = accounts.some((a) => selectedIds.includes(a.id) && a.platform === "google_business");
+    const event = asEvent && toGoogle
+      ? { title: eventTitle.trim(), date: eventDate, start: eventStart, end: eventEnd }
+      : undefined;
+    if (event && (!event.title || !event.date)) return toast.error("Add the event's name and date");
+    if (event && event.start && event.end && event.end <= event.start) return toast.error("The event ends before it starts");
+
     setLoading(true);
     try {
       const targets = accounts
@@ -514,6 +527,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
           description,
           privacy,
           firstComment,
+          event,
         }));
 
       const res = await fetch("/api/social/post", {
@@ -1070,6 +1084,64 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     Google Business gets this caption with any phone number left out, and a Learn more button
                     to your blog post or the video. Videos over 30 seconds go up there as a photo post.
                   </p>
+                )}
+                {/* An open house, as Google's own Event post: the date and
+                    time show on the listing, and it drops off afterwards. */}
+                {accounts.some((a) => selectedIds.includes(a.id) && a.platform === "google_business") && (
+                  <div className="mt-2">
+                    <label className="flex items-center gap-2 text-sm text-brand-text">
+                      <input
+                        type="checkbox"
+                        checked={asEvent}
+                        onChange={(e) => {
+                          setAsEvent(e.target.checked);
+                          // Google allows 58 characters for an event's name.
+                          if (e.target.checked && !eventTitle) setEventTitle(title.slice(0, 58));
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 accent-primary-500"
+                      />
+                      Post to Google as an event
+                    </label>
+                    {asEvent && (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={eventTitle}
+                          onChange={(e) => setEventTitle(e.target.value)}
+                          maxLength={58}
+                          placeholder="Open house"
+                          aria-label="Event name"
+                          className="col-span-2 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                        <input
+                          type="date"
+                          value={eventDate}
+                          min={minDate}
+                          onChange={(e) => setEventDate(e.target.value)}
+                          aria-label="Event date"
+                          className="col-span-2 text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                        <label className="text-xs text-slate-500">
+                          Starts
+                          <input
+                            type="time"
+                            value={eventStart}
+                            onChange={(e) => setEventStart(e.target.value)}
+                            className="mt-0.5 block w-full text-sm px-3 py-2 border border-slate-200 rounded-xl text-brand-text focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </label>
+                        <label className="text-xs text-slate-500">
+                          Ends
+                          <input
+                            type="time"
+                            value={eventEnd}
+                            onChange={(e) => setEventEnd(e.target.value)}
+                            className="mt-0.5 block w-full text-sm px-3 py-2 border border-slate-200 rounded-xl text-brand-text focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

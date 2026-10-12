@@ -27,6 +27,8 @@ interface PostRequestTarget {
   source?: "native" | "partner";
   /** Posted under the video on the platforms that take one. */
   firstComment?: string;
+  /** Google Business only: post it as an event with a date, such as an open house. */
+  event?: { title?: string; date?: string; start?: string; end?: string };
 }
 
 export async function POST(req: NextRequest) {
@@ -441,6 +443,28 @@ export async function POST(req: NextRequest) {
         const extra: Record<string, string> = learnMoreUrl
           ? { gbp_cta_type: "LEARN_MORE", gbp_cta_url: learnMoreUrl }
           : {};
+        /**
+         * An open house, as Google's own Event post: it shows the date and
+         * time on the listing and drops off when the day has passed, where an
+         * ordinary post about an open house stays up saying "this Saturday".
+         * One day, so the end date is the start date. Anything malformed is
+         * left out and the post goes up as an ordinary one rather than failing.
+         */
+        const ev = wanted.find((w) => w.platform === "google_business")?.target.event;
+        const evTitle = (ev?.title ?? "").trim().slice(0, 58);
+        if (evTitle && ev?.date && /^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
+          const time = (t?: string) => (t && /^\d{2}:\d{2}$/.test(t) ? t : null);
+          extra.gbp_topic_type = "EVENT";
+          extra.gbp_event_title = evTitle;
+          extra.gbp_event_start_date = ev.date;
+          extra.gbp_event_end_date = ev.date;
+          const start = time(ev.start);
+          const end = time(ev.end);
+          if (start) extra.gbp_event_start_time = start;
+          // An end before the start would be refused; without one Google
+          // shows the day and the start.
+          if (end && (!start || end > start)) extra.gbp_event_end_time = end;
+        }
         const common = { username, platforms: ["google_business" as const], title: text, scheduledAt: scheduledAt || null, extra };
         if (google === "video") {
           await handOff(["google_business"], text, (requestId) => publishVideo({ ...common, requestId, videoUrl: video.video_url! }));
