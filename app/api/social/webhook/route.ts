@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { userIdFromProfile, verifyWebhook } from "@/lib/api/upload-post";
 import { plainPostError } from "@/lib/api/social-settle";
 import { tellAboutFailure } from "@/lib/api/social-failure";
+import { partnerPlatform } from "@/lib/utils/social-platforms";
 
 /**
  * POST /api/social/webhook — results from the publishing partner.
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     // may have recorded this failure a moment ago, and its email with it.
     const { data: changed } = await admin.from("social_posts").update({
       post_status: "failed",
-      error_message: plainPostError(r.error ?? undefined, false),
+      error_message: plainPostError(r.error ?? undefined, false, partnerPlatform(event.platform)?.label),
     }).eq("id", id).in("post_status", ["posting", "scheduled"]).select("id");
     if ((changed ?? []).length > 0) await tellAboutFailure(admin, id);
   }

@@ -453,7 +453,9 @@ export async function POST(req: NextRequest) {
       }
 
       if (google) {
-        const text = fitCaption(withoutPhoneNumbers(caption) || postTitle, 1500);
+        // 1,450, not Google's 1,500: the count is theirs, and a post
+        // refused over nine characters is not worth the last fifty.
+        const text = fitCaption(withoutPhoneNumbers(caption) || postTitle, 1450);
         const extra: Record<string, string> = learnMoreUrl
           ? { gbp_cta_type: "LEARN_MORE", gbp_cta_url: learnMoreUrl }
           : {};

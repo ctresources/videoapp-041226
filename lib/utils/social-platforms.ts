@@ -121,11 +121,29 @@ export function deliveryFor(platform: PartnerPlatform, durationSeconds: number |
   return { kind: "video" };
 }
 
+/**
+ * How long a text is as a platform counts it.
+ *
+ * A line break is two characters by the time it arrives: text goes out in a
+ * form, and a form sends every line break as a carriage return and a line
+ * feed. A Google Business caption trimmed to 1,493 characters with sixteen
+ * line breaks in it was refused as 1,509 against a limit of 1,500.
+ */
+function sentLength(text: string): number {
+  return text.length + (text.match(/\n/g)?.length ?? 0);
+}
+
 /** Cut to a platform's text limit at a word, never mid-word. */
 export function fitCaption(text: string, max: number): string {
   const t = text.trim();
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max - 1);
+  if (sentLength(t) <= max) return t;
+  // Room for the ellipsis, then back off by however much the line breaks add.
+  let end = max - 1;
+  let cut = t.slice(0, end);
+  while (end > 0 && sentLength(cut) > max - 1) {
+    end -= sentLength(cut) - (max - 1);
+    cut = t.slice(0, end);
+  }
   const space = cut.lastIndexOf(" ");
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }

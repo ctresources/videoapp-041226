@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { publishStatus, type PlatformResult, type PublishAccepted } from "@/lib/api/upload-post";
 import { tellAboutFailure } from "@/lib/api/social-failure";
+import { partnerPlatform } from "@/lib/utils/social-platforms";
 
 /**
  * Settling a hand-off: turning the "posting" rows written when a post was
@@ -28,15 +29,25 @@ export function parseRef(stored: string): PublishAccepted {
  * its dashboard, which a customer has no login for, so it is matched to a
  * plain sentence rather than passed through.
  */
-export function plainPostError(raw: string | undefined, skipped: boolean): string {
+export function plainPostError(raw: string | undefined, skipped: boolean, platformLabel?: string): string {
   if (skipped) return "That account isn't connected. Connect it in Settings, then post again.";
-  const r = raw ?? "";
+  const where = platformLabel ? ` for ${platformLabel}` : "";
+  // A product's own name is not a clue. "Google Business Profile posts are
+  // limited to 1500 characters" was read as needing a Business account, and
+  // would otherwise have been read as a daily limit.
+  const r = (raw ?? "").replace(/google business( profile)?/gi, "");
+
+  // The words, before anything else: it is the one the agent can fix at once.
+  if (/\d[\d,]* characters|character limit|shorten the (caption|title|text)|(caption|title|text) (is )?too long/i.test(r)) {
+    return `That caption is too long${where}. Shorten it and post again.`;
+  }
   if (/expired|reauth|re-auth|reconnect|revoked|token/i.test(r)) return "That account needs to be reconnected. Open Settings and connect it again.";
   if (/page/i.test(r) && /select|pick|choose|required|missing/i.test(r)) return "Choose which Page to post to: open Settings, then Social Accounts, and pick it under that platform.";
-  if (/location/i.test(r) && /select|pick|choose|required|missing|several/i.test(r)) return "Choose which business location to post to: open Settings, then Connect accounts, and pick it there.";
-  if (/MEDIA_LIMITS|too long|duration|too large|file size/i.test(r)) return "That video is too long or too large for this platform.";
-  if (/business|creator|professional account/i.test(r)) return "This needs a Business or Creator account. Switch the account type, reconnect it, then post again.";
-  if (/daily|limit|quota|cap\b/i.test(r)) return "That platform's posting limit was reached. Try again tomorrow.";
+  if (/location/i.test(r) && /select|pick|choose|required|missing|several/i.test(r)) return "Choose which business location to post to: open Settings, then Social Accounts, and pick it under Google Business.";
+  if (/MEDIA_LIMITS|too long|duration|too large|file size/i.test(r)) return `That video is too long or too large${where || " for this platform"}.`;
+  // Instagram's rule, and only when the account type is what is being named.
+  if (/business or creator|(business|creator|professional) account/i.test(r)) return "This needs a Business or Creator account. Switch the account type, reconnect it, then post again.";
+  if (/daily|quota|rate limit|too many|posting limit|cap\b/i.test(r)) return "That platform's posting limit was reached. Try again tomorrow.";
   return "The platform didn't accept the post. Try again, or reconnect the account in Settings.";
 }
 
@@ -83,7 +94,7 @@ export async function settleFromResults(
       out.push({ platform: row.platform, status: "posted", url: result.url });
     } else {
       if (result.error) console.error(`[social] ${row.platform} failed for ${userId}: ${result.error}`);
-      const message = plainPostError(result.error, result.skipped);
+      const message = plainPostError(result.error, result.skipped, partnerPlatform(row.platform)?.label);
       // Only while it is still waiting, and told whether it was this call
       // that changed it: the webhook and a status check can arrive together,
       // and the email below must go once, not once each.
