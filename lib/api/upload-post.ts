@@ -154,6 +154,82 @@ export async function profileUsage(): Promise<{ used: number; limit: number }> {
   return { used: data.profiles?.length ?? 0, limit: data.limit ?? 0 };
 }
 
+/** The plan the key belongs to, as the partner names it. Also proves the key is accepted. */
+export async function accountPlan(): Promise<string | null> {
+  const data = await call<{ plan?: unknown }>("/api/uploadposts/me");
+  return typeof data.plan === "string" ? data.plan : null;
+}
+
+// ── Where a platform's posts go ─────────────────────────────────────────────
+
+/** The platforms where one connected account can post to more than one place. */
+export type DestinationPlatform = "facebook" | "linkedin" | "google_business";
+
+export interface Destinations {
+  options: { id: string; name: string }[];
+  /** The id of the chosen option, or null when nothing has been chosen. */
+  selected: string | null;
+}
+
+const DESTINATIONS: Record<DestinationPlatform, {
+  path: string; list: string; idKey: string; nameKey: string; selectedKey: string; bodyKey: string;
+}> = {
+  facebook: {
+    path: "/api/uploadposts/users/facebook-page", list: "pages",
+    idKey: "id", nameKey: "name", selectedKey: "selected_page_id", bodyKey: "facebook_page_id",
+  },
+  linkedin: {
+    path: "/api/uploadposts/users/linkedin-page", list: "pages",
+    idKey: "id", nameKey: "name", selectedKey: "selected_page_id", bodyKey: "linkedin_page_id",
+  },
+  google_business: {
+    path: "/api/uploadposts/users/google-business-location", list: "locations",
+    idKey: "name", nameKey: "title", selectedKey: "selected_location_id", bodyKey: "gbp_location_id",
+  },
+};
+
+/**
+ * The last part of an id. The partner accepts and returns the same place in
+ * more than one form ("urn:li:organization:12" or "12", "accounts/9/locations/4"
+ * or "4"), so two ids are the same place when their last parts match.
+ */
+const idTail = (id: string) => id.split(/[/:]/).pop() ?? id;
+
+/**
+ * The places a connected account can post to, and the one chosen.
+ *
+ * The choice is kept by the partner against the profile and used for every
+ * post from then on, so nothing has to be sent with each one. Empty when the
+ * platform is not connected.
+ */
+export async function getDestinations(username: string, platform: DestinationPlatform): Promise<Destinations> {
+  const d = DESTINATIONS[platform];
+  let data: Record<string, unknown>;
+  try {
+    data = await call(`${d.path}?profile_username=${encodeURIComponent(username)}`);
+  } catch (err) {
+    if (err instanceof SocialPublishError && (err.status === 404 || err.status === 400)) return { options: [], selected: null };
+    throw err;
+  }
+  const list = Array.isArray(data[d.list]) ? data[d.list] as Record<string, unknown>[] : [];
+  const options = list
+    .map((o) => ({ id: String(o[d.idKey] ?? ""), name: String(o[d.nameKey] ?? o[d.idKey] ?? "") }))
+    .filter((o) => o.id);
+  const raw = typeof data[d.selectedKey] === "string" && data[d.selectedKey] ? String(data[d.selectedKey]) : null;
+  const match = raw ? options.find((o) => o.id === raw || idTail(o.id) === idTail(raw)) : undefined;
+  return { options, selected: match?.id ?? raw };
+}
+
+/** Chooses where a platform's posts go; null clears the choice. */
+export async function setDestination(username: string, platform: DestinationPlatform, id: string | null): Promise<void> {
+  const d = DESTINATIONS[platform];
+  await call(d.path, {
+    method: id ? "POST" : "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(id ? { profile_username: username, [d.bodyKey]: id } : { profile_username: username }),
+  });
+}
+
 /**
  * A single-use link (valid 48 hours) to the page where the customer connects
  * their accounts. The page carries our logo and wording; the platforms' own

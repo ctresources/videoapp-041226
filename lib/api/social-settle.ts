@@ -31,7 +31,7 @@ export function plainPostError(raw: string | undefined, skipped: boolean): strin
   if (skipped) return "That account isn't connected. Connect it in Settings, then post again.";
   const r = raw ?? "";
   if (/expired|reauth|re-auth|reconnect|revoked|token/i.test(r)) return "That account needs to be reconnected. Open Settings and connect it again.";
-  if (/page/i.test(r) && /select|pick|choose|required|missing/i.test(r)) return "Choose which Page to post to: open Settings, then Connect accounts, and pick it there.";
+  if (/page/i.test(r) && /select|pick|choose|required|missing/i.test(r)) return "Choose which Page to post to: open Settings, then Social Accounts, and pick it under that platform.";
   if (/location/i.test(r) && /select|pick|choose|required|missing|several/i.test(r)) return "Choose which business location to post to: open Settings, then Connect accounts, and pick it there.";
   if (/MEDIA_LIMITS|too long|duration|too large|file size/i.test(r)) return "That video is too long or too large for this platform.";
   if (/business|creator|professional account/i.test(r)) return "This needs a Business or Creator account. Switch the account type, reconnect it, then post again.";

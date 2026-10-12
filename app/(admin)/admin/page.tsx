@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail, Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -101,6 +101,12 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [filterTier, setFilterTier] = useState("all");
   const [stats, setStats] = useState({ totalUsers: 0, totalVideos: 0, proUsers: 0 });
+  /** How full the social publishing plan is; null until it has loaded. */
+  const [social, setSocial] = useState<{
+    configured: boolean; reachable?: boolean; keyRefused?: boolean;
+    used?: number; limit?: number; plan?: string | null; ours?: number;
+  } | null>(null);
+  const socialNearCap = !!social?.limit && (social.used ?? 0) >= social.limit * 0.8;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -137,6 +143,12 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+  useEffect(() => {
+    fetch("/api/admin/social-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setSocial(d); })
+      .catch(() => { /* the card simply does not appear */ });
+  }, []);
 
   async function patch(userId: string, payload: Record<string, unknown>, successMsg: string) {
     setSaving((s) => ({ ...s, [userId]: true }));
@@ -314,7 +326,7 @@ export default function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Total Users", value: stats.totalUsers, icon: Users, color: "text-primary-500", bg: "bg-primary-50" },
           { label: "Videos Generated", value: stats.totalVideos, icon: Video, color: "text-secondary-500", bg: "bg-purple-50" },
@@ -330,6 +342,34 @@ export default function AdminPage() {
             </div>
           </Card>
         ))}
+        {/* How full the social publishing plan is. Each customer who connects
+            an account takes a slot, and at the cap the next one is refused.
+            Amber from 80%, which is where the partner's own warning starts. */}
+        {social?.configured && (
+          <Card className="flex items-center gap-4">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+              social.reachable === false || socialNearCap ? "bg-amber-50" : "bg-blue-50"
+            }`}>
+              <Share2 size={20} className={social.reachable === false || socialNearCap ? "text-amber-600" : "text-blue-500"} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-brand-text">
+                {social.reachable === false
+                  ? "—"
+                  : social.limit ? `${social.used} / ${social.limit}` : `${social.used ?? social.ours ?? 0}`}
+              </p>
+              <p className="text-sm text-slate-500">Social Slots Used</p>
+              {social.reachable === false && (
+                <p className="text-xs font-medium text-amber-700 mt-0.5">
+                  {social.keyRefused ? "The publishing key was refused" : "Couldn't reach the publishing service"}
+                </p>
+              )}
+              {social.reachable !== false && socialNearCap && (
+                <p className="text-xs font-medium text-amber-700 mt-0.5">Nearly full — new agents will be refused at the limit</p>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Tab switcher */}

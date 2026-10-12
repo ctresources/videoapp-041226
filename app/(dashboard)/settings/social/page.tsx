@@ -38,6 +38,13 @@ interface MorePlatform {
   needsReconnect: boolean;
 }
 
+/** Where a platform's posts go, for the three that can have more than one place. */
+interface Destination {
+  options: { id: string; name: string }[];
+  selected: string | null;
+}
+const DESTINATION_PLATFORMS = ["facebook", "linkedin", "google_business"];
+
 interface MoreInfo {
   available: boolean;
   allowed: boolean;
@@ -69,6 +76,8 @@ function SocialSettingsContent() {
   const [more, setMore] = useState<MoreInfo | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [disconnectingAll, setDisconnectingAll] = useState(false);
+  const [destinations, setDestinations] = useState<Record<string, Destination>>({});
+  const [savingDestination, setSavingDestination] = useState<string | null>(null);
 
   useEffect(() => {
     // Show toast based on OAuth redirect result
@@ -91,8 +100,48 @@ function SocialSettingsContent() {
       setMore(moreInfo ?? null);
       setYoutubeConnected(!!ytConnected);
       setYoutubeChannel(all.find((a) => a.id === "native_youtube") ?? null);
+      // After the list, not with it: the page is usable without this, and it
+      // is asked only for platforms that are actually connected.
+      const ask = ((moreInfo?.platforms ?? []) as MorePlatform[])
+        .filter((p) => p.connected && !p.needsReconnect && DESTINATION_PLATFORMS.includes(p.id))
+        .map((p) => p.id);
+      if (ask.length > 0) {
+        fetch(`/api/social/destinations?platforms=${ask.join(",")}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => { if (d?.destinations) setDestinations(d.destinations); })
+          .catch(() => { /* the pickers simply do not appear */ });
+      } else {
+        setDestinations({});
+      }
     }
     setLoading(false);
+  }
+
+  /**
+   * Chooses where one platform's posts go. Kept with the account, and used for
+   * every post from then on. An empty id clears it, which on LinkedIn means
+   * the personal profile.
+   */
+  async function handleDestination(platform: string, id: string) {
+    const before = destinations[platform];
+    setSavingDestination(platform);
+    setDestinations((prev) => ({ ...prev, [platform]: { ...prev[platform], selected: id || null } }));
+    try {
+      const res = await fetch("/api/social/destinations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, id: id || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "That couldn't be saved.");
+      if (data.destination) setDestinations((prev) => ({ ...prev, [platform]: data.destination }));
+      toast.success("Saved.");
+    } catch (err) {
+      setDestinations((prev) => ({ ...prev, [platform]: before }));
+      toast.error(err instanceof Error ? err.message : "That couldn't be saved.");
+    } finally {
+      setSavingDestination(null);
+    }
   }
 
   async function handleDisconnectYouTube() {
@@ -349,6 +398,42 @@ function SocialSettingsContent() {
                         {pl.needsReconnect ? "Its sign-in expired. Connect it again to keep posting there." : pl.needs}
                       </p>
                     )}
+                    {/* Only where there is a real choice. One Page or one
+                        location is used automatically, so nothing is asked.
+                        LinkedIn always has the personal profile, so a single
+                        company page is already a choice of two. */}
+                    {(() => {
+                      const dest = destinations[pl.id];
+                      if (!pl.connected || pl.needsReconnect || !dest) return null;
+                      const personal = pl.id === "linkedin";
+                      if (dest.options.length < (personal ? 1 : 2)) return null;
+                      const unchosen = !personal && !dest.selected;
+                      return (
+                        <div className="mt-1.5">
+                          <label className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            Posts to
+                            <select
+                              value={dest.selected ?? ""}
+                              disabled={savingDestination === pl.id}
+                              onChange={(e) => handleDestination(pl.id, e.target.value)}
+                              className={`max-w-full rounded-lg border bg-white px-2 py-1.5 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                                unchosen ? "border-amber-400" : "border-slate-200"
+                              }`}
+                            >
+                              {personal
+                                ? <option value="">My profile</option>
+                                : unchosen && <option value="">Choose one…</option>}
+                              {dest.options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                            </select>
+                          </label>
+                          {unchosen && (
+                            <p className="mt-1 text-xs font-medium text-amber-700">
+                              Choose one, or posts here won&apos;t go out.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   {pl.connected && !pl.needsReconnect && <CheckCircle size={15} className="text-green-600 shrink-0 mt-1" />}
                 </div>
