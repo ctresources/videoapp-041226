@@ -124,6 +124,15 @@ export default function HelpPage() {
                 be a Business or Creator account linked to a Facebook Page, Facebook must be a Page
                 rather than your personal profile, and Google Business must be a verified profile.
               </span>
+              {/* Added with the picker. One Page is used automatically, so this
+                  only matters to an agent with two, and it matters a lot then:
+                  with nothing chosen the post is refused. */}
+              <span className="block mt-1.5">
+                If an account can post to more than one place, a <strong>Posts to</strong> choice
+                appears under it: which Facebook Page, your LinkedIn profile or a company page, which
+                Google Business location. Pick once and every post goes there. With two Facebook
+                Pages or two locations you do have to pick, or posts there won&apos;t go out.
+              </span>
             </Step>
             {/* Setup rather than creating, because the useful half is done once:
                 saving the address. After that it is a Forward button in whatever
@@ -554,6 +563,16 @@ export default function HelpPage() {
                 <strong>Make another reel</strong>, underneath, brings the build button back — on
                 Cinematic that is another short video.
               </span>
+              {/* The other thing the same photos can be. Said beside the reel
+                  because it is the same form and the same set of pictures. */}
+              <span className="block mt-1.5">
+                <strong>Post these photos</strong>, under the build button, sends the same photos as
+                they are: one post to swipe through on Instagram, Facebook, LinkedIn, Threads, X or
+                TikTok. No video is made and nothing comes out of your plan. Pick the accounts, write
+                one caption for the post, and send. The order you arranged them in is the swipe order.
+                Instagram takes the first ten, and trims a very tall or very wide photo to a shape it
+                accepts.
+              </span>
               <span className="block mt-1.5">
                 No photos to start from? That is a Scenes Reel (step 11).
               </span>
@@ -624,10 +643,10 @@ export default function HelpPage() {
                   most useful line on this card when something goes wrong. */}
               <span className="block mt-1.5">
                 <strong>If a publish fails</strong> — an expired YouTube connection, a channel limit, a
-                video still finishing — it isn&apos;t lost in a disappearing message. The attempt is kept
-                with the reason it failed and a <strong>Retry</strong> beside it, so you can see what
-                happened and try again once it&apos;s sorted. The note clears itself once a later attempt
-                goes through.
+                video still finishing — it isn&apos;t lost in a disappearing message. Open{" "}
+                <strong>Publish</strong> on that video again: the top of the window lists where it has
+                gone, and a failed one shows the reason with a <strong>Retry</strong> beside it. Once
+                a later attempt goes through, the line reads as posted.
               </span>
               <span className="block mt-1.5">
                 <strong>If YouTube needs reconnecting</strong>, which happens when Google ends the
@@ -651,10 +670,26 @@ export default function HelpPage() {
                 what gets posted.
               </span>
               <span className="block mt-1.5">
+                <strong>First comment</strong> is optional, and is posted under the video on Instagram,
+                Facebook, LinkedIn, Threads and TikTok. It is the place for a link, because a link in
+                an Instagram caption can&apos;t be clicked and one in a comment can. If you saved your
+                blog post&apos;s address for this video, it is already filled in.
+              </span>
+              <span className="block mt-1.5">
                 YouTube is live the moment it finishes. The others take a few minutes to process the
                 video, so the window says <strong>On its way</strong> and tells you as each one lands,
                 or why one did not. You can close it; the post carries on either
                 way.
+              </span>
+              {/* The answer to "did it post?", which nothing gave once the
+                  window was closed. */}
+              <span className="block mt-1.5">
+                <strong>Where it&apos;s posted</strong>, at the top of the window, is the record for
+                that video: one line for each platform, saying posted (with a link to the post), on
+                its way, scheduled, or failed and why. A failed line has <strong>Retry</strong>, which
+                sends the video to that one platform again. A posted line on Facebook or LinkedIn has{" "}
+                <strong>Edit caption</strong>, for fixing the words after it is up; the other
+                platforms don&apos;t allow that.
               </span>
               <span className="block mt-1.5">
                 <strong>Google Business</strong> works differently. It takes no more than 30 seconds of
@@ -662,6 +697,12 @@ export default function HelpPage() {
                 any phone number left out, and a <strong>Learn more</strong> button to your blog post or
                 the video. A video too long for one of the other platforms is skipped there, with the
                 reason shown.
+              </span>
+              <span className="block mt-1.5">
+                For an open house, tick <strong>Post to Google as an event</strong> and give it a
+                name, the date and the start and end times. Google shows the date on your listing and
+                takes the post down by itself afterwards, where an ordinary post would still say
+                &ldquo;this Saturday&rdquo; a week later.
               </span>
               <span className="block mt-1.5">
                 For anywhere you have not connected, download the MP4 and use the pre-written{" "}
@@ -706,7 +747,9 @@ export default function HelpPage() {
                 allowance of 100. <strong>Update text</strong> redraws your words on the same picture
                 and costs nothing, and using <strong>My photo</strong> or one of your listing photos is
                 free. <strong>New background</strong> makes another photo, and counts as one.{" "}
-                <strong>Use as blog header</strong> sends it straight to the article it belongs to.
+                <strong>Use as blog header</strong> sends it straight to the article it belongs to.{" "}
+                <strong>Post it</strong> sends the finished graphic to your connected accounts as a
+                photo post, with a caption you write, instead of downloading it first.
               </span>
               {/* Not described anywhere until now. The badge is the part people
                   ask about: it used to come back even with both boxes empty. */}
