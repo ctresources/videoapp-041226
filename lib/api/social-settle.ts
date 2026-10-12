@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { publishStatus, type PlatformResult, type PublishAccepted } from "@/lib/api/upload-post";
+import { tellAboutFailure } from "@/lib/api/social-failure";
 
 /**
  * Settling a hand-off: turning the "posting" rows written when a post was
@@ -83,7 +84,16 @@ export async function settleFromResults(
     } else {
       if (result.error) console.error(`[social] ${row.platform} failed for ${userId}: ${result.error}`);
       const message = plainPostError(result.error, result.skipped);
-      await admin.from("social_posts").update({ post_status: "failed", error_message: message }).eq("id", row.id);
+      // Only while it is still waiting, and told whether it was this call
+      // that changed it: the webhook and a status check can arrive together,
+      // and the email below must go once, not once each.
+      const { data: changed } = await admin
+        .from("social_posts")
+        .update({ post_status: "failed", error_message: message })
+        .eq("id", row.id)
+        .in("post_status", ["posting", "scheduled"])
+        .select("id");
+      if ((changed ?? []).length > 0) await tellAboutFailure(admin, row.id);
       out.push({ platform: row.platform, status: "failed", error: message });
     }
   }

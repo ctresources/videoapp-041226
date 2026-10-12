@@ -517,3 +517,64 @@ export async function notifySocialCapacity({ used, limit }: { used: number; limi
     }),
   }).catch(() => {});
 }
+
+/**
+ * A post that did not go out.
+ *
+ * Sent when a platform refuses a post after it was handed over, which is
+ * minutes after the agent pressed Publish and usually after they have moved
+ * on. Says which platform, which video, the reason in the same plain sentence
+ * the app shows, and where to put it right. No partner is named: the reason is
+ * already written without one.
+ */
+export async function notifyPostFailed({
+  email,
+  name,
+  platform,
+  title,
+  reason,
+  appUrl,
+  photos = false,
+}: {
+  email: string;
+  name: string | null;
+  /** As the agent knows it: "Facebook", "Instagram". */
+  platform: string;
+  title: string | null;
+  reason: string | null;
+  appUrl: string;
+  /** A photo post, which has no video in My Sparks to retry from. */
+  photos?: boolean;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+
+  // The title is the agent's own words and goes into HTML.
+  const safe = (text: string) => text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const hi = name ? `Hi ${safe(name.split(" ")[0])},` : "Hi,";
+  const what = title ? `&ldquo;${safe(title)}&rdquo;` : "Your post";
+  const why = reason ? safe(reason) : `${safe(platform)} didn't accept it.`;
+
+  const html = `<p>${hi}</p>
+     <p>${what} was sent to ${safe(platform)}, but it didn't post.</p>
+     <p><strong>${why}</strong></p>
+     ${photos
+       ? `<p>Once that's sorted, post the photos again from where you sent them.</p>
+     <p><a href="${appUrl}/videos">Open SparkReels</a></p>`
+       : `<p>Once that's sorted, open My Sparks, press Publish on the video, and use Retry beside
+     ${safe(platform)}.</p>
+     <p><a href="${appUrl}/videos">Open My Sparks</a></p>`}
+     <p>Any questions, please send us an email at
+     <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL, to: email,
+      subject: `Your ${platform} post didn't go out`,
+      html, reply_to: NOTIFY_EMAIL,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}

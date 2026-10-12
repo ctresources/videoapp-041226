@@ -395,6 +395,28 @@ function VideosContent() {
     }
   }
   const [publishingVideo, setPublishingVideo] = useState<GeneratedVideo | null>(null);
+  /** Posts a platform refused after they were sent, not yet dealt with. */
+  const [unposted, setUnposted] = useState<{
+    id: string; platform: string; title: string | null; reason: string | null; videoId: string | null;
+  }[]>([]);
+  // Read on arrival and again whenever the Publish window closes, since a
+  // retry from there is what clears one.
+  useEffect(() => {
+    if (publishingVideo) return;
+    fetch("/api/social/attention")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.posts) setUnposted(d.posts); })
+      .catch(() => { /* the note simply does not appear */ });
+  }, [publishingVideo]);
+
+  function dismissUnposted(id: string) {
+    setUnposted((prev) => prev.filter((p) => p.id !== id));
+    fetch("/api/social/attention", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => { /* it comes back on the next visit, which is the safe way to fail */ });
+  }
   const [previewVideo, setPreviewVideo] = useState<GeneratedVideo | null>(null);
   const [translatingVideo, setTranslatingVideo] = useState<GeneratedVideo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -536,6 +558,55 @@ function VideosContent() {
           </Button>
         </Link>
       </div>
+
+      {/* A post that did not go out. A platform can refuse one minutes after
+          it was sent, when the Publish window is long closed, and until this
+          nothing said so: the agent could reasonably believe it had posted. */}
+      {unposted.length > 0 && (
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-red-800">
+            <AlertTriangle size={15} className="shrink-0" />
+            {unposted.length === 1 ? "A post didn't go out" : `${unposted.length} posts didn't go out`}
+          </p>
+          <ul className="mt-2 space-y-2">
+            {unposted.slice(0, 4).map((p) => {
+              const video = p.videoId ? videos.find((v) => v.id === p.videoId) : undefined;
+              return (
+                <li key={p.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-red-900">
+                      <span className="font-semibold">{p.platform}</span>
+                      {p.title ? <span className="text-red-800"> · {p.title}</span> : null}
+                    </p>
+                    {p.reason && <p className="text-[13px] text-red-700">{p.reason}</p>}
+                  </div>
+                  <div className="flex flex-none items-center gap-3">
+                    {video && (
+                      <button
+                        type="button"
+                        onClick={() => setPublishingVideo(video)}
+                        className="text-[13px] font-semibold text-red-800 underline hover:text-red-950"
+                      >
+                        Open Publish
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => dismissUnposted(p.id)}
+                      className="text-[13px] font-medium text-red-700 hover:text-red-900"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {unposted.length > 4 && (
+            <p className="mt-2 text-[13px] text-red-700">And {unposted.length - 4} more.</p>
+          )}
+        </div>
+      )}
 
       {/* "Create another while rendering" banner */}
       {hasRendering && (

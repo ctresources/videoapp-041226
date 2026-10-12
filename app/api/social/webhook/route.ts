@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { userIdFromProfile, verifyWebhook } from "@/lib/api/upload-post";
 import { plainPostError } from "@/lib/api/social-settle";
+import { tellAboutFailure } from "@/lib/api/social-failure";
 
 /**
  * POST /api/social/webhook — results from the publishing partner.
@@ -80,10 +81,13 @@ export async function POST(req: NextRequest) {
     }).eq("id", id);
   } else {
     if (r.error) console.error(`[social/webhook] ${event.platform} failed for ${userId}: ${r.error}`);
-    await admin.from("social_posts").update({
+    // Conditional for the same reason as in social-settle: a status check
+    // may have recorded this failure a moment ago, and its email with it.
+    const { data: changed } = await admin.from("social_posts").update({
       post_status: "failed",
       error_message: plainPostError(r.error ?? undefined, false),
-    }).eq("id", id);
+    }).eq("id", id).in("post_status", ["posting", "scheduled"]).select("id");
+    if ((changed ?? []).length > 0) await tellAboutFailure(admin, id);
   }
   return NextResponse.json({ ok: true });
 }
