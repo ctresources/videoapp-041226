@@ -58,6 +58,38 @@ interface ComposerCardProps {
  * heard it" — the mock's client-side parsing of one spoken sentence would have
  * been wrong for every path except speaking.
  */
+/**
+ * The rotating example, on the section heading's own line.
+ *
+ * It was a line of display type between the heading and the card, which the
+ * owner marked as too much wording on a page that already says a lot. Here it
+ * is one short line beside the heading, cut off with an ellipsis rather than
+ * wrapped, and still a button: tapping it puts the sentence in the box.
+ */
+export function TryLineInline({ lines, onUse }: { lines: string[]; onUse: (text: string) => void }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (lines.length < 2) return;
+    const id = setInterval(() => setI((n) => n + 1), 3600);
+    return () => clearInterval(id);
+  }, [lines.length]);
+  if (lines.length === 0) return null;
+  const line = lines[i % lines.length];
+  return (
+    <button
+      type="button"
+      onClick={() => onUse(line)}
+      title="Use this — you can edit it after"
+      className="flex min-w-0 max-w-full items-baseline gap-2 text-left"
+    >
+      <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A3660F]">Try</span>
+      <span key={i} className="min-w-0 animate-slideDown truncate text-[14px] font-medium leading-[1.3] text-spark-ink-soft underline decoration-transparent underline-offset-4 transition-colors hover:decoration-spark-amber">
+        &ldquo;{line}&rdquo;
+      </span>
+    </button>
+  );
+}
+
 export function ComposerCard({
   chips,
   tryLines = [],

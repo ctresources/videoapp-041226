@@ -36,7 +36,7 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
-import { ComposerCard } from "@/components/create/composer-card";
+import { ComposerCard, TryLineInline } from "@/components/create/composer-card";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
@@ -139,8 +139,10 @@ const TRY_LINES = [
  * template lands, through the same `seed` prop. It does not send the turn, so
  * a misheard street name is a keystroke to fix rather than a brief to redo.
  */
-function SectionHead({ eyebrow, question, aside, className = "" }: {
+function SectionHead({ eyebrow, question, aside, after, className = "" }: {
   eyebrow: string;
+  /** Sits on the eyebrow's own line, after it. */
+  after?: React.ReactNode;
   /** Optional since the owner took the questions off: "too much text". */
   question?: string;
   /** Runs on the same line as the question, in muted type. For the one thing
@@ -153,9 +155,12 @@ function SectionHead({ eyebrow, question, aside, className = "" }: {
   return (
     <div className={`flex flex-col gap-[3px] ${className}`}>
       {/* A little larger when it stands alone: it is the whole heading then. */}
-      <p className={`font-semibold uppercase tracking-[0.16em] text-spark-amber ${question ? "text-[10px]" : "text-[12px]"}`}>
-        {eyebrow}
-      </p>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className={`flex-none font-semibold uppercase tracking-[0.16em] text-spark-amber ${question ? "text-[10px]" : "text-[12px]"}`}>
+          {eyebrow}
+        </p>
+        {after}
+      </div>
       {question && (
       <p className="flex flex-wrap items-baseline gap-x-2.5 text-[17px] font-semibold leading-[1.2] tracking-[-0.01em] text-spark-ink">
         {question}
@@ -2050,7 +2055,9 @@ function CreatePageInner() {
     <SourceTile
       kicker="Forwarded in"
       label="Imported content"
-      desc={`${emailCount} email${emailCount === 1 ? "" : "s"} · make a blog or video`}
+      // The count came off at the owner's direction; "N new" on the tile
+      // already says there is something to open.
+      desc="Make a blog or video"
       cost={emails.fresh > 0 ? <CostPill free={false}>{emails.fresh} new</CostPill> : undefined}
       active={emails.open}
       disabled={inputMode === "camera" && cameraSourceLocked}
@@ -2367,7 +2374,7 @@ function CreatePageInner() {
             Your all-in-one AI visibility studio
           </h1>
           <p className="mt-2.5 text-[17px] leading-[1.5] text-primary-700">
-            Turn your Spark into more ways to connect, build trust, and stay visible.
+            Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
         </div>
       )}
@@ -2397,6 +2404,21 @@ function CreatePageInner() {
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow="1 · Content Topic"
+            // The example, on this line at the owner's direction rather than
+            // as a line of display type under it. Gone once something is in
+            // the box, and while the section is switched off.
+            after={topicApplies && !locCustomTopic.trim() ? (
+              <TryLineInline
+                lines={TRY_LINES}
+                // Straight into the box, through the same channel a topic chip
+                // uses, so it arrives as a sentence to edit.
+                onUse={(text) => {
+                  setLocCustomTopic(text);
+                  setTopicTemplateRaw(null);
+                  setSparkSeed((n) => ({ text, n: n.n + 1 }));
+                }}
+              />
+            ) : undefined}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2418,18 +2440,6 @@ function CreatePageInner() {
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
             disabled={!topicApplies}
-            // Not while dimmed: a line of display type changing every few
-            // seconds is the loudest thing in a section that is switched off.
-            showTryLine={topicApplies && !locCustomTopic.trim()}
-            tryLines={TRY_LINES}
-            // Straight into the box, through the same channel a topic chip
-            // uses — so it arrives as a sentence to edit rather than a brief
-            // already sent.
-            onUseTryLine={(text) => {
-              setLocCustomTopic(text);
-              setTopicTemplateRaw(null);
-              setSparkSeed((s) => ({ text, n: s.n + 1 }));
-            }}
             // Four nouns. "What's it about?" here was the third asking of the
             // section's own question, and "Which town?" was a question in both
             // of its states.
@@ -2628,10 +2638,6 @@ function CreatePageInner() {
               setTopicTemplateRaw(raw);
               setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
             }}
-            // A whole command rather than a topic, so it only goes in the box:
-            // sent from there, the brief works out that it asks for a blog.
-            tryLine="Create a blog about preparing a home for sale."
-            onUseTry={(text) => setSparkSeed((s) => ({ text, n: s.n + 1 }))}
           />
           </div>
 
@@ -2984,7 +2990,7 @@ function CreatePageInner() {
               // "Paste my script", which named one of the three things it does
               // and hid the other two: it has always taken an article to
               // shorten, and a PDF, link or email for AI to write from.
-              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use my content", desc: "Speak it as written, or have AI write from it" },
+              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use my content", desc: "Speak it as written, or AI writes it" },
             ]),
             // Blog route only. On the video route this was "My listings/My
             // photos", and it is now the fourth card in the row above: a reel
