@@ -62,13 +62,15 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
   writeSignal?: number;
   /** Tells the page while a script is being written, so the mic waits for it. */
   onWriting?: (busy: boolean) => void;
-  /** The format chosen on the page. Vertical is a minute; horizontal runs the full ninety seconds. */
+  /** The format chosen on the page. Vertical starts at 90 seconds; horizontal at three minutes. */
   vertical?: boolean;
 }) {
   const [ownTopic, setTopic] = useState("");
   const topic = topicFromPage ?? ownTopic;
-  // Vertical is a minute and horizontal up to three, as the format says.
-  const [lengthSeconds, setLengthSeconds] = useState<number>(vertical ? 60 : 180);
+  // Vertical starts at 90 seconds and horizontal at three minutes, as the
+  // format tiles say. It was a minute until vertical scripts were raised to 90
+  // everywhere; the owner asked for the two to agree.
+  const [lengthSeconds, setLengthSeconds] = useState<number>(vertical ? 90 : 180);
   const [script, setScript] = useState("");
   const [writing, setWriting] = useState(false);
   const [city, setCity] = useState(initialCity ?? "");
