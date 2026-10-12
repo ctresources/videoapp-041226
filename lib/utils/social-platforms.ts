@@ -41,6 +41,16 @@ export function partnerPlatform(id: string): PartnerPlatformSpec | undefined {
   return PARTNER_PLATFORMS.find((p) => p.id === id);
 }
 
+/**
+ * Where a first comment is posted under the video.
+ *
+ * Not X: links are removed from posts there, and a link is what this comment
+ * is for. Not Google Business, which has no comments on a post.
+ */
+export const FIRST_COMMENT_PLATFORMS: readonly PartnerPlatform[] = [
+  "instagram", "facebook", "linkedin", "threads", "tiktok",
+];
+
 /** The id the Publish window and the post route use for one of these accounts. */
 export const partnerAccountId = (p: PartnerPlatform) => `social_${p}`;
 

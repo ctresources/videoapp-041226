@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { FIRST_COMMENT_PLATFORMS } from "@/lib/utils/social-platforms";
 import { uploadImage } from "@/lib/utils/upload-image";
 
 interface SocialAccount {
@@ -88,6 +89,10 @@ export function PublishModal({
   };
 
   const [caption, setCaption] = useState(() => withTags(defaultCaption));
+  /** Posted under the video once it is up. Starts as the blog post's address
+   *  when the agent has saved one, because a link in a caption is not
+   *  clickable on Instagram and a link in a comment is. */
+  const [firstComment, setFirstComment] = useState("");
   const [title, setTitle] = useState(videoTitle);
   const [description, setDescription] = useState(() => withTags(defaultDescription));
   const [privacy, setPrivacy] = useState<"public" | "unlisted" | "private">("public");
@@ -260,6 +265,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
         setProjectId(d.projectId ?? null);
         setPhotos(Array.isArray(d.photos) ? d.photos : []);
         setHasStoredThumb(!!d.hasStoredThumbnail);
+        if (typeof d.blogUrl === "string" && d.blogUrl) {
+          // Not over anything typed while this was loading.
+          setFirstComment((cur) => cur || `Read the full article: ${d.blogUrl}`);
+        }
         setBadgeCity(d.city || "");
         setBadgeState(d.state || "");
         setHeadshotUrl(d.headshotUrl || null);
@@ -504,6 +513,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
           title,
           description,
           privacy,
+          firstComment,
         }));
 
       const res = await fetch("/api/social/post", {
@@ -1061,6 +1071,22 @@ ${hashes.join(" ")}` : hashes.join(" ");
                     to your blog post or the video. Videos over 30 seconds go up there as a photo post.
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Only when it has somewhere to go: X and Google Business take
+                no first comment, and YouTube publishes without one. */}
+            {accounts.some((a) => selectedIds.includes(a.id) && (FIRST_COMMENT_PLATFORMS as readonly string[]).includes(a.platform.toLowerCase())) && (
+              <div>
+                <label className="text-xs font-medium text-slate-500 block mb-1">First comment (optional)</label>
+                <input
+                  type="text"
+                  value={firstComment}
+                  onChange={(e) => setFirstComment(e.target.value)}
+                  maxLength={500}
+                  placeholder="A link to your blog post"
+                  className="w-full text-sm px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
               </div>
             )}
 

@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/upload-post";
 import { storeRef } from "@/lib/api/social-settle";
 import {
-  deliveryFor, fitCaption, partnerPlatformLimit, platformFromAccountId, withoutPhoneNumbers,
+  FIRST_COMMENT_PLATFORMS, deliveryFor, fitCaption, partnerPlatformLimit, platformFromAccountId, withoutPhoneNumbers,
   type PartnerPlatform,
 } from "@/lib/utils/social-platforms";
 import { randomUUID } from "node:crypto";
@@ -25,6 +25,8 @@ interface PostRequestTarget {
   description?: string;
   privacy?: "public" | "unlisted" | "private";
   source?: "native" | "partner";
+  /** Posted under the video on the platforms that take one. */
+  firstComment?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -420,6 +422,14 @@ export async function POST(req: NextRequest) {
           // and so is a Cinematic reel. One answer for both, in isAiMadeVideo.
           ...(isAiMadeVideo(video) ? { is_ai_generated: "true" } : {}),
         };
+        // Named per platform rather than once for all, so it goes only where
+        // it belongs. A comment that fails never fails the post.
+        const firstComment = (wanted[0].target.firstComment ?? "").trim().slice(0, 500);
+        if (firstComment) {
+          for (const platform of asVideo) {
+            if (FIRST_COMMENT_PLATFORMS.includes(platform)) extra[`${platform}_first_comment`] = firstComment;
+          }
+        }
         await handOff(asVideo, caption, (requestId) => publishVideo({
           username, platforms: asVideo, requestId, title: fitCaption(caption, 2200),
           description: caption, scheduledAt: scheduledAt || null, extra, videoUrl: video.video_url!,

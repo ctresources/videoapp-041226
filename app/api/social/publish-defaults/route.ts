@@ -31,6 +31,7 @@ type Seo = {
   thumbnail_url?: string;
   thumbnail_headline?: string;
   thumbnail_scene?: string;
+  email_blog_url?: string;
 };
 
 export async function GET(req: NextRequest) {
@@ -226,6 +227,9 @@ export async function GET(req: NextRequest) {
     // for an Instagram caption, so the two fields get two texts.
     caption: ai.description || seo.instagram_caption || "",
     tags: seo.hashtags ?? seo.keywords ?? ai.hashtags ?? ai.keywords ?? [],
+    // Where this video's article lives on the agent's own site, if they have
+    // said. The Publish window offers it as the first comment.
+    blogUrl: typeof seo.email_blog_url === "string" && /^https?:\/\//.test(seo.email_blog_url) ? seo.email_blog_url : "",
     // The stored PNG if one has been rendered, else the generated card — whose
     // address is derived from the project id rather than read out of seo_data,
     // where it was frozen with the hook inside it at script-writing time.
