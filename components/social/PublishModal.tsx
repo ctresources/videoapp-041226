@@ -304,11 +304,28 @@ export function PublishModal({
 
 ${hashes.join(" ")}` : hashes.join(" ");
         };
-        if (!callerSuppliedCopy) {
-          if (d.description) setDescription(withFetchedTags(d.description));
-          if (d.caption) setCaption(withFetchedTags(d.caption));
-          if (d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
+        /**
+         * Each field on its own.
+         *
+         * One guard covered all three: if the caller passed a description or
+         * hashtags, nothing was taken from here, the caption included. My
+         * Sparks passes both for every video, and passes an empty caption for
+         * any video with no short blurb of its own (a photo reel), so the
+         * caption written for that video was never loaded and the post went
+         * out as hashtags and nothing else.
+         *
+         * With no caption anywhere, the title is at least what the post is
+         * about. Not over anything typed while this was loading.
+         */
+        if (!defaultDescription && d.description) setDescription(withFetchedTags(d.description));
+        if (!defaultCaption) {
+          const words = d.caption || d.title || videoTitle || "";
+          if (words) {
+            const untouched = withTags("").trim();
+            setCaption((cur) => (cur.trim() === untouched ? withFetchedTags(words) : cur));
+          }
         }
+        if (!callerSuppliedCopy && d.title) setTitle((cur) => cur && cur !== "Untitled Video" ? cur : d.title);
         // videoTitle="" is how a caller says "you resolve it" — see the dub
         // branch in My Content.
         // A caller-passed thumbnail already wins over this one downstream, so

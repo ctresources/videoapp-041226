@@ -19,6 +19,9 @@ const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).def
 
 const W = 1280;
 const H = 720;
+/** The tall version, for a vertical video's cover on the other platforms. */
+const TW = 1080;
+const TH = 1920;
 
 // Vercel's Linux runtime has no system fonts, so SVG <text> renders as empty
 // boxes. Instead we bundle Anton (OFL license — the classic tall condensed
@@ -130,6 +133,97 @@ function bestHeadlineLayout(text: string, maxWidth: number, maxBlockH: number): 
     if (size > best.fontSize) best = { lines: cand, fontSize: size };
   }
   return best;
+}
+
+/**
+ * The same thumbnail laid out for a vertical video: 1080×1920.
+ *
+ * Not the wide one cropped. A 16:9 picture on a 9:16 video becomes a strip
+ * down the middle with the headline cut off both sides, so the same three
+ * things are placed again for the taller frame: the headline across the top
+ * third, the market under it, and the person standing on the bottom edge.
+ *
+ * The top 300px are left clear because a Reel draws its own header there.
+ * The background is the wide one's, enlarged to cover; it is soft at this
+ * size, which matters little behind type this heavy.
+ */
+export async function composeTall(base: Buffer, headlineText: string, market: string, cutout: Buffer | null): Promise<Buffer> {
+  // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
+  const sharp = (await import("sharp")).default;
+  const background = await sharp(base).resize(TW, TH, { fit: "cover" }).png().toBuffer();
+
+  const { lines, fontSize } = bestHeadlineLayout(headlineText, TW - 140, 600);
+  const strokeW = Math.max(12, Math.round(fontSize * 0.11));
+  const lineHeight = Math.round(fontSize * 1.05);
+  const top = 300;
+  const headlinePaths = lines
+    .map((l, i) => {
+      const upper = l.toUpperCase();
+      const x = Math.round((TW - textWidth(upper, fontSize)) / 2);
+      const d = textPathData(upper, x, top + Math.round(fontSize * 0.8) + i * lineHeight, fontSize);
+      const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
+      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
+<path d="${d}" fill="${fill}"/>`;
+    })
+    .join("\n");
+
+  let badgeSvg = "";
+  if (market) {
+    let size = 56;
+    while (size > 28 && textWidth(market, size) > TW - 220) size -= 4;
+    const textW = textWidth(market, size);
+    const badgeH = Math.round(size * 1.7);
+    const badgeW = textW + 58;
+    const badgeX = Math.round((TW - badgeW) / 2);
+    const badgeY = top + lines.length * lineHeight + 44;
+    const d = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), size);
+    badgeSvg = `
+  <rect x="${badgeX}" y="${badgeY}" rx="14" width="${badgeW}" height="${badgeH}" fill="#ffe600"/>
+  <path d="${d}" fill="#10132b"/>`;
+  }
+
+  const overlaySvg = `
+<svg width="${TW}" height="${TH}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="scrim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#000000" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="${TW}" height="${TH}" fill="url(#scrim)"/>
+  ${headlinePaths}
+  ${badgeSvg}
+</svg>`;
+
+  const composites: { input: Buffer; left: number; top: number }[] = [
+    { input: Buffer.from(overlaySvg), left: 0, top: 0 },
+  ];
+  if (cutout) {
+    const photo = await sharp(cutout).rotate().resize({ width: 820, height: 860, fit: "inside" }).png().toBuffer();
+    const meta = await sharp(photo).metadata();
+    const pw = meta.width || 820;
+    const ph = meta.height || 860;
+    composites.push({ input: photo, left: Math.round((TW - pw) / 2), top: TH - ph });
+  }
+  return sharp(background).composite(composites).jpeg({ quality: 90 }).toBuffer();
+}
+
+/**
+ * A tall cover from a wide thumbnail that has no tall version of its own:
+ * the whole picture across the middle, over a blurred, darkened copy of
+ * itself. For thumbnails built before the tall version was drawn with them.
+ */
+export async function tallFromWide(wide: Buffer): Promise<Buffer> {
+  // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
+  const sharp = (await import("sharp")).default;
+  const back = await sharp(wide).resize(TW, TH, { fit: "cover" }).blur(40).modulate({ brightness: 0.6 }).png().toBuffer();
+  const front = await sharp(wide).resize({ width: TW }).png().toBuffer();
+  const frontH = (await sharp(front).metadata()).height || 608;
+  return sharp(back)
+    .composite([{ input: front, left: 0, top: Math.round((TH - frontH) / 2) }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
 }
 
 /**
@@ -509,6 +603,8 @@ export async function renderAndSaveThumbnail(
     ? ((projectSeoData as { thumbnail_photo_url: string }).thumbnail_photo_url)
     : null;
   const photoSrc = opts.photoUrl || rememberedPhoto || p?.avatar_url;
+  /** The person, before sizing, kept so the tall version can place them too. */
+  let cutoutForTall: Buffer | null = null;
   if (photoSrc) {
     try {
       // Cutout cache: each unique photo is background-removed once, ever —
@@ -541,6 +637,7 @@ export async function renderAndSaveThumbnail(
       }
 
       if (photoInput) {
+        cutoutForTall = photoInput;
         const photo = await sharp(photoInput)
           .rotate()
           .resize({ width: 480, height: 640, fit: "inside" })
@@ -564,6 +661,21 @@ export async function renderAndSaveThumbnail(
   if (uploadErr) throw new Error(uploadErr.message);
 
   const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
+
+  // The tall version, drawn from the same background, words and person, for
+  // a vertical video's cover on the other platforms. Best-effort: the
+  // thumbnail asked for is the wide one, and it is already saved.
+  let tallUrl = "";
+  try {
+    const tall = await composeTall(baseBuffer, headlineText, market, cutoutForTall);
+    const tallPath = `thumbnails/${opts.userId}/thumb_tall_${Date.now()}.jpg`;
+    const { error: tallErr } = await admin.storage
+      .from("assets")
+      .upload(tallPath, tall, { contentType: "image/jpeg", upsert: false });
+    if (!tallErr) tallUrl = admin.storage.from("assets").getPublicUrl(tallPath).data.publicUrl;
+  } catch (err) {
+    console.error("[thumbnail] tall version failed:", err instanceof Error ? err.message : err);
+  }
 
   if (opts.projectId) {
     // Save on the project column AND inside seo_data — the Publish window
@@ -590,6 +702,10 @@ export async function renderAndSaveThumbnail(
           ...(sceneUsed ? { thumbnail_scene: sceneUsed } : {}),
           // Whether the badge was left off on purpose; see noMarket.
           thumbnail_no_market: noMarket,
+          // The tall one that goes with this wide one. Written even when
+          // empty, so a failed tall build cannot leave the PREVIOUS
+          // thumbnail's tall version to go out beside the new wide one.
+          thumbnail_tall_url: tallUrl,
         },
       })
       .eq("id", opts.projectId)

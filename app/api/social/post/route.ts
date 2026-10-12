@@ -9,6 +9,7 @@ import {
   type PublishAccepted,
 } from "@/lib/api/upload-post";
 import { storeRef } from "@/lib/api/social-settle";
+import { coversFor } from "@/lib/api/post-covers";
 import {
   FIRST_COMMENT_PLATFORMS, deliveryFor, fitCaption, partnerPlatformLimit, platformFromAccountId, withoutPhoneNumbers,
   type PartnerPlatform,
@@ -430,6 +431,13 @@ export async function POST(req: NextRequest) {
           // and so is a Cinematic reel. One answer for both, in isAiMadeVideo.
           ...(isAiMadeVideo(video) ? { is_ai_generated: "true" } : {}),
         };
+        // The thumbnail built in the Publish window, as the cover. It only
+        // ever went to YouTube before this.
+        Object.assign(extra, await coversFor({
+          admin, userId: user.id, vertical,
+          thumbnailUrl: video.projects?.thumbnail_url,
+          tallUrl: typeof seoData?.thumbnail_tall_url === "string" ? seoData.thumbnail_tall_url : null,
+        }));
         // Named per platform rather than once for all, so it goes only where
         // it belongs. A comment that fails never fails the post.
         const firstComment = (wanted[0].target.firstComment ?? "").trim().slice(0, 500);
