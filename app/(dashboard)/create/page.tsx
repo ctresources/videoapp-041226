@@ -2697,7 +2697,7 @@ function CreatePageInner() {
           between the box and Send, and the owner found that too busy. */}
       {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" />}
       {step === "input" && !cameraHandoff && (
-        <div id="make-cards" className="mt-2.5 grid scroll-mt-24 grid-cols-2 gap-2 rounded-[14px] sm:grid-cols-4">
+        <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px]">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2736,8 +2736,7 @@ function CreatePageInner() {
               // Broken after the slash on purpose. With no space in it the
               // name could not wrap, and on a wide screen it ran over its
               // arrow and into the card beside it.
-              label: "Camera/
-Teleprompter",
+              label: "Camera/\nTeleprompter",
               Icon: Camera,
               // Said here because the alternative is finding out at the end.
               // Nothing checks the window before the camera opens, so a locked
@@ -2878,7 +2877,10 @@ Teleprompter",
                   setCardPick({ kind: key === "film" ? "camera" : "video", n: Date.now() });
                 }}
                 aria-pressed={active}
-                className={`flex items-center rounded-[14px] px-3 py-2.5 text-left transition-colors sm:px-4 sm:py-3.5 lg:px-2 lg:py-3 ${
+                // As wide as its name. They were four equal columns, which
+                // left a short name like "Blog" in a card mostly of white
+                // space; the owner asked for only enough room to fit the word.
+                className={`flex items-center rounded-[14px] px-3 py-2.5 text-left transition-colors ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
@@ -2895,13 +2897,13 @@ Teleprompter",
                     How It Works explains does not need saying here too. The
                     one tag kept is "Locked", which is not an explanation: it
                     is the only sign that pressing this card will not open it. */}
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:gap-1.5 lg:text-[15px]">
-                    <Icon strokeWidth={1.9} className="h-[21px] w-[21px] flex-none text-[#A3660F] lg:h-4 lg:w-4" aria-hidden />
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px]">
+                    <Icon strokeWidth={1.9} className="h-[19px] w-[19px] flex-none text-[#A3660F]" aria-hidden />
                     <span className="min-w-0 whitespace-pre-line">{label}</span>
                   </span>
                   {cost === "Locked" && <CostPill free={free} emphasis>{cost}</CostPill>}
-                  <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
+                  <ArrowRight strokeWidth={2} className="h-[16px] w-[16px] flex-none text-[#A3660F]" aria-hidden />
                 </span>
               </button>
             );
@@ -2926,7 +2928,7 @@ Teleprompter",
           {videoChooser && (
             <p className="mb-2 text-[13.5px] font-semibold text-[#A3660F]">Choose your video to continue</p>
           )}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="flex flex-wrap gap-2">
             {([
               // The owner's names for the three (2026-10-10).
               // Names only. "Avatar full video" lost its "full", and each lost
