@@ -113,8 +113,17 @@ export default function HelpPage() {
             </Step>
             <Step n={5} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
               In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → Social Accounts</Link>,
-              connect the Google account that owns your channel. One-time tip: verify your account by phone at
-              youtube.com/verify so videos up to 15 minutes always upload smoothly.
+              connect the Google account that owns your channel. One-time tip: verify the channel by phone at
+              youtube.com/verify so your thumbnails are added automatically.
+              {/* The two things that kept the owner's own channel unverified
+                  for an afternoon (2026-10-13). */}
+              <span className="block mt-1.5">
+                <strong>Still not working?</strong> YouTube&apos;s verify page opens for whichever
+                channel your browser is on, so check the picture at its top right is this channel.
+                If it isn&apos;t, open the page in a private window signed in to this channel only.
+                And one phone number verifies two channels a year: if YouTube says yours is used
+                up, use another phone or a landline.
+              </span>
               {/* Added when posting to the other platforms went live. What each
                   account has to be is said here because it is the usual reason
                   a connection does not appear. */}

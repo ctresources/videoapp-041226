@@ -169,18 +169,24 @@ export async function GET(req: NextRequest) {
    *
    * Newest first because a video can be posted more than once — a re-publish
    * after a fix — and the thumbnail belongs on the copy people are watching.
+   *
+   * Read from platform_post_id on a "posted" row, which is what the publish
+   * writes (social/post). This asked for `metadata` and `status`, columns the
+   * table does not have, so the read failed, the id was never found, and
+   * "Update it on YouTube" never appeared for anyone (found 2026-10-13).
    */
   const { data: postRow } = await admin
     .from("social_posts")
-    .select("metadata")
+    .select("platform_post_id")
     .eq("video_id", videoId)
     .eq("user_id", user.id)
     .eq("platform", "youtube")
-    .eq("status", "published")
+    .eq("post_status", "posted")
+    .not("platform_post_id", "is", null)
     .order("posted_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const ytId = (postRow as { metadata?: { youtube_video_id?: unknown } } | null)?.metadata?.youtube_video_id;
+  const ytId = (postRow as { platform_post_id?: unknown } | null)?.platform_post_id;
   const youtubeVideoId = typeof ytId === "string" && ytId ? ytId : null;
 
   return NextResponse.json({

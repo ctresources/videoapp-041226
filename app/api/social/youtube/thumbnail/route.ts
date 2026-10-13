@@ -43,17 +43,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No project behind this video" }, { status: 404 });
   }
 
+  // The same read as publish-defaults, from the columns the publish writes.
+  // Both asked for `metadata` and `status`, which the table does not have.
   const { data: postRow } = await admin
     .from("social_posts")
-    .select("metadata")
+    .select("platform_post_id")
     .eq("video_id", videoId)
     .eq("user_id", user.id)
     .eq("platform", "youtube")
-    .eq("status", "published")
+    .eq("post_status", "posted")
+    .not("platform_post_id", "is", null)
     .order("posted_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const ytId = (postRow as { metadata?: { youtube_video_id?: unknown } } | null)?.metadata?.youtube_video_id;
+  const ytId = (postRow as { platform_post_id?: unknown } | null)?.platform_post_id;
   if (typeof ytId !== "string" || !ytId) {
     return NextResponse.json({ error: "This video hasn't been published to YouTube yet" }, { status: 400 });
   }
