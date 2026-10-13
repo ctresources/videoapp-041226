@@ -2880,7 +2880,12 @@ function CreatePageInner() {
                 // As wide as its name. They were four equal columns, which
                 // left a short name like "Blog" in a card mostly of white
                 // space; the owner asked for only enough room to fit the word.
-                className={`flex items-center rounded-[14px] px-3 py-2.5 text-left transition-colors ${
+                // Trimmed so the four sit on one line in this column. At
+                // the sizes before, they added up to about 739px in a 720px
+                // column and "Listings & photos" dropped to a row of its own.
+                // Measured from the owner's screenshot, they now come to
+                // about 685. On a phone they still wrap, as they must.
+                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
@@ -2897,13 +2902,13 @@ function CreatePageInner() {
                     How It Works explains does not need saying here too. The
                     one tag kept is "Locked", which is not an explanation: it
                     is the only sign that pressing this card will not open it. */}
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px]">
-                    <Icon strokeWidth={1.9} className="h-[19px] w-[19px] flex-none text-[#A3660F]" aria-hidden />
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[16px]">
+                    <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
                     <span className="min-w-0 whitespace-pre-line">{label}</span>
                   </span>
                   {cost === "Locked" && <CostPill free={free} emphasis>{cost}</CostPill>}
-                  <ArrowRight strokeWidth={2} className="h-[16px] w-[16px] flex-none text-[#A3660F]" aria-hidden />
+                  <ArrowRight strokeWidth={2} className="h-[15px] w-[15px] flex-none text-[#A3660F]" aria-hidden />
                 </span>
               </button>
             );
