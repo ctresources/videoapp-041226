@@ -2691,32 +2691,6 @@ export default function ProjectEditorPage() {
         <div className="flex flex-col gap-4">
           {/* ── Step 2 · Script ── */}
           {editorStep === 2 && (<>
-          {/* The Script step had no mic, though it is the step most worth
-              talking to — "make the opening punchier", "cut the part about
-              taxes" — and the same session was already sitting one step
-              later, where the script is no longer the thing on screen.
-
-              Withheld for pasted scripts for the same reason the hooks are:
-              those are rendered word for word, and a spoken rewrite is
-              exactly the promise this tab makes and must not break.
-
-              Settings spoken here still land; they are simply not visible
-              until Setup, which is why the hint leads with script edits. */}
-          {!isPaste && (
-            <EditorVoiceSession
-              script={editedScript}
-              scope="script"
-              disabled={videoGenerating}
-              onSettings={(st) => {
-                if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
-                if (st.renderMode) setRenderMode(st.renderMode);
-                if (st.musicId) applyMusicId(st.musicId);
-                if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
-              }}
-              onScript={(next) => setEditedScript(next)}
-            />
-          )}
-
           {/* Hook options — 2a. The radio circle replaces the old #1/#2
               numbering: the hooks are alternatives, not a ranking, and numbering
               them implied an order that was never there.
@@ -2729,7 +2703,30 @@ export default function ProjectEditorPage() {
               <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
                 HOOK · PICK ONE, THEN EDIT
               </h3>
-              <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>
+              <span className="flex items-center gap-2.5">
+                <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>
+                {/* Change the script by voice: "make the opening punchier",
+                    "cut the part about taxes". It was a box of its own above
+                    this card; the owner asked for only the mic, here. This
+                    card is not shown for a pasted script, which is rendered
+                    word for word, so neither is the mic: a spoken rewrite is
+                    exactly what that route promises not to do.
+
+                    Settings spoken here still land; they show on Setup. */}
+                <EditorVoiceSession
+                  micOnly
+                  script={editedScript}
+                  scope="script"
+                  disabled={videoGenerating}
+                  onSettings={(st) => {
+                    if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                    if (st.renderMode) setRenderMode(st.renderMode);
+                    if (st.musicId) applyMusicId(st.musicId);
+                    if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
+                  }}
+                  onScript={(next) => setEditedScript(next)}
+                />
+              </span>
             </div>
             <div className="flex flex-col gap-1.5">
               {(script.hooks?.length ? script.hooks : [script.hook]).map((hook, i) => {

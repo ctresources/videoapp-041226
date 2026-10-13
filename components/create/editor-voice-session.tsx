@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Mic } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
@@ -41,6 +41,13 @@ interface Props {
    */
   scope?: "script" | "setup";
   disabled?: boolean;
+  /**
+   * Just the mic, with no box or words round it, to sit inside another card.
+   * The owner asked for this on the Script step: the box above the hook was
+   * one more panel on a page that is mostly panels. What it would have said
+   * back is shown as a passing message instead.
+   */
+  micOnly?: boolean;
 }
 
 /**
@@ -52,7 +59,9 @@ interface Props {
  * in, not a replacement. That is also why there is no big mic and no waveform
  * here, unlike the Create page where the mic *is* the screen.
  */
-export function EditorVoiceSession({ script, onSettings, onScript, scope = "setup", disabled = false }: Props) {
+export function EditorVoiceSession({ script, onSettings, onScript, scope = "setup", disabled = false, micOnly = false }: Props) {
+  const micOnlyRef = useRef(micOnly);
+  micOnlyRef.current = micOnly;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [thinking, setThinking] = useState(false);
   const [lastReply, setLastReply] = useState("");
@@ -123,6 +132,12 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
         toast.error("Couldn't apply that change — the script is unchanged.");
       }
       setLastReply((data.reply as string) || "");
+      // With no box to show it in, an answer that changed no script (a
+      // setting, or a question back) is said as a passing message. A script
+      // change has already been announced above.
+      if (micOnlyRef.current && data.reply && !(typeof data.script === "string" && data.script.trim()) && !data.scriptEdit) {
+        toast(String(data.reply), { duration: 6000 });
+      }
       setTurns((t) => [...t, { role: "assistant", content: (data.reply as string) || "" }]);
       // Deliberately nothing here that starts a render. Voice moves the
       // controls on this rail, all of which can be moved back by hand;
@@ -168,6 +183,25 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
             : null,
           voiceSet.captions === null ? null : voiceSet.captions ? "captions" : "no captions",
         ].filter((s): s is string => !!s);
+
+  if (micOnly) {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={disabled || thinking}
+        aria-pressed={listening}
+        aria-label={listening ? "Stop recording" : "Change the script by voice"}
+        title={listening ? "Listening. Click to stop" : "Change the script by voice"}
+        className="relative flex h-9 w-9 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {listening && <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />}
+        {thinking
+          ? <Loader2 size={16} className="relative animate-spin text-white" />
+          : <Mic size={16} className="relative text-white" />}
+      </button>
+    );
+  }
 
   return (
     <div className="mb-4 rounded-xl border border-spark-rule bg-spark-amber-tint/40 p-3">
