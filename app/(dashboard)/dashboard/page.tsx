@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Mic, Video, Share2, Zap, Plus, ArrowRight, CalendarDays, CheckCircle, Circle, Camera, Infinity, Film } from "lucide-react";
 import { Suspense } from "react";
 import { DraftQueue } from "@/components/dashboard/draft-queue";
-import { SpeakToSpark } from "@/components/dashboard/speak-to-spark";
 import { FREE_RECORDINGS_BEFORE_VIDEO, freeRecordingsUsed, freeTrialLocked, freeTrialDaysLeft } from "@/lib/utils/free-trial";
 async function DraftQueueWrapper({ userId }: { userId: string }) {
   const supabase = await createClient();
@@ -366,10 +365,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* First, above the numbers: on a phone this is the screen the app opens
-          on, and the thing to do here is make something, not read a count. */}
-      <SpeakToSpark />
-
+      {/* A mic card sat here ("Say what you want to make") that sent its
+          sentence over to Spark Studio. The owner did not see why it was on
+          this page and had it taken off (2026-10-13): Studio's own mic is the
+          place for that. */}
       <Suspense fallback={
         <div className="space-y-4 mb-8">
           <Skeleton className="h-8 w-64" />

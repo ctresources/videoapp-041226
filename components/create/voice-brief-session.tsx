@@ -367,7 +367,13 @@ export function VoiceBriefSession({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={`flex items-center gap-4 px-1 pb-1.5 pt-2 sm:gap-6 sm:px-2 sm:pt-2.5 ${micOff ? "opacity-45" : ""}`}>
+      {/* Centred, the line above the mic: the arrangement the Dashboard's
+          mic card had, which the owner asked for here when that card was
+          taken off. The mic and the type are the sizes they were. */}
+      <div className={`flex flex-col items-center gap-3 px-1 pb-2 pt-3 text-center ${micOff ? "opacity-45" : ""}`}>
+        <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
+          Speak, Type or choose suggested idea
+        </h2>
         <button
           type="button"
           onClick={() => {
@@ -387,18 +393,13 @@ export function VoiceBriefSession({
             ? <Loader2 size={32} className="animate-spin" />
             : listening ? <Square size={28} className="relative" fill="currentColor" /> : <Mic size={36} className="relative" />}
         </button>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
-            Speak, Type or choose suggested idea
-          </h2>
-          {/* Only while listening. A mic that has gone quiet with nothing said
-              reads as a mic that has failed. */}
-          {listening && (
-            <p className="mt-1 text-[15px] leading-snug text-spark-ink-muted sm:text-[16px]" aria-live="polite">
-              Listening… tap the mic when you&rsquo;re done.
-            </p>
-          )}
-        </div>
+        {/* Only while listening. A mic that has gone quiet with nothing said
+            reads as a mic that has failed. */}
+        {listening && (
+          <p className="text-[15px] leading-snug text-spark-ink-muted sm:text-[16px]" aria-live="polite">
+            Listening… tap the mic when you&rsquo;re done.
+          </p>
+        )}
       </div>
 
       <div className={off ? "pointer-events-none select-none opacity-45" : ""}>

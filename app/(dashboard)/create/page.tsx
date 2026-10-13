@@ -514,6 +514,14 @@ function CreatePageInner() {
    * brief that is waiting and the three are brought into view to be picked.
    */
   const [videoKind, setVideoKind] = useState<"avatar" | "circle" | "scenes" | null>(null);
+  /**
+   * Whether the three kinds are showing. Folded away until the Video / Reel
+   * card is pressed, at the owner's direction: that card is lit when the page
+   * opens, so they were on screen before anyone had asked for them. Pressing
+   * any other card folds them again. They also open when Next needs the
+   * answer.
+   */
+  const [videoKindOpen, setVideoKindOpen] = useState(false);
   /** When a brief started waiting, so one left sitting is not acted on later. */
   const waitingSince = useRef(0);
 
@@ -1951,6 +1959,7 @@ function CreatePageInner() {
   function askVideoKind(sl: BriefSlots | null) {
     if (videoKind) { runVideoKind(videoKind, sl); return; }
     waitingSince.current = Date.now();
+    setVideoKindOpen(true);
     setVideoChooser({ slots: sl });
     setTimeout(() => document.getElementById("video-kind")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
   }
@@ -2724,7 +2733,11 @@ function CreatePageInner() {
               key: "film" as const,
               // The owner's name for it (2026-10-13). It was "Record yourself"
               // with "Camera + teleprompter" under it; this says both.
-              label: "Camera/Teleprompter",
+              // Broken after the slash on purpose. With no space in it the
+              // name could not wrap, and on a wide screen it ran over its
+              // arrow and into the card beside it.
+              label: "Camera/
+Teleprompter",
               Icon: Camera,
               // Said here because the alternative is finding out at the end.
               // Nothing checks the window before the camera opens, so a locked
@@ -2787,6 +2800,9 @@ function CreatePageInner() {
                 key={key}
                 type="button"
                 onClick={() => {
+                  // Each card shows what belongs to it. For Video / Reel that
+                  // is the three kinds; any other card puts them away.
+                  setVideoKindOpen(key === "spark");
                   if (key === "blog") {
                     if (blogLocked) {
                       /**
@@ -2882,7 +2898,7 @@ function CreatePageInner() {
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:gap-1.5 lg:text-[15px]">
                     <Icon strokeWidth={1.9} className="h-[21px] w-[21px] flex-none text-[#A3660F] lg:h-4 lg:w-4" aria-hidden />
-                    <span className="min-w-0">{label}</span>
+                    <span className="min-w-0 whitespace-pre-line">{label}</span>
                   </span>
                   {cost === "Locked" && <CostPill free={free} emphasis>{cost}</CostPill>}
                   <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
@@ -2899,7 +2915,7 @@ function CreatePageInner() {
           from a topic, not a long one (only the avatar makes those) and not
           one written from something attached. Pressing one marks it, and if
           Send or Next is waiting on the answer, goes straight on. */}
-      {step === "input" && !cameraHandoff && !blogOnly
+      {step === "input" && !cameraHandoff && !blogOnly && videoKindOpen
         && ((inputMode === "script" && locLength !== "long" && !blogSrcText.trim()) || scenesRoute) && (
         <div
           id="video-kind"
