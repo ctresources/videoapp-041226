@@ -17,7 +17,7 @@ import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
 import { ArticleSource, MediaAndDocs, type DocAttachment, type DocMode } from "@/components/create/media-and-docs";
 import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/email-import-picker";
-import { ForwardedEmailsList, useForwardedEmails } from "@/components/create/forwarded-emails";
+import { useForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -207,7 +207,12 @@ function CostPill(
 function SourceTile({
   kicker, label, desc, active, onClick, disabled = false, cost,
 }: {
-  kicker: string; label: string; desc: string; active: boolean; onClick: () => void;
+  /** A small line over the name. Left out where the owner struck it. */
+  kicker?: string;
+  label: string;
+  /** A line under the name. Left out where the owner struck it. */
+  desc?: string;
+  active: boolean; onClick: () => void;
   /** Still readable, no longer changeable — see cameraSourceLocked. */
   disabled?: boolean;
   /** Only where this tile changes what the route costs. Row 1 answers it for
@@ -229,18 +234,20 @@ function SourceTile({
           : `border-[1.5px] border-spark-rule bg-white/60 ${disabled ? "" : "hover:border-spark-rule-dim"}`
       }`}
     >
-      <span className="flex items-center justify-between gap-2">
-        <span
-          className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
-            active ? "text-[#A3660F]" : "text-spark-ink-faint"
-          }`}
-        >
-          {kicker}
+      {(kicker || cost) && (
+        <span className="flex items-center justify-between gap-2">
+          <span
+            className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${
+              active ? "text-[#A3660F]" : "text-spark-ink-faint"
+            }`}
+          >
+            {kicker}
+          </span>
+          {cost}
         </span>
-        {cost}
-      </span>
+      )}
       <span className="text-[15.5px] font-semibold leading-[1.15] text-spark-ink">{label}</span>
-      <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>
+      {desc && <span className="text-[12.5px] leading-[1.25] text-spark-ink-muted">{desc}</span>}
     </button>
   );
 }
@@ -2059,7 +2066,7 @@ function CreatePageInner() {
     inputMode === "camera" ? "Camera/Teleprompter"
       : inputMode === "script" ? "AI writes it"
         : inputMode === "listing" ? "Listings & photos"
-          : "Use my content";
+          : "My Content/Forwarded in";
 
   /**
    * Out of videos, and said before the work rather than after it.
@@ -2106,35 +2113,17 @@ function CreatePageInner() {
   const showActionBar = inputMode === "script" && step === "input";
 
   /**
-   * "Imported content", as the last tile of whichever source row is showing,
-   * and the list it opens under that row.
+   * Forwarded emails, counted for the badge on the content tile.
    *
-   * Unlike its neighbours it does not choose a route by being pressed: it
-   * opens the emails, and Make a blog or Make a video on one of them is what
-   * chooses. Lit while the list is open, so it is clear what the list belongs
-   * to. Nothing at all until something has been forwarded.
+   * They had a tile of their own, "Imported content", at the end of the source
+   * row, opening a list with Make a blog and Make a video on each. The owner
+   * found a second tile confusing beside one that already said "email", and
+   * had the two made one: "My Content/Forwarded in". The emails are inside
+   * it, under From email, on every route.
    */
-  const emailCount = emails.items.length;
-  const emailTile = emailCount > 0 ? (
-    <SourceTile
-      kicker="Forwarded in"
-      label="Imported content"
-      // The count came off at the owner's direction; "N new" on the tile
-      // already says there is something to open.
-      desc="Make a blog or video"
-      cost={emails.fresh > 0 ? <CostPill free={false}>{emails.fresh} new</CostPill> : undefined}
-      active={emails.open}
-      disabled={inputMode === "camera" && cameraSourceLocked}
-      onClick={emails.toggle}
-    />
-  ) : null;
-  const emailList = emailTile && emails.open ? (
-    <ForwardedEmailsList
-      emails={emails}
-      busy={commandPending || locGenerating || cameraScriptGenerating}
-      onMake={startFromEmail}
-    />
-  ) : null;
+  const newEmails = emails.fresh;
+  /** Opening the content tile is reading what was forwarded. */
+  const sawEmails = () => { if (!emails.open) emails.toggle(); };
 
   /**
    * Who it is for, how it sounds, what it is for: one row, three tabs.
@@ -2997,7 +2986,9 @@ function CreatePageInner() {
               { key: "speak" as const,     kicker: "Fastest",          label: "AI writes it",              desc: "Turn a topic into a script" },
               // Not "Upload a PDF": this route takes a link as well, and the
               // kicker already says which two.
-              { key: "uploads" as const,   kicker: "PDF or link",      label: "From a document",           desc: "Use a report, guide, or flyer" },
+              // "Or email": a forwarded one is picked in here now that it
+              // has no tile of its own.
+              { key: "uploads" as const,   kicker: "PDF, link or email", label: "From a document",         desc: "Use a report, guide, or flyer" },
               { key: "audio" as const,     kicker: "Already recorded", label: "A recording of me talking", desc: "We transcribe it into your script" },
               { key: "own" as const,       kicker: "Word for word",    label: "I'll write it",             desc: "Use your own finished copy" },
               { key: "freestyle" as const, kicker: "No script",        label: "Speak naturally",           desc: "Record without a prepared script" },
@@ -3012,10 +3003,7 @@ function CreatePageInner() {
                 onClick={() => setCameraSource(key)}
               />
             ))}
-            {/* Sixth, which also fills the second row of three. */}
-            {emailTile}
           </div>
-          {emailList}
           {/* Dimmed type on its own says "unavailable" but not why. One line,
               and only while it is actually locked. */}
           {cameraSourceLocked && (
@@ -3039,22 +3027,15 @@ function CreatePageInner() {
           className="mt-7"
           eyebrow={blogOnly ? "3 · Source" : "3 · Script Source"}
         />
-        {/* One more column when there is email to start from: three across on
-            the video route, and four on the blog route, which already had
-            three. */}
-        <div
-          className={`mt-2.5 grid grid-cols-1 gap-2 ${
-            blogOnly
-              ? (emailTile ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")
-              : (emailTile ? "sm:grid-cols-3" : "sm:grid-cols-2")
-          }`}
-        >
+        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           {([
             // Its blog subtitle used to read "From a topic, or from an
             // article you already have" — back when the second half had no
             // tile of its own. It has one now, two across, so the subtitle
             // stops describing its neighbour.
-            { mode: "script" as InputMode,  kicker: "Fastest",               label: "AI writes it",          desc: blogOnly ? "From a topic you pick or say" : "Turn a topic into a script" },
+            // The name only: "Fastest" over it and the line under it were
+            // struck by the owner (2026-10-13).
+            { mode: "script" as InputMode, label: "AI writes it" },
             // Only the two routes that write an article. A pasted script is
             // words you already have, so there is nothing for us to research
             // and nothing to expand — and it is the one route that has never
@@ -3064,7 +3045,10 @@ function CreatePageInner() {
               // "Paste my script", which named one of the three things it does
               // and hid the other two: it has always taken an article to
               // shorten, and a PDF, link or email for AI to write from.
-              { mode: "paste" as InputMode, kicker: "Script, article, PDF or email", label: "Use my content", desc: "Speak it as written, or AI writes it" },
+              // "Use my content" and "Imported content" in one, under the
+              // owner's name for it. What it takes is said under the name,
+              // where it was over it.
+              { mode: "paste" as InputMode, label: "My Content/Forwarded in", desc: "Script, article, PDF or email", content: true },
             ]),
             // Blog route only. On the video route this was "My listings/My
             // photos", and it is now the fourth card in the row above: a reel
@@ -3079,12 +3063,12 @@ function CreatePageInner() {
             // differs only in what it starts from.
             ...(blogOnly ? [{
               mode: "script" as InputMode,
-              kicker: "PDF, link or email",
-              label: "Use my content",
-              desc: "Paste it, upload it, or forward it in",
+              label: "My Content/Forwarded in",
+              desc: "PDF, link or email",
               source: true,
+              content: true,
             }] : []),
-          ]).map(({ mode, kicker, label, desc, ...rest }) => {
+          ] as { mode: InputMode; label: string; kicker?: string; desc?: string; source?: boolean; content?: boolean }[]).map(({ mode, kicker, label, desc, ...rest }) => {
             // Two tiles share a mode on the blog route, so `active` cannot be
             // the mode alone: without this, picking either lights both.
             const isSource = "source" in rest;
@@ -3098,12 +3082,23 @@ function CreatePageInner() {
               kicker={kicker}
               label={label}
               desc={desc}
-              // Blog mode only.
-              cost={blogOnly ? <CostPill free>Free</CostPill> : undefined}
+              // Something forwarded in since the last look, on the tile that
+              // now holds it. The "Free" tag the blog tiles carried went the
+              // way of the cost tags on the cards above.
+              cost={rest.content && newEmails > 0 ? <CostPill free={false}>{newEmails} new</CostPill> : undefined}
               active={active}
               onClick={() => {
                 setInputMode(mode);
                 setLastSparkTab(mode);
+                if (rest.content) {
+                  // With something new forwarded in, open on it rather than
+                  // on an empty paste box with the email two taps away.
+                  if (newEmails > 0) {
+                    if (blogOnly) setBlogSrcMode("email");
+                    else { setPasteSource("ai"); setPastePdfMode("email"); }
+                  }
+                  sawEmails();
+                }
                 if (!blogOnly) return;
                 setBlogSrcOpen(isSource);
                 // Leaving this route puts the attachment away with it.
@@ -3118,9 +3113,7 @@ function CreatePageInner() {
               beside the two videos: this row answers where the WORDS come
               from, and "a blog post" is not an answer to that — it is what
               comes out at the other end. */}
-          {emailTile}
         </div>
-        {emailList}
         </>
       )}
 

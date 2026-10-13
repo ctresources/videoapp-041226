@@ -47,7 +47,9 @@ function Step({ n, title, icon: Icon, children }: {
 
 export default function HelpPage() {
   return (
-    <div className="max-w-3xl mx-auto">
+    // Full width, at the owner's request (2026-10-13): held to a narrow
+    // column, the guide "looked so long on the page".
+    <div className="w-full">
       {/* Hero */}
       <div className="mb-6 p-6 rounded-2xl spark-banner-gradient text-white">
         <div className="flex items-center gap-3 mb-1">
@@ -155,11 +157,10 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 Once something has arrived,{" "}
                 <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-                shows it as a box of its own, <strong>Imported content</strong>, at the end of the{" "}
+                has it under <strong>My Content/Forwarded in</strong>, in the{" "}
                 <strong>Script source</strong> row, with a <strong>new</strong> badge when something
-                has come in since you last looked. Open it and
-                each email has <strong>Make a blog</strong> and <strong>Make a video</strong>, which set
-                that up with the email already attached. Nothing is written until you press the button at
+                has come in since you last looked. Open it, choose <strong>From email</strong>, and
+                pick the one you want. Nothing is written until you press the button at
                 the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
                 report is used to its last page. Forwarded emails are kept for 30 days.
               </span>
@@ -214,7 +215,7 @@ export default function HelpPage() {
                     article, Something you already have), because the app now
                     has one card for all of it. */}
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Use my content</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">My Content/Forwarded in</td>
                   <td className="py-2 pr-3">
                     A finished script spoken exactly as written — or an article, a PDF, a link or a
                     forwarded email that AI writes from
@@ -264,8 +265,8 @@ export default function HelpPage() {
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
-              a topic, <strong>Use my content</strong>, or <strong>Imported content</strong> once
-              you have forwarded something in (step 6). A listing or a photos only reel skips this
+              a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
+              you forwarded in turns up (step 6). A listing or a photos only reel skips this
               one (step 13). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s format.
               <span className="block mt-1.5">
@@ -300,7 +301,7 @@ export default function HelpPage() {
                   most people with an existing blog. */}
               <span className="block mt-1.5">
                 <strong>Already written it?</strong>{" "}
-                <strong>Use my content</strong> is the one place for it, the second
+                <strong>My Content/Forwarded in</strong> is the one place for it, the second
                 box under Script source. Paste your words in, or attach a PDF, a link, or an email you
                 forwarded to your import address (step 6). On a video you then say what happens to
                 them: <strong>Speak it word for word</strong>, for a finished script, or{" "}
