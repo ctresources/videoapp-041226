@@ -191,8 +191,8 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
         onClick={toggle}
         disabled={disabled || thinking}
         aria-pressed={listening}
-        aria-label={listening ? "Stop recording" : "Change the script by voice"}
-        title={listening ? "Listening. Click to stop" : "Change the script by voice"}
+        aria-label={listening ? "Stop recording" : scope === "script" ? "Change the script by voice" : "Choose by voice"}
+        title={listening ? "Listening. Click to stop" : scope === "script" ? "Change the script by voice" : "Choose by voice"}
         className="relative flex h-9 w-9 flex-none items-center justify-center rounded-full bg-spark-amber transition-colors hover:bg-spark-blue disabled:cursor-not-allowed disabled:opacity-50"
       >
         {listening && <span className="absolute inset-0 animate-mic-pulse rounded-full bg-spark-amber/30" />}

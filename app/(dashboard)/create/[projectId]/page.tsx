@@ -3061,31 +3061,35 @@ export default function ProjectEditorPage() {
           {/* Generate video */}
           <Card>
             <div className="mb-4">
-              <h3 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Video setup</h3>
+              {/* The mic on the heading's own line, at the owner's direction.
+                  It was a box under the heading with example sentences in it;
+                  the mic is all that is left, and it moves the controls below
+                  the same way: "make it vertical, voice over only, upbeat
+                  music". They all stay usable by hand.
+
+                  Withheld for pasted scripts: it can rewrite the script, and
+                  the promise there is that it is rendered word for word. */}
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Video setup</h3>
+                {!isPaste && (
+                  <EditorVoiceSession
+                    micOnly
+                    script={editedScript}
+                    disabled={videoGenerating}
+                    onSettings={(st) => {
+                      // Nulls mean "not mentioned" and must never clear a choice
+                      // the user already made by hand.
+                      if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                      if (st.renderMode) setRenderMode(st.renderMode);
+                      if (st.musicId) applyMusicId(st.musicId);
+                      if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
+                    }}
+                    onScript={(next) => setEditedScript(next)}
+                  />
+                )}
+              </div>
               <p className="mt-0.5 text-[11px] text-spark-ink-faint">A few choices, then generate</p>
             </div>
-
-            {/* Spoken control of this rail. Sits above the controls it
-                changes so they can be watched updating, and they all stay
-                usable by hand — this is a second way in, not a replacement.
-
-                Withheld for pasted scripts: onScript rewrites the script, and
-                the promise there is that it is rendered word for word. */}
-            {!isPaste && (
-            <EditorVoiceSession
-              script={editedScript}
-              disabled={videoGenerating}
-              onSettings={(st) => {
-                // Nulls mean "not mentioned" and must never clear a choice
-                // the user already made by hand.
-                if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
-                if (st.renderMode) setRenderMode(st.renderMode);
-                if (st.musicId) applyMusicId(st.musicId);
-                if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
-              }}
-              onScript={(next) => setEditedScript(next)}
-            />
-            )}
 
             {/* Video style selector. A pasted script always renders verbatim
                 through Direct Video, so there is no voice-only/avatar choice
