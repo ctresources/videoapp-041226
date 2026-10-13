@@ -428,7 +428,7 @@ export default function HelpPage() {
                 three.
               </span>
               <span className="block mt-1.5">
-                <strong>I&apos;ll record it</strong> — the free way out of this screen. It hands your
+                <strong>You on camera</strong> — the free way out of this screen. It hands your
                 script and photos to the camera instead of making a video.
               </span>
               <span className="block mt-1.5">

@@ -1758,7 +1758,9 @@ export default function ProjectEditorPage() {
               key: "self",
               mode: "self" as const,
               style: null,
-              label: "I'll record it",
+              // "You on camera" was the line under "I'll record it". The
+              // owner struck the name and kept this (2026-10-13).
+              label: "You on camera",
               desc: "You on camera, free",
               blocked: false,
             },
@@ -1808,8 +1810,10 @@ export default function ProjectEditorPage() {
                   : "border border-spark-rule bg-white hover:border-spark-rule-dim"
               }`}
             >
-              <span className="text-[11.5px] font-medium text-spark-ink">{label}</span>
-              <span className="text-[10px] leading-[1.35] text-spark-ink-muted">{desc}</span>
+              {/* The name only. The line under each was struck by the owner.
+                  It is kept as the hover text, because for a tile that is
+                  switched off it was the only thing saying why. */}
+              <span className="text-[11.5px] font-medium text-spark-ink" title={desc}>{label}</span>
             </button>
             );
           })}
@@ -1823,7 +1827,7 @@ export default function ProjectEditorPage() {
         <p className="text-[10.5px] leading-[1.45] text-spark-ink-faint">
           {selfRecord
             ? "You'll finish in the camera, not on this screen. Your script and photos come with you, and nothing here is spent."
-            : "The first three use one video from your plan. I'll record it is free and finishes in the camera."}
+            : "The first three use one video from your plan. You on camera is free and finishes in the camera."}
         </p>
       </div>
     );
@@ -3085,7 +3089,7 @@ export default function ProjectEditorPage() {
                         ...(fullBlocked ? [] : [{ value: "full", label: "Avatar video" }]),
                         { value: "circle", label: "Avatar in circle" },
                         { value: "voice", label: "Voice over only" },
-                        { value: "self", label: "I'll record it" },
+                        { value: "self", label: "You on camera" },
                       ] },
                       ...(looks.length > 0 ? [{
                         key: "look", label: "Avatar look", type: "choice" as const,
