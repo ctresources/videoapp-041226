@@ -513,7 +513,32 @@ ${hashes.join(" ")}` : hashes.join(" ");
    */
   const youtubeNeedsReconnect = accounts.some((a) => a.source === "native" && a.needsReconnect);
 
+  /**
+   * Where this video has already gone starts unselected.
+   *
+   * The window opened with every account highlighted, including the ones the
+   * video was already on, so reopening it to retry one platform left the big
+   * Publish button a press away from posting to the rest a second time. A
+   * platform that is posted, on its way or scheduled is taken out of the
+   * starting selection; a failed one stays in. Only until the agent picks for
+   * themselves: after that the selection is theirs, and posting somewhere
+   * twice on purpose is one tap.
+   */
+  const pickedByHand = useRef(false);
+  useEffect(() => {
+    if (pickedByHand.current || history.length === 0 || accounts.length === 0) return;
+    const there = new Set(
+      history.filter((h) => ["posted", "posting", "scheduled"].includes(h.status)).map((h) => h.platform),
+    );
+    if (there.size === 0) return;
+    setSelectedIds((prev) => prev.filter((id) => {
+      const account = accounts.find((a) => a.id === id);
+      return !account || !there.has(account.platform.toLowerCase());
+    }));
+  }, [history, accounts]);
+
   function toggleAccount(id: string) {
+    pickedByHand.current = true;
     const account = accounts.find((a) => a.id === id);
     const adding = !selectedIds.includes(id);
     if (adding && account?.needsReconnect) {
