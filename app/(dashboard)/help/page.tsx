@@ -743,6 +743,18 @@ export default function HelpPage() {
               From any project&apos;s <strong>Title, Description &amp; Hashtags</strong> card, tap{" "}
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.
+              {/* Added once the owner had seen it show their real reviews. */}
+              <span className="block mt-1.5">
+                <strong>Google Reviews</strong> shows the reviews on your Google Business profile,
+                with your average and how many there are. It needs Google Business connected
+                (step 5). <strong>Needs a reply</strong> is ticked to begin with, so you see only
+                the ones you haven&apos;t answered; untick it to see them all. On any review,{" "}
+                <strong>Draft a reply</strong> writes a short one in your voice for you to edit, or{" "}
+                <strong>Write my own</strong> gives you an empty box. Nothing goes to Google until
+                you press <strong>Post reply</strong>. A reply you&apos;ve already posted can be
+                edited or removed. Read a drafted reply to a low rating with extra care before
+                posting it.
+              </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the
                 counting rule, which is the thing people actually need to know
