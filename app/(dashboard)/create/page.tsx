@@ -513,6 +513,17 @@ function CreatePageInner() {
    * fields are the brief.
    */
   const [videoChooser, setVideoChooser] = useState<{ slots: BriefSlots | null } | null>(null);
+  /**
+   * Which kind of video, chosen on this page under the Video / Reel card.
+   *
+   * It was asked on a page of its own after Send. The owner wanted it here:
+   * the three kinds sit under the card, and Send or Next goes straight on
+   * when one is already chosen. With none chosen, `videoChooser` holds the
+   * brief that is waiting and the three are brought into view to be picked.
+   */
+  const [videoKind, setVideoKind] = useState<"avatar" | "circle" | "scenes" | null>(null);
+  /** When a brief started waiting, so one left sitting is not acted on later. */
+  const waitingSince = useRef(0);
 
   /**
    * Source material for the article writer — a forwarded email, a PDF, a link.
@@ -1931,6 +1942,49 @@ function CreatePageInner() {
           : "video";
 
   /** A Scenes Reel from this brief: its form writes the script and stops for it to be read. */
+  /** Makes the kind of video chosen, from the brief given or the page's own fields. */
+  function runVideoKind(kind: "avatar" | "circle" | "scenes", sl: BriefSlots | null) {
+    if (kind === "scenes") { startScenes(sl); return; }
+    void handleGenerateScript({
+      ...(sl ?? {}),
+      onScreen: "avatar",
+      ...(kind === "circle" && { avatarStyle: "circle" as const }),
+    });
+  }
+
+  /**
+   * Send or Next reached the point where the kind of video matters. Goes on
+   * if one is chosen; otherwise holds the brief and shows where to choose.
+   */
+  function askVideoKind(sl: BriefSlots | null) {
+    if (videoKind) { runVideoKind(videoKind, sl); return; }
+    waitingSince.current = Date.now();
+    setVideoChooser({ slots: sl });
+    setTimeout(() => document.getElementById("video-kind")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+  }
+
+  /** One of the three kinds was pressed. */
+  function chooseVideoKind(kind: "avatar" | "circle" | "scenes") {
+    setVideoKind(kind);
+    const waiting = videoChooser;
+    if (waiting) {
+      setVideoChooser(null);
+      // Only a brief that was just sent. One left waiting while the page was
+      // changed around it is dropped: this press marks the choice, and the
+      // next Send carries what the page says now.
+      if (Date.now() - waitingSince.current < 2 * 60 * 1000) {
+        runVideoKind(kind, waiting.slots);
+        return;
+      }
+    }
+    // Nothing waiting: this only marks the choice. Leaving a Scenes Reel
+    // for an avatar video goes back to the script route.
+    if (kind !== "scenes" && scenesRoute) {
+      setInputMode("script");
+      setLastSparkTab("script");
+    }
+  }
+
   function startScenes(sl: BriefSlots | null) {
     setBlogOnly(false);
     setInputMode("listing");
@@ -2245,65 +2299,6 @@ function CreatePageInner() {
     // desktop and touching both screen edges on a phone.
     <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
-      {/* The page after Send, for a video: which of its two kinds. Asked
-          before the script is written, so the script is written to suit: the
-          owner's choice (2026-10-10). Over the whole screen, like a page of
-          its own, with the way back at the top. */}
-      {videoChooser && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#f4f2e8]" role="dialog" aria-modal="true" aria-label="Choose your video">
-          <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-            <button
-              type="button"
-              onClick={() => setVideoChooser(null)}
-              disabled={locGenerating}
-              className="text-[15px] font-semibold text-spark-blue hover:text-spark-blue-deep disabled:opacity-50"
-            >
-              &larr; Back
-            </button>
-            <h1 className="mt-4 text-[24px] font-semibold leading-tight tracking-[-0.01em] text-spark-ink">Choose your video</h1>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {([
-                // The owner's names for the three (2026-10-10).
-                { kind: "avatar" as const, Icon: SquareUser, label: "Avatar full video", desc: "You on screen, with b-roll and graphics" },
-                { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle", desc: "You in a corner circle, over AI scenes" },
-                { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only", desc: "Scenes Reel: your voice over AI scenes" },
-              ]).map(({ kind, Icon, label, desc }) => (
-                <button
-                  key={kind}
-                  type="button"
-                  disabled={locGenerating}
-                  onClick={() => {
-                    const sl = videoChooser.slots;
-                    if (kind === "scenes") {
-                      setVideoChooser(null);
-                      startScenes(sl);
-                      return;
-                    }
-                    // Stays open while the script is written, then the editor opens.
-                    void handleGenerateScript({
-                      ...(sl ?? {}),
-                      onScreen: "avatar",
-                      ...(kind === "circle" && { avatarStyle: "circle" as const }),
-                    });
-                  }}
-                  className="flex flex-col items-start gap-1.5 rounded-[16px] border-[1.5px] border-spark-rule bg-white px-5 py-5 text-left transition-colors hover:border-spark-amber disabled:opacity-60"
-                >
-                  <Icon strokeWidth={1.9} className="h-7 w-7 text-[#A3660F]" aria-hidden />
-                  <span className="text-[19px] font-bold leading-tight text-spark-ink">{label}</span>
-                  <span className="text-[14.5px] leading-[1.35] text-spark-ink-muted">{desc}</span>
-                  <span className="mt-1"><CostPill free={false} emphasis>Uses 1 video</CostPill></span>
-                </button>
-              ))}
-            </div>
-            {locGenerating && (
-              <p className="mt-5 flex items-center gap-2 text-[15px] font-medium text-spark-ink">
-                <Loader2 size={16} className="animate-spin" /> Writing your script, about a minute.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
         <button
@@ -2440,22 +2435,10 @@ function CreatePageInner() {
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
             disabled={!topicApplies}
-            // Four nouns. "What's it about?" here was the third asking of the
-            // section's own question, and "Which town?" was a question in both
-            // of its states.
-            // Buttons now: each goes to where that part is set. Format is not
-            // offered for a blog, which has no shape or length to choose.
-            chips={[
-              { label: "Topic", ok: !!locCustomTopic.trim(), onClick: () => document.getElementById("brief-box")?.focus() },
-              { label: "Town", ok: locationSet, onClick: () => showBriefControl("brief-town") },
-              { label: "Audience", ok: !!locAudience.trim(), onClick: () => showBriefControl("brief-audience") },
-              ...(blogOnly ? [] : [
-                { label: "Format", ok: formatTouched, onClick: () => showBriefControl("brief-format") },
-              ]),
-            ]}
-            // The owner's wording. It carried two spoken examples, and a
-            // second version for blogs; both went as "too much wording".
-            chipsHint="Tap or say to set it"
+            // The four reminder chips (Topic, Town, Audience, Format) and
+            // the line under them came off at the owner's direction: each
+            // thing they pointed to has its own control further down.
+            chips={[]}
           >
             {/* One card: the big mic, and under it the box its words land in.
                 The mic belongs to the session now rather than sitting above it
@@ -2463,7 +2446,7 @@ function CreatePageInner() {
                 the box and can be corrected before it is sent. */}
             <VoiceBriefSession
               // Held while the next page is open, so closing it frees the box again.
-              disabled={locGenerating || cameraScriptGenerating || scenesWriting || !!videoChooser}
+              disabled={locGenerating || cameraScriptGenerating || scenesWriting}
               // Asked for when a video has none: its script's length follows it.
               formatSet={formatTouched}
               off={!topicApplies}
@@ -2597,7 +2580,7 @@ function CreatePageInner() {
                 // next page. Not for a long one, which only the avatar makes,
                 // or with something attached, which the script is written from.
                 if (sl.output !== "blog" && !blogOnly && !sl.onScreen && sl.length !== "long" && !sl.emailId && !blogSrcText.trim()) {
-                  setVideoChooser({ slots: sl });
+                  askVideoKind(sl);
                   return;
                 }
                 handleGenerateScript(sl);
@@ -2893,6 +2876,59 @@ function CreatePageInner() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Which kind of video, under the Video / Reel card it belongs to.
+          It was a page of its own after Send ("Choose your video"); the owner
+          asked for it here. Shown where the question applies: a video written
+          from a topic, not a long one (only the avatar makes those) and not
+          one written from something attached. Pressing one marks it, and if
+          Send or Next is waiting on the answer, goes straight on. */}
+      {step === "input" && !cameraHandoff && !blogOnly
+        && ((inputMode === "script" && locLength !== "long" && !blogSrcText.trim()) || scenesRoute) && (
+        <div
+          id="video-kind"
+          className={`mt-2 scroll-mt-24 rounded-[14px] border-[1.5px] bg-[#f4f2e8] px-3 py-3 ${
+            videoChooser ? "border-spark-amber" : "border-spark-rule"
+          }`}
+        >
+          {videoChooser && (
+            <p className="mb-2 text-[13.5px] font-semibold text-[#A3660F]">Choose your video to continue</p>
+          )}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {([
+              // The owner's names for the three (2026-10-10).
+              { kind: "avatar" as const, Icon: SquareUser, label: "Avatar full video", desc: "You on screen, with b-roll and graphics" },
+              { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle", desc: "You in a corner circle, over AI scenes" },
+              { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only", desc: "Scenes Reel: your voice over AI scenes" },
+            ]).map(({ kind, Icon, label, desc }) => {
+              const on = scenesRoute ? kind === "scenes" : videoKind === kind;
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={locGenerating || scenesWriting}
+                  onClick={() => chooseVideoKind(kind)}
+                  aria-pressed={on}
+                  className={`flex flex-col items-start gap-1 rounded-[12px] border-[1.5px] bg-white px-3 py-2.5 text-left transition-colors disabled:opacity-60 ${
+                    on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-[15px] font-bold leading-tight text-spark-ink">
+                    <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
+                    {label}
+                  </span>
+                  <span className="text-[12.5px] leading-[1.3] text-spark-ink-muted">{desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          {locGenerating && (
+            <p className="mt-2.5 flex items-center gap-2 text-[14px] font-medium text-spark-ink">
+              <Loader2 size={15} className="animate-spin" /> Writing your script, about a minute.
+            </p>
+          )}
         </div>
       )}
 
@@ -3397,7 +3433,7 @@ function CreatePageInner() {
             onClick={() => {
               if (importingAsIs) { void handleImportArticleAsIs(); return; }
               // The same question the mic's Send leads to, for the same cases.
-              if (!blogOnly && locLength !== "long" && !blogSrcText.trim()) { setVideoChooser({ slots: null }); return; }
+              if (!blogOnly && locLength !== "long" && !blogSrcText.trim()) { askVideoKind(null); return; }
               void handleGenerateScript();
             }}
             loading={locGenerating || blogImporting}

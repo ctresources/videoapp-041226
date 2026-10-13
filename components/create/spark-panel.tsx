@@ -180,8 +180,14 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry }: SparkPa
     );
   }, [query]);
 
-  const pick = (t: ContentTemplate) =>
+  const pick = (t: ContentTemplate) => {
     onSelect(substitutePlaceholders(t.topic, city?.trim(), state?.trim()), t.topic);
+    // The list has done its job once something is chosen. Left open, the
+    // chosen idea was in the box above and thirty more were still on screen
+    // under it, pushing everything that comes next off the page.
+    setOpen(false);
+    setQuery("");
+  };
 
   const chip =
     "rounded-full border border-spark-rule bg-white px-2.5 py-1 text-[12px] font-medium leading-[1.35] text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber";

@@ -273,17 +273,18 @@ export default function HelpPage() {
                 <strong>Send</strong>, and it starts writing. The sections underneath are there for
                 when you want to change something first.
               </span>
-              {/* The page between Send and the script, which is where the three
-                  kinds of video are chosen. */}
+              {/* The three kinds of video, chosen under the Video / Reel card.
+                  It was a page of its own after Send until 2026-10-13. */}
               <span className="block mt-1.5">
-                <strong>Video / Reel</strong> is three kinds of video, and a page called{" "}
-                <strong>Choose your video</strong> asks which before the script is written, so the
-                script suits it. <strong>Avatar full video</strong> puts you on screen with b-roll
+                <strong>Video / Reel</strong> is three kinds of video, and they sit right under
+                that card for you to pick, so the script is written to suit. Pick one any time; if
+                you press Send first, they light up and ask.
+                <strong> Avatar full video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
                 has nobody on screen: it is a Scenes Reel (step 11). Each uses one short video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
-                &ldquo;voice over only&rdquo;, the page is skipped.
+                &ldquo;voice over only&rdquo;, it isn&apos;t asked.
               </span>
               {/* Sparks are named here because everything below refers to them,
                   and because one now exists the moment a project does — someone
@@ -323,10 +324,8 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>Who is it for?</strong> <strong>Audience</strong>, <strong>Tone</strong> and{" "}
                 <strong>Why</strong> are three optional pickers under Details. What
-                you choose shapes the script, the article and the Spark Tools afterwards. The four
-                chips under the topic box, <strong>Topic</strong>, <strong>Town</strong>,{" "}
-                <strong>Audience</strong> and <strong>Format</strong>, turn blue as each one is
-                filled in. Tap one and it takes you to where that is set, or just say it:{" "}
+                you choose shapes the script, the article and the Spark Tools afterwards. You can
+                also just say them:{" "}
                 <em>&ldquo;for first-time buyers&rdquo;</em>, <em>&ldquo;make it vertical&rdquo;</em>. If your
                 audience is not on the list — first responders, nurses relocating — choose{" "}
                 <strong>Add your own&hellip;</strong> at the bottom of Audience and type it. It is saved
@@ -453,8 +452,8 @@ export default function HelpPage() {
               and a good fit for Reels and Shorts.
               <span className="block mt-1.5">
                 <strong>To make one:</strong> give the Topic card a topic, choose{" "}
-                <strong>Video / Reel</strong>, press <strong>Send</strong>, and pick{" "}
-                <strong>Voice over only</strong> on the Choose your video page. Or just say{" "}
+                <strong>Video / Reel</strong>, pick <strong>Voice over only</strong> under it, and
+                press <strong>Send</strong>. Or just say{" "}
                 <em>&ldquo;make a reel about winter selling tips in Springfield&rdquo;</em>.
               </span>
               <span className="block mt-1.5">

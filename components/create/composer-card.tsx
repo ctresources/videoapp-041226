@@ -160,6 +160,7 @@ export function ComposerCard({
         {/* One bottom row: what is still missing, and the way in. The chips are
             a checklist rather than field labels, so they sit under the input
             with the controls, not above it as headings. */}
+        {chips.length > 0 && (
         <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 ${disabled ? "opacity-45" : ""}`}>
           {chips.map((chip) => {
             const look = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12.5px] font-semibold ${
@@ -193,6 +194,7 @@ export function ComposerCard({
             );
           })}
         </div>
+        )}
         {chipsHint && (
           <p className={`mt-1.5 text-[13px] leading-snug text-spark-ink-muted ${disabled ? "opacity-45" : ""}`}>
             {chipsHint}
