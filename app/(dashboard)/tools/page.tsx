@@ -4,13 +4,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
+import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import {
   BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
   type BannerBlock, type BannerLayout, type BlockAdjust,
@@ -22,7 +23,7 @@ import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews";
 
 interface Project {
   id: string;
@@ -135,6 +136,10 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "linkedin",    label: "LinkedIn Profile",     icon: BriefcaseBusiness },
   { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
+  // Not a generator like the rest: it reads the agent's Google reviews and
+  // drafts replies. Here because it is a helper used now and then, not a step
+  // in making a video.
+  { id: "reviews",     label: "Google Reviews",       icon: Star },
 ];
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
@@ -3372,6 +3377,7 @@ export default function ToolsPage() {
         {activeTab === "image"       && <ImageGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} prefill={bannerPrefill} />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
+        {activeTab === "reviews"     && <GoogleReviewsTool onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])} />}
       </div>
     </div>
   );

@@ -476,6 +476,78 @@ export async function cancelScheduled(jobId: string): Promise<boolean> {
   }
 }
 
+// ── Google Business reviews ─────────────────────────────────────────────────
+
+export interface GoogleReview {
+  /** The review's full name at Google, which a reply is addressed to. */
+  name: string;
+  reviewer: string;
+  /** 1 to 5. */
+  stars: number;
+  text: string;
+  createdAt: string;
+  reply: { text: string; updatedAt: string } | null;
+}
+
+const STAR_WORDS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+
+/** A page of reviews for the profile's Google Business location, newest first. */
+export async function listGoogleReviews(username: string, pageToken?: string): Promise<{
+  reviews: GoogleReview[]; averageRating: number | null; total: number | null; nextPageToken: string | null;
+}> {
+  const query = new URLSearchParams({ user: username, pageSize: "50", orderBy: "updateTime desc" });
+  if (pageToken) query.set("pageToken", pageToken);
+  const data = await call<Record<string, unknown>>(`/api/uploadposts/google-business/reviews?${query.toString()}`);
+
+  const list = Array.isArray(data.reviews) ? data.reviews as Record<string, unknown>[] : [];
+  const reviews = list.map((r): GoogleReview => {
+    const rating = r.starRating;
+    const reply = r.reviewReply as { comment?: unknown; updateTime?: unknown } | null | undefined;
+    return {
+      name: String(r.name ?? ""),
+      reviewer: String((r.reviewer as { displayName?: unknown } | undefined)?.displayName ?? ""),
+      // Google sends the rating as a word; a number is accepted in case that changes.
+      stars: typeof rating === "number" ? rating : STAR_WORDS[String(rating ?? "").toUpperCase()] ?? 0,
+      text: String(r.comment ?? ""),
+      createdAt: String(r.createTime ?? r.updateTime ?? ""),
+      reply: reply && typeof reply.comment === "string" && reply.comment
+        ? { text: reply.comment, updatedAt: String(reply.updateTime ?? "") }
+        : null,
+    };
+  }).filter((r) => r.name);
+
+  const average = Number(data.averageRating);
+  const total = Number(data.totalReviewCount);
+  return {
+    reviews,
+    averageRating: Number.isFinite(average) && average > 0 ? average : null,
+    total: Number.isFinite(total) ? total : null,
+    nextPageToken: typeof data.nextPageToken === "string" && data.nextPageToken ? data.nextPageToken : null,
+  };
+}
+
+/** Posts the owner's reply under a review, or replaces the one already there. */
+export async function replyToGoogleReview(username: string, reviewName: string, text: string): Promise<{ text: string; updatedAt: string }> {
+  const data = await call<{ reply?: { comment?: unknown; updateTime?: unknown } }>("/api/uploadposts/google-business/reviews/reply", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user: username, review_name: reviewName, comment: text }),
+  });
+  return {
+    text: typeof data.reply?.comment === "string" ? data.reply.comment : "",
+    updatedAt: typeof data.reply?.updateTime === "string" ? data.reply.updateTime : "",
+  };
+}
+
+/** Takes the owner's reply down. The review itself is the reviewer's and stays. */
+export async function deleteGoogleReviewReply(username: string, reviewName: string): Promise<void> {
+  await call("/api/uploadposts/google-business/reviews/reply", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user: username, review_name: reviewName }),
+  });
+}
+
 // ── Webhooks ────────────────────────────────────────────────────────────────
 
 /**
