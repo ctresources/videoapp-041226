@@ -1181,11 +1181,18 @@ export async function POST(req: NextRequest) {
             // because a handful of photos under a long script just looped.
             ...(directPhotos.length > 0 && { photo_urls: directPhotos }),
             ...(stockClips.length > 0 && { stock_clip_urls: stockClips }),
-            // With no photos of their own, the background is made for this
-            // script when the render comes back (store-video), and the stock
-            // clips above are what it falls back to. The words are kept here
-            // because that step has the video and not the project.
-            ...(directPhotos.length === 0 && !isLongForm && { scene_script: safeScript.slice(0, 2000) }),
+            // The background is made for this script when the render comes
+            // back (store-video), and the stock clips above are what it falls
+            // back to. The words are kept here because that step has the
+            // video and not the project.
+            //
+            // With photos too, since 2026-10-13. It was only for a video with
+            // none, so attaching a single photo switched the scenes off and
+            // left a 2:18 video to that photo and four stock clips that had
+            // nothing to do with what was being said. The store step decides:
+            // a few photos take a sentence each among the scenes, and many
+            // photos stay the background they always were.
+            ...(!isLongForm && { scene_script: safeScript.slice(0, 2000) }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves
             // at a readable size. Recorded so the store step knows to.
             captions_enabled: captions !== false,

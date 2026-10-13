@@ -109,7 +109,9 @@ export default function HelpPage() {
             <Step n={4} title="Set Your Default Video CTA" icon={Megaphone}>
               In <strong>Settings → Default Video CTA</strong>, add your years in real estate and review the
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
-              edit it once and every video ends with a proven subscribe-and-contact close.
+              edit it once and every video ends with a proven subscribe-and-contact close. Change it
+              later and it carries into videos you have already started, unless you typed over the
+              closing line in that video; <strong>Use my saved CTA</strong> there brings it back.
             </Step>
             <Step n={5} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
               In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → Social Accounts</Link>,
@@ -212,7 +214,7 @@ export default function HelpPage() {
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar in circle</td>
-                  <td className="py-2 pr-3">You in a corner circle, over AI scenes that follow each sentence, or over your photos</td>
+                  <td className="py-2 pr-3">You in a corner circle, over AI scenes that follow each sentence, with your photos among them</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
@@ -409,7 +411,7 @@ export default function HelpPage() {
             <Step n={9} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
               disagree. Edit the script freely; a live word counter keeps you inside the cap. Your{" "}
-              <strong>Call To Action</strong> is on the next screen, above Video setup: it is spoken
+              <strong>Call To Action</strong> is on the next screen, in Video setup under Music: it is spoken
               after your script, so edit it there, or tick <strong>No call to action</strong> to end
               the video on your script. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
               it discards your edits.
@@ -430,7 +432,8 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
-                exactly as written, over scenes made for each sentence or over your own photos.
+                exactly as written, over scenes made for each sentence. Attach a few photos and
+                each takes a sentence among the scenes; attach many and the photos are the background.
               </span>
               <span className="block mt-1.5">
                 <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const {
-    projectId, script, cta, ctaOff, hook, title,
+    projectId, script, cta, ctaOff, ctaEdited, hook, title,
     videoType, photoUrls, musicId, musicUrl, captions, renderMode, lookId, avatarStyle,
   } = await req.json() as {
     projectId?: string;
@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
     cta?: string;
     /** "No call to action": the wording is kept, and not spoken. */
     ctaOff?: boolean;
+    /** The closing line was typed over in this video, so it is kept as typed. */
+    ctaEdited?: boolean;
     hook?: string;
     title?: string;
     /** reel_9x16 | youtube_16x9 | youtube_long — the shape picker. */
@@ -64,6 +66,23 @@ export async function POST(req: NextRequest) {
     ...(script !== undefined && { script }),
     ...(cta !== undefined && { cta }),
     ...(typeof ctaOff === "boolean" && { cta_off: ctaOff }),
+    /**
+     * Whether the closing line is this video's own or the one from Settings.
+     *
+     * A saved draft used to keep its copy of the closing line for good, so a
+     * CTA changed in Settings never reached a video already begun, and any
+     * save made it "begun": pressing a tile on the setup screen is one. Now
+     * the editor says whether the box was typed in. When it does not say and
+     * this is the project's first save, nobody has typed anything yet, so it
+     * follows Settings. A draft saved before this existed is left unmarked,
+     * since there is no telling which it was; the editor keeps its wording
+     * and offers the one from Settings.
+     */
+    ...(typeof ctaEdited === "boolean"
+      ? { cta_edited: ctaEdited }
+      : aiScript.cta_edited === undefined && aiScript.user_edited !== true
+        ? { cta_edited: false }
+        : {}),
     ...(hook !== undefined && { hook }),
     // The setup screen's own choices. video_platform is the existing key the
     // editor already reads on load, so the shape rejoins the field it was

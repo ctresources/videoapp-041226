@@ -473,6 +473,14 @@ export default function ProjectEditorPage() {
    */
   const [ctaOff, setCtaOff] = useState(false);
   const activeCta = ctaOff ? "" : editedCta.trim();
+  /**
+   * The closing line was typed over in this video, so it is kept as typed.
+   * Otherwise it follows Settings, including on a draft that was saved before
+   * the CTA there was changed (the owner's own case, 2026-10-13).
+   */
+  const [ctaEdited, setCtaEdited] = useState(false);
+  /** The closing line as Settings has it now. Empty on a listing, which keeps its own. */
+  const [settingsCta, setSettingsCta] = useState("");
   const [selectedHook, setSelectedHook] = useState<string>("");
   // Editable AI-generated title/description — persisted to the project on
   // generate/save-draft so the video render and Publish use the user's wording.
@@ -998,12 +1006,23 @@ export default function ProjectEditorPage() {
       if (typeof aiS.draft_look_id === "string" && aiS.draft_look_id) {
         setSelectedLookId(aiS.draft_look_id);
       }
+      // What Settings says now, for "Use my saved CTA" and for a draft that
+      // follows it. Not on a listing, whose closing line is its own
+      // (resolveInitialCta).
+      const fromSettings = p.project_type === "listing_video" ? "" : await loadDefaultCta(p);
+      setSettingsCta(fromSettings);
       if (aiS.user_edited) {
-        // A saved draft — restore the user's own CTA and hook exactly as saved
-        setEditedCta(aiS.cta || "");
+        // A saved draft: the hook as saved, and the CTA as saved if it was
+        // typed in this video. One that was never typed over follows
+        // Settings. A draft from before that was recorded keeps its wording.
+        const typedHere = (aiS as { cta_edited?: boolean }).cta_edited !== false;
+        setCtaEdited(typedHere);
+        setEditedCta(typedHere ? aiS.cta || "" : fromSettings || aiS.cta || "");
         setSelectedHook(aiS.hook || (aiS.hooks?.length ? aiS.hooks[0] : "") || "");
       } else {
-        setEditedCta(await resolveInitialCta(p, aiS.cta));
+        // The same answer resolveInitialCta gives, from the read just made.
+        setCtaEdited(false);
+        setEditedCta(p.project_type === "listing_video" ? aiS.cta ?? "" : fromSettings || aiS.cta || "");
         freshDefaultHook = aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "";
         setSelectedHook(freshDefaultHook);
       }
@@ -1182,6 +1201,7 @@ export default function ProjectEditorPage() {
           script: editedScript,
           cta: editedCta,
           ctaOff,
+          ctaEdited,
           hook: selectedHook,
           // The setup screen's own choices, which a draft used to drop on the
           // floor. Photo order is sent as the grid order because that is what
@@ -3383,13 +3403,34 @@ export default function ProjectEditorPage() {
                     void fetch("/api/project/save-draft", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ projectId: project.id, cta: editedCta, hook: selectedHook, ctaOff: off }),
+                      body: JSON.stringify({ projectId: project.id, cta: editedCta, hook: selectedHook, ctaOff: off, ctaEdited }),
                     }).catch(() => { /* still applies to this visit */ });
                   }}
                   className="h-4 w-4 accent-primary-600"
                 />
                 No call to action
               </label>
+              {/* Only when this video's wording is not the one in Settings:
+                  a draft from before the CTA was changed there, or one typed
+                  over here. */}
+              {settingsCta && !ctaOff && settingsCta.trim() !== editedCta.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditedCta(settingsCta);
+                    setCtaEdited(false);
+                    if (!project) return;
+                    void fetch("/api/project/save-draft", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ projectId: project.id, cta: settingsCta, hook: selectedHook, ctaEdited: false }),
+                    }).catch(() => { /* still applies to this visit */ });
+                  }}
+                  className="text-xs text-primary-500 hover:underline"
+                >
+                  Use my saved CTA
+                </button>
+              )}
               <button
                 disabled={ctaOff}
                 onClick={() => {
@@ -3405,7 +3446,7 @@ export default function ProjectEditorPage() {
             </div>
             <textarea
               value={editedCta}
-              onChange={(e) => setEditedCta(e.target.value)}
+              onChange={(e) => { setEditedCta(e.target.value); setCtaEdited(true); }}
               rows={3}
               disabled={ctaOff}
               placeholder="e.g. Call or text me to get started, I'd love to help!"

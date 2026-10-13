@@ -196,7 +196,8 @@ function outputSize(width: number, height: number): { w: number; h: number } {
 /**
  * What the background is built from.
  *
- * "photo" — still images, each held for SECONDS_PER_PHOTO.
+ * "photo" — still images, each held for SECONDS_PER_PHOTO, or for `seconds`
+ *           when it has been given a stretch of the narration.
  * "clip"  — stock MP4 footage, played at its own length.
  *
  * Only the pass-1 inputs differ; both produce a background track that pass 2
@@ -302,7 +303,11 @@ export async function compositePhotos(
         } else {
           const p = join(dir, `photo-${i}.jpg`);
           await fs.writeFile(p, await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer());
-          downloaded.push({ path: p, kind });
+          // A photo given a sentence of its own is held for that sentence,
+          // and picks up time owed exactly as a timed clip does.
+          const timed = sources[i].seconds;
+          downloaded.push(timed ? { path: p, kind, seconds: timed + owed } : { path: p, kind });
+          if (timed) owed = 0;
         }
       } catch (err) {
         // Named so a systematically failing format is visible in the logs
@@ -324,7 +329,7 @@ export async function compositePhotos(
           cmd.input(p).inputOptions([...(loop ? ["-stream_loop", "-1"] : []), "-t", timed.toFixed(3)]);
         } else if (kind === "photo") {
           // A still needs -loop/-t to occupy time.
-          cmd.input(p).inputOptions(["-loop", "1", "-t", String(SECONDS_PER_PHOTO)]);
+          cmd.input(p).inputOptions(["-loop", "1", "-t", timed ? timed.toFixed(3) : String(SECONDS_PER_PHOTO)]);
         } else {
           // A clip has its own duration, but stock footage runs to 20s+ and one
           // long clip would dominate the sequence — and every extra second is

@@ -226,12 +226,20 @@ export async function tallFromWide(wide: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+/** What a project is called when nobody named it. Not a title. */
+const NO_TITLE = /^(untitled( video)?|my script)$/i;
+
 /**
  * AI-writes the thumbnail text: 3–4 words max, curiosity-driven, ALL CAPS,
  * never reusing words from the video title (the thumbnail must add to the
  * title, not repeat it).
  */
-async function generateHeadline(title: string): Promise<string | null> {
+async function generateHeadline(title: string, script = ""): Promise<string | null> {
+  // Enough of the script to know what it is about. The title was all this
+  // had, and it was told the video was about real estate, so a pasted script
+  // called "Untitled Video", about building an app, came back as "HIDDEN
+  // PROPERTY SECRET" (2026-10-13).
+  const said = script.replace(/\s+/g, " ").trim().slice(0, 1200);
   try {
     const raw = await perplexityChat([
       {
@@ -240,12 +248,13 @@ async function generateHeadline(title: string): Promise<string | null> {
       },
       {
         role: "user",
-        content: `Write ONE piece of YouTube thumbnail text for this real estate video.
+        content: `Write ONE piece of YouTube thumbnail text for this video.
 
 Video title: "${title}"
-
+${said ? `What the video says: "${said}"\n` : ""}
 STRICT RULES:
 - 3 to 4 words MAXIMUM.
+- It must be about what THIS video says. Most of these videos are about real estate, but not all of them: never mention homes, property or the market unless the video is about them.
 - Create CURIOSITY — make the viewer need to click, but stay clear (no confusing wordplay).
 - Do NOT reuse ANY meaningful word that already appears in the video title — the thumbnail must add new information, not repeat the title.
 - ALL CAPS.
@@ -399,6 +408,14 @@ export async function renderAndSaveThumbnail(
     scriptText = [pr.ai_script?.hook, pr.ai_script?.script]
       .filter((v): v is string => typeof v === "string" && !!v.trim())
       .join(" ");
+    // A pasted script's project has no title of its own, only a placeholder,
+    // and a placeholder says nothing about the video. Its real name is the
+    // title it will be published under, or the line it opens on.
+    if (NO_TITLE.test(projectTitle.trim())) {
+      const named = [pr.seo_data?.youtube_title, pr.ai_script?.title, pr.ai_script?.hook]
+        .find((v): v is string => typeof v === "string" && !!v.trim() && !NO_TITLE.test(v.trim()));
+      projectTitle = named?.trim() || scriptText.split(/(?<=[.?!])\s/)[0]?.slice(0, 140) || projectTitle;
+    }
     // Older projects stored the typed market only inside ai_script.location —
     // use it before falling back to the profile's home market.
     //
@@ -414,7 +431,7 @@ export async function renderAndSaveThumbnail(
   let headlineText = opts.headline?.trim() || "";
   if (!headlineText) {
     if (!sourceTitle) throw new Error("Select a project or type a headline first");
-    headlineText = (await generateHeadline(sourceTitle)) || "";
+    headlineText = (await generateHeadline(sourceTitle, scriptText)) || "";
   }
   if (!headlineText) throw new Error("Could not write a headline — type one and try again");
   headlineText = headlineText.split(/\s+/).slice(0, 4).join(" ").toUpperCase();
