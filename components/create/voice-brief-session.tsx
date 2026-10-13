@@ -414,7 +414,9 @@ export function VoiceBriefSession({
           readOnly={listening}
           disabled={disabled || off}
           rows={2}
-          placeholder="Speak or Type…"
+          // No words inside it, at the owner's direction: the line beside the
+          // mic already says to speak or type. Named for a screen reader.
+          aria-label="Your topic"
           onKeyDown={(e) => {
             // Enter reads the words now instead of starting a new line.
             if (e.key === "Enter" && !e.shiftKey) {

@@ -2046,7 +2046,7 @@ function CreatePageInner() {
   // Which of the three ways in you are on. Shown on every tab: they are all
   // step 1 of the same five, and only the AI tab said so.
   const tabLabel =
-    inputMode === "camera" ? "Record yourself"
+    inputMode === "camera" ? "Camera/Teleprompter"
       : inputMode === "script" ? "AI writes it"
         : inputMode === "listing" ? "Listings & photos"
           : "Use my content";
@@ -2721,7 +2721,9 @@ function CreatePageInner() {
             },
             {
               key: "film" as const,
-              label: "Record yourself",
+              // The owner's name for it (2026-10-13). It was "Record yourself"
+              // with "Camera + teleprompter" under it; this says both.
+              label: "Camera/Teleprompter",
               Icon: Camera,
               // Said here because the alternative is finding out at the end.
               // Nothing checks the window before the camera opens, so a locked
@@ -2771,7 +2773,7 @@ function CreatePageInner() {
               // under the arrow beside it.
               cost: "From free",
             },
-          ]).map(({ key, label, Icon, desc, free, cost }) => {
+          ]).map(({ key, label, Icon, free, cost }) => {
             const active = key === "blog"
               ? blogOnly
               : blogOnly ? false
@@ -2870,22 +2872,19 @@ function CreatePageInner() {
                     row of decoration competing with the labels and pushing
                     them down the card. Beside the name, each one is part of
                     the label it belongs to and costs no height. */}
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-start gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:items-center lg:gap-1.5 lg:text-[15px]">
-                    <Icon strokeWidth={1.9} className="mt-px h-[21px] w-[21px] flex-none text-[#A3660F] lg:mt-0 lg:h-4 lg:w-4" aria-hidden />
+                {/* The name, and nothing under it. Each card had a line saying
+                    what it was and a tag saying what it cost; the owner struck
+                    both on all four (2026-10-13), with the reasoning that what
+                    How It Works explains does not need saying here too. The
+                    one tag kept is "Locked", which is not an explanation: it
+                    is the only sign that pressing this card will not open it. */}
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[17px] lg:gap-1.5 lg:text-[15px]">
+                    <Icon strokeWidth={1.9} className="h-[21px] w-[21px] flex-none text-[#A3660F] lg:h-4 lg:w-4" aria-hidden />
                     <span className="min-w-0">{label}</span>
                   </span>
-                  <span className="mt-1 block text-[12px] leading-[1.3] text-spark-ink-muted sm:text-[13.5px] lg:text-[12.5px]">{desc}</span>
-                  {/* Under the description rather than beside the label. Next
-                      to it, the badge set the width the label had to wrap
-                      around; here each tile reads top to bottom — what it is,
-                      what it does, what it costs. The arrow is the design's
-                      way of saying the card is a way in. It still only
-                      chooses: nothing is made by pressing a card. */}
-                  <span className="mt-2 flex items-center justify-between gap-2">
-                    <CostPill free={free} emphasis>{cost}</CostPill>
-                    <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
-                  </span>
+                  {cost === "Locked" && <CostPill free={free} emphasis>{cost}</CostPill>}
+                  <ArrowRight strokeWidth={2} className="h-[17px] w-[17px] flex-none text-[#A3660F] lg:h-[15px] lg:w-[15px]" aria-hidden />
                 </span>
               </button>
             );
@@ -2913,10 +2912,12 @@ function CreatePageInner() {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {([
               // The owner's names for the three (2026-10-10).
-              { kind: "avatar" as const, Icon: SquareUser, label: "Avatar full video", desc: "You on screen, with b-roll and graphics" },
-              { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle", desc: "You in a corner circle, over AI scenes" },
-              { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only", desc: "Scenes Reel: your voice over AI scenes" },
-            ]).map(({ kind, Icon, label, desc }) => {
+              // Names only. "Avatar full video" lost its "full", and each lost
+              // the line under it, at the owner's direction (2026-10-13).
+              { kind: "avatar" as const, Icon: SquareUser, label: "Avatar video" },
+              { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle" },
+              { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only" },
+            ]).map(({ kind, Icon, label }) => {
               const on = scenesRoute ? kind === "scenes" : videoKind === kind;
               return (
                 <button
@@ -2925,7 +2926,7 @@ function CreatePageInner() {
                   disabled={locGenerating || scenesWriting}
                   onClick={() => chooseVideoKind(kind)}
                   aria-pressed={on}
-                  className={`flex flex-col items-start gap-1 rounded-[12px] border-[1.5px] bg-white px-3 py-2.5 text-left transition-colors disabled:opacity-60 ${
+                  className={`flex items-center rounded-[12px] border-[1.5px] bg-white px-3 py-2.5 text-left transition-colors disabled:opacity-60 ${
                     on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
                   }`}
                 >
@@ -2933,7 +2934,6 @@ function CreatePageInner() {
                     <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
                     {label}
                   </span>
-                  <span className="text-[12.5px] leading-[1.3] text-spark-ink-muted">{desc}</span>
                 </button>
               );
             })}

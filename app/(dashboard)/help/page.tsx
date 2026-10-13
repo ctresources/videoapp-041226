@@ -184,7 +184,7 @@ export default function HelpPage() {
               </thead>
               <tbody className="text-slate-600">
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Record yourself</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Camera/Teleprompter</td>
                   <td className="py-2 pr-3">Film yourself with the teleprompter</td>
                   <td className="py-2 whitespace-nowrap font-semibold text-green-600">FREE, unlimited*</td>
                 </tr>
@@ -196,7 +196,7 @@ export default function HelpPage() {
                 {/* The three kinds of Video / Reel, by the names the "Choose your
                     video" page and Video setup both use. */}
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar full video</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar video</td>
                   <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 3 minutes</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
@@ -261,7 +261,7 @@ export default function HelpPage() {
               has four sections, top to bottom. <strong>1 · Content Topic</strong> — one card with
               the mic and a box, where you say or type what it&apos;s about (step 8).{" "}
               <strong>2 · Create</strong> — four
-              cards: <strong>Video / Reel</strong>, <strong>Record yourself</strong>,{" "}
+              cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, <strong>Use my content</strong>, or <strong>Imported content</strong> once
@@ -279,7 +279,7 @@ export default function HelpPage() {
                 <strong>Video / Reel</strong> is three kinds of video, and they sit right under
                 that card for you to pick, so the script is written to suit. Pick one any time; if
                 you press Next first, they light up and ask.
-                <strong> Avatar full video</strong> puts you on screen with b-roll
+                <strong> Avatar video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
                 has nobody on screen: it is a Scenes Reel (step 11). Each uses one short video. If
@@ -415,7 +415,7 @@ export default function HelpPage() {
                 script, whether AI wrote it or you pasted your own:
               </span>
               <span className="block mt-1.5">
-                <strong>Avatar full video</strong> — you on screen, with b-roll and graphics made
+                <strong>Avatar video</strong> — you on screen, with b-roll and graphics made
                 for you. Up to 3 minutes, so it is not offered for Longform.
               </span>
               <span className="block mt-1.5">
@@ -478,7 +478,7 @@ export default function HelpPage() {
                 <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
               </span>
             </Step>
-            <Step n={12} title="Record Yourself — The Free Option" icon={Camera}>
+            <Step n={12} title="Camera/Teleprompter — The Free Option" icon={Camera}>
               The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
               market, how long the script should be, and where the words come from: a topic, a PDF or link, a
               recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no

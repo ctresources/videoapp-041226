@@ -1733,7 +1733,7 @@ export default function ProjectEditorPage() {
               key: "full",
               mode: "avatar_voice" as const,
               style: "full" as const,
-              label: "Avatar full video",
+              label: "Avatar video",
               desc: fullBlocked ? "Up to 3 minutes" : "B-roll and graphics made for you",
               blocked: fullBlocked,
             },
