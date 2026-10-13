@@ -689,13 +689,30 @@ export default function HelpPage() {
                 its way, scheduled, or failed and why. A failed line has <strong>Retry</strong>, which
                 sends the video to that one platform again. A posted line on Facebook or LinkedIn has{" "}
                 <strong>Edit caption</strong>, for fixing the words after it is up; the other
-                platforms don&apos;t allow that.
+                platforms don&apos;t allow that. Platforms the video is already on start unticked
+                when you reopen the window, so it isn&apos;t posted to them twice by accident.
+              </span>
+              {/* A platform can refuse a post minutes after it was sent. Said
+                  here because the reason used to be saved and shown nowhere. */}
+              <span className="block mt-1.5">
+                <strong>If a post doesn&apos;t go out</strong> after you&apos;ve left the window, you
+                are told two ways. A red note appears at the top of{" "}
+                <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
+                naming the platform, the video and the reason, with <strong>Open Publish</strong> to
+                go straight to Retry and <strong>Dismiss</strong> to clear it. And an email goes to
+                the address you sign in with. The usual reason is a connection that has expired and
+                needs connecting again in Settings.
+              </span>
+              <span className="block mt-1.5">
+                The <strong>thumbnail</strong> you set in the window is sent with the video as its
+                cover, not only to YouTube. A vertical video gets a tall version of the same
+                thumbnail. Each platform decides whether to show it; some pick a frame of their own.
               </span>
               <span className="block mt-1.5">
                 <strong>Google Business</strong> works differently. It takes no more than 30 seconds of
                 video and no phone numbers, so a longer video goes up as a photo post with your caption,
                 any phone number left out, and a <strong>Learn more</strong> button to your blog post or
-                the video. A video too long for one of the other platforms is skipped there, with the
+                the video. A long caption is trimmed to fit Google&apos;s limit. A video too long for one of the other platforms is skipped there, with the
                 reason shown.
               </span>
               <span className="block mt-1.5">
