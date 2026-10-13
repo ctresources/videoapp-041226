@@ -37,6 +37,7 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard, TryLineInline } from "@/components/create/composer-card";
+import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
@@ -4134,6 +4135,10 @@ function CreatePageInner() {
                       : "Upload Photos · Import From Zillow · Enter Manually"}
                 </p>
               </div>
+              {/* The form's mic is drawn here, beside the heading: say what
+                  you want picked and the choices below move. Empty for a form
+                  that has none yet. */}
+              <span id={PAGE_MIC_SLOT} className="ml-auto flex-none self-start" />
             </div>
 
             {/* Two things you can make from the same listing: a scripted tour

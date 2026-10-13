@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { WPM } from "@/lib/utils/video-length";
+import { VoicePickMicInSlot, type PickField } from "@/components/ui/voice-pick-mic";
 
 /** The longest a Scenes reel runs, and what that is in words at reading pace. */
 const MAX_SECONDS = 180;
@@ -206,8 +207,41 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
   const field = "rounded-lg border border-spark-rule px-2.5 py-2 text-[14px] text-spark-ink outline-none focus:border-spark-amber";
   const label = "mb-1.5 text-[11px] font-semibold text-spark-ink-muted";
 
+  /**
+   * Every choice on this form, for the mic beside its heading: "ninety
+   * seconds, horizontal, no captions, calm piano". Writing the script and
+   * building the reel are not among them; those stay a press.
+   */
+  const pickFields: PickField[] = [
+    { key: "length", label: "Length", type: "choice", hint: "how long the reel runs", options: LENGTHS.map((l) => ({ value: String(l.seconds), label: l.label })) },
+    { key: "shape", label: "Shape", type: "choice", options: SHAPES.map((x) => ({ value: x.key, label: x.label })) },
+    { key: "music", label: "Music", type: "choice", options: MUSIC_PRESETS.filter((m) => m.id !== "custom").map((m) => ({ value: m.id, label: m.label })) },
+    { key: "captions", label: "Captions", type: "toggle" },
+    { key: "closingCard", label: "Closing card", type: "toggle" },
+    { key: "closingLine", label: "Closing card wording", type: "text", hint: "the ask shown at the end", max: 60 },
+    { key: "title", label: "Title", type: "text", max: 100 },
+    { key: "city", label: "City", type: "text", max: 60 },
+    { key: "state", label: "State", type: "text", hint: "two-letter code", max: 2 },
+  ];
+
   return (
     <div className="flex flex-col gap-3.5">
+      <VoicePickMicInSlot
+        fields={pickFields}
+        disabled={rendering || writing}
+        label="Choose this reel's settings by voice"
+        onPicks={(p) => {
+          if (typeof p.length === "string" && LENGTHS.some((l) => l.seconds === Number(p.length))) setLengthSeconds(Number(p.length));
+          if (typeof p.shape === "string") setFormat(p.shape);
+          if (typeof p.music === "string") setMusicId(p.music);
+          if (typeof p.captions === "boolean") setCaptions(p.captions);
+          if (typeof p.closingCard === "boolean") setEndCard(p.closingCard);
+          if (typeof p.closingLine === "string") { setEndCardHeadline(p.closingLine); setEndCard(true); }
+          if (typeof p.title === "string") setTitle(p.title);
+          if (typeof p.city === "string") setCity(p.city);
+          if (typeof p.state === "string") setState(p.state.toUpperCase().slice(0, 2));
+        }}
+      />
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-600" />

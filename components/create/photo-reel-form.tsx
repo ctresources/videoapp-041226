@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown, Link2, Images } from "lucide-react";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
+import { VoicePickMicInSlot, type PickField } from "@/components/ui/voice-pick-mic";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVideoPhoto, assertPhotoUploadAllowed, currentUserId } from "@/lib/utils/upload-photo";
@@ -453,8 +454,51 @@ export function PhotoReelForm({
     });
   }
 
+  /**
+   * Every choice on this form, for the mic beside its heading: "vertical,
+   * cinematic, thirty seconds, no music". Named as they are on screen.
+   * Building the reel is not among them; that stays a press.
+   */
+  const pickFields: PickField[] = [
+    { key: "shape", label: "Shape", type: "choice", options: FORMATS.map((f) => ({ value: f.id, label: f.label })) },
+    { key: "motion", label: "Motion", type: "choice", hint: "how the photos move", options: [
+      { value: "classic", label: "Classic" }, { value: "cinematic", label: "Cinematic" },
+    ] },
+    { key: "voiceover", label: "Voiceover", type: "choice", options: [
+      { value: "music", label: "None, music only" }, { value: "script", label: "Type it" }, { value: "record", label: "Speak it" },
+    ] },
+    { key: "length", label: "Length", type: "choice", hint: "how long the reel runs", options: LENGTHS.map((n) => ({ value: String(n), label: `${n} seconds` })) },
+    { key: "music", label: "Music", type: "choice", options: MUSIC_PRESETS.filter((m) => m.id !== "custom").map((m) => ({ value: m.id, label: m.label })) },
+    { key: "captions", label: "Captions", type: "toggle" },
+    { key: "closingCard", label: "Closing card", type: "toggle" },
+    { key: "closingLine", label: "Closing card wording", type: "text", hint: "the ask shown at the end, such as See it in person", max: 60 },
+    { key: "title", label: "Title", type: "text", hint: "shown at the start and names the reel", max: 100 },
+    { key: "address", label: "Property address", type: "text", max: 120 },
+    { key: "city", label: "City", type: "text", max: 60 },
+    { key: "state", label: "State", type: "text", hint: "two-letter code", max: 2 },
+  ];
+
   return (
     <div className="flex flex-col gap-3">
+      <VoicePickMicInSlot
+        fields={pickFields}
+        disabled={rendering}
+        label="Choose this reel's settings by voice"
+        onPicks={(p) => {
+          if (typeof p.shape === "string") setFormat(p.shape);
+          if (p.motion === "classic" || p.motion === "cinematic") setMotion(p.motion);
+          if (p.voiceover === "music" || p.voiceover === "script" || p.voiceover === "record") setVoice(p.voiceover);
+          if (typeof p.length === "string" && (LENGTHS as readonly number[]).includes(Number(p.length))) setSeconds(Number(p.length));
+          if (typeof p.music === "string") setMusicId(p.music);
+          if (typeof p.captions === "boolean") setCaptions(p.captions);
+          if (typeof p.closingCard === "boolean") setEndCard(p.closingCard);
+          if (typeof p.closingLine === "string") { setEndCardHeadline(p.closingLine); setEndCard(true); }
+          if (typeof p.title === "string") setTitle(p.title);
+          if (typeof p.address === "string") setAddress(p.address);
+          if (typeof p.city === "string") setCity(p.city);
+          if (typeof p.state === "string") setState(p.state.toUpperCase().slice(0, 2));
+        }}
+      />
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
           <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-600" />

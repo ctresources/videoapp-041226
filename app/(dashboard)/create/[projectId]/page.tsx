@@ -3076,6 +3076,45 @@ export default function ProjectEditorPage() {
                     micOnly
                     script={editedScript}
                     disabled={videoGenerating}
+                    // The choices this page has beyond format, music and
+                    // captions: all four answers to who is on screen (the
+                    // older reading only knew avatar or voice), and which
+                    // look, by the name under its picture.
+                    fields={[
+                      { key: "onscreen", label: "Who is on screen", type: "choice", options: [
+                        ...(fullBlocked ? [] : [{ value: "full", label: "Avatar video" }]),
+                        { value: "circle", label: "Avatar in circle" },
+                        { value: "voice", label: "Voice over only" },
+                        { value: "self", label: "I'll record it" },
+                      ] },
+                      ...(looks.length > 0 ? [{
+                        key: "look", label: "Avatar look", type: "choice" as const,
+                        options: looks
+                          .filter((l) => l.status !== "processing" && l.status !== "pending")
+                          .map((l) => ({ value: l.id, label: l.name })),
+                      }] : []),
+                    ]}
+                    onPicks={(p) => {
+                      if (typeof p.look === "string") setSelectedLookId(p.look);
+                      const on = p.onscreen;
+                      if (on === "self") { setSelfRecord(true); return; }
+                      if (on === "full" || on === "circle" || on === "voice") {
+                        const mode = on === "voice" ? "voice_only" as const : "avatar_voice" as const;
+                        const style = on === "voice" ? null : on;
+                        setSelfRecord(false);
+                        setRenderMode(mode);
+                        if (style) setAvatarStyle(style);
+                        // Saved, as a press on the tile is: the choice has to
+                        // outlive this page.
+                        if (project) {
+                          fetch("/api/project/save-draft", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ projectId: project.id, renderMode: mode, ...(style && { avatarStyle: style }) }),
+                          }).catch(() => { /* the render still carries the mode */ });
+                        }
+                      }
+                    }}
                     onSettings={(st) => {
                       // Nulls mean "not mentioned" and must never clear a choice
                       // the user already made by hand.

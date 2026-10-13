@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { Loader2, Mic } from "lucide-react";
 import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
+import type { PickField, PickValue } from "@/lib/api/voice-pick";
 
 /** Same words the rail's own chips and summary use, so a setting reads the
  *  same whether it was spoken or clicked. */
@@ -48,6 +49,13 @@ interface Props {
    * back is shown as a passing message instead.
    */
   micOnly?: boolean;
+  /**
+   * Choices on the page beyond the four this session has always set (format,
+   * who speaks, music, captions): which look, the avatar in a circle. Read
+   * from the same sentence, alongside, so one mic covers the page.
+   */
+  fields?: PickField[];
+  onPicks?: (picks: Record<string, PickValue>) => void;
 }
 
 /**
@@ -59,7 +67,11 @@ interface Props {
  * in, not a replacement. That is also why there is no big mic and no waveform
  * here, unlike the Create page where the mic *is* the screen.
  */
-export function EditorVoiceSession({ script, onSettings, onScript, scope = "setup", disabled = false, micOnly = false }: Props) {
+export function EditorVoiceSession({ script, onSettings, onScript, scope = "setup", disabled = false, micOnly = false, fields, onPicks }: Props) {
+  const fieldsRef = useRef(fields);
+  fieldsRef.current = fields;
+  const onPicksRef = useRef(onPicks);
+  onPicksRef.current = onPicks;
   const micOnlyRef = useRef(micOnly);
   micOnlyRef.current = micOnly;
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -93,11 +105,31 @@ export function EditorVoiceSession({ script, onSettings, onScript, scope = "setu
     setTurns(next);
     setThinking(true);
     try {
+      // The page's other choices, read from the same sentence at the same
+      // time. Best-effort: a miss here must not cost the turn below.
+      const extra = fieldsRef.current;
+      const picking = extra && extra.length > 0
+        ? fetch("/api/ai/voice-pick", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ said, fields: extra }),
+          }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+        : Promise.resolve(null);
+
       const res = await fetch("/api/ai/editor-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ turns: next, script: scriptRef.current }),
       });
+      const picked = await picking;
+      if (picked?.picks && Object.keys(picked.picks).length > 0) {
+        onPicksRef.current?.(picked.picks as Record<string, PickValue>);
+        const names = Object.entries(picked.picks as Record<string, PickValue>).map(([k, v]) => {
+          const f = extra?.find((x) => x.key === k);
+          return f?.options?.find((o) => o.value === v)?.label ?? String(v);
+        });
+        toast.success(`Set: ${names.join(", ")}`, { duration: 5000 });
+      }
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 503) {
