@@ -73,6 +73,8 @@ function SocialSettingsContent() {
   const [youtubeChannel, setYoutubeChannel] = useState<SocialAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnectingYT, setDisconnectingYT] = useState(false);
+  /** Phone-verified, by YouTube's account. undefined: not asked yet. null: not known. */
+  const [ytVerified, setYtVerified] = useState<boolean | null | undefined>(undefined);
   const [more, setMore] = useState<MoreInfo | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [disconnectingAll, setDisconnectingAll] = useState(false);
@@ -100,6 +102,16 @@ function SocialSettingsContent() {
       setMore(moreInfo ?? null);
       setYoutubeConnected(!!ytConnected);
       setYoutubeChannel(all.find((a) => a.id === "native_youtube") ?? null);
+      // A connection that has to be made again cannot be asked.
+      const yt = all.find((a) => a.id === "native_youtube");
+      if (yt && !yt.needsReconnect) {
+        fetch("/api/social/youtube/verified")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => setYtVerified(typeof d?.verified === "boolean" ? d.verified : null))
+          .catch(() => setYtVerified(null));
+      } else {
+        setYtVerified(null);
+      }
       // After the list, not with it: the page is usable without this, and it
       // is asked only for platforms that are actually connected.
       const ask = ((moreInfo?.platforms ?? []) as MorePlatform[])
@@ -277,8 +289,11 @@ function SocialSettingsContent() {
                 without a thumbnail. YouTube only accepts custom thumbnails on
                 phone-verified channels, it is per channel, and only the channel's
                 owner can do it — so the app can never do this for them. Shown to
-                everyone because there is no API telling us who has verified. */}
-            {youtubeConnected && youtubeChannel && (
+                everyone YouTube does not report as verified: it is asked
+                (/api/social/youtube/verified), and the note waits for the
+                answer so it does not flash up and vanish on a verified
+                channel. */}
+            {youtubeConnected && youtubeChannel && ytVerified !== undefined && ytVerified !== true && (
               <div className="mt-3 pt-3 border-t border-slate-100 flex items-start gap-2">
                 <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-500">

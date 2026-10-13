@@ -2616,6 +2616,24 @@ export default function ProjectEditorPage() {
     || [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length > standardMaxWords();
   const circleStyle = avatarStyle === "circle" || fullBlocked;
 
+  /**
+   * How long this render takes, worked out once for the whole page.
+   *
+   * It was worked out three times, and the line under Save Draft had fallen
+   * behind the other two: it never asked whether the agent was in a circle,
+   * so it promised "15-20 minutes" and scenes built around the photos for a
+   * video the footer beside it correctly called "5-10 minutes" (2026-10-13,
+   * the owner's screenshot). Voice over only is never a straight read, the
+   * same rule create-blog applies (`&& !voiceOnly`).
+   */
+  const eta = voiceOnlyAsScenes
+    ? { range: "2-10 minutes", why: "" }
+    : renderEta({
+        pastedScript: circleStyle && renderMode !== "voice_only",
+        longForm: selectedVideoType === "youtube_long",
+        photoCount: uploadedPhotos.length,
+      });
+
   const seo = project.seo_data as SeoData | null;
 
   return (
@@ -3553,30 +3571,20 @@ export default function ProjectEditorPage() {
                 <Save size={14} /> Save Draft
               </Button>
             </div>
-            {(() => {
-              const eta = renderEta({
-                pastedScript: false,
-                longForm: selectedVideoType === "youtube_long",
-                photoCount: uploadedPhotos.length,
-              });
-              return (
-                <p className="text-xs text-slate-400 text-center mt-2">
-                  AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
-                  see it in My Sparks when ready. You can close this page.
-                </p>
-              );
-            })()}
+            {/* Not on the camera route, where nothing is generated and the
+                footer says "Free". */}
+            {!selfRecord && (
+              <p className="text-xs text-slate-400 text-center mt-2">
+                AI video generation takes {eta.range}.{eta.why ? ` ${eta.why}` : ""} You&apos;ll
+                see it in My Sparks when ready. You can close this page.
+              </p>
+            )}
           </Card>
 
           </>)}
 
           {/* ── Step 4 · Generating ── */}
           {editorStep === 4 && (() => {
-            const eta = renderEta({
-              pastedScript: circleStyle,
-              longForm: selectedVideoType === "youtube_long",
-              photoCount: uploadedPhotos.length,
-            });
             const shape = selectedVideoType === "reel_9x16" ? "9:16 (vertical)"
               : selectedVideoType === "short_1x1" ? "1:1 (square)"
                 : "16:9 (horizontal)";
@@ -4322,7 +4330,7 @@ export default function ProjectEditorPage() {
                       ? "Free. Your photos play as b-roll while you read"
                       : voiceOnlyAsScenes
                         ? "Takes 2-10 minutes · your voice over a scene for each sentence"
-                        : `Takes ${renderEta({ pastedScript: circleStyle, longForm: selectedVideoType === "youtube_long" }).range} once it starts`
+                        : `Takes ${eta.range} once it starts`
                   )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"

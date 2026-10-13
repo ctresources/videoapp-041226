@@ -137,6 +137,30 @@ export async function getChannelInfo(accessToken: string): Promise<{
   };
 }
 
+/**
+ * Whether the channel has been phone-verified, as far as YouTube will say.
+ *
+ * There is no field for it by name. What there is, for the channel's own
+ * owner, is whether it may upload videos over 15 minutes, and that is
+ * unlocked by the same phone verification as custom thumbnails. "allowed"
+ * is verified; "eligible" and "disallowed" are not. Anything else, or no
+ * answer, is null: not known, and callers go on warning as before.
+ *
+ * `raw` is what YouTube said, for the log.
+ */
+export async function channelPhoneVerified(accessToken: string): Promise<{ verified: boolean | null; raw: string | null }> {
+  const res = await fetch(`${YOUTUBE_API}/channels?part=status&mine=true`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return { verified: null, raw: `http ${res.status}` };
+  const data = await res.json().catch(() => null);
+  const raw = data?.items?.[0]?.status?.longUploadsStatus;
+  if (typeof raw !== "string") return { verified: null, raw: null };
+  if (raw === "allowed") return { verified: true, raw };
+  if (raw === "eligible" || raw === "disallowed") return { verified: false, raw };
+  return { verified: null, raw };
+}
+
 // Returns a valid (possibly refreshed) access token, saving new token to DB if needed.
 //
 // Tokens are stored encrypted when TOKEN_ENCRYPTION_KEY is configured. Reads go
