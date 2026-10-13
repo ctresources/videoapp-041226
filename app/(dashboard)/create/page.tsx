@@ -486,15 +486,6 @@ function CreatePageInner() {
    */
   const pasteScriptBudget = pasteWordCap;
 
-  /**
-   * The brief box is holding words that have not been sent.
-   *
-   * Reported up by the panel, because nothing on this page can see it: the
-   * topic only reaches locCustomTopic once a turn has round-tripped, so a
-   * typed-but-unsent topic left the footer telling you to supply the thing
-   * sitting visible in the box above it.
-   */
-  const [briefHasDraft, setBriefHasDraft] = useState(false);
   // The card last pressed in section 2, handed to the topic box so the strip
   // under it says the same thing the cards do.
   const [cardPick, setCardPick] = useState<{ kind: BriefMake; n: number } | undefined>();
@@ -1985,6 +1976,15 @@ function CreatePageInner() {
     }
   }
 
+  /** Next, from the button at the bottom or from saying "Spark it". */
+  function goNext() {
+    if (inputMode !== "script" || !canContinue) return;
+    if (importingAsIs) { void handleImportArticleAsIs(); return; }
+    // Which kind of video, where that is a question.
+    if (!blogOnly && locLength !== "long" && !blogSrcText.trim()) { askVideoKind(null); return; }
+    void handleGenerateScript();
+  }
+
   function startScenes(sl: BriefSlots | null) {
     setBlogOnly(false);
     setInputMode("listing");
@@ -2524,6 +2524,10 @@ function CreatePageInner() {
                 }
                 if (s.platform) { setLocPlatform(s.platform); setFormatTouched(true); }
                 if (s.purpose) setLocPurpose(s.purpose);
+                // "With my avatar" or "voice over only": the choice under the
+                // Video / Reel card, so Next does not have to ask.
+                if (s.onScreen === "avatar") setVideoKind("avatar");
+                if (s.onScreen === "scenes" || (s.onScreen === "voice_only" && s.length !== "long")) setVideoKind("scenes");
                 // "Create a blog" and "make a video" pick the route out loud,
                 // the same as pressing its tile.
                 // Not while recording yourself: there the route only changes
@@ -2588,7 +2592,17 @@ function CreatePageInner() {
               // This panel's button and the one in the footer call the same
               // handler, so they have to agree on what it does.
               mode={blogOnly ? "blog" : "script"}
-              onDraftChange={setBriefHasDraft}
+              // The words in the box are the topic the moment they are there,
+              // on both routes, so Next never waits on them being read. What
+              // is understood from them (the town, the format, a tidier
+              // topic) arrives after, through onSlots above.
+              onText={(text) => {
+                setLocCustomTopic(text);
+                setCameraVoiceTopic(text);
+                setTopicTemplateRaw(null);
+              }}
+              // "Spark it": the same as the button at the bottom.
+              onGo={goNext}
               seed={sparkSeed}
               command={voiceCommand}
               onReply={() => setCommandPending(false)}
@@ -3405,12 +3419,7 @@ function CreatePageInner() {
                   : blogOnly && blogSrcOpen && !blogSourceReady
                     ? "Paste, upload, link or forward the piece above to carry on."
                   : !locCustomTopic.trim() && !blogSrcText.trim()
-                    ? (briefHasDraft
-                        // The topic is on screen, just not sent. Telling
-                        // someone to supply what they can already see reads as
-                        // the page not working.
-                        ? "Press Send to add what you've typed."
-                        : `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`)
+                    ? `Say or pick what the ${blogOnly ? "article" : "video"} is about to carry on.`
                     : blogOnly
                       // What this button is about to do, which is now two
                       // different things: publish what they attached, or write
@@ -3430,12 +3439,7 @@ function CreatePageInner() {
             // chosen, the primary action is saving that article — the footer
             // has to do what the panel above says, or the two disagree about
             // what pressing the big button means.
-            onClick={() => {
-              if (importingAsIs) { void handleImportArticleAsIs(); return; }
-              // The same question the mic's Send leads to, for the same cases.
-              if (!blogOnly && locLength !== "long" && !blogSrcText.trim()) { askVideoKind(null); return; }
-              void handleGenerateScript();
-            }}
+            onClick={goNext}
             loading={locGenerating || blogImporting}
             disabled={!canContinue}
             size="lg"
@@ -3519,11 +3523,7 @@ function CreatePageInner() {
                   : cameraSource === "speak"
                     ? (cameraTopicText
                         ? "We'll write your teleprompter script from your topic."
-                        : briefHasDraft
-                          // The topic is on screen, just not sent — as on the
-                          // avatar route.
-                          ? "Press Send to add what you've typed."
-                          : "Say or type what the video is about in step 1, and we'll write the script.")
+                        : "Say or type what the video is about in step 1, and we'll write the script.")
                     : cameraSource === "uploads"
                       ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"

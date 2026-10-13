@@ -1,34 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
-import { Mic, ChevronDown, ChevronUp, CheckCircle, Loader2, Square } from "lucide-react";
+import { Mic, Loader2, Square } from "lucide-react";
 import { saidGoAhead } from "@/lib/utils/wake-word";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
-
-/**
- * The opening line, and deliberately not a question any more.
- *
- * It was "What are we sparking today?" — sitting a couple of inches under a
- * section heading already asking "What is your video about?", and directly
- * above a chip asking "What's it about?". One question, three wordings, which
- * reads as three separate things wanted rather than one.
- *
- * So this line stops asking and starts telling you what you can pack into the
- * answer, which is the thing nobody discovers: that the whole brief can go in
- * one sentence. Only the opening state — the moment you speak, this becomes
- * the assistant's real reply and everything below is unchanged.
- */
-/**
- * Moved to the hero mic at the top of the Create page, which is where someone
- * is deciding what to say. Down here it was the same advice given after two
- * rows of tiles had already been scrolled past.
- *
- * Empty rather than removed: this is still turns[0], the seat the assistant's
- * real reply takes the moment you speak. Only the opening state is silent.
- */
-const OPENING_LINE = "";
-
 
 export interface BriefSlots {
   city: string | null;
@@ -49,16 +24,6 @@ export interface BriefSlots {
   emailSubject?: string | null;
 }
 
-const EMPTY_SLOTS: BriefSlots = {
-  city: null, state: null, topic: null, audience: null, tone: null, length: null, platform: null,
-  output: null, onScreen: null, purpose: null, emailId: null, emailSubject: null,
-};
-
-interface Turn {
-  role: "user" | "assistant";
-  content: string;
-}
-
 /**
  * What a topic can become.
  *
@@ -68,15 +33,6 @@ interface Turn {
  * their own, for when the words say which.
  */
 export type BriefMake = "video" | "avatar" | "camera" | "scenes" | "blog";
-
-const MAKES: { kind: BriefMake; label: string }[] = [
-  { kind: "video", label: "Video / Reel" },
-  { kind: "avatar", label: "Avatar video" },
-  { kind: "camera", label: "Record yourself" },
-  // Your voice over scenes made for the script, with nobody on screen.
-  { kind: "scenes", label: "Scenes Reel" },
-  { kind: "blog", label: "Blog" },
-];
 
 /**
  * A choice tapped in the box, written into the brief as if it had been said.
@@ -136,651 +92,281 @@ function withMake(slots: BriefSlots, make: BriefMake | null): BriefSlots {
 }
 
 interface Props {
-  /** Applies whatever the conversation has established. */
+  /** Applies whatever was understood from the words to the page's own fields. */
   onSlots: (slots: BriefSlots) => void;
   /**
-   * The agent said the wake word and the brief is complete.
-   *
-   * Receives the slots directly. onSlots and onReady fire in the same tick, so
-   * anything onReady read back from React state would be a render behind — and
-   * one utterance carrying the whole brief plus the wake word is exactly the
-   * case where that state is still empty.
+   * A whole command arrived from elsewhere (the Dashboard's mic) and turned
+   * out to be complete: go. Not called for words spoken or typed here, which
+   * fill the page in and wait for Next.
    */
   onReady: (slots: BriefSlots) => void;
-  /** Escape hatch — hands over to the typed form. */
+  /** The browser cannot listen. The box already takes typing, so this is rarely needed. */
   onSwitchToTyping: () => void;
   disabled?: boolean;
   /**
-   * Text dropped into the box from outside — picking a trending topic or a
-   * template. It lands as a draft rather than being sent, so it can be added
-   * to ("...aimed at downsizers") before it counts as your turn.
-   *
-   * Carries a nonce because picking the same topic twice must still land.
+   * Text dropped into the box from outside: a picked idea or the example line.
+   * Carries a nonce because picking the same one twice must still land.
    */
   seed?: { text: string; n: number };
-  /**
-   * What this brief ends in.
-   *
-   * The conversation is the same either way, but the thing it produces is not,
-   * and this panel said "script" in three places while the button below it said
-   * "Write the blog" — two buttons that call the identical handler, disagreeing
-   * about what they do. Defaults to "script" so the camera instance and every
-   * other caller are untouched.
-   */
+  /** What the words end in, sent with them so they are read the right way. */
   mode?: "script" | "blog";
-  /**
-   * Whether the box is holding words that have not been sent yet.
-   *
-   * The page's own state only fills once a turn has round-tripped, so an
-   * unsent draft left the footer saying "say or pick what this is about"
-   * while the topic sat visible in the box above it — the screen telling you
-   * to supply the thing you could see. The panel is the only thing that knows,
-   * so it says.
-   */
+  /** Whether the box is holding any words. */
   onDraftChange?: (hasDraft: boolean) => void;
   /**
-   * A whole command said somewhere else, the home-screen mic, and handed here
-   * to carry out.
-   *
-   * Unlike `seed`, it is sent at once and goes ahead without the wake word if
-   * it turns out to be complete. That is the difference between a conversation
-   * and a command: here on the Create page you are building a brief and say
-   * when it is done; on the home screen "create a blog about…" already is the
-   * instruction. If something required is missing, it becomes an ordinary
-   * conversation and the assistant asks for it.
-   *
-   * Carries a nonce so the same sentence said twice still lands.
+   * The words in the box, as they are typed or heard. The page keeps them as
+   * its topic straight away, so Next works without waiting for them to be
+   * read; what is understood from them arrives afterwards through onSlots.
+   */
+  onText?: (text: string) => void;
+  /** "Spark it" was said: the same as pressing Next. */
+  onGo?: () => void;
+  /**
+   * A whole command said somewhere else and handed here to carry out. It goes
+   * ahead by itself when it turns out to be complete; otherwise it fills in
+   * what it can and waits like anything else.
    */
   command?: { text: string; n: number };
-  /**
-   * What the brief answered, after every turn: a read-back, a question about
-   * what is missing, or "" when the turn could not be answered at all.
-   *
-   * For the mic at the top of the page, which hands its sentence down here.
-   * This panel sits two sections below it, so without this the answer to a
-   * command spoken up there appeared off screen.
-   */
+  /** Told when a command has been read, so the page stops waiting on it. */
   onReply?: (reply: string) => void;
-  /**
-   * The brief does not apply on the route that is chosen: the box dims and
-   * takes no typing. `disabled` is the other thing, the page being busy
-   * writing, when nothing here should respond at all.
-   */
+  /** The topic does not apply on the route that is chosen: the box dims. */
   off?: boolean;
-  /**
-   * Given while `off`, where switching to a route that starts from a topic
-   * loses nothing: called as the mic is tapped, so speaking is always a way
-   * in. Without it the mic dims with the box.
-   */
+  /** Given while `off`: tapping the mic switches to a route that starts from a topic. */
   onWake?: () => void;
-  /**
-   * Asked as one of the three things to make is tapped: whether this account
-   * may make it. The page owns the answer (and says why not, when not), since
-   * the same lock sits on its cards.
-   */
-  canMake?: (kind: BriefMake) => boolean;
-  /**
-   * Told as soon as it is known what is being made, before anything is sent:
-   * read from the words in the box, or tapped here. For the page to light the
-   * matching card. The owner typed "create a blog", saw "Making: Blog" under
-   * the box, and the cards below still had Avatar video lit.
-   */
+  /** Told what the words say to make, as soon as they say it, to light the matching card. */
   onMakeChange?: (kind: BriefMake) => void;
-  /**
-   * A card pressed on the page, so the box follows it the other way. Carries
-   * a nonce because pressing the same card twice must still land.
-   */
+  /** A card pressed on the page. It wins over the words until they are edited. */
   picked?: { kind: BriefMake; n: number };
-  /**
-   * The page's own choices of what to make, drawn between the box and Send.
-   *
-   * The box asked what to make with four buttons, and the page asked again
-   * with a row of cards two sections down: the same question twice. With
-   * this, the cards are the one place it is asked, and the strip under them
-   * only says which is chosen and offers Send.
-   */
-  picker?: React.ReactNode;
-  /** Which of them is chosen on the page now. Null where none of the four is. */
+  /** Which card is lit on the page now. */
   selected?: BriefMake | null;
-  /**
-   * The page asks what to make itself, in its own row of cards, so this does
-   * not ask again: the strip names the card that is lit and offers Send.
-   *
-   * The cards were tried inside this card, between the box and Send, and the
-   * owner found it too busy. They are back in their own section; what stayed
-   * is that the question is asked once.
-   */
+
+  // Accepted so the page's call is unchanged; no longer used here. They
+  // belonged to the Send strip and its follow-up questions.
+  canMake?: (kind: BriefMake) => boolean;
+  picker?: React.ReactNode;
   choicesOnPage?: boolean;
-  /** Takes them to those cards, for "Change". */
   onShowChoices?: () => void;
-  /**
-   * Whether the page already has a format chosen. Given at all, it means this
-   * asks for one when a video has none: the script's length follows it now
-   * (a vertical one is up to 90 seconds), so it is not something to default.
-   */
   formatSet?: boolean;
-  /**
-   * The thing has been written and is waiting on the page: a camera script in
-   * its teleprompter. The box stops offering to make it, since a tap there
-   * would write over a script that may have been edited.
-   */
   settled?: boolean;
 }
 
+/** How long typing has to pause before the words are read. */
+const READ_AFTER_MS = 1400;
+/** Shorter than this is not yet a sentence worth reading. */
+const READ_MIN_CHARS = 12;
+
 /**
- * The spoken brief — design 3b, restyled compact.
+ * The topic box: say it, type it, or pick an idea, and the words stay put.
  *
- * Originally a tall standalone card: its own shaded panel, a 92px mic, an
- * 18-bar waveform, and the current question set as a page-sized heading. That
- * made sense when it was the only way in, but it now sits as one row inside
- * the page's "Your topic" section, next to trending and templates — other
- * paths to the same field — and looking like a separate destination fought
- * that. Modelled on the editor's compact voice row (36px mic, two lines of
- * text) rather than its own previous design.
+ * It was a conversation. The words were sent with a Send button, the box was
+ * emptied for an answer, what had been understood was summarised on a line
+ * under it, the app's question appeared beside the mic and again in a box of
+ * its own, and the whole exchange was kept in a "Conversation" panel on top.
+ * One brief, shown in four places, none of them the box it was typed into.
+ * The owner found it "way too confusing" and asked why the topic was under
+ * the box instead of in it.
  *
- * No "Captured so far" column, which the mock drew down the right-hand side.
- * The slots this fills are the Create page's own fields, already on screen —
- * a second view of the same brief would be two things to keep in agreement.
- * A short summary line here is not that: it is a glance at what voice itself
- * has captured this conversation, not a duplicate of the form.
+ * So there is no conversation now. The words stay in the box. A moment after
+ * they stop, they are read once in the background, and what they say is
+ * filled in on the page itself: the card under Create, the city and state,
+ * the format, the audience. The page's own controls are the read-back, and
+ * its own button, Next, is the way on.
+ *
+ * What went with it is being asked follow-up questions by voice. Saying more
+ * adds to the box and the whole of it is read again, so "in Blue Bell, for
+ * first-time buyers" still does what it did.
  */
-export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script", onDraftChange, command, onReply, off = false, onWake, canMake, picker, selected = null, choicesOnPage = false, onShowChoices, formatSet, settled = false, onMakeChange, picked }: Props) {
-  // In a ref so `send` calls the current one without being rebuilt for it.
-  const onReplyRef = useRef(onReply);
-  onReplyRef.current = onReply;
-  const [turns, setTurns] = useState<Turn[]>([{ role: "assistant", content: OPENING_LINE }]);
-  const [thinking, setThinking] = useState(false);
-  const [slots, setSlots] = useState<BriefSlots>(EMPTY_SLOTS);
-  const [showTranscript, setShowTranscript] = useState(false);
-  // What is in the box. Speech fills it, and it stays editable afterwards so a
-  // misheard word can be fixed by hand instead of by saying the whole thing
-  // again — "Ambler" coming back as "Amber" should cost one keystroke.
+export function VoiceBriefSession({
+  onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script",
+  onDraftChange, onText, onGo, command, onReply, off = false, onWake,
+  selected = null, onMakeChange, picked,
+}: Props) {
+  // In refs so the reader and the recogniser, which outlive the render that
+  // made them, always call the current ones.
+  const onSlotsRef = useRef(onSlots); onSlotsRef.current = onSlots;
+  const onReadyRef = useRef(onReady); onReadyRef.current = onReady;
+  const onReplyRef = useRef(onReply); onReplyRef.current = onReply;
+  const onTextRef = useRef(onText); onTextRef.current = onText;
+  const onGoRef = useRef(onGo); onGoRef.current = onGo;
+  const onMakeChangeRef = useRef(onMakeChange); onMakeChangeRef.current = onMakeChange;
+  const modeRef = useRef(mode); modeRef.current = mode;
+
   const [draft, setDraft] = useState("");
-  /** True between the mic stopping and the turn being sent, so the status line
-   *  can say the words landed rather than leaving silence to speak for itself. */
-  const [justHeard, setJustHeard] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const draftRef = useRef(draft); draftRef.current = draft;
   const boxRef = useRef<HTMLTextAreaElement>(null);
-  // Guards against a second submit while a turn is in flight, without waiting
-  // for the `thinking` state to land.
-  const busyRef = useRef(false);
-  /**
-   * What to make, once it has been chosen in the box.
-   *
-   * Send used to decide by itself: whatever card was lit further down the
-   * page, an avatar video unless something else had been pressed. The owner
-   * spoke a topic, pressed Send, and was never asked. So the box asks, before
-   * anything is sent, and the answer rides with every turn after it. In a ref
-   * as well, because `send` outlives the render that made it.
-   */
-  const [make, setMake] = useState<BriefMake | null>(null);
-  const makeRef = useRef<BriefMake | null>(null);
-  /** Change was pressed: show all three, whatever was chosen or said. */
-  const [askAll, setAskAll] = useState(false);
+
+  /** The words last read (or dropped in whole, which need no reading). */
+  const lastRead = useRef("");
+  /** Counts reads, so an answer to words since changed is thrown away. */
+  const readSeq = useRef(0);
+  /** A command that went ahead, latched so it cannot go twice. */
+  const wentRef = useRef(false);
+
   /**
    * The words a pressed card overrode. A card pressed after "create a blog"
    * was typed is the newer instruction, so the words are not read for what to
    * make until they change.
    */
   const [cardOver, setCardOver] = useState<string | null>(null);
+  const cardOverRef = useRef(cardOver); cardOverRef.current = cardOver;
+  const selectedRef = useRef(selected); selectedRef.current = selected;
 
-  // `send` reads the transcript through a ref so it never closes over a stale
-  // turn list — the recogniser's callback outlives the render that made it.
-  const turnsRef = useRef(turns);
-  turnsRef.current = turns;
+  /** What the words themselves say to make, if they say. */
+  const makeFrom = (text: string): BriefMake | null => {
+    const said = saidMake(text);
+    const kind = cardOverRef.current !== null && cardOverRef.current === text ? null : said.kind;
+    // "Make a video about…" said with the Blog card lit is a video.
+    const video: BriefMake | null = said.video && (selectedRef.current === "blog" || selectedRef.current == null) ? "video" : null;
+    return kind ?? video;
+  };
 
-  // Same reason: the wake word can arrive on the recogniser's callback, which
-  // outlives the render that made it, and it must hand over the slots as they
-  // stand now rather than as they were when that callback was created.
-  const slotsRef = useRef(slots);
-  slotsRef.current = slots;
-
-  // Declared ahead of `send`, which sets it when a command goes straight through.
-  const [sparking, setSparking] = useState(false);
-  const sparkingRef = useRef(false);
-
-  const send = useCallback(async (spoken: string, opts?: { go?: boolean }) => {
-    const said = spoken.trim();
-    if (!said || busyRef.current) return;
-    busyRef.current = true;
-
-    const next: Turn[] = [...turnsRef.current, { role: "user", content: said }];
-    setTurns(next);
-    setThinking(true);
+  /**
+   * Reads the words once and fills the page in from them.
+   *
+   * Quiet on purpose: nothing is shown while it runs and nothing is said if
+   * it fails, because the page already has the words as its topic and Next
+   * works either way. `go` is only for a command handed in from elsewhere.
+   */
+  const read = useCallback(async (text: string, opts?: { go?: boolean }) => {
+    const said = text.trim();
+    if (!said) return;
+    lastRead.current = text;
+    const seq = ++readSeq.current;
     try {
       const res = await fetch("/api/ai/brief-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turns: next, mode }),
+        body: JSON.stringify({ turns: [{ role: "user", content: said }], mode: modeRef.current }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        // 503 means the brief model is unavailable. Stranding someone mid
-        // sentence with a mic that will not answer is worse than handing them
-        // the form they can always fall back to.
-        if (res.status === 503) {
-          toast.error("The voice session isn't available right now — switched you to typing.");
-          onReplyRef.current?.("");
-          onSwitchToTyping();
-          return;
+      const data = await res.json().catch(() => ({}));
+      // Words changed while this was away: the newer read is the one that counts.
+      if (seq !== readSeq.current) return;
+      if (!res.ok || !data.slots) { if (opts?.go) onReplyRef.current?.(""); return; }
+
+      const got = withMake(data.slots as BriefSlots, makeFrom(text));
+      onSlotsRef.current(got);
+      if (opts?.go) {
+        onReplyRef.current?.(typeof data.reply === "string" ? data.reply : "");
+        const complete = !!(got.topic && got.city && got.state);
+        const knowsWhat = !!(got.output || got.onScreen);
+        if (complete && knowsWhat && !wentRef.current) {
+          wentRef.current = true;
+          onReadyRef.current(got);
         }
-        throw new Error((data.error as string) || `Brief failed (${res.status})`);
       }
-
-      const got = withMake(data.slots as BriefSlots, makeRef.current);
-      onSlots(got);
-      setSlots(got);
-      setTurns((t) => [...t, { role: "assistant", content: data.reply as string }]);
-      onReplyRef.current?.(typeof data.reply === "string" ? data.reply : "");
-      // A command goes as soon as it is complete, with no wake word: it was an
-      // instruction when it was said. Latched like the button, so nothing can
-      // fire a second generation while this one is starting.
-      //
-      // But only once it is known what to make, tapped here or said in the
-      // sentence. Otherwise it stops, and the box asks.
-      const complete = !!(got.topic && got.city && got.state) && !lacksFormatRef.current(makeRef.current, got);
-      const knowsWhat = !!(got.output || got.onScreen);
-      if (complete && (data.ready === true || (opts?.go && knowsWhat && !sparkingRef.current))) {
-        sparkingRef.current = true;
-        setSparking(true);
-        onReady(got);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't follow that — try again.");
-      setTurns((t) => [
-        ...t,
-        { role: "assistant", content: "Sorry — I didn't catch that. Say it again?" },
-      ]);
-      onReplyRef.current?.("Sorry, I didn't catch that. Say it again?");
-    } finally {
-      setThinking(false);
-      busyRef.current = false;
+    } catch {
+      if (opts?.go) onReplyRef.current?.("");
     }
-    // `mode` goes in the request body, so it belongs here. In practice the
-    // three callbacks above are inline arrows that change identity every
-    // render, which rebuilds this anyway — but relying on that to keep a
-    // captured value fresh is luck, not design.
-  }, [onSlots, onReady, onSwitchToTyping, mode]);
-
-  // Everything the script actually needs. Until these are in, saying the wake
-  // word would start a render of a brief with no place or no subject.
-  const formatSetRef = useRef(formatSet);
-  formatSetRef.current = formatSet;
-  // `send` is made before this is, and reads it when a reply comes back.
-  const lacksFormatRef = useRef<(kind: BriefMake | null, got: BriefSlots) => boolean>(() => false);
-  /** A video being made with no shape said or picked. Not asked of a blog, or of the camera, which has its own. */
-  const lacksFormat = (kind: BriefMake | null, got: BriefSlots) =>
-    formatSetRef.current !== undefined
-    && kind !== "blog" && kind !== "camera"
-    && !(got.platform || got.length === "long" || formatSetRef.current);
-  lacksFormatRef.current = lacksFormat;
-  const formatMissing = lacksFormat(makeRef.current ?? selected ?? null, slots);
-  const briefReady = !!(slots.topic && slots.city && slots.state) && !formatMissing;
-
-  // `sparking` (declared above `send`) is latched the moment we hand over, so
-  // a second click or a repeated wake word cannot fire two generations in the
-  // tick before `disabled` arrives.
+    // Everything it calls is read through a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
-   * Go — from the button, or from hearing the wake word.
+   * New words in the box, by hand or by voice.
    *
-   * Fires straight off the slots this session already holds rather than posting
-   * "Spark script" as another turn. `ready` is decided server-side, so the wake
-   * word only did something after a full model round trip — several seconds in
-   * which the card said nothing had changed, and the thing anyone does while
-   * nothing is happening is say it again. Recognising it needs no model:
-   * saidGoAhead is the same matcher the server runs, and the brief is already
-   * complete on this side.
+   * The page is told a beat behind the keys, not on every one: it is a large
+   * page, and re-drawing all of it for each letter makes typing drag. Spoken
+   * words, a command and Enter tell it straight away.
    */
-  const sparkNow = useCallback(() => {
-    if (sparkingRef.current || busyRef.current || disabled) return;
-    sparkingRef.current = true;
-    setSparking(true);
-    onReady(slotsRef.current);
-  }, [disabled, onReady]);
-
-  // The parent holds `disabled` on while it generates. Coming back off means
-  // the generation failed and this card is live again — so the button and the
-  // wake word both have to work a second time.
-  const wasDisabled = useRef(disabled);
-  useEffect(() => {
-    if (wasDisabled.current && !disabled) {
-      sparkingRef.current = false;
-      setSparking(false);
-    }
-    wasDisabled.current = disabled;
-  }, [disabled]);
+  const tellTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function setWords(text: string, now = false) {
+    setDraft(text);
+    if (tellTimer.current) clearTimeout(tellTimer.current);
+    tellTimer.current = null;
+    if (now) { onTextRef.current?.(text); return; }
+    tellTimer.current = setTimeout(() => { tellTimer.current = null; onTextRef.current?.(text); }, 250);
+  }
+  /** Tells the page now, if it has not been told yet. Never repeats what it
+   *  already has: by then the page may hold a tidier topic read from these
+   *  same words, and telling it again would put the raw sentence back. */
+  function flushWords() {
+    if (!tellTimer.current) return;
+    clearTimeout(tellTimer.current);
+    tellTimer.current = null;
+    onTextRef.current?.(draftRef.current);
+  }
+  useEffect(() => () => { if (tellTimer.current) clearTimeout(tellTimer.current); }, []);
 
   const { listening, interim, transcript, toggle } = useSpeechRecognition({
-    // Stopping ends your turn and the session answers — asks for whatever is
-    // still missing, or reads the brief back and asks if you are done.
-    // Leaving the words sitting in the box waiting for Send meant that falling
-    // silent looked like nothing had happened at all.
-    //
-    // What you said stays visible on the "You said" line, and a correction
-    // goes as another turn: the session re-reads the whole conversation each
-    // time, so a later sentence overrides an earlier one.
     onSessionEnd: (captured) => {
       const spoken = captured.trim();
       if (!spoken) return;
-      // Speech adds to what is already in the box rather than replacing it.
-      // Picking a trending topic and then saying "in Blue Bell, PA" is the
-      // whole reason a pick lands as a draft instead of being sent — but the
-      // mic used to own the box outright, so the topic vanished the moment you
-      // pressed it and only the spoken half was ever sent.
-      const base = draft.trim();
+      const base = draftRef.current.trim();
+      // "Spark it", with something already in the box, is Next.
+      if (base && saidGoAhead(spoken)) { onGoRef.current?.(); return; }
+      // Speech adds to what is there rather than replacing it, so a picked
+      // idea followed by "in Blue Bell, PA" is one sentence.
       const text = [base, spoken].filter(Boolean).join(" ");
-
-      // The wake word, once the brief is genuinely complete: go now rather than
-      // spend a model round trip being told what a regex already knows. The
-      // turn is still recorded, so the transcript reads the way it was said.
-      //
-      // Only when the wake word is the whole of what was said — with unsent
-      // text still in the box, that text has to reach the brief first, so it
-      // goes as a turn and the server decides `ready` the usual way. A command
-      // is the one thing that does not wait to be checked: you already said it
-      // on purpose, and reading it back would be asking twice.
-      if (!base && briefReady && saidGoAhead(spoken)) {
-        setDraft("");
-        setTurns((t) => [...t, { role: "user", content: spoken }]);
-        sparkNow();
-        return;
-      }
-
-      /**
-       * The words stay in the box.
-       *
-       * Falling silent used to send the turn and empty the box, so what you had
-       * just said appeared only on a "You said" line above it — read-only, and
-       * one of three places the same brief was being shown at once. Speech
-       * recognition mishears towns and street names constantly, and this is a
-       * script about a specific address: seeing "Shagbark" come back as
-       * "Shanbar" matters, and it has to be somewhere you can fix it.
-       *
-       * So the transcript lands where typed text lands, and goes when you send
-       * it. The cost is a second action after speaking; the status line below
-       * carries that, because silence followed by nothing visibly happening is
-       * the failure this behaviour was introduced to avoid.
-       */
-      setDraft(text);
-      setJustHeard(true);
+      setWords(text, true);
+      void read(text);
     },
     onUnsupported: onSwitchToTyping,
-    disabled: disabled || thinking,
+    disabled,
     // Not while the box is off: Space would fill a box nobody can see into.
     holdSpace: !off,
   });
 
-  // A command from the home-screen mic: sent the moment it arrives.
+  // Typed words are read once typing pauses.
+  useEffect(() => {
+    if (listening || disabled || off) return;
+    if (draft.trim().length < READ_MIN_CHARS || draft === lastRead.current) return;
+    const id = setTimeout(() => { void read(draft); }, READ_AFTER_MS);
+    return () => clearTimeout(id);
+  }, [draft, listening, disabled, off, read]);
+
+  // A command from elsewhere: shown in the box, read, and carried out if complete.
   useEffect(() => {
     if (!command?.text) return;
-    // A turn already in flight would swallow this one without a word, and the
-    // mic that sent it would wait forever for an answer. Say so instead.
-    if (busyRef.current) { onReplyRef.current?.(""); return; }
-    void send(command.text, { go: true });
+    wentRef.current = false;
+    setWords(command.text, true);
+    void read(command.text, { go: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command?.n]);
 
-  // A picked topic lands in the box and puts the cursor after it, so it reads
-  // as a starting point you can add to rather than a decision already made.
+  // A picked idea lands in the box with the cursor after it, to be added to.
+  // It is already a plain topic and the page already has it, so it is not
+  // read; adding to it is what gets it read.
   useEffect(() => {
     if (!seed?.text) return;
     setDraft(seed.text);
+    lastRead.current = seed.text;
     boxRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seed?.n]);
 
-  // Keep the newest exchange in view as the conversation grows, but only while
-  // the transcript is actually open — no point animating a scroll no one sees.
+  // A new generation may be asked for once the page is free again.
+  useEffect(() => { if (!disabled) wentRef.current = false; }, [disabled]);
+
+  useEffect(() => { onDraftChange?.(!!draft.trim()); }, [draft, onDraftChange]);
+
+  // Light the card the words name, as they are typed, before anything is read.
+  const announce = !off && !!draft.trim() ? makeFrom(draft) : null;
   useEffect(() => {
-    if (!showTranscript) return;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, thinking, showTranscript]);
+    if (announce) onMakeChangeRef.current?.(announce);
+  }, [announce]);
 
-  const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+  // A card pressed on the page: it stands until the words change.
+  useEffect(() => {
+    if (!picked?.n) return;
+    setCardOver(draftRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked?.n]);
+
   const live = [transcript, interim].filter(Boolean).join(" ");
-
-  // One box for both ways in. Speech fills it, typing corrects it, and a
-  // misheard town costs a keystroke rather than saying the whole brief again.
-  //
-  // While the mic is on it shows what was already there plus the words landing
-  // now — the same string that will be sent. It used to show the live
-  // transcript alone, so pressing the mic wiped a topic you had just picked
-  // off the screen, and there was no way to tell it had only gone from view
-  // rather than been thrown away. It had in fact been thrown away.
+  // While the mic is on, what was already there plus the words landing now.
   const boxValue = listening ? [draft.trim(), live].filter(Boolean).join(" ") : draft;
 
-  // Two rows is not many. Once speech is appending to a topic already in the
-  // box, the words landing now sit below the fold — so the one thing you want
-  // to watch while talking is the one thing you cannot see.
+  // Keep the words landing now in view while talking.
   useEffect(() => {
     if (!listening) return;
     const el = boxRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [listening, boxValue]);
 
-  /**
-   * Tell the page when the box is holding something unsent.
-   *
-   * Only the typed/heard draft counts, not the live transcript: while the mic
-   * is running the words have not landed anywhere yet, and the footer should
-   * not start talking about Send before Send exists — it appears only once the
-   * mic stops.
-   */
-  useEffect(() => {
-    onDraftChange?.(!!draft.trim());
-  }, [draft, onDraftChange]);
-
-  function submitDraft() {
-    const text = draft.trim();
-    if (!text || thinking || disabled || off) return;
-    setDraft("");
-    setJustHeard(false);
-    // Typed or spoken, the wake word does the same thing.
-    if (briefReady && saidGoAhead(text)) {
-      setTurns((t) => [...t, { role: "user", content: text }]);
-      sparkNow();
-      return;
-    }
-    // Goes as another turn. The session re-reads the whole conversation each
-    // time, so a corrected sentence overrides what it heard before — the same
-    // mechanism that makes "actually, make it sellers" work.
-    // Goes ahead when it is complete and it is known what to make: tapped
-    // here, read from the words before sending, or worked out by the brief
-    // from the sentence. If none of those, it is read back and the box asks.
-    setAskAll(false);
-    send(text, { go: true });
-  }
-
-  /** One of the three, tapped while words wait in the box: choose, and send. */
-  function chooseAndSend(kind: BriefMake) {
-    if (!draft.trim() || thinking || disabled || off) return;
-    if (canMake && !canMake(kind)) return;
-    makeRef.current = kind;
-    setMake(kind);
-    // The box is about to empty, so the page is told here, not by the effect
-    // that watches the words.
-    onMakeChangeRef.current?.(kind);
-    submitDraft();
-  }
-
-  // What the strip under the box offers. A choice already made, or one the
-  // words in the box state, is shown with a plain Send; Change asks again.
-  //
-  // The words win over an earlier choice: "make a video with my avatar", typed
-  // after a blog was made, means a video. A card pressed since those words
-  // were typed wins over them, until they are edited.
-  const said = saidMake(draft);
-  const saidKind = cardOver !== null && cardOver === draft ? null : said.kind;
-  // With the cards in the box, the one that is lit is the answer unless the
-  // words say otherwise, so there is always something to send as.
-  const pageChooses = !!picker || choicesOnPage;
-  // "Make a video about…" said with the Blog card lit is a video.
-  const saidVideo: BriefMake | null = said.video && (selected === "blog" || selected == null) ? "video" : null;
-  const making: BriefMake | null = pageChooses
-    ? (saidKind ?? saidVideo ?? selected ?? make)
-    : askAll ? null : (saidKind ?? make);
-  // Asked by name where this asks at all: the undecided "video" is the page's.
-  const NAMED = MAKES.filter((m) => m.kind !== "video");
-  const offered = !askAll && !make && said.video
-    ? NAMED.filter((m) => m.kind !== "blog")
-    : NAMED;
-
-  // Tell the page, so its cards agree with what the strip under the box says.
-  // Only while words are in the box, and not where the box is switched off.
-  const onMakeChangeRef = useRef(onMakeChange);
-  onMakeChangeRef.current = onMakeChange;
-  const announce = !off && !!draft.trim() ? making : null;
-  useEffect(() => {
-    if (announce) onMakeChangeRef.current?.(announce);
-  }, [announce]);
-
-  // A card pressed on the page: the box follows it.
-  useEffect(() => {
-    if (!picked?.n) return;
-    makeRef.current = picked.kind;
-    setMake(picked.kind);
-    setAskAll(false);
-    setCardOver(draft);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picked?.n]);
-
-  /** One of the three, tapped once the brief is already complete: go. */
-  function chooseAndGo(kind: BriefMake) {
-    if (sparkingRef.current || busyRef.current || disabled) return;
-    if (canMake && !canMake(kind)) return;
-    makeRef.current = kind;
-    setMake(kind);
-    onMakeChangeRef.current?.(kind);
-    const got = withMake(slotsRef.current, kind);
-    setSlots(got);
-    onSlots(got);
-    sparkingRef.current = true;
-    setSparking(true);
-    onReady(got);
-  }
-
-  // What voice has captured so far, condensed to one line — the compact
-  // stand-in for the big centered heading the old design used.
-  const summary = [
-    slots.output === "blog" ? "blog" : slots.output === "video" ? "video" : null,
-    slots.onScreen === "avatar" ? "your avatar" : slots.onScreen === "voice_only" ? "voice over only" : slots.onScreen === "camera" ? "you on camera" : slots.onScreen === "scenes" ? "a Scenes Reel" : null,
-    slots.city && slots.state ? `${slots.city}, ${slots.state}` : slots.city,
-    slots.topic,
-    slots.emailSubject ? "from your email" : null,
-    slots.audience,
-    slots.length === "long" ? "long length" : slots.length === "standard" ? "standard length" : null,
-  ].filter(Boolean).join(" · ");
-
-  // Only while it is doing something. What to do with words that have just
-  // landed is said under the box, beside the button it is about.
-  const status = thinking
-    ? "Thinking…"
-    : listening
-      ? "Listening… tap the mic when you're done."
-      : "";
-
-  /**
-   * What is still needed, in the page's own words.
-   *
-   * The assistant asks for it too, beside the mic, but in whatever sentence it
-   * comes up with. This is the same thing said the same way every time, next
-   * to the box the answer goes in, with what to do about it.
-   */
-  const hasSpokenTurn = turns.some((t) => t.role === "user");
-  const missingParts = [
-    !slots.topic ? "what it's about" : null,
-    !slots.city ? "the town" : !slots.state ? "the state" : null,
-    formatMissing ? "the format" : null,
-  ].filter((x): x is string => !!x);
-  const missing = missingParts.length > 2
-    ? `${missingParts.slice(0, -1).join(", ")} and ${missingParts[missingParts.length - 1]}`
-    : missingParts.join(" and ");
-
-  /**
-   * A format, tapped. The one missing thing that is a choice of three, so it
-   * is offered as three buttons beside being asked for in words. With the
-   * rest of the brief in, it goes.
-   */
-  function pickFormat(f: "reel" | "youtube" | "long") {
-    if (sparkingRef.current || busyRef.current || disabled) return;
-    const kind = makeRef.current ?? selected ?? null;
-    const got = withMake(
-      { ...slotsRef.current, platform: f === "long" ? "youtube" : f, length: f === "long" ? "long" : (slotsRef.current.length ?? "standard") },
-      kind,
-    );
-    setSlots(got);
-    onSlots(got);
-    if (got.topic && got.city && got.state) {
-      makeRef.current = kind;
-      sparkingRef.current = true;
-      setSparking(true);
-      onReady(got);
-    }
-  }
-
   // The mic dims with the box unless tapping it can switch the route on.
   const micOff = off && !onWake;
 
   return (
     <div className="flex flex-col gap-2">
-      {/* The conversation reads above the box it is typed into, the way every
-          other conversation on a screen does. It used to open underneath —
-          below the box and below the summary — so the question you were
-          answering sat further down the page than your answer to it. The
-          toggle moved up with it rather than staying by the summary: a control
-          at the bottom opening a panel at the top is two places to look. */}
-      {turns.length > 1 && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setShowTranscript((v) => !v)}
-            className="flex items-center gap-1 text-[12px] font-medium text-spark-amber hover:text-spark-blue"
-          >
-            Conversation
-            {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-        </div>
-      )}
-
-      {showTranscript && turns.length > 1 && (
-        <div
-          ref={scrollRef}
-          className="spark-surface max-h-[140px] overflow-y-auto rounded-[9px] border border-spark-rule px-3.5 py-2.5"
-        >
-          <div className="flex flex-col gap-1.5">
-            {turns.map((t, i) => (
-              <p
-                key={i}
-                className={`text-[13px] leading-[1.5] ${
-                  t.role === "user" ? "text-spark-ink" : "text-spark-ink-faint"
-                }`}
-              >
-                {t.role === "user" ? "" : "— "}
-                {t.content}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* The "You said" line is gone: what you said now sits in the box, where
-          it can be corrected instead of only read. Three copies of the same
-          brief on one screen — above the box, in it, and summarised below —
-          was the confusion, not the absence of a fourth. */}
-
-      {/* The big mic and the box, in one card.
-          They were two cards: this mic above, sending its sentence the moment
-          you stopped talking, and a box below with a small mic of its own.
-          The owner asked for one, and for what is said to show in the box,
-          which is where typed words already went and where either kind can be
-          corrected. So this is that mic, driving this session's recogniser:
-          the words land below as they are heard, and wait for Send.
-
-          The sentence beside it is the owner's, moved here from under the
-          section heading. The line under that is only for what is happening:
-          listening, thinking, words waiting to be sent, or what the brief said
-          back. */}
       <div className={`flex items-center gap-4 px-1 pb-1.5 pt-2 sm:gap-6 sm:px-2 sm:pt-2.5 ${micOff ? "opacity-45" : ""}`}>
         <button
           type="button"
@@ -789,7 +375,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
             if (off && !listening) onWake?.();
             toggle();
           }}
-          disabled={disabled || thinking || micOff}
+          disabled={disabled || micOff}
           aria-pressed={listening}
           aria-label={listening ? "Stop listening" : "Tap the mic and say your topic"}
           className={`relative flex h-20 w-20 flex-none items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:h-24 sm:w-24 ${
@@ -797,7 +383,7 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           }`}
         >
           {listening && <span className="absolute inset-0 animate-ping rounded-full bg-red-400 opacity-40" />}
-          {thinking || sparking
+          {disabled
             ? <Loader2 size={32} className="animate-spin" />
             : listening ? <Square size={28} className="relative" fill="currentColor" /> : <Mic size={36} className="relative" />}
         </button>
@@ -805,224 +391,41 @@ export function VoiceBriefSession({ onSlots, onReady, onSwitchToTyping, disabled
           <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
             Speak, Type or choose suggested idea
           </h2>
-          {(status || lastAssistant) && (
-            <p
-              className={`mt-1 text-[15px] leading-snug sm:text-[16px] ${status ? "text-spark-ink-muted" : "font-medium text-spark-ink"}`}
-              aria-live="polite"
-            >
-              {status || lastAssistant}
+          {/* Only while listening. A mic that has gone quiet with nothing said
+              reads as a mic that has failed. */}
+          {listening && (
+            <p className="mt-1 text-[15px] leading-snug text-spark-ink-muted sm:text-[16px]" aria-live="polite">
+              Listening… tap the mic when you&rsquo;re done.
             </p>
           )}
         </div>
       </div>
 
-      {/* Everything that is the box: dimmed together when the brief does not
-          apply, while the mic above may stay lit. */}
-      <div className={`flex flex-col gap-2 ${off ? "pointer-events-none select-none opacity-45" : ""}`}>
-      <textarea
-        ref={boxRef}
-        id="brief-box"
-        value={boxValue}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setJustHeard(false);
-          // Emptied and started again: read the new words afresh.
-          if (!e.target.value.trim()) setAskAll(false);
-        }}
-        // Locked only while the mic is running, where the recogniser owns the
-        // value and a keystroke would be overwritten on the next result.
-        readOnly={listening}
-        disabled={disabled || off}
-        rows={2}
-        placeholder="Speak or Type…"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (making) chooseAndSend(making);
-            else submitDraft();
-          }
-        }}
-        // Ringed while it holds words that have just been heard and not yet
-        // sent, so the thing needing a look is the thing that looks different.
-        className={`block w-full resize-none rounded-[12px] border bg-white px-3.5 py-2.5 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60 ${
-          justHeard && !listening ? "border-spark-amber ring-2 ring-spark-amber/35" : "border-spark-rule"
-        }`}
-      />
+      <div className={off ? "pointer-events-none select-none opacity-45" : ""}>
+        <textarea
+          ref={boxRef}
+          id="brief-box"
+          value={boxValue}
+          onChange={(e) => setWords(e.target.value)}
+          // Leaving the box: the page has the words before anything else is pressed.
+          onBlur={flushWords}
+          // Locked only while the mic is running, where the recogniser owns the
+          // value and a keystroke would be overwritten on the next result.
+          readOnly={listening}
+          disabled={disabled || off}
+          rows={2}
+          placeholder="Speak or Type…"
+          onKeyDown={(e) => {
+            // Enter reads the words now instead of starting a new line.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              flushWords();
+              if (draft.trim() && draft !== lastRead.current) void read(draft);
+            }
+          }}
+          className="block w-full resize-none rounded-[12px] border border-spark-rule bg-white px-3.5 py-2.5 text-[16px] leading-[1.5] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none focus:ring-2 focus:ring-spark-amber disabled:opacity-60"
+        />
       </div>
-
-      {/* What to make. Outside the part that dims: when the box does not
-          apply (a listing, say), these are how you get back to where it does. */}
-      {picker && (
-        <div>
-          <p className="mb-1.5 text-[13.5px] font-semibold text-spark-ink">What are you sparking?</p>
-          {picker}
-        </div>
-      )}
-
-      <div className={`flex flex-col gap-2 ${off ? "pointer-events-none select-none opacity-45" : ""}`}>
-
-      {/* Words waiting in the box, spoken or typed.
-          The owner tried it and stopped here twice. First nothing said whether
-          to press Send, or whether the rest of the page still had to be
-          filled in. Then Send wrote an avatar video without asking what was
-          wanted. So this is where it is asked, before anything goes: the three
-          things a topic can become, and tapping one sends. It cannot say "I
-          have everything" yet, because the words are only read once sent.
-
-          Once chosen, answering a follow-up ("which town?") is a plain Send:
-          the choice is kept, shown, and can be changed. */}
-      {!listening && !!draft.trim() ? (
-        <div className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-3">
-          {making ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <p className="min-w-0 flex-1 basis-[200px] text-[15px] font-semibold leading-snug text-spark-ink">
-                Check your words, then press Send.
-                <span className="mt-0.5 block text-[13.5px] font-normal text-spark-ink-muted">
-                  Making: <strong className="font-semibold text-spark-ink">{MAKES.find((m) => m.kind === making)?.label}</strong>.{" "}
-                  {picker ? "Choose another above to change it." : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // The cards are the way to change it, where the page has them.
-                      if (choicesOnPage) { onShowChoices?.(); return; }
-                      makeRef.current = null; setMake(null); setAskAll(true);
-                    }}
-                    className="font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
-                  >
-                    Change
-                  </button>
-                  )}
-                </span>
-              </p>
-              <button
-                type="button"
-                onClick={() => chooseAndSend(making)}
-                disabled={thinking || disabled || off}
-                className="flex-none rounded-full bg-spark-blue px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-              >
-                Send
-              </button>
-            </div>
-          ) : (
-            <>
-              <p className="text-[15px] font-semibold leading-snug text-spark-ink">
-                {offered.length < NAMED.length
-                  ? "Check your words, then choose which kind of video."
-                  : "Check your words, then choose what to make."}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {offered.map(({ kind, label }) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => chooseAndSend(kind)}
-                    disabled={thinking || disabled || off}
-                    className="rounded-full bg-spark-blue px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-                  >
-                    {label}
-                  </button>
-                ))}
-                {offered.length < NAMED.length && (
-                  <button
-                    type="button"
-                    onClick={() => setAskAll(true)}
-                    className="px-1 text-[14px] font-semibold text-spark-blue underline underline-offset-2 hover:text-spark-blue-deep"
-                  >
-                    Something else
-                  </button>
-                )}
-              </div>
-              <p className="mt-2 text-[13.5px] leading-snug text-spark-ink-muted">
-                I&rsquo;ll start writing and ask if anything is missing. The steps below are optional.
-              </p>
-            </>
-          )}
-        </div>
-      ) : (
-      <div className="flex items-center gap-2.5">
-        {/* What the session has actually understood — the town, the subject,
-            the audience — accumulated across every turn. Labelled, because
-            unlabelled it read as a third copy of the sentence in the box
-            rather than the different thing it is: the box is what you are
-            about to say, this is what has been taken from everything you have
-            said so far. Only while the brief is still being built. */}
-        {summary && !briefReady && (
-          <p className="min-w-0 flex-1 truncate text-[12px] leading-[1.45] text-spark-ink-muted">
-            <span className="font-semibold text-spark-ink-faint">Brief so far:</span> {summary}
-          </p>
-        )}
-        {(!summary || briefReady) && <span className="flex-1" />}
-      </div>
-      )}
-
-      {/* Sent, and something is still missing. */}
-      {hasSpokenTurn && !briefReady && !!missing && !thinking && !listening && !draft.trim() && (
-        <div className="rounded-[12px] border border-spark-amber/40 bg-spark-amber-tint px-3.5 py-2.5">
-          <p className="text-[15px] font-semibold leading-snug text-spark-ink">
-            I still need {missing}.{" "}
-            {formatMissing && missingParts.length === 1 ? "Tap one, or say it." : "Say it or type it, then press Send."}
-          </p>
-          {formatMissing && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {([
-                { f: "reel" as const, label: "Vertical" },
-                { f: "youtube" as const, label: "Horizontal" },
-                // A Scenes Reel runs ninety seconds at most.
-                ...((makeRef.current ?? selected) === "scenes" ? [] : [{ f: "long" as const, label: "Longform" }]),
-              ]).map(({ f, label }) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => pickFormat(f)}
-                  disabled={disabled}
-                  className="rounded-full bg-spark-blue px-5 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      </div>
-
-      {/* The wake word, said only once saying it would do something.
-          It used to sit here permanently, from the moment the page loaded --
-          so the first thing you were told was how to fire a render of a brief
-          that had no town and no subject yet. Now it appears when the brief is
-          actually complete, and says what it will do. */}
-      {briefReady && !listening && !thinking && !draft.trim() && (sparking || (!off && !settled)) && (
-        sparking ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[10px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-2.5 text-[14px] text-spark-ink">
-            <CheckCircle size={15} className="flex-none text-spark-blue" />
-            <span className="font-medium">I have everything. Writing it now, about a minute.</span>
-          </div>
-        ) : (
-          /* Complete, and not yet told what to make: sent with Enter before
-             any button, or said on the home screen without saying which. The
-             same three, and a tap starts it. This used to say only "That's
-             everything I need", which was true and did not say what to do. */
-          <div className="rounded-[12px] border border-spark-blue/25 bg-spark-blue/10 px-3.5 py-3">
-            <p className="flex items-center gap-2 text-[15px] font-semibold leading-snug text-spark-ink">
-              <CheckCircle size={15} className="flex-none text-spark-blue" />
-              I have everything. What should I make?
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(pageChooses && selected ? MAKES.filter((m) => m.kind === selected) : NAMED).map(({ kind, label }) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => chooseAndGo(kind)}
-                  disabled={disabled}
-                  className="rounded-full bg-spark-blue px-5 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-spark-blue-deep disabled:cursor-not-allowed disabled:bg-spark-rule-dim"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      )}
     </div>
   );
 }

@@ -269,16 +269,16 @@ export default function HelpPage() {
               one (step 13). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s format.
               <span className="block mt-1.5">
-                You don&apos;t have to work down all four. Give it a topic at the top, press{" "}
-                <strong>Send</strong>, and it starts writing. The sections underneath are there for
-                when you want to change something first.
+                You don&apos;t have to work down all four. Give it a topic at the top, check the
+                city and state, and press <strong>Next</strong> at the bottom. The sections
+                underneath are there for when you want to change something first.
               </span>
               {/* The three kinds of video, chosen under the Video / Reel card.
-                  It was a page of its own after Send until 2026-10-13. */}
+                  It was a page of its own until 2026-10-13. */}
               <span className="block mt-1.5">
                 <strong>Video / Reel</strong> is three kinds of video, and they sit right under
                 that card for you to pick, so the script is written to suit. Pick one any time; if
-                you press Send first, they light up and ask.
+                you press Next first, they light up and ask.
                 <strong> Avatar full video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
@@ -343,20 +343,17 @@ export default function HelpPage() {
               the mic and say the whole thing in one sentence —{" "}
               <em>&ldquo;Create a blog for downsizers about one-floor living in Springfield&rdquo;</em> or{" "}
               <em>&ldquo;Make a vertical video with my avatar about the Riverside
-              market&rdquo;</em> — and tap the mic again when you&apos;re done. Your words wait in the box,
-              so a misheard town or street name is a quick fix before anything is sent.
-              {/* What the strip under the box does. No buttons asking what to
-                  make any more: the lit card is the answer, and the box only
-                  asks for what is missing. */}
+              market&rdquo;</em> — and tap the mic again when you&apos;re done. Your words stay in the box,
+              so a misheard town or street name is a quick fix.
+              {/* What happens to the words. There is no Send and no
+                  conversation any more: the page fills itself in. */}
               <span className="block mt-1.5">
-                Under the box it shows what it&apos;s making, such as <strong>Making: Blog</strong>,
-                beside a <strong>Send</strong> button. That is the card lit up under{" "}
-                <strong>2 · Create</strong>, and <strong>Change</strong> takes you there to pick
-                another. It takes the town, the topic and who it&apos;s for from what you said. If
-                something is missing it asks: <em>&ldquo;I still need the town&rdquo;</em>, or the
-                format, with <strong>Vertical</strong>, <strong>Horizontal</strong> and{" "}
-                <strong>Longform</strong> buttons to tap. A blog and Record yourself are not asked
-                for a format.
+                A moment after you stop, the page fills itself in from what you said: the card
+                under <strong>2 · Create</strong> lights up, the city and state appear under{" "}
+                <strong>4 · Details</strong>, and the audience and format are set if you named
+                them. Look down the page to check it, change anything by hand, and press{" "}
+                <strong>Next</strong> at the bottom. Say more and it is added to the box and read
+                again. Say <em>&ldquo;Spark it&rdquo;</em> and it presses Next for you.
               </span>
               <span className="block mt-1.5">
                 A blog is written straight away. A video stops at its script, so nothing comes out
@@ -453,7 +450,7 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>To make one:</strong> give the Topic card a topic, choose{" "}
                 <strong>Video / Reel</strong>, pick <strong>Voice over only</strong> under it, and
-                press <strong>Send</strong>. Or just say{" "}
+                press <strong>Next</strong>. Or just say{" "}
                 <em>&ldquo;make a reel about winter selling tips in Springfield&rdquo;</em>.
               </span>
               <span className="block mt-1.5">
