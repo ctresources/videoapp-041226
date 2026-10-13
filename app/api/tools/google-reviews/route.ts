@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import {
-  SocialPublishError, deleteGoogleReviewReply, getProfile, listGoogleReviews, profileUsername,
+  SocialPublishError, deleteGoogleReviewReply, getDestinations, getProfile, listGoogleReviews, profileUsername,
   replyToGoogleReview, uploadPostConfigured,
 } from "@/lib/api/upload-post";
 
@@ -31,7 +31,7 @@ const MAX_REPLY = 4000;
 /** A partner refusal as something to show, with no partner in it. */
 function plain(err: unknown, doing: "load" | "post" | "remove"): string {
   const raw = err instanceof SocialPublishError ? `${err.raw ?? ""} ${err.message}` : "";
-  if (/location/i.test(raw) && /select|choose|several|multiple|required|missing/i.test(raw)) {
+  if (/location/i.test(raw) && /select|choose|several|multiple|required|missing|provided|default/i.test(raw)) {
     return "Choose which business location to use: open Settings, then Social Accounts, and pick it under Google Business.";
   }
   if (/verif/i.test(raw)) return "Google only allows replies on a verified business profile.";
@@ -70,7 +70,25 @@ export async function GET(req: NextRequest) {
     const google = profile?.social_accounts?.google_business;
     if (!google || typeof google !== "object") return NextResponse.json({ connected: false });
 
-    const page = await listGoogleReviews(username, req.nextUrl.searchParams.get("pageToken") || undefined);
+    // Which location's reviews. The one chosen under "Posts to" in Settings,
+    // or the only one there is. With several and none chosen there is no
+    // right answer, so the agent is sent to choose.
+    const places = await getDestinations(username, "google_business");
+    const location = places.selected ?? (places.options.length === 1 ? places.options[0].id : null);
+    if (!location && places.options.length > 1) {
+      return NextResponse.json({
+        connected: true,
+        error: "Choose which business location to use: open Settings, then Social Accounts, and pick it under Google Business.",
+      }, { status: 409 });
+    }
+    if (!location) {
+      return NextResponse.json({
+        connected: true,
+        error: "No business location was found on that Google account. Check it has a Business Profile, then reconnect it in Settings.",
+      }, { status: 409 });
+    }
+
+    const page = await listGoogleReviews(username, req.nextUrl.searchParams.get("pageToken") || undefined, location);
     return NextResponse.json({ connected: true, ...page });
   } catch (err) {
     console.error("[google-reviews] list:", err instanceof SocialPublishError ? err.raw ?? err.message : err);

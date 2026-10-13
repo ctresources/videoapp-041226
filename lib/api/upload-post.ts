@@ -491,12 +491,20 @@ export interface GoogleReview {
 
 const STAR_WORDS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
-/** A page of reviews for the profile's Google Business location, newest first. */
-export async function listGoogleReviews(username: string, pageToken?: string): Promise<{
+/**
+ * A page of reviews for one Google Business location, newest first.
+ *
+ * The location has to be named. Posting picks the only location by itself,
+ * and reading reviews does not: asked without one, the partner answers "No
+ * location_id provided and no default location on the account", which is how
+ * the first real use of this failed.
+ */
+export async function listGoogleReviews(username: string, pageToken?: string, locationId?: string | null): Promise<{
   reviews: GoogleReview[]; averageRating: number | null; total: number | null; nextPageToken: string | null;
 }> {
   const query = new URLSearchParams({ user: username, pageSize: "50", orderBy: "updateTime desc" });
   if (pageToken) query.set("pageToken", pageToken);
+  if (locationId) query.set("location_id", locationId);
   const data = await call<Record<string, unknown>>(`/api/uploadposts/google-business/reviews?${query.toString()}`);
 
   const list = Array.isArray(data.reviews) ? data.reviews as Record<string, unknown>[] : [];
