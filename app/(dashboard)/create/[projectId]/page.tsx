@@ -2964,87 +2964,6 @@ export default function ProjectEditorPage() {
 
           {/* ── Step 3 · Setup ── */}
           {editorStep === 3 && (<>
-          {/* The closing line, moved here from the script step.
-              My script skips that step now — it had already shown the
-              script — and the CTA was the one thing on it that was not a
-              second look at something already read. It belongs with the
-              rest of what goes into the video. */}
-          {/* CTA */}
-          <Card padding="sm">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-2 py-1 mb-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle size={16} className="text-accent-500" />
-                <h3 className="font-semibold text-sm text-brand-text">Call to Action</h3>
-              </div>
-              <div className="flex items-center gap-4">
-              {/* The way to end on the script. Saved at once, with the wording
-                  and the hook as they stand, so coming back to this page does
-                  not quietly bring the closing line back. */}
-              <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={ctaOff}
-                  onChange={(e) => {
-                    const off = e.target.checked;
-                    setCtaOff(off);
-                    if (!project) return;
-                    void fetch("/api/project/save-draft", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ projectId: project.id, cta: editedCta, hook: selectedHook, ctaOff: off }),
-                    }).catch(() => { /* still applies to this visit */ });
-                  }}
-                  className="h-4 w-4 accent-primary-600"
-                />
-                No call to action
-              </label>
-              <button
-                disabled={ctaOff}
-                onClick={() => {
-                  const contactLine = buildContactLine();
-                  const full = contactLine ? `${editedCta}\n\n${contactLine}` : editedCta;
-                  copyToClipboard(full, "CTA");
-                }}
-                className="flex items-center gap-1 text-xs text-primary-500 hover:underline disabled:opacity-40 disabled:no-underline"
-              >
-                <Copy size={12} /> Copy with contact
-              </button>
-              </div>
-            </div>
-            <textarea
-              value={editedCta}
-              onChange={(e) => setEditedCta(e.target.value)}
-              rows={3}
-              disabled={ctaOff}
-              placeholder="e.g. Call or text me to get started, I'd love to help!"
-              className={`w-full text-sm bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100 ${ctaOff ? "text-slate-400 line-through decoration-slate-300" : "text-slate-700"}`}
-            />
-            <p className="mt-1.5 px-1 text-xs text-slate-500">
-              {ctaOff
-                ? "Off. The video ends on your script and nothing here is spoken. Untick to bring your wording back."
-                : activeCta
-                  ? `Spoken at the end, after your script. ${activeCta.split(/\s+/).filter(Boolean).length} words, about ${Math.max(1, Math.round(activeCta.split(/\s+/).filter(Boolean).length / 2.4))} seconds.`
-                  : "Empty, so the video ends on your script."}
-            </p>
-            {buildContactLine() ? (
-              <div className="flex items-center justify-between gap-2 mt-2 px-1">
-                <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
-                <button
-                  onClick={() => copyToClipboard(buildContactLine(), "Contact info")}
-                  className="shrink-0"
-                  title="Copy contact info"
-                >
-                  <Copy size={12} className="text-slate-400 hover:text-slate-600" />
-                </button>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic mt-2 px-1">
-                Add your name, phone & address in{" "}
-                <a href="/settings" className="text-primary-500 hover:underline">Settings</a>{" "}
-                to auto-append contact info here.
-              </p>
-            )}
-          </Card>
 
           {/* Settings nudge — only while one of the two is still missing */}
           {!avatarVoiceReady && (
@@ -3568,6 +3487,91 @@ export default function ProjectEditorPage() {
                 </p>
               );
             })()}
+          </Card>
+
+          {/* Below the video's choices, at the owner's direction: it sat
+              above them, the first thing on the step, though it is the last
+              thing said in the video. */}
+          {/* The closing line, moved here from the script step.
+              My script skips that step now — it had already shown the
+              script — and the CTA was the one thing on it that was not a
+              second look at something already read. It belongs with the
+              rest of what goes into the video. */}
+          {/* CTA */}
+          <Card padding="sm">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-2 py-1 mb-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-accent-500" />
+                <h3 className="font-semibold text-sm text-brand-text">Call to Action</h3>
+              </div>
+              <div className="flex items-center gap-4">
+              {/* The way to end on the script. Saved at once, with the wording
+                  and the hook as they stand, so coming back to this page does
+                  not quietly bring the closing line back. */}
+              <label className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={ctaOff}
+                  onChange={(e) => {
+                    const off = e.target.checked;
+                    setCtaOff(off);
+                    if (!project) return;
+                    void fetch("/api/project/save-draft", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ projectId: project.id, cta: editedCta, hook: selectedHook, ctaOff: off }),
+                    }).catch(() => { /* still applies to this visit */ });
+                  }}
+                  className="h-4 w-4 accent-primary-600"
+                />
+                No call to action
+              </label>
+              <button
+                disabled={ctaOff}
+                onClick={() => {
+                  const contactLine = buildContactLine();
+                  const full = contactLine ? `${editedCta}\n\n${contactLine}` : editedCta;
+                  copyToClipboard(full, "CTA");
+                }}
+                className="flex items-center gap-1 text-xs text-primary-500 hover:underline disabled:opacity-40 disabled:no-underline"
+              >
+                <Copy size={12} /> Copy with contact
+              </button>
+              </div>
+            </div>
+            <textarea
+              value={editedCta}
+              onChange={(e) => setEditedCta(e.target.value)}
+              rows={3}
+              disabled={ctaOff}
+              placeholder="e.g. Call or text me to get started, I'd love to help!"
+              className={`w-full text-sm bg-slate-50 rounded-xl p-4 resize-none leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-500 border border-slate-100 ${ctaOff ? "text-slate-400 line-through decoration-slate-300" : "text-slate-700"}`}
+            />
+            <p className="mt-1.5 px-1 text-xs text-slate-500">
+              {ctaOff
+                ? "Off. The video ends on your script and nothing here is spoken. Untick to bring your wording back."
+                : activeCta
+                  ? `Spoken at the end, after your script. ${activeCta.split(/\s+/).filter(Boolean).length} words, about ${Math.max(1, Math.round(activeCta.split(/\s+/).filter(Boolean).length / 2.4))} seconds.`
+                  : "Empty, so the video ends on your script."}
+            </p>
+            {buildContactLine() ? (
+              <div className="flex items-center justify-between gap-2 mt-2 px-1">
+                <p className="text-xs text-slate-500 font-medium">{buildContactLine()}</p>
+                <button
+                  onClick={() => copyToClipboard(buildContactLine(), "Contact info")}
+                  className="shrink-0"
+                  title="Copy contact info"
+                >
+                  <Copy size={12} className="text-slate-400 hover:text-slate-600" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic mt-2 px-1">
+                Add your name, phone & address in{" "}
+                <a href="/settings" className="text-primary-500 hover:underline">Settings</a>{" "}
+                to auto-append contact info here.
+              </p>
+            )}
           </Card>
           </>)}
 
