@@ -120,6 +120,16 @@ export class BrandedComposite {
    * nothing extra is loaded and the two are plainly the same footage.
    */
   private openerMs = 0;
+  /**
+   * A shared screen, filling the frame, for a screen recording (2026-10-14).
+   *
+   * Like the clip b-roll but live, so none of its clock-keeping applies, and
+   * shown whole rather than cropped: cutting the edges off a screen loses the
+   * menus and numbers it was shared to show. The speaker sits in the corner
+   * circle when `screenBubble` is on.
+   */
+  private screenEl: HTMLVideoElement | null = null;
+  private screenBubble = true;
   private openerTitle = "";
   private openerActive = false;
   private brollElapsed = 0;
@@ -297,10 +307,17 @@ export class BrandedComposite {
       brollVideo?: string | null;
       /** Open the take on the clip, full screen, for this long, under this title. Needs `brollVideo`. */
       opener?: { seconds: number; title: string } | null;
+      /** A shared screen to record, filling the frame. Takes precedence over every b-roll. */
+      screen?: MediaStream | null;
+      /** Show the camera in the corner circle over the screen. */
+      cameraBubble?: boolean;
     },
   ): Promise<MediaStream> {
     try {
-      return await this.build(source, opts?.narrateWith ?? null, opts?.brollVideo ?? null, opts?.opener ?? null);
+      return await this.build(
+        source, opts?.narrateWith ?? null, opts?.brollVideo ?? null, opts?.opener ?? null,
+        opts?.screen ?? null, opts?.cameraBubble ?? true,
+      );
     } catch (err) {
       // Never leave a half-built pipeline (or its mounted element) behind —
       // the caller drops its reference and falls back to the plain path.
@@ -315,6 +332,8 @@ export class BrandedComposite {
     narrateWith: MediaStream | null,
     brollVideo: string | null,
     opener: { seconds: number; title: string } | null = null,
+    screen: MediaStream | null = null,
+    cameraBubble = true,
   ): Promise<MediaStream> {
     const fromFile = typeof source === "string";
     this.fromFile = fromFile;
@@ -393,6 +412,15 @@ export class BrandedComposite {
         this.brollVideoEl?.remove();
         this.brollVideoEl = null;
       }
+    }
+
+    // The shared screen. Unlike the b-roll, losing it is losing the
+    // recording, so a failure here is the caller's to report.
+    if (screen) {
+      const el = this.mountVideoElement(screen, true);
+      await BrandedComposite.waitForFirstFrame(el, 6000);
+      this.screenEl = el;
+      this.screenBubble = cameraBubble;
     }
 
     // Audio: the source's own, optionally mixed with a ducked music bed.
@@ -778,6 +806,15 @@ export class BrandedComposite {
       this.brollVideoEl?.remove();
     } catch { /* noop */ }
     this.brollVideoEl = null;
+    try {
+      // The screen stream is the caller's, which stops it; this only lets go.
+      this.screenEl?.pause();
+      if (this.screenEl) {
+        this.screenEl.srcObject = null;
+        this.screenEl.remove();
+      }
+    } catch { /* noop */ }
+    this.screenEl = null;
     this.stream?.getVideoTracks().forEach((t) => t.stop());
     this.stream = null;
   }
@@ -812,13 +849,18 @@ export class BrandedComposite {
     // A moving background wins over the stills when both were supplied —
     // cutting between the two would be two different ideas of what the
     // background is, alternating.
-    const opening = this.openerShot();
-    const clip = opening ? null : this.brollVideoShot();
-    const shot = opening || clip ? null : this.currentBrollShot();
+    const screenShot = !!this.screenEl && this.screenEl.readyState >= 2 && !!this.screenEl.videoWidth;
+    const opening = screenShot ? false : this.openerShot();
+    const clip = opening || screenShot ? null : this.brollVideoShot();
+    const shot = opening || clip || screenShot ? null : this.currentBrollShot();
     // Whether the speaker is already on screen in the corner this frame. The
     // name bar reads it to decide whether to also carry their headshot.
-    const pipOnScreen = !!clip || !!shot;
-    if (opening) {
+    const pipOnScreen = (screenShot && this.screenBubble) || !!clip || !!shot;
+    if (screenShot) {
+      this.drawScreen(W, H);
+      if (this.screenBubble) this.drawCameraPip(W, H);
+      this.hasDrawnFrame = true;
+    } else if (opening) {
       // The clip alone, with the title. The speaker is heard, not yet seen.
       this.drawBrollVideo(W, H, 1);
       this.drawOpenerTitle(W, H, S);
@@ -996,6 +1038,25 @@ export class BrandedComposite {
       ctx.drawImage(el, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, W, H);
     }
     ctx.globalAlpha = 1;
+  }
+
+  /**
+   * The shared screen, whole, on a dark ground.
+   *
+   * Fitted inside the frame rather than cropped to fill it: the b-roll's
+   * cover-crop would cut off the edges of a screen, which is where the menus,
+   * tabs and totals are.
+   */
+  private drawScreen(W: number, H: number) {
+    const ctx = this.ctx;
+    const el = this.screenEl;
+    if (!ctx || !el || !el.videoWidth || !el.videoHeight) return;
+    ctx.fillStyle = "#0b0f1a";
+    ctx.fillRect(0, 0, W, H);
+    const scale = Math.min(W / el.videoWidth, H / el.videoHeight);
+    const dw = el.videoWidth * scale;
+    const dh = el.videoHeight * scale;
+    ctx.drawImage(el, (W - dw) / 2, (H - dh) / 2, dw, dh);
   }
 
   /** Lays the outgoing frame down first so a photo change reads as a crossfade

@@ -91,6 +91,8 @@ const SPEED_OPTIONS = [
 // YouTube requires phone verification to upload videos longer than 15 minutes,
 // so recordings are capped at 15:00 to keep every video publishable.
 const MAX_RECORD_SECONDS = 15 * 60;
+/** Screen recordings are held to 10 minutes to start: long ones are slow to caption and finish. */
+const SCREEN_MAX_SECONDS = 10 * 60;
 const WARN_RECORD_SECONDS = 13 * 60;
 
 // Music beds for Branded Look. These were hardcoded Mixkit URLs that had all
@@ -299,6 +301,17 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
   useEffect(() => { if (micHeardLive) setMicHeard(true); }, [micHeardLive]);
   useEffect(() => { setMicId(preferredId); }, [preferredId]);
   const [brandedSupported, setBrandedSupported] = useState(false);
+  /**
+   * Record your screen, like Loom (2026-10-14): the shared screen fills a
+   * horizontal frame, with you in the corner circle unless that is switched
+   * off. Built on the same composite as Branded Look, so the branding,
+   * captions, music, saving and Share Kit are all the camera's own.
+   * Desktop browsers only; phones and tablets cannot share a screen to a page.
+   */
+  const [screenSupported, setScreenSupported] = useState(false);
+  const [screenMode, setScreenMode] = useState(false);
+  const [screenBubble, setScreenBubble] = useState(true);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   /**
    * The unbranded cut most MLS boards require of listing media.
    *
@@ -528,6 +541,12 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
       setScrollMode("flow");
     }
     setBrandedSupported(BrandedComposite.isSupported());
+    setScreenSupported(
+      BrandedComposite.isSupported()
+        && typeof navigator !== "undefined"
+        && typeof navigator.mediaDevices?.getDisplayMedia === "function"
+        && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+    );
   }, []);
 
   // Load the user's default CTA + profile details for the "Add Channel CTA" button
@@ -569,13 +588,31 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
   // Branded Look appends a ~3s end card, so it stops early enough to fit.
   useEffect(() => {
     const reserveEndCard = brandedActive && !unbranded;
-    const cap = reserveEndCard ? MAX_RECORD_SECONDS - Math.ceil(END_CARD_MS / 1000) - 1 : MAX_RECORD_SECONDS;
+    const limit = screenMode ? SCREEN_MAX_SECONDS : MAX_RECORD_SECONDS;
+    const cap = reserveEndCard ? limit - Math.ceil(END_CARD_MS / 1000) - 1 : limit;
     if (isRecording && seconds >= cap) {
       stopRecording();
-      toast("15-minute limit reached — wrapping up your recording.", { icon: "⏱️" });
+      toast(`${limit / 60}-minute limit reached — wrapping up your recording.`, { icon: "⏱️" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seconds, isRecording, brandedActive, unbranded]);
+  }, [seconds, isRecording, brandedActive, unbranded, screenMode]);
+
+  // The latest stop, for the browser's own "Stop sharing" bar, whose listener
+  // is added once when the screen is shared and would otherwise hold an old one.
+  const stopRecordingRef = useRef<() => void>(() => {});
+  useEffect(() => { stopRecordingRef.current = stopRecording; });
+
+  /** The screen stopped being shared, from the browser's own bar or by closing the window. */
+  function screenShareEnded() {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      stopRecordingRef.current();
+      toast("Screen sharing stopped, so the recording ended.");
+    } else if (screenStreamRef.current) {
+      closeCamera();
+      setStep("script");
+      toast("Screen sharing stopped.");
+    }
+  }
 
   // Attach the preview stream once the camera step has actually mounted its
   // <video>. openCamera() runs while the script step is still on screen, so it
@@ -592,6 +629,31 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
 
   async function openCamera() {
     setCamError(null);
+    /**
+     * The screen first, while the press that asked for it still counts:
+     * browsers only offer a screen in direct answer to a click, and waiting
+     * on the camera's permission prompt first can use that up.
+     */
+    let screen: MediaStream | null = null;
+    if (screenMode) {
+      if (!brandedSupported) {
+        setCamError("This browser can't record your screen. Try Chrome or Edge on a computer.");
+        return;
+      }
+      try {
+        screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30 } }, audio: false });
+      } catch (err) {
+        const name = typeof err === "object" && err && "name" in err ? String((err as { name: unknown }).name) : "";
+        setCamError(name === "NotAllowedError"
+          ? "Screen sharing was cancelled. Press Share Screen and choose what to share."
+          : "Your screen couldn't be shared on this browser. Try Chrome or Edge on a computer.");
+        return;
+      }
+      screenStreamRef.current = screen;
+      screen.getVideoTracks()[0]?.addEventListener("ended", () => screenShareEnded());
+    }
+    // A screen recording with the corner circle off needs no camera at all.
+    const wantFace = !screenMode || screenBubble;
     try {
       // Ask for 1080p at 60fps — browsers gracefully fall back to the best the camera supports
       //
@@ -599,7 +661,9 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
       // them on it also names the chosen microphone; if that one has gone, the
       // catch below reopens on the default rather than leaving you stuck.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 }, facingMode: "user" },
+        video: wantFace
+          ? { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 }, facingMode: "user" }
+          : false,
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -620,7 +684,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
         }
       }
       // What the device is actually giving us, for the rotate warning above.
-      const camSettings = stream.getVideoTracks()[0]?.getSettings();
+      const camSettings = wantFace ? stream.getVideoTracks()[0]?.getSettings() : undefined;
       if (camSettings?.width && camSettings?.height) {
         setCamLandscape(camSettings.width >= camSettings.height);
       }
@@ -631,10 +695,10 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
       let previewStream: MediaStream = stream;
       setCompositeFailure(
         !brandedSupported ? "This browser can't reshape video while recording."
-          : !brandedLook ? "Branded Look is switched off, so the camera records at its own shape."
+          : !brandedLook && !screen ? "Branded Look is switched off, so the camera records at its own shape."
           : null,
       );
-      if (brandedLook && brandedSupported) {
+      if ((brandedLook || screen) && brandedSupported) {
         try {
           const music = musicUrlFor(musicId);
           const composite = new BrandedComposite(
@@ -651,14 +715,24 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
             music,
             // A clip behind you takes the background, so the photos would be
             // loaded and then never drawn — twelve images fetched for nothing.
-            useBroll && !brollVideoUrl ? photos : [],
-            unbranded,
+            // The same for a shared screen, which takes it from both.
+            useBroll && !brollVideoUrl && !screen ? photos : [],
+            // A screen always goes through the composite; with Branded Look
+            // off it simply carries no logo, name bar or end card.
+            unbranded || (!!screen && !brandedLook),
             "medium",
-            SHAPES[shape],
+            // A screen is landscape, so its recording is.
+            screen ? SHAPES.horizontal : SHAPES[shape],
           );
-          previewStream = await composite.init(stream, {
-            brollVideo: brollVideoUrl,
-            opener: openOnClip && brollVideoUrl ? { seconds: 5, title: openerTitle } : null,
+          // With no camera, the screen is the picture and the microphone the voice.
+          const source = screen && !wantFace
+            ? new MediaStream([...screen.getVideoTracks(), ...stream.getAudioTracks()])
+            : stream;
+          previewStream = await composite.init(source, {
+            brollVideo: screen ? null : brollVideoUrl,
+            opener: !screen && openOnClip && brollVideoUrl ? { seconds: 5, title: openerTitle } : null,
+            screen,
+            cameraBubble: wantFace,
           });
           compositeRef.current = composite;
           setBrandedActive(true);
@@ -666,6 +740,16 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
             toast("That music track wouldn't load — recording without a music bed.", { icon: "🎵" });
           }
         } catch (err) {
+          // There is no plain fallback for a screen: the camera alone is not
+          // what was asked for.
+          if (screen) {
+            console.warn("[camera] screen recording could not start:", err);
+            stream.getTracks().forEach((t) => t.stop());
+            screen.getTracks().forEach((t) => t.stop());
+            screenStreamRef.current = null;
+            setCamError("Your screen couldn't be recorded on this browser. Try Chrome or Edge on a computer.");
+            return;
+          }
           console.warn("[camera] Branded Look unavailable, recording plain:", err);
           compositeRef.current = null;
           setBrandedActive(false);
@@ -697,6 +781,9 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       const name = typeof err === "object" && err && "name" in err ? String((err as { name: unknown }).name) : "";
+      // The screen was shared before the camera failed; it goes with it.
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
 
       /**
        * The chosen microphone has gone — a headset unplugged since last time.
@@ -736,6 +823,8 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
     transcriberRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
     // The meter reads the camera's own audio track, so it ends with it.
     setMicStream(null);
     // Approving a horizontal take applies to that take only. Carrying it into
@@ -1739,6 +1828,39 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
         )}
         </>)}
 
+        {/* ── Record your screen ── desktop browsers only. */}
+        {screenSupported && (
+          <div className="rounded-xl border border-spark-rule p-3.5">
+            <label className="flex cursor-pointer select-none items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={screenMode}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setScreenMode(on);
+                  if (on) setShape("horizontal");
+                }}
+                className="mt-0.5 h-4 w-4 accent-[#A3660F]"
+              />
+              <span>
+                <span className="block text-[14px] font-semibold text-spark-ink">Record your screen</span>
+                <span className="block text-[12px] text-spark-ink-muted">Horizontal, up to 10 minutes</span>
+              </span>
+            </label>
+            {screenMode && (
+              <label className="ml-[26px] mt-2 flex cursor-pointer select-none items-center gap-2 text-[13px] text-spark-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={screenBubble}
+                  onChange={(e) => setScreenBubble(e.target.checked)}
+                  className="h-4 w-4 accent-[#A3660F]"
+                />
+                Show me in a corner circle
+              </label>
+            )}
+          </div>
+        )}
+
         {/* ── Shape ──
             Chosen before recording rather than read off the finished file.
             Cropping a portrait take into landscape afterwards loses your head
@@ -1762,6 +1884,8 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                   <button
                     key={sh.key}
                     type="button"
+                    // A screen recording is horizontal.
+                    disabled={screenMode && sh.key === "vertical"}
                     onClick={() => {
                       setShape(sh.key);
                       // Compositing is what makes the shape possible: without
@@ -1774,7 +1898,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
                     }}
                     aria-pressed={active}
                     className={cn(
-                      "rounded-lg border px-3 py-2.5 text-left transition-colors",
+                      "rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
                       active
                         ? "border-[1.5px] border-spark-amber bg-spark-amber-tint"
                         : "border-spark-rule bg-white hover:border-spark-rule-dim",
@@ -2162,7 +2286,7 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
           className="w-full gap-2"
           disabled={!freestyle && !script.trim()}
         >
-          <Camera size={18} /> Open Camera
+          <Camera size={18} /> {screenMode ? "Share Screen" : "Open Camera"}
         </Button>
         {!freestyle && !script.trim() ? (
           // A status, not a second instruction. The fixed bar at the bottom of
