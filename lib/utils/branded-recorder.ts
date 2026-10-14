@@ -104,6 +104,8 @@ export class BrandedComposite {
    * way back.
    */
   private ticker: Worker | null = null;
+  /** When a frame was last drawn, by either clock, so the worker only fills gaps. */
+  private lastDrawAt = 0;
   private audioCtx: AudioContext | null = null;
   private musicEl: HTMLAudioElement | null = null;
   private logo: HTMLImageElement | null = null;
@@ -555,8 +557,13 @@ export class BrandedComposite {
       const src = URL.createObjectURL(new Blob(["setInterval(function(){postMessage(0)},33)"], { type: "text/javascript" }));
       const ticker = new Worker(src);
       URL.revokeObjectURL(src);
+      // Whenever the picture has gone stale, not only when the tab says it is
+      // hidden. A window that is open but covered by another, or a recorder
+      // window beside the one being shown, can have its animation frames
+      // slowed or stopped without the page being told; that froze a screen
+      // recording at 3:02 while the voice ran on to 4:13 (2026-10-14).
       ticker.onmessage = () => {
-        if (!this.destroyed && document.hidden) this.drawFrame(W, H);
+        if (!this.destroyed && performance.now() - this.lastDrawAt > 60) this.drawFrame(W, H);
       };
       this.ticker = ticker;
     } catch {
@@ -865,6 +872,7 @@ export class BrandedComposite {
     const ctx = this.ctx;
     if (!ctx) return;
     const now = performance.now();
+    this.lastDrawAt = now;
     this.tickBroll();
 
     if (this.endCardLatched) {
