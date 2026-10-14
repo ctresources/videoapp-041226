@@ -259,6 +259,39 @@ export async function connectUrl(username: string, opts: {
   return data.access_url;
 }
 
+/**
+ * The approval link for one platform, for our own connect buttons.
+ *
+ * The partner's Connect API (2026-10-14, on their advice): the customer goes
+ * from Settings straight to that platform's own approval screen and back,
+ * with no partner page in between. The approval screen still names the
+ * partner, and always will; their reply was that it cannot be changed on any
+ * plan. The link is good for 15 minutes and for one attempt, so a fresh one
+ * is asked for on every press.
+ *
+ * Their path spells Google Business with a hyphen; everywhere else, including
+ * the profile they report back, it has an underscore.
+ */
+export async function startConnect(username: string, platform: PartnerPlatform, redirectUrl: string): Promise<string> {
+  const slug = platform === "google_business" ? "google-business" : platform;
+  const data = await call<{ authorize_url?: string }>(`/api/uploadposts/oauth/${slug}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile: username, redirect_url: redirectUrl }),
+  });
+  if (!data.authorize_url) throw new SocialPublishError("That platform couldn't be opened. Try again in a moment.", 502);
+  return data.authorize_url;
+}
+
+/** Unlinks one platform. The profile and every other connection stay. */
+export async function disconnectAccount(username: string, platform: PartnerPlatform): Promise<void> {
+  await call("/api/uploadposts/users/social", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile_username: username, social_platform: platform }),
+  });
+}
+
 // ── Publishing ──────────────────────────────────────────────────────────────
 
 export interface PublishCommon {

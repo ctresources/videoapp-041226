@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft, CheckCircle, Link2Off, ExternalLink, Key,
+  ArrowLeft, CheckCircle, Link2Off, Key,
   RefreshCw, PlayCircle, Camera, Music2,
   Share2, Globe, AtSign, AlertTriangle, Loader2, MapPin,
 } from "lucide-react";
@@ -76,7 +76,9 @@ function SocialSettingsContent() {
   /** Phone-verified, by YouTube's account. undefined: not asked yet. null: not known. */
   const [ytVerified, setYtVerified] = useState<boolean | null | undefined>(undefined);
   const [more, setMore] = useState<MoreInfo | null>(null);
-  const [connecting, setConnecting] = useState(false);
+  /** The platform whose approval screen is being opened. */
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [disconnectingAll, setDisconnectingAll] = useState(false);
   const [destinations, setDestinations] = useState<Record<string, Destination>>({});
   const [savingDestination, setSavingDestination] = useState<string | null>(null);
@@ -90,6 +92,18 @@ function SocialSettingsContent() {
     // Back from the connect page. The list below is read fresh, so it already
     // shows whatever was just connected or removed.
     if (searchParams.get("accounts") === "updated") toast.success("Your accounts are up to date.");
+    // Back from one platform's approval screen. Said once: the address is
+    // put back so a refresh does not say it again.
+    const status = searchParams.get("connect_status");
+    if (status) {
+      const id = (searchParams.get("platform") || "").replace(/-/g, "_");
+      const label = PLATFORM_META[id]?.label || "That account";
+      if (status === "success") toast.success(`${label} connected.`);
+      else if (status === "cancelled") toast(`${label} wasn't connected.`);
+      else if (searchParams.get("error_code") === "INVALID_STATE") toast.error("That took too long. Press Connect again.");
+      else toast.error(`${label} couldn't be connected. Try again.`);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     loadAccounts();
   }, []); // eslint-disable-line
 
@@ -171,19 +185,41 @@ function SocialSettingsContent() {
     }
   }
 
-  // Opens the page where accounts are connected. It is a full navigation, not a
-  // pop-up: each platform's own sign-in opens from there, and pop-up blockers
-  // eat the second window.
-  async function handleConnectMore() {
-    setConnecting(true);
+  // Opens that platform's own approval screen. A full navigation, not a
+  // pop-up, which blockers eat; the platform sends the agent back here.
+  async function handleConnect(platform: string) {
+    setConnecting(platform);
     try {
-      const res = await fetch("/api/social/connect", { method: "POST" });
+      const res = await fetch("/api/social/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform }),
+      });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) throw new Error(data.error || "Couldn't open the connect page.");
+      if (!res.ok || !data.url) throw new Error(data.error || "Couldn't open that platform.");
       window.location.href = data.url;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't open the connect page.");
-      setConnecting(false);
+      toast.error(err instanceof Error ? err.message : "Couldn't open that platform.");
+      setConnecting(null);
+    }
+  }
+
+  async function handleDisconnect(platform: string, label: string) {
+    if (!window.confirm(`Disconnect ${label}? You can connect it again any time.`)) return;
+    setDisconnecting(platform);
+    try {
+      const res = await fetch("/api/social/connect", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't disconnect.");
+      toast.success(`${label} disconnected.`);
+      await loadAccounts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't disconnect.");
+    } finally {
+      setDisconnecting(null);
     }
   }
 
@@ -450,19 +486,41 @@ function SocialSettingsContent() {
                       );
                     })()}
                   </div>
-                  {pl.connected && !pl.needsReconnect && <CheckCircle size={15} className="text-green-600 shrink-0 mt-1" />}
+                  {/* Each platform connects from its own button, straight to
+                      its approval screen. */}
+                  {more.allowed && (!pl.connected || pl.needsReconnect) && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleConnect(pl.id)}
+                      disabled={connecting !== null}
+                      className="shrink-0 gap-1.5"
+                    >
+                      {connecting === pl.id && <Loader2 size={13} className="animate-spin" />}
+                      {pl.needsReconnect ? "Reconnect" : "Connect"}
+                    </Button>
+                  )}
+                  {pl.connected && !pl.needsReconnect && (
+                    <div className="flex shrink-0 items-center gap-2 mt-0.5">
+                      <CheckCircle size={15} className="text-green-600" />
+                      <button
+                        type="button"
+                        onClick={() => handleDisconnect(pl.id, pl.label)}
+                        disabled={disconnecting !== null}
+                        className="text-xs text-slate-400 hover:text-red-500 disabled:opacity-50"
+                      >
+                        {disconnecting === pl.id ? "Disconnecting…" : "Disconnect"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
           {more.allowed ? (
+            connectedCount > 0 && (
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={handleConnectMore} disabled={connecting} className="gap-2">
-                {connecting ? <Loader2 size={15} className="animate-spin" /> : <ExternalLink size={15} />}
-                {connectedCount > 0 ? "Add or reconnect accounts" : "Connect accounts"}
-              </Button>
-              {connectedCount > 0 && (
+              {(
                 <Button
                   variant="ghost"
                   size="sm"
@@ -475,6 +533,7 @@ function SocialSettingsContent() {
                 </Button>
               )}
             </div>
+            )
           ) : (
             <Link href="/billing">
               <Button className="gap-2">See plans</Button>
@@ -486,11 +545,13 @@ function SocialSettingsContent() {
               <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-400" />
               {/* Said up front: each platform's approval screen names the
                   service that delivers the posts, not SparkReels, and an
-                  unfamiliar name on a permission screen is where people stop. */}
+                  unfamiliar name on a permission screen is where people stop.
+                  Named here, the one place in the app it is: the partner
+                  confirmed (2026-10-14) the approval screens will always show
+                  it, and a name people were told about is one they approve. */}
               <span>
-                You&apos;ll choose your accounts on a SparkReels page. Each platform then asks you to approve
-                our publishing partner, the service that delivers your posts. That&apos;s expected. We never
-                see your passwords, and you can disconnect at any time.
+                Each platform will ask you to approve Upload-Post, the service that delivers your posts.
+                That&apos;s expected. We never see your passwords, and you can disconnect at any time.
               </span>
             </div>
           )}

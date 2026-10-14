@@ -131,9 +131,10 @@ export default function HelpPage() {
                   a connection does not appear. */}
               <span className="block mt-1.5">
                 On a paid plan the same screen has <strong>More platforms</strong>: Instagram, Facebook,
-                LinkedIn, TikTok, X, Threads and Google Business. Press{" "}
-                <strong>Connect accounts</strong>, pick the ones you use, and approve each on its own
-                site. Connect as many as you like. A few need the right kind of account: Instagram must
+                LinkedIn, TikTok, X, Threads and Google Business. Press <strong>Connect</strong> beside
+                each one you use and approve it on that platform&apos;s own screen, which names
+                Upload-Post, the service that delivers your posts. Connect as many as you like, and{" "}
+                <strong>Disconnect</strong> any of them there too. A few need the right kind of account: Instagram must
                 be a Business or Creator account linked to a Facebook Page, Facebook must be a Page
                 rather than your personal profile, and Google Business must be a verified profile.
               </span>
