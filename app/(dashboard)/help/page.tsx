@@ -347,6 +347,12 @@ export default function HelpPage() {
               </span>
             </Step>
             <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
+              {/* Ask Sparklee, added 2026-10-14. */}
+              <span className="block mb-1.5">
+                Stuck anywhere in the app? Tap <strong>Ask Sparklee</strong> at the top of the screen and
+                ask out loud how to do something. Sparklee answers in a few seconds, out loud and on screen,
+                from this guide. Five questions a day before you pick a plan, twenty a day on one.
+              </span>
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
               The Topic card at the top of Spark Studio reads{" "}

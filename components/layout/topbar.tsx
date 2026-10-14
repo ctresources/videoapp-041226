@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { cn } from "@/lib/utils/cn";
+import { AskSparklee } from "@/components/layout/ask-sparklee";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -138,6 +139,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         </div>
 
         <div className="flex items-center gap-3.5">
+          {/* Ask Sparklee, the spoken helper, on every page with this bar. */}
+          <AskSparklee dark={onCreate} />
           {onCreate && (
             <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-spark-amber">
               {progress.label}

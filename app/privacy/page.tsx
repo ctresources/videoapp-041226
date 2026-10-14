@@ -239,8 +239,10 @@ export default function PrivacyPage() {
                 Receives no Google user data.
               </li>
               <li>
-                <strong className="text-white">OpenAI</strong> — thumbnail background image generation.
-                Receives the headline text for the thumbnail being generated. Receives no Google user data.
+                <strong className="text-white">OpenAI</strong> — thumbnail background image generation, and
+                Ask Sparklee, the spoken in-app helper. Receives the headline text for the thumbnail being
+                generated, and the audio of a question you ask Sparklee while you are asking it. Receives no
+                Google user data.
               </li>
               <li>
                 <strong className="text-white">Stripe</strong> — secure payment processing. Receives your
