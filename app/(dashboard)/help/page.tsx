@@ -451,7 +451,9 @@ export default function HelpPage() {
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
                 <strong>2 to 10 minutes</strong>, an avatar video in <strong>5 to 20</strong>, and a
                 long one can take up to an hour. You can close the page and watch for it in My
-                Sparks. If a video fails, your allowance is refunded automatically.
+                Sparks. If a video fails, your allowance is refunded automatically. When lots of
+                videos are being made at once, yours waits <strong>in line</strong> and starts on its
+                own a few minutes later; nothing is charged until it starts.
               </span>
             </Step>
             {/* Its own step: the owner wants it found, and it was the last

@@ -22,6 +22,7 @@ import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { StepFooter } from "@/components/create/step-footer";
 import { RenderPipeline } from "@/components/create/render-pipeline";
+import { WaitingInLine } from "@/components/create/waiting-in-line";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2, Film, Download,
@@ -29,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { joinHookAndScript, dropDuplicateHook } from "@/lib/utils/script-assembly";
@@ -309,6 +310,11 @@ export default function ProjectEditorPage() {
   const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
   // The HeyGen job behind the current render, so step 4 can poll it.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  /**
+   * The video is waiting in line for a free HeyGen slot (lib/video/render-queue).
+   * Step 4 shows its place until it starts, then the usual rendering screen.
+   */
+  const [queued, setQueued] = useState<{ id: string; position: number } | null>(null);
   const [renderFailed, setRenderFailed] = useState(false);
   /**
    * Whether this project has ever produced a video.
@@ -1530,6 +1536,18 @@ export default function ProjectEditorPage() {
     && scenesSpokenWords >= 8
     && scenesSpokenWords <= SCENES_VOICE_MAX_WORDS;
 
+  // The line started it: from here it is the same as a render that began at once.
+  const startedFromLine = useCallback((videoId: string, jobId: string | null) => {
+    setQueued(null);
+    setRenderJobId(jobId);
+    setRenderedVideoId(videoId);
+  }, []);
+  // Taken out of line, or it could not start: back to the setup step.
+  const leftTheLine = useCallback(() => {
+    setQueued(null);
+    setEditorStep(3);
+  }, []);
+
   async function handleGenerateVideo() {
     if (!project) return;
     setVideoGenerating(true);
@@ -1541,6 +1559,7 @@ export default function ProjectEditorPage() {
     // Clear the previous attempt, or a retry inherits its failure and job id.
     setRenderFailed(false);
     setRenderJobId(null);
+    setQueued(null);
 
     // create-blog handles all videoTypes (blog_long, reel_9x16, short_1x1, youtube_16x9)
     const endpoint = "/api/video/create-blog";
@@ -1665,6 +1684,12 @@ export default function ProjectEditorPage() {
       }
 
       const body = await safeJson(res);
+      // HeyGen was full: the video waits its turn instead of being turned away.
+      if (res.status === 202 && body?.queued) {
+        setQueued({ id: String(body.queueId), position: Number(body.position) || 1 });
+        toast.success("You're in line. Your video starts on its own in a few minutes.", { duration: 6000 });
+        return;
+      }
       if (!body?.video) throw new Error("Invalid response from video generator");
       const { video } = body as { video: { id: string; render_status?: string; render_job_id?: string } };
       setRenderJobId(video.render_job_id ?? null);
@@ -3625,7 +3650,16 @@ export default function ProjectEditorPage() {
           </>)}
 
           {/* ── Step 4 · Generating ── */}
-          {editorStep === 4 && (() => {
+          {editorStep === 4 && queued && !renderedVideoId && (
+            <WaitingInLine
+              projectId={project.id}
+              queueId={queued.id}
+              position={queued.position}
+              onStarted={startedFromLine}
+              onGone={leftTheLine}
+            />
+          )}
+          {editorStep === 4 && !(queued && !renderedVideoId) && (() => {
             const shape = selectedVideoType === "reel_9x16" ? "9:16 (vertical)"
               : selectedVideoType === "short_1x1" ? "1:1 (square)"
                 : "16:9 (horizontal)";

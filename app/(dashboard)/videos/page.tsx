@@ -19,6 +19,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
+import { RenderQueueNotice } from "@/components/videos/render-queue-notice";
 
 interface DraftProject {
   id: string;
@@ -558,6 +559,9 @@ function VideosContent() {
           </Button>
         </Link>
       </div>
+
+      {/* Videos waiting in line to start, and any that could not. */}
+      <RenderQueueNotice />
 
       {/* A post that did not go out. A platform can refuse one minutes after
           it was sent, when the Publish window is long closed, and until this

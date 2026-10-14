@@ -333,6 +333,9 @@ Hard limits, every scene:
   return scenes.length === n ? scenes : [];
 }
 
+/** Marks a refusal because HeyGen is running its ten jobs, with the wait it asked for. */
+const AT_CAPACITY = "AT_CAPACITY:";
+
 async function generateOnce(prompt: string, seconds: number, aspect: SceneAspect, giveUpAt: number): Promise<SceneClip> {
   const headers = { "x-api-key": apiKey(), "Content-Type": "application/json" };
   const create = await fetch(`${API}/v3/models/videos`, {
@@ -350,6 +353,10 @@ async function generateOnce(prompt: string, seconds: number, aspect: SceneAspect
     }),
     signal: AbortSignal.timeout(30_000),
   });
+  // HeyGen's ten jobs are all taken: a place in a queue, not a failed scene.
+  if (create.status === 429) {
+    throw new Error(`${AT_CAPACITY}${Number(create.headers.get("retry-after")) || 15}`);
+  }
   const created = await create.json().catch(() => null);
   const id = created?.data?.video_id as string | undefined;
   if (!create.ok || !id) {
@@ -392,6 +399,11 @@ export async function makeSceneClips(
   aspect: SceneAspect,
   giveUpAt: number,
   look: SceneLook = "no-people",
+  /**
+   * How many to make at once. Fewer when videos are waiting in line
+   * (lib/video/render-queue), so scenes leave HeyGen's slots for them.
+   */
+  concurrency: number = CONCURRENCY,
 ): Promise<(SceneClip | null)[]> {
   const clamp = (v: number) => Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, Math.ceil(v)));
   const lengths = scenes.map((_, i) => clamp(Array.isArray(secondsEach) ? (secondsEach[i] ?? CLIP_MIN_SECONDS) : secondsEach));
@@ -412,14 +424,25 @@ export async function makeSceneClips(
         try {
           out[i] = await generateOnce(promptFor(shoots[i], look), lengths[i], aspect, giveUpAt);
         } catch (err) {
-          console.warn(`[scenes] scene ${i + 1}, try ${attempt}: ${err instanceof Error ? err.message : err}`);
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.startsWith(AT_CAPACITY)) {
+            // HeyGen is full: wait the time it asked for and ask again, which
+            // does not use up a try. It used to count as one, so two refusals
+            // in a row lost the scene while the clock still had minutes on it.
+            const wait = Math.min(Number(msg.slice(AT_CAPACITY.length)) || 15, 30) * 1000;
+            if (giveUpAt - Date.now() - wait < 20_000) break;
+            await new Promise((r) => setTimeout(r, wait));
+            attempt -= 1;
+            continue;
+          }
+          console.warn(`[scenes] scene ${i + 1}, try ${attempt}: ${msg}`);
         }
       }
     }
   }
 
   const started = Date.now();
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, scenes.length) }, worker));
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, scenes.length)) }, worker));
   console.log(
     `[scenes] ${out.filter(Boolean).length}/${scenes.length} clips at ${Array.isArray(secondsEach) ? "about " : ""}${seconds}s each in ${Math.round((Date.now() - started) / 1000)}s`,
   );

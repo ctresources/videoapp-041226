@@ -6,6 +6,7 @@ import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
 import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MIN } from "@/lib/api/scene-clips";
 import { beatsFromSrt } from "@/lib/utils/script-beats";
+import { lineIsWaiting } from "@/lib/video/render-queue";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -441,6 +442,17 @@ export async function storeVideoDetailed(
   return { url: publicUrl, state: "stored" };
 }
 
+/**
+ * How many scenes to make at once: four, or two while videos wait in line.
+ *
+ * HeyGen's ten slots are shared by everyone's videos and every scene clip.
+ * When people are waiting for their video to start, scenes for someone
+ * else's finished video should not be the thing holding the slots.
+ */
+async function scenesAtOnce(): Promise<number> {
+  return (await lineIsWaiting()) ? 2 : 4;
+}
+
 /** The most seconds of scene one video has made for it, which is what bounds its cost. */
 const SCENE_SECONDS_BUDGET = 96;
 
@@ -507,7 +519,7 @@ async function sceneBackground(
       // model makes well, and within the budget for the whole video.
       const cap = Math.max(5, Math.floor(SCENE_SECONDS_BUDGET / forScenes.length));
       const lengths = forScenes.map((i) => Math.min(cap, Math.ceil(onScreen[i])));
-      const madeFor = await makeSceneClips(forScenes.map((i) => plan[i]), lengths, aspect, started + 150_000, "behind-speaker");
+      const madeFor = await makeSceneClips(forScenes.map((i) => plan[i]), lengths, aspect, started + 150_000, "behind-speaker", await scenesAtOnce());
       const made = new Map(forScenes.map((i, k) => [i, madeFor[k]] as const));
       const got = madeFor.filter(Boolean).length;
       if (got >= Math.max(SCENES_MIN, Math.ceil(forScenes.length / 2))) {
@@ -547,7 +559,7 @@ async function sceneBackground(
     // when the photos already outnumber the scenes there would be.
     if (photos.length >= count) return none;
     const loose = await planScenes(script, count);
-    const made = (await makeSceneClips(loose, 8, aspect, started + 150_000))
+    const made = (await makeSceneClips(loose, 8, aspect, started + 150_000, undefined, await scenesAtOnce()))
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (made.length < SCENES_MIN) {
       console.warn(`[store-video] ${videoId}: only ${made.length} scene(s) could be made — using stock footage`);
