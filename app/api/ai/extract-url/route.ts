@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const gate = await freeTrialGateResponse(user.id);
+  // A step toward a video, so it never spends the free tries (free-trial.ts).
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "toward-video" });
   if (gate) return gate;
 
   let url: string;

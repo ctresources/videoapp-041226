@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Same gate as saving a pasted script — this is a model call on the same tab.
-  const gate = await freeTrialGateResponse(user.id);
+  // A step toward a video, so it never spends the free tries (free-trial.ts).
+  const gate = await freeTrialGateResponse(user.id, { preVideo: "toward-video" });
   if (gate) return gate;
 
   const { script, length, budget } = (await req.json()) as {

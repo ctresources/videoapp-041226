@@ -97,8 +97,14 @@ export function freeTrialDaysLeft(firstVideoGeneratedAt: string | null | undefin
  * "recording" — camera recording and its uploads: allowed while the one free
  *             recording is unspent. Spent by the save route, not here, so
  *             asking for an upload address does not use it up.
+ * "toward-video" — a step on the way to a video: pasting a script, bringing
+ *             in a PDF, link, email or listing, shortening a script. Always
+ *             allowed before the free video and never counted. They used to
+ *             spend the two free tries, so an agent who had tried the AI
+ *             Tools was told to "make your free video" by the very steps that
+ *             make it (2026-10-14, a real signup three weeks in).
  */
-export type PreVideoMode = "consume" | "allow" | "block" | "recording";
+export type PreVideoMode = "consume" | "allow" | "block" | "recording" | "toward-video";
 
 async function marksUsed(userId: string, endpoint: string): Promise<number> {
   const admin = createAdminClient();
@@ -198,6 +204,9 @@ export async function freeTrialGateResponse(
   if (!freeTrialLocked(p.first_video_generated_at, p.subscription_tier)) return null;
 
   const notStarted = !p.first_video_generated_at;
+
+  // On the way to the free video: never stopped, never counted.
+  if (notStarted && preVideo === "toward-video") return null;
 
   // The one free camera recording, before the free video.
   if (notStarted && preVideo === "recording") {
