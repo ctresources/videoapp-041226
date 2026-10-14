@@ -92,6 +92,18 @@ export class BrandedComposite {
   private ctx: CanvasRenderingContext2D | null = null;
   private videoEl: HTMLVideoElement | null = null;
   private raf = 0;
+  /**
+   * A clock that keeps going while this tab is hidden.
+   *
+   * The frames are drawn on requestAnimationFrame, which the browser stops
+   * for a tab you are not looking at. That never mattered for a camera take,
+   * where you watch yourself, but a screen recording is made by switching to
+   * the window you are showing: the recording froze on the last frame drawn
+   * before you left (2026-10-14). A worker's timer is not stopped, so it
+   * draws the frames while the tab is hidden and rAF takes over again on the
+   * way back.
+   */
+  private ticker: Worker | null = null;
   private audioCtx: AudioContext | null = null;
   private musicEl: HTMLAudioElement | null = null;
   private logo: HTMLImageElement | null = null;
@@ -539,6 +551,18 @@ export class BrandedComposite {
     };
     draw();
 
+    try {
+      const src = URL.createObjectURL(new Blob(["setInterval(function(){postMessage(0)},33)"], { type: "text/javascript" }));
+      const ticker = new Worker(src);
+      URL.revokeObjectURL(src);
+      ticker.onmessage = () => {
+        if (!this.destroyed && document.hidden) this.drawFrame(W, H);
+      };
+      this.ticker = ticker;
+    } catch {
+      // No workers: frames stop while the tab is hidden, as they always did.
+    }
+
     return this.stream;
   }
 
@@ -786,6 +810,8 @@ export class BrandedComposite {
     this.brollRunning = false;
     this.photos = [];
     cancelAnimationFrame(this.raf);
+    this.ticker?.terminate();
+    this.ticker = null;
     try { this.musicEl?.pause(); } catch { /* noop */ }
     this.musicEl = null;
     try { this.audioCtx?.close(); } catch { /* noop */ }
