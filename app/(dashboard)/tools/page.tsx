@@ -123,9 +123,12 @@ function BriefFields({ value, onChange }: { value: BriefContext; onChange: (b: B
   );
 }
 
-// Ordered to match the video workflow: title & script BEFORE rendering,
-// description, tags & thumbnail AFTER — channel name and LinkedIn are one-time setup tools.
+// Ordered to match the video workflow: what to say first (AI Answer Blocks,
+// moved up from tenth at the owner's ask, 2026-10-14), then title & script
+// BEFORE rendering, description, tags & thumbnail AFTER — channel name and
+// LinkedIn are one-time setup tools.
 const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[] = [
+  { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
   { id: "title",       label: "Title Generator",      icon: Heading },
   { id: "script",      label: "Script Generator",     icon: ScrollText },
   { id: "description", label: "Description Generator", icon: FileText },
@@ -135,7 +138,6 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "linkedin",    label: "LinkedIn Profile",     icon: BriefcaseBusiness },
-  { id: "answers",     label: "AI Answer Blocks",     icon: Bot },
   // Not a generator like the rest: it reads the agent's Google reviews and
   // drafts replies. Here because it is a helper used now and then, not a step
   // in making a video.
@@ -1347,6 +1349,11 @@ function AnswerBlocksGenerator() {
           an agent. We research what they&apos;re actually asking in your market, then give you two
           ways to answer: a <span className="font-semibold">video topic you can record right now</span>,
           and a text block to paste on your site so AI quotes you.
+        </p>
+        <p className="text-xs text-slate-800 font-semibold mt-2">
+          Every blog article already has these: the six questions at the end of each one in your
+          Share Kit are answer blocks for its topic. The same questions are on Create, under the
+          topic box.
         </p>
       </div>
 
@@ -3211,7 +3218,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
 // ─── MAIN PAGE (cont.) ─────────────────────────────────────────────────────────
 
 export default function ToolsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("title");
+  const [activeTab, setActiveTab] = useState<Tab>("answers");
   // Which banner the Banners tab opens on. Only the LinkedIn tool's banner
   // button and a ?platform= deep link change it; picking the tab resets it.
   const [bannerPlatform, setBannerPlatform] = useState<BannerPlatform>("youtube");

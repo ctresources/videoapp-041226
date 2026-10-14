@@ -593,7 +593,8 @@ export default function HelpPage() {
               holds a <strong>blog article</strong> — usually 1,000 to 1,500 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
               and a <strong>Frequently Asked Questions</strong> section of six questions at the end, chosen
-              from what people are asking about that subject in your town. That is the shape an AI
+              from what people are asking about that subject in your town. Those six are{" "}
+              <strong>AI answer blocks</strong>, built into every article (step 19). That is the shape an AI
               assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               <strong>Header image</strong> makes the picture that sits above the headline — a real
               photograph of the kind of place the article is about, with no words drawn into it —
@@ -813,13 +814,19 @@ export default function HelpPage() {
             </Step>
             <Step n={19} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
-              months before they call an agent. This tool researches what they&apos;re actually asking in{" "}
-              <em>your</em> market and gives you two ways to answer each question: a <strong>video topic</strong> you
-              can record right now — including a <strong>Record on Camera</strong> shortcut straight to the
-              teleprompter — and a short ready-to-paste <strong>answer</strong> for your website, written the
-              way AI assistants extract and cite answers. Think of it as the step before everything else:
-              Answer Blocks decides <em>what</em> is worth saying, and the Share Kit&apos;s blog article (step
-              14) is the long version of whatever you then make.
+              months before they call an agent. On <strong>Create</strong>, under the topic box,{" "}
+              <strong>What buyers ask AI</strong> shows three questions buyers in your city are asking. Tap
+              one and it becomes your topic, so the video answers it.
+              <span className="block mt-1.5">
+                <strong>Every blog article already has answer blocks.</strong> The six questions at the end
+                of each article in your Share Kit (step 14) are written the way AI assistants quote, for
+                that article&apos;s topic, so there is nothing extra to make.
+              </span>
+              <span className="block mt-1.5">
+                The full tool is the first tab in <strong>Spark Tools</strong>. For each question it also
+                gives a ready-to-paste block for your website and a <strong>Record on Camera</strong>{" "}
+                shortcut straight to the teleprompter.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="AI Tools" />

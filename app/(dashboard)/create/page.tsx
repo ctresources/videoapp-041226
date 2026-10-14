@@ -37,6 +37,7 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ComposerCard, TryLineInline } from "@/components/create/composer-card";
+import { BuyerQuestions } from "@/components/create/buyer-questions";
 import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
@@ -2635,6 +2636,22 @@ function CreatePageInner() {
               setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
             }}
           />
+          </div>
+
+          {/* What buyers here are asking AI, as topics. AI Answer Blocks'
+              questions, moved up from the tenth tab of Spark Tools to where a
+              topic is chosen, at the owner's ask (2026-10-14). */}
+          <div className={topicOffClass} {...topicOffProps}>
+            <BuyerQuestions
+              city={locCity}
+              state={locState}
+              agentName={ctaProfile?.full_name ?? ""}
+              onPick={(text) => {
+                setLocCustomTopic(text);
+                setTopicTemplateRaw(null);
+                setSparkSeed((s) => ({ text, n: s.n + 1 }));
+              }}
+            />
           </div>
 
           {/* Something they already have, on the video route.

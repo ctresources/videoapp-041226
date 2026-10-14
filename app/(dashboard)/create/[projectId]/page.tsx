@@ -3988,6 +3988,9 @@ export default function ProjectEditorPage() {
                       answered in their first sentence, which is the thing the
                       badge was claiming all along. */}
                   <Badge variant="default" className="text-xs">AEO/GEO/SEO</Badge>
+                  {/* What the badge means, in the owner's words for it: the
+                      article's closing questions are AI answer blocks. */}
+                  <Badge variant="success" className="text-xs">Includes 6 AI answer blocks</Badge>
                 </div>
 
                 {/* The actions, in the header rather than buried inside the
@@ -4210,6 +4213,20 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               </div>
+              {/* What the badge above means, in plain words, at the owner's
+                  ask (2026-10-14). Only once there is an article to point at. */}
+              {(script.blog_intro || script.blog_body) && (
+                <div className="mx-2 mb-3 rounded-xl border border-green-200 bg-green-50 px-3.5 py-2.5">
+                  <p className="text-[13px] font-semibold text-green-900">What are AI answer blocks?</p>
+                  <p className="mt-0.5 text-[13px] leading-[1.45] text-green-900">
+                    The six questions at the end of this article are ones people in your area ask
+                    ChatGPT and Google about this topic, each answered in its first sentence. When
+                    someone asks an AI one of them, it looks for a page that answers it plainly and
+                    quotes it, with a link. Put this article on your website with{" "}
+                    <strong>Copy as HTML</strong>, and that page can be yours.
+                  </p>
+                </div>
+              )}
               {emailPanel}
               {/* The header image itself, once there is one. The link to make or
                   change it is a pill in the action row above. */}
