@@ -2624,6 +2624,22 @@ function CreatePageInner() {
               the same field, so a gap made choosing an idea look like a
               different exercise from typing one. */}
           <div className={`-mt-3 ${topicOffClass}`} {...topicOffProps}>
+          {/* What buyers here are asking AI, as topics: AI Answer Blocks'
+              questions, moved up from the tenth tab of Spark Tools to where a
+              topic is chosen (2026-10-14). Straight under the box, above
+              Need a topic idea?, at the owner's direction, as a strip of the
+              same block rather than a card of its own. */}
+          <BuyerQuestions
+            city={locCity}
+            state={locState}
+            agentName={ctaProfile?.full_name ?? ""}
+            onPick={(text) => {
+              setLocCustomTopic(text);
+              setTopicTemplateRaw(null);
+              setSparkSeed((s) => ({ text, n: s.n + 1 }));
+            }}
+            className="border border-y-0 border-spark-rule bg-spark-amber-tint px-4 py-2.5 sm:px-5"
+          />
           <SparkPanel
             city={locCity || undefined}
             state={locState || undefined}
@@ -2636,22 +2652,6 @@ function CreatePageInner() {
               setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
             }}
           />
-          </div>
-
-          {/* What buyers here are asking AI, as topics. AI Answer Blocks'
-              questions, moved up from the tenth tab of Spark Tools to where a
-              topic is chosen, at the owner's ask (2026-10-14). */}
-          <div className={topicOffClass} {...topicOffProps}>
-            <BuyerQuestions
-              city={locCity}
-              state={locState}
-              agentName={ctaProfile?.full_name ?? ""}
-              onPick={(text) => {
-                setLocCustomTopic(text);
-                setTopicTemplateRaw(null);
-                setSparkSeed((s) => ({ text, n: s.n + 1 }));
-              }}
-            />
           </div>
 
           {/* Something they already have, on the video route.

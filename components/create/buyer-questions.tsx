@@ -30,11 +30,14 @@ export function BuyerQuestions({
   state,
   agentName,
   onPick,
+  className = "",
 }: {
   city: string;
   state: string;
   agentName: string;
   onPick: (topic: string) => void;
+  /** Its frame, which belongs to where it sits: a strip joined to the topic box. */
+  className?: string;
 }) {
   const [items, setItems] = useState<Asked[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,13 +85,13 @@ export function BuyerQuestions({
   }
 
   return (
-    <section className="rounded-[18px] border border-spark-amber bg-spark-amber-tint px-4 py-3.5 sm:px-5">
+    // A size down from its first version, which the owner found too big
+    // (2026-10-14): one line, the heading's size, no tile round the icon.
+    <section className={className}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-white">
-            <Bot size={18} className="text-[#A3660F]" aria-hidden />
-          </span>
-          <p className="text-[16px] font-bold leading-tight text-spark-ink">
+        <div className="flex min-w-0 items-center gap-2">
+          <Bot size={16} className="flex-none text-[#A3660F]" aria-hidden />
+          <p className="text-[15px] font-semibold leading-tight text-spark-ink">
             What buyers ask AI{place ? ` in ${place}` : ""}
           </p>
         </div>
@@ -97,7 +100,7 @@ export function BuyerQuestions({
             type="button"
             onClick={ask}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-xl spark-cta-gradient px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-lg spark-cta-gradient px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-60"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
             {loading ? "Looking…" : "Show me"}
@@ -116,7 +119,7 @@ export function BuyerQuestions({
       </div>
 
       {items && !picked && (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-2.5 flex flex-col gap-1.5">
           {items.map((it) => (
             <li key={it.question}>
               <button
@@ -125,7 +128,7 @@ export function BuyerQuestions({
                   setPicked(true);
                   onPick(it.question);
                 }}
-                className="w-full rounded-xl border border-spark-rule bg-white px-3.5 py-2.5 text-left text-[14.5px] font-medium leading-[1.35] text-spark-ink transition-colors hover:border-spark-amber"
+                className="w-full rounded-lg border border-spark-rule bg-white px-3 py-2 text-left text-[14px] font-medium leading-[1.35] text-spark-ink transition-colors hover:border-spark-amber"
               >
                 &ldquo;{it.question}&rdquo;
               </button>
