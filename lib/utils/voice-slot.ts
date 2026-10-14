@@ -208,6 +208,38 @@ export async function retireVoiceClone(
 }
 
 /**
+ * The voice and the recording both, for someone whose paid plan has ended.
+ *
+ * Retiring keeps the recording so the voice can come back; this does not.
+ * The owner's call (2026-10-14): a former customer's voice is not held on
+ * the chance they return. Coming back means recording again.
+ *
+ * Acts on either half alone: a voice already given back still has its
+ * recording, and that goes too.
+ */
+export async function removeVoiceAndRecording(userId: string, reason: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("heygen_voice_id, voice_sample_url")
+    .eq("id", userId)
+    .single();
+  const row = data as { heygen_voice_id: string | null; voice_sample_url: string | null } | null;
+  if (!row?.heygen_voice_id && !row?.voice_sample_url) return;
+
+  const freed = row.heygen_voice_id ? await deleteVoice(row.heygen_voice_id) : true;
+  if (row.voice_sample_url) {
+    const { error } = await admin.storage.from(SAMPLE_BUCKET).remove([row.voice_sample_url]);
+    if (error) console.error(`[voice-slot] recording not deleted for ${userId}: ${error.message}`);
+  }
+  await admin
+    .from("profiles")
+    .update({ heygen_voice_id: null, voice_sample_url: null, voice_sample_at: null, voice_clone_retired_at: null })
+    .eq("id", userId);
+  console.log(`[voice-slot] removed voice and recording for ${userId} (${reason})${freed ? "" : " — slot NOT freed"}`);
+}
+
+/**
  * Whether this account should give its slot up now that a video is finished.
  *
  * A paying agent keeps their voice: they can render again tomorrow, and making

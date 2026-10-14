@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { retireVoiceClone } from "@/lib/utils/voice-slot";
+import { removeVoiceAndRecording } from "@/lib/utils/voice-slot";
 import { releaseSocialSlot } from "@/lib/api/social-slot";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -277,28 +277,19 @@ export async function POST(req: NextRequest) {
       // has already set the tier to "free" by this line, so reading it back
       // would report what they are now rather than what they just left.
       /**
-       * The voice slot goes back with the plan.
+       * The voice goes with the plan, and the recording with it.
        *
        * Slots are an account-wide allowance, and a departed customer holding
-       * one is capacity taken from a present one. Their sample is kept, so
-       * coming back costs them nothing: the voice is rebuilt by the first
-       * render they make. Awaited rather than fired off — a slot released
-       * only when a background promise happens to finish is a slot that
-       * sometimes is not.
+       * one is capacity taken from a present one. The recording used to be
+       * kept so coming back cost nothing; the owner chose (2026-10-14) not to
+       * hold a former customer's voice, so both are deleted and coming back
+       * means recording again. Awaited rather than fired off — a slot
+       * released only when a background promise happens to finish is a slot
+       * that sometimes is not.
        */
-      {
-        const { data: voiceRow } = await admin
-          .from("profiles")
-          .select("heygen_voice_id")
-          .eq("id", userId)
-          .single();
-        const voiceId = (voiceRow as { heygen_voice_id: string | null } | null)?.heygen_voice_id;
-        if (voiceId) {
-          await retireVoiceClone(userId, voiceId, "subscription canceled").catch((e) =>
-            console.error("[stripe] voice retire failed:", e),
-          );
-        }
-      }
+      await removeVoiceAndRecording(userId, "subscription canceled").catch((e) =>
+        console.error("[stripe] voice removal failed:", e),
+      );
 
       // The publishing slot goes back for the same reason, and the same way:
       // awaited, and unable to fail the cancellation (it never throws). Their
