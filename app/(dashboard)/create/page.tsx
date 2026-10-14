@@ -11,7 +11,7 @@ import {
   Building2, Video, Square, Pause, AlertCircle,
   ChevronDown, Sparkles,
   Plus, X, Paperclip, ImageIcon, Globe, Mail,
-  SquareUser, Camera, Clapperboard, CircleUser,
+  SquareUser, Camera, Clapperboard, CircleUser, Monitor,
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
@@ -530,6 +530,22 @@ function CreatePageInner() {
    * answer.
    */
   const [videoKindOpen, setVideoKindOpen] = useState(false);
+  /**
+   * The Camera/Teleprompter card's two kinds, shown under it the way the
+   * video kinds are under Video / Reel (2026-10-14, at the owner's ask):
+   * Record yourself, or Record your screen. Only where a screen can be
+   * shared; phones and tablets cannot, so there the card goes straight on.
+   */
+  const [cameraKindOpen, setCameraKindOpen] = useState(false);
+  const [screenRecord, setScreenRecord] = useState(false);
+  const [screenCapable, setScreenCapable] = useState(false);
+  useEffect(() => {
+    setScreenCapable(
+      typeof navigator !== "undefined"
+        && typeof navigator.mediaDevices?.getDisplayMedia === "function"
+        && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+    );
+  }, []);
   /** When a brief started waiting, so one left sitting is not acted on later. */
   const waitingSince = useRef(0);
 
@@ -2808,6 +2824,7 @@ function CreatePageInner() {
                   // Each card shows what belongs to it. For Video / Reel that
                   // is the three kinds; any other card puts them away.
                   setVideoKindOpen(key === "spark");
+                  setCameraKindOpen(key === "film" && screenCapable && !cameraLocked);
                   if (key === "blog") {
                     if (blogLocked) {
                       /**
@@ -2973,6 +2990,37 @@ function CreatePageInner() {
               <Loader2 size={15} className="animate-spin" /> Writing your script, about a minute.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Record yourself or your screen, under the Camera/Teleprompter card.
+          The screen option sends the recorder straight to Share Screen. */}
+      {step === "input" && !cameraHandoff && !blogOnly && cameraKindOpen && inputMode === "camera" && (
+        <div id="camera-kind" className="mt-2 scroll-mt-24 rounded-[14px] border-[1.5px] border-spark-rule bg-[#f4f2e8] px-3 py-3">
+          <div className="flex flex-wrap gap-2">
+            {([
+              { screen: false, Icon: Camera, label: "Record yourself" },
+              { screen: true, Icon: Monitor, label: "Record your screen" },
+            ]).map(({ screen, Icon, label }) => {
+              const on = screenRecord === screen;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setScreenRecord(screen)}
+                  aria-pressed={on}
+                  className={`flex items-center rounded-[12px] border-[1.5px] bg-white px-3 py-2.5 text-left transition-colors ${
+                    on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 text-[15px] font-bold leading-tight text-spark-ink">
+                    <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -4626,6 +4674,7 @@ function CreatePageInner() {
             )}
 
             <CameraRecorder
+              initialScreen={screenRecord}
               brief={briefFields()}
               onPhaseChange={setCameraPhase}
               city={locCity || undefined}

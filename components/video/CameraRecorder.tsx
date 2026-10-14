@@ -120,8 +120,10 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
+  /** Start with Record your screen on: chosen under the Camera/Teleprompter card on Create. */
+  initialScreen?: boolean;
   /** Audience, tone and purpose from the Create page: shapes a sparked script and is saved with the take. */
   brief?: { audience?: string; tone?: string; purpose?: string };
   /**
@@ -312,6 +314,13 @@ export function CameraRecorder({ brief, city, state, initialScript, initialUnbra
   const [screenMode, setScreenMode] = useState(false);
   const [screenBubble, setScreenBubble] = useState(true);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  // Follows the choice made under the card on Create, which can change after
+  // this has mounted. The checkbox below stays this component's own.
+  useEffect(() => {
+    if (!screenSupported) return;
+    setScreenMode(initialScreen);
+    if (initialScreen) setShape("horizontal");
+  }, [initialScreen, screenSupported]);
   /**
    * The unbranded cut most MLS boards require of listing media.
    *

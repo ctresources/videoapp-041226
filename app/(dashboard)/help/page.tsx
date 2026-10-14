@@ -513,7 +513,7 @@ export default function HelpPage() {
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
-              On a computer, tick <strong>Record your screen</strong> to record a listing, a market
+              On a computer, press Camera/Teleprompter and choose <strong>Record your screen</strong> to record a listing, a market
               report or anything else on screen while you talk, with you in a corner circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
               {/* Three things can be behind the speaker now, and one of them
