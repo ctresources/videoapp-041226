@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice, deleteVoice, resolveVoiceId, voiceIsGone } from "@/lib/api/heygen";
+import { notifyVoiceSlotsNearlyFull } from "@/lib/email";
 
 /**
  * Voice clone slots, recycled.
@@ -23,6 +24,38 @@ import { cloneVoice, deleteVoice, resolveVoiceId, voiceIsGone } from "@/lib/api/
  *   2. Every render asks for the voice through ensureVoiceForRender, so there
  *      is exactly one place that knows how to bring one back.
  */
+
+/**
+ * How many voice clones the HeyGen plan holds, for the whole of SparkReels.
+ *
+ * Set by the web plan, not the API (HeyGen support, 2026-10-14): the old plan
+ * held 2, Creator holds 40, Pro 70. The owner moved to Creator. Set
+ * HEYGEN_VOICE_CLONE_LIMIT if the plan changes again.
+ */
+export const VOICE_CLONE_LIMIT = Number(process.env.HEYGEN_VOICE_CLONE_LIMIT) || 40;
+
+/**
+ * Tells the owner when the slots are 80% used, after a voice is made.
+ *
+ * Counted from the profiles that hold one, which is what this app has made
+ * and not given back. Never fails the caller: a voice that was made is not
+ * undone by an email that was not sent.
+ */
+export async function warnIfVoiceSlotsNearlyFull(): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .not("heygen_voice_id", "is", null);
+    const used = count ?? 0;
+    if (used >= Math.ceil(VOICE_CLONE_LIMIT * 0.8)) {
+      await notifyVoiceSlotsNearlyFull({ used, limit: VOICE_CLONE_LIMIT });
+    }
+  } catch (err) {
+    console.warn("[voice-slot] slot count failed:", err instanceof Error ? err.message : err);
+  }
+}
 
 /** The bucket the sample lives in. Private — see the migration's note on why. */
 const SAMPLE_BUCKET = "voice-recordings";
@@ -138,6 +171,7 @@ export async function ensureVoiceForRender(profile: VoiceProfile): Promise<strin
       .update({ heygen_voice_id: voiceId, voice_clone_retired_at: null })
       .eq("id", profile.id);
     console.log(`[voice-slot] restored voice for ${profile.id}`);
+    await warnIfVoiceSlotsNearlyFull();
     return voiceId;
   } catch (err) {
     // Out of slots is the expected failure here, and it is the owner's problem

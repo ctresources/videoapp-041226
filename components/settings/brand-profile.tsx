@@ -784,6 +784,19 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
   const [micError, setMicError] = useState<string | null>(null);
   /** Set when the service has no voice slots left — a standing notice, not an error. */
   const [voiceUnavailable, setVoiceUnavailable] = useState<string | null>(null);
+  /**
+   * A recording is kept and no voice is built from it yet: refused for want of
+   * room, or given back after a free video. Either way the next video builds
+   * it, so there is nothing to record again.
+   */
+  const [savedSample, setSavedSample] = useState(false);
+  const [rerecord, setRerecord] = useState(false);
+  useEffect(() => {
+    if (currentHeygenVoiceId) return;
+    const supabase = createClient();
+    supabase.from("profiles").select("voice_sample_url").eq("id", userId).single()
+      .then(({ data }) => setSavedSample(!!(data as { voice_sample_url: string | null } | null)?.voice_sample_url));
+  }, [userId, currentHeygenVoiceId]);
   /** What was actually recorded, so the file is named honestly. */
   const [recType, setRecType] = useState("");
 
@@ -898,7 +911,7 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
       // single source of truth — the returned voice_id drives every AI video.
       const res = await fetch("/api/profile/heygen-voice", { method: "POST", body: form });
       const text = await res.text();
-      let data: { voice_id?: string; error?: string; code?: string } = {};
+      let data: { voice_id?: string; error?: string; code?: string; message?: string } = {};
       try { data = JSON.parse(text); } catch {
         throw new Error(res.ok ? "Unexpected server response." : `Server error ${res.status}`);
       }
@@ -910,6 +923,16 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
        * cannot help here — the last agent to see this recorded four samples.
        * The recording is left in place so nothing they did is thrown away.
        */
+      if (data.code === "voice_saved_pending") {
+        setSavedSample(true);
+        setRerecord(false);
+        setRecState("idle");
+        setRecBlob(null);
+        setRecUrl(null);
+        toast.success(data.message || "Your recording is saved.");
+        setSubmitting(false);
+        return;
+      }
       if (!res.ok && data.code === "voice_cloning_unavailable") {
         setVoiceUnavailable(data.error || "Voice cloning isn't available right now.");
         setSubmitting(false);
@@ -920,6 +943,8 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
 
       setHeygenVoiceId(data.voice_id);
       setVoiceId(null);
+      setSavedSample(false);
+      setRerecord(false);
       // Second arg is the HeyGen voice id; first (legacy ElevenLabs) is now always null.
       onUpdate(null, data.voice_id);
       setRecState("idle");
@@ -945,6 +970,8 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
     const elVoiceId = voiceId;
     setVoiceId(null);
     setHeygenVoiceId(null);
+    setSavedSample(false);
+    setRerecord(false);
     onUpdate(null, null);
     // Clear the HeyGen voice (primary). Also best-effort clean up any legacy
     // ElevenLabs clone left over from before the migration.
@@ -992,6 +1019,36 @@ export function VoiceCloneUploader({ userId, currentVoiceId, currentHeygenVoiceI
               <Trash2 size={11} /> Remove
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── A saved recording, with no voice built from it yet ───────────────────
+  if (savedSample && !rerecord) {
+    return (
+      <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+        <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+          <Mic size={16} className="text-green-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-green-800">Your voice is saved</p>
+          <p className="text-xs text-green-700 mt-0.5 leading-relaxed">
+            Your next video uses it automatically when there&apos;s room. Until then, a natural
+            stock voice. Nothing to record again.
+          </p>
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <button
+            onClick={() => setRerecord(true)}
+            className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
+          >
+            <RefreshCw size={11} /> Record again
+          </button>
+          <button onClick={handleDelete}
+            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1">
+            <Trash2 size={11} /> Remove
+          </button>
         </div>
       </div>
     );

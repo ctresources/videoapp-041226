@@ -183,6 +183,35 @@ export async function notifyVoiceCloneUnavailable({
   }).catch(() => {});
 }
 
+/**
+ * Voice clone slots running low.
+ *
+ * Sent at 80% and on each new voice after that, the same way the social
+ * capacity email works. Slots come from the HeyGen web plan and are shared
+ * by every customer, so the fix is a plan change, not code.
+ */
+export async function notifyVoiceSlotsNearlyFull({ used, limit }: { used: number; limit: number }) {
+  if (!RESEND_API_KEY) return;
+  const full = used >= limit;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: full
+        ? `Voice clones are FULL: ${used} of ${limit} used`
+        : `Voice clones are ${Math.round((used / limit) * 100)}% full: ${used} of ${limit} used`,
+      html: `<p><strong>${used}</strong> of ${limit} HeyGen voice clone slots are in use.</p>
+             <p>When they run out, a new user's recording is still saved, but their videos use a
+             stock voice until a slot frees up. Free accounts give theirs back on their own; paying
+             accounts and admins keep theirs.</p>
+             <p>To add room, move up a plan in HeyGen (Pro holds 70). If you do, set
+             <code>HEYGEN_VOICE_CLONE_LIMIT</code> in Vercel to the new number so this count stays right.</p>`,
+    }),
+  }).catch(() => {});
+}
+
 /** Notifies the owner that a new affiliate application came in for review. */
 export async function notifyNewAffiliateApplication({
   name,

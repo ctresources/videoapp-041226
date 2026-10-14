@@ -11,7 +11,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice, deleteVoice } from "@/lib/api/heygen";
-import { saveVoiceSample } from "@/lib/utils/voice-slot";
+import { saveVoiceSample, warnIfVoiceSlotsNearlyFull } from "@/lib/utils/voice-slot";
 import { notifyVoiceCloneUnavailable } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -57,9 +57,32 @@ export async function POST(req: NextRequest) {
         ? file.type
         : "audio/mpeg";
 
+    const admin = createAdminClient();
+    const isFull = (m: string) => /resource_limit_reached|voice clones|upgrade to create more/i.test(m);
+    const cloneName = `${name} — ${user.id.slice(0, 8)}`;
+
     let voiceId: string;
     try {
-      voiceId = await cloneVoice(audioBuffer, `${name} — ${user.id.slice(0, 8)}`, contentType);
+      try {
+        voiceId = await cloneVoice(audioBuffer, cloneName, contentType);
+      } catch (first) {
+        /**
+         * Recording again over a voice they already have, with no slot free.
+         *
+         * Their old voice holds a slot, and this is them replacing it, so it
+         * is let go and the new one tried once more in its place. Asking for
+         * a second slot to replace the first failed whenever the account was
+         * full, which is when it mattered.
+         */
+        const firstMsg = first instanceof Error ? first.message : "";
+        const { data: held } = await admin.from("profiles").select("heygen_voice_id").eq("id", user.id).single();
+        const old = (held as { heygen_voice_id: string | null } | null)?.heygen_voice_id;
+        if (!isFull(firstMsg) || !old) throw first;
+        await deleteVoice(old);
+        await admin.from("profiles").update({ heygen_voice_id: null }).eq("id", user.id).eq("heygen_voice_id", old);
+        console.log(`[heygen-voice] freed ${user.id}'s old voice to make room for the new recording`);
+        voiceId = await cloneVoice(audioBuffer, cloneName, contentType);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Voice clone failed";
       console.error("[heygen-voice] clone error:", msg);
@@ -77,10 +100,35 @@ export async function POST(req: NextRequest) {
        * Nothing they do can clear it, so they are told what is true for them:
        * the feature is off, their videos still work, the voice can come later.
        */
-      if (/resource_limit_reached|voice clones|upgrade to create more/i.test(msg)) {
-        notifyVoiceCloneUnavailable({ userEmail: user.email, detail: msg }).catch((e) =>
+      if (isFull(msg)) {
+        await notifyVoiceCloneUnavailable({ userEmail: user.email, detail: msg }).catch((e) =>
           console.error("[heygen-voice] owner notification failed:", e),
         );
+        /**
+         * Keep the recording (2026-10-14, at the owner's ask).
+         *
+         * It used to be thrown away, so the person had to record again once
+         * there was room. Saved as a retired voice is: no clone, a sample,
+         * and a retired date. The next video that needs it builds the clone
+         * from the sample (ensureVoiceForRender), and if there is still no
+         * room that video uses a stock voice, as it would have anyway.
+         */
+        const samplePath = await saveVoiceSample(user.id, audioBuffer, contentType);
+        if (samplePath) {
+          await admin.from("profiles").update({
+            voice_sample_url: samplePath,
+            voice_sample_at: new Date().toISOString(),
+            voice_clone_retired_at: new Date().toISOString(),
+          }).eq("id", user.id);
+          return NextResponse.json(
+            {
+              saved: true,
+              code: "voice_saved_pending",
+              message: "Your recording is saved. Your next video uses your voice automatically when there's room; until then, a natural stock voice.",
+            },
+            { status: 202 },
+          );
+        }
         return NextResponse.json(
           {
             error: "Voice cloning isn't available on your account right now — there's nothing wrong with your recording. Your videos will use a natural stock voice, and you can add your own voice later.",
@@ -106,7 +154,6 @@ export async function POST(req: NextRequest) {
      * sample is what lets the clone be given up later and rebuilt on demand —
      * without it, freeing a slot would mean asking this agent to record again.
      */
-    const admin = createAdminClient();
     const samplePath = await saveVoiceSample(user.id, audioBuffer, contentType);
 
     await admin
@@ -122,6 +169,7 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id);
 
     console.log(`[heygen-voice] Saved voice ${voiceId} for user ${user.id}`);
+    await warnIfVoiceSlotsNearlyFull();
     return NextResponse.json({ voice_id: voiceId });
 
   } catch (err) {
