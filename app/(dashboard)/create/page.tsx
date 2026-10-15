@@ -36,6 +36,8 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
+import { ASK_SPARKLEE_EVENT } from "@/components/layout/ask-sparklee";
+import Image from "next/image";
 import { ComposerCard } from "@/components/create/composer-card";
 import { BuyerQuestions } from "@/components/create/buyer-questions";
 import { FirstSparkBanner } from "@/components/create/first-spark-banner";
@@ -2458,10 +2460,9 @@ function CreatePageInner() {
                 </span>
               </span>
             ))}
-            <span className="text-spark-ink-muted sm:ml-4">About 2 minutes · nothing posts until you approve it</span>
           </div>
           <h1 className="mt-3 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
-            What do you want to talk about today?
+            What do you want to Spark today?
           </h1>
         </div>
       )}
@@ -2497,6 +2498,24 @@ function CreatePageInner() {
       <div className="min-w-0 lg:flex lg:flex-col">
       {step === "input" && !cameraHandoff && topicApplies && (
         <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:flex-1">
+          {/* Sparklee above the topic, from the owner's mock (2026-10-15). It
+              starts the same conversation as her badge in the top bar. */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT))}
+            aria-label="Ask Sparklee"
+            className="flex items-center gap-2.5 self-start rounded-xl bg-[#0f0d0b] py-1.5 pl-1.5 pr-3.5 text-left transition-opacity hover:opacity-90"
+          >
+            <span className="sparklee-badge block h-[42px] w-[42px] shrink-0">
+              <Image src="/sparklee.webp" alt="" width={42} height={42} className="h-full w-full" unoptimized />
+            </span>
+            <span>
+              <span className="block bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[16px] font-bold leading-[1.05] text-transparent">
+                Ask Sparklee
+              </span>
+              <span className="mt-0.5 block text-[11.5px] text-[#f3e6cf]">Your AI Visibility Voice Companion</span>
+            </span>
+          </button>
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow={`${sectionNo("Topic")} · Say or Pick a Topic`}

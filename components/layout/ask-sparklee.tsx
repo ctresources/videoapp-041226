@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Loader2, Mic, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { micErrorMessage } from "@/lib/hooks/use-microphone";
@@ -17,10 +19,14 @@ import { micErrorMessage } from "@/lib/hooks/use-microphone";
  * talks: it cannot see or press anything on the page.
  */
 
+/** Sent by anything else on the page that starts Sparklee (the card above
+ *  the topic on Create), so there is still only the one conversation. */
+export const ASK_SPARKLEE_EVENT = "sparklee:ask";
+
 type Line = { id: string; who: "you" | "sparklee"; text: string };
 type Status = "idle" | "connecting" | "live" | "error";
 
-export function AskSparklee({ dark = false }: { dark?: boolean }) {
+export function AskSparklee() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [lines, setLines] = useState<Line[]>([]);
@@ -38,6 +44,24 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => end(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // One shake each time a page opens, which covers landing on Create after
+  // logging in (2026-10-15, the owner's ask). The glow and shine run always.
+  const pathname = usePathname();
+  const [buzz, setBuzz] = useState(false);
+  useEffect(() => {
+    setBuzz(false);
+    const id = requestAnimationFrame(() => setBuzz(true));
+    return () => cancelAnimationFrame(id);
+  }, [pathname]);
+
+  const startRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const onAsk = () => startRef.current();
+    window.addEventListener(ASK_SPARKLEE_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_SPARKLEE_EVENT, onAsk);
+  }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [lines]);
@@ -171,26 +195,42 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
   }
 
   const live = status === "live";
+  const busy = live || status === "connecting";
+  // The card above the topic asks through here. A second tap while she is
+  // already on does nothing rather than starting over.
+  startRef.current = () => { if (!busy) void start(); };
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => (live || status === "connecting" ? end() : start())}
-        aria-label={live ? "Stop Ask Sparklee" : "Ask Sparklee"}
-        className={cn(
-          "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
-          live
-            ? "bg-red-600 text-white hover:bg-red-700"
-            : dark
-              ? "bg-white/10 text-spark-paper hover:bg-white/20"
-              : "bg-spark-amber-tint text-[#7a4b0a] hover:bg-[#f1dfc0]",
-        )}
-      >
-        {status === "connecting" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-        <span className="hidden sm:inline">{live ? "Stop" : "Ask Sparklee"}</span>
-        <span className="sm:hidden">{live ? "Stop" : "Ask"}</span>
-      </button>
+      {/* Sparklee herself in place of the words (2026-10-15, the owner's
+          mock). While she listens, her face sits beside a red Stop. */}
+      {busy ? (
+        <span className="flex items-center gap-2">
+          <span className="sparklee-badge block h-[30px] w-[30px] shrink-0">
+            <Image src="/sparklee-face.webp" alt="" width={30} height={30} className="h-full w-full" unoptimized />
+          </span>
+          <button
+            type="button"
+            onClick={() => end()}
+            aria-label="Stop Ask Sparklee"
+            className="flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-red-700"
+          >
+            {status === "connecting" && <Loader2 size={14} className="animate-spin" />}
+            Stop
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void start()}
+          aria-label="Ask Sparklee"
+          title="Ask Sparklee"
+          onAnimationEnd={(e) => { if (e.animationName === "sparklee-buzz") setBuzz(false); }}
+          className={cn("sparklee-badge block h-[40px] w-[40px] shrink-0", buzz && "sparklee-buzz")}
+        >
+          <Image src="/sparklee.webp" alt="" width={40} height={40} className="h-full w-full" unoptimized priority />
+        </button>
+      )}
 
       {open && (
         <div

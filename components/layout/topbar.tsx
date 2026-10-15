@@ -136,7 +136,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
         <div className="flex shrink-0 items-center gap-3.5">
           {/* Ask Sparklee, the spoken helper, on every page with this bar. */}
-          <AskSparklee dark={onCreate} />
+          <AskSparklee />
           {/* The "Step 1" label came off at the owner's ask (2026-10-15): the
               steps bar on the page already says where you are. */}
           <AccountMenu dark={onCreate} />
