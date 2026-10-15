@@ -814,8 +814,14 @@ function CreatePageInner() {
            * ever naming a town for you.
            */
           if (data?.location_state) setProfileHomeState(data.location_state);
+          // Seeded from Settings again, at the owner's ask (2026-10-15): the
+          // city and state there fill Details, and can be changed. A city
+          // named in the topic still replaces it (onSlots), and a ?city= from
+          // elsewhere in the app wins over both.
           if (urlCity) setLocCity(urlCity);
+          else if (data?.location_city) setLocCity((cur) => cur || data.location_city);
           if (urlState) setLocState(urlState);
+          else if (!urlCity && data?.location_state) setLocState((cur) => cur || data.location_state);
           if (Array.isArray(data?.saved_markets)) {
             // Drop any malformed entries (null/missing city or state) so render-time
             // string ops like m.city.toLowerCase() can never throw and crash the page.
@@ -2040,6 +2046,33 @@ function CreatePageInner() {
   // drops `inert={true}` and only passes the attribute through as a string,
   // while its types ask for a boolean.
   const topicOffClass = topicApplies ? "" : "pointer-events-none select-none opacity-45";
+  /**
+   * Two columns only while section 1 is in use. On a route that does not
+   * take a topic (a listing, your own content, a camera script from a
+   * document) section 1 goes away entirely, at the owner's ask (2026-10-15),
+   * and the page goes back to one centred column.
+   */
+  const twoCols = step === "input" && !cameraHandoff && topicApplies;
+  /**
+   * The sections this route shows, in order. The steps at the top and the
+   * numbers on the sections both come from this, so they always match
+   * (2026-10-15: the owner found "Topic, Format, Details, Video" over
+   * sections called Topic, Create, Script Source and Details). A section
+   * the route does not use drops out and the rest renumber.
+   */
+  const showCreate = step === "input" && !cameraHandoff;
+  const showSource = step === "input" && (inputMode === "camera" ? !cameraHandoff : (blogOnly || inputMode !== "listing"));
+  const showDetails = inputMode === "script" && step === "input";
+  const sectionList = [
+    twoCols ? "Topic" : null,
+    showCreate ? "Create" : null,
+    showSource ? "Script Source" : null,
+    showDetails ? "Details" : null,
+  ].filter((x): x is string => !!x);
+  const sectionNo = (name: string) => sectionList.indexOf(name) + 1;
+  /** Each section's name, the same words on the steps and on the section. */
+  const sectionLabel = (name: string) =>
+    name === "Topic" ? "Say or Pick a Topic" : name === "Script Source" && blogOnly ? "Source" : name;
   const topicOffProps = topicApplies
     ? {}
     : ({ inert: "", "aria-hidden": true } as unknown as { inert: boolean; "aria-hidden": boolean });
@@ -2315,7 +2348,7 @@ function CreatePageInner() {
     // step footer's width. The route opts out of the shared page padding, so
     // without this the content ran edge to edge — flush against the sidebar on
     // desktop and touching both screen edges on a phone.
-    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 lg:max-w-[1480px] lg:px-4 ${anyActionBar ? "pb-28" : "pb-6"}`}>
+    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${twoCols ? "lg:max-w-[1480px] lg:px-4" : ""} ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -2385,14 +2418,14 @@ function CreatePageInner() {
             {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-2 text-[13px]">
-            {["Topic", "Format", "Details", "Video"].map((label, i) => (
+            {sectionList.map((label, i) => (
               <span key={label} className="contents">
                 {i > 0 && <span className="hidden h-px min-w-[24px] flex-1 bg-spark-rule sm:block" />}
                 <span className={`flex items-center gap-2 ${i === 0 ? "font-semibold text-spark-ink" : "text-spark-ink-muted"}`}>
                   <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
                     i === 0 ? "bg-[#A3660F] text-white" : "border border-spark-rule-dim text-spark-ink-muted"
                   }`}>{i + 1}</span>
-                  {label}
+                  {sectionLabel(label)}
                 </span>
               </span>
             ))}
@@ -2431,13 +2464,13 @@ function CreatePageInner() {
           Then even, at the owner's markup (2026-10-14): the same width, and the
           same height, the topic card running down to meet the bottom of the
           right-hand column. */}
-      <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+      <div className={twoCols ? "lg:grid lg:grid-cols-2 lg:gap-6" : ""}>
       <div className="min-w-0 lg:flex lg:flex-col">
-      {step === "input" && !cameraHandoff && (
+      {step === "input" && !cameraHandoff && topicApplies && (
         <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
-            eyebrow="1 · Say or Pick a Topic"
+            eyebrow={`${sectionNo("Topic")} · Say or Pick a Topic`}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2508,7 +2541,7 @@ function CreatePageInner() {
                   setListingMode("scenes");
                 } else if (kind === "video") {
                   // Either kind of video is already this card.
-                  if (!blogOnly && (inputMode === "script" || inputMode === "paste" || scenesRoute)) return;
+                  if (!blogOnly && (inputMode === "script" || (inputMode as InputMode) === "paste" || scenesRoute)) return;
                   setBlogOnly(false);
                   if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
                 } else {
@@ -2740,7 +2773,7 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {/* Back in a section of their own. They were moved into the Topic card,
           between the box and Send, and the owner found that too busy. */}
-      {step === "input" && !cameraHandoff && <SectionHead className="mt-7 lg:mt-4" eyebrow="2 · Create" />}
+      {step === "input" && !cameraHandoff && <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Create")} · Create`} />}
       {step === "input" && !cameraHandoff && (
         <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
           {/* Avatar first, because avatar is what the page opens on.
@@ -3060,7 +3093,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7 lg:mt-4" eyebrow="3 · Script Source" />
+          <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Script Source")} · Script Source`} />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -3112,8 +3145,8 @@ function CreatePageInner() {
       {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
         <>
         <SectionHead
-          className="mt-7"
-          eyebrow={blogOnly ? "3 · Source" : "3 · Script Source"}
+          className="mt-7 lg:mt-4"
+          eyebrow={`${sectionNo("Script Source")} · ${blogOnly ? "Source" : "Script Source"}`}
         />
         <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           {([
@@ -3335,7 +3368,7 @@ function CreatePageInner() {
           {/* What is left of the old third section now that its topic box is
               section 1: the place, the audience and the shape. It had no
               heading of its own because it sat directly under that box. */}
-          <SectionHead eyebrow="4 · Details" />
+          <SectionHead eyebrow={`${sectionNo("Details")} · Details`} />
 
           {/* ── Where / Who / What ──
               One shaded panel of questions, as in the design, rather than a
@@ -3513,7 +3546,7 @@ function CreatePageInner() {
           is a different route, so there is nowhere back to go yet. */}
       {showActionBar && (
         <StepFooter
-          wide
+          wide={twoCols}
           hint={
             // Nothing to run out of on the blog route, so the out-of-videos
             // warning does not belong on it.
@@ -3583,7 +3616,7 @@ function CreatePageInner() {
           was never on screen when you needed it. */}
       {inputMode === "paste" && step === "input" && (
         <StepFooter
-          wide
+          wide={twoCols}
           hint={
             pasteGenerating
               ? "Saving your script…"
@@ -3612,7 +3645,7 @@ function CreatePageInner() {
           for the step, not for the card. */}
       {inputMode === "camera" && step === "input" && (
         <StepFooter
-          wide
+          wide={twoCols}
           hint={
             // Uploading footage is the one route with no script and no Open
             // Camera, so every hint below it was wrong there — the bar told
