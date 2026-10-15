@@ -112,9 +112,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <span className="hidden sm:inline">Back</span>
             </button>
           )}
-          {/* The logo at every width: on computers the side menu that carried
-              it is gone, and the page names run across this bar instead. */}
-          <Link href="/create" className="shrink-0">
+          {/* Phones only. On a computer the bar starts with the page names;
+              the owner had the logo taken off there (2026-10-14). */}
+          <Link href="/create" className="shrink-0 md:hidden">
             <Image
               src="/sparkreels-logo.png"
               alt="SparkReels"
