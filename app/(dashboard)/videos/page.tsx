@@ -804,7 +804,8 @@ function VideosContent() {
                     {l.last_update_at ? `last update ${new Date(l.last_update_at).toLocaleDateString()}` : "no update yet"}
                   </p>
                   <Link href={`/tools?tab=seller&listing=${l.id}`}>
-                    <Button size="sm" className="w-full">This week&apos;s update</Button>
+                    {/* "New update", not "This week's": updates go out any day (2026-10-15). */}
+                    <Button size="sm" className="w-full">New update</Button>
                   </Link>
                 </Card>
               ))}
