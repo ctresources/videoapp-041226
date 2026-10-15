@@ -2373,20 +2373,40 @@ function CreatePageInner() {
     // desktop and touching both screen edges on a phone.
     <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${twoCols ? "lg:max-w-[1480px] lg:px-4" : ""} ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
-      {/* Settings banner — shown until profile is saved */}
+      {/* Settings banner — shown until profile is saved. Sparklee says it
+          since 2026-10-15 (the owner's pick from the mock): she shakes hello
+          when it appears, and "Ask me how" starts a conversation with her so
+          she can talk them through Settings. */}
       {onboardingDone === false && (
-        <button
-          type="button"
-          onClick={() => router.push("/settings")}
-          className="w-full text-left flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 hover:bg-amber-100 transition-colors group"
-        >
-          <span className="text-amber-500 text-lg leading-none mt-0.5">⚡</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-amber-800">Complete your profile to get the most out of your videos</p>
-            <p className="text-xs text-amber-600 mt-0.5">Add your headshot, AI avatar photo, voice, logo, and contact info in Settings. They appear in every video you create.</p>
+        <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl bg-[#0f0d0b] py-2.5 pl-2.5 pr-4">
+          <span className="sparklee-badge sparklee-buzz block h-[56px] w-[56px] shrink-0">
+            <Image src="/sparklee.webp" alt="" width={56} height={56} className="h-full w-full" unoptimized />
+          </span>
+          <div className="min-w-0 flex-1 basis-[240px]">
+            <p className="bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[19px] font-bold leading-[1.15] text-transparent">
+              Hi, I&apos;m Sparklee! Let&apos;s set up your profile first.
+            </p>
+            <p className="mt-0.5 text-[12.5px] text-[#f3e6cf]">
+              Your headshot, avatar photo, voice, logo and contact info go into every video.
+            </p>
           </div>
-          <span className="text-amber-500 text-sm font-semibold shrink-0 group-hover:underline">Go to Settings →</span>
-        </button>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT))}
+              className="whitespace-nowrap rounded-[10px] border border-[#e7a92c] px-3 py-[7px] text-[13px] font-semibold text-[#e7a92c] transition-colors hover:bg-white/5"
+            >
+              Ask me how
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/settings")}
+              className="whitespace-nowrap rounded-[10px] bg-gradient-to-r from-[#e7a92c] to-[#a3660f] px-3.5 py-2 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+            >
+              Go to Settings →
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Voice clone prompt.
