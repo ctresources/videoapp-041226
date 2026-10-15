@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { StepFooter } from "@/components/create/step-footer";
 import { AlertCircle, Film, Loader2, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
@@ -54,7 +55,12 @@ const SHAPES = [
  * Topic box at the top of that page, the same box the mic writes into. With
  * no `topic` passed it keeps a topic field of its own.
  */
-export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting, vertical = true }: {
+export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting, vertical = true, footer }: {
+  /**
+   * The bottom bar, with Back and this form's next button, at the owner's
+   * ask (2026-10-15): every Create page has one. Given by Spark Studio.
+   */
+  footer?: { onBack: () => void };
   city?: string;
   state?: string;
   /** The page's topic. When given, this is the topic and there is no field here. */
@@ -448,6 +454,27 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
         </Button>
       )}
 
+      {/* The same as the main button above, pinned to the bottom. */}
+      {footer && (
+        <StepFooter
+          onBack={footer.onBack}
+          hint={savedId ? "Building now. You can leave this page." : !ready && !rendering ? "Write or paste the script above to carry on." : undefined}
+        >
+          {savedId ? (
+            <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)}>
+              <Button size="lg" className="gap-2">
+                {openingVideo ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+                {openingVideo ? "Opening…" : "Go to My Sparks"}
+              </Button>
+            </a>
+          ) : (
+            <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
+              {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+              {rendering ? "Starting…" : "Build the Scenes reel"}
+            </Button>
+          )}
+        </StepFooter>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { StepFooter } from "@/components/create/step-footer";
 import { Upload, Loader2, X, Mic, Square, AlertCircle, Film, ChevronUp, ChevronDown, Link2, Images } from "lucide-react";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import { VoicePickMicInSlot, type PickField } from "@/components/ui/voice-pick-mic";
@@ -66,11 +67,14 @@ export function PhotoReelForm({
    */
   initialPhotos,
   initialAddress,
+  footer,
 }: {
   city?: string;
   state?: string;
   initialPhotos?: string[];
   initialAddress?: string;
+  /** The bottom bar, with Back and this form's button (2026-10-15). */
+  footer?: { onBack: () => void };
 }) {
   /** Each photo carries its own optional line of on-screen text. */
   const [photos, setPhotos] = useState<{ url: string; name: string; caption: string }[]>(
@@ -1025,6 +1029,28 @@ export function PhotoReelForm({
           Rendering on our server, so you can leave this page. Most reels take three to five
           minutes — the longer ones, and the ones with more photos, take the longer end of that.
         </p>
+      )}
+
+      {/* The same as the main button above, pinned to the bottom. */}
+      {footer && (
+        <StepFooter
+          onBack={footer.onBack}
+          hint={savedId ? "Saved to My Sparks." : photos.length === 0 ? "Add photos to carry on." : undefined}
+        >
+          {savedId ? (
+            <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)}>
+              <Button size="lg" className="gap-2">
+                {openingVideo ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+                {openingVideo ? "Opening…" : "View your reel"}
+              </Button>
+            </a>
+          ) : (
+            <Button onClick={render} size="lg" disabled={!ready} className="gap-2">
+              {rendering ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
+              {rendering ? "Building…" : cinematic ? "Build the Cinematic reel" : "Build the reel"}
+            </Button>
+          )}
+        </StepFooter>
       )}
     </div>
   );

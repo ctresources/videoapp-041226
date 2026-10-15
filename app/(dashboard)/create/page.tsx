@@ -2326,6 +2326,14 @@ function CreatePageInner() {
     );
   }
 
+  /** Back from a listing or Scenes Reel page: to the start of Spark Studio
+   *  (the topic, or the blog's own start on the blog route). */
+  function backToStart() {
+    setInputMode("script");
+    if (listingMode === "scenes") setListingMode("listing");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   /** The brief as request fields, sent with every script write and save. */
   function briefFields() {
     return {
@@ -2337,7 +2345,7 @@ function CreatePageInner() {
   // Listings keep their own submit inside ListingVideoForm, which owns that
   // form's validity; the other three tabs put their primary action on the bar.
   const anyActionBar =
-    step === "input" && (inputMode === "script" || inputMode === "paste" || inputMode === "camera");
+    step === "input" && (inputMode === "script" || inputMode === "paste" || inputMode === "camera" || inputMode === "listing");
 
   return (
     // Every tab fills the full content width — the AI-script step lays out as
@@ -2409,8 +2417,11 @@ function CreatePageInner() {
           will make and offers a mic to say it — a question already answered,
           and a second brief that would overwrite the script they came to
           record. */}
-      {step === "input" && !cameraHandoff && (
+      {twoCols && (
         <div>
+          {/* Only where a topic is asked for: on Listings & photos, your own
+              content or a document the owner found them out of place
+              (2026-10-15). */}
           {/* From the owner's mock (2026-10-15): her two lines as one, above
               the steps; the steps; then the question, in the display face. */}
           <p className="text-center text-[14px] leading-[1.45] text-primary-700">
@@ -3095,7 +3106,7 @@ function CreatePageInner() {
           tab that had already been chosen — up here it stops reading as the
           same question asked twice. Once you are recording it dims instead of
           disappearing — see cameraSourceLocked. */}
-      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
+      {twoCols && step === "input" && inputMode === "camera" && !cameraHandoff && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
           <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Script Source")} · Script Source`} />
@@ -3147,7 +3158,7 @@ function CreatePageInner() {
       {/* Not for a listing on the video route: that card above is the whole
           choice, and the panel it opens asks its own (listing video or photo
           reel). On the blog route a listing is still a source, so it stays. */}
-      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
+      {twoCols && step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
         <>
         <SectionHead
@@ -3368,7 +3379,7 @@ function CreatePageInner() {
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
-      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
+      {twoCols && inputMode === "script" && step === "input" && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {inputMode === "script" && step === "input" && (
         <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2">
 
@@ -4342,6 +4353,7 @@ function CreatePageInner() {
                   topic={locCustomTopic}
                   writeSignal={scenesWrite}
                   onWriting={setScenesWriting}
+                  footer={{ onBack: backToStart }}
                   vertical={!formatTouched || locPlatform === "reel"}
                 />
               </div>
@@ -4352,6 +4364,7 @@ function CreatePageInner() {
                 state={locState || undefined}
                 initialPhotos={listingPhotos}
                 initialAddress={listingAddress}
+                footer={{ onBack: backToStart }}
               />
             )}
             {/* "Read it myself on camera" crosses to the camera tab rather
@@ -4363,6 +4376,7 @@ function CreatePageInner() {
             {(listingMode === "listing" || blogOnly) && (
             <ListingVideoForm
               blogOnly={blogOnly}
+              footer={{ onBack: backToStart }}
               onListingPhotos={(photoUrls, address) => {
                 setListingPhotos(photoUrls);
                 setListingAddress(address);

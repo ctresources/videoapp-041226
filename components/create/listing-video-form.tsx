@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { StepFooter } from "@/components/create/step-footer";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
@@ -71,7 +72,12 @@ const EMPTY_LISTING: ListingData = {
 
 const PROPERTY_TYPES = ["Single Family", "Condo", "Townhouse", "Multi-Family", "Land", "Other"];
 
-export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly = false }: {
+export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly = false, footer }: {
+  /**
+   * The bottom bar, with Back and this form's next button, at the owner's
+   * ask (2026-10-15): every Create page has one. Given by Spark Studio.
+   */
+  footer?: { onBack: () => void };
   /**
    * Hand the finished script and the listing's photos to the camera tab.
    *
@@ -414,8 +420,38 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
   }
 
   // ── URL step ───────────────────────────────────────────────────────────────
+  /** The bottom bar on every screen of this form: Back, and the same as the
+   *  main button on the details screen. */
+  const bar = footer && (
+        <StepFooter
+          onBack={footer.onBack}
+          hint={
+            step === "generating"
+              ? "Writing from your listing…"
+              : !listing.address.trim() || !listing.price.trim()
+                ? "Paste a listing link, upload a file, or enter the details to carry on."
+                : blogOnly
+                  ? "We'll write the property article next."
+                  : "We'll write the tour script, then you pick how it looks."
+          }
+        >
+          <Button
+            onClick={() => handleGenerate()}
+            loading={step === "generating"}
+            disabled={!listing.address.trim() || !listing.price.trim()}
+            size="lg"
+            className="gap-2"
+          >
+            {blogOnly
+              ? <>Write<span className="hidden sm:inline"> my article</span> <ArrowRight size={18} /></>
+              : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>}
+          </Button>
+        </StepFooter>
+      );
+  const withBar = (node: React.ReactNode) => <>{node}{bar}</>;
+
   if (step === "url") {
-    return (
+    return withBar(
       <div className="flex flex-col gap-4">
 
         {/* ── URL import ──
@@ -623,7 +659,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
 
   // ── Scraping step ──────────────────────────────────────────────────────────
   if (step === "scraping") {
-    return (
+    return withBar(
       <div className="flex flex-col items-center py-12 gap-4 text-center">
         <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center">
           <Home className="w-8 h-8 text-primary-500 animate-pulse" />
@@ -638,7 +674,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
 
   // ── Parsing uploaded file step ─────────────────────────────────────────────
   if (step === "parsing-file") {
-    return (
+    return withBar(
       <div className="flex flex-col items-center py-12 gap-4 text-center">
         <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center">
           <FileText className="w-8 h-8 text-primary-500 animate-pulse" />
@@ -655,7 +691,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
 
   // ── Generating step ────────────────────────────────────────────────────────
   if (step === "generating") {
-    return (
+    return withBar(
       <div className="flex flex-col items-center py-12 gap-4 text-center">
         <div className="w-16 h-16 bg-secondary-500/10 rounded-2xl flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-secondary-500 animate-spin" />
@@ -669,7 +705,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
   }
 
   // ── Review / Edit step ─────────────────────────────────────────────────────
-  return (
+  return withBar(
     <div className="flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -1094,6 +1130,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
         avatar, shape and music.
       </p>
       </>)}
+
     </div>
   );
 }
