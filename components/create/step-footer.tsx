@@ -28,7 +28,7 @@ export function StepFooter({ onBack, backLabel = "Back", hint, wide = false, chi
     // Full width since the side menu left computers (2026-10-14); it was
     // still starting 184px in, where the menu used to end.
     <div className="fixed inset-x-0 bottom-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur">
-      <div className={`mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 md:px-6 ${wide ? "lg:max-w-[1320px]" : ""}`}>
+      <div className={`mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 md:px-6 ${wide ? "lg:max-w-[1480px] lg:px-4" : ""}`}>
         {onBack && (
           <button
             type="button"

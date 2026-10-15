@@ -126,6 +126,8 @@ function dedupe(items: ContentTemplate[]): ContentTemplate[] {
 }
 
 interface SparkPanelProps {
+  /** Its frame's extra classes: on Create it grows to the column's height. */
+  className?: string;
   city?: string;
   state?: string;
   /** Receives the resolved topic and the raw {city}/{state} original, so a
@@ -154,7 +156,7 @@ interface SparkPanelProps {
  * grouped library for anyone who does want to browse. Nothing is hidden that
  * was reachable before; it is one press further away and the press is labelled.
  */
-export function SparkPanel({ city, state, onSelect, tryLine, onUseTry }: SparkPanelProps) {
+export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className = "" }: SparkPanelProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   /**
@@ -200,7 +202,7 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry }: SparkPa
     // write, paper where you choose.
     <section
       id="spark-panel"
-      className="scroll-mt-6 rounded-b-[22px] border border-spark-rule bg-[#f4f2e8] px-4 py-3 sm:px-5"
+      className={`scroll-mt-6 rounded-b-[22px] border border-spark-rule bg-[#f4f2e8] px-4 py-3 sm:px-5 ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-3">

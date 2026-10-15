@@ -2313,7 +2313,7 @@ function CreatePageInner() {
     // step footer's width. The route opts out of the shared page padding, so
     // without this the content ran edge to edge — flush against the sidebar on
     // desktop and touching both screen edges on a phone.
-    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 lg:max-w-[1320px] ${anyActionBar ? "pb-28" : "pb-6"}`}>
+    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 lg:max-w-[1480px] lg:px-4 ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -2413,11 +2413,14 @@ function CreatePageInner() {
       {/* Two columns on a computer, at the owner's ask (2026-10-14): section 1
           on the left, sections 2 to 4 on the right. The right is the wider of
           the two so the four Create cards still fit on one line. Stacked, in
-          the same order, below that width. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10">
-      <div className="min-w-0">
+          the same order, below that width.
+          Then even, at the owner's markup (2026-10-14): the same width, and the
+          same height, the topic card running down to meet the bottom of the
+          right-hand column. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+      <div className="min-w-0 lg:flex lg:flex-col">
       {step === "input" && !cameraHandoff && (
-        <div className="mt-7 flex flex-col gap-3">
+        <div className="mt-7 flex flex-col gap-3 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow="1 · Content Topic"
@@ -2452,7 +2455,7 @@ function CreatePageInner() {
           )}
           {/* Dimmed part by part, not as a block: the mic in the card can
               stay live when the box under it is switched off. */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-1">
           {/* Named so the hero mic can bring what it heard into view. */}
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
@@ -2645,7 +2648,7 @@ function CreatePageInner() {
               bottom, and between them there is a single shared rule. They fill
               the same field, so a gap made choosing an idea look like a
               different exercise from typing one. */}
-          <div className={`-mt-3 ${topicOffClass}`} {...topicOffProps}>
+          <div className={`-mt-3 lg:flex lg:flex-1 lg:flex-col ${topicOffClass}`} {...topicOffProps}>
           {/* What buyers here are asking AI, as topics: AI Answer Blocks'
               questions, moved up from the tenth tab of Spark Tools to where a
               topic is chosen (2026-10-14). Straight under the box, above
@@ -2663,6 +2666,7 @@ function CreatePageInner() {
             className="border border-y-0 border-spark-rule bg-spark-amber-tint px-4 py-2.5 sm:px-5"
           />
           <SparkPanel
+            className="lg:flex-1"
             city={locCity || undefined}
             state={locState || undefined}
             // Also drops the topic into the composer, so a pick is the start of
@@ -2727,7 +2731,7 @@ function CreatePageInner() {
           between the box and Send, and the owner found that too busy. */}
       {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" />}
       {step === "input" && !cameraHandoff && (
-        <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px]">
+        <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -2916,7 +2920,7 @@ function CreatePageInner() {
                 // column and "Listings & photos" dropped to a row of its own.
                 // Measured from the owner's screenshot, they now come to
                 // about 685. On a phone they still wrap, as they must.
-                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors ${
+                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors lg:px-2 ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
