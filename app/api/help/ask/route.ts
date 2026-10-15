@@ -15,12 +15,14 @@ export const dynamic = "force-dynamic";
  * seconds } — the browser reports how long it ran, for the cost figures.
  *
  * Limits, at the owner's choice: 5 conversations a day before a paid plan,
- * 20 on one, none for admins. Each is cut off at three minutes by the page.
+ * 20 on one, none for admins. Each ends at five minutes (three until
+ * 2026-10-15, when it cut the owner off mid-answer), and the page lets
+ * Sparklee finish what she is saying first.
  */
 
 const MODEL = process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-2.1-mini";
 const VOICE = process.env.OPENAI_REALTIME_VOICE || "marin";
-const MAX_SECONDS = 180;
+const MAX_SECONDS = 300;
 const FREE_PER_DAY = 5;
 const PAID_PER_DAY = 20;
 const START_MARK = "ask_sparklee";
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
 
   if (body.action === "end") {
-    const seconds = Math.max(0, Math.min(MAX_SECONDS + 30, Math.round(Number(body.seconds) || 0)));
+    const seconds = Math.max(0, Math.min(MAX_SECONDS + 60, Math.round(Number(body.seconds) || 0)));
     if (seconds > 0) {
       await admin.from("api_usage_log").insert({
         user_id: user.id, api_provider: "openai", endpoint: SECONDS_MARK, credits_used: seconds, response_status: 200,
@@ -88,8 +90,9 @@ export async function POST(req: NextRequest) {
           type: "realtime",
           model: MODEL,
           instructions,
-          // Room for three short sentences, with some to spare.
-          max_output_tokens: 1200,
+          // The cap on one answer. 1200 (2026-10-14) could stop a longer
+          // explanation part way; the five-minute limit bounds the cost.
+          max_output_tokens: 4096,
           audio: {
             input: {
               transcription: { model: "gpt-4o-mini-transcribe" },

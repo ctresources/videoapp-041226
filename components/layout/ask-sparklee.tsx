@@ -40,6 +40,16 @@ export function AskSparklee() {
   const startedRef = useRef<number>(0);
   /** The last time anyone spoke or Sparklee answered; quiet for 30s ends it. */
   const activeAtRef = useRef<number>(0);
+  /** Whether Sparklee is talking (2026-10-15). Her answer arrives faster than
+   *  she says it, so the events alone stop well before her voice does: the
+   *  quiet rule hung up on her, and the time limit cut her off mid-sentence.
+   *  Two signals, either one enough: the service's own "audio started /
+   *  stopped" events, and the sound level of her voice in this browser. */
+  const speakingRef = useRef(false);
+  const audioEventsRef = useRef(false);
+  const heardAtRef = useRef<number>(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const levelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +94,13 @@ export function AskSparklee() {
     const type = String(e.type || "");
     const id = String(e.response_id || e.item_id || "r");
     if (type === "input_audio_buffer.speech_started" || type.startsWith("response.")) activeAtRef.current = Date.now();
+    if (type === "response.created" || type === "output_audio_buffer.started") speakingRef.current = true;
+    if (type.startsWith("output_audio_buffer.")) audioEventsRef.current = true;
+    if (type === "output_audio_buffer.stopped" || type === "output_audio_buffer.cleared"
+      || (type === "response.done" && !audioEventsRef.current)) {
+      speakingRef.current = false;
+      activeAtRef.current = Date.now();
+    }
     if (type === "conversation.item.input_audio_transcription.completed") {
       const text = String(e.transcript || "").trim();
       if (text) setLines((prev) => [...prev, { id: `you-${String(e.item_id || prev.length)}`, who: "you", text }]);
@@ -96,7 +113,22 @@ export function AskSparklee() {
     }
   }
 
+  /** True while Sparklee is still saying something. */
+  function talking() {
+    return speakingRef.current || Date.now() - heardAtRef.current < 1500;
+  }
+
   async function start() {
+    // Made inside the tap, or iPhone keeps it silent. Only listens to her
+    // voice; the audio element is what plays it.
+    try {
+      const Ctx = window.AudioContext
+        || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) { audioCtxRef.current = new Ctx(); void audioCtxRef.current.resume(); }
+    } catch { /* the events still tell when she talks */ }
+    speakingRef.current = false;
+    audioEventsRef.current = false;
+    heardAtRef.current = 0;
     setOpen(true);
     setError(null);
     setNote(null);
@@ -124,7 +156,23 @@ export function AskSparklee() {
       const audio = new Audio();
       audio.autoplay = true;
       audioRef.current = audio;
-      pc.ontrack = (ev) => { audio.srcObject = ev.streams[0]; };
+      pc.ontrack = (ev) => {
+        audio.srcObject = ev.streams[0];
+        const ctx = audioCtxRef.current;
+        if (!ctx || levelTimerRef.current) return;
+        try {
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 1024;
+          ctx.createMediaStreamSource(ev.streams[0]).connect(analyser);
+          const buf = new Uint8Array(analyser.fftSize);
+          levelTimerRef.current = setInterval(() => {
+            analyser.getByteTimeDomainData(buf);
+            let peak = 0;
+            for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
+            if (peak > 8) heardAtRef.current = Date.now();
+          }, 200);
+        } catch { /* the events still tell when she talks */ }
+      };
       mic.getAudioTracks().forEach((t) => pc.addTrack(t, mic));
       const dc = pc.createDataChannel("oai-events");
       dc.onmessage = (ev) => onEvent(String(ev.data));
@@ -147,12 +195,20 @@ export function AskSparklee() {
 
       startedRef.current = Date.now();
       activeAtRef.current = Date.now();
-      const max = Number(pass.maxSeconds) || 180;
+      const max = Number(pass.maxSeconds) || 300;
       setLeft(max);
       timerRef.current = setInterval(() => {
         const remaining = max - Math.floor((Date.now() - startedRef.current) / 1000);
-        setLeft(remaining);
-        if (remaining <= 0) { setNote("Three minutes is the limit for one conversation."); end("idle"); }
+        setLeft(Math.max(0, remaining));
+        // Her talking counts as activity, so the quiet rule never hangs up on her.
+        if (talking()) activeAtRef.current = Date.now();
+        // At the limit she finishes what she is saying (up to 45 seconds more)
+        // and then it ends.
+        if (remaining <= 0) {
+          if (talking() && remaining > -45) return;
+          setNote("Five minutes is the limit for one conversation.");
+          end("idle");
+        }
         // Nobody has spoken for 30 seconds: hang up rather than keep paying
         // for a quiet room.
         else if (Date.now() - activeAtRef.current > 30_000) { setNote("Stopped after 30 seconds of quiet."); end("idle"); }
@@ -167,6 +223,10 @@ export function AskSparklee() {
   /** Hangs up, and reports how long it ran. */
   function end(next: Status = "idle") {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (levelTimerRef.current) { clearInterval(levelTimerRef.current); levelTimerRef.current = null; }
+    try { void audioCtxRef.current?.close(); } catch { /* already closed */ }
+    audioCtxRef.current = null;
+    speakingRef.current = false;
     try { pcRef.current?.getSenders().forEach((s) => s.track?.stop()); } catch { /* closing anyway */ }
     try { pcRef.current?.close(); } catch { /* already closed */ }
     pcRef.current = null;
