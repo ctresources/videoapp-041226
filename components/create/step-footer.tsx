@@ -3,6 +3,8 @@
 import { ArrowLeft } from "lucide-react";
 
 interface StepFooterProps {
+  /** As wide as Spark Studio's two columns, on its own page. */
+  wide?: boolean;
   /** Omit for the first step, where there is nowhere back to go. */
   onBack?: () => void;
   backLabel?: string;
@@ -21,10 +23,12 @@ interface StepFooterProps {
  * using this need bottom padding of their own to keep their last card clear —
  * a fixed element is out of flow and will otherwise sit on top of it.
  */
-export function StepFooter({ onBack, backLabel = "Back", hint, children }: StepFooterProps) {
+export function StepFooter({ onBack, backLabel = "Back", hint, wide = false, children }: StepFooterProps) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur md:left-[184px]">
-      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 md:px-6">
+    // Full width since the side menu left computers (2026-10-14); it was
+    // still starting 184px in, where the menu used to end.
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur">
+      <div className={`mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 md:px-6 ${wide ? "lg:max-w-[1320px]" : ""}`}>
         {onBack && (
           <button
             type="button"

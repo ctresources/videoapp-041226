@@ -76,7 +76,7 @@ export function TopNav({ dark }: { dark: boolean }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const link = (on: boolean) => cn(
-    "items-center whitespace-nowrap border-b-2 px-2 py-[13px] text-[12.5px] font-medium transition-colors",
+    "items-center whitespace-nowrap border-b-2 px-2.5 py-[12px] text-[14.5px] font-medium transition-colors",
     on
       ? cn("border-spark-amber", dark ? "text-white" : "text-spark-ink")
       : cn("border-transparent", dark ? "text-spark-paper/70 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink"),
@@ -106,7 +106,7 @@ export function TopNav({ dark }: { dark: boolean }) {
                 href={i.href}
                 className={cn(
                   IN_MORE[i.from],
-                  "px-3.5 py-2 text-[13px] font-medium",
+                  "px-3.5 py-2 text-[14.5px] font-medium",
                   isActive(i.href) ? "text-[#A3660F]" : "text-spark-ink-soft hover:bg-spark-amber-tint",
                 )}
               >

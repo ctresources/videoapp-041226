@@ -2313,7 +2313,7 @@ function CreatePageInner() {
     // step footer's width. The route opts out of the shared page padding, so
     // without this the content ran edge to edge — flush against the sidebar on
     // desktop and touching both screen edges on a phone.
-    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${anyActionBar ? "pb-28" : "pb-6"}`}>
+    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 lg:max-w-[1320px] ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
       {/* Settings banner — shown until profile is saved */}
       {onboardingDone === false && (
@@ -2410,6 +2410,12 @@ function CreatePageInner() {
           which was fine at the bottom of the page. Up here it would vanish
           above the tile just pressed and pull the page up under the finger, so
           it stays where it is, dimmed, with a line saying why. */}
+      {/* Two columns on a computer, at the owner's ask (2026-10-14): section 1
+          on the left, sections 2 to 4 on the right. The right is the wider of
+          the two so the four Create cards still fit on one line. Stacked, in
+          the same order, below that width. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10">
+      <div className="min-w-0">
       {step === "input" && !cameraHandoff && (
         <div className="mt-7 flex flex-col gap-3">
           <SectionHead
@@ -2700,6 +2706,8 @@ function CreatePageInner() {
         </div>
       )}
 
+      </div>
+      <div className="min-w-0">
       {/* ── Row 1 · how it gets made ──
           One row used to ask two questions: three tiles chose where the words
           come from and the fourth chose who does the filming. That mix is why
@@ -3477,6 +3485,12 @@ function CreatePageInner() {
         </div>
       )}
 
+      </div>
+      </div>
+
+      {/* Everything below the two columns (each route's own forms, the
+          camera, a listing) keeps the reading width it was designed at. */}
+      <div className="mx-auto w-full max-w-3xl">
       {/* ── Fixed action bar ──
           v2 pins the primary action to the bottom of the screen with the
           status line beside it, so "what do I do next" never scrolls away.
@@ -3484,6 +3498,7 @@ function CreatePageInner() {
           is a different route, so there is nowhere back to go yet. */}
       {showActionBar && (
         <StepFooter
+          wide
           hint={
             // Nothing to run out of on the blog route, so the out-of-videos
             // warning does not belong on it.
@@ -3553,6 +3568,7 @@ function CreatePageInner() {
           was never on screen when you needed it. */}
       {inputMode === "paste" && step === "input" && (
         <StepFooter
+          wide
           hint={
             pasteGenerating
               ? "Saving your script…"
@@ -3581,6 +3597,7 @@ function CreatePageInner() {
           for the step, not for the card. */}
       {inputMode === "camera" && step === "input" && (
         <StepFooter
+          wide
           hint={
             // Uploading footage is the one route with no script and no Open
             // Camera, so every hint below it was wrong there — the bar told
@@ -4799,6 +4816,7 @@ function CreatePageInner() {
           <p>Microphone error. Please check your browser permissions.</p>
         </div>
       )}
+      </div>
 
     </div>
   );
