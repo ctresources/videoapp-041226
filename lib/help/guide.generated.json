@@ -3,22 +3,22 @@
     {
       "n": 1,
       "title": "Complete Your Brand Profile",
-      "text": "In Settings → Brand & AI Profile, add your name, brokerage, phones, website, and license number. Upload your logo and your headshot — the headshot becomes your AI Photo Avatar, and your contact card and logo appear automatically in every video."
+      "text": "In Settings → Profile → Brand & AI Profile, add your name, brokerage, phones, website, and license number. Upload your logo and your headshot — the headshot becomes your AI Photo Avatar, and your contact card and logo appear automatically in every video."
     },
     {
       "n": 2,
       "title": "Set Your Market",
-      "text": "In Settings → Content Preferences, enter your city, state, and video language. This powers live local market research, trending topics, and auto-localized templates."
+      "text": "In Settings → Profile → Content Preferences, enter your city, state, and video language. This powers live local market research, trending topics, and auto-localized templates."
     },
     {
       "n": 3,
       "title": "Create Your AI Voice",
-      "text": "In Settings → AI Voice Clone, record or upload about 30 seconds of your voice. Your AI videos will speak in your voice.\nThe card has two tabs. Record my voice gives you a short script to read aloud, which you can edit or replace with your own words. Press Start recording, speak clearly and naturally for at least 30 seconds, press Stop Recording, then Use this recording, or Re-record to try again. Upload a file is for a recording you already have.\nIf your voice clone ever stops being available, a video tells you before it is made and nothing is taken from your plan. Record your voice again here and try again."
+      "text": "In Settings → Profile → AI Voice Clone, record or upload about 30 seconds of your voice. Your AI videos will speak in your voice.\nThe card has two tabs. Record my voice gives you a short script to read aloud, which you can edit or replace with your own words. Press Start recording, speak clearly and naturally for at least 30 seconds, press Stop Recording, then Use this recording, or Re-record to try again. Upload a file is for a recording you already have.\nIf your voice clone ever stops being available, a video tells you before it is made and nothing is taken from your plan. Record your voice again here and try again."
     },
     {
       "n": 4,
       "title": "Set Your Default Video CTA",
-      "text": "In Settings → Default Video CTA, add your years in real estate and review the pre-written closing call-to-action. It auto-fills your name, team, and each video's city — edit it once and every video ends with a proven subscribe-and-contact close. Change it later and it carries into videos you have already started, unless you typed over the closing line in that video; Use my saved CTA there brings it back."
+      "text": "In Settings → Profile → Default Video CTA, add your years in real estate and review the pre-written closing call-to-action. It auto-fills your name, team, and each video's city — edit it once and every video ends with a proven subscribe-and-contact close. Change it later and it carries into videos you have already started, unless you typed over the closing line in that video; Use my saved CTA there brings it back."
     },
     {
       "n": 5,
@@ -28,7 +28,7 @@
     {
       "n": 6,
       "title": "Save Your Import Address",
-      "text": "In Settings → Import Articles By Email you have a private address that looks like yourname-k7m3qz@in.sparkreels.ai. Forward anything to it — a newsletter, a market report, an article someone sent you, or a post you wrote yourself — and it appears inside SparkReels within a minute, with the signatures, forwarding headers and unsubscribe footers already stripped out. Press Email this address to me and save it to your contacts; after that, forwarding is the whole of it.\nIt is private to your account, so treat it like a password. Anyone who has it can send articles into your list, and you can replace it any time from the same screen.\nOnce something has arrived, Spark Studio has it under My Content/Forwarded in, in the Script source row, with a new badge when something has come in since you last looked. Open it, choose From email, and pick the one you want. Nothing is written until you press the button at the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market report is used to its last page. Forwarded emails are kept for 30 days."
+      "text": "In Settings → Profile → Import Articles By Email you have a private address that looks like yourname-k7m3qz@in.sparkreels.ai. Forward anything to it — a newsletter, a market report, an article someone sent you, or a post you wrote yourself — and it appears inside SparkReels within a minute, with the signatures, forwarding headers and unsubscribe footers already stripped out. Press Email this address to me and save it to your contacts; after that, forwarding is the whole of it.\nIt is private to your account, so treat it like a password. Anyone who has it can send articles into your list, and you can replace it any time from the same screen.\nOnce something has arrived, Spark Studio has it under My Content/Forwarded in, in the Script source row, with a new badge when something has come in since you last looked. Open it, choose From email, and pick the one you want. Nothing is written until you press the button at the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market report is used to its last page. Forwarded emails are kept for 30 days."
     },
     {
       "n": 7,
@@ -112,6 +112,10 @@
     }
   ],
   "parts": [
+    {
+      "title": "Getting Around",
+      "text": "The menu runs across the top on a computer: Spark Studio, My Sparks, Spark Tools, Spark Calendar, Spark Insights, Affiliate, Settings and How It Works. The page you are on is underlined. On a smaller window the last few are under More; on a phone, tap ☰.\nSettings has three tabs. Profile holds your brand, market, voice, closing call to action, import address and password. Social Accounts is where YouTube and your other platforms are connected. Billing is your plan and buying more videos.\nYour initial, at the top right, opens your email, your plan and Sign Out.\nAsk Sparklee, beside it, answers out loud when you ask how to do something on the page you are on.\nPart 1 · One-Time Setup"
+    },
     {
       "title": "Set Up Once (~10 Minutes)",
       "text": ""

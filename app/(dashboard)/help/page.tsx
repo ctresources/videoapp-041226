@@ -68,23 +68,52 @@ export default function HelpPage() {
 
       <div className="flex flex-col gap-5">
 
+        {/* Getting around: the top menu and the Settings tabs, both new on
+            2026-10-14. Not a numbered step, so the steps keep their numbers. */}
+        <Card padding="sm">
+          <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Before You Start</p>
+          <h2 className="text-base font-bold text-brand-text mb-3">Getting Around</h2>
+          <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
+            <li>
+              <strong>The menu runs across the top</strong> on a computer: Spark Studio, My Sparks, Spark
+              Tools, Spark Calendar, Spark Insights, Affiliate, Settings and How It Works. The page you are
+              on is underlined. On a smaller window the last few are under <strong>More</strong>; on a
+              phone, tap <strong>☰</strong>.
+            </li>
+            <li>
+              <strong>Settings has three tabs.</strong> <strong>Profile</strong> holds your brand, market,
+              voice, closing call to action, import address and password. <strong>Social Accounts</strong>{" "}
+              is where YouTube and your other platforms are connected. <strong>Billing</strong> is your
+              plan and buying more videos.
+            </li>
+            <li>
+              <strong>Your initial</strong>, at the top right, opens your email, your plan and{" "}
+              <strong>Sign Out</strong>.
+            </li>
+            <li>
+              <strong>Ask Sparklee</strong>, beside it, answers out loud when you ask how to do something
+              on the page you are on.
+            </li>
+          </ul>
+        </Card>
+
         {/* ── PART 1 ── */}
         <Card padding="sm">
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 1 · One-Time Setup</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Set Up Once (~10 Minutes)</h2>
           <div className="flex flex-col gap-4">
             <Step n={1} title="Complete Your Brand Profile" icon={User}>
-              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Brand &amp; AI Profile</Link>, add
+              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Profile → Brand &amp; AI Profile</Link>, add
               your name, brokerage, phones, website, and license number. Upload your <strong>logo</strong> and
               your <strong>headshot</strong> — the headshot becomes your AI Photo Avatar, and your contact card
               and logo appear automatically in every video.
             </Step>
             <Step n={2} title="Set Your Market" icon={MapPin}>
-              In <strong>Settings → Content Preferences</strong>, enter your city, state, and video language.
+              In <strong>Settings → Profile → Content Preferences</strong>, enter your city, state, and video language.
               This powers live local market research, trending topics, and auto-localized templates.
             </Step>
             <Step n={3} title="Create Your AI Voice" icon={Mic}>
-              In <strong>Settings → AI Voice Clone</strong>, record or upload about 30 seconds of your voice.
+              In <strong>Settings → Profile → AI Voice Clone</strong>, record or upload about 30 seconds of your voice.
               Your AI videos will speak in <em>your</em> voice.
               {/* The two tabs looked like buttons that did nothing; said here
                   as what they are, with the one that starts it. */}
@@ -107,7 +136,7 @@ export default function HelpPage() {
                 recommending it was walking people towards a door that does not
                 open. The photo avatar it falls back to is set up in step 1. */}
             <Step n={4} title="Set Your Default Video CTA" icon={Megaphone}>
-              In <strong>Settings → Default Video CTA</strong>, add your years in real estate and review the
+              In <strong>Settings → Profile → Default Video CTA</strong>, add your years in real estate and review the
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
               edit it once and every video ends with a proven subscribe-and-contact close. Change it
               later and it carries into videos you have already started, unless you typed over the
@@ -152,7 +181,7 @@ export default function HelpPage() {
                 saving the address. After that it is a Forward button in whatever
                 mail app you already live in. */}
             <Step n={6} title="Save Your Import Address" icon={Mail}>
-              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Import Articles By Email</Link>{" "}
+              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Profile → Import Articles By Email</Link>{" "}
               you have a private address that looks like{" "}
               <strong>yourname-k7m3qz@in.sparkreels.ai</strong>. Forward anything to it — a newsletter, a
               market report, an article someone sent you, or a post you wrote yourself — and it appears
