@@ -45,6 +45,8 @@ const nextConfig = {
       ],
       // Joins the scenes that play behind a camera recording.
       "/api/video/scene-footage": ["./node_modules/@ffmpeg-installer/**"],
+      // A still from a seller video update, for its email (2026-10-15).
+      "/api/seller-listings/video": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

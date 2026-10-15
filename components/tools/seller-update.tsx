@@ -1,21 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Video, X } from "lucide-react";
 import { EmailResult, SubjectPicker } from "@/components/email/email-result";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import {
-  sellerUpdateAsHtml, sellerUpdateAsText, type SellerStats, type SellerUpdateEmail,
+  sellerUpdateAsHtml, sellerUpdateAsText, type SellerStats, type SellerUpdateEmail, type SellerVideo,
 } from "@/lib/utils/newsletter-html";
 import type { EmailSignature } from "@/lib/utils/email-html";
+import { SELLER_VIDEO_RETURN } from "@/lib/utils/seller-video-return";
 
 /**
- * Seller Update (2026-10-15, the owner's mock): the weekly email to a
- * listing's sellers. Listings are saved, so each week starts with last week's
- * numbers beside the boxes and the email can say what went up. In Spark Tools
- * (its own tab) and reached from My Sparks (/tools?tab=seller&listing=<id>).
+ * Seller Update (2026-10-15, the owner's mock): the update email to a
+ * listing's sellers, sent whenever the agent likes. Listings are saved, so each
+ * update starts with the last one's numbers beside the boxes and the email can
+ * say what went up. An update can carry a video recorded on the camera, with
+ * a script written from it. In Spark Tools (its own tab) and reached from
+ * My Sparks (/tools?tab=seller&listing=<id>, &on=<date> to open one update).
  */
+
+
 
 export interface SellerListing {
   id: string;
@@ -27,19 +33,20 @@ export interface SellerListing {
 }
 
 type Week = {
+  update_on: string;
   views: number | null; saves: number | null; showings: number | null;
   open_house_visitors: number | null; offers: number | null;
   feedback: string | null; next_steps: string | null; email: SellerUpdateEmail | null;
+  video_id: string | null; video_url: string | null; video_poster_url: string | null; video_seconds: number | null;
 };
 
-/** This week's Monday on the agent's own calendar, as YYYY-MM-DD. */
-export function thisWeekOf(now = new Date()): string {
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Today on the agent's own calendar, as YYYY-MM-DD. */
+export function localToday(now = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
-const weekLabel = (iso: string) =>
+const dayLabel = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const isDay = (v?: string | null): v is string => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 const STAT_FIELDS: { key: "views" | "saves" | "showings" | "openHouse" | "offers"; label: string; col: keyof Week }[] = [
   { key: "views", label: "Online views", col: "views" },
@@ -55,14 +62,19 @@ const eyebrow = "mb-2 text-[11.5px] font-bold uppercase tracking-[0.12em] text-s
 
 export function SellerUpdateTool({
   initialListingId,
+  initialUpdateOn,
   startNew,
   onTrialLock,
 }: {
   initialListingId?: string | null;
+  initialUpdateOn?: string | null;
   startNew?: boolean;
   onTrialLock?: (data: unknown) => boolean;
 }) {
-  const weekOf = useMemo(() => thisWeekOf(), []);
+  const router = useRouter();
+  const today = useMemo(() => localToday(), []);
+  // The update on screen: today's, or a past one opened from its date.
+  const [updateOn, setUpdateOn] = useState(isDay(initialUpdateOn) ? initialUpdateOn : today);
   const [listings, setListings] = useState<SellerListing[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(!!startNew);
@@ -84,6 +96,10 @@ export function SellerUpdateTool({
   const [feedback, setFeedback] = useState("");
   const [nextSteps, setNextSteps] = useState("");
   const [before, setBefore] = useState<SellerStats | null>(null);
+  const [beforeOn, setBeforeOn] = useState<string | null>(null);
+  const [pastDates, setPastDates] = useState<string[]>([]);
+  const [video, setVideo] = useState<(SellerVideo & { id: string | null }) | null>(null);
+  const [recording, setRecording] = useState(false);
   const [daysOnMarket, setDaysOnMarket] = useState<number | null>(null);
   const [signature, setSignature] = useState<EmailSignature>({});
   const [email, setEmail] = useState<SellerUpdateEmail | null>(null);
@@ -105,11 +121,12 @@ export function SellerUpdateTool({
       .catch(() => setListings([]));
   }, [initialListingId, startNew]);
 
-  const loadWeek = useCallback(async (id: string) => {
+  const loadWeek = useCallback(async (id: string, on: string) => {
     setLoadingWeek(true);
     setEmail(null);
+    setVideo(null);
     try {
-      const res = await fetch(`/api/seller-listings/update?listingId=${encodeURIComponent(id)}&weekOf=${weekOf}`);
+      const res = await fetch(`/api/seller-listings/update?listingId=${encodeURIComponent(id)}&updateOn=${on}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || "Couldn't open that listing.");
       const l = d.listing as SellerListing;
@@ -123,6 +140,9 @@ export function SellerUpdateTool({
         ? { views: prev.views, saves: prev.saves, showings: prev.showings, openHouse: prev.open_house_visitors, offers: prev.offers }
         : null;
       setBefore(b);
+      setBeforeOn(prev?.update_on ?? null);
+      setPastDates(((d.dates ?? []) as string[]).filter((x) => x !== today));
+      setVideo(cur?.video_url ? { id: cur.video_id, url: cur.video_url, posterUrl: cur.video_poster_url, seconds: cur.video_seconds } : null);
       setDaysOnMarket(d.daysOnMarket ?? null);
       setSignature(d.signature ?? {});
       if (cur?.email) {
@@ -137,9 +157,9 @@ export function SellerUpdateTool({
     } finally {
       setLoadingWeek(false);
     }
-  }, [weekOf]);
+  }, [today]);
 
-  useEffect(() => { if (selectedId) void loadWeek(selectedId); }, [selectedId, loadWeek]);
+  useEffect(() => { if (selectedId) void loadWeek(selectedId, updateOn); }, [selectedId, updateOn, loadWeek]);
 
   const selected = listings?.find((l) => l.id === selectedId) ?? null;
 
@@ -197,7 +217,7 @@ export function SellerUpdateTool({
       const res = await fetch("/api/seller-listings/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId: selected.id, weekOf, ...stats, feedback, nextSteps }),
+        body: JSON.stringify({ listingId: selected.id, updateOn, ...stats, feedback, nextSteps }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -207,6 +227,7 @@ export function SellerUpdateTool({
       setEmail(d.email);
       setEmailStats(d.stats ?? {});
       setBefore(d.before ?? null);
+      if (!pastDates.includes(updateOn) && updateOn !== today) setPastDates((p) => [updateOn, ...p]);
       setDaysOnMarket(d.daysOnMarket ?? null);
       setSignature(d.signature ?? {});
       setSubjectIdx(0);
@@ -218,14 +239,49 @@ export function SellerUpdateTool({
     }
   }
 
+  /**
+   * Saves the numbers, writes what to say from them, and opens the camera
+   * with it on the teleprompter. Spark Studio reads SELLER_VIDEO_RETURN to
+   * offer "Add to the seller update" once the take is saved.
+   */
+  async function recordVideo() {
+    if (!selected) return;
+    setRecording(true);
+    try {
+      const res = await fetch("/api/seller-listings/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: selected.id, updateOn, ...stats, feedback, nextSteps, action: "script" }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (onTrialLock?.(d)) return;
+        throw new Error(d?.error || "Couldn't write the script.");
+      }
+      sessionStorage.setItem("camera-record-script", d.script);
+      sessionStorage.setItem(SELLER_VIDEO_RETURN, JSON.stringify({ listingId: selected.id, updateOn, address: selected.address }));
+      router.push("/create?tab=camera");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't write the script.");
+      setRecording(false);
+    }
+  }
+
+  async function removeVideo() {
+    if (!selected) return;
+    const res = await fetch(`/api/seller-listings/video?listingId=${encodeURIComponent(selected.id)}&updateOn=${updateOn}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Couldn't remove the video."); return; }
+    setVideo(null);
+  }
+
   const subject = email?.subjects[Math.min(subjectIdx, email.subjects.length - 1)] ?? "";
   const built = useMemo(() => {
     if (!email) return null;
     return {
-      html: sellerUpdateAsHtml(email, { subject, stats: emailStats, before, signature }),
-      text: sellerUpdateAsText(email, { stats: emailStats, before, signature }),
+      html: sellerUpdateAsHtml(email, { subject, stats: emailStats, before, signature, video }),
+      text: sellerUpdateAsText(email, { stats: emailStats, before, signature, video }),
     };
-  }, [email, subject, emailStats, before, signature]);
+  }, [email, subject, emailStats, before, signature, video]);
 
   if (listings === null) {
     return <div className="flex items-center gap-2 py-8 text-spark-ink-muted"><Loader2 size={16} className="animate-spin" /> Loading your listings…</div>;
@@ -239,7 +295,7 @@ export function SellerUpdateTool({
           <button
             key={l.id}
             type="button"
-            onClick={() => { setSelectedId(l.id); setAdding(false); }}
+            onClick={() => { setSelectedId(l.id); setUpdateOn(today); setAdding(false); }}
             className={`${chip} ${l.id === selectedId && !adding ? "border-spark-ink bg-spark-ink text-white" : "border-spark-rule bg-white text-spark-ink hover:border-[#d9c6a8]"}`}
           >
             {l.address}{l.seller_names ? ` · ${l.seller_names}` : ""}
@@ -253,6 +309,27 @@ export function SellerUpdateTool({
           <Plus size={14} /> Add a listing
         </button>
       </div>
+
+      {!adding && selected && pastDates.length > 0 && (
+        <div className="-mt-1 mb-4 flex flex-wrap items-center gap-1.5 text-[12.5px] text-spark-ink-muted">
+          Past updates:
+          {updateOn !== today && (
+            <button type="button" onClick={() => setUpdateOn(today)} className="rounded-lg border border-[#A3660F] bg-white px-2.5 py-1 font-semibold text-[#A3660F]">
+              New update
+            </button>
+          )}
+          {pastDates.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setUpdateOn(d)}
+              className={`rounded-lg border px-2.5 py-1 ${d === updateOn ? "border-spark-ink bg-spark-ink text-white" : "border-spark-rule bg-white text-spark-ink hover:border-[#d9c6a8]"}`}
+            >
+              {dayLabel(d)}
+            </button>
+          ))}
+        </div>
+      )}
 
       {adding ? (
         <div className="max-w-[640px] rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
@@ -312,7 +389,10 @@ export function SellerUpdateTool({
           {/* This week's numbers and notes. */}
           <div className="flex flex-col rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className={`${eyebrow} mb-0`}>Week of {weekLabel(weekOf)}</p>
+              <p className={`${eyebrow} mb-0`}>
+                Update · {dayLabel(updateOn)}
+                {beforeOn && <span className="ml-2 font-normal normal-case tracking-normal text-spark-ink-muted">compared with {dayLabel(beforeOn)}</span>}
+              </p>
               <button type="button" onClick={removeListing} className="flex items-center gap-1 text-[12px] text-spark-ink-muted hover:text-red-600">
                 <Trash2 size={12} /> Remove listing
               </button>
@@ -378,8 +458,38 @@ export function SellerUpdateTool({
             )}
           </div>
 
-          {/* The email. */}
+          {/* The video update, then the email. */}
           <div className="flex flex-col rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-[#fdf3e2] p-3">
+              {video?.posterUrl ? (
+                <a href={video.url} target="_blank" rel="noreferrer" className="shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={video.posterUrl} alt="Your video update" className="h-[68px] w-[120px] rounded-lg object-cover" />
+                </a>
+              ) : (
+                <span className="flex h-[68px] w-[120px] shrink-0 items-center justify-center rounded-lg bg-[#3b2d20] text-white">
+                  <Video size={22} />
+                </span>
+              )}
+              <div className="min-w-0 flex-1 text-[13px] text-spark-ink-muted">
+                <b className="block text-[14px] text-spark-ink">Video update</b>
+                {video ? "In the email, above the numbers. Sellers tap it to watch." : "Record a short video for them. It goes at the top of the email."}
+              </div>
+              {video ? (
+                <button type="button" onClick={removeVideo} className="flex items-center gap-1 rounded-[10px] border border-spark-rule bg-white px-3 py-1.5 text-[12.5px] font-semibold text-spark-ink">
+                  <X size={13} /> Remove
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={recordVideo}
+                  disabled={recording || loadingWeek}
+                  className="flex items-center gap-1.5 rounded-[10px] bg-spark-ink px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                >
+                  {recording ? <Loader2 size={14} className="animate-spin" /> : <Video size={14} />} Record a video update
+                </button>
+              )}
+            </div>
             {email && built ? (
               <>
                 <p className={eyebrow}>Subject line</p>
@@ -389,7 +499,7 @@ export function SellerUpdateTool({
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-spark-rule p-8 text-center text-[14px] text-spark-ink-muted">
-                Fill in this week&apos;s numbers and notes, then Write the update.
+                Fill in the numbers and notes, then Write the update.
               </div>
             )}
           </div>

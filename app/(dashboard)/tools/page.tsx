@@ -3257,7 +3257,7 @@ export default function ToolsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
-  const [sellerLink, setSellerLink] = useState<{ listing: string | null; startNew: boolean }>({ listing: null, startNew: false });
+  const [sellerLink, setSellerLink] = useState<{ listing: string | null; on: string | null; startNew: boolean }>({ listing: null, on: null, startNew: false });
   // Every tool on this page runs behind the free-trial gate. Without this the
   // page looked entirely open: fill in the topic, press generate, get a 403.
   const [trialLocked, setTrialLocked] = useState(false);
@@ -3293,8 +3293,9 @@ export default function ToolsPage() {
     if (platform && BANNER_PLATFORMS.some((p) => p.id === platform)) setBannerPlatform(platform);
     const project = params.get("project");
     if (project) setInitialProjectId(project);
-    // From My Sparks: /tools?tab=seller&listing=<id>, or &new=1 to add one.
-    setSellerLink({ listing: params.get("listing"), startNew: params.get("new") === "1" });
+    // From My Sparks: /tools?tab=seller&listing=<id>, or &new=1 to add one;
+    // &on=<date> opens that day's update (the camera comes back with it).
+    setSellerLink({ listing: params.get("listing"), on: params.get("on"), startNew: params.get("new") === "1" });
   }, []);
 
   useEffect(() => {
@@ -3422,6 +3423,7 @@ export default function ToolsPage() {
         {activeTab === "seller"      && (
           <SellerUpdateTool
             initialListingId={sellerLink.listing}
+            initialUpdateOn={sellerLink.on}
             startNew={sellerLink.startNew}
             onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])}
           />

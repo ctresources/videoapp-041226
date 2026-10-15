@@ -120,7 +120,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, micTools = true, qaMode = false }: {
+export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, onSaved, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /** Start with Record your screen on: chosen under the Camera/Teleprompter card on Create. */
   initialScreen?: boolean;
@@ -192,6 +192,12 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
    * page uses this to fold the setup away while the camera has the screen.
    */
   onPhaseChange?: (phase: CamStep) => void;
+  /**
+   * A take reached the server (2026-10-15), so the page can act on it — for a
+   * seller video update, "Add to the seller update". Fires for every saved
+   * take; the last one is the one on screen.
+   */
+  onSaved?: (saved: { videoId: string; projectId: string | null }) => void;
   /**
    * The shared microphone tools, and the shape fail-safe that came with them:
    * a picker, a live meter, a pre-flight check, the exact output stated in
@@ -1337,6 +1343,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       setSavedVideoId(videoId);
       setSavedTitle(savedName);
       setSavedProjectId(projectId);
+      onSaved?.({ videoId, projectId });
       // Recorded against this take specifically, so the screen can tell which
       // of several takes it is describing.
       setSavedByRecovery((prev) => ({

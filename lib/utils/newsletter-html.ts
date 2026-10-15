@@ -98,11 +98,36 @@ export function sellerStatRows(now: SellerStats, before?: SellerStats | null) {
     });
 }
 
+/** The agent's video update, recorded on the camera for this update. */
+export interface SellerVideo {
+  url: string;
+  posterUrl?: string | null;
+  seconds?: number | null;
+}
+
+const clock = (s?: number | null) =>
+  typeof s === "number" && s > 0 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "";
+
+/**
+ * The video, as email can show one: a still with a play button drawn on,
+ * linked to the video, and a button under it. No email app plays video inside
+ * the message, so the reader taps through to watch.
+ */
+function videoBlock(v: SellerVideo): string {
+  if (!isUrl(v.url)) return "";
+  const label = `Watch my video update${clock(v.seconds) ? ` (${clock(v.seconds)})` : ""}`;
+  const poster = isUrl(v.posterUrl)
+    ? `<a href="${esc(v.url)}"><img src="${esc(v.posterUrl!)}" width="552" alt="${esc(label)}" style="display:block;width:100%;max-width:552px;height:auto;border:0;border-radius:10px;margin:0 0 12px;"></a>`
+    : "";
+  return poster + emailButton(v.url, label, "0 0 20px");
+}
+
 export function sellerUpdateAsHtml(e: SellerUpdateEmail, opts: {
   subject: string;
   stats: SellerStats;
   before?: SellerStats | null;
   signature: EmailSignature;
+  video?: SellerVideo | null;
 }): string {
   const rows = sellerStatRows(opts.stats, opts.before);
   // Up to four across, then a second row: one table row per four figures.
@@ -127,6 +152,7 @@ export function sellerUpdateAsHtml(e: SellerUpdateEmail, opts: {
     inner: `<tr><td style="padding:28px 24px 24px;">
 ${emailP(e.greeting)}
 ${emailP(e.opening)}
+${opts.video ? videoBlock(opts.video) : ""}
 ${stats}
 ${e.paragraphs.map(emailP).join("\n")}
 ${e.closing ? emailP(e.closing) : ""}
@@ -139,12 +165,16 @@ export function sellerUpdateAsText(e: SellerUpdateEmail, opts: {
   stats: SellerStats;
   before?: SellerStats | null;
   signature: EmailSignature;
+  video?: SellerVideo | null;
 }): string {
   const rows = sellerStatRows(opts.stats, opts.before).map(
-    (r) => `- ${r.value.toLocaleString("en-US")} ${r.label}${r.change && r.change > 0 ? ` (up ${r.change} from last week)` : ""}`,
+    (r) => `- ${r.value.toLocaleString("en-US")} ${r.label}${r.change && r.change > 0 ? ` (up ${r.change} since my last update)` : ""}`,
   );
+  const video = opts.video && isUrl(opts.video.url)
+    ? [`Watch my video update${clock(opts.video.seconds) ? ` (${clock(opts.video.seconds)})` : ""}: ${opts.video.url}`, ""]
+    : [];
   return [
-    e.greeting, "", e.opening, "",
+    e.greeting, "", e.opening, "", ...video,
     ...rows, ...(rows.length ? [""] : []),
     ...e.paragraphs.flatMap((p) => [p, ""]),
     e.closing, "",

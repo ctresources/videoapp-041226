@@ -37,6 +37,7 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { ASK_SPARKLEE_EVENT } from "@/components/layout/ask-sparklee";
+import { SELLER_VIDEO_RETURN } from "@/lib/utils/seller-video-return";
 import Image from "next/image";
 import { ComposerCard } from "@/components/create/composer-card";
 import { BuyerQuestions } from "@/components/create/buyer-questions";
@@ -640,6 +641,11 @@ function CreatePageInner() {
    * screens of settled questions.
    */
   const [cameraHandoff, setCameraHandoff] = useState(false);
+  // A video update for a seller (2026-10-15): which update it is for, read
+  // from what Seller Update left, and the take once it has saved.
+  const [sellerReturn, setSellerReturn] = useState<{ listingId: string; updateOn: string; address: string } | null>(null);
+  const [sellerTakeId, setSellerTakeId] = useState<string | null>(null);
+  const [sellerAdding, setSellerAdding] = useState(false);
   /**
    * Record here, or brand a clip already shot.
    *
@@ -743,6 +749,16 @@ function CreatePageInner() {
     // instead of the user copying each field over by hand.
     try {
       const handoff = sessionStorage.getItem("camera-record-script");
+      // Read once and cleared, and only honoured beside a script just handed
+      // over, so a camera opened later on its own never claims to be one.
+      const sellerRaw = sessionStorage.getItem(SELLER_VIDEO_RETURN);
+      if (sellerRaw) {
+        sessionStorage.removeItem(SELLER_VIDEO_RETURN);
+        try {
+          const s = JSON.parse(sellerRaw);
+          if (handoff && s?.listingId && s?.updateOn) setSellerReturn({ listingId: s.listingId, updateOn: s.updateOn, address: s.address ?? "" });
+        } catch { /* not ours */ }
+      }
       if (handoff) {
         setCameraGeneratedScript(handoff);
         sessionStorage.removeItem("camera-record-script");
@@ -4588,7 +4604,52 @@ function CreatePageInner() {
           {/* The way back to the questions this mode hides. Without it, an
               agent who arrived by mistake — or changed their mind about what
               they were making — has no route to the rest of the page. */}
-          {cameraHandoff && cameraPhase !== "done" && (
+          {sellerReturn && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-dashed border-[#e7a92c] bg-[#fdf3e2] px-3.5 py-2.5">
+              <p className="flex items-center gap-2 text-[14px] text-spark-ink">
+                <Video size={16} className="text-[#A3660F]" />
+                <span>Recording a video update for <strong>{sellerReturn.address || "your listing"}</strong></span>
+              </p>
+              {sellerTakeId ? (
+                <button
+                  type="button"
+                  disabled={sellerAdding}
+                  onClick={async () => {
+                    setSellerAdding(true);
+                    try {
+                      const res = await fetch("/api/seller-listings/video", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ listingId: sellerReturn.listingId, updateOn: sellerReturn.updateOn, videoId: sellerTakeId }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data?.error || "Couldn't add the video.");
+                      sessionStorage.removeItem(SELLER_VIDEO_RETURN);
+                      router.push(`/tools?tab=seller&listing=${sellerReturn.listingId}&on=${sellerReturn.updateOn}`);
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Couldn't add the video.");
+                      setSellerAdding(false);
+                    }
+                  }}
+                  className="spark-cta-gradient flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13.5px] font-bold text-white disabled:opacity-60"
+                >
+                  {sellerAdding && <Loader2 size={14} className="animate-spin" />} Add to the seller update →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.removeItem(SELLER_VIDEO_RETURN);
+                    router.push(`/tools?tab=seller&listing=${sellerReturn.listingId}&on=${sellerReturn.updateOn}`);
+                  }}
+                  className="rounded-[10px] border border-spark-rule bg-white px-3.5 py-2 text-[13px] font-semibold text-spark-ink"
+                >
+                  Back to Seller Update
+                </button>
+              )}
+            </div>
+          )}
+          {cameraHandoff && !sellerReturn && cameraPhase !== "done" && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-spark-rule bg-spark-paper px-3 py-2">
               <p className="text-[12.5px] text-spark-ink-soft">
                 Recording a script you already have.{" "}
@@ -4883,6 +4944,7 @@ function CreatePageInner() {
               initialScreen={screenRecord}
               brief={briefFields()}
               onPhaseChange={setCameraPhase}
+              onSaved={sellerReturn ? (s) => setSellerTakeId(s.videoId) : undefined}
               city={locCity || undefined}
               state={locState || undefined}
               initialScript={cameraGeneratedScript || undefined}
