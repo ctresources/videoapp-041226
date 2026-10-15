@@ -2065,6 +2065,35 @@ function CreatePageInner() {
     && (blogOnly || inputMode === "camera" || (inputMode === "listing" && !scenesRoute));
   const tabTitle = blogOnly ? "Blog" : inputMode === "camera" ? "Camera / Teleprompter" : "Listings & photos";
   const twoCols = step === "input" && !cameraHandoff && topicApplies && !tabPage;
+
+  /**
+   * Sections 2 and 3 sit together, centred on the height of the topic (mic)
+   * card beside them, at the owner's markup (2026-10-15). The card's place is
+   * measured rather than guessed, since its height changes with what is in
+   * the box. The card never stretches with the column (the ideas under it
+   * do), so this cannot feed back into itself.
+   */
+  const createSourceRef = useRef<HTMLDivElement>(null);
+  const [besideCard, setBesideCard] = useState<{ top: number; height: number } | null>(null);
+  useEffect(() => {
+    if (!twoCols) { setBesideCard(null); return; }
+    const card = document.getElementById("spark-composer")?.nextElementSibling as HTMLElement | null;
+    const box = createSourceRef.current;
+    if (!card || !box) return;
+    const measure = () => {
+      const col = box.parentElement;
+      if (!col || window.innerWidth < 1024) { setBesideCard(null); return; }
+      const c = card.getBoundingClientRect();
+      const top = Math.max(0, Math.round(c.top - col.getBoundingClientRect().top));
+      const height = Math.round(c.height);
+      setBesideCard((prev) => (prev && prev.top === top && prev.height === height ? prev : { top, height }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(card);
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [twoCols]);
   /**
    * The sections this route shows, in order. The steps at the top and the
    * numbers on the sections both come from this, so they always match
@@ -2464,11 +2493,16 @@ function CreatePageInner() {
               (2026-10-15). */}
           {/* From the owner's mock (2026-10-15): her two lines as one, above
               the steps; the steps; then the question, in the display face. */}
-          <p className="text-center text-[14px] leading-[1.45] text-primary-700">
-            <span className="font-semibold">Your all-in-one AI visibility studio</span>
+          <p className="text-center text-[20px] font-extrabold leading-[1.3] text-black lg:text-[28px]">
+            {/* Bold black, twice the size, at the owner's ask (2026-10-15). */}
+            <span>Your all-in-one AI visibility studio</span>
             {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-2 text-[13px]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-2 text-[13px]">
+            {/* The steps, spaced out and centred in the room left of Sparklee,
+                with clear space before her (the owner's markup, 2026-10-15:
+                4 Details ran into her card). */}
+            <div className="flex min-w-0 flex-1 basis-[420px] flex-wrap items-center gap-x-5 gap-y-1.5 lg:ml-6 lg:mr-10">
             {sectionList.map((label, i) => (
               <span key={label} className="contents">
                 {i > 0 && <span className="hidden h-px min-w-[24px] flex-1 bg-spark-rule sm:block" />}
@@ -2480,6 +2514,7 @@ function CreatePageInner() {
                 </span>
               </span>
             ))}
+            </div>
             {/* Sparklee at the end of the steps, at the owner's markup
                 (2026-10-15): above the topic she read as part of step 1. It
                 starts the same conversation as her badge in the top bar. */}
@@ -2487,7 +2522,7 @@ function CreatePageInner() {
               type="button"
               onClick={() => window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT))}
               aria-label="Ask Sparklee"
-              className="ml-auto flex items-center gap-2.5 rounded-xl bg-[#0f0d0b] py-1.5 pl-1.5 pr-3.5 text-left transition-opacity hover:opacity-90"
+              className="ml-auto flex shrink-0 items-center gap-2.5 rounded-xl bg-[#0f0d0b] py-1.5 pl-1.5 pr-3.5 text-left transition-opacity hover:opacity-90"
             >
               <span className="sparklee-badge block h-[42px] w-[42px] shrink-0">
                 <Image src="/sparklee.webp" alt="" width={42} height={42} className="h-full w-full" unoptimized />
@@ -2830,6 +2865,12 @@ function CreatePageInner() {
           spacers below share the right column's spare room out between its
           sections, so its last section ends level with the left card. */}
       <div className={`min-w-0 ${twoCols ? "lg:flex lg:flex-col" : ""}`}>
+      {/* Sections 2 and 3 as one block, centred beside the topic card. */}
+      <div
+        ref={createSourceRef}
+        className={besideCard ? "flex flex-col justify-center" : ""}
+        style={besideCard ? { marginTop: besideCard.top, minHeight: besideCard.height } : undefined}
+      >
       {/* ── Row 1 · how it gets made ──
           One row used to ask two questions: three tiles chose where the words
           come from and the fourth chose who does the filming. That mix is why
@@ -2847,7 +2888,7 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {/* Back in a section of their own. They were moved into the Topic card,
           between the box and Send, and the owner found that too busy. */}
-      {showCreate && <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Create")} · Create`} />}
+      {showCreate && <SectionHead className={besideCard ? "mt-0" : "mt-7 lg:mt-4"} eyebrow={`${sectionNo("Create")} · Create`} />}
       {showCreate && (
         <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
           {/* Avatar first, because avatar is what the page opens on.
@@ -3166,10 +3207,9 @@ function CreatePageInner() {
           tab that had already been chosen — up here it stops reading as the
           same question asked twice. Once you are recording it dims instead of
           disappearing — see cameraSourceLocked. */}
-      {twoCols && step === "input" && inputMode === "camera" && !cameraHandoff && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Script Source")} · Script Source`} />
+          <SectionHead className={besideCard ? "mt-6" : "mt-7 lg:mt-4"} eyebrow={`${sectionNo("Script Source")} · Script Source`} />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -3218,11 +3258,10 @@ function CreatePageInner() {
       {/* Not for a listing on the video route: that card above is the whole
           choice, and the panel it opens asks its own (listing video or photo
           reel). On the blog route a listing is still a source, so it stays. */}
-      {twoCols && step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
         <>
         <SectionHead
-          className="mt-7 lg:mt-4"
+          className={besideCard ? "mt-6" : "mt-7 lg:mt-4"}
           eyebrow={`${sectionNo("Script Source")} · ${blogOnly ? "Source" : "Script Source"}`}
         />
         <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
@@ -3436,6 +3475,7 @@ function CreatePageInner() {
         </div>
       )}
 
+      </div>
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}

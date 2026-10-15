@@ -75,11 +75,14 @@ export function TopNav({ dark }: { dark: boolean }) {
     : NAV;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
+  // The page you are on is underlined just under its name (2026-10-15). The
+  // line used to sit on the bar's bottom edge, where it met the progress
+  // rail a pixel off and read as a crooked line under the logo.
   const link = (on: boolean) => cn(
-    "items-center whitespace-nowrap border-b-2 px-2.5 py-[12px] text-[14.5px] font-medium transition-colors",
+    "items-center whitespace-nowrap px-2.5 py-[12px] text-[14.5px] font-medium transition-colors",
     on
-      ? cn("border-spark-amber", dark ? "text-white" : "text-spark-ink")
-      : cn("border-transparent", dark ? "text-spark-paper/70 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink"),
+      ? cn("underline decoration-spark-amber decoration-2 underline-offset-[7px]", dark ? "text-white" : "text-spark-ink")
+      : (dark ? "text-spark-paper/70 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink"),
   );
 
   return (

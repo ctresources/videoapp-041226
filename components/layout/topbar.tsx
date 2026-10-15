@@ -114,16 +114,16 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           )}
           {/* The logo at every width: on computers the side menu that carried
               it is gone, and the page names run across this bar instead. */}
+          {/* The owner's new logo (2026-10-15). It is drawn on black, so the
+              white bar gets its own copy: background taken out, "Spark" in
+              ink and the gold a shade deeper. */}
           <Link href="/create" className="shrink-0">
             <Image
-              src="/sparkreels-logo.png"
-              alt="SparkReels"
-              width={118}
-              height={40}
-              className="block h-9 w-[118px] object-contain"
-              // The darkening filter is there to hold the logo against white.
-              // On the black bar it would sink into the background.
-              style={onCreate ? undefined : { filter: "brightness(0.72) saturate(1.35) contrast(1.18)" }}
+              src={onCreate ? "/sparkreels-logo-dark-bar.webp" : "/sparkreels-logo-light-bar.webp"}
+              alt="SparkReels.ai"
+              width={168}
+              height={36}
+              className="block h-9 w-[168px] object-contain"
               unoptimized
               priority
             />
@@ -143,16 +143,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         </div>
       </header>
 
-      {/* Progress rail. The four-stop gradient is already the app's CTA
-          gradient, so this needs no new colour. */}
-      {onCreate && (
-        <div className="h-[3px] w-full bg-spark-rule">
-          <div
-            className="spark-cta-gradient h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${progress.percent}%` }}
-          />
-        </div>
-      )}
+      {/* The progress rail under the bar came off at the owner's pick
+          (2026-10-15): it met the page underline a pixel off and read as a
+          crooked line, and the steps bar on the page already shows where
+          you are. */}
     </div>
   );
 }
