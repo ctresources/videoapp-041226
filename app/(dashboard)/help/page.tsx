@@ -300,7 +300,7 @@ export default function HelpPage() {
                 they are not mistaken for the numbered steps of this guide. */}
             <Step n={7} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-              has four sections, top to bottom. <strong>1 · Content Topic</strong> — one card with
+              has four sections, top to bottom. <strong>1 · Say or Pick a Topic</strong> — one card with
               the mic and a box, where you say or type what it&apos;s about (step 8).{" "}
               <strong>2 · Create</strong> — four
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
@@ -385,7 +385,7 @@ export default function HelpPage() {
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
               The Topic card at the top of Spark Studio reads{" "}
-              <strong>Speak, Type or choose suggested idea</strong>. It has one mic and one box, and
+              <strong>Say it in your own words</strong>. It has one mic and one box, and
               they are the same thing: what you say shows up in the box, and what you type goes in the
               same place. Tap
               the mic and say the whole thing in one sentence —{" "}

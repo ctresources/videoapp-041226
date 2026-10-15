@@ -371,9 +371,17 @@ export function VoiceBriefSession({
           mic card had, which the owner asked for here when that card was
           taken off. The mic and the type are the sizes they were. */}
       <div className={`flex flex-col items-center gap-3 px-1 pb-2 pt-3 text-center ${micOff ? "opacity-45" : ""}`}>
-        <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
-          Speak, Type or choose suggested idea
-        </h2>
+        {/* The owner's mock (2026-10-14): a heading, a quiet line under it,
+            the mic, then what tapping it does. The mock's line pointed at
+            questions "on the left"; here the ideas are below. */}
+        <div className="flex flex-col items-center gap-1">
+          <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
+            Say it in your own words
+          </h2>
+          <p className="text-[13.5px] leading-snug text-spark-ink-muted">
+            Speak, type, or tap an idea below
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -395,9 +403,13 @@ export function VoiceBriefSession({
         </button>
         {/* Only while listening. A mic that has gone quiet with nothing said
             reads as a mic that has failed. */}
-        {listening && (
+        {listening ? (
           <p className="text-[15px] leading-snug text-spark-ink-muted sm:text-[16px]" aria-live="polite">
             Listening… tap the mic when you&rsquo;re done.
+          </p>
+        ) : (
+          <p className="text-[15px] font-semibold leading-snug text-spark-ink sm:text-[16px]">
+            Tap and talk — like leaving a voicemail
           </p>
         )}
       </div>
@@ -415,8 +427,9 @@ export function VoiceBriefSession({
           readOnly={listening}
           disabled={disabled || off}
           rows={2}
-          // No words inside it, at the owner's direction: the line beside the
-          // mic already says to speak or type. Named for a screen reader.
+          // An example inside it again, from the owner's mock (2026-10-14).
+          // It had been taken out on 2026-10-13; the newer ask wins.
+          placeholder="…or type your topic, e.g. “Three things I’d fix before listing this fall”"
           aria-label="Your topic"
           onKeyDown={(e) => {
             // Enter reads the words now instead of starting a new line.

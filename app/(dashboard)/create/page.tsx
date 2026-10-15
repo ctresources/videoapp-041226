@@ -2424,7 +2424,7 @@ function CreatePageInner() {
         <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
-            eyebrow="1 · Content Topic"
+            eyebrow="1 · Say or Pick a Topic"
             // The example, on this line at the owner's direction rather than
             // as a line of display type under it. Gone once something is in
             // the box, and while the section is switched off.
