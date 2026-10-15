@@ -227,7 +227,7 @@ function SourceTile({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors ${
+      className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors lg:min-h-[54px] lg:py-2 ${
         disabled ? "cursor-default" : ""
       } ${
         active
@@ -2217,14 +2217,14 @@ function CreatePageInner() {
                   to a usable answer. Saying so on the label is what
                   stops the row reading as three more things to fill
                   in before the button will work. */}
-              <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">
+              <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft lg:mb-1">
                 {label} <span className="font-normal text-spark-ink-faint">(optional)</span>
               </label>
               <div className="relative">
                 <select
                   value={value}
                   onChange={(e) => set(e.target.value)}
-                  className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                  className="w-full appearance-none rounded-[9px] border border-spark-rule bg-white px-3 py-2.5 pr-8 text-[15px] lg:py-2 text-spark-ink focus:outline-none focus:ring-2 focus:ring-spark-amber"
                 >
                   {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
@@ -2420,7 +2420,7 @@ function CreatePageInner() {
       <div className="lg:grid lg:grid-cols-2 lg:gap-6">
       <div className="min-w-0 lg:flex lg:flex-col">
       {step === "input" && !cameraHandoff && (
-        <div className="mt-7 flex flex-col gap-3 lg:flex-1">
+        <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow="1 · Content Topic"
@@ -2729,7 +2729,7 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {/* Back in a section of their own. They were moved into the Topic card,
           between the box and Send, and the owner found that too busy. */}
-      {step === "input" && !cameraHandoff && <SectionHead className="mt-7" eyebrow="2 · Create" />}
+      {step === "input" && !cameraHandoff && <SectionHead className="mt-7 lg:mt-4" eyebrow="2 · Create" />}
       {step === "input" && !cameraHandoff && (
         <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
           {/* Avatar first, because avatar is what the page opens on.
@@ -3049,7 +3049,7 @@ function CreatePageInner() {
           disappearing — see cameraSourceLocked. */}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
-          <SectionHead className="mt-7" eyebrow="3 · Script Source" />
+          <SectionHead className="mt-7 lg:mt-4" eyebrow="3 · Script Source" />
           <div
             className={`mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 ${
               cameraSourceLocked ? "opacity-45" : ""
@@ -3319,7 +3319,7 @@ function CreatePageInner() {
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
       {inputMode === "script" && step === "input" && (
-        <div className="mt-7 flex flex-col gap-3">
+        <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2">
 
           {/* What is left of the old third section now that its topic box is
               section 1: the place, the audience and the shape. It had no
@@ -3334,8 +3334,8 @@ function CreatePageInner() {
               areas and will make a different video for each, so this is a
               question the page has to ask rather than a profile setting it can
               assume. It seeds the trending list too. */}
-          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5">
-          <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3">
+          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5 lg:px-4 lg:py-3">
+          <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3 lg:gap-2">
             {/* A "City + State" heading sat here, over two fields labelled
                 "City or area" and "State". Taken off by the owner as saying
                 it twice. Whether the town is set shows on its chip above. */}
@@ -3346,7 +3346,7 @@ function CreatePageInner() {
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">City or area</label>
+                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft lg:mb-1">City or area</label>
                 <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
                   <input
                     type="text"
@@ -3356,13 +3356,13 @@ function CreatePageInner() {
                     // market in front of every user in the country, and this
                     // field is the whole subject of the video.
                     placeholder="Your city or area"
-                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] text-spark-ink placeholder:text-spark-ink-faint lg:py-2 focus:outline-none"
                   />
                   <FieldMic onTranscript={(t) => setLocCity(t.replace(/[.,]\s*$/, "").trim())} title="Say the city" />
                 </div>
               </div>
               <div className="w-24">
-                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft">State</label>
+                <label className="mb-1.5 block text-[13px] font-medium text-spark-ink-soft lg:mb-1">State</label>
                 <div className="flex items-center rounded-[9px] border border-spark-rule bg-white focus-within:ring-2 focus-within:ring-spark-amber">
                   <input
                     type="text"
@@ -3370,7 +3370,7 @@ function CreatePageInner() {
                     onChange={(e) => setLocState(e.target.value)}
                     placeholder="ST"
                     maxLength={2}
-                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink placeholder:text-spark-ink-faint focus:outline-none"
+                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[15px] uppercase text-spark-ink lg:py-2 placeholder:text-spark-ink-faint focus:outline-none"
                   />
                   <FieldMic onTranscript={(t) => setLocState(toStateAbbr(t))} title="Say the state" />
                 </div>
@@ -3397,7 +3397,7 @@ function CreatePageInner() {
 
               No card of its own now: these sit inside the shaded ask panel
               with Where, so the page asks its questions in one place. */}
-          <div className="mt-6">
+          <div className="mt-6 lg:mt-2.5">
             <div className="flex flex-col gap-3">
               {renderBriefPickers(true)}
 
@@ -3416,7 +3416,7 @@ function CreatePageInner() {
                     choice was quietly deciding how long the hidden script got.
                     A Longform script can be written from the article later. */}
                 {!blogOnly && (
-                <div id="brief-format" className="mt-6 scroll-mt-24">
+                <div id="brief-format" className="mt-6 scroll-mt-24 lg:mt-1">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                       Choose format
@@ -3444,7 +3444,7 @@ function CreatePageInner() {
                           aria-pressed={on}
                           // From the top, not centred: if a line ever does wrap,
                           // the titles still sit level across the row.
-                          className={`relative flex min-h-[58px] flex-col justify-start gap-1 rounded-[12px] border bg-white px-3 py-2.5 text-left transition-colors ${
+                          className={`relative flex min-h-[58px] flex-col justify-start gap-1 rounded-[12px] border bg-white px-3 py-2.5 text-left transition-colors lg:min-h-0 lg:gap-0.5 lg:py-2 ${
                             on ? "border-spark-amber" : "border-spark-rule hover:border-spark-rule-dim"
                           }`}
                         >
@@ -3484,7 +3484,7 @@ function CreatePageInner() {
           {/* The Next button itself now lives in the fixed footer below, so it
               stays reachable without scrolling to the bottom of the brief.
               This spacer keeps the last card clear of it. */}
-          <div className="h-2" />
+          <div className="h-2 lg:hidden" />
 
         </div>
       )}
