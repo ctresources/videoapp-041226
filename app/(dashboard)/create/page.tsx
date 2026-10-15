@@ -2413,7 +2413,7 @@ function CreatePageInner() {
         <div>
           {/* From the owner's mock (2026-10-15): her two lines as one, above
               the steps; the steps; then the question, in the display face. */}
-          <p className="text-[14px] leading-[1.45] text-primary-700">
+          <p className="text-center text-[14px] leading-[1.45] text-primary-700">
             <span className="font-semibold">Your all-in-one AI visibility studio</span>
             {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
@@ -2755,7 +2755,11 @@ function CreatePageInner() {
       )}
 
       </div>
-      <div className="min-w-0">
+      {/* Both columns always the same width and height, at the owner's
+          repeated ask (2026-10-15). The grid makes them the same height; the
+          spacers below share the right column's spare room out between its
+          sections, so its last section ends level with the left card. */}
+      <div className={`min-w-0 ${twoCols ? "lg:flex lg:flex-col" : ""}`}>
       {/* ── Row 1 · how it gets made ──
           One row used to ask two questions: three tiles chose where the words
           come from and the fourth chose who does the filming. That mix is why
@@ -3091,6 +3095,7 @@ function CreatePageInner() {
           tab that had already been chosen — up here it stops reading as the
           same question asked twice. Once you are recording it dims instead of
           disappearing — see cameraSourceLocked. */}
+      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode === "camera" && !cameraHandoff && (
         <>
           <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Script Source")} · Script Source`} />
@@ -3142,6 +3147,7 @@ function CreatePageInner() {
       {/* Not for a listing on the video route: that card above is the whole
           choice, and the panel it opens asks its own (listing video or photo
           reel). On the blog route a listing is still a source, so it stays. */}
+      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
         <>
         <SectionHead
@@ -3362,6 +3368,7 @@ function CreatePageInner() {
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
+      {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {inputMode === "script" && step === "input" && (
         <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2">
 
