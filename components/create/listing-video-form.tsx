@@ -1067,7 +1067,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           nothing is spent, so neither of the video pair is true there. */}
       {blogOnly ? (
         <>
-          <Button
+          {!footer && <Button
             onClick={() => handleGenerate()}
             disabled={!listing.address.trim() || !listing.price.trim()}
             size="lg"
@@ -1080,14 +1080,15 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
               </span>
             </span>
             <ArrowRight size={16} />
-          </Button>
+          </Button>}
           <p className="text-xs text-slate-400 text-center -mt-2">
             You&apos;ll get the article plus a title, description and hashtags, ready to paste into
             your site. Want a video too? You can turn the article into one afterwards.
           </p>
         </>
       ) : (<>
-      <Button
+      {/* The bottom bar's Next does this when the bar is there. */}
+      {!footer && <Button
         onClick={() => handleGenerate()}
         disabled={!listing.address.trim() || !listing.price.trim()}
         size="lg"
@@ -1100,7 +1101,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
           </span>
         </span>
         <ArrowRight size={16} />
-      </Button>
+      </Button>}
 
       {/* Goes to the camera tab, not the editor's teleprompter: only the
           camera tab's recorder composites photos, and only there are they

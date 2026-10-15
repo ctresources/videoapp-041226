@@ -428,7 +428,16 @@ export function ScenesReelForm({ city: initialCity, state: initialState, topic: 
         Uses <strong className="font-semibold">one short video</strong> from your plan, taken only once the reel is made.
       </p>
 
-      {savedId ? (
+      {/* The bottom bar carries the main button when it is there. */}
+      {footer ? (savedId && (
+        <button
+          type="button"
+          onClick={() => setSavedId(null)}
+          className="block w-full text-center text-[12.5px] font-medium text-spark-amber hover:text-spark-blue"
+        >
+          Make another reel (uses another short video)
+        </button>
+      )) : savedId ? (
         <div className="space-y-2">
           <p className="text-center text-[13px] font-semibold text-spark-ink">
             Building now, about {Math.max(2, Math.round((seconds / 60) * 3 + 1))} minutes. You can leave this page.

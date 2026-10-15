@@ -443,6 +443,14 @@ export function VoiceBriefSession({
           rows={2}
           placeholder={tryLines.length ? `Try: “${tryLines[tryIdx % tryLines.length]}”` : undefined}
           aria-label="Your topic"
+          // Pressing the empty box takes the Try example shown in it, chosen
+          // and highlighted: typing replaces it, Next uses it (2026-10-15).
+          onClick={(e) => {
+            if (listening || boxValue.trim() || !tryLines.length) return;
+            const el = e.currentTarget;
+            setWords(tryLines[tryIdx % tryLines.length], true);
+            requestAnimationFrame(() => el.select());
+          }}
           onKeyDown={(e) => {
             // Enter reads the words now instead of starting a new line.
             if (e.key === "Enter" && !e.shiftKey) {

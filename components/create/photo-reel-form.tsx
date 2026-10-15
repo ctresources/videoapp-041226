@@ -985,7 +985,16 @@ export function PhotoReelForm({
           press; pressing Build again makes a second reel, and on Cinematic
           spends a second short video. Building again is still here, as a
           link that says so. */}
-      {savedId ? (
+      {/* The bottom bar carries the main button when it is there. */}
+      {footer ? (savedId && (
+        <button
+          type="button"
+          onClick={() => setSavedId(null)}
+          className="block w-full text-center text-[12.5px] font-medium text-spark-amber hover:text-spark-blue"
+        >
+          {cinematic ? "Make another reel (uses another short video)" : "Make another reel"}
+        </button>
+      )) : savedId ? (
         <div className="space-y-2">
           <p className="text-center text-[13px] font-semibold text-spark-ink">Saved to My Sparks</p>
           <a href={`/videos?highlight=${savedId}`} onClick={() => setOpeningVideo(true)} className="block">

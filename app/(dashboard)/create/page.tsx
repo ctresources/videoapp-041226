@@ -2052,7 +2052,17 @@ function CreatePageInner() {
    * document) section 1 goes away entirely, at the owner's ask (2026-10-15),
    * and the page goes back to one centred column.
    */
-  const twoCols = step === "input" && !cameraHandoff && topicApplies;
+  /**
+   * Camera / Teleprompter, Blog and Listings & photos each open a page of
+   * their own, at the owner's ask (2026-10-15): the tab's name at the top,
+   * only its sections, one column, and Back on the bottom bar. They used to
+   * open underneath Spark Studio's two columns. Video / Reel is Spark Studio
+   * itself.
+   */
+  const tabPage = step === "input" && !cameraHandoff
+    && (blogOnly || inputMode === "camera" || (inputMode === "listing" && !scenesRoute));
+  const tabTitle = blogOnly ? "Blog" : inputMode === "camera" ? "Camera / Teleprompter" : "Listings & photos";
+  const twoCols = step === "input" && !cameraHandoff && topicApplies && !tabPage;
   /**
    * The sections this route shows, in order. The steps at the top and the
    * numbers on the sections both come from this, so they always match
@@ -2060,11 +2070,11 @@ function CreatePageInner() {
    * sections called Topic, Create, Script Source and Details). A section
    * the route does not use drops out and the rest renumber.
    */
-  const showCreate = step === "input" && !cameraHandoff;
+  const showCreate = step === "input" && !cameraHandoff && !tabPage;
   const showSource = step === "input" && (inputMode === "camera" ? !cameraHandoff : (blogOnly || inputMode !== "listing"));
   const showDetails = inputMode === "script" && step === "input";
   const sectionList = [
-    twoCols ? "Topic" : null,
+    step === "input" && !cameraHandoff && topicApplies ? "Topic" : null,
     showCreate ? "Create" : null,
     showSource ? "Script Source" : null,
     showDetails ? "Details" : null,
@@ -2329,9 +2339,12 @@ function CreatePageInner() {
   /** Back from a listing or Scenes Reel page: to the start of Spark Studio
    *  (the topic, or the blog's own start on the blog route). */
   function backToStart() {
+    setBlogOnly(false);
+    setBlogSrcOpen(false);
+    setCameraKindOpen(false);
     setInputMode("script");
     if (listingMode === "scenes") setListingMode("listing");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0 });
   }
 
   /** The brief as request fields, sent with every script write and save. */
@@ -2417,6 +2430,11 @@ function CreatePageInner() {
           will make and offers a mic to say it — a question already answered,
           and a second brief that would overwrite the script they came to
           record. */}
+      {tabPage && (
+        <h1 className="font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
+          {tabTitle}
+        </h1>
+      )}
       {twoCols && (
         <div>
           {/* Only where a topic is asked for: on Listings & photos, your own
@@ -2697,7 +2715,7 @@ function CreatePageInner() {
           {/* Under the mic card, from the owner's mock (2026-10-14): the
               first-video quick win, then what buyers ask AI with the topic
               ideas at its foot. */}
-          <div className={`flex flex-col gap-3 lg:flex-1 ${topicOffClass}`} {...topicOffProps}>
+          <div className={`flex flex-col gap-3 lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
           <FirstSparkBanner
             city={locCity.trim() || ctaProfile?.location_city || ""}
             state={locCity.trim() ? locState : (ctaProfile?.location_state || "")}
@@ -2788,8 +2806,8 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {/* Back in a section of their own. They were moved into the Topic card,
           between the box and Send, and the owner found that too busy. */}
-      {step === "input" && !cameraHandoff && <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Create")} · Create`} />}
-      {step === "input" && !cameraHandoff && (
+      {showCreate && <SectionHead className="mt-7 lg:mt-4" eyebrow={`${sectionNo("Create")} · Create`} />}
+      {showCreate && (
         <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
@@ -2892,6 +2910,7 @@ function CreatePageInner() {
                 key={key}
                 type="button"
                 onClick={() => {
+                  if (key !== "spark") window.scrollTo({ top: 0 });
                   // Each card shows what belongs to it. For Video / Reel that
                   // is the three kinds; any other card puts them away.
                   setVideoKindOpen(key === "spark");
@@ -3381,7 +3400,7 @@ function CreatePageInner() {
       ══════════════════════════════════════════ */}
       {twoCols && inputMode === "script" && step === "input" && <div aria-hidden className="hidden lg:block lg:flex-1" />}
       {inputMode === "script" && step === "input" && (
-        <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2">
+        <div className={`mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2 ${twoCols ? "lg:flex-1" : ""}`}>
 
           {/* What is left of the old third section now that its topic box is
               section 1: the place, the audience and the shape. It had no
@@ -3396,7 +3415,7 @@ function CreatePageInner() {
               areas and will make a different video for each, so this is a
               question the page has to ask rather than a profile setting it can
               assume. It seeds the trending list too. */}
-          <section className="rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5 lg:px-4 lg:py-3">
+          <section className={`rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5 lg:px-4 lg:py-3 ${twoCols ? "lg:flex lg:flex-1 lg:flex-col" : ""}`}>
           <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3 lg:gap-2">
             {/* A "City + State" heading sat here, over two fields labelled
                 "City or area" and "State". Taken off by the owner as saying
@@ -3449,6 +3468,7 @@ function CreatePageInner() {
               </button>
             )}
           </div>
+          {twoCols && <div aria-hidden className="hidden lg:block lg:flex-1" />}
 
           {/* Audience, style and CTA are optional and Length is the only
               required one (it already defaults to Standard, so it is never
@@ -3459,9 +3479,10 @@ function CreatePageInner() {
 
               No card of its own now: these sit inside the shaded ask panel
               with Where, so the page asks its questions in one place. */}
-          <div className="mt-6 lg:mt-2.5">
-            <div className="flex flex-col gap-3">
+          <div className={`mt-6 lg:mt-4 ${twoCols ? "lg:flex lg:flex-1 lg:flex-col" : ""}`}>
+            <div className={`flex flex-col gap-3 ${twoCols ? "lg:flex-1 lg:gap-0" : ""}`}>
               {renderBriefPickers(true)}
+              {twoCols && !blogOnly && <div aria-hidden className="hidden lg:block lg:flex-1" />}
 
                 {/* ── What? · Shorts or Longform ──
                     Shape and length together, because they are one decision
@@ -3478,7 +3499,7 @@ function CreatePageInner() {
                     choice was quietly deciding how long the hidden script got.
                     A Longform script can be written from the article later. */}
                 {!blogOnly && (
-                <div id="brief-format" className="mt-6 scroll-mt-24 lg:mt-1">
+                <div id="brief-format" className={`mt-6 scroll-mt-24 ${twoCols ? "lg:mt-4" : "lg:mt-1"}`}>
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-spark-ink-muted">
                       Choose format
@@ -3565,6 +3586,7 @@ function CreatePageInner() {
       {showActionBar && (
         <StepFooter
           wide={twoCols}
+          onBack={tabPage ? backToStart : undefined}
           hint={
             // Nothing to run out of on the blog route, so the out-of-videos
             // warning does not belong on it.
@@ -3664,6 +3686,7 @@ function CreatePageInner() {
       {inputMode === "camera" && step === "input" && (
         <StepFooter
           wide={twoCols}
+          onBack={backToStart}
           hint={
             // Uploading footage is the one route with no script and no Open
             // Camera, so every hint below it was wrong there — the bar told

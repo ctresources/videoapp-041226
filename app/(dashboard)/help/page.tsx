@@ -304,7 +304,10 @@ export default function HelpPage() {
               the mic and a box, where you say or type what it&apos;s about (step 8).{" "}
               <strong>2 · Create</strong> — four
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
-              <strong>Blog</strong> or <strong>Listings &amp; photos</strong>.{" "}
+              <strong>Blog</strong> or <strong>Listings &amp; photos</strong>. Video / Reel stays on
+              this page; the other three each open a page of their own, with{" "}
+              <strong>Back</strong> on the bar at the bottom to return here. A topic you
+              already said or typed comes with you.{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
               you forwarded in turns up (step 6). A listing or a photos only reel skips this
