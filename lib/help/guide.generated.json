@@ -102,16 +102,11 @@
     },
     {
       "n": 21,
-      "title": "The Dashboard — What To Do Next",
-      "text": "Dashboard is the starting point, not a report. It shows what you have left — short videos, long videos, and whether camera recording is unlocked with the days remaining — a Getting Started checklist that disappears once you've finished it, and your five most recent projects to pick back up."
+      "title": "Spark Insights — What You Have And How It Did",
+      "text": "Spark Insights opens with what you have left — short videos, long videos, and whether camera recording is unlocked with the days remaining — a Getting Started checklist that disappears once you've finished it, and buttons to create a video or open the calendar. Your five most recent projects are at the bottom to pick back up.\nThen it looks backwards. How many videos you've made and published, a breakdown by platform and by video shape, and — for anything published to your connected YouTube channel — real views, likes and comments, with every video ranked and linked. Those numbers are fetched from YouTube once a day, so they're yesterday's picture rather than live, and they only cover videos published from September onwards. The same figures appear on each Spark's own card, counting just that Spark's videos.\nWatch time and click-through aren't there yet — YouTube keeps those behind a separate permission. Views, likes and comments are what a connected channel gives us today."
     },
     {
       "n": 22,
-      "title": "Spark Insights — What Happened After",
-      "text": "Spark Insights is the opposite: it looks backwards. How many videos you've made and published, a breakdown by platform and by video shape, and — for anything published to your connected YouTube channel — real views, likes and comments, with every video ranked and linked. Those numbers are fetched from YouTube once a day, so they're yesterday's picture rather than live, and they only cover videos published from September onwards. The same figures appear on each Spark's own card, counting just that Spark's videos.\nWatch time and click-through aren't there yet — YouTube keeps those behind a separate permission. Views, likes and comments are what a connected channel gives us today."
-    },
-    {
-      "n": 23,
       "title": "Spark Calendar — When It Goes Out",
       "text": "The calendar puts every dated item — published or scheduled — on a month, week or list view, with the All Sparks panel beside it for everything that has no date yet. Open any Spark from either side to reach its card. This one is still rolling out: it appears in your sidebar when your account has it."
     }
@@ -134,12 +129,12 @@
       "text": ""
     },
     {
-      "title": "Sparks, The Dashboard And Insights",
+      "title": "Sparks, Insights And The Calendar",
       "text": ""
     },
     {
       "title": "The Weekly Rhythm",
-      "text": "Once: set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)\nWeekly: hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time\nPublish: one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached\nFor a listing: a Classic photos only reel is free; Cinematic or a listing video uses one short video\nNo photos and no camera: Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video\nMix in free camera videos — YouTube's algorithm loves 8–15 minute authentic long-form\nEvery one also gives you a blog article for your own site, which costs nothing from your plan\nPart 5 covers Sparks, the Dashboard and Spark Insights — where your work lives and how it's doing. The Spark Calendar described there is still rolling out, and appears in your sidebar when your account has it.\nCreate Your First Video\n); }"
+      "text": "Once: set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)\nWeekly: hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time\nPublish: one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached\nFor a listing: a Classic photos only reel is free; Cinematic or a listing video uses one short video\nNo photos and no camera: Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video\nMix in free camera videos — YouTube's algorithm loves 8–15 minute authentic long-form\nEvery one also gives you a blog article for your own site, which costs nothing from your plan\nPart 5 covers Sparks and Spark Insights — where your work lives and how it's doing. The Spark Calendar described there is still rolling out, and appears in your sidebar when your account has it.\nCreate Your First Video\n); }"
     }
   ]
 }

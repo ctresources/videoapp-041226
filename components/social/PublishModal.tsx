@@ -843,7 +843,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
                   <p className="text-sm text-yellow-700">
                     No social accounts connected.{" "}
-                    <Link href="/social" className="underline font-medium" onClick={onClose}>
+                    <Link href="/settings/social" className="underline font-medium" onClick={onClose}>
                       Connect YouTube →
                     </Link>
                   </p>

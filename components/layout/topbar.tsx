@@ -58,7 +58,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     // in a fresh tab reads as 1 and lands on the dashboard rather than on
     // whatever the browser had before this app.
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
-    else router.push("/dashboard");
+    else router.push("/create");
   }
   const title =
     Object.entries(pageTitles).find(
@@ -114,7 +114,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </button>
           )}
           {/* Logo on mobile (sidebar hidden); page title on desktop */}
-          <Link href="/dashboard" className="md:hidden">
+          <Link href="/create" className="md:hidden">
             <Image
               src="/sparkreels-logo.png"
               alt="SparkReels"

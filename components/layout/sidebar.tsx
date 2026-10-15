@@ -97,14 +97,11 @@ const NAV_ICONS: Record<string, ReactNode> = {
 };
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
   { href: "/create", label: "Spark Studio" },
   { href: "/videos", label: "My Sparks" },
   { href: "/tools", label: "Spark Tools" },
   { href: "/calendar", label: "Spark Calendar" },
   { href: "/analytics", label: "Spark Insights" },
-  { href: "/social", label: "Social Media" },
-  { href: "/billing", label: "Billing" },
   { href: "/affiliate", label: "Affiliate Program" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "How It Works" },
@@ -178,7 +175,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
            -mr-px covers the sidebar's own right border, which would otherwise
            draw a pale line between the two halves of one header. */
         <div className="-mr-px mb-3 flex h-[49px] items-center justify-center bg-[#050505]">
-          <Link href="/dashboard">
+          <Link href="/create">
             <Image
               src="/sparkreels-logo.png"
               alt="SparkReels.ai — Speak. Spark. Share."
@@ -192,7 +189,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         </div>
       ) : (
       <div className="px-4 pb-4">
-        <Link href="/dashboard">
+        <Link href="/create">
           <Image
             src="/sparkreels-logo.png"
             alt="SparkReels.ai — Speak. Spark. Share."

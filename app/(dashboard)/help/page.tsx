@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
-  LayoutDashboard, BarChart2, CalendarDays, Mail, Image as ImageIcon,
+  BarChart2, CalendarDays, Mail, Image as ImageIcon,
 } from "lucide-react";
 
 export const metadata = { title: "How It Works — SparkReels" };
@@ -849,7 +849,7 @@ export default function HelpPage() {
             on your work had no explanation at all. */}
         <Card padding="sm">
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
-          <h2 className="text-base font-bold text-brand-text mb-4">Sparks, The Dashboard And Insights</h2>
+          <h2 className="text-base font-bold text-brand-text mb-4">Sparks, Insights And The Calendar</h2>
           <div className="flex flex-col gap-4">
             <Step n={20} title="What A Spark Is" icon={Sparkles}>
               A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
@@ -865,16 +865,15 @@ export default function HelpPage() {
                 article, the captions, the schedule and how it&apos;s performing.
               </span>
             </Step>
-            <Step n={21} title="The Dashboard — What To Do Next" icon={LayoutDashboard}>
-              <Link href="/dashboard" className="text-primary-600 font-medium hover:underline">Dashboard</Link>{" "}
-              is the starting point, not a report. It shows what you have left — short videos, long
-              videos, and whether camera recording is unlocked with the days remaining — a{" "}
-              <strong>Getting Started</strong> checklist that disappears once you&apos;ve finished it,
-              and your five most recent projects to pick back up.
-            </Step>
-            <Step n={22} title="Spark Insights — What Happened After" icon={BarChart2}>
+            {/* The Dashboard and Spark Insights became one page on 2026-10-14. */}
+            <Step n={21} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
-              is the opposite: it looks backwards. How many videos you&apos;ve made and published, a
+              opens with what you have left — short videos, long videos, and whether camera recording
+              is unlocked with the days remaining — a <strong>Getting Started</strong> checklist that
+              disappears once you&apos;ve finished it, and buttons to create a video or open the
+              calendar. Your five most recent projects are at the bottom to pick back up.
+              <span className="block mt-1.5">
+              Then it looks backwards. How many videos you&apos;ve made and published, a
               breakdown by platform and by video shape, and — for anything published to your connected
               YouTube channel — real <strong>views, likes and comments</strong>, with every video
               ranked and linked. Those numbers are fetched from YouTube once a day, so they&apos;re
@@ -886,8 +885,9 @@ export default function HelpPage() {
                 separate permission. Views, likes and comments are what a connected channel gives us
                 today.
               </span>
+              </span>
             </Step>
-            <Step n={23} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+            <Step n={22} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
@@ -913,8 +913,8 @@ export default function HelpPage() {
               sending most people to it would be pointing them at a 404. Part 5
               now explains what it is, so this only has to say where it appears. */}
           <p className="text-xs text-slate-400 mt-3">
-            Part 5 covers <strong>Sparks</strong>, the <strong>Dashboard</strong> and{" "}
-            <strong>Spark Insights</strong> — where your work lives and how it&apos;s doing. The{" "}
+            Part 5 covers <strong>Sparks</strong> and <strong>Spark Insights</strong> — where your
+            work lives and how it&apos;s doing. The{" "}
             <strong>Spark Calendar</strong> described there is still rolling out, and appears in your
             sidebar when your account has it.
           </p>

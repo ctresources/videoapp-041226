@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft, CheckCircle, Link2Off, Key,
+  CheckCircle, Link2Off, Key,
   RefreshCw, PlayCircle, Camera, Music2,
   Share2, Globe, AtSign, AlertTriangle, Loader2, MapPin,
 } from "lucide-react";
@@ -243,12 +243,8 @@ function SocialSettingsContent() {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
+      {/* No back arrow: Profile is the tab beside this one. */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/settings">
-          <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-            <ArrowLeft size={18} className="text-slate-400" />
-          </button>
-        </Link>
         <div>
           <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
           <p className="text-sm text-slate-500 mt-0.5">Connect your accounts once and publish to them straight from SparkReels</p>

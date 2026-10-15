@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Share2, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
+import { Lock, Trash2, LogOut, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
 import { EmailImportAddress } from "@/components/settings/email-import-address";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
@@ -226,21 +226,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 
-      {/* Social Accounts quick link */}
-      <Link href="/settings/social">
-        <Card className="flex items-center justify-between cursor-pointer hover:border-primary-300 transition-colors group">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-secondary-50 rounded-xl flex items-center justify-center">
-              <Share2 size={18} className="text-secondary-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-brand-text">Social Accounts</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Connect your YouTube channel</p>
-            </div>
-          </div>
-          <span className="text-sm text-primary-500 group-hover:underline">Manage →</span>
-        </Card>
-      </Link>
+      {/* Social Accounts is a tab above now (settings/layout.tsx). */}
 
       {/* Content Preferences */}
       <Card>
