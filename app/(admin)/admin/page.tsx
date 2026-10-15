@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail, Share2,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail, Share2, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -107,6 +107,10 @@ export default function AdminPage() {
     used?: number; limit?: number; plan?: string | null; ours?: number;
   } | null>(null);
   const socialNearCap = !!social?.limit && (social.used ?? 0) >= social.limit * 0.8;
+  /** Ask Sparklee this month: conversations, minutes, an estimated cost. */
+  const [sparklee, setSparklee] = useState<{
+    conversations: number; people: number; today: number; minutes: number; estimatedCost: number; costPerMinute: number;
+  } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -147,6 +151,10 @@ export default function AdminPage() {
     fetch("/api/admin/social-status")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) setSocial(d); })
+      .catch(() => { /* the card simply does not appear */ });
+    fetch("/api/admin/sparklee-usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setSparklee(d); })
       .catch(() => { /* the card simply does not appear */ });
   }, []);
 
@@ -367,6 +375,25 @@ export default function AdminPage() {
               {social.reachable !== false && socialNearCap && (
                 <p className="text-xs font-medium text-amber-700 mt-0.5">Nearly full — new agents will be refused at the limit</p>
               )}
+            </div>
+          </Card>
+        )}
+        {/* Ask Sparklee this month. The cost is an estimate from minutes;
+            OpenAI bills by audio tokens (see /api/admin/sparklee-usage). */}
+        {sparklee && (
+          <Card className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-amber-50">
+              <Sparkles size={20} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-brand-text">
+                {sparklee.minutes} min · ${sparklee.estimatedCost.toFixed(2)}
+              </p>
+              <p className="text-sm text-slate-500">Ask Sparklee This Month</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {sparklee.conversations} conversation{sparklee.conversations === 1 ? "" : "s"} · {sparklee.people} {sparklee.people === 1 ? "person" : "people"} · {sparklee.today} today
+              </p>
+              <p className="text-[11px] text-slate-400">Estimate at ${sparklee.costPerMinute.toFixed(2)}/min</p>
             </div>
           </Card>
         )}
