@@ -2067,14 +2067,36 @@ function CreatePageInner() {
   const twoCols = step === "input" && !cameraHandoff && topicApplies && !tabPage;
 
   /**
-   * Sections 2 and 3 sit together, centred on the height of the topic (mic)
-   * card beside them, at the owner's markup (2026-10-15). The card's place is
-   * measured rather than guessed, since its height changes with what is in
-   * the box. The card never stretches with the column (the ideas under it
-   * do), so this cannot feed back into itself.
+   * Section 2 starts level with the top of the topic (mic) card beside it,
+   * with 3 straight under it, at the owner's markup (2026-10-15). The card's
+   * place is measured rather than guessed, since the lines above it change
+   * size with the window. The card never stretches with the column (the
+   * ideas under it do), so this cannot feed back into itself.
    */
   const createSourceRef = useRef<HTMLDivElement>(null);
-  const [besideCard, setBesideCard] = useState<{ top: number; height: number } | null>(null);
+  const studioLineRef = useRef<HTMLParagraphElement>(null);
+  // fitStudioLine: on a computer the studio line is as large as fits on one
+  // line, up to 28px; on a phone it wraps at 20px, from its classes.
+  useEffect(() => {
+    if (!twoCols) return;
+    const el = studioLineRef.current;
+    if (!el) return;
+    const fit = () => {
+      if (window.innerWidth < 1024) { el.style.fontSize = ""; return; }
+      let size = 28;
+      el.style.fontSize = `${size}px`;
+      while (el.scrollWidth > el.clientWidth && size > 14) {
+        size -= 0.5;
+        el.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el.parentElement ?? el);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [twoCols]);
+  const [besideCard, setBesideCard] = useState<{ top: number } | null>(null);
   useEffect(() => {
     if (!twoCols) { setBesideCard(null); return; }
     const card = document.getElementById("spark-composer")?.nextElementSibling as HTMLElement | null;
@@ -2085,8 +2107,7 @@ function CreatePageInner() {
       if (!col || window.innerWidth < 1024) { setBesideCard(null); return; }
       const c = card.getBoundingClientRect();
       const top = Math.max(0, Math.round(c.top - col.getBoundingClientRect().top));
-      const height = Math.round(c.height);
-      setBesideCard((prev) => (prev && prev.top === top && prev.height === height ? prev : { top, height }));
+      setBesideCard((prev) => (prev && prev.top === top ? prev : { top }));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -2493,31 +2514,30 @@ function CreatePageInner() {
               (2026-10-15). */}
           {/* From the owner's mock (2026-10-15): her two lines as one, above
               the steps; the steps; then the question, in the display face. */}
-          <p className="text-center text-[20px] font-extrabold leading-[1.3] text-black lg:text-[28px]">
-            {/* Bold black, twice the size, at the owner's ask (2026-10-15). */}
+          <p ref={studioLineRef} className="text-center text-[20px] font-extrabold leading-[1.3] text-black lg:whitespace-nowrap">
+            {/* Bold black, at the owner's ask (2026-10-15), and on one line on
+                a computer: as large as fits, up to 28px (fitStudioLine). */}
             <span>Your all-in-one AI visibility studio</span>
             {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-2 text-[13px]">
-            {/* The steps, spaced out and centred in the room left of Sparklee,
-                with clear space before her (the owner's markup, 2026-10-15:
-                4 Details ran into her card). */}
-            <div className="flex min-w-0 flex-1 basis-[420px] flex-wrap items-center gap-x-5 gap-y-1.5 lg:ml-6 lg:mr-10">
+          {/* The steps bar, and Ask Sparklee beside it rather than inside it
+              (the owner's markup, 2026-10-15): the bar loses the height her
+              card gave it, and the steps are bigger. */}
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-1 basis-[420px] flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-1.5 text-[15px]">
             {sectionList.map((label, i) => (
               <span key={label} className="contents">
                 {i > 0 && <span className="hidden h-px min-w-[24px] flex-1 bg-spark-rule sm:block" />}
                 <span className={`flex items-center gap-2 ${i === 0 ? "font-semibold text-spark-ink" : "text-spark-ink-muted"}`}>
-                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] ${
                     i === 0 ? "bg-[#A3660F] text-white" : "border border-spark-rule-dim text-spark-ink-muted"
                   }`}>{i + 1}</span>
                   {sectionLabel(label)}
                 </span>
               </span>
             ))}
-            </div>
-            {/* Sparklee at the end of the steps, at the owner's markup
-                (2026-10-15): above the topic she read as part of step 1. It
-                starts the same conversation as her badge in the top bar. */}
+          </div>
+            {/* It starts the same conversation as her badge in the top bar. */}
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT))}
@@ -2536,7 +2556,7 @@ function CreatePageInner() {
               </span>
             </button>
           </div>
-          <h1 className="mt-3 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
+          <h1 className="mt-2.5 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
             What do you want to Spark today?
           </h1>
         </div>
@@ -2865,12 +2885,8 @@ function CreatePageInner() {
           spacers below share the right column's spare room out between its
           sections, so its last section ends level with the left card. */}
       <div className={`min-w-0 ${twoCols ? "lg:flex lg:flex-col" : ""}`}>
-      {/* Sections 2 and 3 as one block, centred beside the topic card. */}
-      <div
-        ref={createSourceRef}
-        className={besideCard ? "flex flex-col justify-center" : ""}
-        style={besideCard ? { marginTop: besideCard.top, minHeight: besideCard.height } : undefined}
-      >
+      {/* Sections 2 and 3 as one block, its top level with the topic card. */}
+      <div ref={createSourceRef} style={besideCard ? { marginTop: besideCard.top } : undefined}>
       {/* ── Row 1 · how it gets made ──
           One row used to ask two questions: three tiles chose where the words
           come from and the fourth chose who does the filming. That mix is why
