@@ -355,7 +355,7 @@ export default function HelpPage() {
                 for you. Recording yourself has its own version of this, <strong>From a document</strong>.
               </span>
               <span className="block mt-1.5">
-                On the <strong>Blog</strong> route the same tile is there, and you choose
+                On the <strong>Blog</strong> page the same tile is there, and you choose
                 what happens to it: <strong>Use it as it is</strong>, which publishes your words
                 unchanged and takes seconds, or <strong>Write a new article from it</strong>, which
                 covers the same ground in your voice for your market. Use the first for your own
@@ -439,7 +439,8 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 Prefer typing, or want a suggestion instead of a blank box? The box shows a{" "}
-                <strong>Try</strong> example that changes every few seconds. Under it is a{" "}
+                <strong>Try</strong> example that changes every few seconds; press the empty box to use
+                the one showing, or just start typing. Under it is a{" "}
                 <strong>Quick win</strong>: a ready topic for your town in one press, with a new idea
                 each time you sign in (your very first one is a market update). Then{" "}
                 <strong>What buyers ask AI</strong> (step 19), and under that <strong>Or try</strong>:
@@ -536,11 +537,15 @@ export default function HelpPage() {
               </span>
             </Step>
             <Step n={12} title="Camera/Teleprompter — The Free Option" icon={Camera}>
-              The camera screen is two halves. <strong>What we&apos;re writing</strong> comes first — your
+              Pressing <strong>Camera/Teleprompter</strong> opens a page of its own, with{" "}
+              <strong>Back</strong> on the bar at the bottom to return to Spark Studio. On a computer it
+              starts with <strong>Record yourself</strong> or <strong>Record your screen</strong>.{" "}
+              <strong>What we&apos;re writing</strong> comes next — your
               market, how long the script should be, and where the words come from: a topic, a PDF or link, a
               recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
-              script and no teleprompter at all. When AI is writing it from a topic, the topic is the one
-              in the Topic card at the top of the page, and <strong>Write my script</strong> in the bar
+              script and no teleprompter at all. When AI is writing it from a topic, the mic box at the top
+              of this page holds the topic — anything you already said or typed on Spark Studio comes
+              with you — and <strong>Write my script</strong> in the bar
               at the bottom writes it and loads it into your teleprompter.
               Then <strong>how it records</strong> — vertical or horizontal,
               Branded Look, what plays behind you, and <strong>Add Channel CTA</strong> to append your
@@ -587,11 +592,15 @@ export default function HelpPage() {
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
             <Step n={13} title="Listings And Photos Only Reels" icon={ImageIcon}>
-              <strong>Listings &amp; photos</strong>, the fourth card, has two tabs, and both start
-              from a set of property pictures.{" "}
+              <strong>Listings &amp; photos</strong>, the fourth card, opens a page of its own with two
+              tabs, and both start from a set of property pictures. <strong>Back</strong>, on the bar
+              at the bottom, returns to Spark Studio.{" "}
               <strong>Listing video</strong> writes a tour from the listing —
               paste a listing link, upload photos or enter the details — and renders it in your voice,
-              with your avatar on screen or the photos full-frame. It uses one short video.
+              with your avatar on screen or the photos full-frame. It uses one short video. Once the
+              address and price are in, press <strong>Next · video setup</strong> on the bar at the
+              bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
+              to go straight to the teleprompter with your photos behind you, free.
               <span className="block mt-1.5">
                 <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
                 them, or paste a listing link and its photos are brought in for you — then pick the
@@ -615,14 +624,15 @@ export default function HelpPage() {
                 description, so the reel says what it is.
               </span>
               <span className="block mt-1.5">
-                When the reel is done the button becomes <strong>View your reel</strong>.{" "}
-                <strong>Make another reel</strong>, underneath, brings the build button back — on
-                Cinematic that is another short video.
+                <strong>Build the reel</strong> is on the bar at the bottom. When the reel is done
+                it becomes <strong>View your reel</strong>.{" "}
+                <strong>Make another reel</strong>, at the foot of the form, brings the build button
+                back — on Cinematic that is another short video.
               </span>
               {/* The other thing the same photos can be. Said beside the reel
                   because it is the same form and the same set of pictures. */}
               <span className="block mt-1.5">
-                <strong>Post these photos</strong>, under the build button, sends the same photos as
+                <strong>Post these photos</strong>, at the foot of the form, sends the same photos as
                 they are: one post to swipe through on Instagram, Facebook, LinkedIn, Threads, X or
                 TikTok. No video is made and nothing comes out of your plan. Pick the accounts, write
                 one caption for the post, and send. The order you arranged them in is the swipe order.
@@ -658,8 +668,10 @@ export default function HelpPage() {
               each can be made up to four times for one article. That gives one recording two places to
               be quoted from: the video&apos;s own description, which is written with a real FAQ block for
               voice search, and the article on your own site. Blog posts never use a video from your plan, and
-              you can write one without making a video at all — pick <strong>Blog</strong> when the
-              Topic card asks what to make, or start your sentence with &ldquo;create a blog&rdquo;.
+              you can write one without making a video at all — press the <strong>Blog</strong> card,
+              which opens a page of its own with the mic box, Source and Details and{" "}
+              <strong>Back</strong> on the bar at the bottom, or start your sentence with
+              &ldquo;create a blog&rdquo;.
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as
                 soon as the Share Kit opens — there is nothing to press. A take recorded with no script
