@@ -128,6 +128,12 @@ function dedupe(items: ContentTemplate[]): ContentTemplate[] {
 interface SparkPanelProps {
   /** Its frame's extra classes: on Create it grows to the column's height. */
   className?: string;
+  /**
+   * "inline": no frame of its own, for sitting inside another card, and laid
+   * out from the owner's mock (2026-10-14): "Or try:" and the chips, then
+   * More ideas under them. No Shuffle, which the mock leaves out.
+   */
+  variant?: "joined" | "inline";
   city?: string;
   state?: string;
   /** Receives the resolved topic and the raw {city}/{state} original, so a
@@ -156,7 +162,8 @@ interface SparkPanelProps {
  * grouped library for anyone who does want to browse. Nothing is hidden that
  * was reachable before; it is one press further away and the press is labelled.
  */
-export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className = "" }: SparkPanelProps) {
+export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className = "", variant = "joined" }: SparkPanelProps) {
+  const inline = variant === "inline";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   /**
@@ -202,8 +209,30 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className
     // write, paper where you choose.
     <section
       id="spark-panel"
-      className={`scroll-mt-6 rounded-b-[22px] border border-spark-rule bg-[#f4f2e8] px-4 py-3 sm:px-5 ${className}`}
+      className={inline
+        ? `scroll-mt-6 ${className}`
+        : `scroll-mt-6 rounded-b-[22px] border border-spark-rule bg-[#f4f2e8] px-4 py-3 sm:px-5 ${className}`}
     >
+      {inline && !open && (
+        <>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[13px] font-semibold text-spark-ink-soft">Or try:</span>
+            {shortlist.map((t) => (
+              <button key={t.id} type="button" onClick={() => pick(t)} title={t.description} className={chip}>
+                {SHORT_LABELS[t.id] ?? t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => { setOpen(true); setQuery(""); }}
+            className="mt-2.5 text-[14px] font-semibold text-spark-amber hover:text-spark-blue"
+          >
+            More ideas ({CONTENT_TEMPLATES.length}) →
+          </button>
+        </>
+      )}
+      {(!inline || open) && (
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-3">
           <p className="text-[15px] font-semibold text-spark-ink">
@@ -235,8 +264,9 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className
           {open ? "Show fewer" : `More ideas (${CONTENT_TEMPLATES.length})`}
         </button>
       </div>
+      )}
 
-      {!open && tryLine && (
+      {!inline && !open && tryLine && (
         <button
           type="button"
           onClick={() => onUseTry?.(tryLine)}
@@ -247,7 +277,7 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className
         </button>
       )}
 
-      {!open && (
+      {!inline && !open && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {shortlist.map((t) => (
             <button key={t.id} type="button" onClick={() => pick(t)} title={t.description} className={chip}>

@@ -435,11 +435,13 @@ export default function HelpPage() {
                 saying <strong>&ldquo;Spark it&rdquo;</strong> starts it too.
               </span>
               <span className="block mt-1.5">
-                Prefer typing, or want a suggestion instead of a blank box? Under it,{" "}
-                <strong>Need an Idea for a Topic?</strong> offers five ideas with your city filled in.{" "}
-                <strong>Shuffle</strong> shows five more, and <strong>More ideas</strong> opens the
-                whole list with a search box. Tap one, or one of the two <strong>Try</strong> examples,
-                and it lands in the same box the mic writes into, so you can add to it before you send.
+                Prefer typing, or want a suggestion instead of a blank box? The box shows a{" "}
+                <strong>Try</strong> example that changes every few seconds. Under it, your first time
+                there is a <strong>Quick win</strong>: a market update for your town in one press. Then{" "}
+                <strong>What buyers ask AI</strong> (step 19), and under that <strong>Or try</strong>:
+                ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
+                and a search box. Tap one and it lands in the same box the mic writes into, so you can
+                add to it before you send.
                 Either way, AI researches live market data for your city and writes a
                 broadcast-quality script with real stats.
               </span>
@@ -855,8 +857,10 @@ export default function HelpPage() {
             <Step n={19} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. On <strong>Create</strong>, under the topic box,{" "}
-              <strong>What buyers ask AI</strong> shows three questions buyers in your city are asking. Tap
-              one and it becomes your topic, so the video answers it.
+              <strong>What buyers ask AI</strong> shows a question buyers in your city are asking right
+              now, using the city in Settings unless you type another in Details.{" "}
+              <strong>Show more</strong> opens the rest, and <strong>Record this</strong> makes one your
+              topic, so the video answers it.
               <span className="block mt-1.5">
                 <strong>Every blog article already has answer blocks.</strong> The six questions at the end
                 of each article in your Share Kit (step 14) are written the way AI assistants quote, for

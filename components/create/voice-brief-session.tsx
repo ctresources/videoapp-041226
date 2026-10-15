@@ -147,6 +147,12 @@ interface Props {
   onShowChoices?: () => void;
   formatSet?: boolean;
   settled?: boolean;
+  /**
+   * Example topics shown inside the empty box, one at a time, turning over
+   * every few seconds (2026-10-15, at the owner's ask: the "Try" line moved
+   * from beside the section name into the box).
+   */
+  tryLines?: string[];
 }
 
 /** How long typing has to pause before the words are read. */
@@ -178,8 +184,14 @@ const READ_MIN_CHARS = 12;
 export function VoiceBriefSession({
   onSlots, onReady, onSwitchToTyping, disabled = false, seed, mode = "script",
   onDraftChange, onText, onGo, command, onReply, off = false, onWake,
-  selected = null, onMakeChange, picked,
+  selected = null, onMakeChange, picked, tryLines = [],
 }: Props) {
+  const [tryIdx, setTryIdx] = useState(0);
+  useEffect(() => {
+    if (tryLines.length < 2) return;
+    const id = setInterval(() => setTryIdx((n) => n + 1), 3600);
+    return () => clearInterval(id);
+  }, [tryLines.length]);
   // In refs so the reader and the recogniser, which outlive the render that
   // made them, always call the current ones.
   const onSlotsRef = useRef(onSlots); onSlotsRef.current = onSlots;
@@ -427,9 +439,7 @@ export function VoiceBriefSession({
           readOnly={listening}
           disabled={disabled || off}
           rows={2}
-          // An example inside it again, from the owner's mock (2026-10-14).
-          // It had been taken out on 2026-10-13; the newer ask wins.
-          placeholder="…or type your topic, e.g. “Three things I’d fix before listing this fall”"
+          placeholder={tryLines.length ? `Try: “${tryLines[tryIdx % tryLines.length]}”` : undefined}
           aria-label="Your topic"
           onKeyDown={(e) => {
             // Enter reads the words now instead of starting a new line.

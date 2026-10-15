@@ -36,8 +36,9 @@ import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
-import { ComposerCard, TryLineInline } from "@/components/create/composer-card";
+import { ComposerCard } from "@/components/create/composer-card";
 import { BuyerQuestions } from "@/components/create/buyer-questions";
+import { FirstSparkBanner } from "@/components/create/first-spark-banner";
 import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
@@ -228,7 +229,7 @@ function SourceTile({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors lg:min-h-[54px] lg:py-2 ${
+      className={`flex min-h-[74px] flex-col justify-center gap-0.5 rounded-[14px] px-3.5 py-2.5 text-left transition-colors lg:min-h-0 lg:rounded-[12px] lg:px-3 lg:py-1.5 ${
         disabled ? "cursor-default" : ""
       } ${
         active
@@ -2376,18 +2377,30 @@ function CreatePageInner() {
           and a second brief that would overwrite the script they came to
           record. */}
       {step === "input" && !cameraHandoff && (
-        <div className="pt-2 text-center">
-          {/* The owner's line, and the page's headline now. "What will you
-              Spark?" sat above it, then beside it, and is gone: the section
-              under this asks what you want to make in plainer words. Dark
-              amber, primary-700 (#8D580F), the same deep amber the Spark Card
-              uses for the line that needs reading. */}
-          <h1 className="text-balance text-[26px] font-medium leading-[1.2] tracking-[-0.01em] text-primary-700 sm:text-[32px]">
-            Your all-in-one AI visibility studio
-          </h1>
-          <p className="mt-2.5 text-[17px] leading-[1.5] text-primary-700">
-            Speak your Spark into more ways to connect, build trust, and stay visible.
+        <div>
+          {/* From the owner's mock (2026-10-15): her two lines as one, above
+              the steps; the steps; then the question, in the display face. */}
+          <p className="text-[14px] leading-[1.45] text-primary-700">
+            <span className="font-semibold">Your all-in-one AI visibility studio</span>
+            {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-2 text-[13px]">
+            {["Topic", "Format", "Details", "Video"].map((label, i) => (
+              <span key={label} className="contents">
+                {i > 0 && <span className="hidden h-px min-w-[24px] flex-1 bg-spark-rule sm:block" />}
+                <span className={`flex items-center gap-2 ${i === 0 ? "font-semibold text-spark-ink" : "text-spark-ink-muted"}`}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
+                    i === 0 ? "bg-[#A3660F] text-white" : "border border-spark-rule-dim text-spark-ink-muted"
+                  }`}>{i + 1}</span>
+                  {label}
+                </span>
+              </span>
+            ))}
+            <span className="text-spark-ink-muted sm:ml-4">About 2 minutes · nothing posts until you approve it</span>
+          </div>
+          <h1 className="mt-3 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
+            What do you want to talk about today?
+          </h1>
         </div>
       )}
 
@@ -2425,21 +2438,6 @@ function CreatePageInner() {
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow="1 · Say or Pick a Topic"
-            // The example, on this line at the owner's direction rather than
-            // as a line of display type under it. Gone once something is in
-            // the box, and while the section is switched off.
-            after={topicApplies && !locCustomTopic.trim() ? (
-              <TryLineInline
-                lines={TRY_LINES}
-                // Straight into the box, through the same channel a topic chip
-                // uses, so it arrives as a sentence to edit.
-                onUse={(text) => {
-                  setLocCustomTopic(text);
-                  setTopicTemplateRaw(null);
-                  setSparkSeed((n) => ({ text, n: n.n + 1 }));
-                }}
-              />
-            ) : undefined}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2460,6 +2458,7 @@ function CreatePageInner() {
           {/* Named so the hero mic can bring what it heard into view. */}
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
+            standalone
             disabled={!topicApplies}
             // The four reminder chips (Topic, Town, Audience, Format) and
             // the line under them came off at the owner's direction: each
@@ -2471,6 +2470,8 @@ function CreatePageInner() {
                 and handing a finished sentence down, so what is said shows in
                 the box and can be corrected before it is sent. */}
             <VoiceBriefSession
+              // The Try examples, inside the box now (2026-10-15).
+              tryLines={TRY_LINES}
               // Held while the next page is open, so closing it frees the box again.
               disabled={locGenerating || cameraScriptGenerating || scenesWriting}
               // Asked for when a video has none: its script's length follows it.
@@ -2649,36 +2650,45 @@ function CreatePageInner() {
               bottom, and between them there is a single shared rule. They fill
               the same field, so a gap made choosing an idea look like a
               different exercise from typing one. */}
-          <div className={`-mt-3 lg:flex lg:flex-1 lg:flex-col ${topicOffClass}`} {...topicOffProps}>
+          {/* Under the mic card, from the owner's mock (2026-10-14): the
+              first-video quick win, then what buyers ask AI with the topic
+              ideas at its foot. */}
+          <div className={`flex flex-col gap-3 lg:flex-1 ${topicOffClass}`} {...topicOffProps}>
+          <FirstSparkBanner
+            city={locCity.trim() || ctaProfile?.location_city || ""}
+            state={locCity.trim() ? locState : (ctaProfile?.location_state || "")}
+            onUse={(text) => {
+              setLocCustomTopic(text);
+              setTopicTemplateRaw(null);
+              setSparkSeed((s) => ({ text, n: s.n + 1 }));
+            }}
+          />
           {/* What buyers here are asking AI, as topics: AI Answer Blocks'
               questions, moved up from the tenth tab of Spark Tools to where a
               topic is chosen (2026-10-14). Straight under the box, above
               Need a topic idea?, at the owner's direction, as a strip of the
               same block rather than a card of its own. */}
           <BuyerQuestions
-            city={locCity}
-            state={locState}
-            agentName={ctaProfile?.full_name ?? ""}
+            city={locCity.trim() || ctaProfile?.location_city || ""}
+            state={locCity.trim() ? locState : (ctaProfile?.location_state || "")}
             onPick={(text) => {
               setLocCustomTopic(text);
               setTopicTemplateRaw(null);
               setSparkSeed((s) => ({ text, n: s.n + 1 }));
             }}
-            className="border border-y-0 border-spark-rule bg-spark-amber-tint px-4 py-2.5 sm:px-5"
-          />
-          <SparkPanel
             className="lg:flex-1"
-            city={locCity || undefined}
-            state={locState || undefined}
-            // Also drops the topic into the composer, so a pick is the start of
-            // a sentence you can add to rather than a silent field change
-            // somewhere further down the page.
-            onSelect={(topic, raw) => {
-              setLocCustomTopic(topic);
-              setTopicTemplateRaw(raw);
-              setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
-            }}
-          />
+          >
+            <SparkPanel
+              variant="inline"
+              city={locCity || undefined}
+              state={locState || undefined}
+              onSelect={(topic, raw) => {
+                setLocCustomTopic(topic);
+                setTopicTemplateRaw(raw);
+                setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
+              }}
+            />
+          </BuyerQuestions>
           </div>
 
           {/* Something they already have, on the video route.
@@ -2921,7 +2931,7 @@ function CreatePageInner() {
                 // column and "Listings & photos" dropped to a row of its own.
                 // Measured from the owner's screenshot, they now come to
                 // about 685. On a phone they still wrap, as they must.
-                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors lg:px-2 ${
+                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors lg:rounded-[12px] lg:px-2.5 lg:py-1.5 ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
@@ -2939,7 +2949,7 @@ function CreatePageInner() {
                     one tag kept is "Locked", which is not an explanation: it
                     is the only sign that pressing this card will not open it. */}
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[16px]">
+                  <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[16px] lg:text-[14.5px]">
                     <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
                     <span className="min-w-0 whitespace-pre-line">{label}</span>
                   </span>

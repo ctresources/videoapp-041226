@@ -38,6 +38,11 @@ interface ComposerCardProps {
   onUseTryLine?: (text: string) => void;
   /** The brief does not apply on the chosen route: the checklist dims. */
   disabled?: boolean;
+  /**
+   * A card of its own, rounded all round. Without it the card rounds only at
+   * the top, for a panel joined underneath.
+   */
+  standalone?: boolean;
   /** One line under the chips: that they can be pressed, and said. */
   chipsHint?: string;
   children: React.ReactNode;
@@ -96,6 +101,7 @@ export function ComposerCard({
   showTryLine = false,
   onUseTryLine,
   disabled = false,
+  standalone = false,
   chipsHint,
   children,
 }: ComposerCardProps) {
@@ -154,7 +160,7 @@ export function ComposerCard({
           write, paper where you choose — rather than two cards with a gap,
           which made picking an idea look like a different exercise from
           typing one when they fill the same field. */}
-      <div className="rounded-t-[22px] border-[1.5px] border-b-0 border-spark-rule bg-white px-4 py-3 shadow-[0_2px_14px_rgba(44,44,42,0.05)]">
+      <div className={`${standalone ? "rounded-[22px] border-[1.5px]" : "rounded-t-[22px] border-[1.5px] border-b-0"} border-spark-rule bg-white px-4 py-3 shadow-[0_2px_14px_rgba(44,44,42,0.05)]`}>
         {children}
 
         {/* One bottom row: what is still missing, and the way in. The chips are
