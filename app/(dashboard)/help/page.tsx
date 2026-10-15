@@ -891,7 +891,7 @@ export default function HelpPage() {
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
-              out: it appears in your sidebar when your account has it.
+              out: it appears in your menu when your account has it.
             </Step>
           </div>
           <VideoPlaceholder label="Finding Your Work" />
@@ -916,7 +916,7 @@ export default function HelpPage() {
             Part 5 covers <strong>Sparks</strong> and <strong>Spark Insights</strong> — where your
             work lives and how it&apos;s doing. The{" "}
             <strong>Spark Calendar</strong> described there is still rolling out, and appears in your
-            sidebar when your account has it.
+            menu when your account has it.
           </p>
           <Link
             href="/create"
