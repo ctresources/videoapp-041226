@@ -4,10 +4,10 @@ import { ArrowLeft, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { cn } from "@/lib/utils/cn";
 import { AskSparklee } from "@/components/layout/ask-sparklee";
+import { AccountMenu, TopNav } from "@/components/layout/top-nav";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -32,7 +32,6 @@ interface TopbarProps {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
 
   /**
    * Back, on every screen except the one there is nothing behind.
@@ -80,7 +79,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           onCreate ? "border-[#050505] bg-[#050505]" : "border-spark-rule bg-white"
         )}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onMenuClick}
             aria-label="Open menu"
@@ -113,8 +112,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <span className="hidden sm:inline">Back</span>
             </button>
           )}
-          {/* Logo on mobile (sidebar hidden); page title on desktop */}
-          <Link href="/create" className="md:hidden">
+          {/* The logo at every width: on computers the side menu that carried
+              it is gone, and the page names run across this bar instead. */}
+          <Link href="/create" className="shrink-0">
             <Image
               src="/sparkreels-logo.png"
               alt="SparkReels"
@@ -128,17 +128,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               priority
             />
           </Link>
-          <h1
-            className={cn(
-              "hidden text-[12.5px] font-medium md:block",
-              onCreate ? "text-spark-paper" : "text-spark-ink"
-            )}
-          >
-            {title}
-          </h1>
+          {/* The page's name, for screen readers: the underlined name in the
+              bar is what shows it to everyone else. */}
+          <h1 className="sr-only">{title}</h1>
+          <TopNav dark={onCreate} />
         </div>
 
-        <div className="flex items-center gap-3.5">
+        <div className="flex shrink-0 items-center gap-3.5">
           {/* Ask Sparklee, the spoken helper, on every page with this bar. */}
           <AskSparklee dark={onCreate} />
           {onCreate && (
@@ -146,15 +142,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               {progress.label}
             </span>
           )}
-          <div
-            className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold",
-              onCreate ? "bg-spark-blue text-spark-paper" : "bg-[#e3d5bb] text-spark-ink"
-            )}
-            title={user?.email ?? undefined}
-          >
-            {user?.email?.[0]?.toUpperCase() ?? "U"}
-          </div>
+          <AccountMenu dark={onCreate} />
         </div>
       </header>
 

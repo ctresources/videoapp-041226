@@ -63,8 +63,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar mobile />
       </div>
 
-      {/* Desktop sidebar */}
-      <Sidebar />
+      {/* No desktop sidebar since 2026-10-14: the page names run across the
+          top bar on computers (top-nav.tsx). The drawer above is the phone menu. */}
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">

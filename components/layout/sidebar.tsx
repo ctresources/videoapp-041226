@@ -102,7 +102,7 @@ const navItems = [
   { href: "/tools", label: "Spark Tools" },
   { href: "/calendar", label: "Spark Calendar" },
   { href: "/analytics", label: "Spark Insights" },
-  { href: "/affiliate", label: "Affiliate Program" },
+  { href: "/affiliate", label: "Affiliate" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "How It Works" },
 ];
