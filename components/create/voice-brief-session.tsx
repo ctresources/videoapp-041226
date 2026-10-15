@@ -382,7 +382,9 @@ export function VoiceBriefSession({
       {/* Centred, the line above the mic: the arrangement the Dashboard's
           mic card had, which the owner asked for here when that card was
           taken off. The mic and the type are the sizes they were. */}
-      <div className={`flex flex-col items-center gap-3 px-1 pb-2 pt-3 text-center ${micOff ? "opacity-45" : ""}`}>
+      {/* Tighter padding at the owner's ask (2026-10-15), to leave room for
+          the cards under it; the mic itself is unchanged. */}
+      <div className={`flex flex-col items-center gap-2 px-1 pb-1 pt-1 text-center ${micOff ? "opacity-45" : ""}`}>
         {/* The owner's mock (2026-10-14): a heading, a quiet line under it,
             the mic, then what tapping it does. The mock's line pointed at
             questions "on the left"; here the ideas are below. */}
