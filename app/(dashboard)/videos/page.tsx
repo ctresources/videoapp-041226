@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { isHeygenUrl, posterFrameUrl, downloadAsset } from "@/lib/utils/video-url";
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
-  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera, FileText,
+  XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera, FileText, Mail, Home,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -362,6 +362,25 @@ function VideosContent() {
   const [drafts, setDrafts] = useState<DraftProject[]>([]);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Picking blog posts for a newsletter (2026-10-15, the owner's mock): 2 to
+  // 5 of them, in the order they were ticked.
+  // The agent's saved listings, for the Seller updates section (2026-10-15).
+  const [sellerListings, setSellerListings] = useState<
+    { id: string; address: string; seller_names: string | null; listed_on: string | null; last_update_at: string | null }[] | null
+  >(null);
+  useEffect(() => {
+    fetch("/api/seller-listings")
+      .then((r) => (r.ok ? r.json() : { listings: [] }))
+      .then((d) => setSellerListings(d.listings ?? []))
+      .catch(() => setSellerListings([]));
+  }, []);
+  const [pickingPosts, setPickingPosts] = useState(false);
+  const [pickedPosts, setPickedPosts] = useState<string[]>([]);
+  const togglePost = (id: string) =>
+    setPickedPosts((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id)
+        : prev.length >= 5 ? (toast.error("A newsletter takes up to 5 posts."), prev)
+        : [...prev, id]);
 
   // The two halves of the drafts list, counted once and used in both the
   // header line and the sections below it.
@@ -672,22 +691,48 @@ function VideosContent() {
             <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
               {s.items.length}
             </span>
+            {s.key === "blogs" && s.items.length >= 2 && !pickingPosts && (
+              <Button size="sm" variant="outline" className="ml-auto gap-1.5" onClick={() => { setPickingPosts(true); setPickedPosts([]); }}>
+                <Mail size={13} /> Make a newsletter
+              </Button>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {s.items.map((d) => (
-              <Card key={d.id} padding="sm" className={`border-t-2 ${s.accent}`}>
+            {s.items.map((d) => {
+              const picking = s.key === "blogs" && pickingPosts;
+              const picked = picking && pickedPosts.includes(d.id);
+              return (
+              <Card
+                key={d.id}
+                padding="sm"
+                className={`border-t-2 ${s.accent} ${picking ? "cursor-pointer" : ""} ${picked ? "ring-2 ring-[#A3660F]" : ""}`}
+                onClick={picking ? () => togglePost(d.id) : undefined}
+              >
                 <div className="flex items-start justify-between gap-1.5 mb-1">
                   <p className="font-medium text-[13px] leading-snug text-brand-text line-clamp-2">
                     {d.title || (s.key === "blogs" ? "Untitled Article" : "Untitled Draft")}
                   </p>
-                  <Badge variant={s.key === "blogs" ? "default" : "warning"} className="text-xs shrink-0">
-                    {s.badge}
-                  </Badge>
+                  {picking ? (
+                    <span
+                      role="checkbox"
+                      aria-checked={picked}
+                      aria-label={`Use ${d.title || "this post"} in the newsletter`}
+                      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] text-[12px] text-white ${
+                        picked ? "border-[#A3660F] bg-[#A3660F]" : "border-[#d9c6a8] bg-white"
+                      }`}
+                    >
+                      {picked && "✓"}
+                    </span>
+                  ) : (
+                    <Badge variant={s.key === "blogs" ? "default" : "warning"} className="text-xs shrink-0">
+                      {s.badge}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-400 mb-2">
                   Saved {new Date(d.created_at).toLocaleDateString()} · {s.note}
                 </p>
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5" onClick={picking ? (e) => e.stopPropagation() : undefined}>
                   <Link href={s.href(d.id)} className="flex-1">
                     <Button size="sm" variant="outline" className="w-full gap-1.5">
                       {s.key === "blogs" ? <FileText size={12} /> : <Pencil size={12} />} {s.cta}
@@ -705,10 +750,68 @@ function VideosContent() {
                   </Button>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
+          {s.key === "blogs" && pickingPosts && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-spark-ink px-4 py-2.5 text-[14px] text-[#f3e6cf]">
+              <span className="flex-1">
+                {pickedPosts.length === 0 ? "Tick 2 to 5 posts" : `${pickedPosts.length} post${pickedPosts.length === 1 ? "" : "s"} picked`}
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPickingPosts(false); setPickedPosts([]); }}
+                className="rounded-[10px] border border-white/25 px-3 py-1.5 text-[13px] font-semibold text-[#f3e6cf] hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pickedPosts.length < 2}
+                onClick={() => router.push(`/newsletter?posts=${pickedPosts.join(",")}`)}
+                className="spark-cta-gradient rounded-[10px] px-3.5 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
+              >
+                Make the newsletter →
+              </button>
+            </div>
+          )}
         </div>
       ))}
+
+      {/* Seller updates: each saved listing and a way into this week's
+          email, which is written in Spark Tools' Seller Update tab
+          (the owner's mock, 2026-10-15). */}
+      {sellerListings !== null && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Home size={15} className="text-amber-500" />
+            <h3 className="font-semibold text-brand-text">Seller updates</h3>
+            <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{sellerListings.length}</span>
+            <Link href="/tools?tab=seller&new=1" className="ml-auto">
+              <Button size="sm" variant="outline" className="gap-1.5"><Plus size={13} /> Add a listing</Button>
+            </Link>
+          </div>
+          {sellerListings.length > 0 && (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {sellerListings.map((l) => (
+                <Card key={l.id} padding="sm" className="border-t-2 border-t-amber-400">
+                  <p className="font-medium text-[13px] leading-snug text-brand-text line-clamp-2">
+                    {l.address}{l.seller_names ? <span className="font-normal text-slate-500"> · {l.seller_names}</span> : null}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mb-2 mt-1">
+                    {l.listed_on ? `Listed ${new Date(`${l.listed_on}T12:00:00`).toLocaleDateString()}` : "List date not set"}
+                    {" · "}
+                    {l.last_update_at ? `last update ${new Date(l.last_update_at).toLocaleDateString()}` : "no update yet"}
+                  </p>
+                  <Link href={`/tools?tab=seller&listing=${l.id}`}>
+                    <Button size="sm" className="w-full">This week&apos;s update</Button>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {videos.length === 0 && drafts.length === 0 ? (
         <Card className="flex flex-col items-center py-16 text-center">

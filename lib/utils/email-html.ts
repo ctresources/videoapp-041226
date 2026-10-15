@@ -31,15 +31,73 @@ export interface EmailSignature {
   headshotUrl?: string | null;
 }
 
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const FONT = "Arial, Helvetica, sans-serif";
-const INK = "#1e293b";
-const MUTED = "#64748b";
+export const FONT = "Arial, Helvetica, sans-serif";
+export const INK = "#1e293b";
+export const MUTED = "#64748b";
 
 function websiteHref(site: string): string {
   return /^https?:\/\//i.test(site) ? site : `https://${site}`;
+}
+
+/** A paragraph, styled inline for email. */
+export const emailP = (text: string) =>
+  `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:1.6;color:${INK};">${esc(text)}</p>`;
+
+/**
+ * A button: a table cell rather than a styled link alone, because Outlook
+ * ignores padding on a link. Email apps recolour links (a test in Verizon's
+ * mail turned this purple on navy), so the colour is set again on a span
+ * inside the link, which they leave alone.
+ */
+export function emailButton(url: string, label: string, margin = "8px 0 24px"): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:${margin};"><tr><td bgcolor="${INK}" style="border-radius:8px;mso-padding-alt:14px 28px;"><a href="${esc(url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;"><span style="color:#ffffff;text-decoration:none;">${esc(label)}</span></a></td></tr></table>`;
+}
+
+/** The agent's sign-off: name, company, phone, website, and headshot. */
+export function emailSignatureHtml(s: EmailSignature): string {
+  const sigLines = [
+    s.name ? `<strong style="color:${INK};">${esc(s.name)}</strong>` : "",
+    s.company ? esc(s.company) : "",
+    s.phone ? `<a href="tel:${esc(s.phone.replace(/[^\d+]/g, ""))}" style="color:${MUTED};text-decoration:none;">${esc(formatPhone(s.phone) || s.phone)}</a>` : "",
+    s.website ? `<a href="${esc(websiteHref(s.website))}" style="color:${MUTED};">${esc(s.website.replace(/^https?:\/\//i, "").replace(/\/+$/, ""))}</a>` : "",
+  ].filter(Boolean).join("<br>");
+  const headshot = s.headshotUrl?.startsWith("https://")
+    ? `<td valign="top" style="padding:16px 14px 0 0;"><img src="${esc(s.headshotUrl)}" width="64" height="64" alt="${esc(s.name || "")}" style="display:block;width:64px;height:64px;border-radius:32px;border:0;"></td>`
+    : "";
+  return sigLines
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;border-top:1px solid #e2e8f0;padding-top:16px;width:100%;"><tr>${headshot}<td valign="top" style="padding-top:16px;font-family:${FONT};font-size:14px;line-height:1.5;color:${MUTED};">${sigLines}</td></tr></table>`
+    : "";
+}
+
+/** The sign-off as plain-text lines. */
+export function emailSignatureText(s: EmailSignature): string[] {
+  const phone = s.phone ? formatPhone(s.phone) || s.phone : null;
+  return [s.name, s.company, phone, s.website].filter((x): x is string => !!x?.trim());
+}
+
+/** The page every email here sits in: grey surround, white 600px card. */
+export function emailShell(opts: { title: string; preview: string; inner: string }): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(opts.title)}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.preview)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;">
+<tr><td align="center" style="padding:24px 8px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;">
+${opts.inner}
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
 }
 
 export function emailAsHtml(e: EmailVersion, opts: {

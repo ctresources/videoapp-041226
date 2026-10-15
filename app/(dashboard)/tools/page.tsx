@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star, Home,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
+import { SellerUpdateTool } from "@/components/tools/seller-update";
 import {
   BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
   type BannerBlock, type BannerLayout, type BlockAdjust,
@@ -23,7 +24,7 @@ import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller";
 
 interface Project {
   id: string;
@@ -142,6 +143,9 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   // drafts replies. Here because it is a helper used now and then, not a step
   // in making a video.
   { id: "reviews",     label: "Google Reviews",       icon: Star },
+  // The weekly email to a listing's sellers (2026-10-15). Also reached from
+  // My Sparks' Seller updates section.
+  { id: "seller",      label: "Seller Update",        icon: Home },
 ];
 
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
@@ -3226,6 +3230,7 @@ export default function ToolsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const [initialProjectId, setInitialProjectId] = useState<string | undefined>(undefined);
+  const [sellerLink, setSellerLink] = useState<{ listing: string | null; startNew: boolean }>({ listing: null, startNew: false });
   // Every tool on this page runs behind the free-trial gate. Without this the
   // page looked entirely open: fill in the topic, press generate, get a 403.
   const [trialLocked, setTrialLocked] = useState(false);
@@ -3261,6 +3266,8 @@ export default function ToolsPage() {
     if (platform && BANNER_PLATFORMS.some((p) => p.id === platform)) setBannerPlatform(platform);
     const project = params.get("project");
     if (project) setInitialProjectId(project);
+    // From My Sparks: /tools?tab=seller&listing=<id>, or &new=1 to add one.
+    setSellerLink({ listing: params.get("listing"), startNew: params.get("new") === "1" });
   }, []);
 
   useEffect(() => {
@@ -3385,6 +3392,13 @@ export default function ToolsPage() {
         {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} prefill={bannerPrefill} />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
         {activeTab === "reviews"     && <GoogleReviewsTool onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])} />}
+        {activeTab === "seller"      && (
+          <SellerUpdateTool
+            initialListingId={sellerLink.listing}
+            startNew={sellerLink.startNew}
+            onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])}
+          />
+        )}
       </div>
     </div>
   );
