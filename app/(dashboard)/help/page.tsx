@@ -436,8 +436,9 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 Prefer typing, or want a suggestion instead of a blank box? The box shows a{" "}
-                <strong>Try</strong> example that changes every few seconds. Under it, your first time
-                there is a <strong>Quick win</strong>: a market update for your town in one press. Then{" "}
+                <strong>Try</strong> example that changes every few seconds. Under it is a{" "}
+                <strong>Quick win</strong>: a ready topic for your town in one press, with a new idea
+                each time you sign in (your very first one is a market update). Then{" "}
                 <strong>What buyers ask AI</strong> (step 19), and under that <strong>Or try</strong>:
                 ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
                 and a search box. Tap one and it lands in the same box the mic writes into, so you can
