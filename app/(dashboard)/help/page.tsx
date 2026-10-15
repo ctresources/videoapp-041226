@@ -91,8 +91,14 @@ export default function HelpPage() {
               <strong>Sign Out</strong>.
             </li>
             <li>
-              <strong>Ask Sparklee</strong>, beside it, answers out loud when you ask how to do something
-              on the page you are on.
+              <strong>Sparklee</strong>, the gold star beside it, answers out loud when you ask how to do
+              something on the page you are on. Tap her to start, and tap <strong>Stop</strong> when
+              you&apos;re done.
+            </li>
+            <li>
+              <strong>The first time you sign in</strong>, Sparklee asks you to set up your profile.{" "}
+              <strong>Ask me how</strong> has her talk you through it; <strong>Go to Settings</strong> takes
+              you straight there.
             </li>
           </ul>
         </Card>
@@ -379,11 +385,14 @@ export default function HelpPage() {
               </span>
             </Step>
             <Step n={8} title="Speak It Or Type It — Your Choice" icon={Mic}>
-              {/* Ask Sparklee, added 2026-10-14. */}
+              {/* Ask Sparklee, added 2026-10-14; her badge and the card on the
+                  steps bar, 2026-10-15. */}
               <span className="block mb-1.5">
-                Stuck anywhere in the app? Tap <strong>Ask Sparklee</strong> at the top of the screen and
-                ask out loud how to do something. Sparklee answers in a few seconds, out loud and on screen,
-                from this guide. Five questions a day before you pick a plan, twenty a day on one.
+                Need help on a section? Tap <strong>Sparklee</strong>, the gold star at the top of the
+                screen, or <strong>Ask Sparklee</strong> at the end of the steps on Spark Studio, and ask
+                out loud how to do something. She answers in a few seconds, out loud and on screen, from
+                this guide. Each conversation runs up to five minutes. Five conversations a day before you
+                pick a plan, twenty a day on one.
               </span>
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
