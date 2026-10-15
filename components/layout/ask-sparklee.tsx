@@ -32,6 +32,9 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedRef = useRef<number>(0);
+  /** The last time anyone spoke or Sparklee answered; quiet for 30s ends it. */
+  const activeAtRef = useRef<number>(0);
+  const [note, setNote] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => end(), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -55,6 +58,7 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
     try { e = JSON.parse(raw); } catch { return; }
     const type = String(e.type || "");
     const id = String(e.response_id || e.item_id || "r");
+    if (type === "input_audio_buffer.speech_started" || type.startsWith("response.")) activeAtRef.current = Date.now();
     if (type === "conversation.item.input_audio_transcription.completed") {
       const text = String(e.transcript || "").trim();
       if (text) setLines((prev) => [...prev, { id: `you-${String(e.item_id || prev.length)}`, who: "you", text }]);
@@ -70,6 +74,7 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
   async function start() {
     setOpen(true);
     setError(null);
+    setNote(null);
     setLines([]);
     setStatus("connecting");
     try {
@@ -116,12 +121,16 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
       await pc.setRemoteDescription({ type: "answer", sdp: await answer.text() });
 
       startedRef.current = Date.now();
+      activeAtRef.current = Date.now();
       const max = Number(pass.maxSeconds) || 180;
       setLeft(max);
       timerRef.current = setInterval(() => {
         const remaining = max - Math.floor((Date.now() - startedRef.current) / 1000);
         setLeft(remaining);
-        if (remaining <= 0) end("idle");
+        if (remaining <= 0) { setNote("Three minutes is the limit for one conversation."); end("idle"); }
+        // Nobody has spoken for 30 seconds: hang up rather than keep paying
+        // for a quiet room.
+        else if (Date.now() - activeAtRef.current > 30_000) { setNote("Stopped after 30 seconds of quiet."); end("idle"); }
       }, 1000);
       setStatus("live");
     } catch (err) {
@@ -157,6 +166,7 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
     end();
     setOpen(false);
     setError(null);
+    setNote(null);
     setLines([]);
   }
 
@@ -186,7 +196,9 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
         <div
           role="dialog"
           aria-label="Ask Sparklee"
-          className="fixed bottom-4 right-4 z-50 flex w-[min(360px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-spark-rule bg-white shadow-xl"
+          // Top right, just under the bar (2026-10-14). At the bottom it sat
+          // behind Create's footer, which hid half the words and the Stop.
+          className="fixed right-4 top-[56px] z-[60] flex w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-spark-rule bg-white shadow-xl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-spark-rule px-4 py-2.5">
             <p className="flex items-center gap-1.5 text-[14px] font-bold text-spark-ink">
@@ -198,13 +210,23 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
                   <Mic size={12} /> Listening{left !== null && left <= 30 ? ` · ${left}s` : ""}
                 </span>
               )}
+              {/* Stop where it can't be missed, beside the listening light. */}
+              {(live || status === "connecting") && (
+                <button
+                  type="button"
+                  onClick={() => end()}
+                  className="rounded-lg bg-red-600 px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-red-700"
+                >
+                  Stop
+                </button>
+              )}
               <button type="button" onClick={close} aria-label="Close" className="rounded p-1 text-spark-ink-muted hover:text-spark-ink">
                 <X size={15} />
               </button>
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex max-h-[45vh] min-h-[90px] flex-col gap-2 overflow-y-auto px-4 py-3">
+          <div ref={scrollRef} className="flex max-h-[55vh] min-h-[90px] flex-col gap-2 overflow-y-auto px-4 py-3">
             {status === "connecting" && <p className="text-[13.5px] text-spark-ink-muted">Connecting…</p>}
             {live && lines.length === 0 && (
               <p className="text-[13.5px] text-spark-ink-muted">Ask out loud how to do something on this page.</p>
@@ -221,6 +243,7 @@ export function AskSparklee({ dark = false }: { dark?: boolean }) {
               </p>
             ))}
             {error && <p className="text-[13.5px] text-red-700">{error}</p>}
+            {note && !error && <p className="text-[12.5px] text-spark-ink-muted">{note}</p>}
           </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-spark-rule px-4 py-2.5">

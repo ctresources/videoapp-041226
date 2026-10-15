@@ -93,7 +93,13 @@ export async function POST(req: NextRequest) {
           audio: {
             input: {
               transcription: { model: "gpt-4o-mini-transcribe" },
-              turn_detection: { type: "server_vad" },
+              // Harder to set off from across the room (2026-10-14: the
+              // owner's TV was taken as questions and answered, which is
+              // minutes paid for nothing). Near-field noise reduction is for
+              // a voice close to the microphone; the higher threshold ignores
+              // quieter, more distant speech.
+              noise_reduction: { type: "near_field" },
+              turn_detection: { type: "server_vad", threshold: 0.75, silence_duration_ms: 700 },
             },
             output: { voice: VOICE },
           },
