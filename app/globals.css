@@ -127,15 +127,19 @@
   animation: float 5s ease-in-out infinite;
 }
 
-/* Sparklee's badge (2026-10-15, the owner's mock): a gold glow that breathes
-   and a shine that passes across, always on. The buzz is added for one run
-   when a page opens, including landing on Create after logging in. */
+/* Sparklee's badge (2026-10-15, the owner's mock). At rest she sits still
+   with a steady gold outline. Her glow (two pulses) and one shine take the
+   first 4.4 seconds of a 2-minute cycle, so they run when a page opens and
+   then every 2 minutes, not all the time (the owner found it distracting).
+   The top bar restarts the cycle on each page and adds the buzz for one run.
+   While she listens (.sparklee-live) the glow and shine run continuously. */
 .sparklee-badge {
   position: relative;
   overflow: hidden;
   border-radius: 9999px;
   background: #0f0d0b;
-  animation: sparklee-glow 2.2s ease-in-out infinite;
+  box-shadow: 0 0 0 1.5px rgba(245, 190, 70, 0.8);
+  animation: sparklee-glow-cycle 120s ease-in-out infinite;
 }
 .sparklee-badge::after {
   content: "";
@@ -144,11 +148,22 @@
   border-radius: 9999px;
   background: linear-gradient(115deg, transparent 35%, rgba(255, 240, 190, 0.75) 50%, transparent 65%);
   transform: translateX(-120%);
-  animation: sparklee-shine 3.6s ease-in-out infinite;
+  animation: sparklee-shine-cycle 120s ease-in-out infinite;
   pointer-events: none;
 }
 .sparklee-badge.sparklee-buzz {
-  animation: sparklee-glow 2.2s ease-in-out infinite, sparklee-buzz 0.7s ease-in-out 1;
+  animation: sparklee-glow-cycle 120s ease-in-out infinite, sparklee-buzz 0.7s ease-in-out 1;
+}
+.sparklee-badge.sparklee-live { animation: sparklee-glow 2.2s ease-in-out infinite; }
+.sparklee-badge.sparklee-live::after { animation: sparklee-shine 3.6s ease-in-out infinite; }
+/* 1% of 120s is 1.2s: two pulses over 0-3.67%, about 4.4 seconds. */
+@keyframes sparklee-glow-cycle {
+  0%, 1.83%, 3.67%, 100% { box-shadow: 0 0 0 1.5px rgba(245, 190, 70, 0.8); filter: brightness(1); }
+  0.92%, 2.75%           { box-shadow: 0 0 14px 5px rgba(255, 200, 60, 0.85), 0 0 0 1.5px rgba(255, 215, 110, 1); filter: brightness(1.18); }
+}
+@keyframes sparklee-shine-cycle {
+  0%, 1%     { transform: translateX(-120%); }
+  2.5%, 100% { transform: translateX(120%); }
 }
 @keyframes sparklee-glow {
   0%, 100% { box-shadow: 0 0 4px 1px rgba(245, 180, 40, 0.45), 0 0 0 1.5px rgba(245, 190, 70, 0.8); filter: brightness(1); }
@@ -169,7 +184,8 @@
   88% { transform: translate(0, 0) rotate(-1deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sparklee-badge, .sparklee-badge.sparklee-buzz, .sparklee-badge::after { animation: none; }
+  .sparklee-badge, .sparklee-badge.sparklee-buzz, .sparklee-badge.sparklee-live,
+  .sparklee-badge::after, .sparklee-badge.sparklee-live::after { animation: none; }
 }
 
 /* Infinite horizontal marquee */

@@ -46,7 +46,8 @@ export function AskSparklee() {
   useEffect(() => () => end(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // One shake each time a page opens, which covers landing on Create after
-  // logging in (2026-10-15, the owner's ask). The glow and shine run always.
+  // logging in (2026-10-15, the owner's ask). The glow and shine run then and
+  // every 2 minutes after (globals.css).
   const pathname = usePathname();
   const [buzz, setBuzz] = useState(false);
   useEffect(() => {
@@ -206,7 +207,7 @@ export function AskSparklee() {
           mock). While she listens, her face sits beside a red Stop. */}
       {busy ? (
         <span className="flex items-center gap-2">
-          <span className="sparklee-badge block h-[30px] w-[30px] shrink-0">
+          <span className="sparklee-badge sparklee-live block h-[30px] w-[30px] shrink-0">
             <Image src="/sparklee-face.webp" alt="" width={30} height={30} className="h-full w-full" unoptimized />
           </span>
           <button
@@ -221,6 +222,8 @@ export function AskSparklee() {
         </span>
       ) : (
         <button
+          // A new element per page, so her 2-minute glow cycle starts over.
+          key={pathname}
           type="button"
           onClick={() => void start()}
           aria-label="Ask Sparklee"
