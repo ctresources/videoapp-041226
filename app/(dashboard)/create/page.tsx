@@ -156,9 +156,10 @@ function SectionHead({ eyebrow, question, aside, after, className = "" }: {
 }) {
   return (
     <div className={`flex flex-col gap-[3px] ${className}`}>
-      {/* A little larger when it stands alone: it is the whole heading then. */}
+      {/* Standing alone it is the whole heading: bold, black, capitals and a
+          size up, at the owner's ask (2026-10-14). It was small amber type. */}
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p className={`flex-none font-semibold uppercase tracking-[0.16em] text-spark-amber ${question ? "text-[10px]" : "text-[12px]"}`}>
+        <p className={`flex-none uppercase ${question ? "text-[10px] font-semibold tracking-[0.16em] text-spark-amber" : "text-[14px] font-bold tracking-[0.12em] text-spark-ink"}`}>
           {eyebrow}
         </p>
         {after}
