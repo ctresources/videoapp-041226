@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * The agent's saved listings, for the Seller Update (2026-10-15).
  *
  *   GET                                      the listings, newest first, with when each was last updated
+ *   GET    ?suggest=1                        properties from the Listings & photos tab not saved here yet
  *   POST   { address, sellerNames, listPrice, listedOn }   adds one
  *   PATCH  { id, address?, sellerNames?, listPrice?, listedOn? }   edits one
  *   DELETE ?id=                              takes one off the list (kept, archived)
@@ -18,12 +19,56 @@ const MAX_LISTINGS = 100;
 const clean = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
-export async function GET() {
+/** For telling one address from another written slightly differently. */
+const sameAddress = (a: string) => a.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * The properties the agent has already entered in the Listings & photos tab
+ * (listing videos keep address and price on listing_data; photo reels keep the
+ * address since 2026-10-15), newest first, one per address, leaving out the
+ * ones already saved here. Offered under "From your listings" in Add a
+ * listing; nothing is added until the agent picks one.
+ */
+async function suggestions(admin: ReturnType<typeof createAdminClient>, userId: string) {
+  const [{ data: projects }, { data: saved }] = await Promise.all([
+    admin
+      .from("projects")
+      .select("listing_data, project_type, created_at")
+      .eq("user_id", userId)
+      .not("listing_data", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(60),
+    admin.from("seller_listings").select("address").eq("user_id", userId).is("archived_at", null),
+  ]);
+  const taken = new Set((saved ?? []).map((s) => sameAddress(s.address as string)));
+  const out: { address: string; price: string | null; kind: string; created_at: string }[] = [];
+  for (const p of projects ?? []) {
+    const ld = (p.listing_data ?? {}) as { address?: unknown; price?: unknown };
+    const address = typeof ld.address === "string" ? ld.address.trim() : "";
+    if (!address) continue;
+    const key = sameAddress(address);
+    if (taken.has(key)) continue;
+    taken.add(key);
+    out.push({
+      address,
+      price: typeof ld.price === "string" && ld.price.trim() ? ld.price.trim() : null,
+      kind: p.project_type === "listing_video" ? "listing video" : "photo reel",
+      created_at: p.created_at as string,
+    });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+  if (new URL(req.url).searchParams.get("suggest") === "1") {
+    return NextResponse.json({ suggestions: await suggestions(admin, user.id) });
+  }
   const { data: listings, error } = await admin
     .from("seller_listings")
     .select("id, address, seller_names, list_price, listed_on, created_at")

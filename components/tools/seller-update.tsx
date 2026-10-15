@@ -67,6 +67,16 @@ export function SellerUpdateTool({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(!!startNew);
   const [draft, setDraft] = useState({ address: "", sellerNames: "", listPrice: "", listedOn: "" });
+  // Properties already entered in the Listings & photos tab, offered when
+  // adding a listing so the address needn't be typed again (2026-10-15).
+  const [suggested, setSuggested] = useState<{ address: string; price: string | null; kind: string; created_at: string }[]>([]);
+  useEffect(() => {
+    if (!adding) return;
+    fetch("/api/seller-listings?suggest=1")
+      .then((r) => (r.ok ? r.json() : { suggestions: [] }))
+      .then((d) => setSuggested(d.suggestions ?? []))
+      .catch(() => setSuggested([]));
+  }, [adding, listings?.length]);
 
   // The week being written: the listing's details, the numbers and the notes.
   const [details, setDetails] = useState({ sellerNames: "", listPrice: "", listedOn: "" });
@@ -247,6 +257,31 @@ export function SellerUpdateTool({
       {adding ? (
         <div className="max-w-[640px] rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
           <p className={eyebrow}>New listing</p>
+          {suggested.length > 0 && (
+            <div className="mb-4 rounded-xl bg-[#fdf3e2] p-3">
+              <p className="mb-2 text-[12.5px] text-spark-ink-muted">From your listings</p>
+              <div className="flex flex-wrap gap-2">
+                {suggested.map((s) => {
+                  const on = draft.address === s.address;
+                  return (
+                    <button
+                      key={s.address}
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, address: s.address, listPrice: s.price ?? d.listPrice }))}
+                      className={`flex flex-col rounded-[10px] border bg-white px-3 py-1.5 text-left text-[13px] text-spark-ink transition-colors ${
+                        on ? "border-[#A3660F] ring-1 ring-[#A3660F]" : "border-[#d9c6a8] hover:border-[#A3660F]"
+                      }`}
+                    >
+                      {s.address}
+                      <span className="text-[11.5px] text-spark-ink-muted">
+                        {[s.price, s.kind, new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="sm:col-span-2"><span className={label}>Address</span>
               <input className={input} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} placeholder="12 Oak Lane" />

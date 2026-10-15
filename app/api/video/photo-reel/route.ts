@@ -602,6 +602,10 @@ export async function POST(req: NextRequest) {
         status: "ready",
         ...(body.city && { location_city: body.city }),
         ...(body.state && { location_state: body.state }),
+        // The property's address, so Seller Update can offer it under From
+        // your listings (2026-10-15). Only the photos on listing_data are
+        // read anywhere else, and a photo reel saves none there.
+        ...(!scenes && body.address?.trim() ? { listing_data: { address: body.address.trim().slice(0, 200) } } : {}),
         ...(spokenScript && {
           ai_script: { title, script: spokenScript, hook: "", cta: "", keywords: [] },
         }),
@@ -715,6 +719,10 @@ export async function POST(req: NextRequest) {
         status: "generating",
         ...(body.city && { location_city: body.city }),
         ...(body.state && { location_state: body.state }),
+        // The property's address, so Seller Update can offer it under From
+        // your listings (2026-10-15). Only the photos on listing_data are
+        // read anywhere else, and a photo reel saves none there.
+        ...(!scenes && body.address?.trim() ? { listing_data: { address: body.address.trim().slice(0, 200) } } : {}),
         ai_script: { title, script: (body.script ?? "").trim(), hook: "", cta: "", keywords: [] },
       })
       .select("id")
