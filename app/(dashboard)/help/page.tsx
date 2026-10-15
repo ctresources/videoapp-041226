@@ -699,6 +699,17 @@ export default function HelpPage() {
                 drops it into the email tool you already use. SparkReels does not send it to your
                 clients for you.
               </span>
+              {/* The newsletter from several posts, added 2026-10-15. */}
+              <span className="block mt-1.5">
+                <strong>A newsletter from several posts.</strong> In My Sparks, press{" "}
+                <strong>Make a newsletter</strong> above your Blog posts, tick 2 to 5 of them, then{" "}
+                <strong>Make the newsletter</strong>. It writes three subject lines, the inbox preview,
+                a short note from you, a few lines on each post with its own <strong>Read more</strong>{" "}
+                button, and your sign-off. Paste each post&apos;s web address once; a post without one
+                has no button. <strong>Copy as HTML</strong> drops it into the email tool you already
+                use, and <strong>Send me a test</strong> sends it to you first. SparkReels does not
+                send it to your clients for you.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Creating A Video" />
@@ -836,6 +847,18 @@ export default function HelpPage() {
                 you press <strong>Post reply</strong>. A reply you&apos;ve already posted can be
                 edited or removed. Read a drafted reply to a low rating with extra care before
                 posting it.
+              </span>
+              {/* Seller Update, added 2026-10-15. */}
+              <span className="block mt-1.5">
+                <strong>Seller Update</strong> writes this week&apos;s email to the people selling one
+                of your listings. Add the listing once: the address, the sellers&apos; first names, the
+                list price and the date it was listed. Then each week fill in online views, saves,
+                showings, open house visitors and offers, and type or say the buyer feedback and next
+                steps. Last week&apos;s numbers show beside each box, and the email shows this
+                week&apos;s as a row of numbers with what went up. It uses only what you enter. Your
+                listings also sit under <strong>Seller updates</strong> in My Sparks, each with a{" "}
+                <strong>This week&apos;s update</strong> button. Copy it or send yourself a test, the
+                same as the newsletter.
               </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the

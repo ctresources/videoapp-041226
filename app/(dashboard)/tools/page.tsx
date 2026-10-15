@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
@@ -2636,6 +2637,7 @@ function imageTextFromProject(p: Project | null, t: ImageTemplateId): { headline
 }
 
 function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; initialProjectId?: string }) {
+  const router = useRouter();
   const [projectId, setProjectId] = useState("");
   const [template, setTemplate] = useState<ImageTemplateId>("just_listed");
   const [shape, setShape] = useState<ImageShapeId>("post_4x5");
@@ -2678,6 +2680,10 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [busy, setBusy] = useState<string | null>(null);
   /** The last save, so the page can point at where the image landed. */
   const [savedTo, setSavedTo] = useState<{ projectId: string; target: "blog_header" | "share_kit" } | null>(null);
+  /** Opened from an article's Header image button (2026-10-15): the finished
+   *  image then offers "Use as header and go back", since that is what the
+   *  agent came for, and saving it was one of six small grey buttons. */
+  const [fromArticle, setFromArticle] = useState<string | null>(null);
   const [usage, setUsage] = useState<{ used: number; limit: number; unlimited: boolean; beforeVideo: boolean } | null>(null);
   const seeded = useRef(false);
 
@@ -2726,6 +2732,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     seeded.current = true;
     setProjectId(p.id);
     const wanted = new URLSearchParams(window.location.search).get("template");
+    if (wanted === "blog_header") setFromArticle(p.id);
     const t = IMAGE_TEMPLATE_OPTIONS.find((x) => x.id === wanted)?.id;
     if (t) chooseTemplate(t, p);
     else fill(p, template);
@@ -2908,20 +2915,22 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
     }
   }
 
-  async function attach(img: MadeImage, target: "blog_header" | "share_kit") {
-    if (!projectId) { toast.error("Pick a project above first, so there's somewhere to save it."); return; }
+  async function attach(img: MadeImage, target: "blog_header" | "share_kit"): Promise<boolean> {
+    if (!projectId) { toast.error("Pick a project above first, so there's somewhere to save it."); return false; }
     setBusy(`${img.id}:${target}`);
     try {
       const data = await call({ action: "attach", imageUrl: img.url, projectId, target });
-      if (!data) return;
+      if (!data) return false;
       // Where this went, so the page can offer the way back. Saving was the
       // end of the road: a toast said it worked, the toast left, and the
       // screen looked exactly as it had before — with the article it belongs
       // to two navigations away and no link to it anywhere.
       setSavedTo({ projectId, target });
       toast.success(target === "blog_header" ? "Saved as the article's header image." : "Added to the project's Share Kit.");
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "The image could not be saved");
+      return false;
     } finally {
       setBusy(null);
     }
@@ -3161,6 +3170,24 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
             <div key={img.id} className="rounded-xl border border-slate-200 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt={headline || "Generated image"} className="w-full rounded-lg border border-slate-100" />
+              {fromArticle && fromArticle === projectId && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={async () => { if (await attach(img, "blog_header")) router.push(`/create/${fromArticle}?step=5`); }}
+                    className="spark-cta-gradient flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-60"
+                  >
+                    {busy === `${img.id}:blog_header` ? <Loader2 size={13} className="animate-spin" /> : <Newspaper size={13} />} Use as header and go back
+                  </button>
+                  <Link
+                    href={`/create/${fromArticle}?step=5`}
+                    className="flex items-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:border-spark-amber hover:text-spark-amber"
+                  >
+                    Back to the article
+                  </Link>
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
                   { key: "download", label: "Download", icon: Download, onClick: () => download(img) },
@@ -3203,7 +3230,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
           </p>
           <Link
             href={`/create/${savedTo.projectId}${savedTo.target === "blog_header" ? "?step=5" : ""}`}
-            className="flex-none text-[12.5px] font-semibold text-spark-amber hover:text-spark-blue"
+            className="spark-cta-gradient flex-none rounded-lg px-3.5 py-1.5 text-[13px] font-bold text-white"
           >
             {savedTo.target === "blog_header" ? "Back to the article →" : "Back to the project →"}
           </Link>
