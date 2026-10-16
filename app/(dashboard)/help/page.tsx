@@ -492,7 +492,11 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar video</strong> — you on screen, with b-roll and graphics made
-                for you. Up to 3 minutes, so it is not offered for Longform.
+                for you. Up to 3 minutes, so it is not offered for Longform. It takes a script of up
+                to 400 words, counting your closing line. If yours is longer, Avatar video is greyed
+                out and a note under the choices says how many words you have. Press{" "}
+                <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
+                <strong>Shorten closing line</strong> to trim your closing line yourself.
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
