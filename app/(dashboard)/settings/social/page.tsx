@@ -347,8 +347,23 @@ function SocialSettingsContent() {
 
             {!youtubeConnected && (
               <>
-                <p className="text-sm text-slate-500 mb-4">
+                <p className="text-sm text-slate-500 mb-1.5">
                   Connect your YouTube channel to publish videos directly — no third-party tools required.
+                </p>
+                {/* Said before connecting too (2026-10-16): the note below the
+                    connected channel came too late for a beta tester whose
+                    first upload went out without its thumbnail. */}
+                <p className="text-sm text-slate-500 mb-4">
+                  Also verify your channel by phone at{" "}
+                  <a
+                    href="https://www.youtube.com/verify"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary-500 hover:underline font-medium"
+                  >
+                    youtube.com/verify
+                  </a>
+                  , so your thumbnails go up with your videos.
                 </p>
                 <a href="/api/auth/youtube">
                   <Button className="gap-2">

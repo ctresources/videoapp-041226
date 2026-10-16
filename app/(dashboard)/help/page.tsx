@@ -170,6 +170,15 @@ export default function HelpPage() {
                 And one phone number verifies two channels a year: if YouTube says yours is used
                 up, use another phone or a landline.
               </span>
+              {/* A beta tester's thumbnail was refused on an unverified channel
+                  (2026-10-16); this is how to put it on afterwards. */}
+              <span className="block mt-1.5">
+                <strong>Thumbnail didn&apos;t go up?</strong> Your video still posted. YouTube only
+                takes a custom thumbnail from a phone-verified channel. Verify the channel at
+                youtube.com/verify, then open the video&apos;s Publish window in My Sparks and press{" "}
+                <strong>Update it on YouTube</strong> under the thumbnail. Or download the thumbnail
+                there and add it in YouTube Studio.
+              </span>
               {/* Added when posting to the other platforms went live. What each
                   account has to be is said here because it is the usual reason
                   a connection does not appear. */}
