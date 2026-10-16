@@ -27,7 +27,7 @@ import { RenderPipeline } from "@/components/create/render-pipeline";
 import { WaitingInLine } from "@/components/create/waiting-in-line";
 import {
   ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
-  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Wand2, Film, Download,
+  Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Check, Pencil, Wand2, Film, Download,
   User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin, Mail, Send,
 } from "lucide-react";
 import Link from "next/link";
@@ -516,6 +516,9 @@ export default function ProjectEditorPage() {
   const [emailUrlDraft, setEmailUrlDraft] = useState<string | null>(null);
   // The post's headline, as typed in the Share Kit (2026-10-15). Null until edited.
   const [headlineDraft, setHeadlineDraft] = useState<string | null>(null);
+  /** The article while it is being edited in the Share Kit; null when not (2026-10-16). */
+  const [articleDraft, setArticleDraft] = useState<{ intro: string; body: string; conclusion: string } | null>(null);
+  const [articleSaving, setArticleSaving] = useState(false);
   // Whether BoldTrail is connected, for the one-line posting tip (2026-10-15).
   const [btConnected, setBtConnected] = useState(false);
   useEffect(() => {
@@ -2186,6 +2189,54 @@ export default function ProjectEditorPage() {
    *  shown to the reader as literal text. */
   function blogPlainText(text: string): string {
     return text.replace(/^H[23]:\s*/gm, "");
+  }
+
+  /**
+   * Editing the article (2026-10-16). Headings are stored "H2: " / "H3: ",
+   * which reads like a code; in the edit box they show as "## " / "### ",
+   * the way people already mark a heading in plain text, and go back on save.
+   */
+  function toEditText(text: string | undefined): string {
+    return (text ?? "").replace(/^H3:\s*/gm, "### ").replace(/^H2:\s*/gm, "## ");
+  }
+  function fromEditText(text: string): string {
+    return text.replace(/^###\s*/gm, "H3: ").replace(/^##\s*/gm, "H2: ");
+  }
+  function startArticleEdit() {
+    const s = (project?.ai_script ?? {}) as AiScript;
+    setArticleDraft({
+      intro: toEditText(s.blog_intro),
+      body: toEditText(s.blog_body),
+      conclusion: toEditText(s.blog_conclusion),
+    });
+    setExpandedSections((e) => ({ ...e, blog: true }));
+  }
+  async function saveArticle() {
+    if (!project || !articleDraft) return;
+    setArticleSaving(true);
+    try {
+      const res = await fetch("/api/projects/article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          intro: fromEditText(articleDraft.intro),
+          body: fromEditText(articleDraft.body),
+          conclusion: fromEditText(articleDraft.conclusion),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data?.error || "Couldn't save the article."); return; }
+      setProject((prev) => {
+        if (!prev) return prev;
+        const next = { ...((prev.ai_script ?? {}) as Record<string, unknown>), ...data };
+        return { ...prev, ai_script: next as unknown as typeof prev.ai_script };
+      });
+      setArticleDraft(null);
+      toast.success("Article saved.");
+    } finally {
+      setArticleSaving(false);
+    }
   }
 
   /**
@@ -4168,6 +4219,34 @@ export default function ProjectEditorPage() {
                     Copy as HTML is how the article gets to your site — and
                     they were only reachable after expanding it. */}
                 <div className="flex flex-wrap items-center gap-2">
+                  {(script.blog_intro || script.blog_body) && (articleDraft ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void saveArticle()}
+                        disabled={articleSaving}
+                        className="flex items-center gap-1.5 rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                      >
+                        {articleSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArticleDraft(null)}
+                        disabled={articleSaving}
+                        className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startArticleEdit}
+                      className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber"
+                    >
+                      <Pencil size={12} /> Edit
+                    </button>
+                  ))}
                   {(script.blog_intro || script.blog_body) && (
                     <>
                       <button
@@ -4497,7 +4576,26 @@ export default function ProjectEditorPage() {
                       this card and were sitting behind the disclosure that hid
                       it — on the blog route, behind the one chevron between you
                       and the thing you came for. */}
-                  {[
+                  {articleDraft ? (
+                    <>
+                      {([
+                        { key: "intro", label: "Introduction", rows: 5 },
+                        { key: "body", label: "Body", rows: 18 },
+                        { key: "conclusion", label: "Conclusion", rows: 5 },
+                      ] as const).map(({ key, label, rows }) => (
+                        <div key={key}>
+                          <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+                          <textarea
+                            value={articleDraft[key]}
+                            onChange={(e) => setArticleDraft((d) => (d ? { ...d, [key]: e.target.value } : d))}
+                            rows={rows}
+                            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm leading-relaxed text-slate-700 focus:border-spark-amber focus:outline-none"
+                          />
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-slate-400">## starts a heading</p>
+                    </>
+                  ) : [
                     { label: "Introduction", value: script.blog_intro },
                     { label: "Body", value: script.blog_body },
                     { label: "Conclusion", value: script.blog_conclusion },
