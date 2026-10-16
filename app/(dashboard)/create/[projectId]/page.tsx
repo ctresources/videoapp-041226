@@ -451,6 +451,8 @@ export default function ProjectEditorPage() {
   const [editedScript, setEditedScript] = useState("");
   /** "Write an 8-minute script from the article" is running. */
   const [articleScriptWriting, setArticleScriptWriting] = useState(false);
+  // Shorten to fit: Avatar video's 400 words, closing line included (2026-10-16).
+  const [fitting, setFitting] = useState(false);
   /** The article card's Video menu. Closes on a click outside it or Escape. */
   const [videoMenuOpen, setVideoMenuOpen] = useState(false);
   const videoMenuRef = useRef<HTMLDivElement>(null);
@@ -1886,6 +1888,61 @@ export default function ProjectEditorPage() {
             ? "You'll finish in the camera, not on this screen. Your script and photos come with you, and nothing here is spent."
             : "The first three use one video from your plan. You on camera is free and finishes in the camera."}
         </p>
+        {/* Why Avatar video is greyed out, and the two ways back to it
+            (2026-10-16, the owner's words). It used to switch to the circle
+            with nothing said. Not on Longform, which Avatar video isn't for. */}
+        {fullBlocked && selectedVideoType !== "youtube_long" && !selfRecord && (() => {
+          const ctaWords = activeCta.split(/\s+/).filter(Boolean).length;
+          const total = editedScript.trim().split(/\s+/).filter(Boolean).length + ctaWords;
+          return (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+              <p className="min-w-0 flex-1 text-[12.5px] text-amber-900">
+                Avatar video takes up to {standardMaxWords()} words. Your script and closing line are {total}.
+              </p>
+              <button
+                type="button"
+                disabled={fitting}
+                onClick={async () => {
+                  setFitting(true);
+                  try {
+                    const res = await fetch("/api/ai/shorten-script", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      // About 10% under, so a closing line changed later
+                      // doesn't tip it back over.
+                      body: JSON.stringify({ script: editedScript, length: "rendered_short", budget: Math.round(standardMaxWords() * 0.9) - ctaWords }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      if (showTrialLock(data)) return;
+                      throw new Error(data?.error || "Couldn't shorten the script.");
+                    }
+                    setEditedScript(data.script as string);
+                    toast.success(`Script shortened to ${data.words} words. Avatar video is available.`);
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Couldn't shorten the script.");
+                  } finally {
+                    setFitting(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-spark-ink px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-60"
+              >
+                {fitting && <Loader2 size={12} className="animate-spin" />} Shorten to fit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const box = document.getElementById("closing-line") as HTMLTextAreaElement | null;
+                  box?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  setTimeout(() => box?.focus(), 350);
+                }}
+                className="rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-amber-900"
+              >
+                Shorten closing line
+              </button>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -3506,6 +3563,7 @@ export default function ProjectEditorPage() {
               </div>
             </div>
             <textarea
+              id="closing-line"
               value={editedCta}
               onChange={(e) => { setEditedCta(e.target.value); setCtaEdited(true); }}
               rows={3}

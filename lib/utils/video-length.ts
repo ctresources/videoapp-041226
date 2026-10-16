@@ -81,8 +81,19 @@ export const LONG_MAX_MINUTES = 8;
  * suggestion — see lengthSpec in lib/api/perplexity-prompts.ts, which used to
  * penalise only *short* scripts and so reliably overshot by ~30%.
  */
+/**
+ * Room left for the closing line, which is added after the script.
+ *
+ * A standard script aimed at 90% of 400 words came back near 360, and the
+ * closing line from Settings then took the total past 400, which greys out
+ * Avatar video (2026-10-16, the owner's eXp Ready post: 367 + the CTA). The
+ * target now leaves room for a typical closing line, so script and closing
+ * line together land about 10% under.
+ */
+export const CLOSING_LINE_ROOM = 40;
+
 export function targetWords(length: VideoLength, tier: string | null | undefined): number {
-  return length === "long" ? 1100 : Math.round(standardMaxWords(tier) * 0.9);
+  return length === "long" ? 1100 : Math.round(standardMaxWords(tier) * 0.9) - CLOSING_LINE_ROOM;
 }
 
 /** Hard cap — anything past this is trimmed at render time. */
