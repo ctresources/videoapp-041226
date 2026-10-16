@@ -410,7 +410,7 @@ ${propertyPhotos
    * which beats describing them in prose and then disagreeing with the kit.
    */
   const styleBlock = `STYLE — ${params.isShortForm ? "Social Property Cut" : "Local Property Feature"}
-Calm, premium and editorial. Photographs fill the frame in true, natural colour with no grade — never desaturated, washed-out, grey, teal-and-orange or filmic — and every graphic sits on the bottom band described in RULE #1, taking its colours and type from the attached brand kit. Motion is slow and deliberate: a gentle push or drift across each photograph on a locked camera, text rising a few pixels into place and then holding still, never sliding, spinning, bouncing or scaling, and never a handheld shake, whip pan or rapid zoom. Transitions are ${params.isShortForm ? "straight cuts, quick and rhythmic, with no dissolves" : "straight cuts, with an occasional half-second dissolve between subjects and a single accent rule that wipes across when the topic changes"}. Charts follow the content: bars for prices, lines for trends, infographics for inventory and demand${toneVisual ? `; ${params.tone!.toLowerCase()} throughout — ${toneVisual}` : ""}. The feel is ${params.isShortForm ? "immediate and confident, made to stop a thumb" : "unhurried, warm and expensive-looking: confident, never salesy, never flashy"}.`;
+Calm, premium and editorial. Photographs fill the frame in true, natural colour with no grade — never desaturated, washed-out, grey, teal-and-orange or filmic — and every graphic sits on the bottom band described in RULE #1, taking its colours and type from the attached brand kit. Motion is slow and deliberate: a gentle push or drift across each photograph on a locked camera, text rising a few pixels into place and then holding still, never sliding, spinning, bouncing or scaling, and never a handheld shake, whip pan or rapid zoom. Transitions are ${params.isShortForm ? "straight cuts, quick and rhythmic, with no dissolves" : "straight cuts, with an occasional half-second dissolve between subjects and a single accent rule that wipes across when the topic changes"}. Charts follow the content: bars for prices, lines for trends, infographics for inventory and demand${toneVisual ? `; ${params.tone!.toLowerCase()} throughout — ${toneVisual}` : ""}. The feel is ${params.isShortForm ? "immediate and confident, made to stop a thumb" : "unhurried, warm and expensive-looking: confident, never salesy, never flashy"}. No scene is ever a blank, white, grey or plain-colour background. ${params.burnCaptions === false ? "Do not add captions or subtitles." : "Add captions of the narration in the bottom band, clear of every graphic."}`;
 
   const head = `You are producing a professional real estate marketing video.
 
@@ -428,6 +428,7 @@ ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 ` : ""}${params.hasAvatar && !pipMode ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
 - EVERY text and graphic element — captions, headlines, hooks, stats, charts, logos, badges, arrows — sits ENTIRELY inside the BOTTOM 20% of the canvas, on a full-width semi-transparent dark bar. The top 80% is a NO-OVERLAY ZONE: the presenter's head is there, and that holds even when they are only partly visible.
 - A graphic too large for the band is SHRUNK to fit, or given a b-roll-only scene with the presenter off camera. Never enlarged into the face zone.
+- The top 80% is NEVER empty. Behind every band (stats, charts, checklists) the presenter or full-frame b-roll footage fills the canvas, never a blank or plain-colour background.
 - When in doubt, move it DOWN.
 
 PRESENTER FRAMING (RULE #2)
@@ -1443,10 +1444,12 @@ export async function startRender(
           ...(combinedPhotos.length > 0 && { photo_urls: combinedPhotos }),
           // Mixed under the voiceover by the webhook at store time.
           ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
-          // The prompt asks the Video Agent for burned captions, but that is a
-          // request it can ignore — and does. Recorded here so the store step
-          // can burn them itself from a transcript of the finished render.
+          // The Video Agent adds its own captions now (2026-10-16: the owner's
+          // videos showed two sets, its and ours). captions_by_agent tells the
+          // store step not to burn a second set; it still makes the SRT for
+          // download. The prompt says "no captions" when they're unticked.
           captions_enabled: captions !== false,
+          captions_by_agent: true,
         },
       })
       .select()

@@ -55,6 +55,12 @@ export interface StoreOptions {
    * are burned from that instead.
    */
   captionsEnabled?: boolean;
+  /**
+   * Whether to burn the captions into the picture. False for Video Agent
+   * renders, which caption themselves (2026-10-16); the SRT is still made, for
+   * the Captions (SRT) download.
+   */
+  burnCaptions?: boolean;
   /** An SRT already transcribed for this video, so a replay never pays twice. */
   cachedSrt?: string | null;
 }
@@ -232,9 +238,13 @@ export async function storeVideoDetailed(
     let srtPath: string | null = null;
     const { srt, transcribed } = await resolveCaptions(videoId, buffer, opts);
     if (srt) {
-      await fs.mkdir(srtDir, { recursive: true });
-      srtPath = join(srtDir, "captions.srt");
-      await fs.writeFile(srtPath, srt, "utf8");
+      // Burned only when the render didn't caption itself (a Video Agent
+      // render does, 2026-10-16); the SRT is kept for download either way.
+      if (opts.burnCaptions !== false) {
+        await fs.mkdir(srtDir, { recursive: true });
+        srtPath = join(srtDir, "captions.srt");
+        await fs.writeFile(srtPath, srt, "utf8");
+      }
       // Cache a transcript so a later replay of this same video (the repair
       // path re-runs post-processing) never pays for transcription twice. The
       // .srt download endpoint reads the same key.

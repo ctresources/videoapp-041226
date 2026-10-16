@@ -49,6 +49,8 @@ export async function buildStoreOptions(
     // captions at all. A url cached by the caption webhook wins outright.
     heygenVideoId: heygenVideoId ?? null,
     captionsEnabled,
+    // A Video Agent render captions itself; burning ours too showed two sets.
+    burnCaptions: meta.captions_by_agent !== true,
     cachedSrt: typeof meta.srt === "string" ? meta.srt : null,
   };
 }
