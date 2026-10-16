@@ -95,6 +95,15 @@ export default function HelpPage() {
               something on the page you are on. Tap her to start, and tap <strong>Stop</strong> when
               you&apos;re done.
             </li>
+            {/* Saving it to a phone's Home Screen, at the owner's ask (2026-10-16). */}
+            <li>
+              <strong>Put SparkReels on your phone&apos;s Home Screen</strong> so it opens like an app.
+              On an <strong>iPhone</strong>, open sparkreels.ai in <strong>Safari</strong>, tap the{" "}
+              <strong>Share</strong> button (the square with an arrow), then{" "}
+              <strong>Add to Home Screen</strong>. On <strong>Android</strong>, open it in{" "}
+              <strong>Chrome</strong>, tap the <strong>⋮</strong> menu, then{" "}
+              <strong>Add to Home screen</strong> (or <strong>Install app</strong>).
+            </li>
             <li>
               <strong>The first time you sign in</strong>, Sparklee asks you to set up your profile.{" "}
               <strong>Ask me how</strong> has her talk you through it; <strong>Go to Settings</strong> takes
