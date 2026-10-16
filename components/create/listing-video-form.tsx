@@ -899,18 +899,21 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                 <button
                   type="button"
                   onClick={() => removePhoto(i)}
-                  className="absolute top-1 right-1 bg-black/70 hover:bg-red-500 text-white rounded-full p-1.5"
+                  className="absolute top-1 right-1 z-10 bg-black/70 hover:bg-red-500 text-white rounded-full p-1.5"
                   aria-label={`Remove photo ${i + 1}`}
                 >
                   <Trash2 size={12} />
                 </button>
                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
-                <div className="absolute inset-x-0 bottom-0 flex justify-between">
+                {/* Small tiles (a phone) let this row reach the delete button above it,
+                    so a tap on delete moved the photo instead (2026-10-16). Delete sits
+                    on top, and only the arrows themselves catch taps. */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between">
                   <button
                     type="button"
                     onClick={() => movePhoto(i, i - 1)}
                     disabled={i === 0}
-                    className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                    className="pointer-events-auto flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
                     aria-label={`Move photo ${i + 1} earlier`}
                   >
                     <ChevronLeft size={18} />
@@ -919,7 +922,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                     type="button"
                     onClick={() => movePhoto(i, i + 1)}
                     disabled={i === listing.photoUrls.length - 1}
-                    className="flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
+                    className="pointer-events-auto flex h-8 w-8 items-center justify-center text-white disabled:opacity-20 enabled:active:text-spark-amber"
                     aria-label={`Move photo ${i + 1} later`}
                   >
                     <ChevronRight size={18} />
