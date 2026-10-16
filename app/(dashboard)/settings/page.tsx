@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/supabase-provider";
 import { Lock, Trash2, LogOut, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
 import { EmailImportAddress } from "@/components/settings/email-import-address";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
+import { BoldTrailConnect } from "@/components/settings/boldtrail-connect";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
@@ -475,6 +476,8 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+        {/* BoldTrail by API token, above the webhooks (2026-10-15). */}
+        <BoldTrailConnect />
         <CrmIntegrations />
       </Card>
 

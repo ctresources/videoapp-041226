@@ -206,13 +206,19 @@ export function CrmIntegrations() {
 
       {/* Add webhook form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+        // No autofill anywhere in it (2026-10-15): a browser took the URL box
+        // for a sign-in and filled the owner's email and a saved password.
+        <form onSubmit={handleAdd} autoComplete="off" className="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
           <p className="text-sm font-semibold text-slate-700">New Webhook</p>
 
           <div>
             <label className="text-xs font-medium text-slate-500 block mb-1.5">Name</label>
             <input
               type="text"
+              name="webhook-name"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="GoHighLevel Production"
@@ -224,6 +230,10 @@ export function CrmIntegrations() {
             <label className="text-xs font-medium text-slate-500 block mb-1.5">Webhook URL</label>
             <input
               type="url"
+              name="webhook-url"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={form.url}
               onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
               placeholder="https://..."
@@ -238,6 +248,10 @@ export function CrmIntegrations() {
             <div className="relative">
               <input
                 type={showSecret ? "text" : "password"}
+                name="webhook-signing-secret"
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
                 value={form.secret}
                 onChange={(e) => setForm((f) => ({ ...f, secret: e.target.value }))}
                 placeholder="your-secret-key"
