@@ -6,6 +6,7 @@ import { firstNameOf, personalGreeting } from "@/lib/api/boldtrail-picks";
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 import { emailAsHtml, type EmailVersion } from "@/lib/utils/email-html";
 import { newsletterAsHtml, type Newsletter } from "@/lib/utils/newsletter-html";
+import { articleHeadline } from "@/lib/utils/article-headline";
 
 export const maxDuration = 60;
 
@@ -61,14 +62,14 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!project) return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    const seo = (project.seo_data ?? {}) as { email?: EmailVersion; email_blog_url?: string };
-    const ai = (project.ai_script ?? {}) as { blog_headline?: string; blog_header_url?: string };
+    const seo = (project.seo_data ?? {}) as { email?: EmailVersion; email_blog_url?: string; youtube_title?: string; meta_title?: string };
+    const ai = (project.ai_script ?? {}) as { blog_headline?: string; title?: string; blog_header_url?: string };
     const email = seo.email;
     if (!email?.subjects?.length) return NextResponse.json({ error: "Write the email first." }, { status: 400 });
     if (!isUrl(seo.email_blog_url)) return NextResponse.json({ error: "Paste the post's web address first, so Read more has somewhere to go." }, { status: 400 });
     subject = email.subjects[Math.max(0, Math.min(Number(body.subjectIdx) || 0, email.subjects.length - 1))];
     projectIds = [project.id as string];
-    const opts = { headline: ai.blog_headline || (project.title as string), blogUrl: seo.email_blog_url!, headerUrl: ai.blog_header_url || "", signature };
+    const opts = { headline: articleHeadline(ai, seo, project.title as string), blogUrl: seo.email_blog_url!, headerUrl: ai.blog_header_url || "", signature };
     build = (first) => emailAsHtml({ ...email, greeting: personalGreeting(email.greeting, first) }, opts);
   } else if (body.kind === "newsletter") {
     const n = body.newsletter as Partial<Newsletter> | undefined;

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { writeNewsletter } from "@/lib/api/newsletter";
+import { articleHeadline } from "@/lib/utils/article-headline";
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 
 // One model call, well under a minute.
@@ -42,12 +43,12 @@ export async function POST(req: NextRequest) {
     .map((id) => (rows ?? []).find((r) => r.id === id))
     .filter((r): r is NonNullable<typeof r> => !!r)
     .map((r) => {
-      const s = (r.ai_script ?? {}) as { blog_headline?: string; blog_intro?: string; blog_body?: string; blog_conclusion?: string };
+      const s = (r.ai_script ?? {}) as { blog_headline?: string; title?: string; blog_intro?: string; blog_body?: string; blog_conclusion?: string };
       const article = [s.blog_intro, s.blog_body, s.blog_conclusion].filter(Boolean).join("\n\n").replace(/^H[23]:\s*/gm, "");
-      const seo = (r.seo_data ?? {}) as { email_blog_url?: string };
+      const seo = (r.seo_data ?? {}) as { email_blog_url?: string; youtube_title?: string; meta_title?: string };
       return {
         id: r.id as string,
-        headline: s.blog_headline || (r.title as string) || "Untitled post",
+        headline: articleHeadline(s, seo, r.title as string),
         article,
         url: seo.email_blog_url ?? "",
         market: [r.location_city, r.location_state].filter(Boolean).join(", "),

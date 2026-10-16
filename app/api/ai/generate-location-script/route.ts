@@ -13,6 +13,7 @@ import {
 } from "@/lib/utils/video-length";
 import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
+import { isPlaceholderTitle } from "@/lib/utils/article-headline";
 
 /**
  * The heaviest route in the app and, until now, the only script route that
@@ -325,7 +326,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Create project row ──────────────────────────────────────────────────────
-  const projectTitle = customTopic
+  // A pasted article's label ("Your text · 1,466 words") is not a topic, so
+  // the written title names the project instead (2026-10-15).
+  const projectTitle = customTopic && !isPlaceholderTitle(customTopic)
     ? `${customTopic} — ${[scriptCity, scriptState].filter(Boolean).join(", ")}`
     : parsed.title;
 

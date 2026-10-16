@@ -14,6 +14,7 @@ import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
+import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
 import {
   BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
   type BannerBlock, type BannerLayout, type BlockAdjust,
@@ -2630,8 +2631,11 @@ function imageTextFromProject(p: Project | null, t: ImageTemplateId): { headline
     case "market_update": return { headline: "", subline: place };
     // The card names the market and the piece it came from; the figures
     // arrive separately, from the article's own words.
-    case "market_report": return { headline: p.ai_script?.blog_headline || (place ? `Market Update — ${place}` : p.title || ""), subline: "" };
-    case "blog_header": return { headline: p.ai_script?.blog_headline || p.title || "", subline: "" };
+    case "market_report": return { headline: p.ai_script?.blog_headline || (place ? `Market Update — ${place}` : isPlaceholderTitle(p.title) ? "" : p.title || ""), subline: "" };
+    case "blog_header": {
+      const h = articleHeadline(p.ai_script as { blog_headline?: string; title?: string } | undefined, p.seo_data as { youtube_title?: string; meta_title?: string } | undefined, p.title);
+      return { headline: h === "Untitled post" ? "" : h, subline: "" };
+    }
     default: return { headline: "", subline: "" };
   }
 }

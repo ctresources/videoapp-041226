@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { writeEmailVersion } from "@/lib/api/email-version";
+import { articleHeadline } from "@/lib/utils/article-headline";
 
 // One model call, well under a minute.
 export const maxDuration = 60;
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await admin.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
   const market = [project.location_city, project.location_state].filter(Boolean).join(", ");
   const email = await writeEmailVersion({
-    headline: s.blog_headline || project.title,
+    headline: articleHeadline(s as { blog_headline?: string; title?: string }, seo as { youtube_title?: string; meta_title?: string }, project.title),
     article,
     agentName: (profile as { full_name?: string | null } | null)?.full_name,
     market: market || null,

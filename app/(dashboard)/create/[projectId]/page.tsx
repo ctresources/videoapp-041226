@@ -17,6 +17,7 @@ import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { blogAsHtml } from "@/lib/utils/blog-html";
 import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-html";
+import { articleHeadline } from "@/lib/utils/article-headline";
 import { BoldTrailSend, postBoldTrailEmail } from "@/components/email/boldtrail-send";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
@@ -2276,7 +2277,8 @@ export default function ProjectEditorPage() {
     if (!email || !project) return null;
     const blogUrl = (emailUrlDraft ?? seoNow?.email_blog_url ?? "").trim();
     const opts = {
-      headline: ai?.blog_headline || project.title,
+      // Not the project's name alone: a pasted article's was a placeholder.
+      headline: articleHeadline(ai as { blog_headline?: string; title?: string } | null, seoNow as { youtube_title?: string; meta_title?: string } | null, project.title),
       blogUrl,
       headerUrl: ai?.blog_header_url || "",
       signature: {
@@ -3936,6 +3938,15 @@ export default function ProjectEditorPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                  {/* To up to ten people through BoldTrail, the short
+                      version with Read more (2026-10-15, the owner's pick),
+                      right under the copy and test buttons so every way
+                      out of here sits together (the owner's markup). */}
+                    <BoldTrailSend
+                      subject={emailNow.subject}
+                      blockedReason={/^https?:\/\/\S+\.\S+/i.test(emailNow.blogUrl) ? null : "Paste the post's web address below first, so Read more has somewhere to go."}
+                      onSend={(contacts) => postBoldTrailEmail({ kind: "blog", projectId: project!.id, subjectIdx: emailSubjectAt, contacts })}
+                    />
                     <div>
                       <p className="text-xs font-medium text-slate-500 mb-1">Link to the full post (for the button)</p>
                       <input
@@ -3986,13 +3997,6 @@ export default function ProjectEditorPage() {
                         srcDoc={emailNow.html}
                         sandbox=""
                         className="w-full h-[520px] rounded-lg border border-slate-200 bg-slate-100"
-                      />
-                      {/* To up to ten people through BoldTrail, the short
-                          version with Read more (2026-10-15, the owner's pick). */}
-                      <BoldTrailSend
-                        subject={emailNow.subject}
-                        blockedReason={/^https?:\/\/\S+\.\S+/i.test(emailNow.blogUrl) ? null : "Paste the post's web address above first, so Read more has somewhere to go."}
-                        onSend={(contacts) => postBoldTrailEmail({ kind: "blog", projectId: project!.id, subjectIdx: emailSubjectAt, contacts })}
                       />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2">
