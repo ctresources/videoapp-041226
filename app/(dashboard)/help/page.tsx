@@ -848,17 +848,24 @@ export default function HelpPage() {
                 edited or removed. Read a drafted reply to a low rating with extra care before
                 posting it.
               </span>
-              {/* Seller Update, added 2026-10-15. */}
+              {/* Seller Update, added 2026-10-15; any day, From your listings
+                  and the video update the same day. */}
               <span className="block mt-1.5">
-                <strong>Seller Update</strong> writes this week&apos;s email to the people selling one
-                of your listings. Add the listing once: the address, the sellers&apos; first names, the
-                list price and the date it was listed. Then each week fill in online views, saves,
-                showings, open house visitors and offers, and type or say the buyer feedback and next
-                steps. Last week&apos;s numbers show beside each box, and the email shows this
-                week&apos;s as a row of numbers with what went up. It uses only what you enter. Your
-                listings also sit under <strong>Seller updates</strong> in My Sparks, each with a{" "}
-                <strong>This week&apos;s update</strong> button. Copy it or send yourself a test, the
-                same as the newsletter.
+                <strong>Seller Update</strong> writes an update email to the people selling one of
+                your listings, whenever you want to send one. Add the listing once: the address, the
+                sellers&apos; first names, the list price and the date it was listed. If you&apos;ve
+                already made a video or reel of it in Listings &amp; photos, pick it under{" "}
+                <strong>From your listings</strong> and the address fills in. For each update, fill
+                in online views, saves, showings, open house visitors and offers, and type or say the
+                buyer feedback and next steps. Your last update&apos;s numbers show beside each box,
+                and the email shows the new ones as a row of numbers with what went up. It uses only
+                what you enter. Past updates are listed under the listing.{" "}
+                <strong>Record a video update</strong> writes a short script from your numbers and
+                opens the camera with it; when you&apos;ve recorded,{" "}
+                <strong>Add to the seller update</strong> puts the video at the top of the email,
+                where sellers tap it to watch. Your listings also sit under{" "}
+                <strong>Seller updates</strong> in My Sparks, each with a <strong>New update</strong>{" "}
+                button. Copy it or send yourself a test, the same as the newsletter.
               </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the
