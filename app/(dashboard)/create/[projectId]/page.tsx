@@ -512,6 +512,8 @@ export default function ProjectEditorPage() {
   // the project has saved, so a reload shows the last email written.
   const [emailWritten, setEmailWritten] = useState<EmailVersion | null>(null);
   const [emailUrlDraft, setEmailUrlDraft] = useState<string | null>(null);
+  // The post's headline, as typed in the Share Kit (2026-10-15). Null until edited.
+  const [headlineDraft, setHeadlineDraft] = useState<string | null>(null);
   const [emailSubjectIdx, setEmailSubjectIdx] = useState(0);
   const [emailWriting, setEmailWriting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
@@ -2315,6 +2317,29 @@ export default function ProjectEditorPage() {
     } finally {
       setEmailWriting(false);
     }
+  }
+
+  /** Saves the typed headline as the post's headline (ai_script.blog_headline). */
+  async function saveHeadline() {
+    if (!project || headlineDraft === null) return;
+    const ai = (project.ai_script ?? {}) as AiScript;
+    const current = articleHeadline(ai as { blog_headline?: string; title?: string }, project.seo_data as { youtube_title?: string; meta_title?: string } | null, project.title);
+    if (headlineDraft.trim() === current) { setHeadlineDraft(null); return; }
+    const res = await fetch("/api/projects/headline", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, headline: headlineDraft }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast.error(data?.error || "Couldn't save the headline."); return; }
+    setProject((prev) => {
+      if (!prev) return prev;
+      const next = { ...((prev.ai_script ?? {}) as Record<string, unknown>) };
+      if (data.headline) next.blog_headline = data.headline; else delete next.blog_headline;
+      return { ...prev, ai_script: next as unknown as typeof prev.ai_script };
+    });
+    setHeadlineDraft(null);
+    toast.success("Headline saved.");
   }
 
   async function saveEmailUrl() {
@@ -4273,6 +4298,29 @@ export default function ProjectEditorPage() {
                   </p>
                 </div>
               )}
+              {/* The post's headline, editable (2026-10-15, the owner's ask). The
+                  email, the newsletter and the header image all use it. */}
+              {(script.blog_intro || script.blog_body) && (
+                <div className="px-2 mb-3">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">Headline</span>
+                    <input
+                      type="text"
+                      maxLength={160}
+                      value={headlineDraft ?? (() => {
+                        const h = articleHeadline(script as { blog_headline?: string; title?: string }, seo as { youtube_title?: string; meta_title?: string } | null, project.title);
+                        return h === "Untitled post" ? "" : h;
+                      })()}
+                      onChange={(e) => setHeadlineDraft(e.target.value)}
+                      onBlur={() => void saveHeadline()}
+                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      placeholder="Your post's headline"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[16px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500 sm:text-[15px]"
+                    />
+                  </label>
+                  <p className="mt-1 text-[11px] text-slate-400">Used in your email, newsletter and header image.</p>
+                </div>
+              )}
               {emailPanel}
               {/* The header image itself, once there is one. The link to make or
                   change it is a pill in the action row above. */}
@@ -4344,7 +4392,6 @@ export default function ProjectEditorPage() {
                       it — on the blog route, behind the one chevron between you
                       and the thing you came for. */}
                   {[
-                    { label: "Headline", value: script.blog_headline || "" },
                     { label: "Introduction", value: script.blog_intro },
                     { label: "Body", value: script.blog_body },
                     { label: "Conclusion", value: script.blog_conclusion },
