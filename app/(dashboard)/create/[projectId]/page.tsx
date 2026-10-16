@@ -613,7 +613,7 @@ export default function ProjectEditorPage() {
    * grid numbers each photo and dims the ones past the line.
    */
   const photoLimit =
-    source !== "paste" && selectedVideoType !== "youtube_long" && !pipLayout
+    source !== "paste" && selectedVideoType !== "youtube_long" && !pipLayout && avatarStyle !== "circle"
       ? AGENT_PHOTO_LIMIT
       : DIRECT_PHOTO_LIMIT;
   /**
@@ -925,7 +925,7 @@ export default function ProjectEditorPage() {
     setUploadedPhotos((prev) =>
       prev.length > 0
         ? prev
-        : urls.slice(0, 12).map((url, i) => ({
+        : urls.slice(0, UPLOAD_PHOTO_LIMIT).map((url, i) => ({
             url, name: `Listing photo ${i + 1}`, preview: url,
           })),
     );
@@ -2559,7 +2559,7 @@ export default function ProjectEditorPage() {
           (u): u is string => typeof u === "string" && u.startsWith("http"),
         )
       : [];
-    const all = [...listingPhotos, ...uploadedPhotos.map((p) => p.url)].slice(0, 12);
+    const all = [...listingPhotos, ...uploadedPhotos.map((p) => p.url)].slice(0, UPLOAD_PHOTO_LIMIT);
     if (all.length === 0) return [];
     try {
       const res = await fetch("/api/photos/rehost", {
@@ -3398,8 +3398,8 @@ export default function ProjectEditorPage() {
             {uploadedPhotos.length > photoLimit && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
                 Only your first <strong>{photoLimit}</strong> photos will be used. The other{" "}
-                {uploadedPhotos.length - photoLimit} won&apos;t appear. This video renders on
-                the Video Agent, which takes {AGENT_PHOTO_LIMIT}. Pasted scripts and long-form videos
+                {uploadedPhotos.length - photoLimit} won&apos;t appear. Avatar video takes{" "}
+                {AGENT_PHOTO_LIMIT}. Avatar in circle, pasted scripts and long-form videos
                 use up to {DIRECT_PHOTO_LIMIT}.
               </p>
             )}

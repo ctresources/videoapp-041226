@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
+import { DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { ArticleSource, MediaAndDocs, type DocAttachment, type DocMode } from "@/components/create/media-and-docs";
 import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/email-import-picker";
 import { useForwardedEmails } from "@/components/create/forwarded-emails";
@@ -798,7 +799,7 @@ function CreatePageInner() {
           (u): u is string => typeof u === "string" && u.startsWith("http"),
         );
         if (urls.length) {
-          void rehostPhotos(urls.slice(0, 12)).then((safe) =>
+          void rehostPhotos(urls.slice(0, DIRECT_PHOTO_LIMIT)).then((safe) =>
             setCameraPhotos(
               safe.map((url, i) => ({ url, name: `Photo ${i + 1}`, preview: url })),
             ),
@@ -940,7 +941,7 @@ function CreatePageInner() {
   }
 
   async function handleCameraPhotosUpload(files: FileList) {
-    const remaining = 12 - cameraPhotos.length;
+    const remaining = DIRECT_PHOTO_LIMIT - cameraPhotos.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     setCameraPhotoUploading(true);
@@ -951,7 +952,7 @@ function CreatePageInner() {
           return { url, name, preview: url };
         })
       );
-      setCameraPhotos((prev) => [...prev, ...results].slice(0, 12));
+      setCameraPhotos((prev) => [...prev, ...results].slice(0, DIRECT_PHOTO_LIMIT));
       toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Photo upload failed");
@@ -1170,7 +1171,7 @@ function CreatePageInner() {
   }
 
   async function handlePastePhotosUpload(files: FileList) {
-    const remaining = 12 - pastePhotos.length;
+    const remaining = DIRECT_PHOTO_LIMIT - pastePhotos.length;
     if (remaining <= 0) return;
     const toUpload = Array.from(files).slice(0, remaining);
     setPastePhotoUploading(true);
@@ -1181,7 +1182,7 @@ function CreatePageInner() {
           return { url, name, preview: url };
         })
       );
-      setPastePhotos((prev) => [...prev, ...results].slice(0, 12));
+      setPastePhotos((prev) => [...prev, ...results].slice(0, DIRECT_PHOTO_LIMIT));
       toast.success(`${results.length} photo${results.length > 1 ? "s" : ""} uploaded!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Photo upload failed");
@@ -4522,7 +4523,7 @@ function CreatePageInner() {
                 setInputMode("camera");
                 window.scrollTo({ top: 0, behavior: "smooth" });
                 if (photoUrls.length === 0) return;
-                const safe = await rehostPhotos(photoUrls.slice(0, 12));
+                const safe = await rehostPhotos(photoUrls.slice(0, DIRECT_PHOTO_LIMIT));
                 setCameraPhotos(
                   safe.map((url, i) => ({ url, name: `Listing photo ${i + 1}`, preview: url })),
                 );

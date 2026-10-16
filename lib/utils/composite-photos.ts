@@ -31,7 +31,7 @@ import { randomUUID } from "crypto";
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 /** Ceiling on background sources — photos and stock clips combined. */
-const MAX_SOURCES = 16;
+const MAX_SOURCES = 24; // 20 photos (DIRECT_PHOTO_LIMIT) plus a few clips
 const SECONDS_PER_PHOTO = 4;
 /**
  * How long each stock clip runs.

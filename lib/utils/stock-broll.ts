@@ -31,6 +31,8 @@ export const STOCK_BROLL_MAX_WORDS = 600;
 
 /** Clips to composite. Each one is downloaded and re-encoded in the webhook. */
 const MAX_CLIPS = 4;
+/** How much of the video one of the user's photos is taken to fill. */
+const PHOTO_COVERS_SECONDS = 15;
 
 export function countWords(script: string): number {
   return script.split(/\s+/).filter(Boolean).length;
@@ -65,7 +67,12 @@ export async function stockBrollFor(opts: {
   // spends 225s of, so this stays capped well below full coverage: the aim is a
   // longer, more varied loop, not eliminating repetition outright.
   const runtimeSeconds = (opts.scriptWords / 145) * 60;
-  const coveredByPhotos = opts.userPhotoCount * 4;
+  // A photo counts for 15 seconds, not the 4 it used to (2026-10-16): with
+  // only photos behind the speaker they are spread across the whole video
+  // (store-video), so twelve photos fill three minutes. At 4s each, twelve
+  // photos under a 99-second circle video still pulled in three stock clips,
+  // and the owner wants her own photos alone whenever they can carry it.
+  const coveredByPhotos = opts.userPhotoCount * PHOTO_COVERS_SECONDS;
   const shortfall = Math.max(0, runtimeSeconds - coveredByPhotos);
   // Each clip now holds 20s rather than 5 — see SECONDS_PER_CLIP in
   // composite-photos. Length is free (pass 2 re-encodes the full runtime

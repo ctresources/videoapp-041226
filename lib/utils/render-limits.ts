@@ -35,7 +35,7 @@ export const AGENT_PHOTO_LIMIT = 12;
  * Higher because the avatar is composited over the photos afterwards rather
  * than HeyGen planning a scene per file, so the extra ones cost almost nothing.
  */
-export const DIRECT_PHOTO_LIMIT = 12;
+export const DIRECT_PHOTO_LIMIT = 20;
 
 /** What the upload widget accepts — the larger of the two, so no path is capped by the UI. */
 export const UPLOAD_PHOTO_LIMIT = DIRECT_PHOTO_LIMIT;

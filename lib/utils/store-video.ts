@@ -290,8 +290,13 @@ export async function storeVideoDetailed(
         });
       }
     }
+    // Photos with no clips are spread across the whole narration (2026-10-16)
+    // rather than shown 4s each and looped, so twelve photos under a 99-second
+    // video each hold about 8 seconds and none comes round twice.
+    const spoken = clips.length === 0 && photos.length > 0 ? srtEndSeconds(srt ?? opts.cachedSrt ?? null) : 0;
+    const hold = spoken > 0 ? Math.max(4, spoken / photos.length) : 0;
     const broll: BackgroundItem[] = cutToWords ?? [
-      ...photos.map((url) => ({ url, kind: "photo" as const })),
+      ...photos.map((url) => (hold ? { url, kind: "photo" as const, seconds: hold } : { url, kind: "photo" as const })),
       ...clips.map((c) => ({ ...c, kind: "clip" as const })),
     ];
 
@@ -494,6 +499,16 @@ const SCENE_SECONDS_BUDGET = 96;
  * arriving and the video being shown, and every second here is one the agent
  * spends looking at "rendering".
  */
+/** When the last caption ends, in seconds; 0 when there are no captions. */
+function srtEndSeconds(srt: string | null): number {
+  if (!srt) return 0;
+  let end = 0;
+  for (const m of Array.from(srt.matchAll(/-->\s*(\d+):(\d+):(\d+)[,.](\d+)/g))) {
+    end = Math.max(end, +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000);
+  }
+  return end;
+}
+
 async function sceneBackground(
   videoId: string,
   script: string,

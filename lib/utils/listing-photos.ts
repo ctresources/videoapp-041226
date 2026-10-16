@@ -200,7 +200,7 @@ const RENDITION_PARAMS = new Set([
  */
 const PROXY_PARAMS = ["url", "src", "image", "u"];
 
-const MAX_PHOTOS = 12;
+const MAX_PHOTOS = 20; // UPLOAD_PHOTO_LIMIT
 
 /** Follow an image proxy to the photo it wraps. Bounded — proxies can nest. */
 function unwrapProxy(href: string, base: string): string {

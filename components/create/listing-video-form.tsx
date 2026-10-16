@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { coerceListing } from "@/lib/utils/listing-data";
 import { currentUserId } from "@/lib/utils/upload-photo";
 import { RENDERED_SCRIPT_LENGTHS, ceilMinutesFor, type VideoLength } from "@/lib/utils/video-length";
+import { UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 
 /**
  * Upload a single image directly from the browser to Supabase Storage.
@@ -159,7 +160,8 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
       .catch(() => {});
   }, []);
 
-  const MAX_LISTING_PHOTOS = 12;
+  // 20 since 2026-10-16; an Avatar video still uses only the first 12.
+  const MAX_LISTING_PHOTOS = UPLOAD_PHOTO_LIMIT;
 
   // ── Scrape ─────────────────────────────────────────────────────────────────
   async function handleScrape() {

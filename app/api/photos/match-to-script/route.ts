@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     script?: string;
   };
 
-  const urls = (photoUrls ?? []).filter((u) => typeof u === "string" && u.startsWith("http")).slice(0, 12);
+  const urls = (photoUrls ?? []).filter((u) => typeof u === "string" && u.startsWith("http")).slice(0, 20);
   if (urls.length < 2) {
     return NextResponse.json({ error: "Add at least two photos to reorder them." }, { status: 400 });
   }

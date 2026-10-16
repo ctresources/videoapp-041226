@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-const MAX_PHOTOS = 12;
+const MAX_PHOTOS = 20; // UPLOAD_PHOTO_LIMIT
 const MAX_BYTES_PER_PHOTO = 15 * 1024 * 1024; // 15 MB
 const ACCEPTED_PREFIX = "image/";
 

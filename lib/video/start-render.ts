@@ -1137,7 +1137,7 @@ export async function startRender(
       });
       if (!directVoiceId) throw new Error("No voice found. Please set up your voice clone in Settings.");
 
-      // Photos to composite as b-roll behind the avatar (up to 12) — uploaded
+      // Photos to composite as b-roll behind the avatar (up to DIRECT_PHOTO_LIMIT, 20) — uploaded
       // photos take priority, then any listing photos.
       const directPhotos = [
         ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),

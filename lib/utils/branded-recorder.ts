@@ -1,3 +1,5 @@
+import { UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
+
 /**
  * Branded Look record-time compositing.
  *
@@ -393,7 +395,7 @@ export class BrandedComposite {
     // a tainted canvas cannot be recorded at all. /api/photos/rehost exists to
     // make scraped photos survive this filter.
     const loadedPhotos = await Promise.all(
-      this.photoUrls.slice(0, 12).map((u) => loadImage(u, 6000)),
+      this.photoUrls.slice(0, UPLOAD_PHOTO_LIMIT).map((u) => loadImage(u, 6000)),
     );
     this.photos = loadedPhotos.filter((p): p is HTMLImageElement => p !== null);
 
@@ -610,7 +612,7 @@ export class BrandedComposite {
    * that fails CORS is dropped here exactly as it is in init().
    */
   async setPhotos(urls: string[]): Promise<void> {
-    const wanted = urls.slice(0, 12);
+    const wanted = urls.slice(0, UPLOAD_PHOTO_LIMIT);
     // Same list, in the same order — nothing to do, and reloading would restart
     // the Ken Burns push on whatever is on screen.
     if (

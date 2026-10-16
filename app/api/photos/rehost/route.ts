@@ -21,7 +21,7 @@ export const maxDuration = 60;
  * import needs it from a webhook that has no session to authenticate.
  */
 
-const MAX_PHOTOS = 12;
+const MAX_PHOTOS = 20; // UPLOAD_PHOTO_LIMIT
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
