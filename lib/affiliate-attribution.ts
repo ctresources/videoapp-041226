@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyReferralSignup } from "@/lib/email";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -22,19 +23,19 @@ export async function attributeReferral(
   try {
     const { data: aff } = await admin
       .from("affiliates")
-      .select("id, email")
+      .select("id, email, full_name")
       .eq("ref_code", code)
       .eq("status", "approved")
       .maybeSingle();
     if (!aff) return;
 
-    const affiliate = aff as { id: string; email: string | null };
+    const affiliate = aff as { id: string; email: string | null; full_name: string | null };
     // Self-referral guard: an affiliate can't earn commission on their own signup.
     if (userEmail && affiliate.email && affiliate.email.toLowerCase() === userEmail.toLowerCase()) {
       return;
     }
 
-    await admin
+    const { error } = await admin
       .from("profiles")
       .update({
         referred_by_affiliate_id: affiliate.id,
@@ -42,6 +43,15 @@ export async function attributeReferral(
         referral_attributed_at: new Date().toISOString(),
       })
       .eq("id", userId);
+    // Tell the owner (2026-10-16): referral sign-ups used to show only in the
+    // Admin panel.
+    if (!error) {
+      await notifyReferralSignup({
+        affiliateName: affiliate.full_name || affiliate.email || code,
+        refCode: code,
+        userEmail: userEmail ?? null,
+      });
+    }
   } catch {
     // Attribution is best-effort; a failure must never block signup.
   }

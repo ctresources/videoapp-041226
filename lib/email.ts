@@ -607,3 +607,116 @@ export async function notifyPostFailed({
   }).catch(() => null);
   return !!res?.ok;
 }
+
+// ── Affiliate activity (2026-10-16, the owner's ask) ────────────────────────
+// Sign-ups through an affiliate's link and commissions earned used to show
+// only in the Admin panel. Names and emails here come from sign-up forms, so
+// they are escaped before going into the HTML.
+
+const escHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const longDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+
+/** To the owner: someone signed up through an affiliate's link. */
+export async function notifyReferralSignup({
+  affiliateName,
+  refCode,
+  userEmail,
+}: {
+  affiliateName: string;
+  refCode: string;
+  userEmail: string | null;
+}) {
+  if (!RESEND_API_KEY) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: `New sign-up through ${affiliateName}'s affiliate link`,
+      html: `
+        <p>Someone just signed up for SparkReels through an affiliate's link. A commission is earned when they pay.</p>
+        <table>
+          <tr><td><strong>Affiliate</strong></td><td>${escHtml(affiliateName)} (${escHtml(refCode)})</td></tr>
+          <tr><td><strong>New user</strong></td><td>${escHtml(userEmail || "(no email)")}</td></tr>
+        </table>
+      `,
+    }),
+  }).catch(() => {});
+}
+
+/** To the owner: a referred customer paid, so a commission was earned. */
+export async function notifyCommissionEarned({
+  affiliateName,
+  customerEmail,
+  paidCents,
+  commissionCents,
+  availableAt,
+  firstPayment,
+}: {
+  affiliateName: string;
+  customerEmail: string | null;
+  paidCents: number;
+  commissionCents: number;
+  availableAt: string;
+  firstPayment: boolean;
+}) {
+  if (!RESEND_API_KEY) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: `${firstPayment ? "New paying referral" : "Affiliate commission"}: ${dollars(commissionCents)} for ${affiliateName}`,
+      html: `
+        <p>${firstPayment ? "A customer referred by an affiliate just made their first payment." : "A customer referred by an affiliate just paid again."}</p>
+        <table>
+          <tr><td><strong>Affiliate</strong></td><td>${escHtml(affiliateName)}</td></tr>
+          <tr><td><strong>Customer</strong></td><td>${escHtml(customerEmail || "(no email)")}</td></tr>
+          <tr><td><strong>Payment</strong></td><td>${dollars(paidCents)}</td></tr>
+          <tr><td><strong>Commission</strong></td><td>${dollars(commissionCents)}, payable after ${longDate(availableAt)} (the 30-day hold)</td></tr>
+        </table>
+        <p>It's in Admin → Affiliates. Payouts go out on the 1st of each month.</p>
+      `,
+    }),
+  }).catch(() => {});
+}
+
+/** To the affiliate: they earned a commission. */
+export async function notifyAffiliateCommission({
+  name,
+  email,
+  commissionCents,
+  availableAt,
+  appUrl,
+}: {
+  name: string;
+  email: string;
+  commissionCents: number;
+  availableAt: string;
+  appUrl: string;
+}) {
+  if (!RESEND_API_KEY) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject: `You earned a ${dollars(commissionCents)} SparkReels commission`,
+      html: `
+        <p>Hi ${escHtml(name)},</p>
+        <p>Someone you referred just paid for SparkReels, so you've earned a <strong>${dollars(commissionCents)}</strong> commission.</p>
+        <p>It becomes payable after <strong>${longDate(availableAt)}</strong> (a 30-day hold, in case of refunds). Payouts go out on the 1st of each month once you have $50 or more, to the bank account you connected with Stripe.</p>
+        <p>See your earnings on your <a href="${appUrl}/affiliate">Affiliate Program page</a>.</p>
+        <p>Thanks for sharing SparkReels. Any questions, email
+        <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a>.</p>
+      `,
+    }),
+  }).catch(() => {});
+}

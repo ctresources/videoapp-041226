@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyAffiliateCommission, notifyCommissionEarned } from "@/lib/email";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -29,11 +30,11 @@ export async function createCommissionIfEligible(
 
   const { data: affRow } = await admin
     .from("affiliates")
-    .select("id, user_id, email, status, commission_rate, commission_duration_months")
+    .select("id, user_id, email, full_name, status, commission_rate, commission_duration_months")
     .eq("id", profile.referred_by_affiliate_id)
     .single();
   const affiliate = affRow as {
-    id: string; user_id: string | null; email: string | null; status: string;
+    id: string; user_id: string | null; email: string | null; full_name: string | null; status: string;
     commission_rate: number; commission_duration_months: number;
   } | null;
   if (!affiliate || affiliate.status !== "approved") return;
@@ -50,7 +51,8 @@ export async function createCommissionIfEligible(
   // Upsert the conversion — the FIRST payment anchors the commission window.
   const eligibleUntil = new Date();
   eligibleUntil.setMonth(eligibleUntil.getMonth() + affiliate.commission_duration_months);
-  await admin.from("affiliate_conversions").upsert(
+  // Rows come back only when the conversion is new: that is the first payment.
+  const { data: newConversion } = await admin.from("affiliate_conversions").upsert(
     {
       affiliate_id: affiliate.id,
       user_id: userId,
@@ -59,7 +61,8 @@ export async function createCommissionIfEligible(
       commission_eligible_until: eligibleUntil.toISOString(),
     },
     { onConflict: "user_id", ignoreDuplicates: true },
-  );
+  ).select("id");
+  const firstPayment = (newConversion ?? []).length > 0;
 
   const { data: convRow } = await admin
     .from("affiliate_conversions")
@@ -74,7 +77,7 @@ export async function createCommissionIfEligible(
   if (commissionAmount <= 0) return;
 
   const availableAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30-day hold
-  await admin.from("affiliate_commissions").upsert(
+  const { data: inserted } = await admin.from("affiliate_commissions").upsert(
     {
       affiliate_id: affiliate.id,
       conversion_id: conversion.id,
@@ -86,5 +89,28 @@ export async function createCommissionIfEligible(
       available_at: availableAt,
     },
     { onConflict: "stripe_invoice_id", ignoreDuplicates: true },
-  );
+  ).select("id");
+
+  // Emails (2026-10-16, the owner's ask), only for a commission just made, so
+  // a webhook Stripe sends twice doesn't email twice.
+  if ((inserted ?? []).length > 0) {
+    const affiliateName = affiliate.full_name || affiliate.email || "an affiliate";
+    await notifyCommissionEarned({
+      affiliateName,
+      customerEmail: profile.email,
+      paidCents: amountPaid,
+      commissionCents: commissionAmount,
+      availableAt,
+      firstPayment,
+    });
+    if (affiliate.email) {
+      await notifyAffiliateCommission({
+        name: affiliate.full_name || "there",
+        email: affiliate.email,
+        commissionCents: commissionAmount,
+        availableAt,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://sparkreels.ai",
+      });
+    }
+  }
 }
