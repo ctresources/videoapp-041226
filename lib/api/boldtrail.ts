@@ -85,3 +85,7 @@ export async function findContactByEmail(token: string, email: string): Promise<
 export async function sendBoldTrailEmail(token: string, contactId: string | number, subject: string, message: string) {
   return call(token, "PUT", `/contact/${encodeURIComponent(String(contactId))}/email`, { subject, message });
 }
+
+export async function sendBoldTrailText(token: string, contactId: string | number, message: string) {
+  return call(token, "PUT", `/contact/${encodeURIComponent(String(contactId))}/text`, { message });
+}

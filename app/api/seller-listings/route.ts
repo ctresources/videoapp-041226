@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
   const { data: listings, error } = await admin
     .from("seller_listings")
-    .select("id, address, seller_names, list_price, listed_on, created_at")
+    .select("id, address, seller_names, list_price, listed_on, created_at, boldtrail_contacts")
     .eq("user_id", user.id)
     .is("archived_at", null)
     .order("created_at", { ascending: false })
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       list_price: clean(body.listPrice, 40) || null,
       listed_on: isDate(body.listedOn) ? body.listedOn : null,
     })
-    .select("id, address, seller_names, list_price, listed_on, created_at")
+    .select("id, address, seller_names, list_price, listed_on, created_at, boldtrail_contacts")
     .single();
   if (error || !data) return NextResponse.json({ error: "Couldn't save the listing." }, { status: 500 });
   return NextResponse.json({ listing: { ...data, last_update_at: null } });
@@ -152,7 +152,7 @@ export async function PATCH(req: NextRequest) {
     .update(patch)
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id, address, seller_names, list_price, listed_on, created_at")
+    .select("id, address, seller_names, list_price, listed_on, created_at, boldtrail_contacts")
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Couldn't save the listing." }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Listing not found" }, { status: 404 });

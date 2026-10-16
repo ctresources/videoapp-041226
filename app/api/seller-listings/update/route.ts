@@ -42,8 +42,9 @@ type Row = {
   open_house_visitors: number | null; offers: number | null; feedback: string | null;
   next_steps: string | null; email: unknown;
   video_id: string | null; video_url: string | null; video_poster_url: string | null; video_seconds: number | null;
+  sent_at: string | null; sent_to: unknown;
 };
-const COLS = "update_on, views, saves, showings, open_house_visitors, offers, feedback, next_steps, email, video_id, video_url, video_poster_url, video_seconds";
+const COLS = "update_on, views, saves, showings, open_house_visitors, offers, feedback, next_steps, email, video_id, video_url, video_poster_url, video_seconds, sent_at, sent_to";
 const statsOf = (r: Row | null | undefined): SellerStats | null =>
   r ? { views: r.views, saves: r.saves, showings: r.showings, openHouse: r.open_house_visitors, offers: r.offers } : null;
 
@@ -58,7 +59,7 @@ function daysOnMarket(listedOn: string | null, updateOn: string): number | null 
 async function load(admin: ReturnType<typeof createAdminClient>, userId: string, listingId: string, updateOn: string) {
   const { data: listing } = await admin
     .from("seller_listings")
-    .select("id, address, seller_names, list_price, listed_on")
+    .select("id, address, seller_names, list_price, listed_on, boldtrail_contacts")
     .eq("id", listingId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -75,12 +76,13 @@ async function load(admin: ReturnType<typeof createAdminClient>, userId: string,
   const before = list.find((r) => r.update_on < updateOn) ?? null;
   const { data: all } = await admin
     .from("seller_listing_updates")
-    .select("update_on")
+    .select("update_on, sent_at")
     .eq("listing_id", listingId)
     .order("update_on", { ascending: false })
     .limit(30);
   const dates = (all ?? []).map((r) => r.update_on as string);
-  return { listing, current, before, dates, earlier: dates.filter((d) => d < updateOn).length };
+  const sentDates = (all ?? []).filter((r) => r.sent_at).map((r) => r.update_on as string);
+  return { listing, current, before, dates, sentDates, earlier: dates.filter((d) => d < updateOn).length };
 }
 
 export async function GET(req: NextRequest) {
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
     current: found.current,
     before: found.before,
     dates: found.dates,
+    sentDates: found.sentDates,
     daysOnMarket: daysOnMarket(found.listing.listed_on, updateOn),
     signature,
   });

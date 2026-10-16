@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
 import { Copy, Loader2, Send } from "lucide-react";
 
@@ -10,7 +10,13 @@ import { Copy, Loader2, Send } from "lucide-react";
  * me a test (only ever to the signed-in agent). Shared by the newsletter and
  * the Seller Update, and built like the Share Kit's email version.
  */
-export function EmailResult({ subject, html, text }: { subject: string; html: string; text: string }) {
+export function EmailResult({ subject, html, text, leading, footer }: {
+  subject: string; html: string; text: string;
+  /** A button before the copy buttons, e.g. Seller Update's send through BoldTrail. */
+  leading?: ReactNode;
+  /** A line under the buttons, e.g. when it was sent. */
+  footer?: ReactNode;
+}) {
   const [sending, setSending] = useState(false);
   const [height, setHeight] = useState(520);
 
@@ -47,6 +53,7 @@ export function EmailResult({ subject, html, text }: { subject: string; html: st
         }}
       />
       <div className="mt-3 flex flex-wrap gap-2">
+        {leading}
         <button
           type="button"
           className={`${btn} spark-cta-gradient text-white`}
@@ -65,6 +72,7 @@ export function EmailResult({ subject, html, text }: { subject: string; html: st
           {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send me a test
         </button>
       </div>
+      {footer}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Loader2, Plus, Trash2, Video, X } from "lucide-react";
+import { Loader2, Plus, Send, Trash2, Video, X } from "lucide-react";
 import { EmailResult, SubjectPicker } from "@/components/email/email-result";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import {
@@ -30,6 +30,8 @@ export interface SellerListing {
   list_price: string | null;
   listed_on: string | null;
   last_update_at?: string | null;
+  /** The sellers' BoldTrail contacts, added once by exact email (2026-10-15). */
+  boldtrail_contacts?: { id: string; name: string; email: string }[];
 }
 
 type Week = {
@@ -38,6 +40,7 @@ type Week = {
   open_house_visitors: number | null; offers: number | null;
   feedback: string | null; next_steps: string | null; email: SellerUpdateEmail | null;
   video_id: string | null; video_url: string | null; video_poster_url: string | null; video_seconds: number | null;
+  sent_at: string | null; sent_to: { name: string; email: boolean; text: boolean | null }[] | null;
 };
 
 /** Today on the agent's own calendar, as YYYY-MM-DD. */
@@ -98,6 +101,23 @@ export function SellerUpdateTool({
   const [before, setBefore] = useState<SellerStats | null>(null);
   const [beforeOn, setBeforeOn] = useState<string | null>(null);
   const [pastDates, setPastDates] = useState<string[]>([]);
+  // Sending through BoldTrail (2026-10-15): whether it's connected, this
+  // listing's sellers there, and when this update went out.
+  const [btConnected, setBtConnected] = useState(false);
+  const [btContacts, setBtContacts] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [btEmail, setBtEmail] = useState("");
+  const [btAdding, setBtAdding] = useState(false);
+  const [sentDates, setSentDates] = useState<string[]>([]);
+  const [sent, setSent] = useState<{ at: string; to: { name: string; email: boolean; text: boolean | null }[] } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [alsoText, setAlsoText] = useState(false);
+  const [sending, setSending] = useState(false);
+  useEffect(() => {
+    fetch("/api/integrations/boldtrail")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setBtConnected(!!d?.connected))
+      .catch(() => setBtConnected(false));
+  }, []);
   const [video, setVideo] = useState<(SellerVideo & { id: string | null }) | null>(null);
   const [recording, setRecording] = useState(false);
   const [daysOnMarket, setDaysOnMarket] = useState<number | null>(null);
@@ -130,6 +150,8 @@ export function SellerUpdateTool({
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || "Couldn't open that listing.");
       const l = d.listing as SellerListing;
+      setBtContacts(l.boldtrail_contacts ?? []);
+      setSentDates((d.sentDates ?? []) as string[]);
       setDetails({ sellerNames: l.seller_names ?? "", listPrice: l.list_price ?? "", listedOn: l.listed_on ?? "" });
       const cur = d.current as Week | null;
       const prev = d.before as Week | null;
@@ -143,6 +165,7 @@ export function SellerUpdateTool({
       setBeforeOn(prev?.update_on ?? null);
       setPastDates(((d.dates ?? []) as string[]).filter((x) => x !== today));
       setVideo(cur?.video_url ? { id: cur.video_id, url: cur.video_url, posterUrl: cur.video_poster_url, seconds: cur.video_seconds } : null);
+      setSent(cur?.sent_at ? { at: cur.sent_at, to: cur.sent_to ?? [] } : null);
       setDaysOnMarket(d.daysOnMarket ?? null);
       setSignature(d.signature ?? {});
       if (cur?.email) {
@@ -267,6 +290,58 @@ export function SellerUpdateTool({
     }
   }
 
+  async function addBtContact() {
+    if (!selected || !btEmail.includes("@")) return;
+    setBtAdding(true);
+    try {
+      const res = await fetch("/api/seller-listings/boldtrail-contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: selected.id, email: btEmail.trim() }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.error || "Couldn't add that seller.");
+      setBtContacts(d.contacts ?? []);
+      setBtEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't add that seller.");
+    } finally {
+      setBtAdding(false);
+    }
+  }
+
+  async function removeBtContact(id: string) {
+    if (!selected) return;
+    const res = await fetch(`/api/seller-listings/boldtrail-contacts?listingId=${encodeURIComponent(selected.id)}&contactId=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) setBtContacts(d.contacts ?? []);
+  }
+
+  /** Only from Send now in the confirmation; nothing sends on its own. */
+  async function sendThroughBoldTrail() {
+    if (!selected) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/seller-listings/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: selected.id, updateOn, subjectIdx, alsoText }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.error || "Couldn't send it.");
+      setSent({ at: d.sentAt, to: d.results ?? [] });
+      if (!sentDates.includes(updateOn)) setSentDates((s) => [...s, updateOn]);
+      const failed = (d.results ?? []).filter((r: { email: boolean }) => !r.email);
+      if (failed.length) toast.error(`Not sent to ${failed.map((r: { name: string }) => r.name).join(" and ")}.`);
+      else toast.success("Sent through BoldTrail.");
+      setConfirming(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send it.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function removeVideo() {
     if (!selected) return;
     const res = await fetch(`/api/seller-listings/video?listingId=${encodeURIComponent(selected.id)}&updateOn=${updateOn}`, { method: "DELETE" });
@@ -325,7 +400,7 @@ export function SellerUpdateTool({
               onClick={() => setUpdateOn(d)}
               className={`rounded-lg border px-2.5 py-1 ${d === updateOn ? "border-spark-ink bg-spark-ink text-white" : "border-spark-rule bg-white text-spark-ink hover:border-[#d9c6a8]"}`}
             >
-              {dayLabel(d)}
+              {dayLabel(d)}{sentDates.includes(d) && <span className={d === updateOn ? "text-green-300" : "text-green-700"}> · sent</span>}
             </button>
           ))}
         </div>
@@ -409,6 +484,38 @@ export function SellerUpdateTool({
                     <input className={input} value={details.listPrice} onChange={(e) => setDetails({ ...details, listPrice: e.target.value })} />
                   </label>
                 </div>
+                {btConnected && (
+                  <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+                    <p className="mb-2 text-[12px] font-bold text-orange-800">Sellers in BoldTrail</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {btContacts.map((c) => (
+                        <span key={c.id} className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[12.5px] text-spark-ink">
+                          {c.name}<span className="text-[11px] text-orange-800">{c.email}</span>
+                          <button type="button" onClick={() => removeBtContact(c.id)} aria-label={`Remove ${c.name}`} className="text-spark-ink-muted hover:text-red-600"><X size={12} /></button>
+                        </span>
+                      ))}
+                      {btContacts.length < 4 && (
+                        <span className="flex min-w-[220px] flex-1 items-center gap-1.5">
+                          <input
+                            type="email"
+                            name="seller-boldtrail-email"
+                            autoComplete="off"
+                            data-1p-ignore
+                            data-lpignore="true"
+                            value={btEmail}
+                            onChange={(e) => setBtEmail(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addBtContact(); } }}
+                            placeholder="Seller's email in BoldTrail"
+                            className={`${input} py-1.5`}
+                          />
+                          <button type="button" onClick={addBtContact} disabled={btAdding || !btEmail.includes("@")} className="flex shrink-0 items-center gap-1 rounded-[10px] border border-orange-300 bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-orange-800 disabled:opacity-50">
+                            {btAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {STAT_FIELDS.map((f) => {
                     const was = before?.[f.key];
@@ -495,13 +602,61 @@ export function SellerUpdateTool({
                 <p className={eyebrow}>Subject line</p>
                 <SubjectPicker subjects={email.subjects} value={subjectIdx} onChange={setSubjectIdx} />
                 <p className={`${eyebrow} mt-4`}>Preview</p>
-                <EmailResult subject={subject} html={built.html} text={built.text} />
+                <EmailResult
+                  subject={subject}
+                  html={built.html}
+                  text={built.text}
+                  leading={btConnected && btContacts.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => { setAlsoText(false); setConfirming(true); }}
+                      className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      <Send size={13} /> Send to sellers through BoldTrail
+                    </button>
+                  ) : undefined}
+                  footer={sent ? (
+                    <p className="mt-2 text-[12.5px] font-semibold text-green-700">
+                      ✓ Sent {new Date(sent.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      {sent.to.length ? ` to ${sent.to.filter((r) => r.email).map((r) => r.name).join(" and ")}` : ""}
+                      {sent.to.some((r) => r.text) ? ", with a text" : ""}
+                    </p>
+                  ) : undefined}
+                />
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-spark-rule p-8 text-center text-[14px] text-spark-ink-muted">
                 Fill in the numbers and notes, then Write the update.
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirming && selected && email && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={() => !sending && setConfirming(false)}>
+          <div role="dialog" aria-label="Send this update?" className="w-full max-w-[440px] rounded-2xl border border-spark-rule bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-2 text-[17px] font-bold text-spark-ink">{sent ? "Send this update again?" : "Send this update?"}</h3>
+            {sent && (
+              <p className="mb-2 text-[13px] text-orange-800">
+                It already went out {new Date(sent.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.
+              </p>
+            )}
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>To:</b> {btContacts.map((c) => c.name).join(", ")}</p>
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>Subject:</b> {subject}</p>
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>From:</b> your BoldTrail email</p>
+            <label className="my-3 flex items-start gap-2 text-[13.5px] text-spark-ink-soft">
+              <input type="checkbox" checked={alsoText} onChange={(e) => setAlsoText(e.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-600" />
+              <span>Also text them: &ldquo;I just emailed your update for {selected.address}.&rdquo;</span>
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirming(false)} disabled={sending} className="rounded-[10px] border border-spark-rule bg-white px-4 py-2 text-[13.5px] font-semibold text-spark-ink">
+                Cancel
+              </button>
+              <button type="button" onClick={sendThroughBoldTrail} disabled={sending} className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-4 py-2 text-[13.5px] font-bold text-white disabled:opacity-60">
+                {sending && <Loader2 size={14} className="animate-spin" />} Send now
+              </button>
+            </div>
           </div>
         </div>
       )}
