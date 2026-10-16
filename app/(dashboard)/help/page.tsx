@@ -708,8 +708,11 @@ export default function HelpPage() {
                 the address of the post on your site and the button points there.{" "}
                 <strong>Send me a test</strong> sends it to the address you sign in with, so you can
                 see it in a real inbox (look in spam the first time), and <strong>Copy as HTML</strong>{" "}
-                drops it into the email tool you already use. SparkReels does not send it to your
-                clients for you.
+                drops it into the email tool you already use. With BoldTrail connected,{" "}
+                <strong>Send through BoldTrail</strong> under the preview sends it to up to 10 people
+                from your BoldTrail address, each greeted by their first name, once the post&apos;s web
+                address is in. Without BoldTrail, SparkReels doesn&apos;t send it to your clients for
+                you.
               </span>
               {/* The newsletter from several posts, added 2026-10-15. */}
               <span className="block mt-1.5">
@@ -719,8 +722,10 @@ export default function HelpPage() {
                 a short note from you, a few lines on each post with its own <strong>Read more</strong>{" "}
                 button, and your sign-off. Paste each post&apos;s web address once; a post without one
                 has no button. <strong>Copy as HTML</strong> drops it into the email tool you already
-                use, and <strong>Send me a test</strong> sends it to you first. SparkReels does not
-                send it to your clients for you.
+                use, and <strong>Send me a test</strong> sends it to you first. With BoldTrail
+                connected, it can go to up to 10 people from there too, once every post&apos;s web
+                address is in. Without BoldTrail, SparkReels doesn&apos;t send it to your clients for
+                you.
               </span>
             </Step>
           </div>

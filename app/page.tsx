@@ -829,7 +829,9 @@ export default function LandingPage() {
                 num: "3",
                 color: "bg-blue-500",
                 title: "Publish and share",
-                description: "One click to YouTube with SEO title, description and tags. Your Share Kit is already written — LinkedIn post, Instagram caption, email blurb, and a full blog post for your own site. Then watch the views, likes and comments come back in Spark Insights.",
+                // Updated 2026-10-15: every platform, and email through
+                // BoldTrail or the agent's own email tool.
+                description: "One click posts to YouTube, Instagram, Facebook, LinkedIn, TikTok, X, Threads and Google Business, with titles and captions written for each. Your Share Kit includes a full blog post for your own site, and you can email a video, a blog post or a newsletter to your clients through BoldTrail or your own email. Then watch the views, likes and comments come back in Spark Insights.",
                 photo: "https://images.unsplash.com/photo-1726066012749-f81bf4422d4e?auto=format&fit=crop&w=600&q=80",
                 alt: "Published video on social",
               },
