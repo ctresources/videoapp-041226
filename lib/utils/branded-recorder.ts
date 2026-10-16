@@ -1,5 +1,8 @@
 import { UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 
+/** Skin smoothing on the speaker: off, light or more. */
+export type SmoothSkin = "off" | "light" | "more";
+
 /**
  * Branded Look record-time compositing.
  *
@@ -158,6 +161,9 @@ export class BrandedComposite {
   private scriptProgress: number | null = null;
   /** Frames are coming from a file rather than a live camera. */
   private fromFile = false;
+  /** Skin smoothing on the speaker (2026-10-16); see drawSpeaker. */
+  private smoothSkin: SmoothSkin = "off";
+  private smoothCanvas: HTMLCanvasElement | null = null;
   /** Set when the chosen music never loaded, so the caller can say so rather
    *  than letting the user record in silence expecting a soundtrack. */
   musicUnavailable = false;
@@ -577,6 +583,54 @@ export class BrandedComposite {
 
   setCaption(text: string) {
     this.caption = { text, at: performance.now() };
+  }
+
+  /** Changes the skin smoothing live; the preview and the take both follow. */
+  setSmoothSkin(level: SmoothSkin) {
+    this.smoothSkin = level;
+  }
+
+  /**
+   * Draws the speaker, smoothed when Smooth skin is on.
+   *
+   * A face-tracking beauty filter is too heavy to run on a phone while it is
+   * also recording, so this is the cheap kind: a shrunk copy of the same frame
+   * (shrinking is the blur, and works in every browser, unlike ctx.filter) is
+   * laid back over it with "lighten", which only ever brightens. Fine lines,
+   * shadows and blemishes are darker than the skin around them, so they are
+   * what it lifts; highlights are left alone. Light is subtle, More stronger.
+   */
+  private drawSpeaker(
+    v: HTMLVideoElement,
+    sx: number, sy: number, sw: number, sh: number,
+    dx: number, dy: number, dw: number, dh: number,
+  ) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    ctx.drawImage(v, sx, sy, sw, sh, dx, dy, dw, dh);
+    if (this.smoothSkin === "off") return;
+
+    const more = this.smoothSkin === "more";
+    const shrink = more ? 6 : 5;
+    const w = Math.max(1, Math.round(dw / shrink));
+    const h = Math.max(1, Math.round(dh / shrink));
+    const c = this.smoothCanvas ?? (this.smoothCanvas = document.createElement("canvas"));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const sctx = c.getContext("2d");
+    if (!sctx) return;
+    sctx.imageSmoothingEnabled = true;
+    sctx.imageSmoothingQuality = "high";
+    sctx.drawImage(v, sx, sy, sw, sh, 0, 0, w, h);
+
+    // Multiplied in, so a speaker that is dissolving out stays dissolving.
+    const alpha = ctx.globalAlpha * (more ? 0.55 : 0.4);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighten";
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(c, 0, 0, w, h, dx, dy, dw, dh);
+    ctx.restore();
   }
 
   startMusic() {
@@ -1053,7 +1107,8 @@ export class BrandedComposite {
 
     if (fade < 1) {
       if (this.videoEl && this.videoEl.readyState >= 2) {
-        ctx.drawImage(this.videoEl, 0, 0, W, H); // the speaker, dissolving out
+        const sv = this.videoEl;
+        this.drawSpeaker(sv, 0, 0, sv.videoWidth, sv.videoHeight, 0, 0, W, H); // the speaker, dissolving out
       } else {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, W, H);
@@ -1110,7 +1165,8 @@ export class BrandedComposite {
         // Outgoing photo held at the end of its own move, so it doesn't snap.
         this.drawPhotoCover(shot.prev, W, H, 1 + BROLL_ZOOM, shot.prevDir, 1);
       } else if (this.videoEl && this.videoEl.readyState >= 2) {
-        ctx.drawImage(this.videoEl, 0, 0, W, H); // first photo rises out of the speaker
+        const sv = this.videoEl;
+        this.drawSpeaker(sv, 0, 0, sv.videoWidth, sv.videoHeight, 0, 0, W, H); // first photo rises out of the speaker
       } else {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, W, H);
@@ -1182,7 +1238,7 @@ export class BrandedComposite {
     }
     const sx = Math.round((v.videoWidth - sw) / 2);
     const sy = Math.round((v.videoHeight - sh) / 2);
-    ctx.drawImage(v, sx, sy, sw, sh, 0, 0, W, H);
+    this.drawSpeaker(v, sx, sy, sw, sh, 0, 0, W, H);
   }
 
   private drawCameraPip(W: number, H: number) {
@@ -1217,7 +1273,7 @@ export class BrandedComposite {
     ctx.fill(); // lays the drop shadow down before clipping to the circle
     ctx.shadowBlur = 0;
     ctx.clip();
-    ctx.drawImage(
+    this.drawSpeaker(
       v,
       (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side,
       cx - d / 2, cy - d / 2, d, d,

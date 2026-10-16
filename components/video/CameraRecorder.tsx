@@ -44,7 +44,7 @@ import {
 } from "@/lib/utils/pending-upload";
 import { pickRecordingMimeType, recordedType } from "@/lib/utils/recording-format";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
-import { BrandedComposite } from "@/lib/utils/branded-recorder";
+import { BrandedComposite, type SmoothSkin } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
@@ -411,6 +411,28 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
   /**
+   * Smooth skin (2026-10-16): off, light or more, remembered on this device.
+   * Applied to the running composite as it changes, so the preview shows it.
+   */
+  const [smoothSkin, setSmoothSkinState] = useState<SmoothSkin>("off");
+  const smoothSkinRef = useRef<SmoothSkin>("off");
+  // Read after mount, not in the initializer, so the server-drawn page and
+  // the first client render agree.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("camera-smooth-skin");
+      if (saved === "light" || saved === "more") setSmoothSkinState(saved);
+    } catch { /* private mode */ }
+  }, []);
+  useEffect(() => {
+    smoothSkinRef.current = smoothSkin;
+    compositeRef.current?.setSmoothSkin(smoothSkin);
+  }, [smoothSkin]);
+  function setSmoothSkin(level: SmoothSkin) {
+    setSmoothSkinState(level);
+    try { localStorage.setItem("camera-smooth-skin", level); } catch { /* private mode */ }
+  }
+  /**
    * Why the composite is not running, when it was wanted.
    *
    * A take recorded without it comes out in the camera's own shape, which is
@@ -749,6 +771,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             screen,
             cameraBubble: wantFace,
           });
+          composite.setSmoothSkin(smoothSkinRef.current);
           compositeRef.current = composite;
           setBrandedActive(true);
           if (composite.musicUnavailable) {
@@ -2014,6 +2037,28 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                     </span>
                   </span>
                 </label>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <Sparkles size={13} /> Smooth skin
+                  </span>
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs">
+                    {(["off", "light", "more"] as const).map((level, i) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setSmoothSkin(level)}
+                        aria-pressed={smoothSkin === level}
+                        className={cn(
+                          "px-3 py-1.5 font-medium transition-colors",
+                          i > 0 && "border-l border-slate-200",
+                          smoothSkin === level ? "bg-spark-blue text-white" : "text-slate-500 hover:bg-slate-50",
+                        )}
+                      >
+                        {level === "off" ? "Off" : level === "light" ? "Light" : "More"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {/* Your own footage behind you. Sits above the photos because
                     it replaces them: the composite draws one background, and
                     cutting between a clip and a slideshow would be two
