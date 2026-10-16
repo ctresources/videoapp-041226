@@ -693,6 +693,17 @@ export default function HelpPage() {
               which opens a page of its own with the mic box, Source and Details and{" "}
               <strong>Back</strong> on the bar at the bottom, or start your sentence with
               &ldquo;create a blog&rdquo;.
+              {/* Posting to a BoldTrail website, in the owner's steps (2026-10-15). */}
+              <span className="block mt-1.5">
+                <strong>Posting it on your BoldTrail website.</strong> Press <strong>Copy as HTML</strong>.
+                In BoldTrail, open your website (WebIDX), go to <strong>Blog</strong> and press{" "}
+                <strong>Add Post</strong>. In the editor, click the <strong>&lt;&gt;</strong> button to
+                open the code view, paste, and press <strong>Save</strong>. Give the post its title
+                (use the <strong>Headline</strong> from your Share Kit), then <strong>Publish</strong>.
+                Once it&apos;s live, open the post, copy its web address from your browser&apos;s address
+                bar, and paste it into the email&apos;s link box, so <strong>Read more</strong> in your
+                emails and newsletters goes straight to it.
+              </span>
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as
                 soon as the Share Kit opens — there is nothing to press. A take recorded with no script

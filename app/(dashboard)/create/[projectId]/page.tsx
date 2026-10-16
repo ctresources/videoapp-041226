@@ -514,6 +514,14 @@ export default function ProjectEditorPage() {
   const [emailUrlDraft, setEmailUrlDraft] = useState<string | null>(null);
   // The post's headline, as typed in the Share Kit (2026-10-15). Null until edited.
   const [headlineDraft, setHeadlineDraft] = useState<string | null>(null);
+  // Whether BoldTrail is connected, for the one-line posting tip (2026-10-15).
+  const [btConnected, setBtConnected] = useState(false);
+  useEffect(() => {
+    fetch("/api/integrations/boldtrail")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setBtConnected(!!d?.connected))
+      .catch(() => {});
+  }, []);
   const [emailSubjectIdx, setEmailSubjectIdx] = useState(0);
   const [emailWriting, setEmailWriting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
@@ -4284,6 +4292,13 @@ export default function ProjectEditorPage() {
                   </button>
                 </div>
               </div>
+              {/* Where Copy as HTML goes on a BoldTrail site, for agents who
+                  connected it (the owner's steps, 2026-10-15). */}
+              {btConnected && (script.blog_intro || script.blog_body) && (
+                <p className="-mt-1 mb-2 px-2 text-[12px] text-slate-500">
+                  On BoldTrail? Paste it in <strong>Blog → Add Post → &lt;&gt;</strong>.
+                </p>
+              )}
               {/* What the badge above means, in plain words, at the owner's
                   ask (2026-10-14). Only once there is an article to point at. */}
               {(script.blog_intro || script.blog_body) && (
