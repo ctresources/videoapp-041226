@@ -5,6 +5,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { EmailResult, SubjectPicker } from "@/components/email/email-result";
+import { BoldTrailSend, postBoldTrailEmail } from "@/components/email/boldtrail-send";
 import { newsletterAsHtml, newsletterAsText, type Newsletter } from "@/lib/utils/newsletter-html";
 import type { EmailSignature } from "@/lib/utils/email-html";
 import { showTrialLock } from "@/lib/utils/trial-lock";
@@ -168,6 +169,15 @@ export default function NewsletterPage() {
           <div className="flex flex-col rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
             <p className={eyebrow}>Preview</p>
             {built && <EmailResult subject={subject} html={built.html} text={built.text} />}
+            {/* To up to ten people through BoldTrail (2026-10-15). Every post
+                needs its link first, so no Read more goes nowhere. */}
+            {built && newsletter && (
+              <BoldTrailSend
+                subject={subject}
+                blockedReason={posts.some((p) => !/^https?:\/\/\S+\.\S+/i.test((urls[p.id] ?? "").trim())) ? "Paste every post's web address first, so each Read more has somewhere to go." : null}
+                onSend={(contacts) => postBoldTrailEmail({ kind: "newsletter", projectIds: ids, newsletter, urls, subjectIdx, contacts })}
+              />
+            )}
           </div>
         </div>
       )}

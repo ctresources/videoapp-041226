@@ -7,6 +7,7 @@ import { loadBoldTrailToken } from "@/lib/api/boldtrail";
 import { writeVideoEmail } from "@/lib/api/video-email";
 import { saveEmailPoster } from "@/lib/video/email-poster";
 import { isHeygenUrl } from "@/lib/utils/video-url";
+import { loadQuickPicks } from "@/lib/api/boldtrail-picks";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,8 +21,6 @@ export const maxDuration = 60;
  *
  * Sending is /api/video-email/send; finding a contact is /api/video-email/contact.
  */
-
-type Pick = { id: string; name: string; email: string };
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -73,23 +72,12 @@ export async function POST(req: NextRequest) {
     if (posterUrl) await admin.from("generated_videos").update({ email_poster_url: posterUrl }).eq("id", videoId);
   }
 
-  const [signature, token, { data: listings }, { data: sends }] = await Promise.all([
+  const [signature, token, picks, { data: sends }] = await Promise.all([
     loadAgentSignature(admin, user.id),
     loadBoldTrailToken(admin, user.id),
-    admin.from("seller_listings").select("boldtrail_contacts").eq("user_id", user.id).is("archived_at", null).limit(50),
-    admin.from("video_email_sends").select("video_id, sent_to, sent_at").eq("user_id", user.id).order("sent_at", { ascending: false }).limit(30),
+    loadQuickPicks(admin, user.id),
+    admin.from("video_email_sends").select("video_id, sent_to, sent_at").eq("user_id", user.id).eq("kind", "video").order("sent_at", { ascending: false }).limit(30),
   ]);
-
-  // Quick picks: people emailed a video before, then the agent's sellers.
-  const picks: Pick[] = [];
-  const seen = new Set<string>();
-  const add = (c: Partial<Pick> | null | undefined) => {
-    if (!c?.id || seen.has(String(c.id)) || picks.length >= 8) return;
-    seen.add(String(c.id));
-    picks.push({ id: String(c.id), name: c.name || c.email || "Contact", email: c.email || "" });
-  };
-  for (const s of sends ?? []) for (const c of (s.sent_to ?? []) as Partial<Pick>[]) add(c);
-  for (const l of listings ?? []) for (const c of (l.boldtrail_contacts ?? []) as Partial<Pick>[]) add(c);
 
   const last = (sends ?? []).find((s) => s.video_id === videoId);
   return NextResponse.json({

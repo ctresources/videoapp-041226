@@ -17,6 +17,7 @@ import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
 import { blogAsHtml } from "@/lib/utils/blog-html";
 import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-html";
+import { BoldTrailSend, postBoldTrailEmail } from "@/components/email/boldtrail-send";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -3985,6 +3986,13 @@ export default function ProjectEditorPage() {
                         srcDoc={emailNow.html}
                         sandbox=""
                         className="w-full h-[520px] rounded-lg border border-slate-200 bg-slate-100"
+                      />
+                      {/* To up to ten people through BoldTrail, the short
+                          version with Read more (2026-10-15, the owner's pick). */}
+                      <BoldTrailSend
+                        subject={emailNow.subject}
+                        blockedReason={/^https?:\/\/\S+\.\S+/i.test(emailNow.blogUrl) ? null : "Paste the post's web address above first, so Read more has somewhere to go."}
+                        onSend={(contacts) => postBoldTrailEmail({ kind: "blog", projectId: project!.id, subjectIdx: emailSubjectAt, contacts })}
                       />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-2">
