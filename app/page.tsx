@@ -116,7 +116,7 @@ const features = [
     // Was buried at the end of a list about YouTube metadata, as "and a full
     // blog post" — the one deliverable here that lives on the agent's own
     // site, described as a footnote about someone else's platform.
-    description: "Usually 1,000 to 1,500 words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Make a header image for it in one click, then copy it as HTML into your site. Included on every paid plan, and you can write one without making a video at all — or paste an article you've already written and get a script back from it.",
+    description: "Usually 1,000 to 1,500 words, with the headings written as the questions people actually ask and answered in the first line — the shape an AI assistant quotes. That's AEO and GEO, alongside ordinary SEO. Make a header image for it in one click, then copy it as HTML into your site. Turn its header into a moving header or a short social teaser in about a minute. Included on every paid plan, and you can write one without making a video at all — or paste an article you've already written and get a script back from it.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -124,14 +124,30 @@ const features = [
     description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. Paid plans post it to Instagram, Facebook, LinkedIn, TikTok and more from the same window.",
     photo: "https://images.unsplash.com/photo-1502209877429-d7c6df9eb3f9?auto=format&fit=crop&w=600&q=80",
   },
+  // Added 2026-10-15 with the features they describe.
+  {
+    title: "Seller Updates With Video",
+    description: "Save each listing, fill in the views, showings and buyer feedback, and SparkReels writes the update email. Record a quick video update with a script written for you. Send it whenever you like, through BoldTrail or your own email.",
+    photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "Email Any Video",
+    description: "Send a finished video to up to 10 clients with a personal note and their first name. They see a picture with a play button and tap to watch. Through BoldTrail or your own email.",
+    photo: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "A Newsletter From Your Blog Posts",
+    description: "Tick a few posts and get a ready-to-send newsletter: subject lines, your note, and a teaser with a Read more button for each.",
+    photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
+  },
   {
     title: "Listing Video Generator",
     description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post.",
     photo: "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=600&q=80",
   },
   {
-    title: "9 AI Tools, Included",
-    description: "Channel name, LinkedIn profile, banner, thumbnails, post graphics, titles, descriptions, tags, scripts and AI Answer Blocks — all generated in-app, included on every paid plan. Everything you need to launch a channel and get found, without hiring a designer.",
+    title: "12 Spark Tools, Included",
+    description: "Channel name, LinkedIn profile, banner, thumbnails, post graphics from the Image Generator, titles, descriptions, tags, scripts, AI Answer Blocks, Google Reviews replies and Seller Update — all in-app, included on every paid plan. Everything you need to launch a channel and get found, without hiring a designer.",
     photo: "https://images.unsplash.com/photo-1497048679117-1a29644559e3?auto=format&fit=crop&w=600&q=80",
   },
   {
@@ -145,6 +161,11 @@ const features = [
     photo: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80",
   },
   {
+    title: "Voice Over Only, The Scenes Reel",
+    description: "No camera, no photos. Say a topic and get up to 3 minutes of realistic local scenes with your voice over them.",
+    photo: "https://images.unsplash.com/photo-1555192881-efc55b7550f5?auto=format&fit=crop&w=600&q=80",
+  },
+  {
     title: "See What's Actually Working",
     description: "Spark Insights counts what you've made and, for anything published to your connected YouTube channel, pulls back real views, likes and comments — every video ranked, refreshed daily. The same numbers sit on each Spark, so you can see which topic earned the attention rather than guessing.",
     photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
@@ -153,6 +174,11 @@ const features = [
     title: "One Calendar For Everything",
     description: "Every video and article on a month, week or list view — published, scheduled, or still a draft. Open any Spark to find its script, its article, its captions, its schedule and how it's performing in one place, instead of hunting through folders for what you made in August.",
     photo: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    title: "Ask Sparklee",
+    description: "Stuck? Just ask out loud. Sparklee, your AI visibility voice companion, tells you how to do anything on the page you're on.",
+    photo: "/sparklee.webp",
   },
   {
     title: "49% Faster Revenue Growth",
@@ -249,9 +275,11 @@ const comparison = [
   { feature: "AI-generated social captions (LinkedIn, Instagram, email)", us: true, a: false, b: false, c: false },
   { feature: "Fair Housing Guardrails Built-in",      us: true,  a: false, b: false, c: false },
   { feature: "Purpose-built for Real Estate",         us: true,  a: false, b: true,  c: true  },
+  // Posting to the other platforms went live 2026-10-11, so this row is a
+  // win now; it was listed below as one we didn't win.
+  { feature: "Publishes to Instagram, TikTok & Facebook", us: true, a: true, b: true, c: false },
   // Rows we don't win. A table where one product sweeps every line reads as
-  // marketing; these are real gaps and they make the wins above believable.
-  { feature: "Publishes to Instagram, TikTok & Facebook", us: false, a: true, b: true, c: false },
+  // marketing; this is a real gap and it makes the wins above believable.
   { feature: "Scheduled posting calendar",            us: true,  a: true,  b: true,  c: true  },
   { feature: "Team seats & multi-agent brand controls", us: false, a: false, b: true,  c: false },
 ];
@@ -287,7 +315,7 @@ const pricingTiers = [
     period: "/month",
     description: "Get in the game",
     badge: null,
-    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + 3 more platforms per video", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 AI videos/month — up to 3 minutes each", "Automatic b-roll, captions & titles on every video", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + 3 more platforms per video", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Seller updates, newsletters and video emails, sent through BoldTrail or your own email", "Ask Sparklee voice help", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=starter",
@@ -298,7 +326,7 @@ const pricingTiers = [
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "2 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Seller updates, newsletters and video emails, sent through BoldTrail or your own email", "Ask Sparklee voice help", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: true,
     href: "/api/stripe/checkout?plan=agent",
@@ -309,7 +337,7 @@ const pricingTiers = [
     period: "/month",
     description: "Dominate your market",
     badge: null,
-    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Buy extra videos anytime — add-ons never expire"],
+    features: ["4 short AI videos/month — up to 3 minutes each, with automatic b-roll", "4 long AI videos/month — up to 8 minutes each, using your photos for visuals", "MLS listing videos — paste a listing link, get a finished property tour", "Unlimited camera recordings (up to 15 mins each)", "Unlimited blog posts — a full article with every script", "Built-in teleprompter", "Voice recording + AI script", "AI content toolkit — title, script, description, tag, channel-name & LinkedIn profile generators", "Thumbnail generator + banners for YouTube, Facebook & LinkedIn", "AI Answer Blocks — turns what buyers ask ChatGPT into videos you can record", "YouTube (16:9) & Reel (9:16) formats", "Publish to YouTube + every platform", "Instagram, Facebook, LinkedIn, TikTok, X, Threads & Google Business", "Seller updates, newsletters and video emails, sent through BoldTrail or your own email", "Ask Sparklee voice help", "Buy extra videos anytime — add-ons never expire"],
     cta: "Get Started",
     highlighted: false,
     href: "/api/stripe/checkout?plan=pro",
