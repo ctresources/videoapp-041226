@@ -31,7 +31,7 @@ const NON_PHOTO =
  * matches "/tr/?id=". These are matched by what they are instead.
  */
 const TRACKER =
-  /facebook\.com\/tr|google-analytics|googletagmanager|doubleclick|scorecardresearch|quantserve|adsystem|\/collect\?|\/beacon|\/pixel\b|\/tr\/?\?/i;
+  /facebook\.com\/tr|bat\.bing\.com|google-analytics|googletagmanager|doubleclick|scorecardresearch|quantserve|adsystem|\/collect\?|\/beacon|\/pixel\b|\/tr\/?\?/i;
 
 /**
  * Real images that are not photographs of the property.
@@ -44,7 +44,16 @@ const TRACKER =
  * Aimed at the staticmap endpoint rather than the map hosts, so a Street View
  * frame — which IS a picture of the property's exterior — is left alone.
  */
-const NOT_THE_PROPERTY = /\/maps\/api\/staticmap|[?&]maptype=|mapbox|openstreetmap/i;
+const NOT_THE_PROPERTY = new RegExp([
+  /\/maps\/api\/staticmap|[?&]maptype=|mapbox|openstreetmap/.source,
+  // People, not the house (2026-10-16): a Zillow import brought in two agent
+  // headshots (the "-h_g" rendition on photos.zillowstatic.com, beside the
+  // gallery's "-cc_ft_*" photos) and a loan officer's photo from Zillow's
+  // mortgage box. Another agent's face in this agent's tour is the worst
+  // kind of wrong picture.
+  /zillowstatic\.com\/.*-h_[a-z]{1,2}\.(?:jpe?g|webp|png)/.source,
+  /mortgageapi\.zillow\.com|getLenderProfileImage/.source,
+].join("|"), "i");
 
 /**
  * Zillow's property-CARD thumbnail rendition — a different listing.

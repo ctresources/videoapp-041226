@@ -1474,7 +1474,40 @@ export default function ProjectEditorPage() {
   }
 
   function removePhoto(index: number) {
+    const url = uploadedPhotos[index]?.url;
     setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
+    // A listing photo is also saved with the listing, which put it back on
+    // reload and back into the video at render and on the camera. Taking it
+    // out of the saved list makes the removal stick (2026-10-16).
+    const saved = (project as unknown as { listing_data?: { photoUrls?: unknown } } | null)?.listing_data?.photoUrls;
+    if (!project || !url || !Array.isArray(saved) || !saved.includes(url)) return;
+    void fetch("/api/projects/photos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, url, from: "listing" }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d: { photoUrls?: string[] }) => {
+        setProject((prev) => {
+          if (!prev) return prev;
+          const ld = { ...((prev as unknown as { listing_data?: Record<string, unknown> }).listing_data ?? {}), photoUrls: d.photoUrls ?? [] };
+          return { ...prev, listing_data: ld } as typeof prev;
+        });
+      })
+      .catch(() => toast.error("Couldn't remove that photo from the listing. Try again."));
+  }
+
+  /** Takes an image out of the Share Kit's "Images for your posts" (2026-10-16). */
+  async function removeShareImage(url: string) {
+    if (!project) return;
+    const res = await fetch("/api/projects/photos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id, url, from: "share_kit" }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { toast.error(d?.error || "Couldn't remove the image."); return; }
+    setProject((prev) => (prev ? { ...prev, seo_data: { ...(prev.seo_data ?? {}), share_images: d.shareImages ?? [] } as typeof prev.seo_data } : prev));
   }
 
   async function handlePdfUpload(file: File) {
@@ -4506,10 +4539,20 @@ export default function ProjectEditorPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-2 pb-1">
                 {shareImages.map((url) => (
-                  <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-slate-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="Image for a post" className="w-full" />
-                  </a>
+                  <div key={url} className="relative">
+                    <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-slate-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="Image for a post" className="w-full" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => void removeShareImage(url)}
+                      aria-label="Remove this image"
+                      className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/85 text-white active:bg-red-600 hover:bg-red-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 ))}
               </div>
               <p className="px-2 mt-1.5 text-[11px] text-slate-400">Open one and save it, then add it when you post.</p>
