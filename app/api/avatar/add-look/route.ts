@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addAvatarLook } from "@/lib/api/heygen";
+import { fitOnBlur } from "@/lib/utils/avatar-crops";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -58,12 +59,8 @@ export async function POST(req: NextRequest) {
       const imgResponse = await fetch(image_url);
       if (imgResponse.ok) {
         const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
-        // @ts-ignore -- types unresolvable, runtime import is fine
-        const sharp = (await import("sharp")).default;
-        const croppedBuffer = await sharp(imgBuffer)
-          .resize({ width: 1920, height: 1080, fit: "cover", position: "attention" })
-          .jpeg({ quality: 92 })
-          .toBuffer();
+        // The whole photo on a blurred fill, not a crop (2026-10-16).
+        const croppedBuffer = await fitOnBlur(imgBuffer, { width: 1920, height: 1080 });
 
         const filePath = `${user.id}/looks/wide_${Date.now()}.jpg`;
         const { error: uploadErr } = await admin.storage

@@ -15,16 +15,46 @@ const TALL = { width: 1080, height: 1920 };
 const BUCKET = "avatars";
 
 /**
- * Build a 16:9 and a 9:16 crop of one headshot, stored and publicly readable.
+ * The whole photo, uncut, centred on a blurred copy of itself that fills the
+ * shape (2026-10-16, the owner's ask).
+ *
+ * This used to be a cover crop: a head-and-shoulders photo cut down to 16:9
+ * kept a band across the face and threw the rest away, so the presenter in
+ * every widescreen video looked zoomed in and cut off. Now nothing of the
+ * person is lost, and the blur fills the sides (or top and bottom) instead of
+ * the bars the video maker would add for a photo of the wrong shape.
+ */
+export async function fitOnBlur(
+  buf: Buffer,
+  size: { width: number; height: number },
+): Promise<Buffer> {
+  // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
+  const sharp = (await import("sharp")).default;
+  // EXIF orientation first, so a phone photo is upright in both layers.
+  const upright = await sharp(buf).rotate().toBuffer();
+  const [backdrop, photo] = await Promise.all([
+    sharp(upright)
+      .resize({ ...size, fit: "cover" })
+      .blur(40)
+      .modulate({ brightness: 0.85 })
+      .toBuffer(),
+    sharp(upright).resize({ ...size, fit: "inside" }).toBuffer(),
+  ]);
+  return sharp(backdrop)
+    .composite([{ input: photo, gravity: "center" }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+/**
+ * Build a 16:9 and a 9:16 version of one headshot, stored and publicly
+ * readable. Each is the whole photo on a blurred fill (fitOnBlur), not a crop.
  *
  * Returns null on any failure rather than throwing: these feed an optional
  * improvement, and the caller must be free to carry on registering the avatar
  * exactly as it did before. A missing crop costs a letterbox; a thrown error
  * would cost the avatar.
  *
- * `position: "attention"` on both: cropping a head-and-shoulders photo to
- * either extreme throws away most of one dimension, and the part worth keeping
- * is the part with the face in it. A centre crop of a tall photo can behead it.
  */
 export async function makeFormatCrops(
   sourceUrl: string,
@@ -38,19 +68,11 @@ export async function makeFormatCrops(
     }
     const buf = Buffer.from(await res.arrayBuffer());
 
-    // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
-    const sharp = (await import("sharp")).default;
     const admin = createAdminClient();
     const stamp = Date.now();
 
     const upload = async (size: { width: number; height: number }, label: string) => {
-      const out = await sharp(buf)
-        // EXIF orientation, before "attention" picks where to crop — it was
-        // choosing the interesting part of a sideways picture.
-        .rotate()
-        .resize({ ...size, fit: "cover", position: "attention" })
-        .jpeg({ quality: 92 })
-        .toBuffer();
+      const out = await fitOnBlur(buf, size);
       const path = `${userId}/looks/${label}_${stamp}.jpg`;
       const { error } = await admin.storage
         .from(BUCKET)
