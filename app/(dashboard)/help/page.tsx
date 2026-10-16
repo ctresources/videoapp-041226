@@ -182,6 +182,18 @@ export default function HelpPage() {
                 Google Business location. Pick once and every post goes there. With two Facebook
                 Pages or two locations you do have to pick, or posts there won&apos;t go out.
               </span>
+              {/* BoldTrail, added 2026-10-15. */}
+              <span className="block mt-1.5">
+                <strong>BoldTrail.</strong> If you use BoldTrail, SparkReels can email your sellers and
+                clients through it, from your own BoldTrail address, and BoldTrail keeps each email on
+                that contact&apos;s record. In BoldTrail, go to Lead Engine → Lead Dropbox → My API
+                Tokens, tick <strong>Contacts</strong>, press <strong>Generate</strong> and copy the
+                token. Then paste it into the <strong>BoldTrail</strong> box in Settings → CRM
+                Integration and press <strong>Connect</strong>. It&apos;s saved securely and shown only
+                by its last four characters; <strong>Disconnect</strong> removes it. If BoldTrail
+                won&apos;t send with a Contacts token, make one with <strong>All</strong> ticked.
+                Tokens last a year.
+              </span>
             </Step>
             {/* Setup rather than creating, because the useful half is done once:
                 saving the address. After that it is a Forward button in whatever
@@ -815,6 +827,20 @@ export default function HelpPage() {
                 <strong>Instagram caption, LinkedIn post, and email blurb</strong> from the
                 project&apos;s Title, Description &amp; Hashtags card.
               </span>
+              {/* Email it, added 2026-10-15. */}
+              <span className="block mt-1.5">
+                <strong>Email it.</strong> Any finished video in My Sparks can be emailed. Press{" "}
+                <strong>Email it</strong>, add up to 10 people from your BoldTrail by their email
+                (people you&apos;ve sent a video to before, and your sellers, are one tap), and
+                SparkReels writes a short subject and note that you can change or say out loud. Put{" "}
+                <strong>{"{first name}"}</strong> in the note and each person sees their own name. The
+                email shows a picture from the video with a play button and a{" "}
+                <strong>Watch the video</strong> button; email can&apos;t play a video inside the
+                message, so a tap opens it. <strong>Send through BoldTrail</strong> asks you to
+                confirm, then each person gets their own email from your BoldTrail address. Without
+                BoldTrail, copy it into your own email instead. For your whole list, use your email
+                tool or BoldTrail&apos;s own campaigns, which handle unsubscribes.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Publishing" />
@@ -865,7 +891,12 @@ export default function HelpPage() {
                 <strong>Add to the seller update</strong> puts the video at the top of the email,
                 where sellers tap it to watch. Your listings also sit under{" "}
                 <strong>Seller updates</strong> in My Sparks, each with a <strong>New update</strong>{" "}
-                button. Copy it or send yourself a test, the same as the newsletter.
+                button. With BoldTrail connected, add the sellers by their email under{" "}
+                <strong>Sellers in BoldTrail</strong>, once per listing, and{" "}
+                <strong>Send to sellers through BoldTrail</strong> emails each of them the update,
+                video included, after you confirm, with an optional short text to say it&apos;s on its
+                way. The update then shows when it was sent and to whom. Copy it or send yourself a
+                test, the same as the newsletter.
               </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the
