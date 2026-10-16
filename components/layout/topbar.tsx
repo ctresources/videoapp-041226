@@ -14,6 +14,7 @@ const pageTitles: Record<string, string> = {
   "/create": "Spark Studio",
   "/videos": "My Sparks",
   "/newsletter": "Newsletter",
+  "/video-email": "Email A Video",
   "/tools": "Spark Tools",
   "/campaigns": "Spark Calendar",
   "/calendar": "Spark Calendar",

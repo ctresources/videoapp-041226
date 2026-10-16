@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
-import { randomUUID } from "crypto";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-ffmpeg.setFfmpegPath(ffmpegPath.path);
+import { saveEmailPoster } from "@/lib/video/email-poster";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,46 +18,6 @@ export const maxDuration = 60;
  */
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
-
-function grabFrame(video: string, at: number, dest: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    ffmpeg(video)
-      .seekInput(Math.max(0, at))
-      .outputOptions(["-frames:v", "1", "-q:v", "3"])
-      .on("error", () => resolve(false))
-      .on("end", () => resolve(true))
-      .save(dest);
-  });
-}
-
-/** A still from the take, 1104 wide, with a round play button in the middle. */
-async function makePoster(videoUrl: string, seconds: number | null): Promise<Buffer | null> {
-  const dest = join(tmpdir(), `seller-poster-${randomUUID()}.jpg`);
-  try {
-    // A second in, past the first frame's blink; nearer the start for a short take.
-    const at = seconds && seconds < 4 ? 0.3 : 1;
-    if (!(await grabFrame(videoUrl, at, dest)) && !(await grabFrame(videoUrl, 0, dest))) return null;
-    const sharp = (await import("sharp")).default;
-    const frame = sharp(await fs.readFile(dest)).rotate();
-    const meta = await frame.metadata();
-    const w = 1104;
-    // Tall takes are shown as a 4:5 crop from the middle, so a phone video
-    // does not fill the whole email.
-    const h = meta.width && meta.height && meta.height > meta.width ? Math.round(w * 1.25) : Math.round(w * 9 / 16);
-    const base = await frame.resize(w, h, { fit: "cover", position: "centre" }).toBuffer();
-    const r = 64;
-    const play = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-      <circle cx="${w / 2}" cy="${h / 2}" r="${r}" fill="#ffffff" fill-opacity="0.92"/>
-      <path d="M ${w / 2 - r * 0.32} ${h / 2 - r * 0.45} L ${w / 2 + r * 0.5} ${h / 2} L ${w / 2 - r * 0.32} ${h / 2 + r * 0.45} Z" fill="#A3660F"/>
-    </svg>`);
-    return await sharp(base).composite([{ input: play }]).jpeg({ quality: 84 }).toBuffer();
-  } catch (err) {
-    console.error("[seller-video] poster failed:", err instanceof Error ? err.message : err);
-    return null;
-  } finally {
-    await fs.unlink(dest).catch(() => {});
-  }
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -90,13 +43,7 @@ export async function POST(req: NextRequest) {
   }
   const seconds = (video.duration_seconds as number | null) ?? null;
 
-  let posterUrl: string | null = null;
-  const poster = await makePoster(videoUrl, seconds);
-  if (poster) {
-    const path = `thumbnails/${user.id}/seller_video_${videoId}.jpg`;
-    const { error } = await admin.storage.from("assets").upload(path, poster, { contentType: "image/jpeg", upsert: true });
-    if (!error) posterUrl = admin.storage.from("assets").getPublicUrl(path).data.publicUrl;
-  }
+  const posterUrl = await saveEmailPoster(admin, user.id, videoId, videoUrl, seconds, "seller_video");
 
   // The update row normally exists already (its numbers are saved before the
   // camera opens); if not, this makes one with just the video.

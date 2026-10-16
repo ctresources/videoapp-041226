@@ -113,9 +113,9 @@ const clock = (s?: number | null) =>
  * linked to the video, and a button under it. No email app plays video inside
  * the message, so the reader taps through to watch.
  */
-function videoBlock(v: SellerVideo): string {
+export function videoBlock(v: SellerVideo, words = "Watch my video update"): string {
   if (!isUrl(v.url)) return "";
-  const label = `Watch my video update${clock(v.seconds) ? ` (${clock(v.seconds)})` : ""}`;
+  const label = `${words}${clock(v.seconds) ? ` (${clock(v.seconds)})` : ""}`;
   const poster = isUrl(v.posterUrl)
     ? `<a href="${esc(v.url)}"><img src="${esc(v.posterUrl!)}" width="552" alt="${esc(label)}" style="display:block;width:100%;max-width:552px;height:auto;border:0;border-radius:10px;margin:0 0 12px;"></a>`
     : "";
@@ -178,6 +178,45 @@ export function sellerUpdateAsText(e: SellerUpdateEmail, opts: {
     ...rows, ...(rows.length ? [""] : []),
     ...e.paragraphs.flatMap((p) => [p, ""]),
     e.closing, "",
+    ...emailSignatureText(opts.signature),
+  ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// ── A video from My Sparks, emailed to chosen contacts ─────────────────
+
+/**
+ * {first name} in the note becomes the reader's first name, or is dropped
+ * (with the greeting's comma kept tidy) when there isn't one.
+ */
+export function personalNote(note: string, firstName?: string | null): string {
+  const name = (firstName ?? "").trim();
+  return note
+    .replace(/\{\s*first\s*name\s*\}/gi, name)
+    .replace(/\b(Hi|Hello|Hey|Dear)\s+,/g, "$1,")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+/** The note, then the video as a still with a play button and a Watch button, then the sign-off. */
+export function videoEmailAsHtml(opts: {
+  subject: string; note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature;
+}): string {
+  const paras = personalNote(opts.note, opts.firstName).split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  return emailShell({
+    title: opts.subject,
+    preview: paras[0] ?? opts.subject,
+    inner: `<tr><td style="padding:28px 24px 24px;">
+${paras.map(emailP).join("\n")}
+${videoBlock(opts.video, "Watch the video")}
+${emailSignatureHtml(opts.signature)}
+</td></tr>`,
+  });
+}
+
+export function videoEmailAsText(opts: { note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature }): string {
+  return [
+    personalNote(opts.note, opts.firstName), "",
+    `Watch the video${clock(opts.video.seconds) ? ` (${clock(opts.video.seconds)})` : ""}: ${opts.video.url}`, "",
     ...emailSignatureText(opts.signature),
   ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }

@@ -47,6 +47,8 @@ const nextConfig = {
       "/api/video/scene-footage": ["./node_modules/@ffmpeg-installer/**"],
       // A still from a seller video update, for its email (2026-10-15).
       "/api/seller-listings/video": ["./node_modules/@ffmpeg-installer/**"],
+      // The same still, for Email it in My Sparks.
+      "/api/video-email": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

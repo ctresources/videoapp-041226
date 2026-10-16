@@ -1040,6 +1040,16 @@ function VideosContent() {
                         >
                           <Send size={13} /> Publish
                         </Button>
+                        {/* Email it: to up to ten BoldTrail contacts, or copy
+                            and paste (2026-10-15, the owner's mock). */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 gap-1.5 bg-orange-600 text-white hover:bg-orange-700"
+                          onClick={() => router.push(`/video-email?video=${video.id}`)}
+                        >
+                          <Mail size={13} /> Email it
+                        </Button>
                         {!video.translation_language && (
                           <Button
                             variant="ghost"
