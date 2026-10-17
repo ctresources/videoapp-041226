@@ -490,8 +490,10 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
               redirect has to be followed before the real page is even
               fetched — worth saying, so a wait looks like a wait. */}
           <p className="mt-2 text-[11.5px] leading-[1.45] text-spark-ink-muted">
-            Zillow · Redfin · Homes.com · Trulia.
-            Short links work too when they lead to one of these.
+            {/* Only these two import from the live server (2026-10-17): Realtor.com,
+                Homes.com and BoldTrail sites refuse it. Said up front so nobody
+                waits on an import that cannot work. */}
+            Only use a Zillow or Redfin link — others coming soon.
           </p>
         </div>
 
