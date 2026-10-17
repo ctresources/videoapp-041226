@@ -971,9 +971,12 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
-                your LinkedIn profile or your Facebook page, each at the size that site wants. Put your
-                photo on the left or the right, pick a color palette or choose <strong>Custom</strong>{" "}
-                and set your own colors, and add QR codes to your site. Download the picture, or use{" "}
+                your LinkedIn profile or your Facebook page, each at the size that site wants. For
+                YouTube, press <strong>Use this template</strong> and your photo, logo, name and contact
+                details fill in from Settings. Change any of it, and everything stays inside the part
+                every phone and TV shows. The LinkedIn and Facebook banners let you put your photo on the
+                left or the right and add QR codes to your site. Pick a color palette or choose{" "}
+                <strong>Custom</strong> and set your own colors. Download the picture, or use{" "}
                 <strong>Download for Canva (PDF)</strong> for a copy meant to be opened in Canva, where
                 you can change the text and colors yourself.
               </span>
