@@ -612,6 +612,12 @@ export default function HelpPage() {
                 <strong>one short video</strong> from your plan; photos and your own footage stay
                 free. Write the script first, because the scenes are made from it.
               </span>
+              {/* The camera's skin filter (2026-10-16). */}
+              <span className="block mt-1.5">
+                <strong>Smooth skin</strong> softens fine lines and blemishes while you record. With{" "}
+                <strong>Branded Look</strong> on, pick <strong>Light</strong> or <strong>More</strong> in
+                its box. The preview shows it right away, and your choice is remembered on that device.
+              </span>
               <span className="block mt-1.5">
                 With a clip or scenes chosen you can tick <strong>Open on it</strong>. The first 5
                 seconds of the take are then the clip full screen with a title you type, and you
