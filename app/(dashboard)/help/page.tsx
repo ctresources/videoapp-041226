@@ -1037,7 +1037,9 @@ export default function HelpPage() {
                 Two places in the menu use the word, and they hold different things.{" "}
                 <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link>{" "}
                 is your <strong>library</strong>: the finished videos and drafts themselves, to watch,
-                download, publish or delete. The <strong>All Sparks</strong> panel inside Spark
+                download, publish or delete. To delete several at once, press <strong>Select</strong>{" "}
+                on the Videos or Blog posts heading, tick them, and press <strong>Delete</strong>. The{" "}
+                <strong>All Sparks</strong> panel inside Spark
                 Calendar lists the <strong>Sparks</strong> — open one and you get its card, holding the
                 article, the captions, the schedule and how it&apos;s performing.
               </span>
