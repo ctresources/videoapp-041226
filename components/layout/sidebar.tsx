@@ -177,11 +177,11 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         <div className="-mr-px mb-3 flex h-[49px] items-center justify-center bg-[#050505]">
           <Link href="/create">
             <Image
-              src="/sparkreels-logo.png"
+              src="/sparkreels-logo-dark.png"
               alt="SparkReels.ai — Speak. Spark. Share."
-              width={122}
-              height={42}
-              className="block h-[42px] w-[122px] object-contain"
+              width={180}
+              height={36}
+              className="block h-[36px] w-[180px] object-contain"
               unoptimized
               priority
             />
@@ -190,13 +190,14 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
       ) : (
       <div className="px-4 pb-4">
         <Link href="/create">
+          {/* The new logo's light-background copy (2026-10-16), so no
+              darkening filter is needed any more. */}
           <Image
-            src="/sparkreels-logo.png"
+            src="/sparkreels-logo-light.png"
             alt="SparkReels.ai — Speak. Spark. Share."
-            width={138}
-            height={48}
-            className="block h-12 w-[138px] object-contain"
-            style={{ filter: "brightness(0.72) saturate(1.35) contrast(1.18)" }}
+            width={190}
+            height={38}
+            className="block h-[38px] w-[190px] object-contain"
             unoptimized
             priority
           />

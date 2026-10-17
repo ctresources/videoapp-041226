@@ -7,11 +7,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Link href="/">
+            {/* The new SparkReels.ai logo, light-background copy (2026-10-16). */}
             <Image
-              src="/logo_navbar_transparent.png"
-              alt="SparkReels"
-              width={200}
-              height={60}
+              src="/sparkreels-logo-light.png"
+              alt="SparkReels.ai — Speak. Spark. Share."
+              width={260}
+              height={52}
               unoptimized
               priority
             />

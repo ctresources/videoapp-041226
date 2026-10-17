@@ -359,10 +359,10 @@ export default function LandingPage() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex flex-col leading-none">
             <Image
-              src="/logo_navbar_transparent.png"
-              alt="SparkReels"
-              width={180}
-              height={52}
+              src="/sparkreels-logo-light.png"
+              alt="SparkReels.ai — Speak. Spark. Share."
+              width={200}
+              height={40}
               unoptimized
               priority
             />
@@ -1122,11 +1122,12 @@ export default function LandingPage() {
         <div className="max-w-[1600px] mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-8 pb-8 border-b border-slate-800">
             <div>
+              {/* Dark-background copy: the footer is slate-900. */}
               <Image
-                src="/logo_navbar_transparent.png"
-                alt="SparkReels"
-                width={160}
-                height={48}
+                src="/sparkreels-logo-dark.png"
+                alt="SparkReels.ai — Speak. Spark. Share."
+                width={200}
+                height={40}
                 unoptimized
               />
               <p className="text-xl mt-2 text-slate-400 max-w-sm">
