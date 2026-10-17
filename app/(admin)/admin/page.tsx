@@ -72,6 +72,8 @@ interface AffiliateRow {
   commission_rate: number;
   commission_duration_months: number;
   created_at: string;
+  /** When it was approved or rejected; null while pending. */
+  reviewed_at: string | null;
 }
 
 interface UserRow {
@@ -789,6 +791,12 @@ export default function AdminPage() {
                       {a.website_or_social && <p className="text-xs text-slate-400 mt-0.5">{a.website_or_social}</p>}
                       {a.promotion_plan && <p className="text-xs text-slate-500 mt-1.5 italic">&ldquo;{a.promotion_plan}&rdquo;</p>}
                       <p className="text-[11px] text-slate-400 mt-1.5">
+                        {/* The dates (2026-10-16): when they applied and, once
+                            decided, when they were approved or rejected. */}
+                        Applied {new Date(a.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                        {a.reviewed_at && a.status !== "pending" &&
+                          ` · ${a.status === "approved" ? "Approved" : "Rejected"} ${new Date(a.reviewed_at).toLocaleDateString(undefined, { dateStyle: "medium" })}`}
+                        {" · "}
                         {a.commission_rate * 100}% for {a.commission_duration_months} mo
                         {a.status === "approved" && ` · Stripe: ${a.connect_onboarding_status.replace("_", " ")}`}
                       </p>
