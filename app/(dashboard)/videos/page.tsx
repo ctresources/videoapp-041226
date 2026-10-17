@@ -13,6 +13,7 @@ import { isHeygenUrl, posterFrameUrl, downloadAsset } from "@/lib/utils/video-ur
 import {
   Plus, Video, Share2, Download, RefreshCw, Clock, CheckCircle,
   XCircle, Send, Pencil, Sparkles, Play, Trash2, AlertTriangle, Film, Globe, Camera, FileText, Mail, Home,
+  ListChecks,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -244,6 +245,123 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
   );
 }
 
+/**
+ * One confirmation for several videos or articles (2026-10-17). The same
+ * type-"delete" check the single video delete has, said once for the lot.
+ */
+function BatchDeleteModal({ count, kind, onClose, onConfirm, isDeleting }: {
+  count: number;
+  kind: "videos" | "blogs";
+  onClose: () => void;
+  onConfirm: () => void;
+  isDeleting: boolean;
+}) {
+  const [typed, setTyped] = useState("");
+  const canConfirm = typed.trim().toLowerCase() === "delete" && !isDeleting;
+  const noun = kind === "videos" ? (count === 1 ? "video" : "videos") : (count === 1 ? "article" : "articles");
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isDeleting) onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose, isDeleting]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={() => !isDeleting && onClose()}
+    >
+      <div
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-red-600" />
+        <div className="p-6">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <AlertTriangle size={22} className="text-red-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-brand-text">Delete {count} {noun}?</h3>
+              <p className="text-sm text-slate-500 mt-0.5">
+                {kind === "videos"
+                  ? "This removes them from SparkReels and cannot be undone. Anywhere you already published them — YouTube included — is untouched."
+                  : "This removes them and the articles written for them from SparkReels, and cannot be undone. Anywhere you already posted them is untouched."}
+              </p>
+            </div>
+          </div>
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-slate-600 mb-2">
+              Type <span className="font-mono font-semibold text-red-600">delete</span> to confirm
+            </label>
+            <input
+              type="text"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder="delete"
+              autoFocus
+              disabled={isDeleting}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-slate-50 disabled:text-slate-400"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={isDeleting} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={!canConfirm}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:bg-red-300 disabled:cursor-not-allowed gap-1.5"
+            >
+              {isDeleting ? (
+                <><RefreshCw size={14} className="animate-spin" /> Deleting…</>
+              ) : (
+                <><Trash2 size={14} /> Delete {count} {noun}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The bar under a list while ticking cards to delete. */
+function BatchBar({ count, noun, total, onSelectAll, onCancel, onDelete }: {
+  count: number; noun: string; total: number;
+  onSelectAll: () => void; onCancel: () => void; onDelete: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-spark-ink px-4 py-2.5 text-[14px] text-[#f3e6cf]">
+      <span className="flex-1">
+        {count === 0 ? `Tick the ${noun}s to delete` : `${count} ${noun}${count === 1 ? "" : "s"} selected`}
+      </span>
+      {count < total && (
+        <button type="button" onClick={onSelectAll} className="text-[13px] font-semibold underline underline-offset-2 hover:text-white">
+          Select all
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-[10px] border border-white/25 px-3 py-1.5 text-[13px] font-semibold text-[#f3e6cf] hover:bg-white/10"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        disabled={count === 0}
+        onClick={onDelete}
+        className="flex items-center gap-1.5 rounded-[10px] bg-red-600 px-3.5 py-1.5 text-[13px] font-bold text-white hover:bg-red-700 disabled:opacity-50"
+      >
+        <Trash2 size={13} /> Delete {count || ""}
+      </button>
+    </div>
+  );
+}
+
 function DeleteVideoModal({
   video,
   onClose,
@@ -441,6 +559,63 @@ function VideosContent() {
   const [translatingVideo, setTranslatingVideo] = useState<GeneratedVideo | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<GeneratedVideo | null>(null);
+
+  /**
+   * Batch delete (2026-10-17): Select on the Videos or Blog posts heading,
+   * tick cards, then Delete and one type-"delete" confirmation for them all.
+   * One list at a time, and never while posts are being picked for a
+   * newsletter, so ticking for one can't delete for the other.
+   */
+  const [selecting, setSelecting] = useState<"videos" | "blogs" | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [batchConfirm, setBatchConfirm] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const stopSelecting = () => { setSelecting(null); setSelected([]); setBatchConfirm(false); };
+
+  async function handleBatchDelete() {
+    if (!selecting || selected.length === 0) return;
+    const kind = selecting;
+    setBatchDeleting(true);
+    if (kind === "videos") document.body.setAttribute("data-video-deleting", "1");
+    const done: string[] = [];
+    const failed: string[] = [];
+    try {
+      // One at a time: the same routes the single deletes use, and a failure
+      // in the middle costs only that one.
+      for (const id of selected) {
+        const res = await fetch(kind === "videos" ? "/api/video/delete" : "/api/project/delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(kind === "videos" ? { videoId: id } : { projectId: id }),
+        }).catch(() => null);
+        if (res?.ok) done.push(id); else failed.push(id);
+      }
+    } finally {
+      if (kind === "videos") {
+        setVideos((prev) => prev.filter((v) => !done.includes(v.id)));
+        document.body.removeAttribute("data-video-deleting");
+      } else {
+        setDrafts((prev) => prev.filter((d) => !done.includes(d.id)));
+      }
+      setBatchDeleting(false);
+    }
+    const noun = kind === "videos" ? "video" : "article";
+    if (done.length) toast.success(`${done.length} ${noun}${done.length === 1 ? "" : "s"} deleted`);
+    if (failed.length) {
+      const names = failed.map((id) =>
+        kind === "videos"
+          ? (videos.find((v) => v.id === id)?.projects as { title?: string } | null)?.title || "Untitled video"
+          : drafts.find((d) => d.id === id)?.title || "Untitled article",
+      );
+      toast.error(`Couldn't delete: ${names.join(", ")}. Try those again.`, { duration: 8000 });
+      setSelected(failed);
+      setBatchConfirm(false);
+    } else {
+      stopSelecting();
+    }
+  }
 
   async function handleDelete(videoId: string) {
     setDeletingId(videoId);
@@ -691,22 +866,30 @@ function VideosContent() {
             <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
               {s.items.length}
             </span>
-            {s.key === "blogs" && s.items.length >= 2 && !pickingPosts && (
-              <Button size="sm" variant="outline" className="ml-auto gap-1.5" onClick={() => { setPickingPosts(true); setPickedPosts([]); }}>
-                <Mail size={13} /> Make a newsletter
-              </Button>
+            {s.key === "blogs" && !pickingPosts && selecting !== "blogs" && (
+              <div className="ml-auto flex items-center gap-1.5">
+                {s.items.length >= 2 && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { stopSelecting(); setPickingPosts(true); setPickedPosts([]); }}>
+                    <Mail size={13} /> Make a newsletter
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setSelecting("blogs"); setSelected([]); }}>
+                  <ListChecks size={13} /> Select
+                </Button>
+              </div>
             )}
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {s.items.map((d) => {
-              const picking = s.key === "blogs" && pickingPosts;
-              const picked = picking && pickedPosts.includes(d.id);
+              const deletePicking = s.key === "blogs" && selecting === "blogs";
+              const picking = (s.key === "blogs" && pickingPosts) || deletePicking;
+              const picked = deletePicking ? selected.includes(d.id) : picking && pickedPosts.includes(d.id);
               return (
               <Card
                 key={d.id}
                 padding="sm"
                 className={`border-t-2 ${s.accent} ${picking ? "cursor-pointer" : ""} ${picked ? "ring-2 ring-[#A3660F]" : ""}`}
-                onClick={picking ? () => togglePost(d.id) : undefined}
+                onClick={picking ? () => (deletePicking ? toggleSelected(d.id) : togglePost(d.id)) : undefined}
               >
                 <div className="flex items-start justify-between gap-1.5 mb-1">
                   <p className="font-medium text-[13px] leading-snug text-brand-text line-clamp-2">
@@ -716,7 +899,7 @@ function VideosContent() {
                     <span
                       role="checkbox"
                       aria-checked={picked}
-                      aria-label={`Use ${d.title || "this post"} in the newsletter`}
+                      aria-label={deletePicking ? `Select ${d.title || "this post"} to delete` : `Use ${d.title || "this post"} in the newsletter`}
                       className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] text-[12px] text-white ${
                         picked ? "border-[#A3660F] bg-[#A3660F]" : "border-[#d9c6a8] bg-white"
                       }`}
@@ -753,6 +936,16 @@ function VideosContent() {
               );
             })}
           </div>
+          {s.key === "blogs" && selecting === "blogs" && (
+            <BatchBar
+              count={selected.length}
+              noun="article"
+              total={s.items.length}
+              onSelectAll={() => setSelected(s.items.map((d) => d.id))}
+              onCancel={stopSelecting}
+              onDelete={() => setBatchConfirm(true)}
+            />
+          )}
           {s.key === "blogs" && pickingPosts && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-spark-ink px-4 py-2.5 text-[14px] text-[#f3e6cf]">
               <span className="flex-1">
@@ -841,6 +1034,16 @@ function VideosContent() {
           <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
             {videos.length}
           </span>
+          {selecting !== "videos" && videos.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto gap-1.5"
+              onClick={() => { setPickingPosts(false); setPickedPosts([]); setSelecting("videos"); setSelected([]); }}
+            >
+              <ListChecks size={13} /> Select
+            </Button>
+          )}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {videos.map((video) => {
@@ -869,8 +1072,29 @@ function VideosContent() {
               <Card
                 key={video.id}
                 padding="none"
-                className={`overflow-hidden transition-all ${isHighlighted ? "ring-2 ring-primary-500" : ""}`}
+                className={`relative overflow-hidden transition-all ${
+                  selecting === "videos" && selected.includes(video.id)
+                    ? "ring-2 ring-[#A3660F]"
+                    : isHighlighted ? "ring-2 ring-primary-500" : ""
+                }`}
               >
+                {selecting === "videos" && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(video.id)}
+                    aria-pressed={selected.includes(video.id)}
+                    aria-label={`Select ${(video.projects as { title?: string } | null)?.title || "this video"} to delete`}
+                    className="absolute inset-0 z-20 cursor-pointer bg-white/0 hover:bg-white/10"
+                  >
+                    <span
+                      className={`absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.5px] text-[13px] text-white shadow ${
+                        selected.includes(video.id) ? "border-[#A3660F] bg-[#A3660F]" : "border-[#d9c6a8] bg-white"
+                      }`}
+                    >
+                      {selected.includes(video.id) && "✓"}
+                    </span>
+                  </button>
+                )}
                 {/* Thumbnail / preview */}
                 <div
                   className={`aspect-video bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden ${video.render_status === "completed" && video.video_url ? "cursor-pointer group" : ""}`}
@@ -1191,6 +1415,16 @@ function VideosContent() {
             );
           })}
         </div>
+        {selecting === "videos" && (
+          <BatchBar
+            count={selected.length}
+            noun="video"
+            total={videos.length}
+            onSelectAll={() => setSelected(videos.map((v) => v.id))}
+            onCancel={stopSelecting}
+            onDelete={() => setBatchConfirm(true)}
+          />
+        )}
         </>
       )}
 
@@ -1287,6 +1521,16 @@ function VideosContent() {
             setTranslatingVideo(null);
             loadVideos();
           }}
+        />
+      )}
+
+      {batchConfirm && selecting && selected.length > 0 && (
+        <BatchDeleteModal
+          count={selected.length}
+          kind={selecting}
+          isDeleting={batchDeleting}
+          onClose={() => setBatchConfirm(false)}
+          onConfirm={() => void handleBatchDelete()}
         />
       )}
 
