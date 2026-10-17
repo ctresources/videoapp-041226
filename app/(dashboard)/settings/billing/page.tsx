@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { SettingsSteps } from "@/components/settings/settings-steps";
 import { redirect } from "next/navigation";
 import {
   CheckCircle, CreditCard, Zap, Building2, User,
@@ -201,8 +202,18 @@ export default async function BillingPage({
         </div>
       )}
 
+      {/* Steps (2026-10-17). */}
+      <SettingsSteps
+        steps={[
+          { id: "your-plan", label: "Your plan" },
+          { id: "plans", label: "Plans" },
+          { id: "buy-more", label: "Buy more videos" },
+          { id: "questions", label: "Questions" },
+        ]}
+      />
+
       {/* Current plan summary */}
-      <Card className="mb-6">
+      <Card id="your-plan" className="mb-6 scroll-mt-28">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -349,7 +360,7 @@ export default async function BillingPage({
       )}
 
       {/* Plan comparison */}
-      <h3 className="text-base font-bold text-brand-text mb-4">
+      <h3 id="plans" className="text-base font-bold text-brand-text mb-4 scroll-mt-28">
         {hasSubscription ? "Change Plan" : currentTier === "beta" ? "Upgrade To A Paid Plan" : "Choose A Plan"}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
@@ -428,7 +439,7 @@ export default async function BillingPage({
       </div>
 
       {/* Buy More Videos */}
-      <div className="mb-8">
+      <div id="buy-more" className="mb-8 scroll-mt-28">
         <h3 className="text-base font-bold text-brand-text mb-1">Buy More Videos</h3>
         <p className="text-sm text-slate-500 mb-1">
           Need more than your plan includes? Add videos anytime — no plan change needed.
@@ -482,7 +493,7 @@ export default async function BillingPage({
       </div>
 
       {/* FAQ */}
-      <Card>
+      <Card id="questions" className="scroll-mt-28">
         <h3 className="text-sm font-bold text-brand-text mb-4">Common Questions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[

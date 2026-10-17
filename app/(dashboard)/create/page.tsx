@@ -16,6 +16,7 @@ import {
 import { CameraRecorder } from "@/components/video/CameraRecorder";
 import { ClipBrander } from "@/components/video/clip-brander";
 import { DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
+import { HomeScreenTip } from "@/components/layout/home-screen-tip";
 import { ArticleSource, MediaAndDocs, type DocAttachment, type DocMode } from "@/components/create/media-and-docs";
 import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/email-import-picker";
 import { useForwardedEmails } from "@/components/create/forwarded-emails";
@@ -2578,6 +2579,9 @@ function CreatePageInner() {
           </h1>
         </div>
       )}
+
+      {/* Phones only: put SparkReels on the Home Screen (2026-10-17). */}
+      <HomeScreenTip />
 
       {/* ── Your topic ──
           One card, per the v2 composer. The speak-or-type choice used to be

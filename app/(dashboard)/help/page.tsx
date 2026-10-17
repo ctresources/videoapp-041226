@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
-  BarChart2, CalendarDays, Mail, Image as ImageIcon,
+  BarChart2, CalendarDays, Mail, Image as ImageIcon, DollarSign,
 } from "lucide-react";
 
 export const metadata = { title: "How It Works — SparkReels" };
@@ -1071,6 +1071,19 @@ export default function HelpPage() {
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
               out: it appears in your menu when your account has it.
+            </Step>
+            {/* The affiliate program (2026-10-17), worded as the owner approved. */}
+            <Step n={23} title="Earn With The Affiliate Program" icon={DollarSign}>
+              Recommend SparkReels and earn <strong>20% of what each customer you refer pays, every
+              month for their first 12 months</strong>. Open <strong>Affiliate</strong> in the menu and
+              press <strong>Apply to join</strong>, or use <strong>Affiliates</strong> at the bottom of
+              the website, and tell us a little about how you&apos;d share SparkReels. When you&apos;re
+              approved, you&apos;ll get an email titled{" "}
+              <strong>&ldquo;You&apos;re approved — welcome to the SparkReels affiliate program&rdquo;</strong>{" "}
+              with your referral code, your referral link and two steps. First, open the link in it
+              while signed in, to connect the program to your account. Then, on the{" "}
+              <strong>Affiliate</strong> page, connect your bank with Stripe to get paid. Payouts are
+              sent monthly. If the email hasn&apos;t arrived, look in spam.
             </Step>
           </div>
           <VideoPlaceholder label="Finding Your Work" />

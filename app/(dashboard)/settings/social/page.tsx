@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { SettingsSteps } from "@/components/settings/settings-steps";
 
 interface SocialAccount {
   id: string;
@@ -251,8 +252,17 @@ function SocialSettingsContent() {
         </div>
       </div>
 
+      {/* Steps (2026-10-17). "Other Platforms" (coming soon, free plan) and
+          "More platforms" (paid) are the same place, one or the other, so one step. */}
+      <SettingsSteps
+        steps={[
+          { id: "youtube", label: "YouTube", done: !!youtubeConnected && !youtubeChannel?.needsReconnect },
+          { id: "other-platforms", label: "Other platforms", done: connectedCount > 0 },
+        ]}
+      />
+
       {/* ── Native YouTube ───────────────────────────────────────────────────── */}
-      <Card className="mb-5">
+      <Card id="youtube" className="mb-5 scroll-mt-28">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
             <PlayCircle size={22} className="text-red-500" />
@@ -395,7 +405,7 @@ function SocialSettingsContent() {
           "Coming soon" until the publishing service is switched on for this
           deployment; the connect section after that. */}
       {!more?.available ? (
-        <Card className="mb-5">
+        <Card id="other-platforms" className="mb-5 scroll-mt-28">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-secondary-50 rounded-xl flex items-center justify-center shrink-0">
               <Key size={20} className="text-secondary-500" />
@@ -413,7 +423,7 @@ function SocialSettingsContent() {
           </div>
         </Card>
       ) : (
-        <Card className="mb-5">
+        <Card id="other-platforms" className="mb-5 scroll-mt-28">
           <div className="flex items-start justify-between gap-3 mb-1">
             <h3 className="font-semibold text-brand-text">More platforms</h3>
             {connectedCount > 0 && (

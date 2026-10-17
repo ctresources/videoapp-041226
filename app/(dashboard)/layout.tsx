@@ -7,6 +7,9 @@ import { CreateProgressProvider } from "@/components/layout/create-progress";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
+// Imported for its side effect: it starts listening for Android's install
+// offer as soon as the app loads (see the hook).
+import "@/lib/hooks/use-home-screen";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);

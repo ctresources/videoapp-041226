@@ -12,6 +12,9 @@ import { BoldTrailConnect } from "@/components/settings/boldtrail-connect";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
+import { SettingsSteps } from "@/components/settings/settings-steps";
+import { HomeScreenCard } from "@/components/settings/home-screen-card";
+import { useHomeScreen } from "@/lib/hooks/use-home-screen";
 import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +36,10 @@ export default function SettingsPage() {
   const [marketYears, setMarketYears] = useState("");
   const [savingCta, setSavingCta] = useState(false);
   const [showCtaPreview, setShowCtaPreview] = useState(false);
+  // What the step bar ticks (2026-10-17): saved, not merely typed.
+  const [savedCity, setSavedCity] = useState(false);
+  const [savedCta, setSavedCta] = useState(false);
+  const { standalone } = useHomeScreen();
 
   // Redirect to login if user signs out while on this page
   useEffect(() => {
@@ -73,6 +80,8 @@ export default function SettingsPage() {
             timeZone: isValidTimeZone(row.time_zone) ? row.time_zone : browserTimeZone(),
           });
           if (row.default_cta?.trim()) setCtaTemplate(row.default_cta);
+          setSavedCity(!!row.location_city?.trim());
+          setSavedCta(!!row.default_cta?.trim());
           setMarketYears(row.market_years || "");
           // Fall back to auth metadata name (set during Google OAuth or email signup)
           const metaName = (user.user_metadata?.full_name as string | null) ?? null;
@@ -168,7 +177,7 @@ export default function SettingsPage() {
       })
       .eq("id", user.id);
     if (error) toast.error(error.message);
-    else toast.success("Preferences saved!");
+    else { toast.success("Preferences saved!"); setSavedCity(!!prefs.city.trim()); }
     setSavingPrefs(false);
   }
 
@@ -185,7 +194,7 @@ export default function SettingsPage() {
       })
       .eq("id", user.id);
     if (error) toast.error(error.message);
-    else toast.success("Default CTA saved!");
+    else { toast.success("Default CTA saved!"); setSavedCta(!!ctaTemplate.trim()); }
     setSavingCta(false);
   }
 
@@ -229,8 +238,21 @@ export default function SettingsPage() {
 
       {/* Social Accounts is a tab above now (settings/layout.tsx). */}
 
+      <SettingsSteps
+        steps={[
+          { id: "preferences", label: "Preferences", done: savedCity },
+          { id: "voice", label: "Voice", done: !!brandData?.heygen_voice_id },
+          { id: "brand", label: "Brand & photo", done: !!brandData?.avatar_url },
+          { id: "cta", label: "Video CTA", done: savedCta },
+          { id: "email-import", label: "Email import" },
+          { id: "crm", label: "CRM" },
+          { id: "phone", label: "Phone", done: standalone },
+          { id: "account", label: "Account" },
+        ]}
+      />
+
       {/* Content Preferences */}
-      <Card>
+      <Card id="preferences" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
             <Globe size={18} className="text-spark-amber" />
@@ -306,7 +328,7 @@ export default function SettingsPage() {
           id="voice" is the deep-link target for the Create page's prompt;
           scroll-mt clears the sticky topbar when jumped to. */}
       {brandData && user && (
-        <Card id="voice" className="scroll-mt-24">
+        <Card id="voice" className="scroll-mt-28">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-9 h-9 bg-spark-blue/10 rounded-xl flex items-center justify-center">
               <Mic size={18} className="text-spark-blue" />
@@ -337,7 +359,7 @@ export default function SettingsPage() {
 
       {/* Brand & AI Profile — brand kit, contact info, photos, avatar */}
       {brandData && user && (
-        <Card>
+        <Card id="brand" className="scroll-mt-28">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 bg-pink-50 rounded-xl flex items-center justify-center">
               <Palette size={18} className="text-pink-500" />
@@ -373,7 +395,7 @@ export default function SettingsPage() {
       )}
 
       {/* Default Video CTA */}
-      <Card>
+      <Card id="cta" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center">
             <Megaphone size={18} className="text-orange-500" />
@@ -448,7 +470,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Import by email */}
-      <Card>
+      <Card id="email-import" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
             <Mail size={18} className="text-spark-amber" />
@@ -464,7 +486,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* CRM Integrations */}
-      <Card>
+      <Card id="crm" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
             <Webhook size={18} className="text-spark-amber" />
@@ -481,8 +503,11 @@ export default function SettingsPage() {
         <CrmIntegrations />
       </Card>
 
+      {/* On the phone's Home Screen (2026-10-17). */}
+      <HomeScreenCard id="phone" />
+
       {/* Change Password */}
-      <Card>
+      <Card id="account" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
             <Lock size={18} className="text-slate-500" />

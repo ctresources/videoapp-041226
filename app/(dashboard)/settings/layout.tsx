@@ -20,7 +20,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   return (
     <div>
-      <nav aria-label="Settings" className="mx-auto mb-6 flex max-w-4xl gap-1 overflow-x-auto border-b border-spark-rule">
+      {/* overflow-y-hidden (2026-10-17): the tabs sit 1px low (-mb-px) to meet
+          the underline, and with only overflow-x set the bar became 1px too
+          tall and Windows drew a tiny up/down scrollbar at its right end. */}
+      <nav aria-label="Settings" className="mx-auto mb-6 flex max-w-4xl gap-2 overflow-x-auto overflow-y-hidden border-b border-spark-rule">
         {TABS.map((t) => {
           const on = t.href === "/settings" ? pathname === "/settings" : pathname.startsWith(t.href);
           return (
@@ -29,7 +32,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               href={t.href}
               aria-current={on ? "page" : undefined}
               className={cn(
-                "-mb-px whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[14px] font-semibold transition-colors",
+                "-mb-px whitespace-nowrap border-b-[3px] px-4 py-3 text-[18px] font-bold transition-colors",
                 on ? "border-spark-amber text-spark-ink" : "border-transparent text-spark-ink-muted hover:text-spark-ink",
               )}
             >
