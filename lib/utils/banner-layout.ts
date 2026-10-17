@@ -10,17 +10,18 @@
  * Deliberately NOT free-form coordinates. Every value here is a choice from a
  * short list, which keeps two promises the template already made: nothing can
  * be dragged off the canvas, and nothing can be dropped in YouTube's unsafe
- * margins — the outer areas phones and TVs crop away. A drag editor would
+ * margins — the outer areas cropped on smaller displays. A drag editor would
  * break both, and would need a pixel-accurate preview to be usable at all.
  */
 
 /** The movable pieces, in the order they are listed in the editor. */
-export const BANNER_BLOCKS = ["headline", "photos", "subscribe", "qr1", "qr2"] as const;
+export const BANNER_BLOCKS = ["headline", "photos", "logo", "subscribe", "qr1", "qr2"] as const;
 export type BannerBlock = (typeof BANNER_BLOCKS)[number];
 
 export const BANNER_BLOCK_LABELS: Record<BannerBlock, string> = {
   headline: "Headline",
   photos: "Photos",
+  logo: "Logo",
   subscribe: "Subscribe block",
   qr1: "QR code 1",
   qr2: "QR code 2",
@@ -46,14 +47,14 @@ export type BannerLayout = Partial<Record<BannerBlock, BlockAdjust>>;
 /** One press of the up/down control. Coarse enough to see, fine enough to aim. */
 export const NUDGE_STEP = 40;
 
-/** How far a block may travel, so nothing can be nudged off the canvas. */
+/** Requested nudge limit; the renderer also clamps to the block's safe slot. */
 export const NUDGE_LIMIT = 320;
 
 /** What each size means, as a multiplier on the block's template dimensions. */
 export const SIZE_SCALE: Record<BlockSize, number> = { s: 0.78, m: 1, l: 1.25 };
 
 export function scaleOf(a: BlockAdjust | undefined): number {
-  return SIZE_SCALE[a?.size ?? "m"];
+  return SIZE_SCALE[a?.size ?? "m"] ?? 1;
 }
 
 /** Clamped, because a value from a request is not a value from the editor. */

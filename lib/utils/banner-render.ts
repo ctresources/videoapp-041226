@@ -5,13 +5,13 @@ import path from "path";
 import * as opentypeNs from "opentype.js";
 import { glyphPathData } from "@/lib/utils/glyph-path-data";
 import {
-  alignedX, isHidden, offsetOf, scaleOf, type BannerLayout,
+  isHidden, offsetOf, scaleOf, type BannerLayout, type BlockAdjust,
 } from "@/lib/utils/banner-layout";
 import {
   customPalette, type BannerCustomColors, type BannerPaletteColors,
 } from "@/lib/utils/banner-colors";
 import {
-  emptyScene, sceneToPdf, type BannerScene, type SceneImage, type SceneShape, type SceneText,
+  emptyScene, sceneToPdf, type BannerScene, type SceneImage, type SceneText,
 } from "@/lib/utils/banner-pdf";
 
 // opentype.js is an old UMD package — depending on how the server bundle
@@ -19,12 +19,10 @@ import {
 // (Same defensive resolution as thumbnail-render.ts.)
 const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).default ?? opentypeNs);
 
-// Full YouTube channel-art canvas. The center 1546×423 is the only region
-// guaranteed to show on every device (phone/TV); everything else is
-// desktop/TV-only. This template deliberately spreads content wider than the
-// safe zone (matching the owner's supplied design).
-const W = 2560;
-const H = 1440;
+import { YOUTUBE_BANNER } from "@/lib/utils/youtube-banner";
+
+// Only the background extends beyond the centered safe zone.
+const { width: W, height: H, safe: SAFE } = YOUTUBE_BANNER;
 
 // Vercel's Linux runtime has no system fonts, so SVG <text> renders as empty
 // boxes. We bundle Archivo Black (OFL — a heavy grotesque close to the
@@ -92,47 +90,6 @@ function lineToPaths(line: string, startX: number, y: number, fontSize: number, 
   return out.join("");
 }
 
-/**
- * Render a block of (already-wrapped) lines as filled vector paths.
- * `y` is the baseline of the first line. align left/center relative to `x`.
- */
-function textBlock(
-  lines: string[],
-  x: number,
-  y: number,
-  fontSize: number,
-  fill: string,
-  { lineHeight = 1.14, align = "left" as "left" | "center" } = {},
-): string {
-  const lh = fontSize * lineHeight;
-  return lines
-    .map((l, i) => {
-      const startX = align === "center" ? x - textWidth(l, fontSize) / 2 : x;
-      return lineToPaths(l, startX, y + i * lh, fontSize, fill);
-    })
-    .join("\n");
-}
-
-/**
- * A hand-drawn-style curved arrow: a quadratic bezier from (x1,y1) through
- * control (cx,cy) to the tip (x2,y2), capped with a filled triangular head
- * oriented along the incoming tangent.
- */
-function curvedArrow(
-  x1: number, y1: number, cx: number, cy: number, x2: number, y2: number,
-  color = "#111827", width = 12,
-): string {
-  const ang = Math.atan2(y2 - cy, x2 - cx);
-  const ah = 40; // arrowhead length
-  const aw = 20; // arrowhead half-width
-  const bx1 = x2 - ah * Math.cos(ang) + aw * Math.sin(ang);
-  const by1 = y2 - ah * Math.sin(ang) - aw * Math.cos(ang);
-  const bx2 = x2 - ah * Math.cos(ang) - aw * Math.sin(ang);
-  const by2 = y2 - ah * Math.sin(ang) + aw * Math.cos(ang);
-  return `<path d="M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>
-<path d="M ${x2} ${y2} L ${bx1.toFixed(1)} ${by1.toFixed(1)} L ${bx2.toFixed(1)} ${by2.toFixed(1)} Z" fill="${color}"/>`;
-}
-
 // ── Color palettes ───────────────────────────────────────────────────────────
 // Each is a light left→right gradient with dark, readable text (the template's
 // aesthetic), so the design holds up whichever the user picks.
@@ -175,14 +132,15 @@ export interface RenderBannerOptions {
   qr2Link?: string;
   /** 0–2 photo URLs; laid out into the left photo slot(s). */
   photoUrls?: string[];
+  /** Optional logo, fitted whole with its transparency preserved. */
+  logoUrl?: string;
   /** Color palette key (see BANNER_PALETTES) or "custom"; defaults to "ocean". */
   palette?: string;
   /** The agent's own colors, used when palette is "custom". */
   customColors?: Partial<BannerCustomColors> | null;
   /**
-   * Per-block alignment, vertical nudge, size and visibility. Absent means the
-   * template's own arrangement, which is what every banner made before this
-   * existed used.
+   * Per-block alignment, vertical nudge, size and visibility. Each piece is
+   * fitted into its own slot inside the safe zone, including saved layouts.
    */
   layout?: BannerLayout;
 }
@@ -218,7 +176,7 @@ async function makeQr(link: string, size: number, dark: string): Promise<Buffer 
  */
 async function roundedPhoto(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sharp: any, url: string, bw: number, bh: number, radius = 24,
+  sharp: any, url: string, bw: number, bh: number, radius = 24, fit: "cover" | "contain" = "cover",
 ): Promise<Buffer | null> {
   try {
     const res = await fetch(url);
@@ -226,7 +184,7 @@ async function roundedPhoto(
     const src = Buffer.from(await res.arrayBuffer());
     // .rotate() applies the EXIF orientation a phone photo carries, which
     // sharp otherwise ignores — without it a portrait shot is cropped sideways.
-    const filled = await sharp(src).rotate().resize(bw, bh, { fit: "cover" }).png().toBuffer();
+    const filled = await sharp(src).rotate().resize(bw, bh, { fit, background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
     const mask = Buffer.from(
       `<svg width="${bw}" height="${bh}"><rect width="${bw}" height="${bh}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`,
     );
@@ -237,215 +195,141 @@ async function roundedPhoto(
 }
 
 /**
- * Renders a 2560×1440 YouTube channel banner recreating the owner's template:
- * mint→periwinkle gradient, bold navy headline, up to two blue QR codes each
- * with a hand-drawn arrow + caption, a SUBSCRIBE call-to-action block, and
- * 0–2 photo slots. Uploads to the public `assets` bucket and returns the URL.
- * Every text field falls back to the template default when omitted; QR groups
- * and photo slots are skipped when their input is absent.
+ * A reusable YouTube template: background fills 2560×1440, while every live
+ * text/image element is fitted into a slot within the central 1546×423 area.
+ * PNG and Canva PDF consume the very same fitted scene coordinates.
  */
 export async function renderBanner(opts: RenderBannerOptions): Promise<{ png: Buffer; scene: BannerScene }> {
-  const headline = (opts.headline ?? DEFAULTS.headline).trim() || DEFAULTS.headline;
-  const qr1Caption = (opts.qr1Caption ?? DEFAULTS.qr1Caption).trim();
-  const subscribeKicker = (opts.subscribeKicker ?? DEFAULTS.subscribeKicker).trim();
-  const subscribeMain = (opts.subscribeMain ?? DEFAULTS.subscribeMain).trim();
-  const subscribeSub = (opts.subscribeSub ?? DEFAULTS.subscribeSub).trim();
-  const extraLine1 = (opts.extraLine1 ?? "").trim();
-  const extraLine2 = (opts.extraLine2 ?? "").trim();
-  const qr2Caption = (opts.qr2Caption ?? DEFAULTS.qr2Caption).trim();
-  const qr1Link = opts.qr1Link?.trim() || "";
-  const qr2Link = opts.qr2Link?.trim() || "";
-  const photoUrls = (opts.photoUrls || []).filter((u) => typeof u === "string" && u.trim()).slice(0, 2);
   const pal = resolvePalette(opts);
-
-  /**
-   * The arrangement, per block. Every position below starts from the
-   * template's own coordinate and is moved from there, so a banner with no
-   * layout renders exactly as it always did.
-   */
   const L = opts.layout ?? {};
-  const MARGIN = 200;
-
+  const value = (key: keyof typeof DEFAULTS) => (opts[key] ?? DEFAULTS[key]).trim();
+  const headline = value("headline") || DEFAULTS.headline;
   // @ts-ignore -- sharp types unresolvable in some tsconfig setups; runtime import is fine
   const sharp = (await import("sharp")).default;
-
-  // ── Base: left→right gradient (palette-driven) ──
-  const bgSvg = `
-<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="${pal.gradLeft}"/>
-      <stop offset="100%" stop-color="${pal.gradRight}"/>
-    </linearGradient>
-  </defs>
-  <rect width="${W}" height="${H}" fill="url(#bg)"/>
-</svg>`;
+  const bgSvg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="bg"><stop stop-color="${pal.gradLeft}"/>
+    <stop offset="100%" stop-color="${pal.gradRight}"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#bg)"/></svg>`;
   const baseBuffer = await sharp(Buffer.from(bgSvg)).png().toBuffer();
-
-  // ── Raster composites (photos + QR images) collected first ──
-  const composites: { input: Buffer; left: number; top: number }[] = [];
-
-  // Everything drawn, recorded as live parts for the Canva PDF (banner-pdf.ts).
-  const texts: SceneText[] = [];
-  const images: SceneImage[] = [];
-  const shapes: SceneShape[] = [];
-  const drawText = (lines: string[], x: number, y: number, size: number, fill: string) => {
-    lines.forEach((l, i) => texts.push({ text: l, x, baseline: y + i * size * 1.14, size, color: fill }));
-    return textBlock(lines, x, y, size, fill);
+  const scene = emptyScene(W, H, pal.gradLeft, pal.gradRight, baseBuffer);
+  type Group = { texts: SceneText[]; images: SceneImage[] };
+  type Slot = { x: number; y: number; w: number; h: number };
+  const group = (): Group => ({ texts: [], images: [] });
+  const addText = (g: Group, lines: string[], y: number, size: number, color: string) => {
+    lines.forEach((text, i) => {
+      if (text) g.texts.push({ text, x: 0, baseline: y + i * size * 1.14, size, color });
+    });
   };
-  const drawArrow = (...args: Parameters<typeof curvedArrow>) => {
-    const svg = curvedArrow(...args);
-    const re = /<path d="([^"]+)"([^>]*)\/>/g;
-    for (let m = re.exec(svg); m; m = re.exec(svg)) {
-      const attrs = m[2];
-      const attr = (name: string) => attrs.match(new RegExp(`${name}="([^"]+)"`))?.[1];
-      const fill = attr("fill");
-      shapes.push({
-        d: m[1],
-        fill: fill && fill !== "none" ? fill : undefined,
-        stroke: attr("stroke"),
-        strokeWidth: Number(attr("stroke-width")) || undefined,
-      });
-    }
-    return svg;
+  // Measure glyph ink, including descenders/overhangs, rather than just the
+  // nominal font size. Position controls are clamped to each reserved slot,
+  // so large sizes and extreme saved/API nudges cannot escape or overlap it.
+  const place = (g: Group, slot: Slot, adjust?: BlockAdjust) => {
+    if (isHidden(adjust) || (!g.texts.length && !g.images.length)) return;
+    const boxes = [
+      ...g.texts.map(t => {
+        const b = getFont().getPath(t.text, t.x, t.baseline, t.size).getBoundingBox();
+        return { x: b.x1, y: b.y1, w: b.x2 - b.x1, h: b.y2 - b.y1 };
+      }),
+      ...g.images.map(i => ({ x: i.x, y: i.y, w: i.w, h: i.h })),
+    ];
+    const x = Math.min(...boxes.map(b => b.x)), y = Math.min(...boxes.map(b => b.y));
+    const w = Math.max(...boxes.map(b => b.x + b.w)) - x;
+    const h = Math.max(...boxes.map(b => b.y + b.h)) - y;
+    if (w <= 0 || h <= 0) return;
+    const fit = Math.min(slot.w / w, slot.h / h);
+    const scale = Math.min(fit, Math.min(1, fit) * scaleOf(adjust));
+    const dx = adjust?.align === "right" ? slot.w - w * scale
+      : adjust?.align === "center" ? (slot.w - w * scale) / 2 : 0;
+    const dy = Math.max(0, Math.min(slot.h - h * scale,
+      (slot.h - h * scale) / 2 + offsetOf(adjust)));
+    const tx = slot.x + dx - x * scale, ty = slot.y + dy - y * scale;
+    scene.texts.push(...g.texts.map(t => ({ ...t, x: tx + t.x * scale,
+      baseline: ty + t.baseline * scale, size: t.size * scale })));
+    scene.images.push(...g.images.map(i => ({ ...i, x: tx + i.x * scale,
+      y: ty + i.y * scale, w: i.w * scale, h: i.h * scale })));
   };
 
-  // Photos — left cluster, side by side. box 340×300 at y=600.
-  const photoScale = scaleOf(L.photos);
-  const PBW = Math.round(340 * photoScale), PBH = Math.round(300 * photoScale), PGAP = 30;
-  const PY = 600 + offsetOf(L.photos);
-  // Aligned as one cluster, so two photos stay side by side wherever they go.
-  const clusterW = photoUrls.length > 1 ? PBW * 2 + PGAP : PBW;
-  const clusterX = alignedX(L.photos, 250, clusterW, W, MARGIN);
-  const photoX = [clusterX, clusterX + PBW + PGAP];
-  if (!isHidden(L.photos)) {
-    for (let i = 0; i < photoUrls.length; i++) {
-      const buf = await roundedPhoto(sharp, photoUrls[i], PBW, PBH);
-      if (!buf) continue;
-      composites.push({ input: buf, left: photoX[i], top: PY });
-      images.push({ png: buf, x: photoX[i], y: PY, w: PBW, h: PBH });
+  const inset = 24, gap = 24;
+  const left = SAFE.x + inset, right = SAFE.x + SAFE.width - inset;
+  const top = SAFE.y + inset, bottom = SAFE.y + SAFE.height - inset;
+  const head = group();
+  addText(head, [headline.toUpperCase()], 58, fitFont(headline.toUpperCase(), right - left, 58, 24), pal.navy);
+  place(head, { x: left, y: top, w: right - left, h: 72 }, L.headline);
+  const bodyY = top + 96, bodyH = bottom - bodyY;
+  const photos = (opts.photoUrls ?? []).filter(u => typeof u === "string" && u.trim()).slice(0, 2);
+  const showPhotos = photos.length > 0 && !isHidden(L.photos);
+  const showLogo = !!opts.logoUrl?.trim() && !isHidden(L.logo);
+  const mediaW = showPhotos || showLogo ? 300 : 0;
+  const media = group();
+  const photoW = photos.length === 2 ? 142 : 230;
+  const photoH = showLogo ? 180 : 245;
+  if (showPhotos) {
+    for (let i = 0; i < photos.length; i++) {
+      const url = photos[i];
+      const png = await roundedPhoto(sharp, url, photoW, photoH, 16);
+      if (png) media.images.push({ png, x: i * (photoW + 16), y: 0, w: photoW, h: photoH });
+    }
+    place(media, { x: left, y: bodyY, w: mediaW, h: showLogo ? 190 : bodyH }, L.photos);
+  }
+  if (showLogo) {
+    const png = await roundedPhoto(sharp, opts.logoUrl!, 300, 65, 0, "contain");
+    if (png) {
+      const logo = group();
+      logo.images.push({ png, x: 0, y: 0, w: 300, h: 65 });
+      place(logo, { x: left, y: showPhotos ? bottom - 65 : bodyY,
+        w: mediaW, h: showPhotos ? 65 : bodyH }, L.logo);
     }
   }
 
-  // QR #1 — top area, right of the headline.
-  const qr1Shown = !!qr1Link && !isHidden(L.qr1);
-  const QR1 = Math.round(300 * scaleOf(L.qr1));
-  const QR1X = alignedX(L.qr1, 1650, QR1, W, MARGIN);
-  const QR1Y = 110 + offsetOf(L.qr1);
-  if (qr1Shown) {
-    const q = await makeQr(qr1Link, QR1, pal.qrDark);
-    if (q) {
-      composites.push({ input: q, left: QR1X, top: QR1Y });
-      images.push({ png: q, x: QR1X, y: QR1Y, w: QR1, h: QR1 });
-    }
+  const qrBlocks = (["qr1", "qr2"] as const).filter(key => !!opts[`${key}Link`]?.trim() && !isHidden(L[key]));
+  const qrSlotW = 200;
+  const qrWidth = qrBlocks.length * qrSlotW + Math.max(0, qrBlocks.length - 1) * gap;
+  for (let i = 0; i < qrBlocks.length; i++) {
+    const key = qrBlocks[i];
+    const png = await makeQr(opts[`${key}Link`]!, 180, pal.qrDark);
+    if (!png) continue;
+    const qr = group();
+    qr.images.push({ png, x: 0, y: 0, w: 180, h: 180 });
+    const caption = value(`${key}Caption`).toUpperCase();
+    addText(qr, wrapLines(caption, 20, 180), 210, 20, pal.navy);
+    place(qr, { x: right - qrWidth + i * (qrSlotW + gap), y: bodyY,
+      w: qrSlotW, h: bodyH }, L[key]);
   }
 
-  // QR #2 — middle-right, beside the SUBSCRIBE block.
-  const qr2Shown = !!qr2Link && !isHidden(L.qr2);
-  const QR2 = Math.round(290 * scaleOf(L.qr2));
-  const QR2X = alignedX(L.qr2, 1900, QR2, W, MARGIN);
-  const QR2Y = 640 + offsetOf(L.qr2);
-  if (qr2Shown) {
-    const q = await makeQr(qr2Link, QR2, pal.qrDark);
-    if (q) {
-      composites.push({ input: q, left: QR2X, top: QR2Y });
-      images.push({ png: q, x: QR2X, y: QR2Y, w: QR2, h: QR2 });
-    }
+  const textX = left + (mediaW ? mediaW + gap : 0);
+  const textRight = right - (qrWidth ? qrWidth + gap : 0);
+  const textW = textRight - textX;
+  const sub = group();
+  let baseline = 0;
+  for (const [text, size, color] of [
+    [value("subscribeKicker"), 28, pal.navy],
+    [value("subscribeMain"), 72, pal.royal],
+    [value("subscribeSub"), 28, pal.navy],
+    [(opts.extraLine1 ?? "").trim(), 24, pal.navy],
+    [(opts.extraLine2 ?? "").trim(), 24, pal.navy],
+  ] as const) {
+    if (!text) continue;
+    const fitted = fitFont(text.toUpperCase(), textW, size, Math.min(20, size));
+    const lines = wrapLines(text.toUpperCase(), fitted, textW);
+    baseline += fitted;
+    addText(sub, lines, baseline, fitted, color);
+    baseline += (lines.length - 1) * fitted * 1.14 + 12;
   }
+  place(sub, { x: textX, y: bodyY, w: textW, h: bodyH }, L.subscribe);
 
-  // ── Vector overlay (text + arrows) ──
-  const parts: string[] = [];
-
-  // Headline "WATCHING ON TV?" — big navy, top-left, sized to clear QR1 when
-  // QR1 is still up there. A hidden or moved QR gives the headline the width
-  // back, rather than leaving it shrunk to clear something that is not there.
-  if (!isHidden(L.headline)) {
-    const headRoom = qr1Shown && QR1Y < 500 ? QR1X - MARGIN - 40 : W - MARGIN * 2;
-    const headlineSize = Math.round(
-      fitFont(headline.toUpperCase(), headRoom, 150, 60) * scaleOf(L.headline),
-    );
-    const headlineW = textWidth(headline.toUpperCase(), headlineSize);
-    parts.push(drawText(
-      [headline.toUpperCase()],
-      alignedX(L.headline, MARGIN, headlineW, W, MARGIN),
-      290 + offsetOf(L.headline),
-      headlineSize,
-      pal.navy,
-    ));
-  }
-
-  // QR1 caption + arrow (only when QR1 is present).
-  if (qr1Shown && qr1Caption) {
-    const capSize = 48;
-    const capLines = wrapLines(qr1Caption.toUpperCase(), capSize, W - 40 - (QR1X + QR1 + 40));
-    const blockH = (capLines.length - 1) * capSize * 1.14;
-    const capBaseline = QR1Y + QR1 / 2 - blockH / 2 + capSize * 0.35;
-    parts.push(drawText(capLines, QR1X + QR1 + 40, capBaseline, capSize, pal.navy));
-    // Arrow from the caption curving up-left into QR1's right edge.
-    parts.push(drawArrow(QR1X + QR1 + 60, QR1Y + QR1 / 2 + 55, QR1X + QR1 + 25, QR1Y + QR1 / 2 + 40, QR1X + QR1 - 12, QR1Y + QR1 / 2));
-  }
-
-  // Subscribe block — kicker / big main / sub, then up to two extra lines,
-  // stacked at x=1080.
-  const subHidden = isHidden(L.subscribe);
-  const subScale = scaleOf(L.subscribe);
-  const subDy = offsetOf(L.subscribe);
-  /**
-   * The stack aligns as a unit, measured by its widest line — the big
-   * SUBSCRIBE word in every real banner. Aligning each line on its own would
-   * ragged the block, which is the one thing this layout gets right by
-   * default.
-   */
-  const kickSize = Math.round(46 * subScale);
-  const mainSize = Math.round(fitFont(subscribeMain.toUpperCase(), 700, 150, 60) * subScale);
-  const stackW = Math.max(
-    subscribeMain ? textWidth(subscribeMain.toUpperCase(), mainSize) : 0,
-    subscribeKicker ? Math.min(720, textWidth(subscribeKicker.toUpperCase(), kickSize)) : 0,
-  );
-  const SX = alignedX(L.subscribe, 1080, stackW, W, MARGIN);
-  if (!subHidden && subscribeKicker) {
-    parts.push(drawText(wrapLines(subscribeKicker.toUpperCase(), kickSize, 720), SX, 640 + subDy, kickSize, pal.navy));
-  }
-  if (!subHidden && subscribeMain) {
-    parts.push(drawText([subscribeMain.toUpperCase()], SX, 770 + subDy, mainSize, pal.royal));
-  }
-  // Baseline walks down as each optional line below the main word is added.
-  let subY = 850 + subDy;
-  if (!subHidden && subscribeSub) {
-    // Single line (like the template), shrunk to clear QR2 if the user types more.
-    const subSize = fitFont(subscribeSub.toUpperCase(), QR2X - SX - 40, 60, 34);
-    parts.push(drawText([subscribeSub.toUpperCase()], SX, subY, subSize, pal.navy));
-    subY += 66;
-  }
-  for (const extra of [extraLine1, extraLine2]) {
-    if (!extra || subHidden) continue;
-    const exSize = fitFont(extra.toUpperCase(), QR2X - SX - 40, 48, 28);
-    parts.push(drawText([extra.toUpperCase()], SX, subY, exSize, pal.navy));
-    subY += 62;
-  }
-
-  // QR2 caption + arrow (above/left of QR2, arrow pointing down into it).
-  if (qr2Shown && qr2Caption) {
-    const capSize = 42;
-    const capLines = wrapLines(qr2Caption.toUpperCase(), capSize, 700);
-    const blockH = (capLines.length - 1) * capSize * 1.14;
-    // Sit the block so its last line ends ~40px above the QR.
-    const capBaseline = QR2Y - 40 - blockH;
-    parts.push(drawText(capLines, QR2X - 40, capBaseline, capSize, pal.navy));
-    // Arrow starts just below the caption and curves down into QR2's top edge.
-    parts.push(drawArrow(QR2X - 20, QR2Y - 28, QR2X + 10, QR2Y - 12, QR2X + 55, QR2Y + 12));
-  }
-
+  const parts = scene.texts.map(t => lineToPaths(t.text, t.x, t.baseline, t.size, t.color));
   const overlaySvg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${parts.join("\n")}</svg>`;
-
-  // Composite order: gradient → text/arrows → photos & QR on top (they never
-  // overlap the text, so this only guarantees crisp raster edges).
+  const composites = await Promise.all(scene.images.map(async i => {
+    // Record the rounded raster geometry back into the shared scene, so the
+    // PDF uses exactly the same dimensions and positions as the PNG.
+    i.x = Math.round(i.x); i.y = Math.round(i.y);
+    i.w = Math.max(1, Math.round(i.w)); i.h = Math.max(1, Math.round(i.h));
+    i.png = await sharp(i.png).resize(i.w, i.h).png().toBuffer();
+    return { input: i.png, left: i.x, top: i.y };
+  }));
   const png = await sharp(baseBuffer)
     .composite([{ input: Buffer.from(overlaySvg), left: 0, top: 0 }, ...composites])
-    .png({ compressionLevel: 6 })
-    .toBuffer();
-
-  const scene = { ...emptyScene(W, H, pal.gradLeft, pal.gradRight, baseBuffer), texts, images, shapes };
+    .png({ compressionLevel: 6 }).toBuffer();
   return { png, scene };
 }
 

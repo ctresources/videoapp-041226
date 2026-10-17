@@ -25,6 +25,7 @@ import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
 import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
+import { YOUTUBE_BANNER, YOUTUBE_SAFE_ZONE_STYLE, YOUTUBE_MOBILE_PREVIEW_STYLE } from "@/lib/utils/youtube-banner";
 
 type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller";
 
@@ -1965,9 +1966,9 @@ const BANNER_PLATFORMS: {
 }[] = [
   {
     id: "youtube", label: "YouTube", size: "2560×1440", fileName: "channel-banner-2560x1440.png",
-    intro: "Generate a 2560×1440 YouTube channel banner. Every field is pre-filled to match the template — edit any of it, add up to two QR codes and two photos, then download.",
-    safeZone: { left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%" },
-    safeNote: "The dashed box is YouTube's safe zone — the only part guaranteed to show on phones and TVs. Everything else appears on desktop.",
+    intro: "Create your YouTube banner on a 2560×1440 canvas. Your photos, logo, text, contact details and QR codes stay inside the centered 1546×423 safe zone. Only the background extends beyond it.",
+    safeZone: YOUTUBE_SAFE_ZONE_STYLE,
+    safeNote: "The dashed box is the centered 1546×423 safe zone, visible across devices. The full 2560×1440 canvas fills the TV view. Guides are not included in your downloads.",
     uploadHint: "Download it, then upload in YouTube Studio → Customization → Branding → Banner image.",
   },
   {
@@ -2017,6 +2018,9 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
   /** LinkedIn and Facebook: which side of the text the photos sit. */
   const [photoSide, setPhotoSide] = useState<"left" | "right">("left");
   const [photos, setPhotos] = useState<string[]>([]);
+  const [bannerLogo, setBannerLogo] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -2025,9 +2029,8 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
   const [pdfUrl, setPdfUrl] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   /**
-   * Where each block sits. Empty means the template's own arrangement, which
-   * is what every banner used before this existed — so an agent who never
-   * opens the arrangement panel sees no change at all.
+   * Empty uses the safe-zone template. Adjustments stay within each piece's
+   * reserved area so they cannot crop or cover another piece.
    */
   const [layout, setLayout] = useState<BannerLayout>({});
   const photoFileRef = useRef<HTMLInputElement>(null);
@@ -2081,6 +2084,21 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
     }
   }
 
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      setBannerLogo(await uploadImage(file, "logo"));
+      toast.success("Logo added!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   const generate = async () => {
     setLoading(true);
     try {
@@ -2089,6 +2107,7 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...fields, palette, photoUrls: photos, platform, layout, photoSide,
+          logoUrl: platform === "youtube" ? bannerLogo : undefined,
           customColors: palette === "custom" ? custom : undefined,
         }),
       });
@@ -2357,6 +2376,25 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         )}
       </div>
 
+      {platform === "youtube" && (
+        <div className="mb-5">
+          <label className={labelCls}>Logo <span className="font-normal text-slate-400">(optional)</span></label>
+          <p className="text-xs text-slate-500 mb-2">Your full logo stays visible without cropping. A transparent PNG works best.</p>
+          {bannerLogo && (
+            <div className="flex items-center gap-3 mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={bannerLogo} alt="Banner logo" className="w-40 h-14 object-contain rounded-lg border border-slate-200" />
+              <button type="button" onClick={() => setBannerLogo("")} className="text-xs text-slate-500 hover:text-slate-700">Remove logo</button>
+            </div>
+          )}
+          <button type="button" onClick={() => logoFileRef.current?.click()} disabled={logoUploading}
+            className="text-xs font-medium px-3 py-2 border border-slate-200 rounded-lg disabled:opacity-50">
+            {logoUploading ? "Uploading…" : bannerLogo ? "Replace logo" : "Upload logo"}
+          </button>
+          <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
+        </div>
+      )}
+
       {/* ── Arrangement ──
           Only on the YouTube canvas. The social banners are a single centred
           stack by design — an alignment control there would be a button that
@@ -2375,8 +2413,8 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
             </button>
           </div>
           <p className="text-xs text-slate-400 mb-3">
-            Move each piece around, resize it, or leave it out. Nothing can land in the
-            edges YouTube crops on phones and TVs.
+            Align, resize or hide each piece within its space. Photos, logo, text and
+            QR codes always stay inside the centered safe zone.
           </p>
 
           <div className="flex flex-col gap-2">
@@ -2480,6 +2518,17 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
             />
           </div>
           <p className="text-[11px] text-slate-400 mt-1">{spec.safeNote}</p>
+          {platform === "youtube" && (
+            <div className="mt-4 max-w-3xl">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Mobile preview</p>
+              <div className="relative overflow-hidden rounded-xl border border-slate-200"
+                style={{ aspectRatio: `${YOUTUBE_BANNER.safe.width} / ${YOUTUBE_BANNER.safe.height}` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={bannerUrl} alt="Your YouTube banner as seen inside the mobile safe zone"
+                  className="absolute h-auto block" style={YOUTUBE_MOBILE_PREVIEW_STYLE} />
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button
               onClick={() => downloadBanner("png")}
