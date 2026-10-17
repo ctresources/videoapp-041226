@@ -62,6 +62,8 @@ export async function PATCH(req: NextRequest) {
     rejectionReason?: string;
     commissionRate?: number;
     commissionDurationMonths?: number;
+    /** Send the approval email again (2026-10-17), with a fresh account link if needed. */
+    resendApproval?: boolean;
   };
   if (!body.affiliateId) {
     return NextResponse.json({ error: "affiliateId required" }, { status: 400 });
@@ -73,6 +75,41 @@ export async function PATCH(req: NextRequest) {
     .eq("id", body.affiliateId)
     .single();
   if (!affiliate) return NextResponse.json({ error: "Affiliate not found" }, { status: 404 });
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sparkreels.ai";
+
+  if (body.resendApproval) {
+    if (affiliate.status !== "approved" || !affiliate.ref_code) {
+      return NextResponse.json({ error: "Only an approved affiliate can be sent this." }, { status: 400 });
+    }
+    // The account link is reused while it is still good; an expired one, or
+    // none at all on an unlinked application, gets a fresh 90 days.
+    let claimToken: string | null = affiliate.user_id ? null : affiliate.claim_token ?? null;
+    const expired = affiliate.claim_token_expires_at && new Date(affiliate.claim_token_expires_at).getTime() < Date.now();
+    let current = affiliate;
+    if (!affiliate.user_id && (!claimToken || expired)) {
+      claimToken = randomBytes(24).toString("hex");
+      const { data: refreshed } = await admin
+        .from("affiliates")
+        .update({
+          claim_token: claimToken,
+          claim_token_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", affiliate.id)
+        .select("*")
+        .single();
+      if (refreshed) current = refreshed;
+    }
+    const emailed = await notifyAffiliateApproved({
+      name: affiliate.full_name,
+      email: affiliate.email,
+      refCode: affiliate.ref_code,
+      appUrl,
+      claimToken,
+    });
+    return NextResponse.json({ affiliate: current, emailed });
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const update: Record<string, any> = { updated_at: new Date().toISOString() };
@@ -107,9 +144,12 @@ export async function PATCH(req: NextRequest) {
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Awaited (2026-10-17). It wasn't, and on the server a send that is not
+  // waited for can be cut off when the response goes back, so "link emailed"
+  // was said whether or not it was.
+  let emailed: boolean | null = null;
   if (newlyApproved && updated?.ref_code) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sparkreels.ai";
-    notifyAffiliateApproved({
+    emailed = await notifyAffiliateApproved({
       name: updated.full_name,
       email: updated.email,
       refCode: updated.ref_code,
@@ -120,5 +160,5 @@ export async function PATCH(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ affiliate: updated });
+  return NextResponse.json({ affiliate: updated, emailed });
 }

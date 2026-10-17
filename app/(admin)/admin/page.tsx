@@ -302,6 +302,28 @@ export default function AdminPage() {
 
   useEffect(() => { if (adminTab === "costs") loadCosts(costScope); }, [adminTab, costScope, loadCosts]);
 
+  /** Sends an approved affiliate's welcome email again (2026-10-17). */
+  async function resendAffiliateEmail(id: string, email: string) {
+    if (!confirm(`Send the approval email to ${email} again?`)) return;
+    setAffiliateBusy((p) => ({ ...p, [id]: true }));
+    try {
+      const res = await fetch("/api/admin/affiliates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ affiliateId: id, resendApproval: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.emailed) {
+        if (data.affiliate) setAffiliates((prev) => prev.map((a) => (a.id === id ? data.affiliate : a)));
+        toast.success(`Approval email sent to ${email}`);
+      } else {
+        toast.error(data.error || "The email didn't send. Try again in a minute.");
+      }
+    } finally {
+      setAffiliateBusy((p) => ({ ...p, [id]: false }));
+    }
+  }
+
   async function updateAffiliate(id: string, status: "approved" | "rejected") {
     if (status === "rejected" && !confirm("Reject this affiliate application?")) return;
     setAffiliateBusy((p) => ({ ...p, [id]: true }));
@@ -311,9 +333,13 @@ export default function AdminPage() {
       body: JSON.stringify({ affiliateId: id, status }),
     });
     if (res.ok) {
-      const { affiliate } = await res.json();
+      const { affiliate, emailed } = await res.json();
       setAffiliates((prev) => prev.map((a) => (a.id === id ? affiliate : a)));
-      toast.success(status === "approved" ? "Affiliate approved — link emailed" : "Application rejected");
+      if (status === "approved" && emailed === false) {
+        toast.error("Approved, but the email didn't send. Use Resend approval email.", { duration: 8000 });
+      } else {
+        toast.success(status === "approved" ? "Affiliate approved — link emailed" : "Application rejected");
+      }
     } else {
       const { error } = await res.json();
       toast.error(error || "Failed");
@@ -801,6 +827,17 @@ export default function AdminPage() {
                         {a.status === "approved" && ` · Stripe: ${a.connect_onboarding_status.replace("_", " ")}`}
                       </p>
                     </div>
+                    {a.status === "approved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resendAffiliateEmail(a.id, a.email)}
+                        disabled={affiliateBusy[a.id]}
+                        className="gap-1 shrink-0"
+                      >
+                        <Mail size={13} /> Resend approval email
+                      </Button>
+                    )}
                     {a.status === "pending" && (
                       <div className="flex items-center gap-2 shrink-0">
                         <Button size="sm" variant="outline" onClick={() => updateAffiliate(a.id, "rejected")} disabled={affiliateBusy[a.id]} className="gap-1 border-red-200 text-red-600 hover:bg-red-50">

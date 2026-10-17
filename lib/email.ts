@@ -264,11 +264,13 @@ export async function notifyAffiliateApproved({
    * already linked to an account.
    */
   claimToken?: string | null;
-}) {
-  if (!RESEND_API_KEY) return;
+}): Promise<boolean> {
+  // Returns whether Resend accepted it (2026-10-17), so the admin screen can
+  // say "emailed" only when it was.
+  if (!RESEND_API_KEY) return false;
   const refLink = `${appUrl}/?ref=${refCode}`;
   const claimLink = claimToken ? `${appUrl}/affiliate?claim=${claimToken}` : null;
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -295,7 +297,12 @@ export async function notifyAffiliateApproved({
         <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
       `,
     }),
-  }).catch(() => {});
+  }).catch(() => null);
+  if (!res?.ok) {
+    console.error(`[affiliate] approval email to ${email} failed: ${res ? `HTTP ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}` : "network error"}`);
+    return false;
+  }
+  return true;
 }
 
 /**
