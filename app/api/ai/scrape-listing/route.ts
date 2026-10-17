@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
-import { extractImageUrls } from "@/lib/utils/listing-photos";
+import { expandNumberedGallery, extractImageUrls } from "@/lib/utils/listing-photos";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { coerceListing } from "@/lib/utils/listing-data";
 
@@ -86,7 +86,39 @@ const RAW_HTML_SCAN_LIMIT = 3_000_000;
  * Best effort. Scraper-hostile hosts will 403 this, which costs nothing: the
  * markdown's photos are already in hand and this only ever adds.
  */
+/**
+ * The raw page, as SparkReels first and then, if that is refused, as an
+ * ordinary browser (2026-10-16).
+ *
+ * BoldTrail agent sites began answering the SparkReels agent with
+ * Cloudflare's "Just a moment..." page some time after 6 September, while
+ * the same page still loads for a browser; imports from those sites had
+ * worked until then. A page this route reads twice (the fallback reader and
+ * the gallery second look) is fetched once and reused.
+ */
+const rawHtmlCache = new Map<string, { at: number; html: string | null }>();
+const CHALLENGE_PAGE = /<title>\s*(?:just a moment|attention required|checking your browser)/i;
+
 async function fetchRawHtml(url: string): Promise<string | null> {
+  const hit = rawHtmlCache.get(url);
+  if (hit && Date.now() - hit.at < 60_000) return hit.html;
+  let html = await fetchRawHtmlAs(url, SPARKREELS_UA);
+  if (html === null || CHALLENGE_PAGE.test(html.slice(0, 5000))) {
+    console.warn("[scrape-listing] raw HTML refused as SparkReels — retrying as a browser");
+    html = await fetchRawHtmlAs(url, BROWSER_UA);
+    if (html !== null && CHALLENGE_PAGE.test(html.slice(0, 5000))) {
+      console.warn("[scrape-listing] raw HTML refused as a browser too (challenge page)");
+      html = null;
+    }
+  }
+  rawHtmlCache.set(url, { at: Date.now(), html });
+  if (rawHtmlCache.size > 50) rawHtmlCache.delete(rawHtmlCache.keys().next().value as string);
+  return html;
+}
+
+const SPARKREELS_UA = "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)";
+
+async function fetchRawHtmlAs(url: string, userAgent: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -95,7 +127,7 @@ async function fetchRawHtml(url: string): Promise<string | null> {
         // combination bot detection is tuned for; the same fetch under this
         // agent is what pulled twelve photos out of the listing that Jina's
         // markdown showed five of.
-        "User-Agent": "Mozilla/5.0 (compatible; SparkReels/1.0; +https://sparkreels.ai)",
+        "User-Agent": userAgent,
         Accept: "text/html,application/xhtml+xml",
       },
       // 20s, matching extract-url. 10s was optimistic for a listing portal.
@@ -637,6 +669,9 @@ export async function POST(req: NextRequest) {
     // With the path, not just the host. Every short link logs as "myre.io",
     // so two imports of different listings were indistinguishable in the logs
     // at exactly the moment that difference was the answer.
+    // A BoldTrail page holds only the first of its numbered photos.
+    listing.photoUrls = await expandNumberedGallery(listing.photoUrls);
+
     console.log(
       `[scrape-listing] ${listing.photoUrls.length} photo(s) found for ` +
       `${parsedUrl.hostname}${parsedUrl.pathname}`,
@@ -692,6 +727,20 @@ export async function POST(req: NextRequest) {
             "That link opens your MLS sign-in page, not a listing — links from inside " +
             "Matrix or a portal session only work while you're logged in. Paste the " +
             "public listing link (the one you'd send a client), or enter the details manually.",
+        },
+        { status: 422 },
+      );
+    }
+
+    // Realtor.com refuses apps outright (429 or a challenge), every time, so
+    // "wait a minute" was the wrong advice (2026-10-16).
+    if (/(^|\.)realtor\.com$/i.test(parsedUrl.hostname) &&
+        (code === "TARGET_BUSY" || code === "BLOCKED" || code.startsWith("TARGET_ERROR_"))) {
+      return NextResponse.json(
+        {
+          error:
+            "Realtor.com doesn't let apps read its listings. Paste the Zillow or Redfin link " +
+            "for the same home, or upload the photos and enter the details.",
         },
         { status: 422 },
       );
@@ -763,7 +812,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: code === "BLOCKED"
-          ? "That page blocked the import (Zillow and some MLS sites do this). Please enter the listing details manually — it only takes a minute."
+          ? "That website blocks apps from reading it. Paste the Zillow or Redfin link for the same home, or upload the photos and enter the details."
           : "Could not read that listing. Try entering the details manually.",
       },
       { status: 422 }

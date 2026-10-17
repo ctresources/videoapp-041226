@@ -53,6 +53,10 @@ const NOT_THE_PROPERTY = new RegExp([
   // kind of wrong picture.
   /zillowstatic\.com\/.*-h_[a-z]{1,2}\.(?:jpe?g|webp|png)/.source,
   /mortgageapi\.zillow\.com|getLenderProfileImage/.source,
+  // BoldTrail (kvCORE) agent websites (2026-10-16): beside the listing photo
+  // the page carries the brokerage's marketing-center logos, the agent and
+  // team profile pictures, the Fair Housing badge and kvCORE's demo images.
+  /\/marketing-center\/|cloudfront\.net\/[^/]+\/profiles\/|\/images\/fair\.png|kvcoredemo\d*\//.source,
 ].join("|"), "i");
 
 /**
@@ -255,12 +259,24 @@ const RENDITION_PATH =
  * costs nothing — nothing else shares its identity.
  */
 function renditionWidth(href: string): number {
+  // Redfin's full-size copy, over its "genMid" one (REDFIN_RENDITION).
+  if (/cdn-redfin\.com\/photo\/\d+\/bigphoto\//i.test(href)) return 100_000;
   const last = href.split("?")[0].split("/").pop() ?? "";
   // .match, not .matchAll — this project's TS target predates iterating a
   // RegExpStringIterator, and an array of strings is all that is wanted here.
   const runs = last.match(/\d{2,5}/g);
   return runs ? runs.reduce((max, n) => Math.max(max, Number(n)), 0) : 0;
 }
+
+/**
+ * Redfin serves each photo under two names (2026-10-16):
+ *   /photo/235/bigphoto/590/PAMC2196590_14_3.jpg
+ *   /photo/235/mbphotov3/590/genMid.PAMC2196590_14_3.jpg
+ * A test import of a 20-photo listing came back with six of them twice.
+ * The size folder and the "gen…." prefix are dropped from the identity, and
+ * bigphoto is the copy kept (see renditionWidth).
+ */
+const REDFIN_RENDITION = /(\/photo\/\d+\/)(?:bigphoto|mbphotov\d*|mbphoto|islphoto|bcsphoto)(\/\d+\/)(?:gen[A-Za-z]+\.)?/i;
 
 /** Identity of the photo itself, ignoring which rendition of it this URL asks for. */
 function photoIdentity(href: string): string {
@@ -280,6 +296,7 @@ function photoIdentity(href: string): string {
   // one picture, and keeping the extension in the identity let the small webp
   // through as a thirteenth "photo" that was really the first one again.
   const path = url.pathname
+    .replace(REDFIN_RENDITION, "$1$2")
     .replace(RENDITION_PATH, "")
     .replace(/\.(?:jpe?g|png|webp|avif)$/i, "");
   return `${url.origin}${path}${kept.length ? `?${kept.join("&")}` : ""}`;
@@ -352,4 +369,54 @@ export function extractImageUrls(markdown: string, pageUrl: string): string[] {
   }
 
   return found;
+}
+
+/**
+ * A BoldTrail (kvCORE) listing's whole gallery, from its first photo
+ * (2026-10-16).
+ *
+ * A BoldTrail agent site puts only the first photo in the page; the rest are
+ * loaded by the browser. Its photos are numbered, though:
+ *   https://d36xftgacqn2p.cloudfront.net/listingphotos382/PAMC2192342-1.jpg
+ * and a number past the end returns a "Photo Coming Soon" stand-in rather than
+ * an error. So the stand-in's ETag is learned from a number no listing has,
+ * and photos 1, 2, 3 … are kept until the first one that is the stand-in.
+ *
+ * Returns the list unchanged when there is no such photo in it, or on any
+ * failure: this adds photos, it must never cost the ones already found.
+ */
+const KVCORE_FIRST_PHOTO = /^(https:\/\/[a-z0-9.-]+\/listingphotos\d+\/)([A-Za-z0-9]+)-1\.(jpe?g|png|webp)(?:\?.*)?$/i;
+
+export async function expandNumberedGallery(urls: string[]): Promise<string[]> {
+  const first = urls.find((u) => KVCORE_FIRST_PHOTO.test(u));
+  if (!first) return urls;
+  const [, base, id, ext] = first.match(KVCORE_FIRST_PHOTO)!;
+  const photoUrl = (n: number) => `${base}${id}-${n}.${ext}`;
+  const etagOf = async (u: string): Promise<string | null> => {
+    try {
+      const res = await fetch(u, { method: "HEAD", signal: AbortSignal.timeout(8000) });
+      if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/")) return null;
+      return res.headers.get("etag") ?? `len:${res.headers.get("content-length")}`;
+    } catch {
+      return null;
+    }
+  };
+  try {
+    const standIn = await etagOf(photoUrl(9999));
+    const tags = await Promise.all(Array.from({ length: MAX_PHOTOS }, (_, i) => etagOf(photoUrl(i + 1))));
+    const gallery: string[] = [];
+    for (let i = 0; i < tags.length; i++) {
+      if (!tags[i] || tags[i] === standIn) break;
+      gallery.push(photoUrl(i + 1));
+    }
+    if (gallery.length <= 1) return urls;
+    // The gallery leads, then whatever else the page held, without this
+    // listing's numbered photos a second time.
+    const sameListing = new RegExp(`/listingphotos\\d+/${id}-\\d+\\.`, "i");
+    const rest = urls.filter((u) => !sameListing.test(u));
+    console.log(`[listing-photos] numbered gallery: ${gallery.length} photo(s) for ${id}`);
+    return [...gallery, ...rest].slice(0, MAX_PHOTOS);
+  } catch {
+    return urls;
+  }
 }
