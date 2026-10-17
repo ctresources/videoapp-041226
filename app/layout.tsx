@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description:
     "Real estate agents: transform your voice into viral video content and autopost to all social channels. Reclaim 10-15 hours every week.",
   keywords: ["real estate video", "voice to video", "AI video content", "real estate marketing"],
+  applicationName: "SparkReels",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -26,8 +27,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/apple_touch_180x180.png" />
+        {/* SparkReels SR icons (2026-10-16). /favicon.ico is app/favicon.ico,
+            which Next links itself (a second copy in public/ made the dev
+            server refuse to serve either). The manifest link comes from
+            `metadata.manifest` above; it carries the 192, 512 and maskable icons. */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#3B82F6" />
         <meta name="google-site-verification" content="uAWjEr9Xm843nq9tUGWMqYkSpUlvvlTmoIjn8ffkYlA" />
