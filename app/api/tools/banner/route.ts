@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { renderAndSaveBanner } from "@/lib/utils/banner-render";
+import { renderAndSaveYouTubeBanner } from "@/lib/utils/youtube-banner-render";
 import { isSocialPlatform, renderAndSaveSocialBanner } from "@/lib/utils/social-banner-render";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import type { BannerLayout } from "@/lib/utils/banner-layout";
@@ -14,6 +14,11 @@ export const maxDuration = 60;
  * returns its URL. `platform` picks the canvas: "facebook" (1640×720 cover)
  * or "linkedin" (1584×396); anything else — including requests that don't
  * send it — is the 2560×1440 YouTube channel banner.
+ *
+ * The YouTube banner is the safe-zone layout since 2026-10-16 (photo, name,
+ * brokerage, tagline, contact line and logo inside the centre 1546×423), so
+ * it reads the fields below the platform's; the headline/QR/SUBSCRIBE fields
+ * are the Facebook and LinkedIn banners' only.
  */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -41,8 +46,17 @@ export async function POST(req: NextRequest) {
     /** LinkedIn and Facebook only: which side of the text the photos sit. */
     photoSide?: string;
     platform?: string;
-    /** Per-block alignment, nudge, size and visibility — YouTube canvas only. */
+    /** Per-block alignment, nudge, size and visibility. */
     layout?: BannerLayout;
+    /** The YouTube banner's own fields. */
+    name?: string;
+    brokerage?: string;
+    tagline?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    photoUrl?: string;
+    logoUrl?: string;
   };
 
   try {
@@ -73,7 +87,18 @@ export async function POST(req: NextRequest) {
           platform: body.platform,
           photoSide: body.photoSide === "right" ? "right" : "left",
         })
-      : await renderAndSaveBanner(fields);
+      : await renderAndSaveYouTubeBanner(user.id, {
+          name: body.name,
+          brokerage: body.brokerage,
+          tagline: body.tagline,
+          phone: body.phone,
+          email: body.email,
+          website: body.website,
+          photoUrl: body.photoUrl,
+          logoUrl: body.logoUrl,
+          palette: body.palette,
+          customColors: fields.customColors,
+        });
     return NextResponse.json(result);
   } catch (err) {
     console.error("[banner] Error:", err);

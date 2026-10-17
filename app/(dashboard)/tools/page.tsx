@@ -15,10 +15,6 @@ import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
-import {
-  BANNER_BLOCKS, BANNER_BLOCK_LABELS, NUDGE_LIMIT, NUDGE_STEP,
-  type BannerBlock, type BannerLayout, type BlockAdjust,
-} from "@/lib/utils/banner-layout";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
@@ -1910,6 +1906,61 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
 
 // ─── CHANNEL BANNER GENERATOR ─────────────────────────────────────────────────
 
+/** The YouTube banner's fields (2026-10-16); see lib/utils/youtube-banner-render.ts. */
+type YtBannerDetails = {
+  name: string; brokerage: string; tagline: string;
+  phone: string; email: string; website: string;
+  photoUrl: string; logoUrl: string;
+};
+const YT_TAGLINE = "Subscribe for weekly home videos";
+
+/**
+ * A small live picture of the YouTube banner. Blank (placeholders only) until
+ * the template is chosen, then the agent's own details as they edit them. The
+ * strip sits where YouTube's 1546×423 safe zone is on the 2560×1440 canvas.
+ */
+function YouTubeBannerPreview({ colors, details }: {
+  colors: { left: string; right: string; text: string };
+  details: YtBannerDetails | null;
+}) {
+  const d = details;
+  const contact = d ? [d.phone, d.email, d.website].filter(Boolean).join("  ·  ") : "Phone  ·  Email  ·  Website";
+  return (
+    <div
+      className="relative w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200"
+      style={{ aspectRatio: "16 / 9", background: `linear-gradient(to right, ${colors.left}, ${colors.right})` }}
+    >
+      <div
+        className="absolute flex items-center gap-[2.5%] border-2 border-dashed border-white/70 px-[1.2%]"
+        style={{ left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%", color: colors.text }}
+      >
+        {(!d || d.photoUrl) && (
+          d?.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={d.photoUrl} alt="" className="h-[86%] aspect-square shrink-0 rounded-full border-2 border-white object-cover" />
+          ) : (
+            <span className="flex h-[86%] aspect-square shrink-0 items-center justify-center rounded-full border-2 border-white bg-white/50 text-[9px] font-semibold">Photo</span>
+          )
+        )}
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[clamp(9px,2.2vw,16px)] font-black uppercase">{d ? d.name || " " : "Your name"}</p>
+          {(!d || d.brokerage) && <p className="truncate text-[clamp(7px,1.2vw,10px)]">{d ? d.brokerage : "Your brokerage"}</p>}
+          {(!d || d.tagline) && <p className="truncate text-[clamp(7px,1.3vw,10px)] font-extrabold uppercase opacity-80">{d ? d.tagline : YT_TAGLINE}</p>}
+          {contact && <p className="truncate text-[clamp(6px,1.1vw,9px)]">{contact}</p>}
+        </div>
+        {(!d || d.logoUrl) && (
+          d?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={d.logoUrl} alt="" className="h-[55%] max-w-[22%] shrink-0 rounded bg-white object-contain p-[0.6%]" />
+          ) : (
+            <span className="flex h-[55%] w-[18%] shrink-0 items-center justify-center rounded bg-white text-[9px] font-semibold text-slate-500">Logo</span>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 const BANNER_DEFAULTS = {
   headline: "WATCHING ON TV?",
   qr1Caption: "SCAN TO CHAT WITH US!",
@@ -1965,21 +2016,21 @@ const BANNER_PLATFORMS: {
 }[] = [
   {
     id: "youtube", label: "YouTube", size: "2560×1440", fileName: "channel-banner-2560x1440.png",
-    intro: "Generate a 2560×1440 YouTube channel banner. Every field is pre-filled to match the template — edit any of it, add up to two QR codes and two photos, then download.",
+    intro: "Everything sits in the centre strip that every phone, computer and TV shows. Choose the template and your details fill in from Settings.",
     safeZone: { left: "19.8%", top: "35.3%", width: "60.4%", height: "29.4%" },
     safeNote: "The dashed box is YouTube's safe zone — the only part guaranteed to show on phones and TVs. Everything else appears on desktop.",
     uploadHint: "Download it, then upload in YouTube Studio → Customization → Branding → Banner image.",
   },
   {
     id: "facebook", label: "Facebook", size: "1640×720", fileName: "facebook-cover-1640x720.png",
-    intro: "Generate a Facebook cover at 1640×720 — twice the size Facebook shows it, so it stays sharp. Same fields as the YouTube banner; the layout keeps everything inside the area phones and desktops both show.",
+    intro: "Generate a Facebook cover at 1640×720 — twice the size Facebook shows it, so it stays sharp. Same fields as the LinkedIn banner; the layout keeps everything inside the area phones and desktops both show.",
     safeZone: { left: "11%", top: "6.67%", width: "78%", height: "86.67%" },
     safeNote: "The dashed box is the part Facebook shows everywhere — desktop trims the top and bottom, phones trim the sides.",
     uploadHint: "Download it, then on your Page or profile choose Edit cover photo → Upload photo.",
   },
   {
     id: "linkedin", label: "LinkedIn", size: "1584×396", fileName: "linkedin-banner-1584x396.png",
-    intro: "Generate a 1584×396 LinkedIn background banner. Same fields as the YouTube banner; content stays clear of the bottom-left corner, where your profile photo sits.",
+    intro: "Generate a 1584×396 LinkedIn background banner. Same fields as the Facebook banner; content stays clear of the bottom-left corner, where your profile photo sits.",
     safeZone: { left: "20%", top: "0", width: "60%", height: "100%" },
     safeNote: "The dashed box is roughly what a phone shows. QR codes sit to the right, where desktop viewers — the ones who can scan them — see them.",
     uploadHint: "Download it, then on your LinkedIn profile click the camera icon on the background image and upload it.",
@@ -2024,21 +2075,63 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
   /** The same banner as a PDF with live text and separate images, for Canva. */
   const [pdfUrl, setPdfUrl] = useState("");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  /**
-   * Where each block sits. Empty means the template's own arrangement, which
-   * is what every banner used before this existed — so an agent who never
-   * opens the arrangement panel sees no change at all.
-   */
-  const [layout, setLayout] = useState<BannerLayout>({});
   const photoFileRef = useRef<HTMLInputElement>(null);
 
-  function adjust(block: BannerBlock, patch: Partial<BlockAdjust>) {
-    setLayout((l) => ({ ...l, [block]: { ...l[block], ...patch } }));
+  /**
+   * The YouTube banner (2026-10-16): a template shown blank, then filled from
+   * the agent's Settings when they choose it. null = not chosen yet. Edits
+   * here change the banner only, never Settings.
+   */
+  const [yt, setYt] = useState<YtBannerDetails | null>(null);
+  const [ytFilling, setYtFilling] = useState(false);
+  const [ytUploading, setYtUploading] = useState<"photoUrl" | "logoUrl" | null>(null);
+  const ytPhotoRef = useRef<HTMLInputElement>(null);
+  const ytLogoRef = useRef<HTMLInputElement>(null);
+  const setYtField = (k: keyof YtBannerDetails, v: string) => setYt((d) => (d ? { ...d, [k]: v } : d));
+
+  async function chooseYouTubeTemplate() {
+    setYtFilling(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = user
+        ? await supabase
+            .from("profiles")
+            .select("full_name, company_name, phone, company_phone, website, avatar_url, logo_url")
+            .eq("id", user.id)
+            .single()
+        : { data: null };
+      const p = (data ?? {}) as Record<string, string | null>;
+      setYt({
+        name: p.full_name ?? "",
+        brokerage: p.company_name ?? "",
+        tagline: YT_TAGLINE,
+        phone: p.phone || p.company_phone || "",
+        email: user?.email ?? "",
+        website: (p.website ?? "").replace(/^https?:\/\//, "").replace(/\/$/, ""),
+        photoUrl: p.avatar_url ?? "",
+        logoUrl: p.logo_url ?? "",
+      });
+      setBannerUrl("");
+      setPdfUrl("");
+    } finally {
+      setYtFilling(false);
+    }
   }
-  function nudge(block: BannerBlock, direction: -1 | 1) {
-    const current = layout[block]?.dy ?? 0;
-    const next = Math.max(-NUDGE_LIMIT, Math.min(NUDGE_LIMIT, current + direction * NUDGE_STEP));
-    adjust(block, { dy: next });
+
+  async function handleYtImage(e: React.ChangeEvent<HTMLInputElement>, k: "photoUrl" | "logoUrl") {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setYtUploading(k);
+    try {
+      const url = await uploadImage(file, k === "photoUrl" ? "headshot" : "logo");
+      setYtField(k, url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setYtUploading(null);
+    }
   }
 
   const setField = (k: keyof typeof BANNER_DEFAULTS, v: string) =>
@@ -2087,10 +2180,12 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
       const res = await fetch("/api/tools/banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...fields, palette, photoUrls: photos, platform, layout, photoSide,
-          customColors: palette === "custom" ? custom : undefined,
-        }),
+        body: JSON.stringify(platform === "youtube"
+          ? { ...yt, platform, palette, customColors: palette === "custom" ? custom : undefined }
+          : {
+              ...fields, palette, photoUrls: photos, platform, photoSide,
+              customColors: palette === "custom" ? custom : undefined,
+            }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -2139,7 +2234,7 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
 
   return (
     <div>
-      {/* Platform — same fields for all three, only the canvas changes */}
+      {/* Platform. Facebook and LinkedIn share fields; YouTube has its own (2026-10-16). */}
       <div className="mb-4">
         <label className={labelCls}>Platform</label>
         <div className="flex flex-wrap gap-2">
@@ -2236,6 +2331,79 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         )}
       </div>
 
+      {platform === "youtube" ? (
+        <div className="mb-5">
+          <YouTubeBannerPreview
+            colors={palette === "custom"
+              ? { left: custom.bgLeft, right: custom.bgRight, text: custom.text }
+              : BANNER_PALETTE_SWATCHES.find((s) => s.key === palette) ?? BANNER_PALETTE_SWATCHES[0]}
+            details={yt}
+          />
+          {!yt ? (
+            <button
+              type="button"
+              onClick={() => void chooseYouTubeTemplate()}
+              disabled={ytFilling}
+              className="mt-3 flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary-500 bg-primary-50 text-sm font-semibold text-slate-800 disabled:opacity-50"
+            >
+              {ytFilling ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+              {ytFilling ? "Filling in your details…" : "Use this template"}
+            </button>
+          ) : (
+            <div className="mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {([
+                  ["name", "Name"],
+                  ["brokerage", "Brokerage / team"],
+                  ["tagline", "Tagline"],
+                  ["phone", "Phone"],
+                  ["email", "Email"],
+                  ["website", "Website"],
+                ] as const).map(([k, label]) => (
+                  <div key={k}>
+                    <label className={labelCls}>{label}</label>
+                    <input type="text" value={yt[k]} onChange={(e) => setYtField(k, e.target.value)} className={inputCls} />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {([
+                  ["photoUrl", "Your photo", ytPhotoRef],
+                  ["logoUrl", "Your logo", ytLogoRef],
+                ] as const).map(([k, label, ref]) => (
+                  <div key={k} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                    {yt[k] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={yt[k]}
+                        alt={label}
+                        className={k === "photoUrl" ? "h-12 w-12 rounded-full object-cover" : "h-10 w-16 rounded object-contain bg-white"}
+                      />
+                    ) : (
+                      <span className={`flex items-center justify-center bg-slate-100 text-[10px] text-slate-400 ${k === "photoUrl" ? "h-12 w-12 rounded-full" : "h-10 w-16 rounded"}`}>
+                        None
+                      </span>
+                    )}
+                    <span className="text-sm font-medium text-slate-700">{label}</span>
+                    <span className="ml-auto flex items-center gap-3 text-xs font-semibold">
+                      <button type="button" onClick={() => ref.current?.click()} disabled={ytUploading !== null} className="text-primary-600 hover:text-primary-700 disabled:opacity-50">
+                        {ytUploading === k ? "Uploading…" : "Change"}
+                      </button>
+                      {yt[k] && (
+                        <button type="button" onClick={() => setYtField(k, "")} className="text-slate-400 hover:text-red-600">
+                          Remove
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <input ref={ytPhotoRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleYtImage(e, "photoUrl")} />
+              <input ref={ytLogoRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleYtImage(e, "logoUrl")} />
+            </div>
+          )}
+        </div>
+      ) : (<>
       {/* Headline */}
       <div className="mb-4">
         <label className={labelCls}>Headline</label>
@@ -2331,7 +2499,7 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
         {/* Only with a photo to place: a switch that moves nothing is worse
             than no switch. */}
-        {platform !== "youtube" && photos.length > 0 && (
+        {photos.length > 0 && (
           <div className="mt-3">
             <p className="text-xs font-semibold text-slate-600 mb-1">Photo position</p>
             <div className="flex flex-wrap gap-2">
@@ -2357,110 +2525,11 @@ function BannerGenerator({ initialPlatform = "youtube", prefill }: { initialPlat
         )}
       </div>
 
-      {/* ── Arrangement ──
-          Only on the YouTube canvas. The social banners are a single centred
-          stack by design — an alignment control there would be a button that
-          does nothing, which is worse than not offering it. Their one real
-          choice, which side the photo sits, is under Photos. */}
-      {platform === "youtube" && (
-        <div className="rounded-xl border border-slate-200 p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-            <p className="text-sm font-semibold text-slate-700">Arrangement</p>
-            <button
-              type="button"
-              onClick={() => setLayout({})}
-              className="text-xs font-medium text-slate-400 hover:text-slate-600"
-            >
-              Reset to the template
-            </button>
-          </div>
-          <p className="text-xs text-slate-400 mb-3">
-            Move each piece around, resize it, or leave it out. Nothing can land in the
-            edges YouTube crops on phones and TVs.
-          </p>
-
-          <div className="flex flex-col gap-2">
-            {BANNER_BLOCKS.map((block) => {
-              const a = layout[block] ?? {};
-              const off = a.dy ?? 0;
-              const hidden = a.hidden === true;
-              const pill = (on: boolean) =>
-                `px-2 py-1 text-[11px] font-semibold transition-colors ${
-                  on ? "bg-primary-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-                }`;
-              return (
-                <div
-                  key={block}
-                  className={`flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 ${hidden ? "opacity-50" : ""}`}
-                >
-                  <span className="w-32 shrink-0 text-xs font-medium text-slate-700">
-                    {BANNER_BLOCK_LABELS[block]}
-                  </span>
-
-                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                    {(["left", "center", "right"] as const).map((al) => (
-                      <button
-                        key={al}
-                        type="button"
-                        disabled={hidden}
-                        onClick={() => adjust(block, { align: al })}
-                        className={pill((a.align ?? "left") === al)}
-                        title={`Align ${al}`}
-                      >
-                        {al === "left" ? "◀" : al === "center" ? "▬" : "▶"}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                    <button type="button" disabled={hidden || off <= -NUDGE_LIMIT}
-                      onClick={() => nudge(block, -1)} className={pill(false)} title="Move up">↑</button>
-                    <button type="button" disabled={hidden || off >= NUDGE_LIMIT}
-                      onClick={() => nudge(block, 1)} className={pill(false)} title="Move down">↓</button>
-                  </div>
-
-                  <div className="flex overflow-hidden rounded-lg border border-slate-200">
-                    {(["s", "m", "l"] as const).map((sz) => (
-                      <button
-                        key={sz}
-                        type="button"
-                        disabled={hidden}
-                        onClick={() => adjust(block, { size: sz })}
-                        className={pill((a.size ?? "m") === sz)}
-                        title={sz === "s" ? "Smaller" : sz === "l" ? "Bigger" : "Template size"}
-                      >
-                        {sz.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => adjust(block, { hidden: !hidden })}
-                    className="ml-auto text-[11px] font-semibold text-slate-400 hover:text-slate-600"
-                  >
-                    {hidden ? "Show" : "Hide"}
-                  </button>
-
-                  {/* Said in words, because two arrows and a number of pixels
-                      is not something anyone should have to hold in their head
-                      between presses. */}
-                  {off !== 0 && !hidden && (
-                    <span className="w-full text-[11px] text-slate-400">
-                      Moved {Math.abs(off / NUDGE_STEP)} step{Math.abs(off) === NUDGE_STEP ? "" : "s"}{" "}
-                      {off < 0 ? "up" : "down"}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      </>)}
 
       <button
         onClick={generate}
-        disabled={loading}
+        disabled={loading || (platform === "youtube" && !yt)}
         className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}

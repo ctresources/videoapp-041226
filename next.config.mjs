@@ -6,6 +6,9 @@ const nextConfig = {
     // fonts) — make sure the file ships with every route that renders one.
     outputFileTracingIncludes: {
       "/api/tools/thumbnail": ["./fonts/**"],
+      // The banners draw in Archivo Black and, for the YouTube banner's
+      // contact line, Montserrat (2026-10-16).
+      "/api/tools/banner": ["./fonts/**"],
       // The image generator draws in two faces — Archivo Black for titles and
       // figures, Montserrat for labels — and both live in ./fonts. Named here
       // for the same reason the thumbnail route is: a font that is traced away
