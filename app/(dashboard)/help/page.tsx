@@ -645,7 +645,7 @@ export default function HelpPage() {
               tabs, and both start from a set of property pictures. <strong>Back</strong>, on the bar
               at the bottom, returns to Spark Studio.{" "}
               <strong>Listing video</strong> writes a tour from the listing —
-              paste a listing link, upload photos or enter the details — and renders it in your voice,
+              paste a Zillow or Redfin link (other sites coming soon), upload photos or enter the details — and renders it in your voice,
               with your avatar on screen or the photos full-frame. It uses one short video. Once the
               address and price are in, press <strong>Next · video setup</strong> on the bar at the
               bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
@@ -657,7 +657,7 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
-                them, or paste a listing link and its photos are brought in for you — then pick the
+                them, or paste a Zillow or Redfin link and its photos are brought in for you — then pick the
                 format (<strong>Vertical</strong> or <strong>Horizontal</strong>), a length, music, and
                 whether it has a voiceover and a closing card with your ask and phone number. A
                 voiceover you type is read in <strong>your own voice clone</strong> once you have set

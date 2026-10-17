@@ -618,7 +618,7 @@ export function PhotoReelForm({
               </Button>
             </div>
             <p className="mt-1 text-[11.5px] leading-snug text-spark-ink-faint">
-              Zillow, Realtor.com, your MLS or brokerage page. Or upload your own below.
+              Only use a Zillow or Redfin link — others coming soon. Or upload your own below.
             </p>
           </div>
         )}
