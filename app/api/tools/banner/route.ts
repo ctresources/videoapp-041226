@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     qr2Caption?: string;
     qr2Link?: string;
     photoUrls?: string[];
+    logoUrl?: string;
     palette?: string;
     /** The agent's own colors when palette is "custom"; checked by customPalette. */
     customColors?: { bgLeft?: string; bgRight?: string; text?: string; accent?: string };
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       qr2Caption: body.qr2Caption,
       qr2Link: body.qr2Link,
       photoUrls: Array.isArray(body.photoUrls) ? body.photoUrls : undefined,
+      logoUrl: typeof body.logoUrl === "string" ? body.logoUrl : undefined,
       palette: body.palette,
       customColors: body.customColors && typeof body.customColors === "object" ? body.customColors : undefined,
       // Only the YouTube canvas is a spatial template with blocks to move;
