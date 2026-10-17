@@ -26,8 +26,13 @@
  * 50/50 presenter split in create-blog, which left 45 seconds of photo time on
  * a 90-second video. Listings now ask for 30/70, which is ~64 seconds, or
  * about 5 seconds each across twelve.
+ *
+ * 15 since 2026-10-16, the owner's call when the other paths went to 20:
+ * about 4 seconds each on a 90-second listing, and three more scenes to
+ * plan. If an Avatar video ever runs up against the 30-minute auto-fail,
+ * this is still the number to lower first.
  */
-export const AGENT_PHOTO_LIMIT = 12;
+export const AGENT_PHOTO_LIMIT = 15;
 
 /**
  * Direct Video (pasted scripts and long-form).

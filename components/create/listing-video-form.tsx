@@ -160,7 +160,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
       .catch(() => {});
   }, []);
 
-  // 20 since 2026-10-16; an Avatar video still uses only the first 12.
+  // 20 since 2026-10-16; an Avatar video uses only the first 15 (AGENT_PHOTO_LIMIT).
   const MAX_LISTING_PHOTOS = UPLOAD_PHOTO_LIMIT;
 
   // ── Scrape ─────────────────────────────────────────────────────────────────

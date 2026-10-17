@@ -251,11 +251,9 @@ export function TalkingAvatarUploader({
               cropped and composited in several places; below 480x640 it is
               upscaled, and a soft face is the one flaw people notice. */}
           <p className="text-xs text-slate-400 mt-0.5">1000 x 1000 or larger works everywhere · 480 x 640 is the minimum</p>
+          {/* Since 2026-10-16 the photo is used whole (avatar-crops.ts fitOnBlur). */}
           <p className="text-xs text-slate-400 mt-1">
-            📐 We auto-crop to a square so one photo works for YouTube (16:9) and Reels (9:16).
-            Mostly making widescreen videos? Add a look from a <strong>horizontal (landscape)</strong> photo
-            — it fills 16:9 best. Mostly Reels? A <strong>vertical</strong> photo fills 9:16 best.
-            You can add a look for each format.
+            📐 Your whole photo is used, never cropped. In widescreen and Reels, the sides fill with a soft blur.
           </p>
           {statusLabel ? (
             <p className="text-xs text-primary-600 font-medium mt-1.5 flex items-center gap-1">

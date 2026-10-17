@@ -650,6 +650,11 @@ export default function HelpPage() {
               address and price are in, press <strong>Next · video setup</strong> on the bar at the
               bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
               to go straight to the teleprompter with your photos behind you, free.
+              {/* Photo counts (2026-10-16). */}
+              <span className="block mt-1.5">
+                A video takes up to <strong>20 photos</strong>; Avatar video uses the first 15. When
+                your photos are enough to fill the video, no stock footage is added.
+              </span>
               <span className="block mt-1.5">
                 <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
                 them, or paste a listing link and its photos are brought in for you — then pick the
@@ -701,6 +706,12 @@ export default function HelpPage() {
               from what people are asking about that subject in your town. Those six are{" "}
               <strong>AI answer blocks</strong>, built into every article (step 19). That is the shape an AI
               assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
+              {/* Editing the article (2026-10-16). */}
+              To change the words, press <strong>Edit</strong> on the article. The introduction, body
+              and conclusion become boxes you can type in, with headings marked <strong>##</strong>.{" "}
+              <strong>Save</strong> keeps your changes, and Copy as HTML, the email version, the
+              newsletter and BoldTrail all use them. The <strong>Headline</strong> box at the top of
+              the article changes its title the same way.{" "}
               <strong>Header image</strong> makes the picture that sits above the headline — a real
               photograph of the kind of place the article is about, with no words drawn into it —
               and <strong>Copy as HTML</strong> then carries it across with the text, so what you
