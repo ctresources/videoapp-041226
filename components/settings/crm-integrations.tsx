@@ -368,24 +368,8 @@ export function CrmIntegrations() {
         </div>
       )}
 
-      {/* Payload format */}
-      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-        <p className="text-xs font-semibold text-slate-600 mb-1.5">Webhook Payload Format</p>
-        <pre className="text-[10px] text-slate-500 leading-relaxed overflow-x-auto">{`{
-  "event": "video.published",
-  "timestamp": "2025-12-29T00:00:00.000Z",
-  "source": "SparkReels",
-  "data": {
-    "video_id": "uuid",
-    "title": "Austin Market Update Q1",
-    "video_url": "https://...",
-    "project_type": "blog_video"
-  }
-}`}</pre>
-        <p className="text-[10px] text-slate-400 mt-1.5">
-          When a secret is set, requests include <code>X-VTV-Signature: sha256=...</code> for verification.
-        </p>
-      </div>
+      {/* The payload format box came off at the owner's ask (2026-10-18): it
+          was code-looking detail most agents never need. */}
     </div>
   );
 }
