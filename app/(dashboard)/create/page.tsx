@@ -3539,7 +3539,8 @@ function CreatePageInner() {
               areas and will make a different video for each, so this is a
               question the page has to ask rather than a profile setting it can
               assume. It seeds the trending list too. */}
-          <section className={`rounded-[18px] border border-spark-rule bg-[#f4f2e8] px-5 py-5 lg:px-4 lg:py-3 ${twoCols ? "lg:flex lg:flex-1 lg:flex-col" : ""}`}>
+          {/* White like step 1's card (2026-10-18, the owner's ask); was paper. */}
+          <section className={`rounded-[22px] border-[1.5px] border-spark-rule bg-white px-5 py-5 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:px-4 lg:py-3 ${twoCols ? "lg:flex lg:flex-1 lg:flex-col" : ""}`}>
           <div id="brief-town" className="flex scroll-mt-24 flex-col gap-3 lg:gap-2">
             {/* A "City + State" heading sat here, over two fields labelled
                 "City or area" and "State". Taken off by the owner as saying
