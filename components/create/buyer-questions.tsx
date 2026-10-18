@@ -92,14 +92,23 @@ export function BuyerQuestions({
           {shown.map((q, i) => {
             const on = picked === q;
             return (
-              <li key={q} className="flex items-center gap-2.5 rounded-[12px] border border-spark-rule bg-white px-2.5 py-1.5">
+              // The whole row is the button (2026-10-18): only the Record this
+              // pill used to respond, so tapping the question did nothing.
+              <li
+                key={q}
+                role="button"
+                tabIndex={0}
+                onClick={() => { setPicked(q); onPick(q); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(q); onPick(q); } }}
+                className="flex cursor-pointer items-center gap-2.5 rounded-[12px] border border-spark-rule bg-white px-2.5 py-1.5 transition-colors hover:border-spark-amber active:bg-spark-amber-tint"
+              >
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-spark-paper text-[12px] font-bold text-spark-ink-soft">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1 text-[14px] font-semibold leading-[1.35] text-spark-ink">&ldquo;{q}&rdquo;</span>
                 <button
                   type="button"
-                  onClick={() => { setPicked(q); onPick(q); }}
+                  onClick={(e) => { e.stopPropagation(); setPicked(q); onPick(q); }}
                   className={`flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
                     on ? "border-green-300 bg-green-50 text-green-700" : "border-[#e2b97a] text-[#A3660F] hover:bg-spark-amber-tint"
                   }`}
