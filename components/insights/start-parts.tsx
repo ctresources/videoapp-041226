@@ -166,20 +166,18 @@ export async function GettingStarted({ userId }: { userId: string }) {
 export function QuickLinks() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="spark-banner-gradient rounded-2xl p-6 text-white">
-        <h3 className="font-bold text-lg mb-3 text-spark-ink">Create a New Video</h3>
-        <Link href="/create">
-          <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
-            <Mic size={16} /> Start Creating
-          </Button>
+      {/* White with black text and outline buttons (2026-10-17, the owner's
+          ask): on the gradient the buttons' own fill hid their words. */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-black">
+        <h3 className="font-bold text-lg mb-3 text-black">Create a New Video</h3>
+        <Link href="/create" className="inline-flex items-center gap-2 rounded-xl border border-black bg-transparent px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-slate-50">
+          <Mic size={16} /> Start Creating
         </Link>
       </div>
-      <div className="spark-banner-gradient rounded-2xl p-6 text-white">
-        <h3 className="font-bold text-lg mb-3 text-spark-ink">Content Calendar</h3>
-        <Link href="/calendar">
-          <Button className="bg-white text-primary-600 hover:bg-primary-50 gap-2" size="md">
-            <CalendarDays size={16} /> View Calendar
-          </Button>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-black">
+        <h3 className="font-bold text-lg mb-3 text-black">Content Calendar</h3>
+        <Link href="/calendar" className="inline-flex items-center gap-2 rounded-xl border border-black bg-transparent px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-slate-50">
+          <CalendarDays size={16} /> View Calendar
         </Link>
       </div>
     </div>

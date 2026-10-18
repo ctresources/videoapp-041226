@@ -77,49 +77,50 @@ export function DraftQueue({ city, state }: Props) {
   if (dismissed) return null;
 
   return (
-    <div className="spark-banner-gradient rounded-2xl p-5 mb-6 text-white">
+    // White with black text (2026-10-17, the owner's ask).
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 mb-6 text-black">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center shrink-0">
-            <Sparkles size={16} className="text-yellow-300" />
+          <div className="w-8 h-8 bg-spark-amber-tint rounded-lg flex items-center justify-center shrink-0">
+            <Sparkles size={16} className="text-spark-amber" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight text-spark-ink">Your Draft Queue</p>
-            <p className="text-xs text-primary-100 mt-0.5">AI-researched topics ready to record this week</p>
+            <p className="text-sm font-bold leading-tight text-black">Your Draft Queue</p>
+            <p className="text-xs text-black mt-0.5">AI-researched topics ready to record this week</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => fetchSuggestions(true)}
             disabled={loading}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40"
             title="Refresh"
           >
-            <RefreshCw size={13} className={`text-white/80 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw size={13} className={`text-black ${loading ? "animate-spin" : ""}`} />
           </button>
-          <button onClick={handleDismiss} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-            <X size={13} className="text-white/70" />
+          <button onClick={handleDismiss} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+            <X size={13} className="text-black" />
           </button>
         </div>
       </div>
 
       {loading && suggestions.length === 0 ? (
-        <div className="flex items-center gap-2 py-2 text-sm text-primary-100">
+        <div className="flex items-center gap-2 py-2 text-sm text-black">
           <Loader2 size={14} className="animate-spin" />
           Researching this week&apos;s best topics for your market…
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {suggestions.map((s, i) => (
-            <div key={i} className="bg-white/10 hover:bg-white/15 rounded-xl p-3.5 transition-colors">
+            <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 transition-colors hover:bg-slate-100">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white leading-snug mb-1">{s.title}</p>
-                  <p className="text-xs text-white/80 leading-relaxed">{s.why_now}</p>
+                  <p className="text-sm font-semibold text-black leading-snug mb-1">{s.title}</p>
+                  <p className="text-xs text-black leading-relaxed">{s.why_now}</p>
                 </div>
                 <button
                   onClick={() => handleGenerate(s.title)}
-                  className="shrink-0 flex items-center gap-1.5 bg-white text-spark-ink text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-spark-blue/10 transition-colors mt-0.5"
+                  className="shrink-0 flex items-center gap-1.5 rounded-lg border border-black bg-transparent px-3 py-1.5 text-xs font-bold text-black transition-colors hover:bg-white mt-0.5"
                 >
                   Generate <ArrowRight size={12} />
                 </button>
