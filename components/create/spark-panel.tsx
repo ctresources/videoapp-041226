@@ -131,7 +131,7 @@ interface SparkPanelProps {
   /**
    * "inline": no frame of its own, for sitting inside another card, and laid
    * out from the owner's mock (2026-10-14): "Or try:" and the chips, then
-   * More ideas under them. No Shuffle, which the mock leaves out.
+   * More ideas under them, with Shuffle beside More ideas (back 2026-10-18).
    */
   variant?: "joined" | "inline";
   city?: string;
@@ -215,21 +215,34 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className
     >
       {inline && !open && (
         <>
+          {/* Four at a time, and Shuffle back beside More ideas (2026-10-18,
+              the owner's ask; the Oct 14 layout had left it out). */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[13px] font-semibold text-spark-ink-soft">Or try:</span>
-            {shortlist.map((t) => (
+            {shortlist.slice(0, 4).map((t) => (
               <button key={t.id} type="button" onClick={() => pick(t)} title={t.description} className={chip}>
                 {SHORT_LABELS[t.id] ?? t.label}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => { setOpen(true); setQuery(""); }}
-            className="mt-2.5 text-[14px] font-semibold text-spark-amber hover:text-spark-blue"
-          >
-            More ideas ({CONTENT_TEMPLATES.length}) →
-          </button>
+          <div className="mt-2.5 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => { setOpen(true); setQuery(""); }}
+              className="text-[14px] font-semibold text-spark-amber hover:text-spark-blue"
+            >
+              More ideas ({CONTENT_TEMPLATES.length}) →
+            </button>
+            <button
+              type="button"
+              // Stepped, like the other Shuffle, so a press never redraws the same four.
+              onClick={() => setSeed((n) => n + 1 + Math.floor(Math.random() * 7))}
+              title="Show me four more"
+              className="flex items-center gap-1.5 text-[14px] font-semibold text-spark-ink-muted transition-colors hover:text-spark-amber"
+            >
+              <Shuffle size={14} /> Shuffle
+            </button>
+          </div>
         </>
       )}
       {(!inline || open) && (
