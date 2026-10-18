@@ -246,8 +246,8 @@ export default function SettingsPage() {
           { id: "brand", label: "Brand & photo", done: !!brandData?.avatar_url },
           { id: "cta", label: "Video CTA", done: savedCta },
           { id: "email-import", label: "Email import" },
-          { id: "crm", label: "CRM" },
           { id: "phone", label: "Phone", done: standalone },
+          { id: "crm", label: "CRM" },
           { id: "account", label: "Account" },
         ]}
       />
@@ -486,6 +486,9 @@ export default function SettingsPage() {
         <EmailImportAddress />
       </Card>
 
+      {/* On the phone's Home Screen (2026-10-17); before CRM since 2026-10-18. */}
+      <HomeScreenCard id="phone" />
+
       {/* CRM Integrations */}
       <Card id="crm" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
@@ -495,7 +498,7 @@ export default function SettingsPage() {
           <div>
             <h3 className="font-semibold text-brand-text">CRM Integration</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Auto-notify GoHighLevel, HubSpot, Follow Up Boss, BoldTrail when videos publish
+              Auto-notify GoHighLevel and BoldTrail when videos publish
             </p>
           </div>
         </div>
@@ -503,9 +506,6 @@ export default function SettingsPage() {
         <BoldTrailConnect />
         <CrmIntegrations />
       </Card>
-
-      {/* On the phone's Home Screen (2026-10-17). */}
-      <HomeScreenCard id="phone" />
 
       {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
       <AffiliateCard />

@@ -30,7 +30,9 @@ const ALL_EVENTS = [
   { value: "video.published", label: "Video Published" },
 ];
 
-// CRM platform presets — URL hints + setup guides
+// CRM platform presets — URL hints + setup guides. HubSpot and Follow Up Boss
+// came off at the owner's ask (2026-10-18); a webhook already saved for either
+// keeps working, since it is just an address.
 const CRM_PRESETS = [
   {
     id: "ghl",
@@ -39,22 +41,6 @@ const CRM_PRESETS = [
     color: "bg-orange-50 border-orange-200",
     guide: "In GHL → Automations → Create Workflow → Add Trigger: \"Inbound Webhook\" → copy the webhook URL and paste it below.",
     urlHint: "https://services.leadconnectorhq.com/hooks/...",
-  },
-  {
-    id: "hubspot",
-    name: "HubSpot",
-    logo: "🟠",
-    color: "bg-amber-50 border-amber-200",
-    guide: "In HubSpot → Automation → Workflows → Create Workflow → Add Action: \"Send Webhook (POST)\" → copy the URL they give you.",
-    urlHint: "https://api.hubspot.com/...",
-  },
-  {
-    id: "fub",
-    name: "Follow Up Boss",
-    logo: "🎯",
-    color: "bg-spark-blue/10 border-spark-blue/25",
-    guide: "In FUB → Admin → API → Webhooks → New Webhook → select events → copy the generated URL. Or use Zapier: Zapier → New Zap → Trigger: Webhooks by Zapier (Catch Hook) → copy the URL.",
-    urlHint: "https://hooks.zapier.com/hooks/catch/...",
   },
   {
     id: "boldtrail",

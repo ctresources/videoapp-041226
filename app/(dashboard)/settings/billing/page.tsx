@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { SettingsSteps } from "@/components/settings/settings-steps";
+import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { redirect } from "next/navigation";
 import {
   CheckCircle, CreditCard, Zap, Building2, User,
@@ -436,6 +437,12 @@ export default async function BillingPage({
             </div>
           );
         })}
+      </div>
+
+      {/* Share and earn, after the plans (2026-10-18, the owner's ask): the
+          same card as on the Profile tab. */}
+      <div className="mb-8">
+        <AffiliateCard />
       </div>
 
       {/* Buy More Videos */}
