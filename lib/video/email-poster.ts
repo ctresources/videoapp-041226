@@ -31,7 +31,12 @@ function grabFrame(video: string, at: number, dest: string): Promise<boolean> {
 export async function makeEmailPoster(videoUrl: string, seconds: number | null): Promise<Buffer | null> {
   const dest = join(tmpdir(), `email-poster-${randomUUID()}.jpg`);
   try {
-    const at = seconds && seconds < 4 ? 0.3 : 1;
+    // A third of the way in (2026-10-18). At 1 second the still caught the
+    // opening title card, with the video's own captions drawn across it, and
+    // the email showed the two sets of words on top of each other.
+    // Length unknown: 8 seconds in, past most title cards; a shorter video
+    // falls back to its first frame below.
+    const at = !seconds ? 8 : seconds >= 6 ? seconds / 3 : seconds < 4 ? 0.3 : 1;
     if (!(await grabFrame(videoUrl, at, dest)) && !(await grabFrame(videoUrl, 0, dest))) return null;
     const sharp = (await import("sharp")).default;
     const frame = sharp(await fs.readFile(dest)).rotate();
@@ -62,5 +67,7 @@ export async function saveEmailPoster(
   const path = `thumbnails/${userId}/${prefix}_${videoId}.jpg`;
   const { error } = await admin.storage.from("assets").upload(path, poster, { contentType: "image/jpeg", upsert: true });
   if (error) return null;
-  return admin.storage.from("assets").getPublicUrl(path).data.publicUrl;
+  // Versioned: the same path is overwritten when a still is remade, and an
+  // email app that has seen the old address would keep showing the old one.
+  return `${admin.storage.from("assets").getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
 }

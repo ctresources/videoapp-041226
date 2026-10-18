@@ -781,10 +781,17 @@ export default function ProjectEditorPage() {
         // Show all looks including processing ones (displayed differently in the grid)
         const all: AvatarLook[] = data.looks || [];
         setLooks(all);
-        // Auto-select first ready look on initial (non-silent) load only
+        // Auto-select on initial (non-silent) load only. The widescreen or
+        // vertical copy of the headshot first (2026-10-18): the first look in
+        // the list was the original tall photo, and a wide video made from it
+        // showed the presenter in a narrow strip with white bars. The render
+        // swaps between the two copies to match the video's shape.
         if (!silent) {
           const ready = all.filter((l) => !l.status || l.status === "completed" || l.status === "active");
-          if (ready.length > 0) setSelectedLookId(ready[0].id);
+          const fl = (data.formatLooks ?? {}) as { wide?: string | null; tall?: string | null };
+          const shaped = ready.find((l) => l.id === fl.wide) ?? ready.find((l) => l.id === fl.tall);
+          if (shaped) setSelectedLookId(shaped.id);
+          else if (ready.length > 0) setSelectedLookId(ready[0].id);
         }
         // Auto-poll while any look is still generating; stop and notify when done
         const hasProcessing = all.some((l) => l.status === "processing" || l.status === "pending");

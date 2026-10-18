@@ -93,8 +93,8 @@ export default function VideoEmailPage() {
     setTo((prev) => (prev.some((x) => x.id === c.id) ? prev : prev.length >= MAX ? (toast.error(`Up to ${MAX} people at a time.`), prev) : [...prev, c]));
   }
 
-  async function addByEmail() {
-    if (!addEmail.includes("@")) return;
+  async function addByEmail(): Promise<boolean> {
+    if (!addEmail.includes("@")) return false;
     setAdding(true);
     try {
       const res = await fetch("/api/video-email/contact", {
@@ -106,11 +106,30 @@ export default function VideoEmailPage() {
       if (!res.ok) throw new Error(d?.error || "Couldn't find that contact.");
       addContact(d.contact);
       setAddEmail("");
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't find that contact.");
+      return false;
     } finally {
       setAdding(false);
     }
+  }
+
+  /**
+   * The Send button under the To box (2026-10-18). An address typed but not
+   * added was the owner's case: the list was empty, so no Send appeared and
+   * nothing went. Pressing Send now adds it first.
+   */
+  async function startSend() {
+    if (addEmail.includes("@")) {
+      if (!(await addByEmail())) return;
+      if (!subject.trim()) { toast.error("Add a subject first."); return; }
+      setConfirming(true);
+      return;
+    }
+    if (to.length === 0) { toast.error("Add someone first."); return; }
+    if (!subject.trim()) { toast.error("Add a subject first."); return; }
+    setConfirming(true);
   }
 
   /** Only from Send now in the confirmation. */
@@ -208,6 +227,14 @@ export default function VideoEmailPage() {
                   </div>
                 )}
                 <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">Up to {MAX} people, each sent their own email.</p>
+                <button
+                  type="button"
+                  onClick={() => void startSend()}
+                  disabled={adding || sending}
+                  className="mt-2.5 flex w-fit items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  {adding ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send through BoldTrail
+                </button>
               </>
             ) : (
               <p className="rounded-xl border border-dashed border-spark-rule p-3 text-[13px] text-spark-ink-muted">

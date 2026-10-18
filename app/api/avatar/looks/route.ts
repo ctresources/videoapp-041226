@@ -11,9 +11,12 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id")
+    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall")
     .eq("id", user.id)
     .single();
+  // The widescreen and vertical copies of the headshot, so the editor can
+  // start on one of them (2026-10-18); the render swaps to the right shape.
+  const formatLooks = { wide: profile?.heygen_look_wide ?? null, tall: profile?.heygen_look_tall ?? null };
 
   const photoGroupId = profile?.heygen_photo_id ?? null;
   const dtGroupId = profile?.heygen_digital_twin_group_id ?? null;
@@ -54,7 +57,7 @@ export async function GET() {
     ...(dtResult.status === "fulfilled" ? dtResult.value : []),
   ];
 
-  return NextResponse.json({ looks });
+  return NextResponse.json({ looks, formatLooks });
 }
 
 /**
