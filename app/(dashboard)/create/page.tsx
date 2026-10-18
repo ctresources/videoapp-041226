@@ -3782,6 +3782,9 @@ function CreatePageInner() {
       {inputMode === "paste" && step === "input" && (
         <StepFooter
           wide={twoCols}
+          // Back to Spark Studio with "AI writes it" (2026-10-18, the owner's
+          // ask): this was the one Create screen without a Back.
+          onBack={pasteGenerating ? undefined : backToStart}
           hint={
             pasteGenerating
               ? "Saving your script…"
