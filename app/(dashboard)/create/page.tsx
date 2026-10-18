@@ -2637,7 +2637,9 @@ function CreatePageInner() {
           {/* Named so the hero mic can bring what it heard into view. */}
           <div id="spark-composer" className="-mb-3 scroll-mt-20" />
           <ComposerCard
-            standalone
+            // One card with the topics under it (2026-10-18): open at the
+            // bottom, unless the topics are hidden on this page.
+            standalone={tabPage}
             disabled={!topicApplies}
             // The four reminder chips (Topic, Town, Audience, Format) and
             // the line under them came off at the owner's direction: each
@@ -2832,7 +2834,11 @@ function CreatePageInner() {
           {/* Under the mic card, from the owner's mock (2026-10-14): the
               first-video quick win, then what buyers ask AI with the topic
               ideas at its foot. */}
-          <div className={`flex flex-col gap-3 lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
+          {/* The bottom half of step 1's one card (2026-10-18, the owner's
+              option A): the composer above is open at the bottom, -mt-3
+              cancels the column's gap, and a thin line divides the two. */}
+          <div className={`-mt-3 flex flex-col gap-3 rounded-b-[22px] border-[1.5px] border-t-0 border-spark-rule bg-white px-4 pb-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
+          <div className="border-t border-spark-rule" />
           <FirstSparkBanner
             city={locCity.trim() || ctaProfile?.location_city || ""}
             state={locCity.trim() ? locState : (ctaProfile?.location_state || "")}

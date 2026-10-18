@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -93,11 +92,10 @@ export function FirstSparkBanner({ city, state, onUse }: {
     <button
       type="button"
       onClick={() => onUse(pick.topic(where))}
-      className="flex w-full items-start gap-3 rounded-[16px] border border-[#ecd3a8] bg-[#fdf6ea] px-3.5 py-2 text-left transition-colors hover:border-spark-amber"
+      // A white row with no icon, like the buyer questions under it, inside
+      // step 1's one card (2026-10-18, the owner's ask).
+      className="flex w-full items-start rounded-[12px] border border-spark-rule bg-white px-3 py-2 text-left transition-colors hover:border-spark-amber"
     >
-      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl spark-cta-gradient text-white">
-        <Zap size={16} />
-      </span>
       <span className="min-w-0">
         <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-[#A3660F]">
           {firstVideo ? "Your first Spark · Quick win" : "Quick win"}

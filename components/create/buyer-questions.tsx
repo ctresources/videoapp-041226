@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bot, Check, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 /**
  * What buyers in this market are asking AI, as topics (owner's mock,
@@ -56,10 +56,10 @@ export function BuyerQuestions({
   const shown = more ? questions : questions.slice(0, 1);
 
   return (
-    <section className={`rounded-[18px] border border-spark-rule bg-[#fbf9f3] px-4 py-3 ${className}`}>
+    // No card of its own since 2026-10-18: it sits inside step 1's one card.
+    <section className={className}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Bot size={17} className="flex-none text-[#A3660F]" aria-hidden />
           <h3 className="text-[16px] font-bold leading-tight text-spark-ink">
             What buyers in {place || "your area"} ask AI
           </h3>
