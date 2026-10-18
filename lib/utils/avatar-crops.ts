@@ -15,14 +15,22 @@ const TALL = { width: 1080, height: 1920 };
 const BUCKET = "avatars";
 
 /**
- * The whole photo, uncut, centred on a blurred copy of itself that fills the
- * shape (2026-10-16, the owner's ask).
+ * The whole photo, uncut, filling the shape (2026-10-16, the owner's ask).
  *
  * This used to be a cover crop: a head-and-shoulders photo cut down to 16:9
  * kept a band across the face and threw the rest away, so the presenter in
  * every widescreen video looked zoomed in and cut off. Now nothing of the
- * person is lost, and the blur fills the sides (or top and bottom) instead of
- * the bars the video maker would add for a photo of the wrong shape.
+ * person is lost, and the space beside it is filled instead of the bars the
+ * video maker would add for a photo of the wrong shape.
+ *
+ * How it is filled (2026-10-18, the owner's pick):
+ *  - A photo with a PLAIN backdrop (a studio headshot) gets that backdrop's
+ *    own colour, with the photo's edges blended in, so it reads as one wide
+ *    studio backdrop. A blur of such a photo picked up the hair and looked
+ *    muddy. On a vertical canvas the photo sits at the bottom and the colour
+ *    is headroom above it, as a portrait would be framed.
+ *  - A BUSY background (an office, outdoors) keeps a blurred copy of the
+ *    photo, since a flat colour beside a detailed scene looks pasted on.
  */
 export async function fitOnBlur(
   buf: Buffer,
@@ -30,16 +38,43 @@ export async function fitOnBlur(
 ): Promise<Buffer> {
   // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
   const sharp = (await import("sharp")).default;
-  // EXIF orientation first, so a phone photo is upright in both layers.
-  const upright = await sharp(buf).rotate().toBuffer();
-  const [backdrop, photo] = await Promise.all([
-    sharp(upright)
-      .resize({ ...size, fit: "cover" })
-      .blur(40)
-      .modulate({ brightness: 0.85 })
-      .toBuffer(),
-    sharp(upright).resize({ ...size, fit: "inside" }).toBuffer(),
-  ]);
+  // EXIF orientation first, so a phone photo is upright in every layer.
+  const upright = await sharp(buf).rotate().removeAlpha().toBuffer();
+  const photo = await sharp(upright).resize({ ...size, fit: "inside" }).toBuffer();
+  const meta = await sharp(photo).metadata();
+  const pw = meta.width ?? size.width;
+  const ph = meta.height ?? size.height;
+  if (pw >= size.width && ph >= size.height) {
+    return sharp(photo).jpeg({ quality: 92 }).toBuffer();
+  }
+  const sidesFill = pw < size.width;
+
+  const color = await plainBackdrop(sharp, photo, pw, ph, sidesFill);
+  if (color) {
+    // Blend the photo's edges into the colour so no hard line shows where
+    // the shoulders meet the edge of the original picture.
+    const f = sidesFill ? Math.max(8, Math.round(pw * 0.08)) : Math.max(8, Math.round(ph * 0.06));
+    const mask = sidesFill
+      ? `<svg width="${pw}" height="${ph}"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="${f / pw}" stop-color="#fff" stop-opacity="1"/>
+          <stop offset="${1 - f / pw}" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient></defs><rect width="${pw}" height="${ph}" fill="url(#g)"/></svg>`
+      : `<svg width="${pw}" height="${ph}"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="${f / ph}" stop-color="#fff" stop-opacity="1"/>
+          <stop offset="1" stop-color="#fff" stop-opacity="1"/>
+        </linearGradient></defs><rect width="${pw}" height="${ph}" fill="url(#g)"/></svg>`;
+    const blended = await sharp(photo).ensureAlpha().composite([{ input: Buffer.from(mask), blend: "dest-in" }]).png().toBuffer();
+    return sharp({ create: { width: size.width, height: size.height, channels: 3, background: color } })
+      .composite([{ input: blended, gravity: sidesFill ? "center" : "south" }])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+  }
+
+  const backdrop = await sharp(upright)
+    .resize({ ...size, fit: "cover" })
+    .blur(40)
+    .modulate({ brightness: 0.85 })
+    .toBuffer();
   return sharp(backdrop)
     .composite([{ input: photo, gravity: "center" }])
     .jpeg({ quality: 92 })
@@ -47,8 +82,51 @@ export async function fitOnBlur(
 }
 
 /**
+ * The backdrop's colour when the photo has a plain one, else null.
+ *
+ * Read from the edges the fill will sit against, above the shoulders: the
+ * upper part of the left and right edges for a wide canvas, the top edge for
+ * a tall one. Plain means little variation inside each strip and, for the
+ * sides, the two strips agreeing with each other.
+ */
+async function plainBackdrop(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sharp: any, photo: Buffer, pw: number, ph: number, sidesFill: boolean,
+): Promise<{ r: number; g: number; b: number } | null> {
+  try {
+    const strip = Math.max(4, Math.round((sidesFill ? pw : ph) * 0.03));
+    const regions = sidesFill
+      ? [
+          { left: 0, top: 0, width: strip, height: Math.max(4, Math.round(ph * 0.35)) },
+          { left: pw - strip, top: 0, width: strip, height: Math.max(4, Math.round(ph * 0.35)) },
+        ]
+      : [{ left: 0, top: 0, width: pw, height: strip }];
+    const means: number[][] = [];
+    for (const region of regions) {
+      // Read from the strip's own pixels: sharp's stats() describes the whole
+      // input, whatever is extracted before it.
+      const { data, info } = await sharp(photo).extract(region).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const n = info.width * info.height;
+      const ch = [0, 1, 2].map((c) => {
+        let sum = 0, sq = 0;
+        for (let i = c; i < data.length; i += info.channels) { sum += data[i]; sq += data[i] * data[i]; }
+        const mean = sum / n;
+        return { mean, stdev: Math.sqrt(Math.max(0, sq / n - mean * mean)) };
+      });
+      if (ch.some((c) => c.stdev > 12)) return null;
+      means.push(ch.map((c) => c.mean));
+    }
+    if (means.length === 2 && means[0].some((m, i) => Math.abs(m - means[1][i]) > 14)) return null;
+    const avg = [0, 1, 2].map((i) => Math.round(means.reduce((s, m) => s + m[i], 0) / means.length));
+    return { r: avg[0], g: avg[1], b: avg[2] };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Build a 16:9 and a 9:16 version of one headshot, stored and publicly
- * readable. Each is the whole photo on a blurred fill (fitOnBlur), not a crop.
+ * readable. Each is the whole photo, filled to shape (fitOnBlur), not a crop.
  *
  * Returns null on any failure rather than throwing: these feed an optional
  * improvement, and the caller must be free to carry on registering the avatar
