@@ -14,6 +14,7 @@ import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { SettingsSteps } from "@/components/settings/settings-steps";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
+import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
 import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
@@ -505,6 +506,9 @@ export default function SettingsPage() {
 
       {/* On the phone's Home Screen (2026-10-17). */}
       <HomeScreenCard id="phone" />
+
+      {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
+      <AffiliateCard />
 
       {/* Change Password */}
       <Card id="account" className="scroll-mt-28">
