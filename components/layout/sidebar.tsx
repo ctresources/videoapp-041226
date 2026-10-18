@@ -8,6 +8,7 @@ import { LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
+import { ASK_SPARKLEE_EVENT } from "@/components/layout/ask-sparklee";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Icon geometry is lifted verbatim from the design handoff's assets/nav-items.json
@@ -203,6 +204,30 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
           />
         </Link>
       </div>
+      )}
+
+      {/* Ask Sparklee, first in the phone menu (2026-10-18, the owner's
+          mockup): the box was too big for a phone's top bar. Starts the same
+          conversation and closes the menu. */}
+      {mobile && (
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new Event("spark:close-menu"));
+            window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT));
+          }}
+          className="mx-2 mb-3 flex items-center gap-2 rounded-xl bg-[#0f0d0b] py-1.5 pl-1.5 pr-2.5 text-left"
+        >
+          <span className="sparklee-badge block h-[32px] w-[32px] shrink-0">
+            <Image src="/sparklee.webp" alt="" width={32} height={32} className="h-full w-full" unoptimized />
+          </span>
+          <span className="leading-tight">
+            <span className="block bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[14px] font-bold text-transparent">
+              Ask Sparklee
+            </span>
+            <span className="block text-[10.5px] text-[#f3e6cf]">Need help? Just ask her.</span>
+          </span>
+        </button>
       )}
 
       {/* Nav */}

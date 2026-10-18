@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { CreateProgressProvider } from "@/components/layout/create-progress";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 // Imported for its side effect: it starts listening for Android's install
@@ -41,6 +41,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
    * trap everywhere else.
    */
   const voiceShortcutRoute = pathname === "/dashboard";
+
+  // The menu's Ask Sparklee row closes the menu as it starts her.
+  useEffect(() => {
+    const close = () => setMobileOpen(false);
+    window.addEventListener("spark:close-menu", close);
+    return () => window.removeEventListener("spark:close-menu", close);
+  }, []);
 
   return (
     // No background here: the paper gradient lives on <body> and would be

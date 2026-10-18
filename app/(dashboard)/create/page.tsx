@@ -2555,24 +2555,8 @@ function CreatePageInner() {
               </span>
             ))}
           </div>
-            {/* It starts the same conversation as her badge in the top bar. */}
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new Event(ASK_SPARKLEE_EVENT))}
-              aria-label="Ask Sparklee"
-              className="ml-auto flex shrink-0 items-center gap-2.5 rounded-xl bg-[#0f0d0b] py-1.5 pl-1.5 pr-3.5 text-left transition-opacity hover:opacity-90"
-            >
-              <span className="sparklee-badge block h-[42px] w-[42px] shrink-0">
-                <Image src="/sparklee.webp" alt="" width={42} height={42} className="h-full w-full" unoptimized />
-              </span>
-              <span>
-                <span className="block bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[16px] font-bold leading-[1.05] text-transparent">
-                  Ask Sparklee
-                </span>
-                <span className="mt-0.5 block text-[11.5px] text-[#f3e6cf]">Your AI Visibility Voice Companion</span>
-                <span className="block text-[11.5px] text-[#e7a92c]">Need help on a section? Just ask her.</span>
-              </span>
-            </button>
+            {/* Ask Sparklee moved up into the top bar (2026-10-18, the owner's
+                mockup), so the steps use the full width. */}
           </div>
           <h1 className="mt-2.5 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
             What do you want to Spark today?

@@ -281,17 +281,30 @@ export function AskSparklee() {
           </button>
         </span>
       ) : (
+        // Her box in the top bar, in place of the round badge (2026-10-18,
+        // the owner's mockup): moved up from beside Create's steps. Computers
+        // only; on a phone she is the first item in the menu (sidebar.tsx),
+        // and this component stays mounted for the conversation itself.
         <button
           // A new element per page, so her 2-minute glow cycle starts over.
           key={pathname}
           type="button"
           onClick={() => void start()}
           aria-label="Ask Sparklee"
-          title="Ask Sparklee"
-          onAnimationEnd={(e) => { if (e.animationName === "sparklee-buzz") setBuzz(false); }}
-          className={cn("sparklee-badge block h-[40px] w-[40px] shrink-0", buzz && "sparklee-buzz")}
+          className="hidden shrink-0 items-center gap-2 rounded-xl border border-[#3a3226] bg-[#0f0d0b] py-1 pl-1 pr-3 text-left transition-opacity hover:opacity-90 md:flex"
         >
-          <Image src="/sparklee.webp" alt="" width={40} height={40} className="h-full w-full" unoptimized priority />
+          <span
+            onAnimationEnd={(e) => { if (e.animationName === "sparklee-buzz") setBuzz(false); }}
+            className={cn("sparklee-badge block h-[34px] w-[34px] shrink-0", buzz && "sparklee-buzz")}
+          >
+            <Image src="/sparklee.webp" alt="" width={34} height={34} className="h-full w-full" unoptimized priority />
+          </span>
+          <span className="leading-tight">
+            <span className="block bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[14.5px] font-bold text-transparent">
+              Ask Sparklee
+            </span>
+            <span className="block whitespace-nowrap text-[11px] text-[#f3e6cf]">Need help on a section? Just ask her.</span>
+          </span>
         </button>
       )}
 
