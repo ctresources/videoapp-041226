@@ -146,6 +146,12 @@ const features = [
     description: "Tick a few posts and get a ready-to-send newsletter: subject lines, your note, and a teaser with a Read more button for each.",
     photo: "https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?auto=format&fit=crop&w=600&q=80",
   },
+  // The owner's wording (2026-10-19).
+  {
+    title: "Works With BoldTrail And GoHighLevel",
+    description: "Connect BoldTrail and send seller updates, videos, blog posts and newsletters straight to your contacts, logged on each one. On GoHighLevel, every video you publish lands in your CRM automatically, so your workflow can text it, email it or post it for you. Ask us for the ready-made workflow.",
+    photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+  },
   {
     title: "Listing Video Generator",
     description: "Paste a Zillow URL or speak the address. We import the details and auto-generate a branded property tour video with your AI avatar — ready to post.",

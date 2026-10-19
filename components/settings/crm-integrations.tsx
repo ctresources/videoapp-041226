@@ -50,6 +50,15 @@ export function CrmIntegrations() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
+  /** "Ask for the workflow" on the GoHighLevel card (2026-10-19). */
+  const [workflowAsk, setWorkflowAsk] = useState<"idle" | "sending" | "sent">("idle");
+  async function askForWorkflow() {
+    setWorkflowAsk("sending");
+    const res = await fetch("/api/support/ghl-workflow", { method: "POST" }).catch(() => null);
+    const d = res ? await res.json().catch(() => ({})) : {};
+    if (res?.ok) { setWorkflowAsk("sent"); toast.success("Request sent. We'll email you the GoHighLevel workflow."); }
+    else { setWorkflowAsk("idle"); toast.error((d as { error?: string }).error || "The request didn't send. Try again in a minute."); }
+  }
   const [testResults, setTestResults] = useState<Record<string, "ok" | "fail" | "testing">>({});
   const [showSecret, setShowSecret] = useState(false);
 
@@ -160,6 +169,23 @@ export function CrmIntegrations() {
                     : <ChevronDown size={12} />}
                 </button>
               </div>
+
+              {/* The owner's wording (2026-10-19). */}
+              {crm.id === "ghl" && (
+                <>
+                  <p className="mb-2 text-xs leading-relaxed text-slate-600">
+                    Every video you publish lands in GoHighLevel automatically. Your workflow can text it, email it or post it for you.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void askForWorkflow()}
+                    disabled={workflowAsk !== "idle"}
+                    className="mb-2 w-full rounded-lg border border-orange-300 bg-white py-1.5 text-xs font-semibold text-orange-800 transition-colors hover:bg-orange-50 disabled:opacity-60"
+                  >
+                    {workflowAsk === "sending" ? "Sending…" : workflowAsk === "sent" ? "Request sent" : "Ask for the workflow"}
+                  </button>
+                </>
+              )}
 
               {expandedGuide === crm.id && (
                 <div className="mt-2 mb-3">

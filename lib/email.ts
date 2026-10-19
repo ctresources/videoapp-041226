@@ -727,3 +727,26 @@ export async function notifyAffiliateCommission({
     }),
   }).catch(() => {});
 }
+
+/**
+ * An agent asking for the ready-made GoHighLevel workflow, from the
+ * GoHighLevel card in Settings (2026-10-19). To support, with Reply going to
+ * the agent. True when Resend accepted it.
+ */
+export async function notifyGhlWorkflowRequest({ name, email }: { name: string; email: string }): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      reply_to: email,
+      subject: `GoHighLevel workflow request from ${name}`,
+      html: `<p>${esc(name)} (${esc(email)}) is asking for the GoHighLevel workflow.</p><p>Reply to this email to send it to them.</p>`,
+    }),
+  }).catch(() => null);
+  if (!res?.ok) console.error(`[ghl-workflow] request email failed: ${res ? res.status : "network error"}`);
+  return !!res?.ok;
+}
