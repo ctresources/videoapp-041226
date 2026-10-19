@@ -31,8 +31,9 @@ const ALL_EVENTS = [
 ];
 
 // CRM platform presets — URL hints + setup guides. HubSpot and Follow Up Boss
-// came off at the owner's ask (2026-10-18); a webhook already saved for either
-// keeps working, since it is just an address.
+// came off at the owner's ask (2026-10-18), and BoldTrail (2026-10-19): BoldTrail
+// connects by its API token above, so a webhook preset only suggested a second,
+// unneeded setup. A webhook already saved for any of them keeps working.
 const CRM_PRESETS = [
   {
     id: "ghl",
@@ -41,14 +42,6 @@ const CRM_PRESETS = [
     color: "bg-orange-50 border-orange-200",
     guide: "In GHL → Automations → Create Workflow → Add Trigger: \"Inbound Webhook\" → copy the webhook URL and paste it below.",
     urlHint: "https://services.leadconnectorhq.com/hooks/...",
-  },
-  {
-    id: "boldtrail",
-    name: "BoldTrail",
-    logo: "⚡",
-    color: "bg-spark-amber-tint border-spark-amber/30",
-    guide: "In BoldTrail → Settings → Integrations → Webhooks → Add Webhook → select \"Video Published\" events → copy the endpoint URL and paste it below.",
-    urlHint: "https://app.boldtrail.com/api/webhooks/...",
   },
 ];
 

@@ -498,7 +498,7 @@ export default function SettingsPage() {
           <div>
             <h3 className="font-semibold text-brand-text">CRM Integration</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Auto-notify GoHighLevel and BoldTrail when videos publish
+              BoldTrail connects by token below; webhooks notify GoHighLevel when videos publish
             </p>
           </div>
         </div>
