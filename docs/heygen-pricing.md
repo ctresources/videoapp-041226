@@ -13,6 +13,36 @@ This is separate from the HeyGen **web plan** (Creator $29, Pro $49, per the
 owner). The web plan sets workspace limits such as voice clone slots
 (Creator 40, Pro 70); it does not pay for API renders.
 
+## Digital Twins and every avatar, confirmed by HeyGen support (2026-10-19)
+
+The owner asked HeyGen support directly; these are their answers for this
+account (API pay-as-you-go + Creator web plan).
+
+**Creating a Digital Twin (custom video avatar) through the API: $2.13 per
+twin (43 API credits), once.** No Enterprise plan, no web slots, no $29/month
+slot add-on: the API never checks the Creator plan's 5 web slots, so the app
+can make 1, 10 or 100 customer twins. Each needs that person's consent
+verification. The 5 web slots (1 used) and the plan's 600 monthly credits are
+only for the owner's own use in HeyGen's web app. (Web slot add-ons, if ever
+wanted there: $29/month or $288/year per extra twin slot.)
+
+**Rendering, API pay-as-you-go, billed by the second:**
+
+| Avatar | Engine | Per minute | Per 2.5-min video |
+|---|---|---|---|
+| Digital Twin | Avatar III | $0.60 (12 credits) | $1.50 |
+| Photo / Studio Avatar | Avatar III | $0.99 (20 credits) | $2.48 |
+| Photo Avatar | Avatar IV | $2.31 (46 credits) | $5.78 |
+| Digital Twin | Avatar IV | $4.83 (97 credits) | $12.08 |
+| Digital Twin | Avatar V | $7.20 (144 credits) | $18.00 |
+
+Avatar III "loops reference footage with lip-sync": it replays the customer's
+training video and changes only the mouth, so the training video decides the
+quality. Avatar V is twin-only and the most natural.
+
+Web-app credit rates (Avatar III 4/min, IV 31/min, V 48/min) apply only to
+videos made inside HeyGen's web app, never to the app's API renders.
+
 ## Video generation
 
 ### Avatar V

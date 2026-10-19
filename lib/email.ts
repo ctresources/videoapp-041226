@@ -750,3 +750,24 @@ export async function notifyGhlWorkflowRequest({ name, email }: { name: string; 
   if (!res?.ok) console.error(`[ghl-workflow] request email failed: ${res ? res.status : "network error"}`);
   return !!res?.ok;
 }
+
+/**
+ * A Digital Twin creation refused by HeyGen with the one-twin limit
+ * (2026-10-19). HeyGen says API twins have no limit; this is the alarm if
+ * that turns out wrong. To support; the detail is internal only.
+ */
+export async function notifyTwinRefused({ userEmail, detail }: { userEmail: string; detail: string }): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: "Digital Twin creation refused by HeyGen",
+      html: `<p>A customer's Digital Twin was refused with the one-twin limit, which HeyGen said no longer applies to API twins.</p><p><b>Customer:</b> ${esc(userEmail)}</p><p><b>HeyGen said:</b> ${esc(detail.slice(0, 500))}</p><p>Worth asking HeyGen support about, quoting this message.</p>`,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}

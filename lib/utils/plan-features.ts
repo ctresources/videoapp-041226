@@ -1,11 +1,11 @@
 /**
  * Which plans unlock which features.
  *
- * Digital twins are no plan's feature any more, and the reason is upstream
- * rather than commercial. Creating one through the API needs HeyGen's Digital
- * Twin Creation endpoint, which is Enterprise-only — $25,000 a year. On
- * Pay-As-You-Go the account has a single custom-avatar slot holding one
- * person's identity, so there is no per-customer twin to sell at any price.
+ * Digital twins were switched off on 2026-09-01 on the belief that per-customer
+ * twins needed HeyGen's Enterprise API, after the API refused a second twin in
+ * July. On 2026-10-19 HeyGen support confirmed to the owner that API-created
+ * twins need no Enterprise plan and no web slots ($2.13 each), and they are on
+ * for every plan again (DIGITAL_TWIN_TIERS below).
  *
  * Photo avatars are unaffected and are what every customer's videos use: $1.00
  * per creation on this plan, available to everyone, and already set up for the
@@ -16,7 +16,15 @@
  * for admins, who hold the account's own slot — keeps those three agreeing.
  * Restoring the feature is this list, not a hunt through three files.
  */
-export const DIGITAL_TWIN_TIERS: readonly string[] = [];
+/**
+ * Every plan since 2026-10-19, the owner's call, after HeyGen confirmed that
+ * twins created through the API need no Enterprise plan and no web slots:
+ * $2.13 each, rendered by the second (Avatar III $0.60/min, which the Direct
+ * path already uses for twins). See docs/heygen-pricing.md. In July the API
+ * did refuse a second twin ("resource_limit_reached"); the creation route now
+ * tells support at once if that comes back.
+ */
+export const DIGITAL_TWIN_TIERS: readonly string[] = ["free", "pro", "agency"];
 
 export function canUseDigitalTwin(tier: string | null | undefined, role?: string | null): boolean {
   if (role === "admin") return true;

@@ -474,11 +474,11 @@ function DigitalTwinCreator({
   }
 
   async function handleDelete() {
-    if (!confirm("Remove your Digital Twin? This only clears the link in SparkReels — the avatar stays in HeyGen.")) return;
+    if (!confirm("Delete your Digital Twin? This removes it for good. Your photo avatar keeps working.")) return;
     await fetch("/api/avatar/digital-twin", { method: "DELETE" });
     setGroupId(null);
     setDtStatus("none");
-    toast.success("Digital Twin removed");
+    toast.success("Digital Twin deleted");
   }
 
   async function handleReplace() {
@@ -528,7 +528,7 @@ function DigitalTwinCreator({
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700 font-medium bg-green-100 border border-green-300 rounded-lg px-2.5 py-1.5 w-fit">
               <ShieldCheck size={13} className="text-green-600 shrink-0" />
-              Consent approved · HeyGen usage authorized
+              Consent approved
             </div>
             <button
               onClick={handleReplace}
@@ -556,7 +556,7 @@ function DigitalTwinCreator({
           <div className="flex-1">
             <p className="text-sm font-semibold text-spark-ink">Approval Required</p>
             <p className="text-xs text-spark-blue mt-0.5">
-              Your Digital Twin is trained! Click below to approve usage on HeyGen — required once.
+              Your Digital Twin is trained! Click below to approve it. This is needed once.
             </p>
             <button
               onClick={handleGetConsent}
@@ -585,7 +585,7 @@ function DigitalTwinCreator({
           <div>
             <p className="text-sm font-semibold text-amber-800">Training in progress…</p>
             <p className="text-xs text-amber-600 mt-0.5">
-              HeyGen is building your Digital Twin. This usually takes 15–30 minutes.
+              We're building your Digital Twin. This usually takes 15–30 minutes.
             </p>
           </div>
         </div>

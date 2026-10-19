@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createDigitalTwin, getAvatarLooks } from "@/lib/api/heygen";
+import { createDigitalTwin, deleteAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
+import { notifyTwinRefused } from "@/lib/email";
 import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -58,6 +59,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("[digital-twin] POST error:", err);
+    const raw = err instanceof Error ? err.message : String(err);
+    // The July refusal (one twin per account). HeyGen says it no longer
+    // applies to API twins; if it does come back, the owner hears at once.
+    if (/plan allows only one|resource_limit_reached|verified avatar group/i.test(raw)) {
+      void notifyTwinRefused({ userEmail: user.email ?? user.id, detail: raw });
+      return NextResponse.json(
+        { error: "We couldn't create your Digital Twin just now. Our team has been told and will be in touch. Your photo avatar keeps working in the meantime." },
+        { status: 503 },
+      );
+    }
+    if (/^HeyGen /.test(raw)) {
+      return NextResponse.json(
+        { error: "Your Digital Twin couldn't be created from that video. Try again, or upload a different recording." },
+        { status: 422 },
+      );
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Digital Twin creation failed" },
       { status: 422 },
@@ -115,7 +132,10 @@ export async function GET() {
 
 /**
  * DELETE /api/avatar/digital-twin
- * Clears the stored Digital Twin group + look IDs from the user's profile.
+ * Deletes the twin at HeyGen and clears it from the profile. Since 2026-10-19
+ * it is really deleted, not just unlinked: a twin is a lifelike copy of a real
+ * person, made with their consent, and should not outlive their asking for it
+ * to go.
  */
 export async function DELETE() {
   const supabase = await createClient();
@@ -123,6 +143,16 @@ export async function DELETE() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("profiles")
+    .select("heygen_digital_twin_look_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const lookId = (row as { heygen_digital_twin_look_id: string | null } | null)?.heygen_digital_twin_look_id;
+  if (lookId) {
+    const deleted = await deleteAvatarLook(lookId);
+    if (!deleted) console.warn(`[digital-twin] HeyGen delete failed for ${lookId}; unlinking anyway`);
+  }
   await admin
     .from("profiles")
     .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null })
