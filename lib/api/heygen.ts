@@ -230,15 +230,26 @@ const USD_PER_CREDIT = Number(process.env.HEYGEN_USD_PER_CREDIT || "") || 4.4 / 
  * four times over. A single Direct Video rate is right for exactly one of the
  * routes this app takes and badly wrong for the others.
  */
+/**
+ * Avatar III photo corrected 2026-10-19 from the owner's HeyGen usage page:
+ * two 99-second "Avatar in circle" videos on Oct 16 were charged $1.65 each
+ * ($0.0166/sec, HeyGen's $0.99/min), where this table recorded $4.29.
+ */
 const RATE_PER_SECOND_USD: Record<string, Record<string, number>> = {
-  avatar_iii: { photo_avatar: 0.0433, digital_twin: 0.0167, studio: 0.0167 },
+  avatar_iii: { photo_avatar: 0.0165, digital_twin: 0.0167, studio: 0.0167 },
   avatar_iv:  { photo_avatar: 0.05,   digital_twin: 0.0667, studio: 0.0667 },
   // Avatar V is twin-only per the card; the photo entry mirrors it so an
   // unexpected pairing costs something rather than silently costing nothing.
   avatar_v:   { photo_avatar: 0.0667, digital_twin: 0.0667, studio: 0.0667 },
 };
 
-const AGENT_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_AGENT || "") || 0.0333;
+/**
+ * Video Agent ("Avatar video"), corrected 2026-10-19 from the owner's HeyGen
+ * usage page: 156 s charged $14.37 (Oct 18) and 189 s charged $16.98 (Oct 16),
+ * about $0.09/sec, where $0.0333 recorded $5.19 and $6.29. HeyGen support
+ * quotes $0.097/sec flat, the same for a photo avatar or a twin.
+ */
+const AGENT_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_AGENT || "") || 0.09;
 const TRANSLATE_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_TRANSLATE || "") || 0.0333;
 
 /**

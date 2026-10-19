@@ -174,14 +174,27 @@ this page:
 
 | Engine / avatar | App's rate | This page |
 |---|---|---|
-| Avatar III photo | $0.0433 / sec | $0.0165 / sec |
+| Avatar III photo | ~~$0.0433~~ **$0.0165 / sec** (fixed 2026-10-19) | $0.0165 / sec |
 | Avatar III custom video (twin) | $0.0167 / sec | $0.01 / sec |
 | Avatar III studio | $0.0167 / sec | $0.0165 / sec |
 | Avatar IV photo | $0.05 / sec | $0.0385 / sec |
 | Avatar IV custom video / studio | $0.0667 / sec | $0.0805 / sec |
 | Avatar V custom video | $0.0667 / sec | $0.12 / sec |
-| Video Agent | $0.0333 / sec | $0.097 / sec |
+| Video Agent | ~~$0.0333~~ **$0.09 / sec** (fixed 2026-10-19) | $0.097 / sec |
 | Translation | $0.0333 / sec | $0.0095–$0.025 / sec |
 
-Not changed yet; the app's comments say its figures were checked against an
-invoice, so a recent invoice line should settle which is current.
+Settled for two rows on 2026-10-19 by the owner's HeyGen usage page, which
+the app's figures had under- and over-stated:
+
+| Charge on HeyGen's usage page | Length | Charged | App had recorded |
+|---|---|---|---|
+| Avatar video (Video Agent), photo avatar, Oct 18 | 156 s | $14.37 | $5.19 |
+| Avatar video (Video Agent), photo avatar, Oct 16 | 189 s | $16.98 | $6.29 |
+| Avatar in circle, Avatar III photo, Oct 16 | 99 s | $1.65 | $4.29 |
+| Photo Avatar Creation (each look; a Settings photo makes two) | | $1.32 | |
+| Photo turned into a moving clip | | $0.10 | |
+| Scene clip from a written description | | $0.13 | |
+
+Video Agent works out to about $0.09/sec ($0.0921 and $0.0900), so the app
+now uses $0.09. Avatar III photo is $0.0166/sec, HeyGen's $0.99/min. The other
+rows are still the app's old figures and not yet checked against a bill.
