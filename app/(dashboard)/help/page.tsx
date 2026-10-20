@@ -509,8 +509,9 @@ export default function HelpPage() {
             <Step n={11} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
               <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes — or{" "}
-              <strong>Longform 16:9</strong> (up to 8 minutes, using your own photos for visuals;
-              long videos have their own monthly allowance — 2 with Producer, 4 with Influencer — or $49 on its own).
+              <strong>Longform 16:9</strong> (up to 8 minutes. Add your own photos and you&apos;re in a
+              circle over them; add none and you&apos;re full screen the whole time. Long videos have their
+              own monthly allowance — 2 with Producer, 4 with Influencer — or $29 on its own.)
               {/* The same four for every script now, pasted or written. */}
               <span className="block mt-1.5">
                 Then <strong>who&apos;s on screen</strong>, four choices that are the same for every

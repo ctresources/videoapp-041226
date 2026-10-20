@@ -67,8 +67,8 @@ export const AI_TEXT_USD = Number(process.env.AI_TEXT_USD_EACH || "") || 0.06;
 /** Monthly price of each plan, for margin. Free and admin accounts bill nothing. */
 export const PLAN_REVENUE: Record<string, number> = {
   starter: 99,
-  agent: 189,
-  pro: 269,
+  agent: 149,
+  pro: 199,
 };
 
 export interface UserCost {

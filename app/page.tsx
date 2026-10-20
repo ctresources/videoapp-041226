@@ -334,7 +334,7 @@ const pricingTiers = [
   },
   {
     name: "Producer",
-    price: "$189",
+    price: "$149",
     period: "/month",
     description: "Build your local brand",
     badge: "Most Popular",
@@ -345,7 +345,7 @@ const pricingTiers = [
   },
   {
     name: "Influencer",
-    price: "$269",
+    price: "$199",
     period: "/month",
     description: "Dominate your market",
     badge: null,
@@ -1080,7 +1080,7 @@ export default function LandingPage() {
                   <span className="text-slate-500 text-lg"> · One short video, up to 3 minutes</span>
                 </div>
                 <div className="border border-blue-900 px-4 py-2 bg-blue-50">
-                  <span className="font-black text-blue-900">$49</span>
+                  <span className="font-black text-blue-900">$29</span>
                   <span className="text-slate-600 text-lg"> · One long video, up to 8 minutes</span>
                 </div>
               </div>

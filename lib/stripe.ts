@@ -21,7 +21,10 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export const PLANS = {
   starter: {
     name: "Creator",
-    priceId: process.env.STRIPE_PRICE_STARTER!,
+    // The owner's Vercel names the prices Creator/Producer/Influencer; the
+    // code read Starter/Agent/Pro. Either works (2026-10-20). Creator keeps
+    // the old name first, as it has been working and did not change price.
+    priceId: (process.env.STRIPE_PRICE_STARTER || process.env.STRIPE_PRICE_CREATOR)!,
     // $79 did not cover its own renders. Four short videos run through Video
     // Agent, the second-dearest endpoint on HeyGen's card, and at the old
     // 500-word cap that was $80.28 of HeyGen against $79 of revenue — before
@@ -35,8 +38,9 @@ export const PLANS = {
   },
   agent: {
     name: "Producer",
-    priceId: process.env.STRIPE_PRICE_AGENT!,
-    price: 189,
+    // $149 from $189 on 2026-10-20, in STRIPE_PRICE_PRODUCER.
+    priceId: (process.env.STRIPE_PRICE_PRODUCER || process.env.STRIPE_PRICE_AGENT)!,
+    price: 149,
     videos: 4,
     shortVideos: 4,
     longVideos: 2,
@@ -45,8 +49,9 @@ export const PLANS = {
   },
   pro: {
     name: "Influencer",
-    priceId: process.env.STRIPE_PRICE_PRO!,
-    price: 269,
+    // $199 from $269 on 2026-10-20, in STRIPE_PRICE_INFLUENCER.
+    priceId: (process.env.STRIPE_PRICE_INFLUENCER || process.env.STRIPE_PRICE_PRO)!,
+    price: 199,
     videos: 4,
     shortVideos: 4,
     longVideos: 4,

@@ -41,7 +41,7 @@ const PLANS = [
   {
     key: "agent",
     name: "Producer",
-    price: 189,
+    price: 149,
     videos: 4,
     longVideos: 2,
     blurb: "4 short + 2 long videos",
@@ -64,7 +64,7 @@ const PLANS = [
   {
     key: "pro",
     name: "Influencer",
-    price: 269,
+    price: 199,
     videos: 4,
     longVideos: 4,
     blurb: "4 short + 4 long videos",
@@ -486,7 +486,7 @@ export default async function BillingPage({
               <p className="font-bold text-brand-text">Long Video</p>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$49</span>
+              <span className="text-3xl font-black text-brand-text">$29</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
             <p className="text-xs text-slate-500">One long AI video, up to 8 minutes, using your photos for visuals. Works on any plan.</p>

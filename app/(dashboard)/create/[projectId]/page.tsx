@@ -2088,6 +2088,9 @@ export default function ProjectEditorPage() {
           <div className="flex flex-col gap-1.5">
             <p className="text-[10.5px] leading-[1.4] text-spark-ink-muted">
               Longform is horizontal (16:9) and uses one of your long videos.
+              {/* The owner's wording, 2026-10-20: the circle tile is lit for
+                  Longform, but with no photos the presenter fills the frame. */}
+              <span className="block">With your photos you&apos;re in a circle over them; with none, you&apos;re full screen.</span>
             </p>
             <button
               type="button"
