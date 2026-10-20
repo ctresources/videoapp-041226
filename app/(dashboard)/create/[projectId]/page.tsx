@@ -287,6 +287,16 @@ function ScriptLengthWarning({
   );
 }
 
+/** Hashtags as one line, "#one #two", for the edit box. */
+function tagsToText(tags: string[]): string {
+  return tags.map((t) => t.trim().replace(/^#+/, "")).filter(Boolean).map((t) => `#${t}`).join(" ");
+}
+
+/** The edit box back to a list, without the #s, as the rest of the app stores them. */
+function textToTags(text: string): string[] {
+  return Array.from(new Set(text.split(/[\s,]+/).map((t) => t.replace(/^#+/, "").trim()).filter(Boolean)));
+}
+
 export default function ProjectEditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const searchParams = useSearchParams();
@@ -501,6 +511,11 @@ export default function ProjectEditorPage() {
   // generate/save-draft so the video render and Publish use the user's wording.
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
+  // The meta description and hashtags, editable since 2026-10-20 (the owner's
+  // ask). Hashtags are edited as one line of text and stored as a list.
+  const [editedMeta, setEditedMeta] = useState("");
+  const [editedTags, setEditedTags] = useState("");
+  const [savedFlash, setSavedFlash] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     full_name: string | null;
     company_name: string | null;
@@ -1162,6 +1177,8 @@ export default function ProjectEditorPage() {
     const ai = p.ai_script as AiScript | null;
     setEditedTitle(defaultHook || seo?.youtube_title || ai?.title || p.title || "");
     setEditedDescription(seo?.youtube_description || ai?.description || "");
+    setEditedMeta(seo?.meta_description || "");
+    setEditedTags(tagsToText(seo?.hashtags?.length ? seo.hashtags : ai?.hashtags ?? []));
   }
 
   /**
@@ -1172,22 +1189,38 @@ export default function ProjectEditorPage() {
   async function saveContentEdits(p: Project) {
     const title = editedTitle.trim();
     const desc = editedDescription.trim();
+    const meta = editedMeta.trim();
+    const tags = textToTags(editedTags);
     const seo = (p.seo_data ?? {}) as SeoData;
     const ai = (p.ai_script ?? {}) as AiScript;
+    const oldTags = seo.hashtags?.length ? seo.hashtags : ai.hashtags ?? [];
+    const tagsChanged = tagsToText(tags) !== tagsToText(oldTags);
     // Nothing typed and nothing to overwrite — skip the write entirely.
-    if ((!title || title === seo.youtube_title) && (!desc || desc === seo.youtube_description)) return;
+    if ((!title || title === seo.youtube_title) && (!desc || desc === seo.youtube_description)
+      && (!meta || meta === seo.meta_description) && !tagsChanged) return;
+
+    // Merged onto what is saved NOW, not onto the page's copy: Save and Done
+    // save the article first, and the page's copy of the project still holds
+    // the old article at this point, which would be written straight back.
+    const supabase = createClient();
+    const { data: fresh } = await supabase.from("projects").select("seo_data, ai_script").eq("id", p.id).single();
+    const freshSeo = ((fresh as { seo_data: SeoData | null } | null)?.seo_data ?? seo) as SeoData;
+    const freshAi = ((fresh as { ai_script: AiScript | null } | null)?.ai_script ?? ai) as AiScript;
 
     const newSeo = {
-      ...seo,
+      ...freshSeo,
       ...(title && { youtube_title: title }),
       ...(desc && { youtube_description: desc }),
+      ...(meta && { meta_description: meta }),
+      // Publish reads seo_data.hashtags first (videos/page.tsx), so this is
+      // what reaches the post. Emptying the box clears them on purpose.
+      ...(tagsChanged && { hashtags: tags }),
     };
     const newAi = {
-      ...ai,
+      ...freshAi,
       ...(title && { title }),
       ...(desc && { description: desc }),
     };
-    const supabase = createClient();
     const { error } = await supabase
       .from("projects")
       .update({ seo_data: newSeo, ai_script: newAi })
@@ -1396,6 +1429,8 @@ export default function ProjectEditorPage() {
       setSelectedHook(freshDefaultHook);
       setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
+      setEditedMeta(seoData?.meta_description || "");
+      setEditedTags(tagsToText(seoData?.hashtags?.length ? seoData.hashtags : aiScript.hashtags ?? []));
       toast.success("Script regenerated!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
@@ -1455,6 +1490,8 @@ export default function ProjectEditorPage() {
       setSelectedHook(freshDefaultHook);
       setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
+      setEditedMeta(seoData?.meta_description || "");
+      setEditedTags(tagsToText(seoData?.hashtags?.length ? seoData.hashtags : aiScript.hashtags ?? []));
       toast.success("Script regenerated!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate");
@@ -2239,8 +2276,8 @@ export default function ProjectEditorPage() {
     });
     setExpandedSections((e) => ({ ...e, blog: true }));
   }
-  async function saveArticle() {
-    if (!project || !articleDraft) return;
+  async function saveArticle(): Promise<boolean> {
+    if (!project || !articleDraft) return true;
     setArticleSaving(true);
     try {
       const res = await fetch("/api/projects/article", {
@@ -2254,7 +2291,7 @@ export default function ProjectEditorPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(data?.error || "Couldn't save the article."); return; }
+      if (!res.ok) { toast.error(data?.error || "Couldn't save the article."); return false; }
       setProject((prev) => {
         if (!prev) return prev;
         const next = { ...((prev.ai_script ?? {}) as Record<string, unknown>), ...data };
@@ -2262,9 +2299,26 @@ export default function ProjectEditorPage() {
       });
       setArticleDraft(null);
       toast.success("Article saved.");
+      return true;
+    } catch {
+      toast.error("Couldn't save the article.");
+      return false;
     } finally {
       setArticleSaving(false);
     }
+  }
+
+  /**
+   * Everything editable on the Share Kit at once: the article if it is being
+   * edited, and the title, description, meta description and hashtags. The
+   * bottom Done used to save only the title and description, so an article
+   * edit left open was lost on leaving (2026-10-20, the owner found it).
+   */
+  async function saveShareKit(): Promise<boolean> {
+    if (!project) return false;
+    if (articleDraft && !(await saveArticle())) return false;
+    await saveContentEdits(project);
+    return true;
   }
 
   /**
@@ -4046,7 +4100,6 @@ export default function ProjectEditorPage() {
                     // Superseded by the Email card wherever there is an
                     // article to write it from; kept for the projects without one.
                     ...(seo.email_blurb && !(script.blog_intro || script.blog_body) ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
-                    { label: "Meta Description", value: seo.meta_description },
                     { label: "URL Slug", value: seo.slug },
                   ].filter(({ value }) => !!value?.trim()).map(({ label, value }) => (
                     <div key={label}>
@@ -4059,19 +4112,41 @@ export default function ProjectEditorPage() {
                       </div>
                     </div>
                   ))}
+                  {/* Editable, saved as you go (2026-10-20, the owner's ask). */}
                   <div>
-                    <p className="text-xs font-medium text-slate-500 mb-1">Hashtags</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(seo.hashtags || script.hashtags || []).map((tag) => (
-                        <button
-                          key={tag}
-                          onClick={() => copyToClipboard(tag, "Hashtag")}
-                          className="text-xs bg-primary-50 text-primary-600 px-2 py-1 rounded-lg hover:bg-primary-100 transition-colors"
-                        >
-                          {tag.startsWith("#") ? tag : `#${tag}`}
-                        </button>
-                      ))}
+                    <p className="text-xs font-medium text-slate-500 mb-1">Meta Description</p>
+                    <textarea
+                      value={editedMeta}
+                      onChange={(e) => setEditedMeta(e.target.value)}
+                      onBlur={() => { if (project) void saveContentEdits(project); }}
+                      rows={3}
+                      className="w-full text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                    />
+                    <p className={`text-[11px] mt-0.5 ${editedMeta.trim().length > 160 ? "text-spark-amber font-medium" : "text-slate-400"}`}>
+                      {editedMeta.trim().length} / 160
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-slate-500">Hashtags</p>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(tagsToText(textToTags(editedTags)), "Hashtags")}
+                        className="flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        <Copy size={11} /> Copy all
+                      </button>
                     </div>
+                    <textarea
+                      value={editedTags}
+                      onChange={(e) => setEditedTags(e.target.value)}
+                      onBlur={() => {
+                        setEditedTags((v) => tagsToText(textToTags(v)));
+                        if (project) void saveContentEdits(project);
+                      }}
+                      rows={2}
+                      className="w-full text-sm text-primary-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
+                    />
                   </div>
                   <Link
                     href={`/tools?tab=description&project=${project.id}`}
@@ -4898,16 +4973,33 @@ export default function ProjectEditorPage() {
                 Publish reads seo_data off the project (see videos/page.tsx), so
                 writing it here is what makes the edit reach the post. */}
             {editorStep === 5 && (
-              <Button
-                onClick={async () => {
-                  if (project) await saveContentEdits(project);
-                  router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
-                }}
-                size="lg"
-                className="gap-2"
-              >
-                Done <ArrowRight size={17} />
-              </Button>
+              <>
+                {/* Save stays; Done saves and leaves. Both save the article
+                    if it is being edited (2026-10-20, the owner's ask). */}
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!(await saveShareKit())) return;
+                    setSavedFlash(true);
+                    setTimeout(() => setSavedFlash(false), 1800);
+                  }}
+                  loading={articleSaving}
+                  size="lg"
+                  className="gap-2"
+                >
+                  {savedFlash ? <><Check size={17} /> Saved</> : <><Save size={17} /> Save</>}
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!(await saveShareKit())) return;
+                    router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
+                  }}
+                  size="lg"
+                  className="gap-2"
+                >
+                  Done <ArrowRight size={17} />
+                </Button>
+              </>
             )}
           </StepFooter>
         </div>
