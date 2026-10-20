@@ -22,7 +22,7 @@ import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 import { footageTerms } from "@/lib/utils/script-keywords";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
-import { canUseDigitalTwin } from "@/lib/utils/plan-features";
+import { canUseDigitalTwin, canUseTwinInFullVideo, TWIN_FULL_VIDEO_MESSAGE } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
@@ -945,6 +945,15 @@ export async function startRender(
       : pickedAFormatVariant
         ? (formatLook || requestedLook)
         : requestedLook;
+
+    // A Digital Twin in Avatar video is for paid plans; on the free plan it
+    // works in Avatar in circle (2026-10-20, the owner's call). The editor
+    // locks the tile; this holds for any other way a render is asked for.
+    // Before anything is charged or written.
+    if (!useDirectVideo && avatarId && avatarId === profile.heygen_digital_twin_look_id
+        && !canUseTwinInFullVideo(tier, profile.role)) {
+      return NextResponse.json({ error: TWIN_FULL_VIDEO_MESSAGE, code: "twin_full_paid" }, { status: 403 });
+    }
 
     /**
      * Whether the presenter actually matches the canvas.

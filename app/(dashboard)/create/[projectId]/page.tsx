@@ -15,6 +15,7 @@ import { MUSIC_PRESETS, type MusicPreset } from "@/lib/utils/music-presets";
 import { BrandedComposite, type BrandInfo } from "@/lib/utils/branded-recorder";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { standardMaxWords, LONG_MAX_WORDS } from "@/lib/utils/video-length";
+import { canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import { blogAsHtml } from "@/lib/utils/blog-html";
 import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-html";
 import { articleHeadline } from "@/lib/utils/article-headline";
@@ -428,6 +429,10 @@ export default function ProjectEditorPage() {
   const [marketState, setMarketState] = useState("");
   const [savingMarket, setSavingMarket] = useState(false);
   const [looks, setLooks] = useState<AvatarLook[]>([]);
+  // Which look is the Digital Twin, and whether the plan allows it in Avatar
+  // video (paid plans only, 2026-10-20). Allowed until the profile says not.
+  const [twinLookId, setTwinLookId] = useState<string | null>(null);
+  const [twinFullOk, setTwinFullOk] = useState(true);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -781,6 +786,7 @@ export default function ProjectEditorPage() {
         // Show all looks including processing ones (displayed differently in the grid)
         const all: AvatarLook[] = data.looks || [];
         setLooks(all);
+        setTwinLookId(typeof data.twinLookId === "string" ? data.twinLookId : null);
         // Auto-select on initial (non-silent) load only. The widescreen or
         // vertical copy of the headshot first (2026-10-18): the first look in
         // the list was the original tall photo, and a wide video made from it
@@ -912,6 +918,7 @@ export default function ProjectEditorPage() {
       setLongFormIncluded(
         p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
       );
+      setTwinFullOk(canUseTwinInFullVideo(p.subscription_tier, p.role));
     }
   }
 
@@ -1836,7 +1843,7 @@ export default function ProjectEditorPage() {
               mode: "avatar_voice" as const,
               style: "full" as const,
               label: "Avatar video",
-              desc: fullBlocked ? "Up to 3 minutes" : "B-roll and graphics made for you",
+              desc: twinFullLocked ? "Paid plans" : fullBlocked ? "Up to 3 minutes" : "B-roll and graphics made for you",
               blocked: fullBlocked,
             },
             {
@@ -1920,6 +1927,17 @@ export default function ProjectEditorPage() {
             );
           })}
         </div>
+        {/* Under the Avatar video tile when a free plan's twin is chosen:
+            the owner's wording, 2026-10-20. Same columns as the tiles so it
+            sits beneath the one it explains. */}
+        {twinFullLocked && !selfRecord && (
+          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+            <p className="text-[11px] text-spark-ink-faint">
+              Paid plans ·{" "}
+              <Link href="/settings/billing" className="font-semibold text-spark-ink underline underline-offset-2">See plans</Link>
+            </p>
+          </div>
+        )}
         {/* Says out loud that these are two different exits, not three
             settings on one.
             Two of them finish on this screen and spend a video; the third
@@ -1934,7 +1952,7 @@ export default function ProjectEditorPage() {
         {/* Why Avatar video is greyed out, and the two ways back to it
             (2026-10-16, the owner's words). It used to switch to the circle
             with nothing said. Not on Longform, which Avatar video isn't for. */}
-        {fullBlocked && selectedVideoType !== "youtube_long" && !selfRecord && (() => {
+        {fullTooLong && selectedVideoType !== "youtube_long" && !selfRecord && (() => {
           const ctaWords = activeCta.split(/\s+/).filter(Boolean).length;
           const total = editedScript.trim().split(/\s+/).filter(Boolean).length + ctaWords;
           return (
@@ -2841,8 +2859,16 @@ export default function ProjectEditorPage() {
    * not: it is not made for a Longform video, and it cuts a script past the
    * standard cap. Where it cannot be had, the circle is what renders.
    */
-  const fullBlocked = selectedVideoType === "youtube_long"
+  const fullTooLong = selectedVideoType === "youtube_long"
     || [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length > standardMaxWords();
+  /**
+   * The Digital Twin in Avatar video is for paid plans (2026-10-20, the
+   * owner's call); on the free plan the twin renders in the circle. The
+   * render refuses it too (start-render), so this is the explanation, not
+   * the lock.
+   */
+  const twinFullLocked = !twinFullOk && !!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice";
+  const fullBlocked = fullTooLong || twinFullLocked;
   const circleStyle = avatarStyle === "circle" || fullBlocked;
 
   /**

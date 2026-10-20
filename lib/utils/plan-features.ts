@@ -19,12 +19,35 @@
 /**
  * Every plan since 2026-10-19, the owner's call, after HeyGen confirmed that
  * twins created through the API need no Enterprise plan and no web slots:
- * $2.13 each, rendered by the second (Avatar III $0.60/min, which the Direct
- * path already uses for twins). See docs/heygen-pricing.md. In July the API
- * did refuse a second twin ("resource_limit_reached"); the creation route now
- * tells support at once if that comes back.
+ * $2.13 each, rendered by the second. A twin bills like a photo avatar on
+ * Avatar III ($0.99/min, measured on the owner's bill) and in Video Agent
+ * ($0.097/sec). See docs/heygen-pricing.md. In July the API did refuse a
+ * second twin ("resource_limit_reached"); the creation route now tells support
+ * at once if that comes back.
+ *
+ * The list names the tiers profiles.subscription_tier really holds. It said
+ * "free", "pro", "agency" until 2026-10-20, which left out Creator ("starter")
+ * and Producer ("agent"): paying customers on those plans were refused a twin
+ * while free accounts got one.
  */
-export const DIGITAL_TWIN_TIERS: readonly string[] = ["free", "pro", "agency"];
+export const DIGITAL_TWIN_TIERS: readonly string[] = ["free", "starter", "agent", "pro", "agency"];
+
+/** Every paying plan: Creator, Producer, Influencer (and the old agency tier). */
+export const PAID_TIERS: readonly string[] = ["starter", "agent", "pro", "agency"];
+
+/**
+ * A Digital Twin in "Avatar video" (the full-screen Video Agent video) is for
+ * paid plans; on the free plan the twin works in "Avatar in circle" (2026-10-20,
+ * the owner's call). Admins always pass.
+ */
+export function canUseTwinInFullVideo(tier: string | null | undefined, role?: string | null): boolean {
+  if (role === "admin") return true;
+  return PAID_TIERS.includes(tier ?? "free");
+}
+
+/** Said when the render refuses a free-plan twin in Avatar video. No vendor names. */
+export const TWIN_FULL_VIDEO_MESSAGE =
+  "Avatar video with your Digital Twin is on the paid plans. Choose Avatar in circle, or see plans in Billing.";
 
 export function canUseDigitalTwin(tier: string | null | undefined, role?: string | null): boolean {
   if (role === "admin") return true;

@@ -23,11 +23,11 @@ export type VideoLength = "standard" | "long";
 export function standardMaxWords(_tier?: string | null): number {
   // NOT a cost cap, though it used to say it was.
   //
-  // The old note here put the Video Agent at $0.097/sec and every 100 words at
-  // "about $4". The real rate is $0.0333/sec — $2.00 a minute — confirmed
-  // against an invoice: a 133.8-second render billed $4.45. So 100 words is
-  // ~41 seconds and ~$1.37, and the whole 400-word video costs ~$5.50. Cutting
-  // 500 to 400 was believed to save $4 a video; it saved about $1.38.
+  // Video Agent pricing: $0.0333/sec ($2.00 a minute) was HeyGen's
+  // introductory rate (a 133.8-second render once billed $4.45). Since the
+  // agent's overhaul it is $0.097/sec, $5.82 a minute (HeyGen support and the
+  // owner's bill, 2026-10-19): 100 words is ~41 seconds and ~$4, and a full
+  // 400-word video ~$16. See docs/heygen-pricing.md.
   //
   // Two real constraints replaced it, and neither cares what HeyGen charges:
   //

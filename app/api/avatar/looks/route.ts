@@ -57,7 +57,9 @@ export async function GET() {
     ...(dtResult.status === "fulfilled" ? dtResult.value : []),
   ];
 
-  return NextResponse.json({ looks, formatLooks });
+  // Which look is the Digital Twin. HeyGen's own avatar_type calls it a
+  // photo_avatar, so the editor can't tell from the look itself (2026-10-20).
+  return NextResponse.json({ looks, formatLooks, twinLookId: dtLookId });
 }
 
 /**
