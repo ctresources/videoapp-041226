@@ -54,11 +54,16 @@ const MAX_PHOTOS = 12;
 /**
  * Cinematic: each photo becomes a short moving clip. See cinematic-clips.ts.
  *
- * Smaller limits than the classic reel until it has been timed on the live
- * server: every photo is a generated clip that is made, checked and possibly
- * made again before the render can start.
+ * Same photo count as the classic reel. Every photo is a generated clip that
+ * is made, checked and possibly made again before the render can start, four
+ * at a time; twelve is three rounds of about 10 seconds each, well inside
+ * maxDuration (the Scenes Reel makes up to 36 the same way).
+ *
+ * Cost follows seconds, not photos: clips are 5 to 8 seconds and the reel
+ * stops at 60, so twelve 5-second clips cost about what eight 8-second ones
+ * did (roughly $0.90).
  */
-const CINEMATIC_MAX_PHOTOS = 8;
+const CINEMATIC_MAX_PHOTOS = MAX_PHOTOS;
 const CINEMATIC_MAX_SECONDS = 60;
 
 export async function POST(req: NextRequest) {

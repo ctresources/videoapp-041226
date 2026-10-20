@@ -43,11 +43,11 @@ const LENGTHS = [7, 12, 30, 60] as const;
  * Classic is the pan across each photo this reel has always had, and it is
  * free. Cinematic turns each photo into a short clip with real camera
  * movement, and counts as one short video from the plan. The limits match the
- * server's; they are smaller than the classic reel's until Cinematic has been
- * timed at full size.
+ * server's. The photo count is the classic reel's, so a full reel can switch
+ * to Cinematic without losing pictures.
  */
 type Motion = "classic" | "cinematic";
-const CINEMATIC_MAX_PHOTOS = 8;
+const CINEMATIC_MAX_PHOTOS = MAX_PHOTOS;
 const CINEMATIC_MAX_SECONDS = 60;
 
 type Voice = "music" | "script" | "record";

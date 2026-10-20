@@ -4447,7 +4447,7 @@ function CreatePageInner() {
                 Not on the blog route: a reel is a video, and this card sat
                 directly under "No video will be made". */}
             {!blogOnly && listingMode !== "scenes" && (
-            <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
               {([
                 { key: "listing" as const, label: "Listing video", sub: "we write the tour" },
                 // "free" alone was true until Cinematic, which uses a video.

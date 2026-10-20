@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { X, Download, Send, Maximize2, Volume2, VolumeX, Captions, Loader2, FileText } from "lucide-react";
+import { X, Download, Send, Captions, Loader2, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { videoMimeType, downloadAsset } from "@/lib/utils/video-url";
@@ -26,8 +26,6 @@ const typeLabel: Record<string, string> = {
 export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose, onPublish }: VideoPreviewModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
   const [srtLoading, setSrtLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -78,22 +76,6 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
   useEffect(() => {
     videoRef.current?.play().catch(() => {/* autoplay blocked — user must click play */});
   }, []);
-
-  function toggleMute() {
-    if (!videoRef.current) return;
-    videoRef.current.muted = !muted;
-    setMuted(!muted);
-  }
-
-  function toggleFullscreen() {
-    if (!videoRef.current) return;
-    if (!fullscreen) {
-      videoRef.current.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
-    }
-    setFullscreen(!fullscreen);
-  }
 
   // Transcribes the video and downloads an .srt caption file — upload it in
   // YouTube Studio for accurate captions (also boosts caption-text SEO).
@@ -158,11 +140,15 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
           </button>
         </div>
 
-        {/* Video player */}
-        {/* Capped as well as shaped: a portrait aspect ratio alone will grow
-            to whatever the width implies, which is what pushed the buttons —
-            and the header — off a phone screen. */}
-        <div className={`relative bg-black flex items-center justify-center shrink-0 max-h-[62dvh] ${isPortrait ? "aspect-[9/16]" : "aspect-video"}`}>
+        {/* Video player.
+            Full card width, shaped by its aspect ratio, and the one part of
+            the card that gives way when the screen is short: everything else
+            is shrink-0, so the header and buttons always fit and the video
+            takes whatever height is left.
+            It was capped at 62dvh instead. With a fixed max height a 9:16 box
+            narrowed to keep its shape and sat against the left edge, leaving
+            a white strip down the right of the card on a phone. */}
+        <div className={`relative w-full min-h-0 shrink bg-black flex items-center justify-center ${isPortrait ? "aspect-[9/16]" : "aspect-video"}`}>
           <video
             ref={videoRef}
             controls
@@ -206,33 +192,17 @@ export function VideoPreviewModal({ videoUrl, title, videoType, videoId, onClose
               </p>
             </div>
           )}
-
-          {/* Overlay controls */}
-          <div className="absolute top-3 right-3 flex gap-1.5">
-            <button
-              onClick={toggleMute}
-              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white transition-colors"
-              title={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            </button>
-            <button
-              onClick={toggleFullscreen}
-              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white transition-colors"
-              title="Fullscreen"
-            >
-              <Maximize2 size={14} />
-            </button>
-          </div>
+          {/* The browser's own controls carry mute and fullscreen. A second
+              pair drawn over the corner covered the iPhone's volume button, and
+              the fullscreen one did nothing there: iPhone Safari only goes full
+              screen from its own player. */}
         </div>
 
         {/* Action buttons.
             Two rows: publishing and downloading the file are what most visits
             are for, and the two transcript actions read as a pair rather than
             competing with them for the same row. */}
-        {/* Scrolls rather than pushing itself off the screen — the header
-            above it stays put, so the way out is always reachable. */}
-        <div className="min-h-0 overflow-y-auto px-5 pt-4 flex gap-3 border-t border-slate-100">
+        <div className="shrink-0 px-5 pt-4 flex gap-3 border-t border-slate-100">
           <Button className="flex-1 gap-2" onClick={onPublish}>
             <Send size={14} /> Publish to Social
           </Button>
