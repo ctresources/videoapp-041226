@@ -4985,7 +4985,9 @@ export default function ProjectEditorPage() {
                   }}
                   loading={articleSaving}
                   size="lg"
-                  className="gap-2"
+                  // One width for both, and Done gets the same 2px border the
+                  // outline has, so the two match exactly (2026-10-20).
+                  className="w-[150px] gap-2"
                 >
                   {savedFlash ? <><Check size={17} /> Saved</> : <><Save size={17} /> Save</>}
                 </Button>
@@ -4995,7 +4997,7 @@ export default function ProjectEditorPage() {
                     router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
                   }}
                   size="lg"
-                  className="gap-2"
+                  className="w-[150px] gap-2 border-2 border-transparent"
                 >
                   Done <ArrowRight size={17} />
                 </Button>
