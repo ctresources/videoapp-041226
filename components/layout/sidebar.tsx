@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils/cn";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck, Video } from "lucide-react";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { ASK_SPARKLEE_EVENT } from "@/components/layout/ask-sparklee";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 // Icon geometry is lifted verbatim from the design handoff's assets/nav-items.json
 // rather than swapped for lucide equivalents — the set is drawn on a 24px grid at
@@ -235,8 +235,23 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         {items.map(({ href, label }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
+            <Fragment key={href}>
+            {/* Start a Google Meet, just above Settings (2026-10-20, the
+                owner's ask). meet.new starts a fresh Meet under whoever is
+                signed in to Google, in a new tab: Google doesn't let Meet run
+                inside another site, and this needs no setup or permission. */}
+            {href === "/settings" && (
+              <a
+                href="https://meet.new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] font-normal text-spark-ink-soft transition-colors hover:bg-spark-amber-tint"
+              >
+                <Video size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
+                <span>Start a Google Meet</span>
+              </a>
+            )}
             <Link
-              key={href}
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -262,6 +277,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
               </svg>
               <span>{label}</span>
             </Link>
+            </Fragment>
           );
         })}
 
