@@ -4761,6 +4761,14 @@ function CreatePageInner() {
               </div>
             )}
 
+            {/* On a phone the choice above isn't offered: the branding runs in
+                a computer's browser. Said, so it can be found (2026-10-20). */}
+            {!canBrandClips && cameraPhase === "script" && !cameraHandoff && (
+              <p className="mb-3 text-[11px] text-spark-ink-muted">
+                <span className="font-semibold">Brand a clip I already shot</span> — on a computer
+              </p>
+            )}
+
             {cameraMode === "brand" && canBrandClips ? (
               <ClipBrander
                 photos={cameraPhotos.map((p) => p.url)}

@@ -633,6 +633,21 @@ export default function HelpPage() {
                 appear after that. Start talking as soon as you press record; your voice is heard over
                 the opener.
               </span>
+              {/* Brand a clip I already shot, which How It Works never named
+                  (2026-10-20, the owner's wording). Computers only. */}
+              <span className="block mt-1.5">
+                <strong>Upload a clip you already shot</strong> — on a computer, open{" "}
+                <strong>Camera/Teleprompter</strong> in Spark Studio. Under{" "}
+                <strong>Where the picture comes from</strong>, choose{" "}
+                <strong>Brand a clip I already shot</strong>, then{" "}
+                <strong>Choose a clip you already shot</strong> and pick a video from your computer: MP4,
+                MOV or WebM, up to 2 minutes and 500 MB. Keep the clip&apos;s own sound or record a new
+                voiceover, add a title, a hook and the city, then press <strong>Brand this clip</strong>.
+                Your logo is added, captions are written from what&apos;s said, and the finished video is
+                saved to <strong>My Sparks</strong>, ready to publish. It counts as a camera recording,
+                not one of your plan&apos;s videos. This is on computers only; phones can&apos;t do the
+                branding yet.
+              </span>
               {/* The recovery behaviour, which was invisible until it fires and
                   then reads like an error. Worded to match what the notice
                   itself says, and deliberately not promising the recording
