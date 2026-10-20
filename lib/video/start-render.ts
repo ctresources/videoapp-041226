@@ -1262,12 +1262,11 @@ export async function startRender(
       // model for these (2026-10-10). A short video with nothing to put
       // behind the agent is the only one left where the face is the picture,
       // and that needs a long script with no photos, which is already III.
-      const inCircle = directPhotos.length > 0 || stockClips.length > 0 || !isLongForm;
-      const preferredEngine = isLongForm || inCircle
-        ? ("avatar_iii" as const)
-        : isDigitalTwin
-          ? ("avatar_v" as const)
-          : undefined; // photo avatars use HeyGen's default (avatar_iv)
+      // Always Avatar III since 2026-10-20, the owner's call after comparing
+      // test renders of her twin: Avatar V ($7.20/min against $0.99) is not
+      // offered, so nothing here may choose it. (The circle test this replaced
+      // was true for every short and every long video already.)
+      const preferredEngine = "avatar_iii" as "avatar_iii" | "avatar_iv";
 
       /**
        * Ask the look what it supports before asking it for anything.
@@ -1285,12 +1284,9 @@ export async function startRender(
       const look = await getLookInfo(directAvatarId);
       let directEngine = preferredEngine;
       if (preferredEngine && look.engines && !look.engines.includes(preferredEngine)) {
-        // Cheapest supported first for long form, where minutes multiply;
-        // best supported first for shorts, where the face carries the frame
-        // and IV and V cost the same anyway.
-        const order = isLongForm || inCircle
-          ? ["avatar_iii", "avatar_iv", "avatar_v"]
-          : ["avatar_v", "avatar_iv", "avatar_iii"];
+        // Cheapest supported first. Never Avatar V (2026-10-20): a look that
+        // supports neither III nor IV gets HeyGen's default instead.
+        const order = ["avatar_iii", "avatar_iv"];
         const fallback = order.find((e) => look.engines!.includes(e));
         console.warn(
           `[create-blog] Look ${directAvatarId} does not support ${preferredEngine} ` +
