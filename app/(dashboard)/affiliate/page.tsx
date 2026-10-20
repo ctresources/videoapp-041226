@@ -18,7 +18,7 @@ interface Me {
     commissionRate: number;
     commissionDurationMonths: number;
   } | null;
-  stats?: { clicks: number; conversions: number; pendingCents: number; availableCents: number; paidCents: number };
+  stats?: { clicks: number; conversions: number; pendingCents: number; availableCents: number; paidCents: number; deductionCents?: number };
   appUrl?: string;
 }
 
@@ -180,6 +180,12 @@ export default function AffiliatePage() {
           </Card>
         ))}
       </div>
+      {/* A refunded customer whose commission was already paid (2026-10-20). */}
+      {(stats.deductionCents ?? 0) > 0 && (
+        <p className="-mt-3 mb-5 text-xs text-slate-500">
+          Refund deduction: −{money(stats.deductionCents ?? 0)}, taken from your next payout.
+        </p>
+      )}
 
       {/* Payouts / Stripe Connect */}
       <Card>

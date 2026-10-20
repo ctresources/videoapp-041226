@@ -361,10 +361,13 @@ export async function POST(req: NextRequest) {
       if (!invoiceId) break;
       const { data: commRow } = await admin
         .from("affiliate_commissions")
-        .select("id, status")
+        .select("id, status, affiliate_id, conversion_id, commission_rate, commission_amount_cents")
         .eq("stripe_invoice_id", invoiceId)
         .maybeSingle();
-      const commission = commRow as { id: string; status: string } | null;
+      const commission = commRow as {
+        id: string; status: string; affiliate_id: string; conversion_id: string;
+        commission_rate: number; commission_amount_cents: number;
+      } | null;
       if (!commission) break;
       if (commission.status === "pending" || commission.status === "available") {
         await admin
@@ -373,7 +376,38 @@ export async function POST(req: NextRequest) {
           .eq("id", commission.id);
         console.log(`[webhook] Voided commission ${commission.id} — invoice ${invoiceId} refunded`);
       } else if (commission.status === "paid") {
-        console.warn(`[webhook] Commission ${commission.id} already paid but invoice ${invoiceId} was refunded — manual reconciliation needed`);
+        // Already paid out: a deduction taken from the affiliate's next payout
+        // (2026-10-20, the owner's ask). A negative commission, available now,
+        // so the payout job's sum subtracts it; with nothing else owed it
+        // carries until there is. Partial refunds take back the same share,
+        // and a second refund on the same charge only the difference. Keyed by
+        // the cumulative refund, so Stripe sending the event twice adds nothing.
+        const share = charge.amount > 0 ? Math.min(1, charge.amount_refunded / charge.amount) : 1;
+        const target = Math.round(commission.commission_amount_cents * share);
+        const { data: prior } = await admin
+          .from("affiliate_commissions")
+          .select("commission_amount_cents")
+          .like("stripe_invoice_id", `${invoiceId}:refund:%`);
+        const already = ((prior ?? []) as { commission_amount_cents: number }[])
+          .reduce((a, r) => a - r.commission_amount_cents, 0);
+        const deduct = target - already;
+        if (deduct > 0) {
+          await admin.from("affiliate_commissions").upsert(
+            {
+              affiliate_id: commission.affiliate_id,
+              conversion_id: commission.conversion_id,
+              stripe_invoice_id: `${invoiceId}:refund:${charge.amount_refunded}`,
+              invoice_amount_cents: -charge.amount_refunded,
+              commission_rate: commission.commission_rate,
+              commission_amount_cents: -deduct,
+              status: "available",
+              available_at: new Date().toISOString(),
+              void_reason: "refund deduction",
+            },
+            { onConflict: "stripe_invoice_id", ignoreDuplicates: true },
+          );
+          console.log(`[webhook] Commission ${commission.id} was paid; invoice ${invoiceId} refunded — ${deduct}¢ deducted from the next payout`);
+        }
       }
       break;
     }

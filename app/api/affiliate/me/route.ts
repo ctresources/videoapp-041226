@@ -42,6 +42,11 @@ export async function GET() {
       pendingCents: sumBy("pending"),
       availableCents: sumBy("available"),
       paidCents: sumBy("paid"),
+      // Refund deductions not yet taken from a payout (negative rows), shown
+      // on their own so a smaller Available balance is explained.
+      deductionCents: -comms
+        .filter((c) => c.status === "available" && c.commission_amount_cents < 0)
+        .reduce((a, c) => a + c.commission_amount_cents, 0),
     },
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "",
   });
