@@ -2,11 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDigitalTwin, deleteAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
 import { notifyTwinRefused } from "@/lib/email";
+import { toTwinVideo } from "@/lib/utils/twin-video";
 import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
 
-// Relays the recording (up to ~200 MB) from Supabase to HeyGen's S3 slot.
-export const maxDuration = 300;
+// Relays the recording (up to ~200 MB) from Supabase to HeyGen's S3 slot,
+// converting an iPhone MOV to MP4 on the way (~0.7x real time on one core),
+// so the Fluid Compute ceiling rather than five minutes (2026-10-20).
+export const maxDuration = 800;
 
 /**
  * POST /api/avatar/digital-twin
@@ -43,7 +46,8 @@ export async function POST(req: NextRequest) {
   if (!videoUrl) return NextResponse.json({ error: "videoUrl required" }, { status: 400 });
 
   try {
-    const result = await createDigitalTwin(videoUrl, name);
+    // An iPhone's MOV/HEVC recording is converted to MP4 first (2026-10-20).
+    const result = await createDigitalTwin(videoUrl, name, toTwinVideo);
 
     const admin = createAdminClient();
     console.log(`[digital-twin] saving groupId=${result.groupId} lookId=${result.lookId} for user=${user.id}`);

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import toast from "react-hot-toast";
 import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
@@ -316,10 +317,26 @@ export function TalkingAvatarUploader({
         </div>
       ) : null}
 
+      {/* How to record it: the owner's wording, 2026-10-20, from HeyGen's
+          own guidance (about 2 minutes, 1080p, one person, quiet room). */}
       <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
-        <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
-          <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
-          <span><strong>Tips:</strong> Clear front-facing photo, neutral expression, plain background, no sunglasses or hats.</span>
+        <p className="text-xs font-semibold text-spark-blue flex items-center gap-1.5">
+          <Sparkles size={11} className="text-spark-blue shrink-0" />
+          How to record it
+        </p>
+        <ol className="mt-1.5 list-decimal pl-5 text-xs text-spark-blue leading-relaxed">
+          <li>About 2 minutes of you talking to the camera, about anything.</li>
+          <li>Phone on a stand at eye level, chest up.</li>
+          <li>Face a window or light. Quiet room, plain background.</li>
+          <li>Look at the lens the whole time. Only you in the shot.</li>
+          <li>No hats or sunglasses.</li>
+        </ol>
+        <p className="mt-2 text-xs text-spark-blue leading-relaxed">
+          Then tap <strong>Train Digital Twin</strong>. It&apos;s ready in 15 to 30 minutes, and you approve it once.
+        </p>
+        <p className="mt-1 text-xs text-spark-blue leading-relaxed">
+          On the free plan your twin appears in <strong>Avatar (You) in circle</strong>; on paid plans it works in{" "}
+          <strong>Avatar (You in full) video</strong> too.
         </p>
       </div>
 
@@ -351,8 +368,10 @@ function DigitalTwinCreator({
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Digital twins are Agent/Pro only. Read the plan so the UI can say so
-  // rather than letting someone record a video and then hit a 403.
+  // Read the plan so the UI can say so rather than letting someone record a
+  // video and then hit a 403. Every plan since 2026-10-20; this checked for
+  // Producer and Influencer only, which kept free and Creator accounts out
+  // after the server had let them in.
   const [canTrain, setCanTrain] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -360,7 +379,7 @@ function DigitalTwinCreator({
       .then((r) => (r.ok ? r.json() : null))
       .then((a) => {
         if (!a) return;
-        setCanTrain(a.isAdmin || a.tier === "agent" || a.tier === "pro");
+        setCanTrain(a.isAdmin || canUseDigitalTwin(a.tier));
       })
       .catch(() => setCanTrain(true)); // don't block on a failed check — the API still gates
   }, []);
@@ -623,9 +642,6 @@ function DigitalTwinCreator({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-slate-500 leading-relaxed">
-        Create a photorealistic AI version of yourself from a video of you speaking.
-      </p>
 
       <Input
         label="Digital Twin Name"
@@ -1512,7 +1528,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
       <div>
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Digital Twin</p>
         <p className="text-xs text-slate-400 mb-4">
-          A full-body AI replica trained from a video of you — more realistic than a talking photo.
+          A lifelike video of you, made from a 2-minute recording.
         </p>
         <DigitalTwinCreator
           userId={userId}

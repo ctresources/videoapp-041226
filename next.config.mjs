@@ -52,6 +52,8 @@ const nextConfig = {
       "/api/seller-listings/video": ["./node_modules/@ffmpeg-installer/**"],
       // The same still, for Email it in My Sparks.
       "/api/video-email": ["./node_modules/@ffmpeg-installer/**"],
+      // Converts an iPhone's MOV/HEVC twin recording to MP4 (2026-10-20).
+      "/api/avatar/digital-twin": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

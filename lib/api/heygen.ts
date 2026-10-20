@@ -1679,6 +1679,12 @@ async function uploadVideoToHeygenDirect(buffer: Buffer, contentType: string): P
 export async function createDigitalTwin(
   videoUrl: string,
   name: string,
+  /**
+   * Turns the recording into a format HeyGen trains from (toTwinVideo in
+   * lib/utils/twin-video.ts). Passed in rather than imported, so the FFmpeg
+   * binary only ships with the route that uses it.
+   */
+  prepare?: (buffer: Buffer, contentType: string) => Promise<{ buffer: Buffer; contentType: string }>,
 ): Promise<DigitalTwinResult> {
   const apiKey = getApiKey();
 
@@ -1687,8 +1693,11 @@ export async function createDigitalTwin(
   if (!vres.ok) throw new Error(`Couldn't read the recording (${vres.status}). Please re-upload and try again.`);
   const contentType = vres.headers.get("content-type") ||
     (videoUrl.includes(".webm") ? "video/webm" : videoUrl.includes(".mov") ? "video/quicktime" : "video/mp4");
-  const buffer = Buffer.from(await vres.arrayBuffer());
-  const assetId = await uploadVideoToHeygenDirect(buffer, contentType);
+  const downloaded = Buffer.from(await vres.arrayBuffer());
+  const { buffer, contentType: finalType } = prepare
+    ? await prepare(downloaded, contentType)
+    : { buffer: downloaded, contentType };
+  const assetId = await uploadVideoToHeygenDirect(buffer, finalType);
 
   const res = await fetch(`${HEYGEN_API}/v3/avatars`, {
     method: "POST",
