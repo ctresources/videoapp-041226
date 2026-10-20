@@ -181,5 +181,7 @@ export const config = {
   // The install manifest too: a browser fetches it without the visitor's
   // sign-in, so it was getting the login page and "Add to Home Screen" had
   // no name or icon to use.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
+  // sw.js too (2026-10-20): it must be served, not redirected, so a browser
+  // still holding the June offline worker can fetch the one that removes it.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json$|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
 };
