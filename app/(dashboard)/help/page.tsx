@@ -962,6 +962,11 @@ export default function HelpPage() {
                 way. The update then shows when it was sent and to whom. Copy it or send yourself a
                 test, the same as the newsletter.
               </span>
+              {/* The menu's Meet button, 2026-10-20; the owner's wording. */}
+              <span className="block mt-1.5">
+                <strong>Start a Google Meet</strong> — in the menu above Settings. It opens a new
+                Google Meet in a new tab; copy the link and send it to your client.
+              </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the
                 counting rule, which is the thing people actually need to know
