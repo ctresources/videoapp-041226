@@ -2541,11 +2541,14 @@ function CreatePageInner() {
           {/* The steps bar, and Ask Sparklee beside it rather than inside it
               (the owner's markup, 2026-10-15): the bar loses the height her
               card gave it, and the steps are bigger. */}
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-          <div className="flex min-w-0 flex-1 basis-[420px] flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-4 py-1.5 text-[15px]">
+          {/* Centred and only as wide as the steps, with less padding
+              (2026-10-20, the owner's ask): stretched across the page the
+              last step sat far off at the right edge. */}
+          <div className="mt-2 flex justify-center">
+          <div className="inline-flex min-w-0 max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-3 py-1 text-[15px]">
             {sectionList.map((label, i) => (
               <span key={label} className="contents">
-                {i > 0 && <span className="hidden h-px min-w-[24px] flex-1 bg-spark-rule sm:block" />}
+                {i > 0 && <span className="hidden h-px w-8 bg-spark-rule sm:block" />}
                 <span className={`flex items-center gap-2 ${i === 0 ? "font-semibold text-spark-ink" : "text-spark-ink-muted"}`}>
                   <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] ${
                     i === 0 ? "bg-[#A3660F] text-white" : "border border-spark-rule-dim text-spark-ink-muted"
@@ -2558,7 +2561,8 @@ function CreatePageInner() {
             {/* Ask Sparklee moved up into the top bar (2026-10-18, the owner's
                 mockup), so the steps use the full width. */}
           </div>
-          <h1 className="mt-2.5 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[34px]">
+          {/* One size down (2026-10-20, the owner's ask): 34 → 30. */}
+          <h1 className="mt-2.5 font-display text-[26px] font-bold leading-[1.15] text-[#A3660F] sm:text-[30px]">
             What do you want to Spark today?
           </h1>
         </div>
