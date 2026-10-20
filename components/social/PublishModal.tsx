@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { downloadAsset } from "@/lib/utils/video-url";
 import {
   X, Send, Calendar, CheckCircle, AlertTriangle, Clock,
-  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Upload, User, MapPin
+  PlayCircle, Camera, Music2, Share2, Globe, AtSign, Download, Image, Upload, User, MapPin, Plus
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { FIRST_COMMENT_PLATFORMS } from "@/lib/utils/social-platforms";
@@ -481,7 +480,16 @@ ${hashes.join(" ")}` : hashes.join(" ");
       .catch(() => { /* the picker just shows the default tile */ });
   }, []);
 
-  useEffect(() => {
+  /**
+   * The accounts, first on opening and again on coming back from connecting
+   * one (2026-10-20, the owner's ask). "Connect an account" opens Social
+   * Accounts in a new tab so this window and everything set in it stay; when
+   * this tab is looked at again the list reloads. On a reload the choices
+   * already made are kept and only a newly connected account is added.
+   */
+  const knownIds = useRef<Set<string> | null>(null);
+  const connectOpened = useRef(false);
+  function loadAccounts() {
     fetch("/api/social/accounts")
       .then((r) => r.json())
       .then(({ accounts: data, more }) => {
@@ -492,17 +500,49 @@ ${hashes.join(" ")}` : hashes.join(" ");
         // Everything ready to post to, up to what the plan allows. An account
         // whose sign-in expired starts unselected: it would only fail.
         let others = 0;
-        setSelectedIds(accs.filter((a) => {
+        const ready = accs.filter((a) => {
           if (a.needsReconnect) return false;
           if (a.source !== "partner") return true;
           if (limit !== null && others >= limit) return false;
           others += 1;
           return true;
-        }).map((a) => a.id));
+        }).map((a) => a.id);
+        const known = knownIds.current;
+        if (!known) setSelectedIds(ready);
+        else {
+          const added = ready.filter((id) => !known.has(id));
+          if (added.length) setSelectedIds((prev) => [...prev.filter((id) => accs.some((a) => a.id === id)), ...added]);
+        }
+        knownIds.current = new Set(accs.map((a) => a.id));
         setLoadingAccounts(false);
       })
       .catch(() => setLoadingAccounts(false));
+  }
+  useEffect(() => {
+    loadAccounts();
+    const back = () => {
+      if (document.visibilityState === "visible" && connectOpened.current) {
+        connectOpened.current = false;
+        loadAccounts();
+      }
+    };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("focus", back);
+    return () => {
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("focus", back);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Publish pressed with nothing ticked: the window goes up to "Post to" and
+   * says what to do there. It was a red toast in the far corner, while the
+   * row it meant had been scrolled out of sight (2026-10-20).
+   */
+  const postToRef = useRef<HTMLDivElement>(null);
+  const [postToNudge, setPostToNudge] = useState(false);
+  const [postToFlash, setPostToFlash] = useState(false);
 
   /**
    * YouTube's connection has ended and has to be made again.
@@ -596,7 +636,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
    */
   async function submit(onlyId?: string) {
     const ids = onlyId ? [onlyId] : selectedIds;
-    if (!ids.length) return toast.error("Select at least one account");
+    if (!ids.length) {
+      postToRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPostToNudge(true);
+      setPostToFlash(true);
+      setTimeout(() => setPostToFlash(false), 1600);
+      return;
+    }
 
     const scheduledAt = !onlyId && tab === "schedule" && scheduleDate
       ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
@@ -832,7 +878,10 @@ ${hashes.join(" ")}` : hashes.join(" ");
             </div>
 
             {/* Account selector */}
-            <div>
+            <div
+              ref={postToRef}
+              className={`rounded-xl transition-shadow duration-300 ${postToFlash ? "ring-2 ring-spark-amber ring-offset-4" : ""}`}
+            >
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Post to</p>
               {loadingAccounts ? (
                 <div className="flex gap-2 flex-wrap">
@@ -843,9 +892,15 @@ ${hashes.join(" ")}` : hashes.join(" ");
                   <AlertTriangle size={16} className="text-yellow-500 shrink-0" />
                   <p className="text-sm text-yellow-700">
                     No social accounts connected.{" "}
-                    <Link href="/settings/social" className="underline font-medium" onClick={onClose}>
-                      Connect YouTube →
-                    </Link>
+                    <a
+                      href="/settings/social"
+                      target="_blank"
+                      rel="noopener"
+                      className="underline font-medium"
+                      onClick={() => { connectOpened.current = true; }}
+                    >
+                      Connect an account →
+                    </a>
                   </p>
                 </div>
               ) : (
@@ -871,7 +926,21 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       </button>
                     );
                   })}
+                  {/* Always offered (2026-10-20): a new tab, so this window
+                      keeps its place; the list reloads on coming back. */}
+                  <a
+                    href="/settings/social"
+                    target="_blank"
+                    rel="noopener"
+                    onClick={() => { connectOpened.current = true; }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-medium text-slate-600 hover:border-slate-400"
+                  >
+                    <Plus size={13} /> Connect an account
+                  </a>
                 </div>
+              )}
+              {postToNudge && selectedIds.length === 0 && (
+                <p className="mt-2 text-xs font-medium text-spark-amber">Tick where to post, or connect an account.</p>
               )}
             </div>
 
