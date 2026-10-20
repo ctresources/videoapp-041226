@@ -4148,6 +4148,23 @@ export default function ProjectEditorPage() {
                       className="w-full text-sm text-primary-700 bg-slate-50 rounded-lg px-3 py-2 resize-y leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500 border border-slate-100"
                     />
                   </div>
+                  {/* This card's own Save (2026-10-20). The boxes save as you
+                      go already; this is the clear moment that says so. */}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!project) return;
+                        setEditedTags((v) => tagsToText(textToTags(v)));
+                        await saveContentEdits(project);
+                        setSavedFlash(true);
+                        setTimeout(() => setSavedFlash(false), 1800);
+                      }}
+                      className="flex items-center gap-1.5 rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      {savedFlash ? <><Check size={12} /> Saved</> : <><Save size={12} /> Save</>}
+                    </button>
+                  </div>
                   <Link
                     href={`/tools?tab=description&project=${project.id}`}
                     className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 pt-2 border-t border-slate-100"
@@ -4704,7 +4721,29 @@ export default function ProjectEditorPage() {
                           />
                         </div>
                       ))}
-                      <p className="text-[11px] text-slate-400">## starts a heading</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] text-slate-400">## starts a heading</p>
+                        {/* At the bottom as well as the top (2026-10-20): the
+                            top ones are a long scroll away after the body. */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void saveArticle()}
+                            disabled={articleSaving}
+                            className="flex items-center gap-1.5 rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                          >
+                            {articleSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setArticleDraft(null)}
+                            disabled={articleSaving}
+                            className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     </>
                   ) : [
                     { label: "Introduction", value: script.blog_intro },
@@ -4973,35 +5012,19 @@ export default function ProjectEditorPage() {
                 Publish reads seo_data off the project (see videos/page.tsx), so
                 writing it here is what makes the edit reach the post. */}
             {editorStep === 5 && (
-              <>
-                {/* Save stays; Done saves and leaves. Both save the article
-                    if it is being edited (2026-10-20, the owner's ask). */}
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!(await saveShareKit())) return;
-                    setSavedFlash(true);
-                    setTimeout(() => setSavedFlash(false), 1800);
-                  }}
-                  loading={articleSaving}
-                  size="lg"
-                  // One width for both, and Done gets the same 2px border the
-                  // outline has, so the two match exactly (2026-10-20).
-                  className="w-[150px] gap-2"
-                >
-                  {savedFlash ? <><Check size={17} /> Saved</> : <><Save size={17} /> Save</>}
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!(await saveShareKit())) return;
-                    router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
-                  }}
-                  size="lg"
-                  className="w-[150px] gap-2 border-2 border-transparent"
-                >
-                  Done <ArrowRight size={17} />
-                </Button>
-              </>
+              // Done alone: the owner didn't want two buttons together
+              // (2026-10-20); each section has its own Save. Done still saves
+              // everything, the article included, before it leaves.
+              <Button
+                onClick={async () => {
+                  if (!(await saveShareKit())) return;
+                  router.push(renderedVideoId ? `/videos?highlight=${renderedVideoId}` : "/videos");
+                }}
+                size="lg"
+                className="gap-2"
+              >
+                Done <ArrowRight size={17} />
+              </Button>
             )}
           </StepFooter>
         </div>
