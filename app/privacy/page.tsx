@@ -16,7 +16,7 @@ export default function PrivacyPage() {
             ← Back to SparkReels
           </Link>
           <h1 className="text-4xl font-bold text-white mb-3">Privacy Policy</h1>
-          <p className="text-slate-400 text-sm">Effective date: August 15, 2026</p>
+          <p className="text-slate-400 text-sm">Effective date: October 20, 2026</p>
         </div>
 
         <div className="space-y-10 text-slate-300 leading-relaxed">
@@ -243,6 +243,12 @@ export default function PrivacyPage() {
                 Ask Sparklee, the spoken in-app helper. Receives the headline text for the thumbnail being
                 generated, and the audio of a question you ask Sparklee while you are asking it. Receives no
                 Google user data.
+              </li>
+              <li>
+                <strong className="text-white">Microsoft Clarity</strong> — records how people move around
+                SparkReels, such as where they click and scroll, so we can fix problems and improve the app.
+                Inside the app, the words and pictures on screen are hidden from these recordings, and pages
+                showing your Google data are never recorded. Receives no Google user data.
               </li>
               <li>
                 <strong className="text-white">Stripe</strong> — secure payment processing. Receives your

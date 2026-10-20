@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SupabaseProvider } from "@/providers/supabase-provider";
 import { ToastProvider } from "@/providers/toast-provider";
+import { Clarity } from "@/components/analytics/clarity";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -41,6 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-brand-bg text-brand-text font-body antialiased">
         <SupabaseProvider>
           <ToastProvider />
+          {/* Visit recordings, with the app masked and Google-data pages
+              left out (components/analytics/clarity.tsx, 2026-10-20). */}
+          <Clarity />
           {children}
         </SupabaseProvider>
       </body>
