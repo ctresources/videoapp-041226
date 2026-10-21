@@ -608,6 +608,17 @@ export default function HelpPage() {
               On a computer, press Camera/Teleprompter and choose <strong>Record your screen</strong> to record a listing, a market
               report or anything else on screen while you talk, with you in a corner circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
+              {/* The teleprompter's reading and speed controls (2026-10-21). */}
+              <span className="block mt-1.5">
+                <strong>Read your script first</strong> in the script box, or press{" "}
+                <strong>Read it full screen</strong> to see the whole script in large type and edit it
+                there; <strong>Done</strong> takes you back. Under it, <strong>Flow</strong> follows your
+                voice and keeps the line you&apos;re reading near the top, with the next lines below it.{" "}
+                <strong>Auto</strong> scrolls at a steady speed you pick: <strong>Slow</strong>,{" "}
+                <strong>Medium</strong> or <strong>Fast</strong>. While you record in Auto, tap{" "}
+                <strong>−</strong> or <strong>+</strong> under the teleprompter to slow it down or speed it
+                up without stopping. If Flow feels behind you, switch to Auto.
+              </span>
               {/* Three things can be behind the speaker now, and one of them
                   costs something, on a screen whose headline is "free". */}
               <span className="block mt-1.5">
