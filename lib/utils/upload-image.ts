@@ -36,7 +36,47 @@ export const UPLOAD_TARGET: Record<Exclude<ImageUploadKind, "imageBg">, string> 
   thumbBg: "1280 × 720 or larger · landscape",
 };
 
+/**
+ * Vercel refuses a request over 4.5 MB before the route ever runs, with a
+ * page that isn't JSON, so an 8.8 MB phone photo came back as a bare "try
+ * again" although the route itself allows 10 MB (2026-10-21, the owner's
+ * YouTube thumbnail). Anything over this is shrunk in the browser first.
+ */
+const SHRINK_OVER_BYTES = 3.5 * 1024 * 1024;
+const MAX_EDGE = 3000;
+
+/**
+ * A big photo as a JPEG at most 3000 px on its long side, which is more than
+ * any picture here is drawn at. Logos keep their transparency, so they are
+ * left alone; so is anything the browser can't decode (it is sent as it is,
+ * and the server's own message explains a refusal).
+ */
+async function shrinkIfLarge(file: File, kind: ImageUploadKind): Promise<File> {
+  if (file.size <= SHRINK_OVER_BYTES || kind === "logo" || typeof createImageBitmap !== "function") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    for (const quality of [0.88, 0.8, 0.7]) {
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", quality));
+      if (blob && blob.size <= SHRINK_OVER_BYTES) {
+        return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+      }
+    }
+  } catch { /* not decodable here: send the original */ }
+  return file;
+}
+
 export async function uploadImage(file: File, kind: ImageUploadKind): Promise<string> {
+  file = await shrinkIfLarge(file, kind);
   const form = new FormData();
   form.append("file", file);
   form.append("kind", kind);
@@ -44,6 +84,7 @@ export async function uploadImage(file: File, kind: ImageUploadKind): Promise<st
   const res = await fetch("/api/uploads/image", { method: "POST", body: form });
   const body = await res.json().catch(() => null);
   if (!res.ok || !body?.url) {
+    if (res.status === 413) throw new Error("That photo is too large to upload. Try one under 4 MB.");
     throw new Error(body?.error || "The upload didn't go through. Try again.");
   }
   return body.url as string;
