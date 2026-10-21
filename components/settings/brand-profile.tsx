@@ -7,6 +7,7 @@ import { AvatarLooksManager } from "@/components/settings/avatar-looks-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
+import { uploadWithProgress } from "@/lib/utils/upload-with-progress";
 import toast from "react-hot-toast";
 import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
@@ -367,6 +368,11 @@ function DigitalTwinCreator({
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  // What is uploading and how far it has got, and the button to press next
+  // (2026-10-21: a 150 MB iPhone video sat on a bare spinner, then vanished).
+  const [uploadPct, setUploadPct] = useState(0);
+  const [uploadFile, setUploadFile] = useState<{ name: string; mb: number } | null>(null);
+  const trainRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Read the plan so the UI can say so rather than letting someone record a
   // video and then hit a 403. Every plan since 2026-10-20; this checked for
@@ -432,8 +438,9 @@ function DigitalTwinCreator({
 
     setUploading(true);
     setUploadedUrl(null);
+    setUploadPct(0);
+    setUploadFile({ name: file.name, mb: Math.max(1, Math.round(file.size / 1024 / 1024)) });
     try {
-      const supabase = createClient();
       const ts = Date.now();
       const ext = file.name.split(".").pop() || "mp4";
       const filePath = `${userId}/camera-recordings/${ts}.${ext}`;
@@ -441,11 +448,12 @@ function DigitalTwinCreator({
       // which "assets" deliberately has none of since listing was closed
       // (2026-09-13), so every twin upload was refused with "new row
       // violates row-level security policy". The name is new each time.
-      const { error } = await supabase.storage.from("assets").upload(filePath, file, { upsert: false });
-      if (error) throw new Error(error.message);
-      const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(filePath);
+      // With progress, so a big video visibly moves (upload-with-progress.ts).
+      const publicUrl = await uploadWithProgress("assets", filePath, file, setUploadPct);
       setUploadedUrl(publicUrl);
-      toast.success("Video uploaded — click Train Digital Twin to continue");
+      toast.success("Video uploaded — next, Train Digital Twin");
+      // The next step, brought into view.
+      setTimeout(() => trainRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -692,10 +700,30 @@ function DigitalTwinCreator({
                 <p className="text-xs text-slate-400">MP4, MOV, WebM · up to 500 MB</p>
               </div>
             </button>
+            {/* Before a video is picked: what the first wait is. */}
+            {!uploading && !uploadedUrl && (
+              <p className="text-[11px] text-slate-400">On iPhone, Photos prepares the video first. This can take a minute.</p>
+            )}
+            {/* While it uploads: which file, how big, how far. */}
+            {uploading && uploadFile && (
+              <div className="flex flex-col gap-1.5">
+                <p className="truncate text-xs text-slate-600">
+                  Uploading {uploadFile.name} · {uploadFile.mb} MB · {Math.round(uploadPct * 100)}%
+                </p>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-spark-amber transition-[width] duration-300" style={{ width: `${Math.round(uploadPct * 100)}%` }} />
+                </div>
+              </div>
+            )}
+            {/* Uploaded: the video itself, to check it's the right one. */}
             {uploadedUrl && !uploading && (
-              <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
-                <CheckCircle size={13} className="text-green-500 shrink-0" />
-                <p className="text-xs text-green-700 font-medium">Video uploaded — ready to train</p>
+              <div className="flex flex-col gap-2 p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={13} className="text-green-500 shrink-0" />
+                  <p className="text-xs text-green-700 font-medium">Video uploaded{uploadFile ? ` · ${uploadFile.name}` : ""}</p>
+                </div>
+                <video src={uploadedUrl} controls playsInline preload="metadata" className="max-h-64 w-full rounded-lg bg-black" />
+                <p className="text-[11px] text-green-800">Used only to build your Digital Twin. It won&apos;t appear in My Sparks.</p>
               </div>
             )}
             <input
@@ -749,14 +777,18 @@ function DigitalTwinCreator({
         </p>
       </div>
 
-      <Button
-        onClick={handleSubmit}
-        loading={submitting}
-        disabled={!canSubmit || uploading}
-        className="self-start"
-      >
-        Train Digital Twin
-      </Button>
+      {/* Lit up once there is a video to train from, so the next step is
+          plain; the page scrolls here after an upload. */}
+      <div ref={trainRef} className="self-start">
+        <Button
+          onClick={handleSubmit}
+          loading={submitting}
+          disabled={!canSubmit || uploading}
+          className={canSubmit && !uploading ? "ring-4 ring-spark-amber/40" : undefined}
+        >
+          Train Digital Twin
+        </Button>
+      </div>
     </div>
   );
 }
