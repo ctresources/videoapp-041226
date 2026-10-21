@@ -559,7 +559,7 @@ export default function HelpPage() {
               own mix at the top of the AutoSparks page (1 video and 2 blogs, 3 videos, or 3 blogs).
               Every video also comes with its own blog article. Each comes with
               its script, blog post, title and description, set for Tuesday, Thursday and Saturday
-              at 9 AM. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
+              at 9 AM, or the 3 days and time you pick under <strong>Post on</strong>. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
               <strong>AutoSparks</strong> in the menu and, on each one, press{" "}
               <strong>Approve</strong> to open it ready to make, <strong>Change</strong> to edit it
               first, or <strong>Skip</strong>. On a video, <strong>Record it myself</strong> opens the

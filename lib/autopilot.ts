@@ -14,9 +14,21 @@ import { DEFAULT_TIME_ZONE, addDays, dayKey, isValidTimeZone, weekdayOf, zonedTo
 export const AUTOPILOT_PER_WEEK = 3;
 /** Ideas an agent may ask for in a week, on top of the Sunday three. */
 export const AUTOPILOT_ASKS_PER_WEEK = 6;
-/** Tuesday, Thursday, Saturday at 9 AM in the agent's own time zone. */
-const SLOT_DAYS = [1, 3, 5];
-const SLOT_TIME = "09:00";
+/**
+ * The days and time the week's drafts are set for, in the agent's own time
+ * zone: their choice since 2026-10-21 (profiles.autopilot_days, 0 = Sunday …
+ * 6 = Saturday, and autopilot_time), Tuesday, Thursday, Saturday at 9 to start.
+ */
+const DEFAULT_DAYS = [2, 4, 6];
+const DEFAULT_TIME = "09:00";
+
+function daysOf(p: Pick<AutopilotProfile, "autopilot_days">): number[] {
+  const days = (p.autopilot_days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  return days.length ? Array.from(new Set(days)) : DEFAULT_DAYS;
+}
+function timeOf(p: Pick<AutopilotProfile, "autopilot_time">): string {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(p.autopilot_time ?? "") ? p.autopilot_time! : DEFAULT_TIME;
+}
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -32,10 +44,14 @@ export interface AutopilotProfile {
   autopilot_enabled: boolean | null;
   /** How many of the week's 3 are videos; the rest are blog posts (0–3). */
   autopilot_videos: number | null;
+  /** The days the drafts are set for, 0 = Sunday … 6 = Saturday. */
+  autopilot_days: number[] | null;
+  /** The time they are set for, "HH:MM". */
+  autopilot_time: string | null;
 }
 
 export const AUTOPILOT_PROFILE_SELECT =
-  "id, email, full_name, role, subscription_tier, location_city, location_state, time_zone, autopilot_enabled, autopilot_videos";
+  "id, email, full_name, role, subscription_tier, location_city, location_state, time_zone, autopilot_enabled, autopilot_videos, autopilot_days, autopilot_time";
 
 /** Paid plans and admins. */
 export function autopilotEligible(p: Pick<AutopilotProfile, "role" | "subscription_tier">): boolean {
@@ -53,9 +69,12 @@ export function mondayFor(now: Date, tz: string): string {
   return wd === 0 ? addDays(today, 1) : addDays(today, 1 - wd);
 }
 
-/** The week's three slots, Tuesday, Thursday and Saturday at 9. */
-export function weekSlots(monday: string, tz: string): Date[] {
-  return SLOT_DAYS.map((d) => zonedToUtc(addDays(monday, d), SLOT_TIME, tz));
+/** The week's slots on the agent's days, Monday first and Sunday last. */
+export function weekSlots(monday: string, tz: string, days: number[] = DEFAULT_DAYS, time = DEFAULT_TIME): Date[] {
+  return days
+    .map((d) => (d + 6) % 7) // Monday = 0 … Sunday = 6, counted from the week's Monday
+    .sort((a, b) => a - b)
+    .map((offset) => zonedToUtc(addDays(monday, offset), time, tz));
 }
 
 interface TopicIdea { topic: string; reason: string; kind: "video" | "blog" }
@@ -190,8 +209,8 @@ export async function startDrafts(
   // The Sunday three take Tuesday, Thursday and Saturday. Asked-for ideas take
   // the next mornings from tomorrow, so they land in the days ahead.
   const slots = opts.request
-    ? ideas.map((_, i) => zonedToUtc(addDays(dayKey(now, tz), i + 1), SLOT_TIME, tz))
-    : weekSlots(monday, tz);
+    ? ideas.map((_, i) => zonedToUtc(addDays(dayKey(now, tz), i + 1), timeOf(profile), tz))
+    : weekSlots(monday, tz, daysOf(profile), timeOf(profile));
 
   const { data: rows, error } = await admin
     .from("autopilot_drafts")

@@ -54,6 +54,9 @@ export default function AutopilotPage() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   // How many of the week's 3 are videos; the rest are blog posts.
   const [videos, setVideos] = useState<number | null>(null);
+  // The days (0 = Sun … 6 = Sat) and time the drafts are set for.
+  const [days, setDays] = useState<number[] | null>(null);
+  const [time, setTime] = useState("09:00");
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [ask, setAsk] = useState("");
@@ -81,11 +84,13 @@ export default function AutopilotPage() {
 
   useEffect(() => {
     if (!user) return;
-    createClient().from("profiles").select("autopilot_enabled, autopilot_videos").eq("id", user.id).single()
+    createClient().from("profiles").select("autopilot_enabled, autopilot_videos, autopilot_days, autopilot_time").eq("id", user.id).single()
       .then(({ data }) => {
-        const p = data as { autopilot_enabled?: boolean; autopilot_videos?: number } | null;
+        const p = data as { autopilot_enabled?: boolean; autopilot_videos?: number; autopilot_days?: number[]; autopilot_time?: string } | null;
         setEnabled(p?.autopilot_enabled ?? true);
         setVideos(p?.autopilot_videos ?? 2);
+        setDays(p?.autopilot_days?.length ? p.autopilot_days : [2, 4, 6]);
+        setTime(p?.autopilot_time ?? "09:00");
       });
   }, [user]);
 
@@ -139,6 +144,28 @@ export default function AutopilotPage() {
     const { error } = await createClient().from("profiles").update({ autopilot_videos: n }).eq("id", user.id);
     if (error) { setVideos(before); toast.error("Couldn't change that. Try again."); return; }
     toast.success("Saved. Your next AutoSparks will follow it.");
+  }
+
+  /** Which days, saved once three are picked (2026-10-21, the owner's ask). */
+  async function toggleDay(d: number) {
+    if (!user || !days) return;
+    const on = days.includes(d);
+    if (!on && days.length >= 3) { toast("Pick 3 days. Tap one to turn it off first."); return; }
+    const next = on ? days.filter((x) => x !== d) : [...days, d].sort();
+    setDays(next);
+    if (next.length !== 3) return;
+    const { error } = await createClient().from("profiles").update({ autopilot_days: next }).eq("id", user.id);
+    if (error) { toast.error("Couldn't save the days. Try again."); return; }
+    toast.success("Saved. Your next AutoSparks will use these days.");
+  }
+
+  async function chooseTime(t: string) {
+    if (!user) return;
+    const before = time;
+    setTime(t);
+    const { error } = await createClient().from("profiles").update({ autopilot_time: t }).eq("id", user.id);
+    if (error) { setTime(before); toast.error("Couldn't save the time. Try again."); return; }
+    toast.success("Saved.");
   }
 
   async function getIdeas() {
@@ -227,6 +254,40 @@ export default function AutopilotPage() {
               {label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Which days, and what time (2026-10-21, the owner's ask). */}
+      {days !== null && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-0.5 text-xs font-medium text-spark-ink-muted">Post on:</span>
+          {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => void toggleDay(d)}
+              aria-pressed={days.includes(d)}
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                days.includes(d)
+                  ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
+                  : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+              }`}
+            >
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]}
+            </button>
+          ))}
+          <span className="ml-1 text-xs text-spark-ink-muted">at</span>
+          <select
+            value={time}
+            onChange={(e) => void chooseTime(e.target.value)}
+            className="rounded-lg border border-spark-rule bg-white px-2 py-1 text-xs text-spark-ink outline-none focus:border-spark-amber"
+          >
+            {Array.from({ length: 15 }, (_, i) => i + 6).map((h) => {
+              const v = `${String(h).padStart(2, "0")}:00`;
+              return <option key={v} value={v}>{h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}</option>;
+            })}
+          </select>
+          {days.length !== 3 && <span className="text-[11px] text-spark-amber">Pick 3 days</span>}
         </div>
       )}
 
