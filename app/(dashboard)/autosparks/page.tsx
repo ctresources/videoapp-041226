@@ -52,6 +52,8 @@ export default function AutopilotPage() {
   const router = useRouter();
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  // How many of the week's 3 are videos; the rest are blog posts.
+  const [videos, setVideos] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [ask, setAsk] = useState("");
@@ -79,8 +81,12 @@ export default function AutopilotPage() {
 
   useEffect(() => {
     if (!user) return;
-    createClient().from("profiles").select("autopilot_enabled").eq("id", user.id).single()
-      .then(({ data }) => setEnabled((data as { autopilot_enabled?: boolean } | null)?.autopilot_enabled ?? true));
+    createClient().from("profiles").select("autopilot_enabled, autopilot_videos").eq("id", user.id).single()
+      .then(({ data }) => {
+        const p = data as { autopilot_enabled?: boolean; autopilot_videos?: number } | null;
+        setEnabled(p?.autopilot_enabled ?? true);
+        setVideos(p?.autopilot_videos ?? 2);
+      });
   }, [user]);
 
   // Watch drafts still being written.
@@ -109,6 +115,16 @@ export default function AutopilotPage() {
     const { error } = await createClient().from("profiles").update({ autopilot_enabled: next }).eq("id", user.id);
     if (error) { setEnabled(!next); toast.error("Couldn't change that. Try again."); return; }
     toast.success(next ? "AutoSparks is on. New drafts every Sunday." : "AutoSparks is off.");
+  }
+
+  /** The weekly mix, chosen by the agent (2026-10-21, the owner's ask). */
+  async function chooseMix(n: number) {
+    if (!user) return;
+    const before = videos;
+    setVideos(n);
+    const { error } = await createClient().from("profiles").update({ autopilot_videos: n }).eq("id", user.id);
+    if (error) { setVideos(before); toast.error("Couldn't change that. Try again."); return; }
+    toast.success("Saved. Your next AutoSparks will follow it.");
   }
 
   async function getIdeas() {
@@ -172,6 +188,33 @@ export default function AutopilotPage() {
           </button>
         )}
       </div>
+
+      {/* The weekly mix (2026-10-21, the owner's ask). */}
+      {videos !== null && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-spark-ink-muted">Each week:</span>
+          {[
+            { n: 2, label: "2 videos + 1 blog" },
+            { n: 1, label: "1 video + 2 blogs" },
+            { n: 3, label: "3 videos" },
+            { n: 0, label: "3 blogs" },
+          ].map(({ n, label }) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => { if (n !== videos) void chooseMix(n); }}
+              aria-pressed={videos === n}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                videos === n
+                  ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
+                  : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Ask for ideas (2026-10-21, the owner's ask). */}
       <div className="rounded-2xl border border-spark-rule bg-white p-4">

@@ -30,10 +30,12 @@ export interface AutopilotProfile {
   location_state: string | null;
   time_zone: string | null;
   autopilot_enabled: boolean | null;
+  /** How many of the week's 3 are videos; the rest are blog posts (0–3). */
+  autopilot_videos: number | null;
 }
 
 export const AUTOPILOT_PROFILE_SELECT =
-  "id, email, full_name, role, subscription_tier, location_city, location_state, time_zone, autopilot_enabled";
+  "id, email, full_name, role, subscription_tier, location_city, location_state, time_zone, autopilot_enabled, autopilot_videos";
 
 /** Paid plans and admins. */
 export function autopilotEligible(p: Pick<AutopilotProfile, "role" | "subscription_tier">): boolean {
@@ -65,6 +67,8 @@ interface TopicIdea { topic: string; reason: string; kind: "video" | "blog" }
 async function pickTopics(opts: {
   city: string; state: string; monthName: string; year: number;
   recent: string[]; request?: string; count: number;
+  /** How many are videos; the rest are blog posts. */
+  videos: number;
 }): Promise<TopicIdea[]> {
   const place = opts.city && opts.state ? `${opts.city}, ${opts.state}` : "the agent's area";
   const ask = opts.request?.trim()
@@ -82,7 +86,7 @@ async function pickTopics(opts: {
       role: "user",
       content:
         `Agent's market: ${place}. Today: ${opts.monthName} ${opts.year}. Give ${opts.count} ideas. ${ask} ` +
-        `${opts.count >= 3 ? `Make ${opts.count - 1} of them "video" and 1 "blog". ` : ""}` +
+        `Make the first ${opts.videos} "video" and the other ${opts.count - opts.videos} "blog". ` +
         (opts.recent.length ? `Do not repeat these recent topics: ${opts.recent.slice(0, 15).join(" | ")}.` : ""),
     },
   ]);
@@ -92,10 +96,12 @@ async function pickTopics(opts: {
   return parsed
     .filter((i) => typeof i.topic === "string" && i.topic.trim())
     .slice(0, opts.count)
-    .map((i) => ({
+    // The agent's mix decides the kind, whatever the model said: the first
+    // ones are videos, the rest blog posts (2026-10-21).
+    .map((i, n) => ({
       topic: i.topic!.trim().slice(0, 200),
       reason: (i.reason ?? "").trim().slice(0, 120),
-      kind: i.kind === "blog" ? "blog" : "video",
+      kind: n < opts.videos ? "video" : "blog",
     }));
 }
 
@@ -162,7 +168,18 @@ export async function startDrafts(
   const recent = ((recentRows ?? []) as { title: string | null }[]).map((r) => r.title ?? "").filter(Boolean);
 
   const count = opts.count ?? AUTOPILOT_PER_WEEK;
+  // The agent's weekly mix (2 videos + 1 blog unless they chose otherwise),
+  // scaled to however many are being written.
+  const weekly = Math.max(0, Math.min(AUTOPILOT_PER_WEEK, profile.autopilot_videos ?? 2));
+  // An ask that says "blog" or "video" gets that, whatever the weekly mix.
+  const asked = opts.request ?? "";
+  const videos = /\bblogs?\b|\barticles?\b/i.test(asked) && !/\bvideos?\b|\breels?\b/i.test(asked)
+    ? 0
+    : /\bvideos?\b|\breels?\b/i.test(asked) && !/\bblogs?\b|\barticles?\b/i.test(asked)
+      ? count
+      : Math.round((weekly / AUTOPILOT_PER_WEEK) * count);
   const ideas = await pickTopics({
+    videos,
     city, state,
     monthName: now.toLocaleString("en-US", { month: "long", timeZone: tz }),
     year: now.getFullYear(),

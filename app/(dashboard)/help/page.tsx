@@ -554,8 +554,10 @@ export default function HelpPage() {
                 paragraph of the listings step. */}
             {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
             <Step n={12} title="AutoSparks (Paid Plans)" icon={Sparkles}>
-              Every Sunday evening, SparkReels writes 3 posts for your week: 2 videos and 1 blog
-              post, about your market, the season, and what buyers are asking AI. Each comes with
+              Every Sunday evening, SparkReels writes 3 posts for your week about your market, the
+              season, and what buyers are asking AI: 2 videos and 1 blog post to start, or pick your
+              own mix at the top of the AutoSparks page (1 video and 2 blogs, 3 videos, or 3 blogs).
+              Every video also comes with its own blog article. Each comes with
               its script, blog post, title and description, set for Tuesday, Thursday and Saturday
               at 9 AM. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
               <strong>AutoSparks</strong> in the menu and, on each one, press{" "}
