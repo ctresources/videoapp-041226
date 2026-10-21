@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, FileText, Loader2, Sparkles, Video } from "lucide-react";
+import { Camera, Check, FileText, Loader2, Sparkles, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { FieldMic } from "@/components/ui/field-mic";
@@ -30,7 +30,7 @@ interface Draft {
   requested: boolean;
   project_id: string | null;
   status: "writing" | "draft" | "approved" | "skipped" | "failed";
-  projects: { title: string | null; ai_script: { hook?: string } | null } | null;
+  projects: { title: string | null; ai_script: { hook?: string; script?: string; cta?: string } | null } | null;
 }
 
 /** This week's Monday in the browser's own day, or next week's on a Sunday. */
@@ -106,6 +106,20 @@ export default function AutopilotPage() {
   function open(d: Draft) {
     if (!d.project_id) return;
     router.push(d.kind === "blog" ? `/create/${d.project_id}?step=5` : `/create/${d.project_id}`);
+  }
+
+  /**
+   * Straight to the camera with the script in the teleprompter (2026-10-21,
+   * the owner's ask), the same handoff My Sparks' Record again uses. Free:
+   * a camera recording doesn't use a plan video.
+   */
+  async function recordMyself(d: Draft) {
+    const s = d.projects?.ai_script;
+    const script = [s?.hook, s?.script, s?.cta].map((x) => (x ?? "").trim()).filter(Boolean).join("\n\n");
+    if (!script) { open(d); return; }
+    if (!(await setStatus(d, "approved"))) return;
+    try { sessionStorage.setItem("camera-record-script", script); } catch { /* sessionStorage unavailable */ }
+    router.push("/create?tab=camera");
   }
 
   async function toggle() {
@@ -275,6 +289,11 @@ export default function AutopilotPage() {
                   {d.status === "draft" && (
                     <>
                       <Button size="sm" onClick={async () => { if (await setStatus(d, "approved")) open(d); }}>Approve</Button>
+                      {d.kind === "video" && (
+                        <Button size="sm" variant="outline" onClick={() => void recordMyself(d)} className="gap-1.5">
+                          <Camera size={13} /> Record it myself
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => open(d)}>Change</Button>
                       <Button size="sm" variant="ghost" onClick={() => void setStatus(d, "skipped")}>Skip</Button>
                     </>

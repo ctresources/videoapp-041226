@@ -562,7 +562,8 @@ export default function HelpPage() {
               at 9 AM. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
               <strong>AutoSparks</strong> in the menu and, on each one, press{" "}
               <strong>Approve</strong> to open it ready to make, <strong>Change</strong> to edit it
-              first, or <strong>Skip</strong>. Want something specific? Use{" "}
+              first, or <strong>Skip</strong>. On a video, <strong>Record it myself</strong> opens the
+              camera with the script in the teleprompter, free. Want something specific? Use{" "}
               <strong>Ask for ideas</strong>: type or say a topic, and up to 3 drafts are written in
               about a minute. Nothing is made, posted or charged until you approve it, and you can
               turn AutoSparks off at the top of that page.
