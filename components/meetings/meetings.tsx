@@ -88,7 +88,9 @@ export function useMeetings() {
 
 /** A meeting on a calendar day: gold, with a camera. */
 export function MeetingChip({ meeting, onOpen }: { meeting: Meeting; onOpen: (m: Meeting) => void }) {
-  const time = new Date(meeting.starts_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  // "9 AM", or "9:30 AM": short, because a phone's day cell is narrow.
+  const d = new Date(meeting.starts_at);
+  const time = d.toLocaleTimeString(undefined, d.getMinutes() ? { hour: "numeric", minute: "2-digit" } : { hour: "numeric" });
   return (
     <button
       type="button"
@@ -97,7 +99,8 @@ export function MeetingChip({ meeting, onOpen }: { meeting: Meeting; onOpen: (m:
       className="flex w-full items-center gap-1 truncate rounded-md bg-spark-amber px-1.5 py-0.5 text-left text-[10.5px] font-medium text-white transition hover:brightness-[0.95]"
     >
       <Video size={10} className="shrink-0" />
-      <span className="truncate">{time} {meeting.client_name}</span>
+      {/* On a phone just the time (2026-10-21); the name is in the panel. */}
+      <span className="truncate">{time}<span className="hidden sm:inline"> {meeting.client_name}</span></span>
     </button>
   );
 }

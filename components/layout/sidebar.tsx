@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils/cn";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarPlus, LogOut, ShieldCheck, Video } from "lucide-react";
+import { CalendarPlus, ChevronDown, LogOut, ShieldCheck, Video } from "lucide-react";
 import { MEET_NOW_URL } from "@/components/layout/top-nav";
 import { SCHEDULE_MEET_EVENT } from "@/components/meetings/meetings";
 import { useAuth } from "@/providers/supabase-provider";
@@ -122,6 +122,9 @@ const PLAN_LABELS: Record<string, string> = {
 // once as the desktop rail. The drawer copy passes mobile so it isn't hidden by
 // the desktop-only breakpoint.
 export function Sidebar({ mobile = false }: { mobile?: boolean }) {
+  // The Google Meet row's two choices, shown on a tap (2026-10-21: two rows
+  // read as the same item twice on the owner's iPhone).
+  const [meetOpen, setMeetOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
   // Role and plan for the sidebar: the Admin link was rendered for everyone
@@ -244,27 +247,41 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 inside another site, and this needs no setup or permission. */}
             {href === "/settings" && (
               <>
-              <a
-                href={MEET_NOW_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] font-normal text-spark-ink-soft transition-colors hover:bg-spark-amber-tint"
-              >
-                <Video size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
-                <span>Start a Google Meet</span>
-              </a>
-              {/* Later, through a new Google Calendar event (2026-10-20). */}
               <button
                 type="button"
-                onClick={() => {
-                  window.dispatchEvent(new Event("spark:close-menu"));
-                  window.dispatchEvent(new Event(SCHEDULE_MEET_EVENT));
-                }}
+                onClick={() => setMeetOpen((v) => !v)}
+                aria-expanded={meetOpen}
                 className="flex w-full items-center gap-2.5 rounded-nav px-2.5 py-2 text-left text-[12.5px] font-normal text-spark-ink-soft transition-colors hover:bg-spark-amber-tint"
               >
-                <CalendarPlus size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
-                <span>Schedule a Google Meet</span>
+                <Video size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
+                <span className="flex-1">Google Meet</span>
+                <ChevronDown size={14} className={cn("text-[#8b8779] transition-transform", meetOpen && "rotate-180")} />
               </button>
+              {meetOpen && (
+                <div className="ml-7 flex flex-col">
+                  <a
+                    href={MEET_NOW_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMeetOpen(false)}
+                    className="rounded-nav px-2.5 py-1.5 text-[12.5px] text-spark-ink-soft hover:bg-spark-amber-tint"
+                  >
+                    Start now
+                  </a>
+                  {/* Later, through SparkReels' Schedule box (2026-10-20). */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeetOpen(false);
+                      window.dispatchEvent(new Event("spark:close-menu"));
+                      window.dispatchEvent(new Event(SCHEDULE_MEET_EVENT));
+                    }}
+                    className="flex items-center gap-1.5 rounded-nav px-2.5 py-1.5 text-left text-[12.5px] text-spark-ink-soft hover:bg-spark-amber-tint"
+                  >
+                    <CalendarPlus size={13} strokeWidth={1.7} color="#8b8779" aria-hidden="true" /> Schedule for later
+                  </button>
+                </div>
+              )}
               </>
             )}
             <Link
