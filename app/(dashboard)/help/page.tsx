@@ -355,7 +355,7 @@ export default function HelpPage() {
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
               you forwarded in turns up (step 7). A listing or a photos only reel skips this
-              one (step 14). <strong>4 · Details</strong> — the city and state, who
+              one (step 15). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s format.
               <span className="block mt-1.5">
                 You don&apos;t have to work down all four. Give it a topic at the top, check the
@@ -371,7 +371,7 @@ export default function HelpPage() {
                 <strong> Avatar video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
-                has nobody on screen: it is a Scenes Reel (step 12). Each uses one short video. If
+                has nobody on screen: it is a Scenes Reel (step 13). Each uses one short video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
                 &ldquo;voice over only&rdquo;, it isn&apos;t asked.
               </span>
@@ -462,7 +462,7 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 Say <em>&ldquo;make a reel about&hellip;&rdquo;</em> and it makes a Voice over only
-                Scenes Reel (step 12). Say who&apos;s in it, as in <em>&ldquo;a reel with my
+                Scenes Reel (step 13). Say who&apos;s in it, as in <em>&ldquo;a reel with my
                 avatar&rdquo;</em>, and it makes that instead.
               </span>
               {/* The cards and the box agree, in both directions. */}
@@ -490,7 +490,7 @@ export default function HelpPage() {
                 the one showing, or just start typing. Under it is a{" "}
                 <strong>Quick win</strong>: a ready topic for your town in one press, with a new idea
                 each time you sign in (your very first one is a market update). Then{" "}
-                <strong>What buyers ask AI</strong> (step 20), and under that <strong>Or try</strong>:
+                <strong>What buyers ask AI</strong> (step 21), and under that <strong>Or try</strong>:
                 ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
                 and a search box. Tap one and it lands in the same box the mic writes into, so you can
                 add to it before you send.
@@ -552,7 +552,20 @@ export default function HelpPage() {
             </Step>
             {/* Its own step: the owner wants it found, and it was the last
                 paragraph of the listings step. */}
-            <Step n={12} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
+            {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
+            <Step n={12} title="Weekly Autopilot (Paid Plans)" icon={Sparkles}>
+              Every Sunday evening, SparkReels writes 3 posts for your week: 2 videos and 1 blog
+              post, about your market, the season, and what buyers are asking AI. Each comes with
+              its script, blog post, title and description, set for Tuesday, Thursday and Saturday
+              at 9 AM. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
+              <strong>Autopilot</strong> in the menu and, on each one, press{" "}
+              <strong>Approve</strong> to open it ready to make, <strong>Change</strong> to edit it
+              first, or <strong>Skip</strong>. Want something specific? Use{" "}
+              <strong>Ask for ideas</strong>: type or say a topic, and up to 3 drafts are written in
+              about a minute. Nothing is made, posted or charged until you approve it, and you can
+              turn Autopilot off at the top of that page.
+            </Step>
+            <Step n={13} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
               A <strong>Scenes Reel</strong> needs no photos, no camera and no face. Your voice
               clone reads the script over short, realistic scenes made with AI, one for each
               sentence, on screen while that sentence is spoken. It is the quickest video to make
@@ -584,11 +597,11 @@ export default function HelpPage() {
                 close-ups, rooms, streets, different light. They are generic on purpose. People
                 appear only from behind or at a distance, there are no readable words, and it is
                 never your town or a real listing. For a real property use a Photos only reel with
-                its own photos (step 14). A Scenes Reel uses <strong>one short video</strong>, and{" "}
+                its own photos (step 15). A Scenes Reel uses <strong>one short video</strong>, and{" "}
                 <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
               </span>
             </Step>
-            <Step n={13} title="Camera/Teleprompter — The Free Option" icon={Camera}>
+            <Step n={14} title="Camera/Teleprompter — The Free Option" icon={Camera}>
               Pressing <strong>Camera/Teleprompter</strong> opens a page of its own, with{" "}
               <strong>Back</strong> on the bar at the bottom to return to Spark Studio. On a computer it
               starts with <strong>Record yourself</strong> or <strong>Record your screen</strong>.{" "}
@@ -675,7 +688,7 @@ export default function HelpPage() {
             {/* Its own step since the card moved up to row 1 and the reel
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
-            <Step n={14} title="Listings And Photos Only Reels" icon={ImageIcon}>
+            <Step n={15} title="Listings And Photos Only Reels" icon={ImageIcon}>
               <strong>Listings &amp; photos</strong>, the fourth card, opens a page of its own with two
               tabs, and both start from a set of property pictures. <strong>Back</strong>, on the bar
               at the bottom, returns to Spark Studio.{" "}
@@ -729,17 +742,17 @@ export default function HelpPage() {
                 accepts.
               </span>
               <span className="block mt-1.5">
-                No photos to start from? That is a Scenes Reel (step 12).
+                No photos to start from? That is a Scenes Reel (step 13).
               </span>
             </Step>
-            <Step n={15} title="Your Share Kit — And A Blog Post" icon={FileText}>
+            <Step n={16} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
               holds a <strong>blog article</strong> — usually 1,000 to 1,500 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
               and a <strong>Frequently Asked Questions</strong> section of six questions at the end, chosen
               from what people are asking about that subject in your town. Those six are{" "}
-              <strong>AI answer blocks</strong>, built into every article (step 20). That is the shape an AI
+              <strong>AI answer blocks</strong>, built into every article (step 21). That is the shape an AI
               assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               {/* Editing the article (2026-10-16). */}
               To change the words, press <strong>Edit</strong> on the article. The introduction, body
@@ -822,7 +835,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={16} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={17} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
@@ -849,7 +862,7 @@ export default function HelpPage() {
             {/* Rewritten when posting to the other platforms went live. It said
                 to download the MP4 and post it by hand, which is still there
                 at the end for anywhere that is not connected. */}
-            <Step n={17} title="Everywhere Else — From The Same Window" icon={Upload}>
+            <Step n={18} title="Everywhere Else — From The Same Window" icon={Upload}>
               The <strong>Publish</strong> window lists every account you connected in step 6. Tick the
               ones this video should go to and the button names them — <strong>Publish to
               Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
@@ -941,7 +954,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={18} title="The Everyday Tools" icon={Wand2}>
+            <Step n={19} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
@@ -1004,7 +1017,7 @@ export default function HelpPage() {
             {/* The graphics tools, which were not described anywhere — and the
                 counting rule, which is the thing people actually need to know
                 before they press a button that spends something. */}
-            <Step n={19} title="Graphics Without A Designer" icon={ImageIcon}>
+            <Step n={20} title="Graphics Without A Designer" icon={ImageIcon}>
               The <strong>Image Generator</strong> makes a finished graphic: pick{" "}
               <strong>Just listed</strong>, <strong>Open house</strong>, <strong>Market update</strong>,{" "}
               <strong>Blog header</strong> or <strong>Blank</strong>, describe the picture you want, and
@@ -1045,7 +1058,7 @@ export default function HelpPage() {
                 you can change the text and colors yourself.
               </span>
             </Step>
-            <Step n={20} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            <Step n={21} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. On <strong>Create</strong>, under the topic box,{" "}
               <strong>What buyers ask AI</strong> shows a question buyers in your city are asking right
@@ -1054,7 +1067,7 @@ export default function HelpPage() {
               topic, so the video answers it.
               <span className="block mt-1.5">
                 <strong>Every blog article already has answer blocks.</strong> The six questions at the end
-                of each article in your Share Kit (step 15) are written the way AI assistants quote, for
+                of each article in your Share Kit (step 16) are written the way AI assistants quote, for
                 that article&apos;s topic, so there is nothing extra to make.
               </span>
               <span className="block mt-1.5">
@@ -1075,7 +1088,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Sparks, Insights And The Calendar</h2>
           <div className="flex flex-col gap-4">
-            <Step n={21} title="What A Spark Is" icon={Sparkles}>
+            <Step n={22} title="What A Spark Is" icon={Sparkles}>
               A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
               video or videos made from it, the article, the captions, and where each has been
               published. One topic, one Spark — even if you make a short version, a long version and a
@@ -1092,7 +1105,7 @@ export default function HelpPage() {
               </span>
             </Step>
             {/* The Dashboard and Spark Insights became one page on 2026-10-14. */}
-            <Step n={22} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
+            <Step n={23} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
               opens with what you have left — short videos, long videos, and whether camera recording
               is unlocked with the days remaining — a <strong>Getting Started</strong> checklist that
@@ -1113,14 +1126,14 @@ export default function HelpPage() {
               </span>
               </span>
             </Step>
-            <Step n={23} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+            <Step n={24} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
               out: it appears in your menu when your account has it.
             </Step>
             {/* The affiliate program (2026-10-17), worded as the owner approved. */}
-            <Step n={24} title="Earn With The Affiliate Program" icon={DollarSign}>
+            <Step n={25} title="Earn With The Affiliate Program" icon={DollarSign}>
               Recommend SparkReels and earn <strong>20% of what each customer you refer pays, every
               month for their first 12 months</strong>. Open <strong>Affiliate</strong> in the menu and
               press <strong>Apply to join</strong>, or use <strong>Affiliates</strong> at the bottom of
