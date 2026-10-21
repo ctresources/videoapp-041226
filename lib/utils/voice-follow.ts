@@ -245,7 +245,11 @@ export function followWordInContainer(container: HTMLElement | null, idx: number
 
   const cRect = container.getBoundingClientRect();
   const eRect = el.getBoundingClientRect();
-  const target = eRect.top - cRect.top + container.scrollTop - container.clientHeight * 0.3;
+  // The word being read sits near the top of the band, not a third of the way
+  // down, so more of what comes next is in view (2026-10-21: the owner found
+  // Flow trailing her). Recognition reports a word a beat after it is said,
+  // so the reader is always slightly ahead of this.
+  const target = eRect.top - cRect.top + container.scrollTop - container.clientHeight * 0.1;
   container.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
 
   const prev = (container as any).__flowEl as HTMLElement | undefined;

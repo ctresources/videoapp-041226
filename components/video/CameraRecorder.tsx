@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 import {
+  Maximize2,
+  Minus,
+  Plus as PlusIcon,
   Camera,
   Square,
   RotateCcw,
@@ -255,6 +258,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   const setSparkLength = onScriptLengthChange;
   const [sparking, setSparking] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(1);
+  // The whole script, large, to read and edit before recording (2026-10-21).
+  const [readerOpen, setReaderOpen] = useState(false);
   // "flow" = teleprompter follows the reader's voice; "auto" = constant speed
   const [scrollMode, setScrollMode] = useState<"auto" | "flow">("auto");
   const [flowSupported, setFlowSupported] = useState(false);
@@ -1777,7 +1782,9 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                   ? "Your script appears here once it's written above — or type it yourself."
                   : "Type your script, or tap the mic to speak it…"
               }
-              className="w-full h-36 text-sm px-3 py-3 pr-14 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed"
+              // Taller (2026-10-21, the owner's ask): six lines meant scrolling
+              // through a whole script in a slot to read it before a take.
+              className="w-full h-64 text-sm px-3 py-3 pr-14 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y leading-relaxed"
             />
             <div className="absolute bottom-2 right-2">
               <FieldMic
@@ -1803,9 +1810,36 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           {scriptInterim && (
             <p className="mt-1 text-sm italic leading-relaxed text-slate-400">{scriptInterim}</p>
           )}
-          <p className="text-xs text-slate-400 mt-1 mb-2">
-            {script.trim().split(/\s+/).filter(Boolean).length} words
-          </p>
+          <div className="mt-1 mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-slate-400">
+              {script.trim().split(/\s+/).filter(Boolean).length} words
+            </p>
+            {script.trim() && (
+              <button
+                type="button"
+                onClick={() => setReaderOpen(true)}
+                className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+              >
+                <Maximize2 size={12} /> Read it full screen
+              </button>
+            )}
+          </div>
+          {/* Read and edit the whole script, large, before recording. */}
+          {readerOpen && (
+            <div className="fixed inset-0 z-[70] flex flex-col bg-white">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-700">
+                  Your script · {script.trim().split(/\s+/).filter(Boolean).length} words
+                </p>
+                <Button size="sm" onClick={() => setReaderOpen(false)}>Done</Button>
+              </div>
+              <textarea
+                value={script}
+                onChange={(e) => setScript(e.target.value)}
+                className="mx-auto w-full max-w-2xl flex-1 resize-none px-5 py-5 text-lg leading-relaxed text-slate-800 outline-none"
+              />
+            </div>
+          )}
         </div>
 
         {/* Only once there is something for it to scroll. Choosing whether
@@ -2510,6 +2544,31 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                   {opt.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Speed while recording (2026-10-21, the owner's ask): adjust
+              mid-take instead of stopping. Auto mode only; Flow paces itself.
+              A step is a quarter faster or a fifth slower, kept in range. */}
+          {isRecording && !isPaused && scrollMode === "auto" && promptScript.trim() && (
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => { speedRef.current = Math.max(6, speedRef.current * 0.8); }}
+                aria-label="Scroll slower"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-white/85 active:bg-white/15"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="text-xs text-white/60">Speed</span>
+              <button
+                type="button"
+                onClick={() => { speedRef.current = Math.min(90, speedRef.current * 1.25); }}
+                aria-label="Scroll faster"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-white/85 active:bg-white/15"
+              >
+                <PlusIcon size={16} />
+              </button>
             </div>
           )}
 
