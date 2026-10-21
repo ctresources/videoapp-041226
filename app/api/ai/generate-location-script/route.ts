@@ -115,8 +115,10 @@ export async function POST(req: NextRequest) {
     blogOnly?: boolean;
   };
 
-  // Basic validation
-  if (!videoType || !city || !state) {
+  // Basic validation. A custom topic may come without a place for an admin
+  // (checked below, once the profile is read): the owner's own videos are
+  // often not about a town (2026-10-21).
+  if (!videoType || ((!city || !state) && videoType !== "custom")) {
     return NextResponse.json(
       { error: "videoType, city, and state are required" },
       { status: 400 }
@@ -147,6 +149,9 @@ export async function POST(req: NextRequest) {
 
   if (!profile) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
+  }
+  if ((!city || !state) && (profile as { role?: string | null }).role !== "admin") {
+    return NextResponse.json({ error: "videoType, city, and state are required" }, { status: 400 });
   }
 
   /**

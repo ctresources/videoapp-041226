@@ -313,7 +313,7 @@ function CreatePageInner() {
    * and nothing called it. A zero balance was discovered at Generate, after
    * the market, the topic, the recording and the style had all been chosen.
    */
-  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean; freeBlogLeft: number | null; freeRecordingLeft: number | null } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean; freeBlogLeft: number | null; freeRecordingLeft: number | null; isAdmin?: boolean } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -1894,6 +1894,9 @@ function CreatePageInner() {
 
   const readyToContinue = step === "input" && inputMode === "camera" && !!uploadedFile;
   const locationSet = !!(locCity.trim() && locState.trim());
+  // Admins may leave the city and state empty (2026-10-21, the owner's ask):
+  // their own videos are often not about a town. Everyone else still needs one.
+  const locationOk = locationSet || !!allowance?.isAdmin;
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
@@ -1927,7 +1930,7 @@ function CreatePageInner() {
   };
   /** Publishing what they attached, rather than writing something new from it. */
   const importingAsIs = blogSourceReady && blogSrcUse === "asis";
-  const canContinue = locationSet && (!!locCustomTopic.trim() || !!blogSrcText.trim())
+  const canContinue = locationOk && (!!locCustomTopic.trim() || !!blogSrcText.trim())
     && !locGenerating && !blogImporting;
 
   // Feeds the topbar's step chip and gradient rail. Deliberately mode-agnostic:
@@ -3707,7 +3710,7 @@ function CreatePageInner() {
               ? "You have no videos left this month. Filming it yourself is still free."
               : locGenerating
                 ? "Researching the area and writing. This takes about a minute."
-                : !locationSet
+                : !locationOk
                   // Said nothing here since the owner took the line out. The
                   // button beside it stays dim until there is a city and state.
                   ? ""
