@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
   let brief = { audience: "", tone: "", purpose: "" };
   /** Recorded over scenes made with AI: marked for publishing, and said in the description. */
   let aiScenes = false;
+  let cameraPhotos: string[] = [];
 
   const contentType = req.headers.get("content-type") || "";
 
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
       cta?: string;
       idempotencyKey?: string;
       aiScenes?: boolean;
+      photos?: string[];
       audience?: string;
       tone?: string;
       purpose?: string;
@@ -95,6 +97,11 @@ export async function POST(req: NextRequest) {
     cta = (body.cta || "").trim().slice(0, 2000);
     idempotencyKey = (body.idempotencyKey || "").trim().slice(0, 64) || null;
     aiScenes = body.aiScenes === true;
+    // The photos attached to the take (2026-10-21), so Record again in My
+    // Sparks can bring them back. Web addresses only, at most 20.
+    cameraPhotos = Array.isArray(body.photos)
+      ? body.photos.filter((u): u is string => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 20)
+      : [];
 
     const gate = await cameraGateResponse(user.id, idempotencyKey);
     if (gate) return gate;
@@ -217,7 +224,11 @@ export async function POST(req: NextRequest) {
       render_provider: "camera",
       render_status: "completed",
       // "scenes" is what isAiMadeVideo reads to set the platform disclosures.
-      metadata: { source: "teleprompter", ...(aiScenes && { motion: "scenes" }) },
+      metadata: {
+        source: "teleprompter",
+        ...(aiScenes && { motion: "scenes" }),
+        ...(cameraPhotos.length > 0 && { camera_photos: cameraPhotos }),
+      },
       idempotency_key: idempotencyKey,
     })
     .select("id")

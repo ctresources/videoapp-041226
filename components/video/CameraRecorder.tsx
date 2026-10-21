@@ -1260,6 +1260,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       videoType: videoTypeForSize(size),
       // Only when the scenes were actually in the picture.
       aiScenes: brollIsScenes && !!brollVideoUrl && brandedLook,
+      // The photos attached, for Record again in My Sparks (2026-10-21).
+      photos: photos.slice(0, 20),
       width: size?.width ?? null,
       height: size?.height ?? null,
       mimeType,
@@ -1347,6 +1349,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         script: record.script,
         videoType: record.videoType,
         aiScenes: record.aiScenes,
+        photos: record.photos,
         city: record.city,
         state: record.state,
         audience: record.audience,

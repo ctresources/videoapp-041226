@@ -1,5 +1,6 @@
 "use client";
 
+import { UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,7 +101,9 @@ export function MediaAndDocs({
   onRemovePhoto,
   onReorderPhotos,
   photosUploading,
-  maxPhotos = 12,
+  // 20, the camera and pasted-script limit (UPLOAD_PHOTO_LIMIT). It said 12
+  // after the limit went to 20 on 2026-10-16, because no caller passed it.
+  maxPhotos = UPLOAD_PHOTO_LIMIT,
   doc,
   blurb = "Photos become b-roll · a PDF or URL feeds the script",
 }: Props) {

@@ -55,6 +55,8 @@ interface GeneratedVideo {
     music_url?: string;
     photo_urls?: string[];
     stock_clip_urls?: string[];
+    /** Photos attached to a camera take, for Record again (2026-10-21). */
+    camera_photos?: string[];
   } | null;
   projects?: {
     title: string;
@@ -1340,6 +1342,10 @@ function VideosContent() {
                                 .join("\n\n");
                               try {
                                 sessionStorage.setItem("camera-record-script", combined);
+                                // The take's photos too (2026-10-21): the
+                                // camera tab already takes this handoff.
+                                const photos = video.metadata?.camera_photos ?? [];
+                                if (photos.length) sessionStorage.setItem("camera-record-photos", JSON.stringify(photos));
                               } catch { /* sessionStorage unavailable */ }
                               router.push("/create?tab=camera");
                             }}

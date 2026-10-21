@@ -64,6 +64,8 @@ export async function uploadCameraRecording(
     videoType?: string;
     /** The take has generated scenes playing behind the speaker. */
     aiScenes?: boolean;
+    /** The photos attached to the take, kept for Record again. */
+    photos?: string[];
     /**
      * The recording's recovery id, stable across retries.
      *
