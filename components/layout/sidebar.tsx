@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils/cn";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, ShieldCheck, Video } from "lucide-react";
+import { CalendarPlus, LogOut, ShieldCheck, Video } from "lucide-react";
+import { MEET_NOW_URL, MEET_SCHEDULE_URL } from "@/components/layout/top-nav";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
@@ -241,8 +242,9 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 signed in to Google, in a new tab: Google doesn't let Meet run
                 inside another site, and this needs no setup or permission. */}
             {href === "/settings" && (
+              <>
               <a
-                href="https://meet.new"
+                href={MEET_NOW_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] font-normal text-spark-ink-soft transition-colors hover:bg-spark-amber-tint"
@@ -250,6 +252,17 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 <Video size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
                 <span>Start a Google Meet</span>
               </a>
+              {/* Later, through a new Google Calendar event (2026-10-20). */}
+              <a
+                href={MEET_SCHEDULE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] font-normal text-spark-ink-soft transition-colors hover:bg-spark-amber-tint"
+              >
+                <CalendarPlus size={15} strokeWidth={1.7} color="#8b8779" className="flex-none" aria-hidden="true" />
+                <span>Schedule a Google Meet</span>
+              </a>
+              </>
             )}
             <Link
               href={href}

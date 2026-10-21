@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowLeft, Menu, Video } from "lucide-react";
+import { ArrowLeft, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { cn } from "@/lib/utils/cn";
 import { AskSparklee } from "@/components/layout/ask-sparklee";
-import { AccountMenu, TopNav } from "@/components/layout/top-nav";
+import { AccountMenu, MeetMenu, TopNav } from "@/components/layout/top-nav";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -137,21 +137,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-3.5">
-          {/* Start a Google Meet, on computers (2026-10-20): there is no side
-              menu here, so the phone menu's row never showed. meet.new starts
-              a fresh Meet under the agent's own Google account, in a new tab. */}
-          <a
-            href="https://meet.new"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Start a Google Meet"
-            className={cn(
-              "hidden items-center gap-1.5 text-[13px] font-medium transition-colors md:flex",
-              onCreate ? "text-spark-paper/80 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink",
-            )}
-          >
-            <Video size={16} strokeWidth={1.8} /> Meet
-          </a>
+          {/* Google Meet, on computers (2026-10-20): Start now or Schedule
+              for later. There is no side menu here, so the phone menu's rows
+              never showed. */}
+          <MeetMenu dark={onCreate} />
           {/* Ask Sparklee, the spoken helper, on every page with this bar. */}
           <AskSparklee />
           {/* The "Step 1" label came off at the owner's ask (2026-10-15): the

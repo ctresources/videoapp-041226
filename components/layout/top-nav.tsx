@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut, ShieldCheck } from "lucide-react";
+import { CalendarPlus, ChevronDown, LogOut, ShieldCheck, Video } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useAuth } from "@/providers/supabase-provider";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
@@ -127,6 +127,47 @@ export function TopNav({ dark }: { dark: boolean }) {
  * The initial at the end of the bar, now a menu: the email, the plan, Admin
  * for admins, and Sign Out, which lived at the foot of the side menu.
  */
+/**
+ * Google Meet, now or later (2026-10-20, the owner's ask). Both open in a new
+ * tab under the agent's own Google account and need no permission from us:
+ * meet.new starts a call at once; a new Google Calendar event is how a call is
+ * scheduled, and Calendar attaches the Meet link and sends the invite.
+ */
+export const MEET_NOW_URL = "https://meet.new";
+export const MEET_SCHEDULE_URL = "https://calendar.google.com/calendar/r/eventedit?text=Video%20call";
+
+export function MeetMenu({ dark }: { dark: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  const item = "flex items-center gap-2 px-3.5 py-2 text-[13px] text-spark-ink-soft hover:bg-spark-amber-tint";
+  return (
+    <div ref={ref} className="relative hidden md:block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        title="Google Meet"
+        className={cn(
+          "flex items-center gap-1.5 text-[13px] font-medium transition-colors",
+          dark ? "text-spark-paper/80 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink",
+        )}
+      >
+        <Video size={16} strokeWidth={1.8} /> Meet <ChevronDown size={13} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[200px] rounded-xl border border-spark-rule bg-white py-2 shadow-lg">
+          <a href={MEET_NOW_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={item}>
+            <Video size={14} /> Start now
+          </a>
+          <a href={MEET_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={item}>
+            <CalendarPlus size={14} /> Schedule for later
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AccountMenu({ dark }: { dark: boolean }) {
   const { user } = useAuth();
   const account = useAccount();

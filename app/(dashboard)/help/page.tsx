@@ -979,9 +979,12 @@ export default function HelpPage() {
               </span>
               {/* The menu's Meet button, 2026-10-20; the owner's wording. */}
               <span className="block mt-1.5">
-                <strong>Start a Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer,
-                or in the menu on your phone. It opens a new Google Meet in a new tab; copy the link and
-                send it to your client.
+                <strong>Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer, or in
+                the menu on your phone. <strong>Start now</strong> opens a new Google Meet in a new tab;
+                copy the link and send it to your client. <strong>Schedule for later</strong> opens a new
+                Google Calendar event: pick the date and time, add your client&apos;s email as a guest, and
+                save. Calendar adds the Meet link and sends them the invite. If no Meet link appears,
+                click <strong>Add Google Meet video conferencing</strong> before saving.
               </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the
