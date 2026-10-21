@@ -1149,7 +1149,9 @@ export default function ProjectEditorPage() {
       if (!user) throw new Error("Please sign in again.");
       const ext = file.name.split(".").pop();
       const path = `${user.id}/music-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("assets").upload(path, file, { upsert: true });
+      // upsert off: it needs a storage read rule "assets" doesn't have, and
+      // was refused with a row-level security error (2026-10-21).
+      const { error } = await supabase.storage.from("assets").upload(path, file, { upsert: false });
       if (error) throw new Error(error.message);
       const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(path);
       setMusicUrl(publicUrl);

@@ -437,7 +437,11 @@ function DigitalTwinCreator({
       const ts = Date.now();
       const ext = file.name.split(".").pop() || "mp4";
       const filePath = `${userId}/camera-recordings/${ts}.${ext}`;
-      const { error } = await supabase.storage.from("assets").upload(filePath, file, { upsert: true });
+      // upsert off (2026-10-21): an upsert needs a read rule on storage,
+      // which "assets" deliberately has none of since listing was closed
+      // (2026-09-13), so every twin upload was refused with "new row
+      // violates row-level security policy". The name is new each time.
+      const { error } = await supabase.storage.from("assets").upload(filePath, file, { upsert: false });
       if (error) throw new Error(error.message);
       const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(filePath);
       setUploadedUrl(publicUrl);
