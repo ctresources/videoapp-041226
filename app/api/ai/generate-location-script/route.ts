@@ -32,8 +32,20 @@ export const maxDuration = 300;
 const YT_META_TIMEOUT_MS = 45_000;
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  /**
+   * Weekly Autopilot writes drafts for an agent who isn't signed in
+   * (lib/autopilot.ts, 2026-10-21). It comes in with the cron secret and says
+   * whose draft it is; every other request is the signed-in agent, as before.
+   */
+  const asUser = req.headers.get("x-autopilot-user");
+  const cronSecret = process.env.CRON_SECRET;
+  let user: { id: string } | null = null;
+  if (asUser && cronSecret && req.headers.get("authorization") === `Bearer ${cronSecret}`) {
+    user = { id: asUser };
+  } else {
+    const supabase = await createClient();
+    user = (await supabase.auth.getUser()).data.user;
+  }
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // ── Parse request body ──────────────────────────────────────────────────────

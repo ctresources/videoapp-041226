@@ -771,3 +771,53 @@ export async function notifyTwinRefused({ userEmail, detail }: { userEmail: stri
   }).catch(() => null);
   return !!res?.ok;
 }
+
+/**
+ * Weekly Autopilot's Monday email (2026-10-21): the week's drafts are written
+ * and waiting. Links to /autopilot, where each is approved, changed or skipped.
+ */
+export async function sendAutopilotWeek({
+  email,
+  name,
+  videos,
+  blogs,
+  monday,
+}: {
+  email: string;
+  name: string | null;
+  videos: number;
+  blogs: number;
+  /** The week's Monday, "YYYY-MM-DD". */
+  monday: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const first = name?.trim().split(/\s+/)[0];
+  const [y, m, d] = monday.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d));
+  const end = new Date(Date.UTC(y, m - 1, d + 6));
+  const fmt = (t: Date) => t.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const parts = [
+    videos ? `${videos} video${videos === 1 ? "" : "s"}` : "",
+    blogs ? `${blogs} blog post${blogs === 1 ? "" : "s"}` : "",
+  ].filter(Boolean).join(" and ");
+  const total = videos + blogs;
+  const url = "https://www.sparkreels.ai/autopilot";
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "Your week is ready ✨",
+      html: `
+        <p><strong>Your week is ready${first ? `, ${first}` : ""} ✨</strong></p>
+        <p>${total} draft${total === 1 ? " is" : "s are"} waiting for ${fmt(start)} – ${fmt(end)}: ${parts}.
+        Each has its script, blog post, title and description written. Approve, change or skip each one.</p>
+        <p><a href="${url}" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">Review my week</a></p>
+        <p style="color:#6f6b60;font-size:13px">Nothing is made or posted until you approve it. You can turn Autopilot off on that page.</p>
+      `,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}

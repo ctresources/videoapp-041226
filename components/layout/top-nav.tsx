@@ -20,6 +20,8 @@ import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 const NAV: { href: string; label: string; from: "md" | "lg" | "xl" }[] = [
   { href: "/create", label: "Spark Studio", from: "md" },
   { href: "/videos", label: "My Sparks", from: "md" },
+  // Weekly Autopilot's review screen (2026-10-21).
+  { href: "/autopilot", label: "Autopilot", from: "lg" },
   { href: "/tools", label: "Spark Tools", from: "md" },
   { href: "/calendar", label: "Spark Calendar", from: "lg" },
   { href: "/analytics", label: "Spark Insights", from: "lg" },

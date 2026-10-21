@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
 import { RenderQueueNotice } from "@/components/videos/render-queue-notice";
+import { AutopilotBanner } from "@/components/autopilot/autopilot-banner";
 
 interface DraftProject {
   id: string;
@@ -1555,6 +1556,9 @@ function VideosContent() {
 
 export default function VideosPage() {
   return (
+    <>
+    {/* Autopilot drafts waiting (2026-10-21). */}
+    <AutopilotBanner />
     <Suspense fallback={
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-52" />)}
@@ -1562,5 +1566,6 @@ export default function VideosPage() {
     }>
       <VideosContent />
     </Suspense>
+    </>
   );
 }
