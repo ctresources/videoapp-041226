@@ -981,10 +981,13 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer, or in
                 the menu on your phone. <strong>Start now</strong> opens a new Google Meet in a new tab;
-                copy the link and send it to your client. <strong>Schedule for later</strong> opens a new
-                Google Calendar event: pick the date and time, add your client&apos;s email as a guest, and
-                save. Calendar adds the Meet link and sends them the invite. If no Meet link appears,
-                click <strong>Add Google Meet video conferencing</strong> before saving.
+                copy the link and send it to your client. <strong>Schedule for later</strong> asks for your
+                client&apos;s name and email, the date, the time and how long, then opens Google Calendar
+                with it all filled in: press <strong>Save</strong>, then <strong>Send</strong> to email them
+                the invite. Calendar adds the Meet link; if none appears, click{" "}
+                <strong>Add Google Meet video conferencing</strong> before saving. The meeting shows in{" "}
+                <strong>Spark Calendar</strong> right away as a gold camera on its day; tap it to open that
+                day in Google Calendar, or <strong>Remove</strong> it if you didn&apos;t save it in Google.
               </span>
             </Step>
             {/* The graphics tools, which were not described anywhere — and the

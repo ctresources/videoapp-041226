@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "@/components/layout/sidebar";
+import { ScheduleMeetDialog } from "@/components/meetings/meetings";
 import { Topbar } from "@/components/layout/topbar";
 import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { CreateProgressProvider } from "@/components/layout/create-progress";
@@ -55,6 +56,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <CreateProgressProvider>
     <div className="flex min-h-screen">
       <GlobalVoiceShortcut disabled={onCreateRoute || !voiceShortcutRoute} />
+      {/* Schedule a Google Meet, opened from either Meet menu (2026-10-20). */}
+      <ScheduleMeetDialog />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div

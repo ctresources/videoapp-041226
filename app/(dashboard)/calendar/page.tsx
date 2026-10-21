@@ -14,6 +14,7 @@ import {
 } from "date-fns";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { MeetingChip, MeetingDrawer, useMeetings, type Meeting } from "@/components/meetings/meetings";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -198,6 +199,9 @@ export default function CalendarPage() {
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  // Google Meet calls scheduled from the Meet menu (2026-10-20).
+  const meetings = useMeetings();
+  const [openMeeting, setOpenMeeting] = useState<Meeting | null>(null);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -382,8 +386,11 @@ export default function CalendarPage() {
                     {format(day, "d")}
                   </div>
 
-                  {/* Post pills */}
+                  {/* Post pills, after the day's meetings */}
                   <div className="space-y-0.5">
+                    {meetings.filter((m) => isSameDay(new Date(m.starts_at), day)).map((m) => (
+                      <MeetingChip key={m.id} meeting={m} onOpen={setOpenMeeting} />
+                    ))}
                     {dayPosts.slice(0, 3).map((p) => (
                       <PostPill key={p.id} post={p} onClick={() => setSelectedPost(p)} />
                     ))}
@@ -401,7 +408,7 @@ export default function CalendarPage() {
       </Card>
 
       {/* Empty state */}
-      {!loading && posts.length === 0 && (
+      {!loading && posts.length === 0 && meetings.length === 0 && (
         <div className="text-center py-12">
           <CalendarDays size={40} className="text-slate-200 mx-auto mb-3" />
           {/* Scheduled uploads land here now — the endpoint reads our own
@@ -418,6 +425,8 @@ export default function CalendarPage() {
           </Link>
         </div>
       )}
+
+      {openMeeting && <MeetingDrawer meeting={openMeeting} onClose={() => setOpenMeeting(null)} />}
 
       {/* Post detail drawer */}
       {selectedPost && (

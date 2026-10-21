@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarPlus, ChevronDown, LogOut, ShieldCheck, Video } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { SCHEDULE_MEET_EVENT } from "@/components/meetings/meetings";
 import { useAuth } from "@/providers/supabase-provider";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 
@@ -134,7 +135,6 @@ export function TopNav({ dark }: { dark: boolean }) {
  * scheduled, and Calendar attaches the Meet link and sends the invite.
  */
 export const MEET_NOW_URL = "https://meet.new";
-export const MEET_SCHEDULE_URL = "https://calendar.google.com/calendar/r/eventedit?text=Video%20call";
 
 export function MeetMenu({ dark }: { dark: boolean }) {
   const [open, setOpen] = useState(false);
@@ -159,9 +159,15 @@ export function MeetMenu({ dark }: { dark: boolean }) {
           <a href={MEET_NOW_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={item}>
             <Video size={14} /> Start now
           </a>
-          <a href={MEET_SCHEDULE_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className={item}>
+          {/* SparkReels' own box first, so the meeting is in Spark Calendar;
+              it then opens Google Calendar filled in (components/meetings). */}
+          <button
+            type="button"
+            onClick={() => { setOpen(false); window.dispatchEvent(new Event(SCHEDULE_MEET_EVENT)); }}
+            className={cn(item, "w-full text-left")}
+          >
             <CalendarPlus size={14} /> Schedule for later
-          </a>
+          </button>
         </div>
       )}
     </div>

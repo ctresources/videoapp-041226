@@ -18,6 +18,7 @@ import {
   type SparkSeries,
 } from "@/lib/utils/campaigns";
 import { SparkCard } from "@/components/campaigns/spark-card";
+import { MeetingChip, MeetingDrawer, useMeetings, type Meeting } from "@/components/meetings/meetings";
 import { ITEM_STATUS_META, SPARK_STATUS_META, platformLabel } from "@/components/campaigns/status-meta";
 
 type View = "month" | "week" | "list";
@@ -208,6 +209,19 @@ export function CampaignCalendar() {
     && (filters.platform === "all" || i.platform === filters.platform)
     && (filters.status === "all" || i.status === filters.status)
   ), [allItems, filters]);
+
+  // Google Meet calls scheduled from the Meet menu (2026-10-20), by day.
+  const meetings = useMeetings();
+  const [openMeeting, setOpenMeeting] = useState<Meeting | null>(null);
+  const meetingsByDay = useMemo(() => {
+    const map = new Map<string, Meeting[]>();
+    if (!tz) return map;
+    for (const m of meetings) {
+      const k = dayKey(new Date(m.starts_at), tz);
+      map.set(k, [...(map.get(k) ?? []), m]);
+    }
+    return map;
+  }, [meetings, tz]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
@@ -461,6 +475,9 @@ export function CampaignCalendar() {
                           {dayNumber(day)}
                         </span>
                       )}
+                      {(meetingsByDay.get(day) ?? []).map((m) => (
+                        <MeetingChip key={m.id} meeting={m} onOpen={setOpenMeeting} />
+                      ))}
                       {dayItems.slice(0, 3).map((i) => (
                         <ItemChip key={i.key} item={i} tz={tz} onOpen={setOpenId} />
                       ))}
@@ -491,6 +508,9 @@ export function CampaignCalendar() {
                       </div>
                     </div>
                     <div className="space-y-1 p-1.5">
+                      {(meetingsByDay.get(day) ?? []).map((m) => (
+                        <MeetingChip key={m.id} meeting={m} onOpen={setOpenMeeting} />
+                      ))}
                       {(byDay.get(day) ?? []).map((i) => (
                         <ItemChip key={i.key} item={i} tz={tz} wide onOpen={setOpenId} />
                       ))}
@@ -648,6 +668,7 @@ export function CampaignCalendar() {
           onSaved={load}
         />
       )}
+      {openMeeting && <MeetingDrawer meeting={openMeeting} onClose={() => setOpenMeeting(null)} />}
     </div>
   );
 }
