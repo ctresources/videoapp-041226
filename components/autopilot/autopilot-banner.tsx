@@ -27,12 +27,12 @@ export function AutopilotBanner() {
   if (!count) return null;
   return (
     <Link
-      href="/autopilot"
+      href="/autosparks"
       className="mb-4 flex items-center gap-3 rounded-2xl border border-spark-amber/40 bg-spark-amber-tint px-4 py-3 transition hover:brightness-[0.98]"
     >
       <Sparkles size={18} className="shrink-0 text-spark-amber" />
       <span className="min-w-0 flex-1 text-sm text-spark-ink">
-        <strong>Your week is ready</strong> · {count} draft{count === 1 ? "" : "s"} to review
+        <strong>Your AutoSparks are ready</strong> · {count} draft{count === 1 ? "" : "s"} to review
       </span>
       <span className="text-sm font-semibold text-[#A3660F]">Review →</span>
     </Link>

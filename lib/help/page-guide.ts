@@ -20,7 +20,7 @@ const PARTS = (guide as { parts: GuidePart[] }).parts;
 const PAGES: { name: string; match: (p: string) => boolean; steps: number[] }[] = [
   { name: "Spark Studio (Create)", match: (p) => p === "/create", steps: [8, 9, 11, 13, 14, 15, 21] },
   { name: "the video editor (script, setup, Share Kit)", match: (p) => p.startsWith("/create/"), steps: [10, 11, 16, 17, 18] },
-  { name: "Autopilot", match: (p) => p.startsWith("/autopilot"), steps: [12] },
+  { name: "AutoSparks", match: (p) => p.startsWith("/autosparks") || p.startsWith("/autopilot"), steps: [12] },
   { name: "My Sparks", match: (p) => p.startsWith("/videos"), steps: [16, 17, 18, 22] },
   { name: "Social Accounts settings", match: (p) => p.startsWith("/settings/social") || p.startsWith("/social"), steps: [6, 17, 18] },
   { name: "Billing (in Settings)", match: (p) => p.startsWith("/billing") || p.startsWith("/settings/billing"), steps: [] },

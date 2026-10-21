@@ -79,7 +79,7 @@ const NAV_ICONS: Record<string, ReactNode> = {
     </>
   ),
   // Weekly Autopilot (2026-10-21): a spark.
-  "/autopilot": (
+  "/autosparks": (
     <>
       <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
       <path d="M19 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
@@ -109,7 +109,7 @@ const NAV_ICONS: Record<string, ReactNode> = {
 const navItems = [
   { href: "/create", label: "Spark Studio" },
   { href: "/videos", label: "My Sparks" },
-  { href: "/autopilot", label: "Autopilot" },
+  { href: "/autosparks", label: "AutoSparks" },
   { href: "/tools", label: "Spark Tools" },
   { href: "/calendar", label: "Spark Calendar" },
   { href: "/analytics", label: "Spark Insights" },

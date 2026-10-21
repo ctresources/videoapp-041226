@@ -553,17 +553,17 @@ export default function HelpPage() {
             {/* Its own step: the owner wants it found, and it was the last
                 paragraph of the listings step. */}
             {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
-            <Step n={12} title="Weekly Autopilot (Paid Plans)" icon={Sparkles}>
+            <Step n={12} title="AutoSparks (Paid Plans)" icon={Sparkles}>
               Every Sunday evening, SparkReels writes 3 posts for your week: 2 videos and 1 blog
               post, about your market, the season, and what buyers are asking AI. Each comes with
               its script, blog post, title and description, set for Tuesday, Thursday and Saturday
               at 9 AM. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}
-              <strong>Autopilot</strong> in the menu and, on each one, press{" "}
+              <strong>AutoSparks</strong> in the menu and, on each one, press{" "}
               <strong>Approve</strong> to open it ready to make, <strong>Change</strong> to edit it
               first, or <strong>Skip</strong>. Want something specific? Use{" "}
               <strong>Ask for ideas</strong>: type or say a topic, and up to 3 drafts are written in
               about a minute. Nothing is made, posted or charged until you approve it, and you can
-              turn Autopilot off at the top of that page.
+              turn AutoSparks off at the top of that page.
             </Step>
             <Step n={13} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
               A <strong>Scenes Reel</strong> needs no photos, no camera and no face. Your voice

@@ -25,7 +25,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "4 short AI videos/month — about 3 minutes each",
-      "Weekly Autopilot — 3 posts drafted for you every week, ready to approve",
+      "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "Automatic b-roll, captions & titles on every video",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
@@ -49,7 +49,7 @@ const PLANS = [
     highlighted: true,
     features: [
       "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
-      "Weekly Autopilot — 3 posts drafted for you every week, ready to approve",
+      "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "2 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
@@ -73,7 +73,7 @@ const PLANS = [
     highlighted: false,
     features: [
       "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
-      "Weekly Autopilot — 3 posts drafted for you every week, ready to approve",
+      "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "4 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",

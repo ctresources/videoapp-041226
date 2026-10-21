@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const profile = data as AutopilotProfile | null;
   if (!profile) return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   if (!autopilotEligible(profile)) {
-    return NextResponse.json({ error: "Autopilot is part of the paid plans.", code: "paid_only" }, { status: 403 });
+    return NextResponse.json({ error: "AutoSparks is part of the paid plans.", code: "paid_only" }, { status: 403 });
   }
 
   // A few asks a week: each draft is a writer call, and a few cents.

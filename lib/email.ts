@@ -801,7 +801,7 @@ export async function sendAutopilotWeek({
     blogs ? `${blogs} blog post${blogs === 1 ? "" : "s"}` : "",
   ].filter(Boolean).join(" and ");
   const total = videos + blogs;
-  const url = "https://www.sparkreels.ai/autopilot";
+  const url = "https://www.sparkreels.ai/autosparks";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -809,13 +809,13 @@ export async function sendAutopilotWeek({
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: email,
-      subject: "Your week is ready ✨",
+      subject: "Your AutoSparks are ready ✨",
       html: `
-        <p><strong>Your week is ready${first ? `, ${first}` : ""} ✨</strong></p>
+        <p><strong>Your AutoSparks are ready${first ? `, ${first}` : ""} ✨</strong></p>
         <p>${total} draft${total === 1 ? " is" : "s are"} waiting for ${fmt(start)} – ${fmt(end)}: ${parts}.
         Each has its script, blog post, title and description written. Approve, change or skip each one.</p>
         <p><a href="${url}" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">Review my week</a></p>
-        <p style="color:#6f6b60;font-size:13px">Nothing is made or posted until you approve it. You can turn Autopilot off on that page.</p>
+        <p style="color:#6f6b60;font-size:13px">Nothing is made or posted until you approve it. You can turn AutoSparks off on that page.</p>
       `,
     }),
   }).catch(() => null);
