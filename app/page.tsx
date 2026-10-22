@@ -75,7 +75,20 @@ const segments = [
   },
 ];
 
-const features = [
+const features: { title: string; description: string; photo: string; paid?: boolean }[] = [
+  // The two paid-plan features, first (2026-10-21, the owner's wording).
+  {
+    title: "AutoSparks: Your Week, Written For You",
+    description: "Every Sunday, SparkReels writes 3 posts for your week, about your market, the season, and what buyers are asking AI: videos and blog posts in the mix you choose, set for the days you pick. Monday morning they're ready. Approve, change, or record one yourself. Nothing posts without your OK.",
+    photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+    paid: true,
+  },
+  {
+    title: "Unlimited Blog Writing",
+    description: "Write as many blog posts as you want, 1,000 to 1,500 words each, researched for your town, with 6 AI answer blocks that help you get quoted by ChatGPT and Google. Every video comes with its own article too. Copy it to your website or send it as an email.",
+    photo: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&w=600&q=80",
+    paid: true,
+  },
   {
     title: "Never Stare At A Blank Screen",
     description: "Twenty-five ready-to-record topics sit on the Create screen with your city already filled in — tips, formats, and local events. Open the camera and AI Topic Radar goes further, scanning your market for what is trending there this week. Tap one. Hit the mic. Done.",
@@ -880,11 +893,16 @@ export default function LandingPage() {
             <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 border border-slate-200">
-            {features.map(({ title, description, photo }) => (
+            {features.map(({ title, description, photo, paid }) => (
               <div key={title} className="bg-white hover:bg-slate-50 transition-colors group overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photo} alt={title} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300" />
                 <div className="p-5">
+                  {paid && (
+                    <span className="mb-2 inline-block rounded-full bg-[#BA7517] px-2.5 py-0.5 text-sm font-semibold text-white">
+                      Paid plans
+                    </span>
+                  )}
                   <h3 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
                   <p className="text-slate-500 text-lg leading-relaxed">{description}</p>
                 </div>
