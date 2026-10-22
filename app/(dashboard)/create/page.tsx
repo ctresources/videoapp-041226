@@ -2581,10 +2581,10 @@ function CreatePageInner() {
             {/* Ask Sparklee moved up into the top bar (2026-10-18, the owner's
                 mockup), so the steps use the full width. */}
           </div>
-          {/* One size down (2026-10-20, the owner's ask): 34 → 30. */}
-          <h1 className="mt-2.5 font-display text-[26px] font-bold leading-[1.15] text-[#A3660F] sm:text-[30px]">
-            What do you want to Spark today?
-          </h1>
+          {/* "What do you want to Spark today?" came off (2026-10-21, the
+              owner's ask: the top felt busy); the steps bar and section 1
+              say it. Named for screen readers only. */}
+          <h1 className="sr-only">What do you want to Spark today?</h1>
         </div>
       )}
 
@@ -2621,7 +2621,8 @@ function CreatePageInner() {
       <div className={twoCols ? "lg:grid lg:grid-cols-2 lg:gap-6" : ""}>
       <div className="min-w-0 lg:flex lg:flex-col">
       {step === "input" && !cameraHandoff && topicApplies && (
-        <div className="mt-7 flex flex-col gap-3 lg:mt-4 lg:flex-1">
+        // Less space above (2026-10-21): 28px → 12px under the steps bar.
+        <div className="mt-3 flex flex-col gap-3 lg:mt-3 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
             eyebrow={`${sectionNo("Topic")} · Say or Pick a Topic`}
