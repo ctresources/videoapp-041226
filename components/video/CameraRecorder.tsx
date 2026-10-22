@@ -23,6 +23,7 @@ import {
   Lightbulb,
   Megaphone,
   Film,
+  Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
@@ -1580,6 +1581,62 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
     return !!(id && savedByRecovery[id]);
   });
 
+  /**
+   * Delete the take on screen from My Sparks (2026-10-22, the owner's ask):
+   * the video and its file, then its Share Kit project so it doesn't linger
+   * as an empty draft. The project route refuses if other videos use it.
+   */
+  const [deletingTake, setDeletingTake] = useState(false);
+  async function handleDeleteTake() {
+    const saved = viewedSaved;
+    const blob = viewedBlob;
+    if (!saved || !blob || deletingTake) return;
+    if (!confirm("Delete this take from My Sparks? This can't be undone.")) return;
+    setDeletingTake(true);
+    try {
+      const res = await fetch("/api/video/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: saved.videoId }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || "Couldn't delete it. Try again.");
+        return;
+      }
+      if (saved.projectId) {
+        await fetch("/api/project/delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: saved.projectId }),
+        }).catch(() => null);
+      }
+      const recId = recoveryIdsRef.current.get(blob);
+      if (recId) {
+        setSavedByRecovery((prev) => {
+          const next = { ...prev };
+          delete next[recId];
+          return next;
+        });
+      }
+      if (savedVideoId === saved.videoId) {
+        setSavedVideoId(null);
+        setSavedProjectId(null);
+      }
+      setTakes((prev) => {
+        const gone = prev.find((t) => t.blob === blob);
+        if (gone) URL.revokeObjectURL(gone.url);
+        const next = prev.filter((t) => t.blob !== blob);
+        setViewingTake(Math.max(0, next.length - 1));
+        return next;
+      });
+      toast.success("Deleted from My Sparks.");
+      handleReset();
+    } finally {
+      setDeletingTake(false);
+    }
+  }
+
   const takesRef = useRef(takes);
   takesRef.current = takes;
   useEffect(() => () => {
@@ -2817,9 +2874,23 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           </a>
         )}
 
-        <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
-          <RotateCcw size={13} /> Re-record
-        </Button>
+        <div className="flex items-center justify-between gap-3">
+          <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
+            <RotateCcw size={13} /> Re-record
+          </Button>
+          {viewedSaved && (
+            <Button
+              onClick={() => void handleDeleteTake()}
+              disabled={deletingTake}
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              {deletingTake ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              {deletingTake ? "Deleting…" : "Delete"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {showPublish && viewedSaved && (
