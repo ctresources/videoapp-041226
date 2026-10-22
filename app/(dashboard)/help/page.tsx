@@ -505,6 +505,15 @@ export default function HelpPage() {
               after your script, so edit it there, or tick <strong>No call to action</strong> to end
               the video on your script. <strong>Regenerate</strong> redoes it from the same topic — it asks first, since
               it discards your edits.
+              {/* Listen (2026-10-21). */}
+              <span className="block mt-1.5">
+                <strong>Listen</strong> reads your script aloud in your own cloned voice, so you hear how
+                the video will sound before you make it. <strong>Listen to the article</strong> does the
+                same for the blog post in your Share Kit, and each AutoSparks draft has{" "}
+                <strong>Listen</strong> too. The first time takes a few seconds for a script, up to about
+                a minute for a long article; after that it plays at once. Pause or stop any time. With no
+                voice clone yet, it reads in a standard voice.
+              </span>
             </Step>
             <Step n={11} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
