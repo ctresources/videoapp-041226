@@ -3152,7 +3152,16 @@ function CreatePageInner() {
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="flex min-w-0 items-center gap-2 text-[15px] font-bold leading-[1.2] text-spark-ink sm:text-[16px] lg:text-[14.5px]">
                     <Icon strokeWidth={1.9} className="h-[18px] w-[18px] flex-none text-[#A3660F]" aria-hidden />
-                    <span className="min-w-0 whitespace-pre-line">{label}</span>
+                    <span className="min-w-0">
+                      <span className="block whitespace-pre-line">{label}</span>
+                      {/* What makes each video, under its name (2026-10-21, the
+                          owner's words). */}
+                      {(key === "spark" || key === "film") && (
+                        <span className="mt-0.5 block text-[11px] font-medium leading-tight text-spark-ink-muted">
+                          {key === "spark" ? "Avatar + cloned voice" : "You on camera/teleprompter"}
+                        </span>
+                      )}
+                    </span>
                   </span>
                   {cost === "Locked" && <CostPill free={free} emphasis>{cost}</CostPill>}
                   <ArrowRight strokeWidth={2} className="h-[15px] w-[15px] flex-none text-[#A3660F]" aria-hidden />
