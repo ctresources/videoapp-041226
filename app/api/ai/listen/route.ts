@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
   if (head?.ok) return NextResponse.json({ url: publicUrl });
 
   try {
-    const spoken = await speakLongInVoice(words, voiceId, 8);
+    // ~150-word pieces, 3 at once, one starting every 2.5 s at most
+    // (2026-10-22): 50-word pieces 8 at once sent a long article as 30
+    // requests and hit the 30-a-minute limit.
+    const spoken = await speakLongInVoice(words, voiceId, 3, { wordsPerPart: 150, paceMs: 2_500 });
     const { error } = await admin.storage
       .from("assets")
       .upload(path, spoken.audioBuffer, { contentType: "audio/mpeg", upsert: true });
@@ -57,7 +60,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: publicUrl });
   } catch (err) {
     console.error("[listen]", err instanceof Error ? err.message : err);
-    // The browser's voice still works; better than nothing.
-    return NextResponse.json({ fallback: true, error: "Your voice isn't available just now." });
+    // Not the browser's voice (2026-10-22): someone with a clone expects to
+    // hear themselves, and a stranger's voice reads as a bug.
+    return NextResponse.json(
+      { error: "Your voice is busy right now. Try again in a minute." },
+      { status: 503 },
+    );
   }
 }

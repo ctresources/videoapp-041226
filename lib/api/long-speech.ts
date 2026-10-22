@@ -33,7 +33,7 @@ const AT_ONCE = 3;
 type Spoken = { audioBuffer: Buffer; wordTimestamps: { word: string; start: number; end: number }[] };
 
 /** Sentences gathered into parts of about WORDS_PER_PART, never split inside one. */
-export function speechParts(text: string): string[] {
+export function speechParts(text: string, wordsPerPart = WORDS_PER_PART): string[] {
   const sentences = text.replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]+["')\]]*|\S[^.!?]*$/g) ?? [text];
   const parts: string[] = [];
   let open = "";
@@ -42,7 +42,7 @@ export function speechParts(text: string): string[] {
     const s = raw.trim();
     if (!s) continue;
     const n = s.split(/\s+/).length;
-    if (open && count + n > WORDS_PER_PART) {
+    if (open && count + n > wordsPerPart) {
       parts.push(open);
       open = "";
       count = 0;
@@ -54,12 +54,31 @@ export function speechParts(text: string): string[] {
   return parts;
 }
 
+/** The voice service allows 30 requests a minute for the whole account. */
+const isRateLimit = (e: unknown) => /HTTP 429|rate_limit/i.test(e instanceof Error ? e.message : String(e));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * One retry for an ordinary failure. "Too many requests" waits 20 seconds and
+ * tries again, up to 3 times (2026-10-22: a 1,477-word article was refused
+ * and Listen fell back to a stranger's voice).
+ */
 async function speakWithRetry(text: string, voiceId: string): Promise<Spoken> {
-  try {
-    return await speakInVoice(text, voiceId, 75_000);
-  } catch (first) {
-    console.warn("[long-speech] one part failed, trying it once more:", first instanceof Error ? first.message : first);
-    return await speakInVoice(text, voiceId, 75_000);
+  let plainRetried = false;
+  for (let limited = 0; ; ) {
+    try {
+      return await speakInVoice(text, voiceId, 75_000);
+    } catch (err) {
+      if (isRateLimit(err)) {
+        if (limited++ >= 3) throw err;
+        console.warn(`[long-speech] rate limited, waiting 20s (try ${limited} of 3)`);
+        await sleep(20_000);
+        continue;
+      }
+      if (plainRetried) throw err;
+      plainRetried = true;
+      console.warn("[long-speech] one part failed, trying it once more:", err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -67,21 +86,33 @@ async function speakWithRetry(text: string, voiceId: string): Promise<Spoken> {
 export async function speakLongInVoice(
   text: string,
   voiceId: string,
-  /** Pieces spoken at once. Listen (a whole article) asks for more. */
+  /** Pieces spoken at once. */
   atOnce = AT_ONCE,
+  opts: {
+    /** Words per piece. Listen uses bigger pieces: fewer requests, no render waiting on them. */
+    wordsPerPart?: number;
+    /** Least time between two requests starting, to stay under the per-minute limit. */
+    paceMs?: number;
+  } = {},
 ): Promise<Spoken> {
   const clean = text.trim();
   if (clean.split(/\s+/).length <= ONE_PART_WORDS) return speakWithRetry(clean, voiceId);
 
-  const parts = speechParts(clean);
+  const parts = speechParts(clean, opts.wordsPerPart);
   if (parts.length < 2) return speakWithRetry(clean, voiceId);
 
   const started = Date.now();
   const spoken: Spoken[] = new Array(parts.length);
   let next = 0;
+  let nextStartAt = 0;
   await Promise.all(Array.from({ length: Math.min(atOnce, parts.length) }, async () => {
     while (next < parts.length) {
       const i = next++;
+      if (opts.paceMs) {
+        const wait = nextStartAt - Date.now();
+        nextStartAt = Math.max(Date.now(), nextStartAt) + opts.paceMs;
+        if (wait > 0) await sleep(wait);
+      }
       spoken[i] = await speakWithRetry(parts[i], voiceId);
     }
   }));
