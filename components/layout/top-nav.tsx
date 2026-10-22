@@ -82,7 +82,8 @@ export function TopNav({ dark }: { dark: boolean }) {
   // line used to sit on the bar's bottom edge, where it met the progress
   // rail a pixel off and read as a crooked line under the logo.
   const link = (on: boolean) => cn(
-    "items-center whitespace-nowrap px-2.5 py-[12px] text-[14.5px] font-medium transition-colors",
+    // px-2 and 14px since 2026-10-22, to fit the bar on a laptop at 100%.
+    "items-center whitespace-nowrap px-2 py-[12px] text-[14px] font-medium transition-colors",
     on
       ? cn("underline decoration-spark-amber decoration-2 underline-offset-[7px]", dark ? "text-white" : "text-spark-ink")
       : (dark ? "text-spark-paper/70 hover:text-white" : "text-spark-ink-muted hover:text-spark-ink"),

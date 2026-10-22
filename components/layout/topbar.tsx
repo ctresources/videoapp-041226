@@ -123,9 +123,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <Image
               src={onCreate ? "/sparkreels-logo-dark-bar.webp" : "/sparkreels-logo-light-bar.webp"}
               alt="SparkReels.ai"
-              width={168}
-              height={36}
-              className="block h-9 w-[168px] object-contain"
+              width={140}
+              height={30}
+              // 168 -> 140 wide (2026-10-22): the page names ran into Meet
+              // on a laptop at 100% zoom.
+              className="block h-[30px] w-[140px] object-contain"
               unoptimized
               priority
             />
