@@ -20,6 +20,7 @@ import { canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import { blogAsHtml } from "@/lib/utils/blog-html";
 import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-html";
 import { articleHeadline } from "@/lib/utils/article-headline";
+import { PublishToBlog } from "@/components/blog/publish-to-blog";
 import { BoldTrailSend, postBoldTrailEmail } from "@/components/email/boldtrail-send";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
@@ -4411,6 +4412,14 @@ export default function ProjectEditorPage() {
                       >
                         <Copy size={12} /> Copy as text
                       </button>
+                      {/* Admins only: put this article on sparkreels.ai/blog (2026-10-22). */}
+                      {allowance?.isAdmin && (
+                        <PublishToBlog
+                          projectId={project.id}
+                          headline={script.blog_headline || project.title || ""}
+                          defaultAuthor={contactInfo?.full_name}
+                        />
+                      )}
                       {/* In the row with the other actions rather than on a line of
                           its own under them. */}
                       <Link

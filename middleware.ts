@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isPublicMarketingPath } from "@/lib/seo/public-pages";
 
 // "/auth/reset-password" is the route handler the reset EMAIL links to, and it
 // is not the same path as "/reset-password", the page. Only the page was
@@ -8,6 +9,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // the one holding it — to /login, with no error and no way through.
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/beta", "/auth/callback", "/auth/reset-password", "/forgot-password", "/reset-password", "/privacy", "/terms", "/affiliates/apply"];
 const AUTH_ROUTES = ["/login", "/register", "/", "/beta"];
+/**
+ * Public: the routes above, plus the feature pages, pricing, FAQ and blog
+ * (2026-10-22). Signed-in people can read those too, without being sent to
+ * the app the way "/" sends them.
+ */
+const isPublic = (pathname: string) =>
+  PUBLIC_ROUTES.some((r) => pathname === r) || isPublicMarketingPath(pathname);
 
 // 60-day last-click attribution window for affiliate referrals.
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60;
@@ -104,7 +112,7 @@ export async function middleware(request: NextRequest) {
    * Only on protected routes: a suspended user must still reach /login to
    * see why, and the public pages are public.
    */
-  if (user && !PUBLIC_ROUTES.some((r) => pathname === r)) {
+  if (user && !isPublic(pathname)) {
     const { data: suspensionRow } = await supabase
       .from("profiles")
       .select("suspended")
@@ -127,7 +135,7 @@ export async function middleware(request: NextRequest) {
   const FIRST_RUN_EXEMPT = ["/onboarding", "/settings", "/billing"];
   if (
     user
-    && !PUBLIC_ROUTES.some((r) => pathname === r)
+    && !isPublic(pathname)
     && !FIRST_RUN_EXEMPT.some((r) => pathname.startsWith(r))
     && !pathname.startsWith("/api")
   ) {
@@ -167,7 +175,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Unauthenticated users on protected routes → login
-  if (!user && !PUBLIC_ROUTES.some((r) => pathname === r)) {
+  if (!user && !isPublic(pathname)) {
     return applyRef(NextResponse.redirect(new URL("/login", request.url)));
   }
 

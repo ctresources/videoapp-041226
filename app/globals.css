@@ -216,3 +216,11 @@
     animation: none;
   }
 }
+
+/* The SparkReels blog's article text (2026-10-22): the HTML comes from
+   blogAsHtml, so only h2, h3 and p need styling. */
+.blog-prose { color: #334155; font-size: 1.15rem; line-height: 1.75; }
+.blog-prose p { margin: 0 0 1.25rem; }
+.blog-prose h2 { color: #0f172a; font-size: 1.75rem; font-weight: 900; line-height: 1.25; margin: 2.5rem 0 1rem; }
+.blog-prose h3 { color: #0f172a; font-size: 1.3rem; font-weight: 700; line-height: 1.35; margin: 1.75rem 0 0.6rem; }
+.blog-prose img, .blog-prose video { width: 100%; height: auto; border-radius: 0.75rem; margin: 0 0 1.5rem; }
