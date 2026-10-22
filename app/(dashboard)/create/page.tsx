@@ -2942,7 +2942,11 @@ function CreatePageInner() {
           between the box and Send, and the owner found that too busy. */}
       {showCreate && <SectionHead className={besideCard ? "mt-0" : "mt-7 lg:mt-4"} eyebrow={`${sectionNo("Create")} · Create`} />}
       {showCreate && (
-        <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:gap-1.5">
+        <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:flex-nowrap lg:gap-1.5">
+          {/* One line on a computer (2026-10-21, the owner's markup): the
+              lines under the names made the row too wide, and Listings &
+              photos dropped to a row of its own. The four now share the width
+              and their names wrap inside them; phones still wrap the cards. */}
           {/* Avatar first, because avatar is what the page opens on.
               inputMode starts at "script", so this tile is already lit when
               you arrive — and a selected control sitting second, to the right
@@ -3132,7 +3136,7 @@ function CreatePageInner() {
                 // column and "Listings & photos" dropped to a row of its own.
                 // Measured from the owner's screenshot, they now come to
                 // about 685. On a phone they still wrap, as they must.
-                className={`flex items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors lg:rounded-[12px] lg:px-2.5 lg:py-1.5 ${
+                className={`flex min-w-0 items-center rounded-[14px] px-2.5 py-2.5 text-left transition-colors lg:flex-1 lg:justify-between lg:rounded-[12px] lg:px-2.5 lg:py-1.5 ${
                   active
                     ? "border-[1.5px] border-spark-amber bg-white"
                     : "border-[1.5px] border-spark-rule bg-white/60 hover:border-spark-rule-dim"
@@ -3158,7 +3162,7 @@ function CreatePageInner() {
                           owner's words). */}
                       {(key === "spark" || key === "film") && (
                         <span className="mt-0.5 block text-[11px] font-medium leading-tight text-spark-ink-muted">
-                          {key === "spark" ? "Avatar + cloned voice" : "You on camera/teleprompter"}
+                          {key === "spark" ? "Avatar + cloned voice" : "You Live"}
                         </span>
                       )}
                     </span>
