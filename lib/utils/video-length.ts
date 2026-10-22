@@ -138,12 +138,13 @@ export function clampScript(text: string, maxWords: number): string {
 // Camera runs longer than the AI path: nothing is rendered, so there is no
 // HeyGen ceiling to respect — the only limit is the 15-minute recording cap.
 // "Shorts" and "Longform" mirror the wording used on step 1.
+// Three since 2026-10-21 (the owner's ask): up to 3, 8 or 15 minutes. The
+// 2- and 4-minute lengths were choices nobody needed; "standard" writes up to
+// about 3 minutes.
 export const CAMERA_LENGTHS = [
-  { key: "quick",    label: "Shorts",    minutes: 2,  words: 290 },
-  { key: "standard", label: "Shorts",    minutes: 3,  words: 435 },
-  { key: "deep",     label: "Shorts",    minutes: 4,  words: 580 },
-  { key: "full",     label: "Longform",  minutes: 8,  words: 1160 },
-  { key: "extended", label: "Longform",  minutes: 15, words: 2175 },
+  { key: "standard", label: "Shorts",    minutes: 3,  words: 435,  display: "Up to 3 min" },
+  { key: "full",     label: "Longform",  minutes: 8,  words: 1160, display: "8 min" },
+  { key: "extended", label: "Longform",  minutes: 15, words: 2175, display: "15 min" },
 ] as const;
 
 export type CameraLength = (typeof CAMERA_LENGTHS)[number]["key"];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 import {
@@ -126,7 +126,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], behindClip = null, onBehindClipChange, scenesRequest = 0, onScenesBusy, onScriptWords, onPhaseChange, onSaved, micTools = true, qaMode = false }: {
+export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], behindClip = null, onBehindClipChange, scenesRequest = 0, onScenesBusy, onScriptWords, setupHidden = false, behindYou, brollOff = false, onPhaseChange, onSaved, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /** Start with Record your screen on: chosen under the Camera/Teleprompter card on Create. */
   initialScreen?: boolean;
@@ -201,6 +201,16 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   onScenesBusy?: (busy: boolean) => void;
   /** The script's word count, so the page knows when scenes can be made. */
   onScriptWords?: (words: number) => void;
+  /**
+   * The take's setup (teleprompter, shape, Branded Look, Open Camera) waits
+   * until there is a script to set up (2026-10-21, the owner's simpler Camera
+   * page). Unsaved takes still show while it waits.
+   */
+  setupHidden?: boolean;
+  /** The page's "Behind you" choice, drawn right after the teleprompter. */
+  behindYou?: ReactNode;
+  /** "Just me" chosen in Behind you: no photos behind the speaker. */
+  brollOff?: boolean;
   /**
    * Which of this component's own phases is showing.
    *
@@ -366,6 +376,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   // Photos fill the frame while the speaker stays on in a corner. On by
   // default when photos exist — that's why they were uploaded.
   const [useBroll, setUseBroll] = useState(true);
+  useEffect(() => { setUseBroll(!brollOff); }, [brollOff]);
   /**
    * Footage of your own playing behind you, instead of the photos.
    *
@@ -1596,7 +1607,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   const scriptLengthPicker = (
     <div className="mt-2">
       <p className="text-[11px] font-semibold text-slate-500 mb-1">Script Length</p>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {CAMERA_LENGTHS.map((l) => (
           <button
             key={l.key}
@@ -1610,7 +1621,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             }`}
           >
             <span className="block text-[12px] font-bold leading-[1.1] text-brand-text">
-              {l.minutes} min
+              {l.display}
             </span>
             <span className="block text-[9.5px] leading-[1.2] text-slate-500">{l.label}</span>
           </button>
@@ -1724,6 +1735,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           );
         })}
 
+        {!setupHidden && (<>
         {/* Says what is missing and that it is missing on purpose. A screen
             that simply had no script box on it would read as one still
             loading, or as the choice not having taken. */}
@@ -1942,8 +1954,12 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         )}
         </>)}
 
-        {/* ── Record your screen ── desktop browsers only. */}
-        {screenSupported && (
+        {behindYou}
+
+        {/* ── Record your screen ── desktop browsers only. Chosen on the page
+            above now ("Record your screen instead"); this keeps the way back
+            and the corner-circle choice while it's on. */}
+        {screenSupported && screenMode && (
           <div className="rounded-xl border border-spark-rule p-3.5">
             <label className="flex cursor-pointer select-none items-start gap-2.5">
               <input
@@ -2366,6 +2382,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             8–15 Min Is YouTube&apos;s Sweet Spot — 8+ Min Unlocks Mid-Roll Ads · 15 Min Max
           </p>
         )}
+        </>)}
       </div>
     );
   }

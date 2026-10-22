@@ -615,22 +615,22 @@ export default function HelpPage() {
             </Step>
             <Step n={14} title="Camera/Teleprompter — The Free Option" icon={Camera}>
               Pressing <strong>Camera/Teleprompter</strong> opens a page of its own, with{" "}
-              <strong>Back</strong> on the bar at the bottom to return to Spark Studio. On a computer it
-              starts with <strong>Record yourself</strong> or <strong>Record your screen</strong>.{" "}
-              <strong>What we&apos;re writing</strong> comes next — your
-              market, how long the script should be, and where the words come from: a topic, a PDF or link, a
-              recording of you talking, your own typing, or <strong>Speak naturally</strong>, which is no
-              script and no teleprompter at all. When AI is writing it from a topic, the mic box at the top
-              of this page holds the topic — anything you already said or typed on Spark Studio comes
-              with you — and <strong>Write my script</strong> in the bar
-              at the bottom writes it and loads it into your teleprompter.
-              Then <strong>how it records</strong> — vertical or horizontal,
-              Branded Look, what plays behind you, and <strong>Add Channel CTA</strong> to append your
-              closing pitch. You can also skip straight here with <strong>Record on Camera</strong>, a
+              <strong>Back</strong> on the bar at the bottom to return to Spark Studio. The mic box at
+              the top holds what it&apos;s about; anything you already said or typed on Spark Studio
+              comes with you. Then pick where the script comes from: <strong>AI writes it</strong>,{" "}
+              <strong>From a document</strong> (a PDF, link or email), <strong>From a voice memo</strong>{" "}
+              (a recording of you talking, turned into a clean script), <strong>Paste my own script</strong>{" "}
+              (word for word), or <strong>No script</strong> (no teleprompter at all).{" "}
+              <strong>Details</strong> are your market and, when AI or a document writes it, how long:{" "}
+              <strong>up to 3</strong>, <strong>8</strong> or <strong>15 minutes</strong>;{" "}
+              <strong>More options</strong> holds audience, tone and why. <strong>Write my script</strong>{" "}
+              in the bar at the bottom writes it, and <strong>Set up your take</strong> appears: your
+              teleprompter, <strong>Behind you</strong>, vertical or horizontal, Branded Look, and{" "}
+              <strong>Add Channel CTA</strong> to append your closing pitch. You can also skip straight here with <strong>Record on Camera</strong>, a
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
-              On a computer, press Camera/Teleprompter and choose <strong>Record your screen</strong> to record a listing, a market
+              On a computer, press <strong>Record your screen instead</strong> under the script choices to record a listing, a market
               report or anything else on screen while you talk, with you in a corner circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
               {/* The teleprompter's reading and speed controls (2026-10-21). */}
@@ -647,9 +647,10 @@ export default function HelpPage() {
               {/* Three things can be behind the speaker now, and one of them
                   costs something, on a screen whose headline is "free". */}
               <span className="block mt-1.5">
-                <strong>Behind you</strong>, right under Script Source, is what fills the screen
-                while you talk in the corner, one of three things. <strong>Your photos</strong>, up to 20.{" "}
-                <strong>Your own clip</strong>, a video you shot (silent, and it loops). Or{" "}
+                <strong>Behind you</strong>, in Set up your take, is what fills the screen while you talk
+                in the corner: <strong>Just me</strong> (you, full screen), <strong>Your photos</strong>{" "}
+                (up to 20), <strong>Your own footage</strong>, a video you shot that plays behind you
+                (silent, and it loops), or{" "}
                 <strong>AI scenes</strong>: short realistic scenes made with AI,
                 one for each part of what you&apos;re about to say, in order. People appear only from
                 behind or at a distance, and it is never your town or a real property. Scenes take
@@ -673,10 +674,9 @@ export default function HelpPage() {
               {/* Brand a clip I already shot, which How It Works never named
                   (2026-10-20, the owner's wording). Computers only. */}
               <span className="block mt-1.5">
-                <strong>Upload a clip you already shot</strong> — on a computer, open{" "}
-                <strong>Camera/Teleprompter</strong> in Spark Studio. Under{" "}
-                <strong>Where the picture comes from</strong>, choose{" "}
-                <strong>Brand a clip I already shot</strong>, then{" "}
+                <strong>Post a video you already shot</strong> — on a computer, open{" "}
+                <strong>Camera/Teleprompter</strong> in Spark Studio and press{" "}
+                <strong>Already have the video? Post it as is</strong> under the script choices, then{" "}
                 <strong>Choose a clip you already shot</strong> and pick a video from your computer: MP4,
                 MOV or WebM, up to 2 minutes and 500 MB. Keep the clip&apos;s own sound or record a new
                 voiceover, add a title, a hook and the city, then press <strong>Brand this clip</strong>.

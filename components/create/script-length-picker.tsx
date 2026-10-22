@@ -32,7 +32,7 @@ export function ScriptLengthPicker({
         {label}
       </p>
       {hint && <p className="mb-2 text-xs text-spark-ink-faint">{hint}</p>}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {CAMERA_LENGTHS.map((l) => (
           <button
             key={l.key}
@@ -47,7 +47,7 @@ export function ScriptLengthPicker({
             } ${disabled ? "cursor-default opacity-60" : ""}`}
           >
             <span className="block text-[12px] font-bold leading-[1.1] text-brand-text">
-              {l.minutes} min
+              {l.display}
             </span>
             <span className="block text-[9.5px] leading-[1.2] text-spark-ink-muted">{l.label}</span>
           </button>
