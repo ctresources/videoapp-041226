@@ -2014,7 +2014,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         {behindYou}
 
         {/* ── Record your screen ── desktop browsers only. Chosen on the page
-            above now ("Record your screen instead"); this keeps the way back
+            above now (the "Record my screen" chip); this keeps the way back
             and the corner-circle choice while it's on. */}
         {screenSupported && screenMode && (
           <div className="rounded-xl border border-spark-rule p-3.5">

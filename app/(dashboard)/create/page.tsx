@@ -3405,25 +3405,41 @@ function CreatePageInner() {
               </button>
             ))}
           </div>
-          {/* The two other ways to record, as links: your screen, or a video
-              you already shot posted as it is. Computers only. */}
+          {/* The two other ways to record: your screen, or a video you
+              already shot posted as it is. Chips on their own row since
+              2026-10-22 (the owner's ask); tap again to go back to recording
+              yourself. Computers only. */}
           {cameraPhase === "script" && (
             canBrandClips ? (
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px]">
-                <button
-                  type="button"
-                  onClick={() => { setCameraMode("record"); setScreenRecord((v) => !v); }}
-                  className="font-medium text-[#A3660F] underline-offset-2 hover:underline"
-                >
-                  {screenRecord && cameraMode !== "brand" ? "Record yourself instead" : "Record your screen instead"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setScreenRecord(false); setCameraMode(cameraMode === "brand" ? "record" : "brand"); }}
-                  className="font-medium text-[#A3660F] underline-offset-2 hover:underline"
-                >
-                  {cameraMode === "brand" ? "Record yourself instead" : "Already have the video? Post it as is"}
-                </button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {([
+                  {
+                    key: "screen",
+                    label: "Record my screen",
+                    on: screenRecord && cameraMode !== "brand",
+                    toggle: () => { setCameraMode("record"); setScreenRecord((v) => !v); },
+                  },
+                  {
+                    key: "brand",
+                    label: "Post a video as is",
+                    on: cameraMode === "brand",
+                    toggle: () => { setScreenRecord(false); setCameraMode(cameraMode === "brand" ? "record" : "brand"); },
+                  },
+                ]).map(({ key, label, on, toggle }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={toggle}
+                    aria-pressed={on}
+                    className={`rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold transition-colors ${
+                      on
+                        ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
+                        : "border-spark-rule bg-white text-spark-ink hover:border-spark-rule-dim"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             ) : (
               <p className="mt-2 text-[11.5px] text-spark-ink-faint">

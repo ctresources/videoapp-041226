@@ -630,7 +630,7 @@ export default function HelpPage() {
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
-              On a computer, press <strong>Record your screen instead</strong> under the script choices to record a listing, a market
+              On a computer, press <strong>Record my screen</strong> under the script choices to record a listing, a market
               report or anything else on screen while you talk, with you in a corner circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
               {/* The teleprompter's reading and speed controls (2026-10-21). */}
@@ -676,7 +676,7 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>Post a video you already shot</strong> — on a computer, open{" "}
                 <strong>Camera/Teleprompter</strong> in Spark Studio and press{" "}
-                <strong>Already have the video? Post it as is</strong> under the script choices, then{" "}
+                <strong>Post a video as is</strong> under the script choices, then{" "}
                 <strong>Choose a clip you already shot</strong> and pick a video from your computer: MP4,
                 MOV or WebM, up to 2 minutes and 500 MB. Keep the clip&apos;s own sound or record a new
                 voiceover, add a title, a hook and the city, then press <strong>Brand this clip</strong>.
