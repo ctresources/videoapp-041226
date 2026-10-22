@@ -23,12 +23,15 @@ export interface MusicPreset {
 
 export const MUSIC_PRESETS: MusicPreset[] = [
   { id: "none",       label: "No Music",          emoji: "🔇", query: null },
-  { id: "calm",       label: "Calm Piano",         emoji: "🎹", query: "calm gentle piano background music" },
   { id: "corporate",  label: "Upbeat Corporate",   emoji: "💼", query: "upbeat corporate motivational background music" },
   { id: "inspiring",  label: "Inspiring",          emoji: "🌅", query: "inspiring uplifting cinematic background music" },
   { id: "jazz",       label: "Smooth Jazz",        emoji: "🎷", query: "smooth jazz ambient background music" },
   { id: "motivate",   label: "Motivational",       emoji: "🔥", query: "energetic motivational driving background music" },
   { id: "luxury",     label: "Luxury / Elegant",   emoji: "✨", query: "elegant luxury cinematic background music" },
+  // Calm Piano out, three upbeat and inspiring in (2026-10-21, the owner's ask).
+  { id: "bright",     label: "Bright & Hopeful",   emoji: "☀️", query: "bright hopeful uplifting acoustic background music" },
+  { id: "feelgood",   label: "Feel-Good Pop",      emoji: "🎉", query: "happy upbeat feel good pop background music" },
+  { id: "anthem",     label: "Big Moment",         emoji: "🚀", query: "uplifting energetic inspirational anthem background music" },
   { id: "custom",     label: "Upload my music",    emoji: "⬆️", query: null },
 ];
 

@@ -104,9 +104,12 @@ const WARN_RECORD_SECONDS = 13 * 60;
 // origin because WebAudio outputs silence for audio it can't read under CORS.
 const MUSIC_OPTIONS = [
   { id: "none",      label: "No Music",   query: null as string | null },
-  { id: "calm",      label: "Calm Piano", query: "calm gentle piano background music" },
   { id: "corporate", label: "Upbeat",     query: "upbeat corporate motivational background music" },
   { id: "inspiring", label: "Inspiring",  query: "inspiring uplifting cinematic background music" },
+  // Calm Piano out, three upbeat and inspiring in (2026-10-21, the owner's ask).
+  { id: "bright",    label: "Bright & Hopeful", query: "bright hopeful uplifting acoustic background music" },
+  { id: "feelgood",  label: "Feel-Good Pop",    query: "happy upbeat feel good pop background music" },
+  { id: "anthem",    label: "Big Moment",       query: "uplifting energetic inspirational anthem background music" },
 ];
 
 function musicUrlFor(id: string): string | null {
@@ -2241,13 +2244,14 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                 )}
                 <div>
                   <p className="text-xs font-semibold text-slate-500 mb-1.5">Music Bed <span className="font-normal text-slate-400">(mixed softly under your voice — permanent)</span></p>
-                  <div className="flex gap-2">
+                  {/* Six now: three across, two rows, so a phone fits them. */}
+                  <div className="grid grid-cols-3 gap-2">
                     {MUSIC_OPTIONS.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => setMusicId(m.id)}
                         className={cn(
-                          "flex-1 py-1.5 px-1 rounded-lg text-xs font-medium border transition-all",
+                          "py-1.5 px-1 rounded-lg text-xs font-medium border transition-all",
                           musicId === m.id
                             ? "border-spark-blue bg-spark-blue/10 text-spark-blue"
                             : "border-slate-200 text-slate-500 hover:border-slate-300",
