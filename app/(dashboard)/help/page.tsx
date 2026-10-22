@@ -647,15 +647,16 @@ export default function HelpPage() {
               {/* Three things can be behind the speaker now, and one of them
                   costs something, on a screen whose headline is "free". */}
               <span className="block mt-1.5">
-                <strong>What plays behind you</strong> is one of three things, with you in the
-                corner. <strong>Your photos</strong>, if you attached any.{" "}
-                <strong>Play my footage behind me</strong>, a clip of your own. Or, with neither,{" "}
-                <strong>Make scenes from my script</strong>: short realistic scenes made with AI,
+                <strong>Behind you</strong>, right under Script Source, is what fills the screen
+                while you talk in the corner, one of three things. <strong>Your photos</strong>, up to 20.{" "}
+                <strong>Your own clip</strong>, a video you shot (silent, and it loops). Or{" "}
+                <strong>AI scenes</strong>: short realistic scenes made with AI,
                 one for each part of what you&apos;re about to say, in order. People appear only from
                 behind or at a distance, and it is never your town or a real property. Scenes take
                 about three minutes to make and use{" "}
                 <strong>one short video</strong> from your plan; photos and your own footage stay
-                free. Write the script first, because the scenes are made from it.
+                free. Write the script first, because the scenes are made from it. Choosing a clip or
+                scenes turns on Branded Look, which draws the background.
               </span>
               {/* The camera's skin filter (2026-10-16). */}
               <span className="block mt-1.5">

@@ -126,7 +126,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], onPhaseChange, onSaved, micTools = true, qaMode = false }: {
+export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], behindClip = null, onBehindClipChange, scenesRequest = 0, onScenesBusy, onScriptWords, onPhaseChange, onSaved, micTools = true, qaMode = false }: {
   city?: string; state?: string; initialScript?: string;
   /** Start with Record your screen on: chosen under the Camera/Teleprompter card on Create. */
   initialScreen?: boolean;
@@ -189,6 +189,18 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   /** Photo URLs used as b-roll behind the speaker. Must be CORS-clean — see
    *  /api/photos/rehost — or they are silently dropped at load. */
   photos?: string[];
+  /**
+   * Your own clip, or AI scenes, playing behind you: chosen in the page's
+   * "Behind you" box under Script Source since 2026-10-21 (the owner's
+   * mockup), not in Branded Look. The page owns the object URL.
+   */
+  behindClip?: { url: string; name: string; isScenes: boolean } | null;
+  onBehindClipChange?: (clip: { url: string; name: string; isScenes: boolean } | null) => void;
+  /** Bumped by the page's "Make scenes": this component has the script and shape. */
+  scenesRequest?: number;
+  onScenesBusy?: (busy: boolean) => void;
+  /** The script's word count, so the page knows when scenes can be made. */
+  onScriptWords?: (words: number) => void;
   /**
    * Which of this component's own phases is showing.
    *
@@ -384,6 +396,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   async function makeScenes() {
     if (scenesBusy) return;
     setScenesBusy(true);
+    onScenesBusy?.(true);
     try {
       const res = await fetch("/api/video/scene-footage", {
         method: "POST",
@@ -401,20 +414,42 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       const file = await fetch(data.url);
       if (!file.ok) throw new Error("The scenes were made but could not be loaded. Try again.");
       const blob = await file.blob();
-      if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
-      setBrollVideoUrl(URL.createObjectURL(blob));
-      setBrollVideoName(`${data.scenes ?? ""} scenes made for this script`.trim());
+      const made = {
+        url: URL.createObjectURL(blob),
+        name: `${data.scenes ?? ""} scenes made for this script`.trim(),
+        isScenes: true,
+      };
+      setBrollVideoUrl(made.url);
+      setBrollVideoName(made.name);
       setBrollIsScenes(true);
+      onBehindClipChange?.(made);
       toast.success("Scenes are ready. They'll play behind you when you record.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not make the scenes.", { duration: 7000 });
     } finally {
       setScenesBusy(false);
+      onScenesBusy?.(false);
     }
   }
-  useEffect(() => () => {
-    if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
-  }, [brollVideoUrl]);
+  // The page's choice, kept in step; the page frees the object URLs it holds.
+  // A clip or scenes is drawn by Branded Look, so choosing one turns it on.
+  useEffect(() => {
+    setBrollVideoUrl(behindClip?.url ?? null);
+    setBrollVideoName(behindClip?.name ?? "");
+    setBrollIsScenes(!!behindClip?.isScenes);
+    if (behindClip) setBrandedLook(true);
+  }, [behindClip]);
+  // "Make scenes" pressed above.
+  const lastScenesRequest = useRef(scenesRequest);
+  useEffect(() => {
+    if (scenesRequest === lastScenesRequest.current) return;
+    lastScenesRequest.current = scenesRequest;
+    void makeScenes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenesRequest]);
+  useEffect(() => {
+    onScriptWords?.(script.trim().split(/\s+/).filter(Boolean).length);
+  }, [script, onScriptWords]);
   const [musicId, setMusicId] = useState("none");
   const [brandedActive, setBrandedActive] = useState(false);
   const compositeRef = useRef<BrandedComposite | null>(null);
@@ -2099,86 +2134,14 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                     ))}
                   </div>
                 </div>
-                {/* Your own footage behind you. Sits above the photos because
-                    it replaces them: the composite draws one background, and
-                    cutting between a clip and a slideshow would be two
-                    different ideas of what is behind you, alternating. */}
+                {/* Your own clip or AI scenes are chosen in "Behind you" under
+                    Script Source now (2026-10-21, the owner's mockup); this
+                    only says what was chosen. The opener stays here. */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-start gap-2 cursor-pointer select-none">
-                    <span className="flex-1 text-xs text-slate-600">
-                      <strong>Play my footage behind me</strong> — your clip fills the screen while
-                      you present in the corner.{" "}
-                      <span className="text-slate-400">
-                        Silent, and it loops if it is shorter than your take.
-                      </span>
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-slate-300">
-                      <Film size={13} />
-                      {brollVideoUrl ? "Choose a different clip" : "Choose a clip"}
-                      <input
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          if (brollVideoUrl) URL.revokeObjectURL(brollVideoUrl);
-                          setBrollVideoUrl(URL.createObjectURL(f));
-                          setBrollVideoName(f.name);
-                          setBrollIsScenes(false);
-                        }}
-                      />
-                    </label>
-                    {brollVideoUrl && (
-                      <>
-                        <span className="min-w-0 flex-1 truncate text-[11px] text-slate-500">
-                          {brollVideoName}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            URL.revokeObjectURL(brollVideoUrl);
-                            setBrollVideoUrl(null);
-                            setBrollVideoName("");
-                            setBrollIsScenes(false);
-                          }}
-                          className="shrink-0 text-[11px] font-medium text-slate-400 underline hover:text-slate-600"
-                        >
-                          Remove
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {/* No photos and no footage: scenes made from the script.
-                      The third thing that can be behind you. Offered where the
-                      other two are chosen, and only with a script to make them
-                      from. */}
-                  {!brollVideoUrl && (
-                    <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        onClick={() => void makeScenes()}
-                        disabled={scenesBusy || script.trim().split(/\s+/).filter(Boolean).length < 20}
-                        className="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 disabled:opacity-50"
-                      >
-                        {scenesBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                        {scenesBusy ? "Making scenes, about three minutes…" : "No footage? Make scenes from my script"}
-                      </button>
-                      <p className="text-[11px] leading-[1.45] text-slate-400">
-                        Realistic scenes made with AI, one for each part of your script and in its order,
-                        showing what that part is about. Any people are seen from behind or at a distance;
-                        never your town or a real property. Uses{" "}
-                        <strong className="font-semibold text-slate-500">one short video</strong> from your plan,
-                        and the take is labelled as made with AI when you publish it.
-                      </p>
-                    </div>
-                  )}
                   {brollVideoUrl && (
-                    <p className="text-[11px] leading-[1.45] text-slate-400">
-                      Chosen before the camera opens — the background is built into the recording,
-                      so it cannot be swapped once you are rolling.
+                    <p className="text-[11px] leading-[1.45] text-slate-500">
+                      <strong className="text-slate-600">Behind you:</strong> {brollVideoName} · chosen above. It&apos;s
+                      built into the recording, so it can&apos;t be swapped once you&apos;re rolling.
                     </p>
                   )}
                   {/* An opener, from the same clip. */}

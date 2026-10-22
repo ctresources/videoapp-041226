@@ -606,6 +606,23 @@ function CreatePageInner() {
 
   // Camera tab uploads
   const [cameraPhotos, setCameraPhotos] = useState<{ url: string; name: string; preview: string }[]>([]);
+  /**
+   * "Behind you" (2026-10-21, the owner's mockup): your own clip or AI scenes
+   * playing behind you, chosen under Script Source. Held here as an object URL
+   * and handed to the recorder; scenes are made by the recorder, which has the
+   * script and shape, when "Make scenes" bumps scenesRequest.
+   */
+  const [behindClip, setBehindClip] = useState<{ url: string; name: string; isScenes: boolean } | null>(null);
+  const [scenesRequest, setScenesRequest] = useState(0);
+  const [scenesBusy, setScenesBusy] = useState(false);
+  const [cameraScriptWords, setCameraScriptWords] = useState(0);
+  const behindPhotoRef = useRef<HTMLInputElement>(null);
+  function chooseBehindClip(next: { url: string; name: string; isScenes: boolean } | null) {
+    setBehindClip((prev) => {
+      if (prev && prev.url !== next?.url) URL.revokeObjectURL(prev.url);
+      return next;
+    });
+  }
   const [cameraPhotoUploading, setCameraPhotoUploading] = useState(false);
   /**
    * Which phase CameraRecorder is in.
@@ -3284,6 +3301,91 @@ function CreatePageInner() {
                 : "Set for this take. Start over to change where the script comes from."}
             </p>
           )}
+
+          {/* Behind you (2026-10-21, the owner's mockup): photos, your own
+              clip, or AI scenes, chosen in one place right under the script
+              source instead of inside Branded Look. */}
+          {!(cameraMode === "brand" && canBrandClips) && cameraPhase === "script" && (
+            <div className="mt-4 rounded-2xl border border-spark-rule bg-white p-4">
+              <p className="text-[15px] font-bold text-spark-ink">
+                Behind you <span className="font-normal text-spark-ink-faint">(optional)</span>
+              </p>
+              <p className="mb-3 text-xs text-spark-ink-muted">What fills the screen while you talk in the corner.</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {/* Your photos */}
+                <div className={`rounded-xl border p-3 ${cameraPhotos.length && !behindClip ? "border-spark-amber bg-spark-amber-tint" : "border-spark-rule"}`}>
+                  <p className="text-sm font-bold text-spark-ink">🖼 Your photos</p>
+                  <p className="mt-0.5 text-[11.5px] text-spark-ink-muted">
+                    {cameraPhotos.length ? `${cameraPhotos.length} added · free` : `Up to ${DIRECT_PHOTO_LIMIT} · free`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => behindPhotoRef.current?.click()}
+                    disabled={cameraPhotoUploading || cameraPhotos.length >= DIRECT_PHOTO_LIMIT}
+                    className="mt-2 rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-xs font-semibold text-spark-ink disabled:opacity-50"
+                  >
+                    {cameraPhotoUploading ? "Uploading…" : "Add photos"}
+                  </button>
+                  <input
+                    ref={behindPhotoRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => { if (e.target.files?.length) void handleCameraPhotosUpload(e.target.files); e.target.value = ""; }}
+                  />
+                </div>
+                {/* Your own clip */}
+                <div className={`rounded-xl border p-3 ${behindClip && !behindClip.isScenes ? "border-spark-amber bg-spark-amber-tint" : "border-spark-rule"}`}>
+                  <p className="text-sm font-bold text-spark-ink">🎞 Your own clip</p>
+                  <p className="mt-0.5 text-[11.5px] text-spark-ink-muted">A video you shot · free · silent, loops</p>
+                  {behindClip && !behindClip.isScenes ? (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-xs">
+                      <span className="min-w-0 truncate text-spark-ink">{behindClip.name}</span>
+                      <button type="button" onClick={() => chooseBehindClip(null)} className="shrink-0 text-spark-ink-faint underline">Remove</button>
+                    </div>
+                  ) : (
+                    <label className="mt-2 inline-block cursor-pointer rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-xs font-semibold text-spark-ink">
+                      Choose a clip
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) chooseBehindClip({ url: URL.createObjectURL(f), name: f.name, isScenes: false });
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                {/* AI scenes */}
+                <div className={`rounded-xl border p-3 ${behindClip?.isScenes ? "border-spark-amber bg-spark-amber-tint" : "border-spark-rule"}`}>
+                  <p className="text-sm font-bold text-spark-ink">✨ AI scenes</p>
+                  <p className="mt-0.5 text-[11.5px] text-spark-ink-muted">Made from your script once it&apos;s written · uses 1 short video</p>
+                  {behindClip?.isScenes ? (
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-xs">
+                      <span className="min-w-0 truncate text-spark-ink">{behindClip.name}</span>
+                      <button type="button" onClick={() => chooseBehindClip(null)} className="shrink-0 text-spark-ink-faint underline">Remove</button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setScenesRequest((n) => n + 1)}
+                      disabled={scenesBusy || cameraScriptWords < 20}
+                      className="mt-2 rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-xs font-semibold text-spark-ink disabled:opacity-60"
+                    >
+                      {scenesBusy ? "Making scenes, about 3 minutes…" : cameraScriptWords < 20 ? "Make scenes (after the script)" : "Make scenes"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="mt-2.5 text-[11px] text-spark-ink-faint">
+                Choosing a clip or scenes turns on Branded Look, which draws the background.
+              </p>
+            </div>
+          )}
         </>
       )}
 
@@ -4913,7 +5015,7 @@ function CreatePageInner() {
                 // behind you, and the video option lives in a different panel
                 // — so this says where to find it rather than leaving someone
                 // to conclude it does not exist.
-                blurb="Photos fill the screen as b-roll while you record. You stay on camera in the corner. To play a video behind you instead, use Branded Look further down."
+                blurb="Photos fill the screen as b-roll while you record. You stay on camera in the corner. To play your own clip or AI scenes instead, use Behind you, above."
               />
 
               {/* A sub-action of this card, styled like one. Full-width and
@@ -4983,6 +5085,11 @@ function CreatePageInner() {
               scriptLength={cameraScriptLength}
               onScriptLengthChange={setCameraScriptLength}
               photos={cameraPhotos.map((p) => p.url)}
+              behindClip={behindClip}
+              onBehindClipChange={chooseBehindClip}
+              scenesRequest={scenesRequest}
+              onScenesBusy={setScenesBusy}
+              onScriptWords={setCameraScriptWords}
             />
             </>)}
 
