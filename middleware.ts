@@ -183,5 +183,7 @@ export const config = {
   // no name or icon to use.
   // sw.js too (2026-10-20): it must be served, not redirected, so a browser
   // still holding the June offline worker can fetch the one that removes it.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json$|sw\\.js$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
+  // robots.txt and the sitemaps too (2026-10-22): crawlers have no sign-in,
+  // and Search Console was being handed the login page instead of XML.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest\\.json$|sw\\.js$|robots\\.txt$|sitemap\\.xml$|sitemap-index\\.xml$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)"],
 };

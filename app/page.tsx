@@ -9,6 +9,13 @@ import {
   Tv2, Palette, Film, MousePointerClick, Search, Upload, Zap,
   Bot, EyeOff, TrendingDown, PenLine, MessageSquare,
 } from "lucide-react";
+import type { Metadata } from "next";
+import { canonicalUrl } from "@/lib/seo/public-pages";
+
+// Title and description come from the root layout.
+export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl("/") },
+};
 
 // The objections agents actually voice — in their words, then what changes.
 const painPoints = [

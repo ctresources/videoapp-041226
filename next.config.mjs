@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Search Console was given /sitemap-index.xml; the one sitemap is
+  // /sitemap.xml (app/sitemap.ts). permanent: true sends a 308.
+  async redirects() {
+    return [{ source: "/sitemap-index.xml", destination: "/sitemap.xml", permanent: true }];
+  },
   experimental: {
     serverComponentsExternalPackages: ["fluent-ffmpeg", "@ffmpeg-installer/ffmpeg", "unpdf", "sharp", "opentype.js"],
     // Thumbnail text is drawn from this bundled font (serverless has no system

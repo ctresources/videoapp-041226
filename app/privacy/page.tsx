@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { canonicalUrl } from "@/lib/seo/public-pages";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — SparkReels",
   description: "How SparkReels collects, uses, and protects your personal information.",
+  alternates: { canonical: canonicalUrl("/privacy") },
 };
 
 export default function PrivacyPage() {

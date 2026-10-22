@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { canonicalUrl } from "@/lib/seo/public-pages";
 
 export const metadata: Metadata = {
   title: "Terms of Service — SparkReels",
   description: "Terms and conditions for using the SparkReels platform.",
+  alternates: { canonical: canonicalUrl("/terms") },
 };
 
 export default function TermsPage() {

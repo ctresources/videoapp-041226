@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: "SparkReels — Speak, Spark, Share",
     description: "Transform your voice into viral real estate video content automatically.",
     type: "website",
-    url: "https://sparkreels.ai",
+    url: "https://www.sparkreels.ai",
   },
 };
 
