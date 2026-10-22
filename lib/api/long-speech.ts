@@ -64,7 +64,12 @@ async function speakWithRetry(text: string, voiceId: string): Promise<Spoken> {
 }
 
 /** Throws on failure, like speakInVoice, so the caller can fall back and say that it did. */
-export async function speakLongInVoice(text: string, voiceId: string): Promise<Spoken> {
+export async function speakLongInVoice(
+  text: string,
+  voiceId: string,
+  /** Pieces spoken at once. Listen (a whole article) asks for more. */
+  atOnce = AT_ONCE,
+): Promise<Spoken> {
   const clean = text.trim();
   if (clean.split(/\s+/).length <= ONE_PART_WORDS) return speakWithRetry(clean, voiceId);
 
@@ -74,7 +79,7 @@ export async function speakLongInVoice(text: string, voiceId: string): Promise<S
   const started = Date.now();
   const spoken: Spoken[] = new Array(parts.length);
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(AT_ONCE, parts.length) }, async () => {
+  await Promise.all(Array.from({ length: Math.min(atOnce, parts.length) }, async () => {
     while (next < parts.length) {
       const i = next++;
       spoken[i] = await speakWithRetry(parts[i], voiceId);

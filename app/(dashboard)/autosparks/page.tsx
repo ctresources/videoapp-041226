@@ -7,6 +7,7 @@ import { Camera, Check, FileText, Loader2, Sparkles, Video } from "lucide-react"
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { FieldMic } from "@/components/ui/field-mic";
+import { ListenButton } from "@/components/ui/listen-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
@@ -30,7 +31,13 @@ interface Draft {
   requested: boolean;
   project_id: string | null;
   status: "writing" | "draft" | "approved" | "skipped" | "failed";
-  projects: { title: string | null; ai_script: { hook?: string; script?: string; cta?: string } | null } | null;
+  projects: {
+    title: string | null;
+    ai_script: {
+      hook?: string; script?: string; cta?: string;
+      blog_intro?: string; blog_body?: string; blog_conclusion?: string;
+    } | null;
+  } | null;
 }
 
 /** This week's Monday in the browser's own day, or next week's on a Sunday. */
@@ -357,6 +364,13 @@ export default function AutopilotPage() {
                       )}
                       <Button size="sm" variant="outline" onClick={() => open(d)}>Change</Button>
                       <Button size="sm" variant="ghost" onClick={() => void setStatus(d, "skipped")}>Skip</Button>
+                      {/* Hear a draft before approving it (2026-10-21). */}
+                      <ListenButton
+                        text={(d.kind === "video"
+                          ? [d.projects?.ai_script?.hook, d.projects?.ai_script?.script, d.projects?.ai_script?.cta]
+                          : [d.projects?.ai_script?.blog_intro, d.projects?.ai_script?.blog_body, d.projects?.ai_script?.blog_conclusion]
+                        ).filter(Boolean).join("\n\n")}
+                      />
                     </>
                   )}
                   {d.status === "approved" && (

@@ -54,6 +54,8 @@ const nextConfig = {
       "/api/video-email": ["./node_modules/@ffmpeg-installer/**"],
       // Converts an iPhone's MOV/HEVC twin recording to MP4 (2026-10-20).
       "/api/avatar/digital-twin": ["./node_modules/@ffmpeg-installer/**"],
+      // Joins the spoken pieces of a script or article read aloud (2026-10-21).
+      "/api/ai/listen": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { ListenButton } from "@/components/ui/listen-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -3190,6 +3191,10 @@ export default function ProjectEditorPage() {
                     Regenerate
                   </button>
                 ) : null}
+                {/* Read aloud in the agent's own voice (2026-10-21). */}
+                {editedScript.trim() && (
+                  <ListenButton text={[selectedHook, editedScript, activeCta].filter(Boolean).join("\n\n")} label="Listen" />
+                )}
                 <button onClick={() => toggle("script")} aria-label="Toggle script section">
                   {expandedSections.script ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                 </button>
@@ -4379,6 +4384,11 @@ export default function ProjectEditorPage() {
                   ))}
                   {(script.blog_intro || script.blog_body) && (
                     <>
+                      {/* The article read aloud (2026-10-21). */}
+                      <ListenButton
+                        text={[script.blog_intro, script.blog_body, script.blog_conclusion].filter(Boolean).join("\n\n")}
+                        label="Listen to the article"
+                      />
                       <button
                         type="button"
                         onClick={copyBlogHtml}
