@@ -597,12 +597,18 @@ function DigitalTwinCreator({
             </button>
           </div>
         </div>
-        <p className="text-xs text-slate-400">After approving, come back — we&apos;ll activate automatically.</p>
+        <p className="text-xs text-slate-400">After approving, come back here and press I&apos;ve approved it.</p>
+        {/* The look already reads "completed" at HeyGen, so nothing can
+            confirm the approval but the next render; this clears the card
+            (2026-10-23), and a render refused again brings it back. */}
         <button
-          onClick={checkStatus}
-          className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 self-start"
+          onClick={async () => {
+            await fetch("/api/avatar/digital-twin", { method: "PATCH" }).catch(() => {});
+            void checkStatus();
+          }}
+          className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 self-start"
         >
-          <RefreshCw size={11} /> Refresh status
+          <RefreshCw size={11} /> I&apos;ve approved it
         </button>
       </div>
     );

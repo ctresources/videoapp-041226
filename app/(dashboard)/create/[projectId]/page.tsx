@@ -1785,6 +1785,41 @@ export default function ProjectEditorPage() {
           setEditorStep(3);
           return;
         }
+        // The Digital Twin's one-time approval at HeyGen (2026-10-23): say so,
+        // with the approval page one press away, instead of "couldn't render".
+        if (res.status === 409 && err?.code === "twin_consent_required") {
+          setEditorStep(3);
+          toast((t) => (
+            <span className="flex flex-col gap-2 text-sm">
+              <span>Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.</span>
+              <button
+                type="button"
+                className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white"
+                onClick={async () => {
+                  toast.dismiss(t.id);
+                  // Opened first, filled after: a window opened after an await is blocked as a pop-up.
+                  const win = window.open("", "_blank");
+                  try {
+                    const r = await fetch("/api/avatar/consent", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ twin: true, reroute_url: window.location.href }),
+                    });
+                    const d = await r.json();
+                    if (!r.ok || !d.url) throw new Error(d.error || "No approval link");
+                    if (win) win.location.href = d.url; else window.location.href = d.url;
+                  } catch {
+                    win?.close();
+                    toast.error("Couldn't open the approval page. Try again from Settings.");
+                  }
+                }}
+              >
+                Approve now
+              </button>
+            </span>
+          ), { duration: 20000 });
+          return;
+        }
         throw new Error((err?.error as string) || `Video generation failed (${res.status})`);
       }
 

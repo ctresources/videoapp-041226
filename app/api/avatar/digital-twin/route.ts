@@ -99,7 +99,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_digital_twin_group_id, heygen_digital_twin_look_id")
+    .select("heygen_digital_twin_group_id, heygen_digital_twin_look_id, twin_consent_needed")
     .eq("id", user.id)
     .single();
 
@@ -110,7 +110,9 @@ export async function GET() {
   try {
     const looks = await getAvatarLooks(profile.heygen_digital_twin_group_id);
     const look = looks[0] ?? null;
-    const status = look?.status ?? "processing";
+    // A render refused for approval sets twin_consent_needed (2026-10-23);
+    // the look itself still reads "completed".
+    const status = profile.twin_consent_needed ? "pending_consent" : (look?.status ?? "processing");
 
     // Keep stored look_id up to date
     if (look?.id && look.id !== profile.heygen_digital_twin_look_id) {
@@ -162,5 +164,18 @@ export async function DELETE() {
     .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null })
     .eq("id", user.id);
 
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * PATCH /api/avatar/digital-twin — "I've approved it" in Settings
+ * (2026-10-23). Clears twin_consent_needed; a render refused for approval
+ * sets it again.
+ */
+export async function PATCH() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await createAdminClient().from("profiles").update({ twin_consent_needed: false }).eq("id", user.id);
   return NextResponse.json({ ok: true });
 }

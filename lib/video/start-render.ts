@@ -1354,6 +1354,11 @@ export async function startRender(
         ...(directEngine && { engine: directEngine }),
       });
 
+      // Accepted with the twin: any approval it was waiting for is done.
+      if (isDigitalTwin) {
+        await admin.from("profiles").update({ twin_consent_needed: false }).eq("id", user.id).eq("twin_consent_needed", true);
+      }
+
       await admin
         .from("generated_videos")
         // credit_cost enables an automatic refund if the render later fails
@@ -1662,6 +1667,23 @@ export async function startRender(
           retryAfterSeconds: secs,
         },
         { status: 503 },
+      );
+    }
+
+    /**
+     * The Digital Twin still needs its owner's one-time approval at HeyGen
+     * (2026-10-23). Its look reads "completed", so nothing said so until a
+     * render was refused. Flag the profile so Settings shows the Approve card,
+     * and tell the editor, which offers Approve now.
+     */
+    if (/avatar_consent_required/i.test(msg)) {
+      await admin.from("profiles").update({ twin_consent_needed: true }).eq("id", user.id);
+      return NextResponse.json(
+        {
+          error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
+          code: "twin_consent_required",
+        },
+        { status: 409 },
       );
     }
 

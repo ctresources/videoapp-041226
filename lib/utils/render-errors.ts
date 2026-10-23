@@ -34,6 +34,12 @@ const RULES: Rule[] = [
       "Your voice isn't available right now. Re-record it in Settings, then try again.",
   },
   {
+    // The Digital Twin's one-time approval at HeyGen (2026-10-23).
+    match: /avatar_consent_required/i,
+    message:
+      "Your Digital Twin needs your one-time approval. Open Settings, approve it, then try again.",
+  },
+  {
     match: /avatar_not_found|avatar_group_not_found|no usable image/i,
     message:
       "We couldn't find your avatar. Open Settings to check your photos, then try again.",
