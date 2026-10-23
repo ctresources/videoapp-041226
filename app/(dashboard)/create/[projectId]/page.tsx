@@ -29,7 +29,7 @@ import { StepFooter } from "@/components/create/step-footer";
 import { RenderPipeline } from "@/components/create/render-pipeline";
 import { WaitingInLine } from "@/components/create/waiting-in-line";
 import {
-  ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw,
+  ArrowLeft, ArrowRight, Sparkles, FileText, Search, Video, RefreshCw, Info,
   Copy, ChevronDown, ChevronUp, Loader2, CheckCircle, Check, Pencil, Wand2, Film, Download,
   User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin, Mail, Send,
 } from "lucide-react";
@@ -1978,6 +1978,20 @@ export default function ProjectEditorPage() {
               <Link href="/settings/billing" className="font-semibold text-spark-ink underline underline-offset-2">See plans</Link>
             </p>
           </div>
+        )}
+        {/* The Digital Twin and the format (2026-10-22, the owner's wording):
+            a twin on a horizontal video is made as Avatar in circle (see
+            start-render), a vertical one stays a full Avatar video. */}
+        {!!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice" && !circleStyle
+          && !selfRecord && !twinFullLocked && (
+          <p className="flex items-start gap-2 rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
+            <Info size={14} className="mt-[1px] shrink-0 text-[#A3660F]" aria-hidden="true" />
+            {selectedVideoType === "reel_9x16" || selectedVideoType === "short_1x1" ? (
+              <span>With your Digital Twin, a vertical video is a full <b className="text-[#A3660F]">vertical Avatar video</b>.</span>
+            ) : (
+              <span>With your Digital Twin, a horizontal video is made as <b className="text-[#A3660F]">Avatar in circle</b>. Choose Vertical for a vertical Avatar video.</span>
+            )}
+          </p>
         )}
         {/* Says out loud that these are two different exits, not three
             settings on one.
