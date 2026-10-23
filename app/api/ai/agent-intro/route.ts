@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const b = (await req.json().catch(() => ({}))) as {
     name?: string; brokerage?: string; city?: string; state?: string; years?: string;
-    helps?: string[]; different?: string; about?: string; profileUrl?: string; seconds?: number;
+    helps?: string[]; different?: string; about?: string; profileUrl?: string;
   };
   const clean = (s: unknown, max: number) => (typeof s === "string" ? s.trim().replace(/\s+/g, " ").slice(0, max) : "");
   const name = clean(b.name, 80);
@@ -45,8 +45,9 @@ export async function POST(req: NextRequest) {
   const different = clean(b.different, 400);
   const about = clean(b.about, 400);
   const profileUrl = /^https?:\/\/\S+$/i.test(clean(b.profileUrl, 300)) ? clean(b.profileUrl, 300) : "";
-  const seconds = b.seconds === 60 ? 60 : 30;
-  const words = seconds === 60 ? 145 : 72;
+  // Always 30 seconds (the owner's call, 2026-10-23).
+  const seconds = 30;
+  const words = 72;
 
   if (!name) return NextResponse.json({ error: "Add your name." }, { status: 400 });
   if (!city) return NextResponse.json({ error: "Add the area you serve." }, { status: 400 });

@@ -805,7 +805,9 @@ export async function startRender(
   // with no prompt budget, so admins get HeyGen's ~15-minute ceiling for tests.
   const shortFormMaxWords = MAX_SHORT_WORDS;
   const longFormMaxWords = isAdmin ? MAX_LONG_FORM_SCRIPT_WORDS_ADMIN : MAX_LONG_FORM_SCRIPT_WORDS;
-  const maxScriptWords = isLongForm ? longFormMaxWords : shortFormMaxWords;
+  // An Agent Intro is 30 seconds (the owner's call, 2026-10-23): about 80
+  // words at most, however much the script was edited.
+  const maxScriptWords = isAgentIntro ? 80 : isLongForm ? longFormMaxWords : shortFormMaxWords;
 
   /**
    * Whether the closing ask has to come out of the script's own budget.

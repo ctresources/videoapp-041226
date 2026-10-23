@@ -21,7 +21,8 @@ export interface IntroDefaults {
 /**
  * "About you" for the Agent Intro (2026-10-23, the owner's approved mockup).
  * Filled from Settings, with chips for who they help, two optional personal
- * boxes, an optional profile link and 30 or 60 seconds. Writes the intro and
+ * boxes and an optional profile link. Always 30 seconds (the owner's call,
+ * 2026-10-23). Writes the intro and
  * opens it in the editor.
  */
 export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults; onClose: () => void }) {
@@ -35,7 +36,6 @@ export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults
   const [different, setDifferent] = useState("");
   const [about, setAbout] = useState("");
   const [profileUrl, setProfileUrl] = useState("");
-  const [seconds, setSeconds] = useState<30 | 60>(30);
   const [busy, setBusy] = useState(false);
 
   async function write() {
@@ -45,7 +45,7 @@ export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults
       const res = await fetch("/api/ai/agent-intro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, brokerage, city, state, years, helps, different, about, profileUrl, seconds }),
+        body: JSON.stringify({ name, brokerage, city, state, years, helps, different, about, profileUrl }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok || !d.projectId) throw new Error(d.error || "Couldn't write your intro.");
@@ -102,14 +102,7 @@ export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults
           <input className={field} value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} placeholder="zillow.com/profile/… or your website" inputMode="url" />
         </label>
 
-        <p className={`${label} mt-4`}>Length</p>
-        <div className="flex gap-2">
-          {([30, 60] as const).map((s) => (
-            <button key={s} type="button" aria-pressed={seconds === s} className={chip(seconds === s)} onClick={() => setSeconds(s)}>
-              {s} seconds
-            </button>
-          ))}
-        </div>
+        <p className="mt-4 text-[12.5px] text-spark-ink-muted">Your intro runs about 30 seconds.</p>
 
         <button type="button" disabled={busy} onClick={() => void write()}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl spark-cta-gradient px-5 py-3 text-[15px] font-bold text-white disabled:opacity-60">

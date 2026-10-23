@@ -85,7 +85,7 @@ const COMPARISON: { feature: string; values: [boolean | string, boolean | string
   { feature: "Long AI videos a month (up to 8 minutes, using your photos for visuals)", values: [false, "2", "4"] },
   { feature: "AutoSparks: 3 posts drafted for you every week, ready to approve", values: [true, true, true] },
   // The Agent Intro (2026-10-23, the owner's call).
-  { feature: "Agent Intro video, 30 or 60 seconds, with a short and long bio", values: ["Uses 1 short video", "1 free a month", "1 free a month"] },
+  { feature: "Agent Intro video, 30 seconds, with a short and long bio", values: ["Uses 1 short video", "1 free a month", "1 free a month"] },
   { feature: "Automatic b-roll, captions and titles on every video", values: [true, true, true] },
   { feature: "MLS listing videos: paste a listing link, get a finished property tour", values: [true, true, true] },
   { feature: "Unlimited camera and screen recordings (up to 15 minutes on camera, 10 on screen)", values: [true, true, true] },
