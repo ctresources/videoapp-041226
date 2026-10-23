@@ -359,20 +359,23 @@ Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head t
    */
   const pipMode = !!params.pipLayout && params.hasAvatar && totalPhotos > 0;
 
+  /**
+   * The photo rules, at the front of the tail. Rewritten shorter on 2026-10-22,
+   * most important first: on a listing render the prompt hit its 9,800-character
+   * cap with only 621 of the tail kept, which cut these off before the rule
+   * that forbids invented property imagery.
+   */
   const photoBlock = totalPhotos > 0
     ? `
-ATTACHED PHOTOS — PRIMARY B-ROLL
-${totalPhotos} photo(s) are attached${params.isListing ? ` of the property at ${params.listingAddress || "the listing address"}` : ""}.
-- Use ALL ${totalPhotos} as the primary b-roll. Every one gets at least one scene: ${totalPhotos} photos means ${totalPhotos} scenes at minimum.
-- Divide the available b-roll time evenly between them. If that gives each photo less than 5 seconds, SHORTEN THE HOLDS — do not drop a photo to give the others longer. A photo that never appears is the one failure this list exists to prevent.
-- Crop/scale every photo to FILL the frame edge-to-edge (cover scaling) — never letterbox or pillarbox, even for portrait photos.
-- Gentle Ken Burns motion (slow pan + zoom) on each.
-- Match each photo to the sentence describing it.
+ATTACHED PHOTOS — PRIMARY B-ROLL (${totalPhotos}${params.isListing ? `, of ${params.listingAddress || "the listing"}` : ""})
 ${propertyPhotos
-  ? `- THESE PHOTOS ARE THE ONLY PROPERTY VISUALS PERMITTED. Every shot of a home, room, yard, exterior, street or interior must come from the attached photos. Do NOT add, generate or source ANY other property imagery — no stock houses, no stock interiors, no AI-invented rooms, no stock yards or gardens, not even for a transition or a background fill. A house that is not this house misrepresents the listing.
-- If the narration outruns the photos, hold, re-use or slowly move across the attached photos, or cut to a plain branded text card. Running out of photos is never a reason to invent one.
-- Non-property b-roll (maps, generic lifestyle, abstract texture) is allowed only where the script is not describing the home itself.`
-  : "- Do NOT replace them with stock or generated imagery; stock b-roll only between photos for transitions."}`
+  ? `- These are the ONLY property visuals allowed: every home, room, yard or street shot comes from them. Never add stock, generated or invented property imagery, not even as a transition or background. If the narration outruns them, re-use them or cut to a plain branded text card.
+`
+  : ""}- Use all ${totalPhotos}, each in at least one scene, time split evenly; shorten the holds rather than drop a photo.
+- Each photo fills the frame (cover scaling, never letterboxed), with slow Ken Burns motion, matched to the sentence describing it.
+${propertyPhotos
+  ? "- Non-property b-roll (maps, lifestyle) only where the script is not describing the home."
+  : "- Never replace them with stock or generated imagery; stock only between photos as transitions."}`
     : "";
 
   const monthName = new Date().toLocaleString("en-US", { month: "long" });
@@ -422,6 +425,7 @@ ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 - The attached photos are the picture. Each one fills the whole ${canvasLabel} canvas edge to edge, with gentle Ken Burns motion, for the entire runtime.
 - The presenter is a PICTURE-IN-PICTURE inset: a small rounded rectangle in a BOTTOM CORNER, about 25% of the frame width, over the photo. Animated and lip-synced, never a static image, and never full screen.
 - The inset stays in the same corner for the whole video. Do not move it, do not cut to a full-screen presenter, do not remove it between photos.
+- The inset holds ONLY the presenter, lip-synced, from first frame to last. Never put a photo, b-roll or graphic inside it.
 - Because the presenter is small and low, overlays may use the upper two thirds freely. Keep captions in the bottom band and clear of the inset's corner.
 - All ${totalPhotos} photos appear. With the photos on screen the whole time there is room for every one of them.
 
@@ -437,6 +441,7 @@ PRESENTER FRAMING (RULE #2)
 
 AVATAR + B-ROLL INTERCUT (MANDATORY)
 - When on camera the presenter is alone on a filled ${canvasLabel} canvas — no PiP, no corner bubble, no circular crop, no black bars — framed per RULE #2. Always the animated, lip-synced avatar; never a static image.
+- If the presenter is ever shown in a circle or inset anyway, that shape holds ONLY the presenter, lip-synced, for as long as it is on screen. Never put a photo, b-roll or graphic inside it.
 - Cut away to relevant b-roll every time the script mentions a property feature, neighborhood detail, statistic or lifestyle benefit, then cut back to the presenter. Never hold the presenter for the entire video.
 ${propertyPhotos
   ? `- SPLIT: roughly 30% presenter, 70% the attached photos. The property is the subject here and the presenter is the frame around it. All ${totalPhotos} photos must appear, and at an even split there is not enough screen time left to show them — half a short runtime divided by ${totalPhotos} photos is a fraction of a second each.`
@@ -674,7 +679,7 @@ export async function startRender(
    * is still Direct Video: the agent cannot carry a script that size.
    */
   const wantsFull = styleAsked === "full" && !isLongForm;
-  const useDirectVideo = (isLongForm || (!wantsFull && (engineIsDirect || isVerbatimProject || isCircleProject))) && !voiceOnly;
+  let useDirectVideo = (isLongForm || (!wantsFull && (engineIsDirect || isVerbatimProject || isCircleProject))) && !voiceOnly;
   if (voiceOnly && (engineIsDirect || isVerbatimProject)) {
     console.log(`[create-blog] project=${projectId} asked for voice only — not using Direct Video, which would supply a face`);
   }
@@ -945,6 +950,22 @@ export async function startRender(
       : pickedAFormatVariant
         ? (formatLook || requestedLook)
         : requestedLook;
+
+    /**
+     * A Digital Twin in a horizontal video is made as Avatar in circle
+     * (2026-10-22, the owner's call). Twin clips are usually filmed upright on
+     * a phone, so on a 16:9 canvas the Video Agent improvised: it put the twin
+     * in a circle of its own and then filled that circle with listing photos
+     * (the Harleysville video). Avatar in circle is composited here, so the
+     * twin stays in its circle for the whole video, with the photos behind it,
+     * and it costs about $0.99 a minute instead of $5.82. Vertical videos keep
+     * the Video Agent, where an upright twin fits the frame.
+     */
+    if (!useDirectVideo && !voiceOnly && avatarId && avatarId === profile.heygen_digital_twin_look_id
+        && orientation === "landscape") {
+      useDirectVideo = true;
+      console.log(`[create-blog] project=${projectId} Digital Twin on a horizontal video — Avatar in circle instead of the Video Agent`);
+    }
 
     // A Digital Twin in Avatar video is for paid plans; on the free plan it
     // works in Avatar in circle (2026-10-20, the owner's call). The editor
