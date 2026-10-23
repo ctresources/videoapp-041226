@@ -87,7 +87,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
             <Link href="/blog" className="hover:text-slate-600">Blog</Link>
             {post.topic ? ` › ${post.topic}` : ""}
           </p>
-          <h1 className="text-3xl sm:text-5xl font-black leading-tight text-slate-900 mb-4">{post.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-black leading-tight text-slate-900 mb-4">{post.title}</h1>
           <p className="mb-8 text-base text-slate-500">
             {[post.author_name, postDate(post.published_at), `${readMinutes(post.word_count)} min read`].filter(Boolean).join(" · ")}
           </p>

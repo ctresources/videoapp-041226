@@ -51,7 +51,7 @@ export function FeaturePageView({ slug }: { slug: string }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbs }} />
 
       <section className="pt-24 pb-14 px-4 sm:px-6 border-b border-slate-200">
-        <div className="max-w-[1400px] mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <p className="mb-6 text-sm text-slate-400">
             <Link href="/" className="hover:text-slate-600">Home</Link> › {p.navLabel}
           </p>
@@ -86,7 +86,7 @@ export function FeaturePageView({ slug }: { slug: string }) {
       </section>
 
       <section className="py-14 px-4 sm:px-6 border-b border-slate-200">
-        <div className="max-w-[1400px] mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-8">How it works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {p.steps.map((s, i) => (
@@ -101,7 +101,7 @@ export function FeaturePageView({ slug }: { slug: string }) {
       </section>
 
       <section className="py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-10">
           {[{ title: p.getsTitle, list: p.gets }, { title: p.forTitle, list: p.forList }].map((col) => (
             <div key={col.title}>
               <h2 className="text-3xl font-black text-slate-900 mb-5">{col.title}</h2>
@@ -129,7 +129,7 @@ export function FeaturePageView({ slug }: { slug: string }) {
       </section>
 
       <section className="py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-[1400px] mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <h2 className="text-3xl font-black text-slate-900 mb-6">More from SparkReels</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {others.map((f) => (

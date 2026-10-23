@@ -27,12 +27,12 @@ export default async function BlogHome() {
     <div className="min-h-screen bg-white">
       <SiteNav active="blog" />
       <section className="pt-28 pb-14 px-4 sm:px-6">
-        <div className="max-w-[1400px] mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">The SparkReels Blog</p>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-4 max-w-4xl">
+          <h1 className="text-3xl sm:text-4xl font-black leading-tight text-slate-900 mb-3">
             Video and AI marketing for real estate agents
           </h1>
-          <p className="text-xl text-slate-500 mb-10 max-w-3xl">
+          <p className="text-lg sm:text-xl text-slate-500 mb-10">
             How agents get found on YouTube, Google and ChatGPT, one short video at a time.
           </p>
           {posts.length === 0 ? (
