@@ -1094,6 +1094,20 @@ export default function AdminPage() {
                               </div>
                             </div>
 
+                            {/* Welcome email, for a paying customer who hasn't had it (2026-10-23). */}
+                            {!user.welcome_email_sent_at && user.subscription_tier !== "free" && user.subscription_tier !== "beta" && (
+                              <div>
+                                <p className="text-xs font-semibold text-slate-500 mb-2">Welcome email</p>
+                                <button
+                                  onClick={() => patch(user.id, { send_welcome: true }, `Welcome email sent to ${user.email}`)}
+                                  disabled={saving[user.id]}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-secondary-400 hover:text-secondary-600 transition-all"
+                                >
+                                  Send welcome email
+                                </button>
+                              </div>
+                            )}
+
                             {/* Suspend */}
                             <div>
                               <p className="text-xs font-semibold text-slate-500 mb-2">Account</p>

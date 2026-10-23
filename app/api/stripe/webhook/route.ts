@@ -4,9 +4,9 @@ import { releaseSocialSlot } from "@/lib/api/social-slot";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
-import { affiliateForWelcome } from "@/lib/affiliate";
 import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
-import { notifyBillingEvent, sendWelcomeEmail, type BillingEventKind } from "@/lib/email";
+import { notifyBillingEvent, type BillingEventKind } from "@/lib/email";
+import { sendWelcomeOnce } from "@/lib/welcome";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -78,37 +78,6 @@ async function updateProfile(
  * swallows its own errors, so awaiting it cannot fail the webhook and make
  * Stripe replay the event.
  */
-/**
- * The welcome email, once per account ever (2026-10-23, the owner's ask).
- * The stamp is claimed first, so two webhook deliveries can't both send it;
- * a failed send gives the stamp back so the next event can try again.
- */
-async function sendWelcomeOnce(
-  admin: ReturnType<typeof createAdminClient>,
-  userId: string,
-  tier: string | null | undefined,
-) {
-  const { data: claimed } = await admin
-    .from("profiles")
-    .update({ welcome_email_sent_at: new Date().toISOString() })
-    .eq("id", userId)
-    .is("welcome_email_sent_at", null)
-    .select("full_name")
-    .maybeSingle();
-  if (!claimed) return;
-  let email: string | null = null;
-  try {
-    const { data: u } = await admin.auth.admin.getUserById(userId);
-    email = u?.user?.email ?? null;
-  } catch { /* no email, nothing to send */ }
-  // Already an approved affiliate: their link and dashboard instead of the invitation.
-  const affiliate = email ? await affiliateForWelcome(admin, userId, email).catch(() => null) : null;
-  const sent = email
-    ? await sendWelcomeEmail({ email, name: (claimed as { full_name: string | null }).full_name, tier: tier ?? "starter", affiliate })
-    : false;
-  if (!sent) await admin.from("profiles").update({ welcome_email_sent_at: null }).eq("id", userId);
-}
-
 async function notifyBilling(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,

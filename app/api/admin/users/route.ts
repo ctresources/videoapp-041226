@@ -1,3 +1,4 @@
+import { sendWelcomeOnce } from "@/lib/welcome";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -71,8 +72,10 @@ export async function PATCH(req: NextRequest) {
   if (!admin_user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const { userId, role, subscription_tier, credits_remaining, suspended, staff_video_cap } = body as {
+  const { userId, role, subscription_tier, credits_remaining, suspended, staff_video_cap, send_welcome } = body as {
     userId: string;
+    /** The Admin panel's Send welcome email button (2026-10-23). */
+    send_welcome?: boolean;
     role?: string;
     /** A staff account's monthly video cap (2026-10-23). */
     staff_video_cap?: number;
@@ -84,6 +87,15 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // Send welcome email: once ever, same email as a new subscription gets.
+  if (send_welcome === true) {
+    const result = await sendWelcomeOnce(admin, userId);
+    if (result === "failed") return NextResponse.json({ error: "The welcome email couldn't be sent. Try again." }, { status: 500 });
+    const { data: row } = await admin.from("profiles").select("*").eq("id", userId).single();
+    return NextResponse.json({ success: true, result, user: row });
+  }
+
   const updates: Record<string, unknown> = {};
 
   if (role !== undefined) {
