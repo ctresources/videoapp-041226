@@ -21,16 +21,19 @@ const PER_IP_PER_DAY = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => ({}))) as { name?: string; email?: string; city?: string; company?: string };
+  const body = (await req.json().catch(() => ({}))) as { name?: string; email?: string; city?: string; state?: string; company?: string };
   // A field people never see. Bots fill it in.
   if (body.company) return NextResponse.json({ error: "Please try again." }, { status: 400 });
 
   const name = (body.name ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
   const email = (body.email ?? "").trim().toLowerCase().slice(0, 160);
-  const cityLine = (body.city ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const cityName = (body.city ?? "").trim().replace(/\s+/g, " ").replace(/,.*$/, "").slice(0, 60);
+  const stateCode = (body.state ?? "").trim().toUpperCase();
   if (name.length < 2) return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
-  if (cityLine.length < 2) return NextResponse.json({ error: "Please enter your city or town." }, { status: 400 });
+  if (cityName.length < 2) return NextResponse.json({ error: "Please enter your city or town." }, { status: 400 });
+  if (!/^[A-Z]{2}$/.test(stateCode)) return NextResponse.json({ error: "Please choose your state." }, { status: 400 });
+  const cityLine = `${cityName}, ${stateCode}`;
 
   const admin = createAdminClient();
   const since = new Date(Date.now() - DAY_MS).toISOString();
@@ -64,11 +67,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 
-  const [city, ...rest] = cityLine.split(",").map((s) => s.trim());
-  const state = rest.join(", ") || undefined;
 
   try {
-    const raw = await generateAnswerBlocks({ agentName: name, city, state });
+    const raw = await generateAnswerBlocks({ agentName: name, city: cityName, state: stateCode });
     const blocks = raw.slice(0, 3).map((b) => ({
       question: String(b.question ?? "").trim(),
       answerBlock: String(b.answerBlock ?? "").trim(),

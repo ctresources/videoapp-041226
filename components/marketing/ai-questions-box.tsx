@@ -9,6 +9,8 @@ type Block = { question: string; answerBlock: string; videoTopic: string };
 /** Handed to Spark Studio after sign-up on this device (read in create/page.tsx). */
 export const PENDING_TOPIC_KEY = "sr_pending_topic";
 
+const US_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
+
 const STEPS = ["Looking up your town", "Finding what buyers there ask ChatGPT and Google", "Writing an answer for each one"];
 
 /**
@@ -21,6 +23,7 @@ export function AiQuestionsBox() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [company, setCompany] = useState("");
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
@@ -41,15 +44,23 @@ export function AiQuestionsBox() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch("/api/public/ai-questions", {
+      const send = () => fetch("/api/public/ai-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, city, company }),
+        body: JSON.stringify({ name, email, city, state, company }),
       });
+      // A dropped connection ("Failed to fetch") gets one quiet retry.
+      let res: Response;
+      try { res = await send(); } catch {
+        await new Promise((r) => setTimeout(r, 1500));
+        try { res = await send(); } catch {
+          throw new Error("We couldn't reach SparkReels. Check your connection, refresh the page and try again.");
+        }
+      }
       const d = await res.json().catch(() => ({}));
       if (!res.ok || !Array.isArray(d.blocks)) throw new Error(d.error || "Something went wrong. Please try again.");
       setBlocks(d.blocks);
-      setShownFor({ first: name.trim().split(" ")[0], city: city.trim(), email: email.trim() });
+      setShownFor({ first: name.trim().split(" ")[0], city: `${city.trim()}, ${state}`, email: email.trim() });
       try {
         localStorage.setItem(PENDING_TOPIC_KEY, JSON.stringify({ topic: d.blocks[0]?.videoTopic || d.blocks[0]?.question, at: Date.now() }));
       } catch { /* storage unavailable: the topic just won't be pre-filled */ }
@@ -100,7 +111,7 @@ export function AiQuestionsBox() {
               {STEPS.map((s, i) => (
                 <li key={s} className={`flex items-center gap-2 text-[15px] ${i <= step ? "text-slate-700" : "text-slate-300"}`}>
                   {i < step ? <Check size={16} className="text-emerald-600" /> : i === step ? <Loader2 size={16} className="animate-spin text-blue-900" /> : <span className="w-4" />}
-                  {i === 0 ? `Looking up ${city.trim() || "your town"}` : s}
+                  {i === 0 ? `Looking up ${city.trim() ? `${city.trim()}, ${state}` : "your town"}` : s}
                 </li>
               ))}
             </ul>
@@ -116,10 +127,19 @@ export function AiQuestionsBox() {
                   <input className={field} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
                 </label>
               </div>
-              <label className="block mb-3">
-                <span className="mb-1 block text-sm font-bold text-slate-800">Your city or town</span>
-                <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Maplewood, NJ" autoComplete="address-level2" required minLength={2} />
-              </label>
+              <div className="grid grid-cols-[1fr_96px] gap-3 mb-3">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-bold text-slate-800">City or town</span>
+                  <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Maplewood" autoComplete="address-level2" required minLength={2} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-bold text-slate-800">State</span>
+                  <select className={field} value={state} onChange={(e) => setState(e.target.value)} autoComplete="address-level1" required>
+                    <option value="">—</option>
+                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
               {/* Hidden from people; bots fill it in. */}
               <input type="text" name="company" value={company} onChange={(e) => setCompany(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" />
               <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 px-5 py-3.5 text-lg font-bold text-white hover:bg-blue-800">
