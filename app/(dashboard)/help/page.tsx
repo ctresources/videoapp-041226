@@ -153,10 +153,18 @@ export default function HelpPage() {
               <strong>Settings → Profile → Digital Twin</strong>, record about 2 minutes of yourself
               talking to the camera: phone at eye level, good light, quiet room, only you in the shot.
               Upload it or pick a recording from the Camera tab, then tap{" "}
-              <strong>Train Digital Twin</strong>. It&apos;s ready in 15 to 30 minutes; approve it once,
-              and it shows up as an avatar look in every video. On the free plan your twin appears
-              in <strong>Avatar (You) in circle</strong>; on paid plans it works in{" "}
-              <strong>Avatar (You in full) video</strong> too. You can delete it any time in Settings.
+              <strong>Train Digital Twin</strong>. It&apos;s ready in 15 to 30 minutes, and it shows up
+              as an avatar look in every video. On the free plan your twin appears in{" "}
+              <strong>Avatar (You) in circle</strong>; on paid plans it works in{" "}
+              <strong>Avatar (You in full) video</strong> too. With your twin, a{" "}
+              <strong>horizontal</strong> video is always made as Avatar (You) in circle, and a{" "}
+              <strong>vertical</strong> video can be a full Avatar video; a note under{" "}
+              <em>Who&apos;s on screen</em> says which. Your twin needs your{" "}
+              <strong>approval once</strong>. If a video says so, press <strong>Approve now</strong>{" "}
+              (or <strong>Approve My Digital Twin</strong> in Settings), follow the short approval
+              on camera, then press <strong>I&apos;ve approved it</strong> in Settings and{" "}
+              <strong>Spark It</strong> again. Nothing is charged for a video that waits on approval.
+              You can delete your twin any time in Settings.
             </Step>
             <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
               In <strong>Settings → Profile → Default Video CTA</strong>, add your years in real estate and review the
@@ -532,7 +540,9 @@ export default function HelpPage() {
                 to 400 words, counting your closing line. If yours is longer, Avatar video is greyed
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
-                <strong>Shorten closing line</strong> to trim your closing line yourself.
+                <strong>Shorten closing line</strong> to trim your closing line yourself. With your
+                Digital Twin, a horizontal Avatar video is made as Avatar in circle, and a vertical
+                one stays a full Avatar video.
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
@@ -684,6 +694,12 @@ export default function HelpPage() {
                 saved to <strong>My Sparks</strong>, ready to publish. It counts as a camera recording,
                 not one of your plan&apos;s videos. This is on computers only; phones can&apos;t do the
                 branding yet.
+              </span>
+              {/* Delete on the finished take (2026-10-22). */}
+              <span className="block mt-1.5">
+                <strong>Don&apos;t want a take?</strong> Once it&apos;s saved, press{" "}
+                <strong>Delete</strong> beside <strong>Re-record</strong>. It&apos;s removed from My
+                Sparks, with its Share Kit, and you&apos;re back at the camera with your script ready.
               </span>
               {/* The recovery behaviour, which was invisible until it fires and
                   then reads like an error. Worded to match what the notice
