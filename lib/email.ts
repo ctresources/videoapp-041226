@@ -1046,3 +1046,129 @@ export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
   }).catch(() => null);
   return !!res?.ok;
 }
+
+/**
+ * Follow-ups 1–3 to a free account that hasn't made its free video
+ * (2026-10-23, the owner's approved wording). The owner sends each from the
+ * Admin panel. From her at support@ so a reply reaches her; HTML with a
+ * plain-text part and a one-click unsubscribe link.
+ */
+export async function sendFreeFollowupEmail({ email, name, city, step, unsubscribeUrl }: {
+  email: string;
+  name: string | null;
+  city: string | null;
+  step: 1 | 2 | 3;
+  unsubscribeUrl: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const firstRaw = (name ?? "").trim().split(/\s+/)[0] || "there";
+  const first = escHtml(firstRaw);
+  const cityRaw = (city ?? "").trim();
+  const app = "https://www.sparkreels.ai";
+  const btn = "display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px";
+  const cta = `<p style="margin:22px 0"><a href="${app}/create" style="${btn}">Make my free video</a></p>`;
+  const ctaText = `Make my free video: ${app}/create`;
+
+  let subject: string;
+  let bodyHtml: string;
+  let bodyText: string[];
+
+  if (step === 1) {
+    subject = firstRaw === "there" ? "Your free SparkReels video is waiting" : `Your free SparkReels video is waiting, ${firstRaw}`;
+    const steps: [string, string][] = [
+      ["Add your headshot", "(and record your voice, so it sounds like you)."],
+      ["Hit the mic", "in Spark Studio and say what it's about: a market update, a listing, a buyer tip."],
+      ["Press Spark It.", "Your video is made for you, captions and all."],
+    ];
+    bodyHtml = `
+      <p>Your free AI video is ready when you are. It takes about a minute of your time:</p>
+      <ol style="margin:0;padding-left:20px">${steps.map(([b, t]) => `<li><strong>${b}</strong> ${escHtml(t)}</li>`).join("")}</ol>
+      ${cta}
+      <p>Questions? Just reply. It comes straight to me.</p>
+      <p style="margin:0">Carmella Thompson<br>Founder, SparkReels.ai</p>`;
+    bodyText = [
+      "Your free AI video is ready when you are. It takes about a minute of your time:",
+      ...steps.map(([b, t], i) => `${i + 1}. ${b} ${t}`),
+      "",
+      ctaText,
+      "",
+      "Questions? Just reply. It comes straight to me.",
+      "",
+      "Carmella Thompson",
+      "Founder, SparkReels.ai",
+    ];
+  } else if (step === 2) {
+    subject = "Not sure what to say? Here are 3 ideas";
+    const ideas: [string, string][] = [
+      [cityRaw ? `"What's happening in the ${cityRaw} market right now"` : `"What's happening in your market right now"`,
+        "a quick update buyers and sellers love."],
+      ["A 30-second Agent Intro", "tell people who you are and how you help. SparkReels writes it from your profile."],
+      [cityRaw ? `"What buyers in ${cityRaw} are asking ChatGPT"` : `"What buyers in your area are asking ChatGPT"`,
+        "answer one real question on video."],
+    ];
+    bodyHtml = `
+      <p>The hardest part is picking a topic, so here are three that work for any agent:</p>
+      <ul style="margin:0;padding-left:20px">${ideas.map(([b, t]) => `<li><strong>${escHtml(b)}</strong>: ${escHtml(t)}</li>`).join("")}</ul>
+      <p style="margin:18px 0 0">Pick one and your free video is made for you, no filming needed.</p>
+      ${cta}
+      <p style="margin:0">Carmella</p>`;
+    bodyText = [
+      "The hardest part is picking a topic, so here are three that work for any agent:",
+      ...ideas.map(([b, t]) => `- ${b}: ${t}`),
+      "",
+      "Pick one and your free video is made for you, no filming needed.",
+      ctaText,
+      "",
+      "Carmella",
+    ];
+  } else {
+    subject = "Should I keep your free video for you?";
+    bodyHtml = `
+      <p>Just checking in: your free AI video is still here, with your face, your voice and your market, ready in minutes.</p>
+      <p>If something got in the way, reply and tell me. I read every email and I'm happy to help you make your first one.</p>
+      ${cta}
+      <p style="margin:0">Carmella</p>`;
+    bodyText = [
+      "Just checking in: your free AI video is still here, with your face, your voice and your market, ready in minutes.",
+      "",
+      "If something got in the way, reply and tell me. I read every email and I'm happy to help you make your first one.",
+      ctaText,
+      "",
+      "Carmella",
+    ];
+  }
+
+  const footer = "You're getting this because you signed up for SparkReels.";
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;font-size:15px;line-height:1.6">
+      <p>Hi ${first},</p>
+      ${bodyHtml}
+      <p style="margin-top:28px;font-size:12px;color:#94a3b8">${footer} <a href="${escHtml(unsubscribeUrl)}" style="color:#94a3b8">Stop these reminders</a></p>
+    </div>`;
+  const text = [
+    `Hi ${firstRaw},`,
+    "",
+    ...bodyText,
+    "",
+    "--",
+    `${footer} Stop these reminders: ${unsubscribeUrl}`,
+  ].join("\n");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: PERSONAL_FROM,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject,
+      html,
+      text,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}

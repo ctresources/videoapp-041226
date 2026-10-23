@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
   ChevronDown, Coins, ToggleLeft, ToggleRight, ChevronRight,
-  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail, Share2, Sparkles,
+  Gift, Copy, Trash2, Plus, RefreshCw, ArrowLeft, DollarSign, Mail, Share2, Sparkles, CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -96,7 +96,22 @@ interface UserRow {
   welcome_email_sent_at?: string | null;
   /** pending | approved | rejected, or null when they never applied. */
   affiliate_status?: string | null;
+  /** Free-account follow-ups the owner sends by hand (2026-10-23). */
+  first_video_generated_at?: string | null;
+  followup1_sent_at?: string | null;
+  followup2_sent_at?: string | null;
+  followup3_sent_at?: string | null;
+  followup_opt_out_at?: string | null;
 }
+
+const FOLLOWUPS = [
+  { n: 1, day: 2, key: "followup1_sent_at" },
+  { n: 2, day: 5, key: "followup2_sent_at" },
+  { n: 3, day: 10, key: "followup3_sent_at" },
+] as const;
+/** A free account that hasn't made its free video gets the follow-ups. */
+const wantsFollowup = (u: UserRow) => u.subscription_tier === "free" && !u.first_video_generated_at && u.role === "user";
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 
 const TIERS = ["free", "starter", "agent", "pro", "agency"] as const;
 /** The plan names customers see (2026-10-23, the owner's ask); the keys stay as stored. */
@@ -906,7 +921,7 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {["User", "Plan", "Credits", "Videos", "Status", "Welcome email", "Affiliate", "Joined", ""].map((h) => (
+                  {["User", "Plan", "Credits", "Videos", "Status", "Welcome email", "Follow-up", "Affiliate", "Joined", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -947,6 +962,24 @@ export default function AdminPage() {
                           ? <span className="font-medium text-green-700">Sent {new Date(user.welcome_email_sent_at).toLocaleDateString()}</span>
                           : <span className="text-slate-300">—</span>}
                       </td>
+                      {/* Free-video follow-ups sent so far (2026-10-23). */}
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        {!wantsFollowup(user)
+                          ? <span className="text-slate-300">—</span>
+                          : user.followup_opt_out_at
+                          ? <span className="font-medium text-red-600">Opted out</span>
+                          : (() => {
+                              const sent = FOLLOWUPS.filter((f) => user[f.key]);
+                              if (sent.length === 0) return <span className="font-medium text-amber-600">Not sent</span>;
+                              const last = sent[sent.length - 1];
+                              return (
+                                <span className="font-medium text-green-700">
+                                  {sent.length === 3 ? "All 3 sent" : `#${sent.map((f) => f.n).join(", #")} sent`}
+                                  <span className="block font-normal text-slate-400">last {shortDate(user[last.key] as string)}</span>
+                                </span>
+                              );
+                            })()}
+                      </td>
                       <td className="px-4 py-3">
                         {user.affiliate_status === "approved"
                           ? <Badge variant="success">Affiliate</Badge>
@@ -970,7 +1003,7 @@ export default function AdminPage() {
                     {/* Expanded actions row */}
                     {expandedId === user.id && (
                       <tr key={`${user.id}-expand`} className="bg-slate-50/80">
-                        <td colSpan={9} className="px-4 py-4">
+                        <td colSpan={10} className="px-4 py-4">
                           <div className="flex flex-wrap gap-6">
 
                             {/* Plan */}
@@ -1108,6 +1141,36 @@ export default function AdminPage() {
                               </div>
                             )}
 
+                            {/* Free-video follow-ups, sent by the owner (2026-10-23). */}
+                            {wantsFollowup(user) && (
+                              <div>
+                                <p className="text-xs font-semibold text-slate-500 mb-2">Free video follow-ups</p>
+                                {user.followup_opt_out_at ? (
+                                  <p className="text-xs text-red-600">Opted out {shortDate(user.followup_opt_out_at)}</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {FOLLOWUPS.map((f) => {
+                                      const at = user[f.key];
+                                      return at ? (
+                                        <span key={f.n} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                                          <CheckCircle size={12} /> #{f.n} sent {shortDate(at)}
+                                        </span>
+                                      ) : (
+                                        <button
+                                          key={f.n}
+                                          onClick={() => patch(user.id, { send_followup: f.n }, `Follow-up ${f.n} sent to ${user.email}`)}
+                                          disabled={saving[user.id]}
+                                          className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-secondary-400 hover:text-secondary-600 disabled:opacity-50 transition-all"
+                                        >
+                                          Send #{f.n} <span className="text-slate-400">(day {f.day})</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Suspend */}
                             <div>
                               <p className="text-xs font-semibold text-slate-500 mb-2">Account</p>
@@ -1138,7 +1201,7 @@ export default function AdminPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400 text-sm">
+                    <td colSpan={10} className="px-4 py-12 text-center text-slate-400 text-sm">
                       No users match your search
                     </td>
                   </tr>

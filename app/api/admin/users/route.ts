@@ -1,4 +1,5 @@
 import { sendWelcomeOnce } from "@/lib/welcome";
+import { sendFreeFollowup } from "@/lib/free-followup";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -72,8 +73,10 @@ export async function PATCH(req: NextRequest) {
   if (!admin_user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const { userId, role, subscription_tier, credits_remaining, suspended, staff_video_cap, send_welcome } = body as {
+  const { userId, role, subscription_tier, credits_remaining, suspended, staff_video_cap, send_welcome, send_followup } = body as {
     userId: string;
+    /** Free-account follow-up 1, 2 or 3, sent by the owner (2026-10-23). */
+    send_followup?: number;
     /** The Admin panel's Send welcome email button (2026-10-23). */
     send_welcome?: boolean;
     role?: string;
@@ -92,6 +95,23 @@ export async function PATCH(req: NextRequest) {
   if (send_welcome === true) {
     const result = await sendWelcomeOnce(admin, userId);
     if (result === "failed") return NextResponse.json({ error: "The welcome email couldn't be sent. Try again." }, { status: 500 });
+    const { data: row } = await admin.from("profiles").select("*").eq("id", userId).single();
+    return NextResponse.json({ success: true, result, user: row });
+  }
+
+  // Free-account follow-up 1, 2 or 3: once each, only while they haven't made their free video.
+  if (send_followup !== undefined) {
+    if (send_followup !== 1 && send_followup !== 2 && send_followup !== 3) {
+      return NextResponse.json({ error: "Follow-up must be 1, 2 or 3" }, { status: 400 });
+    }
+    const result = await sendFreeFollowup(admin, userId, send_followup);
+    const errors: Record<string, [string, number]> = {
+      failed: ["The follow-up couldn't be sent. Try again.", 500],
+      already: [`Follow-up ${send_followup} was already sent.`, 409],
+      opted_out: ["They turned these reminders off.", 409],
+      not_eligible: ["Only free accounts that haven't made their free video get these.", 409],
+    };
+    if (errors[result]) return NextResponse.json({ error: errors[result][0] }, { status: errors[result][1] });
     const { data: row } = await admin.from("profiles").select("*").eq("id", userId).single();
     return NextResponse.json({ success: true, result, user: row });
   }
