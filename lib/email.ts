@@ -934,11 +934,13 @@ You asked for these on sparkreels.ai.`,
  * approved wording). Sent once, on their first subscription, from the owner
  * at support@ so a reply reaches her; HTML with a plain-text part.
  */
-export async function sendWelcomeEmail({ email, name, tier }: {
+export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
   email: string;
   name: string | null;
   /** starter | agent | pro */
   tier: string;
+  /** Already an approved affiliate: their link and dashboard instead of the invitation. */
+  affiliate?: { refLink: string; dashboardUrl: string } | null;
 }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const plan = tier === "agent" ? "Producer" : tier === "pro" ? "Influencer" : "Creator";
@@ -980,9 +982,14 @@ export async function sendWelcomeEmail({ email, name, tier }: {
         <li><strong>iPhone:</strong> open sparkreels.ai in <strong>Safari</strong>, tap <strong>Share</strong> (the square with an arrow), then <strong>Add to Home Screen</strong>.</li>
         <li><strong>Android:</strong> open it in <strong>Chrome</strong>, tap the <strong>&#8942;</strong> menu, then <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
       </ul>
+      ${affiliate ? `
+      <p style="${h2}">Thanks for being a SparkReels affiliate</p>
+      <p style="margin:0 0 8px">You earn <strong>20% commission</strong> on every agent who subscribes through your link, <strong>every month for their first 12 months</strong>, paid monthly straight to your bank. Here's your link to share:</p>
+      <p style="margin:0 0 12px"><a href="${escHtml(affiliate.refLink)}" style="color:#1e3a8a;font-weight:bold">${escHtml(affiliate.refLink.replace(/^https?:\/\/(www\.)?/, ""))}</a></p>
+      <p style="margin:0 0 22px"><a href="${escHtml(affiliate.dashboardUrl)}" style="color:#1e3a8a;font-weight:bold">See your affiliate dashboard</a></p>` : `
       <p style="${h2}">Earn while you share it</p>
       <p style="margin:0 0 12px">Know other agents who should be on video? Join the SparkReels affiliate program and earn <strong>20% commission</strong> on every customer you refer, <strong>every month for their first 12 months</strong>, paid monthly straight to your bank.</p>
-      <p style="margin:0 0 22px"><a href="${app}/affiliates/apply" style="color:#1e3a8a;font-weight:bold">Become an affiliate</a></p>
+      <p style="margin:0 0 22px"><a href="${app}/affiliates/apply" style="color:#1e3a8a;font-weight:bold">Become an affiliate</a></p>`}
       <p>Need help? Tap <strong>Ask Sparklee</strong> at the top of any page, read <strong>How It Works</strong>, or just reply to this email. It comes straight to me.</p>
       <p style="margin:0">Welcome aboard,<br>Carmella Thompson<br>Founder, SparkReels.ai</p>
     </div>`;
@@ -1005,9 +1012,16 @@ export async function sendWelcomeEmail({ email, name, tier }: {
     "- iPhone: open sparkreels.ai in Safari, tap Share (the square with an arrow), then Add to Home Screen.",
     "- Android: open it in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app).",
     "",
-    "Earn while you share it",
-    "Know other agents who should be on video? Join the SparkReels affiliate program and earn 20% commission on every customer you refer, every month for their first 12 months, paid monthly straight to your bank.",
-    `Become an affiliate: ${app}/affiliates/apply`,
+    ...(affiliate ? [
+      "Thanks for being a SparkReels affiliate",
+      "You earn 20% commission on every agent who subscribes through your link, every month for their first 12 months, paid monthly straight to your bank. Here's your link to share:",
+      affiliate.refLink,
+      `See your affiliate dashboard: ${affiliate.dashboardUrl}`,
+    ] : [
+      "Earn while you share it",
+      "Know other agents who should be on video? Join the SparkReels affiliate program and earn 20% commission on every customer you refer, every month for their first 12 months, paid monthly straight to your bank.",
+      `Become an affiliate: ${app}/affiliates/apply`,
+    ]),
     "",
     "Need help? Tap Ask Sparklee at the top of any page, read How It Works, or just reply to this email. It comes straight to me.",
     "",

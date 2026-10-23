@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -87,4 +88,46 @@ export async function claimAffiliateByToken(
     .single();
   if (error || !linked) return null;
   return linked as AffiliateRow;
+}
+
+/**
+ * What the welcome email says to a customer who is already an approved
+ * affiliate (2026-10-23): their referral link, and a way into their
+ * dashboard. The email goes to the address the application was made with,
+ * which is what the claim token is for, so an application not yet joined to
+ * an account gets its claim link (a fresh 90 days if it had none or it ran
+ * out) and one tap both links it and opens the dashboard.
+ */
+export async function affiliateForWelcome(
+  admin: Admin,
+  userId: string,
+  email: string,
+): Promise<{ refLink: string; dashboardUrl: string } | null> {
+  const app = "https://www.sparkreels.ai";
+  const cols = "id, user_id, email, ref_code, status, claim_token, claim_token_expires_at";
+  const { data: byUser } = await admin.from("affiliates").select(cols)
+    .eq("user_id", userId).eq("status", "approved").limit(1);
+  // By the address otherwise, case-insensitive and with LIKE's wildcards escaped.
+  const { data: byEmail } = byUser?.length ? { data: null } : await admin.from("affiliates").select(cols)
+    .ilike("email", email.replace(/[\\%_]/g, (c) => "\\" + c)).eq("status", "approved").limit(1);
+  const rows = byUser?.length ? byUser : byEmail;
+  const a = (rows?.[0] ?? null) as {
+    id: string; user_id: string | null; ref_code: string | null;
+    claim_token: string | null; claim_token_expires_at: string | null;
+  } | null;
+  if (!a?.ref_code) return null;
+  const refLink = `${app}/?ref=${a.ref_code}`;
+  if (a.user_id) return { refLink, dashboardUrl: `${app}/affiliate` };
+
+  let token = a.claim_token;
+  const expired = a.claim_token_expires_at && new Date(a.claim_token_expires_at).getTime() < Date.now();
+  if (!token || expired) {
+    token = randomBytes(24).toString("hex");
+    await admin.from("affiliates").update({
+      claim_token: token,
+      claim_token_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", a.id);
+  }
+  return { refLink, dashboardUrl: `${app}/affiliate?claim=${token}` };
 }

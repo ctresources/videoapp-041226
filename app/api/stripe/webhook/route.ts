@@ -4,6 +4,7 @@ import { releaseSocialSlot } from "@/lib/api/social-slot";
 import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
+import { affiliateForWelcome } from "@/lib/affiliate";
 import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
 import { notifyBillingEvent, sendWelcomeEmail, type BillingEventKind } from "@/lib/email";
 import type Stripe from "stripe";
@@ -100,8 +101,10 @@ async function sendWelcomeOnce(
     const { data: u } = await admin.auth.admin.getUserById(userId);
     email = u?.user?.email ?? null;
   } catch { /* no email, nothing to send */ }
+  // Already an approved affiliate: their link and dashboard instead of the invitation.
+  const affiliate = email ? await affiliateForWelcome(admin, userId, email).catch(() => null) : null;
   const sent = email
-    ? await sendWelcomeEmail({ email, name: (claimed as { full_name: string | null }).full_name, tier: tier ?? "starter" })
+    ? await sendWelcomeEmail({ email, name: (claimed as { full_name: string | null }).full_name, tier: tier ?? "starter", affiliate })
     : false;
   if (!sent) await admin.from("profiles").update({ welcome_email_sent_at: null }).eq("id", userId);
 }
