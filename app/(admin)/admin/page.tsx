@@ -92,6 +92,10 @@ interface UserRow {
   suspended?: boolean;
   /** A staff account's monthly video cap (2026-10-23). */
   staff_video_cap?: number;
+  /** When the welcome email went to this paying customer (2026-10-23). */
+  welcome_email_sent_at?: string | null;
+  /** pending | approved | rejected, or null when they never applied. */
+  affiliate_status?: string | null;
 }
 
 const TIERS = ["free", "starter", "agent", "pro", "agency"] as const;
@@ -902,7 +906,7 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {["User", "Plan", "Credits", "Videos", "Status", "Joined", ""].map((h) => (
+                  {["User", "Plan", "Credits", "Videos", "Status", "Welcome email", "Affiliate", "Joined", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -937,6 +941,21 @@ export default function AdminPage() {
                           ? <Badge variant="info">Staff</Badge>
                           : <Badge variant="default">Active</Badge>}
                       </td>
+                      {/* Welcome email and affiliate (2026-10-23, the owner's ask). */}
+                      <td className="px-4 py-3 text-xs">
+                        {user.welcome_email_sent_at
+                          ? <span className="font-medium text-green-700">Sent {new Date(user.welcome_email_sent_at).toLocaleDateString()}</span>
+                          : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.affiliate_status === "approved"
+                          ? <Badge variant="success">Affiliate</Badge>
+                          : user.affiliate_status === "pending"
+                          ? <Badge variant="warning">Applied</Badge>
+                          : user.affiliate_status === "rejected"
+                          ? <Badge variant="default">Declined</Badge>
+                          : <span className="text-xs text-slate-300">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-xs text-slate-400">
                         {new Date(user.created_at).toLocaleDateString()}
                       </td>
@@ -951,7 +970,7 @@ export default function AdminPage() {
                     {/* Expanded actions row */}
                     {expandedId === user.id && (
                       <tr key={`${user.id}-expand`} className="bg-slate-50/80">
-                        <td colSpan={7} className="px-4 py-4">
+                        <td colSpan={9} className="px-4 py-4">
                           <div className="flex flex-wrap gap-6">
 
                             {/* Plan */}
@@ -1105,7 +1124,7 @@ export default function AdminPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400 text-sm">
+                    <td colSpan={9} className="px-4 py-12 text-center text-slate-400 text-sm">
                       No users match your search
                     </td>
                   </tr>

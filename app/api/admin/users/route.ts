@@ -35,7 +35,25 @@ export async function GET() {
     countMap[v.user_id] = (countMap[v.user_id] || 0) + 1;
   });
 
-  const enriched = users.map((u) => ({ ...u, video_count: countMap[u.id as string] || 0 }));
+  // Affiliate status for the Affiliate column (2026-10-23). An application
+  // is linked to an account on first login after approval, so match by
+  // account first and fall back to the email it was made with.
+  const { data: affiliateRows } = await admin.from("affiliates").select("user_id, email, status");
+  const affByUser: Record<string, string> = {};
+  const affByEmail: Record<string, string> = {};
+  for (const a of (affiliateRows ?? []) as { user_id: string | null; email: string | null; status: string }[]) {
+    if (a.user_id) affByUser[a.user_id] = a.status;
+    if (a.email) affByEmail[a.email.toLowerCase()] = a.status;
+  }
+
+  const enriched = users.map((u) => ({
+    ...u,
+    video_count: countMap[u.id as string] || 0,
+    affiliate_status:
+      affByUser[u.id as string]
+      ?? (typeof u.email === "string" ? affByEmail[u.email.toLowerCase()] : undefined)
+      ?? null,
+  }));
   const proUsers = users.filter((u) => u.subscription_tier !== "free").length;
 
   return NextResponse.json({

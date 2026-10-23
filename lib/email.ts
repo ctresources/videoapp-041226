@@ -928,3 +928,107 @@ You asked for these on sparkreels.ai.`,
     }),
   }).catch(() => {});
 }
+
+/**
+ * The welcome email to a new paying customer (2026-10-23, the owner's
+ * approved wording). Sent once, on their first subscription, from the owner
+ * at support@ so a reply reaches her; HTML with a plain-text part.
+ */
+export async function sendWelcomeEmail({ email, name, tier }: {
+  email: string;
+  name: string | null;
+  /** starter | agent | pro */
+  tier: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const plan = tier === "agent" ? "Producer" : tier === "pro" ? "Influencer" : "Creator";
+  const longLine = tier === "agent" ? "2 long videos, up to 8 minutes each"
+    : tier === "pro" ? "4 long videos, up to 8 minutes each" : null;
+  const introLine = tier === "agent" || tier === "pro" ? "A free Agent Intro video every month" : null;
+  const firstRaw = (name ?? "").trim().split(/\s+/)[0] || "there";
+  const first = escHtml(firstRaw);
+  const app = "https://www.sparkreels.ai";
+
+  const monthly = [
+    "4 short AI videos, up to 3 minutes each",
+    longLine,
+    "Unlimited blog posts and camera recordings",
+    "AutoSparks: 3 posts drafted for you, ready every Monday",
+    introLine,
+  ].filter(Boolean) as string[];
+
+  const steps: [string, string][] = [
+    ["Finish your studio", "add your headshot and record your voice, so every video looks and sounds like you."],
+    ["Make your first video", "open Spark Studio, hit the mic and say what it's about."],
+    ["Turn on AutoSparks", "pick your post days, and your week of drafts arrives every Monday."],
+  ];
+
+  const h2 = "margin:26px 0 8px;font-size:16px;font-weight:bold;color:#0f172a";
+  const btn = "display:inline-block;background:#1e3a8a;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px";
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;font-size:15px;line-height:1.6">
+      <p>Hi ${first},</p>
+      <p>Welcome to SparkReels! Your <strong>${plan}</strong> plan is active, and you're all set to start showing up as the local expert in your market.</p>
+      <p style="${h2}">Here's what's yours every month:</p>
+      <ul style="margin:0;padding-left:20px">${monthly.map((m) => `<li>${escHtml(m)}</li>`).join("")}</ul>
+      <p style="${h2}">Get going in 3 steps:</p>
+      <ol style="margin:0;padding-left:20px">${steps.map(([b, t]) => `<li><strong>${b}:</strong> ${escHtml(t)}</li>`).join("")}</ol>
+      <p style="margin:22px 0"><a href="${app}/create" style="${btn}">Open Spark Studio</a></p>
+      <p style="${h2}">Put SparkReels on your phone</p>
+      <p style="margin:0 0 6px">It works like an app, one tap from your home screen:</p>
+      <ul style="margin:0;padding-left:20px">
+        <li><strong>iPhone:</strong> open sparkreels.ai in <strong>Safari</strong>, tap <strong>Share</strong> (the square with an arrow), then <strong>Add to Home Screen</strong>.</li>
+        <li><strong>Android:</strong> open it in <strong>Chrome</strong>, tap the <strong>&#8942;</strong> menu, then <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
+      </ul>
+      <p style="${h2}">Earn while you share it</p>
+      <p style="margin:0 0 12px">Know other agents who should be on video? Join the SparkReels affiliate program and earn <strong>20% commission</strong> on every customer you refer, <strong>every month for their first 12 months</strong>, paid monthly straight to your bank.</p>
+      <p style="margin:0 0 22px"><a href="${app}/affiliates/apply" style="color:#1e3a8a;font-weight:bold">Become an affiliate</a></p>
+      <p>Need help? Tap <strong>Ask Sparklee</strong> at the top of any page, read <strong>How It Works</strong>, or just reply to this email. It comes straight to me.</p>
+      <p style="margin:0">Welcome aboard,<br>Carmella Thompson<br>Founder, SparkReels.ai</p>
+    </div>`;
+
+  const text = [
+    `Hi ${firstRaw},`,
+    "",
+    `Welcome to SparkReels! Your ${plan} plan is active, and you're all set to start showing up as the local expert in your market.`,
+    "",
+    "Here's what's yours every month:",
+    ...monthly.map((m) => `- ${m}`),
+    "",
+    "Get going in 3 steps:",
+    ...steps.map(([b, t], i) => `${i + 1}. ${b}: ${t}`),
+    "",
+    `Open Spark Studio: ${app}/create`,
+    "",
+    "Put SparkReels on your phone",
+    "It works like an app, one tap from your home screen:",
+    "- iPhone: open sparkreels.ai in Safari, tap Share (the square with an arrow), then Add to Home Screen.",
+    "- Android: open it in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app).",
+    "",
+    "Earn while you share it",
+    "Know other agents who should be on video? Join the SparkReels affiliate program and earn 20% commission on every customer you refer, every month for their first 12 months, paid monthly straight to your bank.",
+    `Become an affiliate: ${app}/affiliates/apply`,
+    "",
+    "Need help? Tap Ask Sparklee at the top of any page, read How It Works, or just reply to this email. It comes straight to me.",
+    "",
+    "Welcome aboard,",
+    "Carmella Thompson",
+    "Founder, SparkReels.ai",
+  ].join("\n");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: PERSONAL_FROM,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject: firstRaw === "there"
+        ? `Welcome to SparkReels! Your ${plan} plan is ready`
+        : `Welcome to SparkReels, ${firstRaw}! Your ${plan} plan is ready`,
+      html,
+      text,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}

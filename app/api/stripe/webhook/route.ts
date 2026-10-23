@@ -5,7 +5,7 @@ import { stripe, PLANS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
 import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
-import { notifyBillingEvent, type BillingEventKind } from "@/lib/email";
+import { notifyBillingEvent, sendWelcomeEmail, type BillingEventKind } from "@/lib/email";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +77,35 @@ async function updateProfile(
  * swallows its own errors, so awaiting it cannot fail the webhook and make
  * Stripe replay the event.
  */
+/**
+ * The welcome email, once per account ever (2026-10-23, the owner's ask).
+ * The stamp is claimed first, so two webhook deliveries can't both send it;
+ * a failed send gives the stamp back so the next event can try again.
+ */
+async function sendWelcomeOnce(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  tier: string | null | undefined,
+) {
+  const { data: claimed } = await admin
+    .from("profiles")
+    .update({ welcome_email_sent_at: new Date().toISOString() })
+    .eq("id", userId)
+    .is("welcome_email_sent_at", null)
+    .select("full_name")
+    .maybeSingle();
+  if (!claimed) return;
+  let email: string | null = null;
+  try {
+    const { data: u } = await admin.auth.admin.getUserById(userId);
+    email = u?.user?.email ?? null;
+  } catch { /* no email, nothing to send */ }
+  const sent = email
+    ? await sendWelcomeEmail({ email, name: (claimed as { full_name: string | null }).full_name, tier: tier ?? "starter" })
+    : false;
+  if (!sent) await admin.from("profiles").update({ welcome_email_sent_at: null }).eq("id", userId);
+}
+
 async function notifyBilling(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
@@ -200,6 +229,7 @@ export async function POST(req: NextRequest) {
       // Sent here rather than on subscription.created: this is the branch that
       // knows the plan and fires once, where created and updated both arrive
       // for a single checkout and would have sent the same alert twice.
+      await sendWelcomeOnce(admin, userId, planInfo?.tier);
       await notifyBilling(admin, userId, "subscribed", {
         tier: planInfo?.tier ?? null,
         amount: typeof item?.price.unit_amount === "number"
