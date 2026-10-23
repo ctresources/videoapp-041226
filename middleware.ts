@@ -141,10 +141,13 @@ export async function middleware(request: NextRequest) {
   ) {
     const { data: onboardingRow } = await supabase
       .from("profiles")
-      .select("onboarding_done")
+      .select("onboarding_done, onboarding_skipped_at")
       .eq("id", user.id)
       .single();
-    if ((onboardingRow as { onboarding_done?: boolean } | null)?.onboarding_done === false) {
+    // "Finish later" (2026-10-23): someone who chose to leave setup is not
+    // sent back to it; Spark Studio reminds them instead.
+    const row = onboardingRow as { onboarding_done?: boolean; onboarding_skipped_at?: string | null } | null;
+    if (row?.onboarding_done === false && !row.onboarding_skipped_at) {
       return applyRef(NextResponse.redirect(new URL("/onboarding", request.url)));
     }
   }
@@ -152,14 +155,14 @@ export async function middleware(request: NextRequest) {
   if (user && AUTH_ROUTES.some((r) => pathname === r)) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarding_done, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role")
+      .select("onboarding_done, onboarding_skipped_at, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role")
       .eq("id", user.id)
       .single();
 
     // First run goes to first run. This used to send people to /create and
     // return, which short-circuited the paid check below for every account
     // that had not saved a brand profile — which was almost all of them.
-    if (!profile?.onboarding_done) {
+    if (!profile?.onboarding_done && !profile?.onboarding_skipped_at) {
       return applyRef(NextResponse.redirect(new URL("/onboarding", request.url)));
     }
 

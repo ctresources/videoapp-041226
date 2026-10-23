@@ -11,9 +11,10 @@
  * topic, record a brief, choose a style, press Generate and only then be told
  * to go and upload a headshot.
  *
- * So the headshot step is the one thing that cannot be skipped: letting
- * someone past it does not spare them the wall, it just moves it to after
- * they have done the work. Everything else has a "Do this later".
+ * The headshot is still asked for first, but since 2026-10-23 (the owner's
+ * ask) nothing here is a dead end: "Finish later" saves what is filled in and
+ * goes to Spark Studio, which reminds them until setup is done, and a render
+ * without any headshot says so plainly instead of failing.
  */
 
 import { useEffect, useState, useCallback } from "react";
@@ -85,13 +86,16 @@ export default function OnboardingPage() {
       setVoiceId((p?.voice_clone_id as string) ?? null);
       setHeygenVoiceId((p?.heygen_voice_id as string) ?? null);
       // Someone part-way through starts where they left off.
-      if (p?.heygen_photo_id) setStep(p?.location_city ? "voice" : "market");
+      if (p?.heygen_photo_id || p?.avatar_url) setStep(p?.location_city ? "voice" : "market");
       setLoading(false);
     });
   }, [router]);
 
-  /** Saves what has been filled in and hands over to Create. */
-  const finish = useCallback(async (opts?: { silent?: boolean }) => {
+  /**
+   * Saves what has been filled in and hands over to Create. `later` keeps
+   * setup open: it is marked skipped rather than done.
+   */
+  const finish = useCallback(async (opts?: { silent?: boolean; later?: boolean }) => {
     if (!userId) return;
     setSaving(true);
     const supabase = createClient();
@@ -108,7 +112,7 @@ export default function OnboardingPage() {
         sms_consent_at: smsConsent && mobilePhone.trim() ? new Date().toISOString() : null,
         sms_consent_source: smsConsent && mobilePhone.trim() ? "onboarding" : null,
         // The flag this whole page exists to set honestly.
-        onboarding_done: true,
+        ...(opts?.later ? { onboarding_skipped_at: new Date().toISOString() } : { onboarding_done: true }),
       })
       .eq("id", userId);
     if (error) {
@@ -116,7 +120,8 @@ export default function OnboardingPage() {
       setSaving(false);
       return;
     }
-    if (!opts?.silent) toast.success("You're set up. Let's make a video.");
+    if (opts?.later) toast("Saved. Finish setting up any time from Spark Studio.");
+    else if (!opts?.silent) toast.success("You're set up. Let's make a video.");
     router.replace("/create");
   }, [userId, fullName, city, state, phone, mobilePhone, smsConsent, router]);
 
@@ -147,6 +152,15 @@ export default function OnboardingPage() {
         <p className="mt-2 text-[14.5px] leading-[1.5] text-spark-ink-muted">
           Three quick things, then every video you make carries your face, your market and your voice.
         </p>
+        {/* A way out from every step (2026-10-23, the owner's ask). */}
+        <button
+          type="button"
+          onClick={() => void finish({ later: true })}
+          disabled={saving}
+          className="mt-3 text-[13px] font-semibold text-[#A3660F] underline-offset-2 hover:underline disabled:opacity-60"
+        >
+          Finish later →
+        </button>
 
         {/* Where you are. Numbered because this genuinely is a sequence. */}
         <div className="mt-7 flex items-center gap-2">
@@ -196,11 +210,12 @@ export default function OnboardingPage() {
               {/* No skip here, and the reason is said out loud rather than
                   left as a greyed-out button people argue with. */}
               <p className="text-[12px] leading-[1.45] text-spark-ink-faint">
-                This one is required — videos can&apos;t render without it.
+                Your AI videos need this one. If the AI registration says pending, you can still
+                continue; it&apos;s retried when you make your first video.
               </p>
               <Button
                 onClick={() => setStep("market")}
-                disabled={!photoId}
+                disabled={!photoId && !avatarUrl}
                 className="gap-1.5 self-start"
               >
                 Continue <ArrowRight size={14} />

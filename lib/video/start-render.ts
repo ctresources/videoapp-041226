@@ -768,6 +768,17 @@ export async function startRender(
     }
   }
 
+  /**
+   * No presenter at all (2026-10-23): setup can now be left for later, so
+   * say it plainly before anything is charged, rather than failing the render.
+   */
+  if (profile && !voiceOnly && !lookId && !profile.heygen_photo_id && !profile.avatar_url && !profile.heygen_digital_twin_look_id) {
+    return NextResponse.json(
+      { error: "Add your headshot first. It's your on-screen presenter.", code: "no_headshot" },
+      { status: 409 },
+    );
+  }
+
   // Backfill the two format looks for anyone whose avatar predates them. Same
   // shape as the auto-register above, and for the same reason: the alternative
   // is asking every existing user to re-upload a headshot they already gave us.

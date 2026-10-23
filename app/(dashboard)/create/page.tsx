@@ -29,6 +29,7 @@ import toast from "react-hot-toast";
 import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { PhotoReelForm } from "@/components/create/photo-reel-form";
 import { ScenesReelForm } from "@/components/create/scenes-reel-form";
+import Link from "next/link";
 import { SparkPanel } from "@/components/create/spark-panel";
 import { AgentIntroPanel } from "@/components/create/agent-intro-panel";
 import {
@@ -440,6 +441,7 @@ function CreatePageInner() {
     full_name: string | null; company_name: string | null;
     location_city: string | null; location_state: string | null;
     default_cta: string | null; market_years: string | null;
+    onboarding_done?: boolean | null;
   } | null>(null);
 
   useEffect(() => {
@@ -450,7 +452,7 @@ function CreatePageInner() {
         if (!user) return;
         const { data } = await supabase
           .from("profiles")
-          .select("full_name, company_name, location_city, location_state, default_cta, market_years")
+          .select("full_name, company_name, location_city, location_state, default_cta, market_years, onboarding_done")
           .eq("id", user.id)
           .single();
         if (data) setCtaProfile(data as typeof ctaProfile);
@@ -3103,6 +3105,17 @@ function CreatePageInner() {
           headline above and on the button at the end. */}
       {/* Back in a section of their own. They were moved into the Topic card,
           between the box and Send, and the owner found that too busy. */}
+      {/* Setup left for later (2026-10-23, the owner's ask): a reminder until it's done. */}
+      {showCreate && ctaProfile?.onboarding_done === false && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#f1d29a] bg-spark-amber-tint px-4 py-3">
+          <p className="text-[13.5px] leading-[1.45] text-spark-ink">
+            Your studio isn&apos;t finished. Add your headshot, market and voice so your videos look and sound like you.
+          </p>
+          <Link href="/onboarding" className="shrink-0 rounded-lg bg-spark-amber px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90">
+            Finish setup →
+          </Link>
+        </div>
+      )}
       {showCreate && <SectionHead className={besideCard ? "mt-0" : "mt-7 lg:mt-4"} eyebrow={`${sectionNo("Create")} · Create`} />}
       {showCreate && (
         <div id="make-cards" className="mt-2.5 flex scroll-mt-24 flex-wrap gap-2 rounded-[14px] lg:flex-nowrap lg:gap-1.5">

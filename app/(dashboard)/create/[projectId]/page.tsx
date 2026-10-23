@@ -1785,6 +1785,20 @@ export default function ProjectEditorPage() {
           setEditorStep(3);
           return;
         }
+        // No headshot yet (2026-10-23): one press to add it.
+        if (res.status === 409 && err?.code === "no_headshot") {
+          setEditorStep(3);
+          toast((t) => (
+            <span className="flex flex-col gap-2 text-sm">
+              <span>Add your headshot first. It&apos;s your on-screen presenter. Nothing was charged.</span>
+              <a href="/settings" onClick={() => toast.dismiss(t.id)}
+                className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">
+                Add my headshot
+              </a>
+            </span>
+          ), { duration: 15000 });
+          return;
+        }
         // The Digital Twin's one-time approval at HeyGen (2026-10-23): say so,
         // with the approval page one press away, instead of "couldn't render".
         if (res.status === 409 && err?.code === "twin_consent_required") {
