@@ -28,9 +28,11 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <Link href="/" className="flex shrink-0 flex-col leading-none">
-          <Image src="/sparkreels-logo-light.png" alt="SparkReels.ai — Speak. Spark. Share." width={200} height={40} unoptimized priority />
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+        {/* A little smaller on phones, so Log In and Start Free fit on one
+            line each (2026-10-22). */}
+        <Link href="/" className="flex min-w-0 shrink flex-col leading-none">
+          <Image src="/sparkreels-logo-light.png" alt="SparkReels.ai — Speak. Spark. Share." width={200} height={40} className="h-auto w-[150px] sm:w-[200px]" unoptimized priority />
         </Link>
         <div className="hidden md:flex items-center gap-7 text-base font-medium text-slate-600">
           <div ref={ref} className="relative">
@@ -61,11 +63,11 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
           <Link href="/blog" className={link(active === "blog")}>Blog</Link>
           <Link href="/faq" className={link(active === "faq")}>FAQ</Link>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-base font-medium text-slate-600 hover:text-slate-900 transition-colors px-3 py-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+          <Link href="/login" className="whitespace-nowrap text-base font-medium text-slate-600 hover:text-slate-900 transition-colors px-2 sm:px-3 py-2">
             Log In
           </Link>
-          <Link href="/beta" className="text-base font-semibold bg-blue-900 text-white px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
+          <Link href="/beta" className="whitespace-nowrap text-base font-semibold bg-blue-900 text-white px-3.5 sm:px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
             Start Free
           </Link>
         </div>
