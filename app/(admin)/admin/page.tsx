@@ -93,6 +93,11 @@ interface UserRow {
 }
 
 const TIERS = ["free", "starter", "agent", "pro", "agency"] as const;
+/** The plan names customers see (2026-10-23, the owner's ask); the keys stay as stored. */
+const TIER_NAMES: Record<string, string> = {
+  free: "Free", beta: "Beta", starter: "Creator", agent: "Producer", pro: "Influencer", agency: "Agency",
+};
+const tierName = (t: string | null | undefined) => (t ? TIER_NAMES[t] ?? t : "Free");
 const TIER_COLORS: Record<string, "default" | "info" | "success" | "warning" | "purple"> = {
   free: "default", starter: "warning", agent: "success", pro: "info", agency: "purple",
 };
@@ -186,7 +191,7 @@ export default function AdminPage() {
   }
 
   function handleTierChange(userId: string, tier: string) {
-    patch(userId, { subscription_tier: tier }, `Plan changed to ${tier}`);
+    patch(userId, { subscription_tier: tier }, `Plan changed to ${tierName(tier)}`);
   }
 
   function handleSuspend(userId: string, suspend: boolean) {
@@ -663,7 +668,7 @@ export default function AdminPage() {
                         </td>
                         <td className="py-2 px-3">
                           <span className="text-xs text-slate-600">
-                            {r.role === "admin" ? "Admin" : r.tier === "free" ? "Free" : r.tier}
+                            {r.role === "admin" ? "Admin" : tierName(r.tier)}
                           </span>
                         </td>
                         <td className="py-2 px-3 text-slate-600">
@@ -877,7 +882,7 @@ export default function AdminPage() {
               className="appearance-none pl-3 pr-8 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
               <option value="all">All Plans</option>
-              {TIERS.map((t) => <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>)}
+              {TIERS.map((t) => <option key={t} value={t}>{tierName(t)}</option>)}
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -916,7 +921,7 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={TIER_COLORS[user.subscription_tier] ?? "default"}>
-                          {user.subscription_tier}
+                          {tierName(user.subscription_tier)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-700">{user.credits_remaining}</td>
@@ -960,7 +965,7 @@ export default function AdminPage() {
                                         : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
                                     }`}
                                   >
-                                    {t[0].toUpperCase() + t.slice(1)}
+                                    {tierName(t)}
                                   </button>
                                 ))}
                               </div>
