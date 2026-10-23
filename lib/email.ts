@@ -856,7 +856,16 @@ export async function notifySiteLead({ name, email, city, questions, when }: {
   }).catch(() => {});
 }
 
-/** The visitor's own copy of their questions and answers (2026-10-23). */
+/**
+ * The visitor's own copy of their questions and answers (2026-10-23).
+ *
+ * From the owner at support@, not noreply: the email says "just reply", and
+ * a noreply sender plus HTML only is what sent the first one to Outlook's
+ * junk folder. A plain-text part goes with the HTML, and one ordinary link
+ * rather than a big button.
+ */
+const PERSONAL_FROM = "Carmella at SparkReels <support@sparkreels.ai>";
+
 export async function sendAiQuestionsToVisitor({ name, email, city, blocks }: {
   name: string;
   email: string;
@@ -864,28 +873,56 @@ export async function sendAiQuestionsToVisitor({ name, email, city, blocks }: {
   blocks: { question: string; answerBlock: string; videoTopic: string }[];
 }) {
   if (!RESEND_API_KEY) return;
-  const first = escHtml(name.split(" ")[0] || name);
+  const firstRaw = name.split(" ")[0] || name;
+  const first = escHtml(firstRaw);
+  const signUp = "https://www.sparkreels.ai/beta";
   const items = blocks.map((b, i) => `
-    <h3 style="margin:22px 0 6px;font-size:17px;color:#0f172a">${i + 1}. ${escHtml(b.question)}</h3>
-    <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#334155">${escHtml(b.answerBlock)}</p>
-    ${b.videoTopic ? `<p style="margin:0;font-size:14px;color:#BA7517"><strong>Video topic:</strong> ${escHtml(b.videoTopic)}</p>` : ""}`).join("");
+    <p style="margin:22px 0 6px;font-size:16px;font-weight:bold;color:#0f172a">${i + 1}. ${escHtml(b.question)}</p>
+    <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:#334155">${escHtml(b.answerBlock)}</p>
+    ${b.videoTopic ? `<p style="margin:0;font-size:14px;color:#8a5a12">Video idea: ${escHtml(b.videoTopic)}</p>` : ""}`).join("");
+  const textItems = blocks.map((b, i) =>
+    `${i + 1}. ${b.question}
+
+${b.answerBlock}${b.videoTopic ? `
+
+Video idea: ${b.videoTopic}` : ""}`).join("\n\n");
+  const intro = `Thanks for trying SparkReels! Here are 3 questions buyers in ${city} are asking ChatGPT, Google and Siri right now, each with an answer written for your website.`;
+  const outro = "Answering these on video is the quickest way to be the agent AI recommends. You can make your first video free here:";
+  const signoff = "If you have any questions, just reply to this email. It comes straight to me.";
+
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: FROM_EMAIL,
+      from: PERSONAL_FROM,
       to: email,
       reply_to: NOTIFY_EMAIL,
       subject: `What buyers in ${city} ask AI`,
+      text: `Hi ${firstRaw},
+
+${intro}
+
+${textItems}
+
+${outro}
+${signUp}
+
+${signoff}
+
+Carmella Thompson
+Founder, SparkReels.ai
+
+You asked for these on sparkreels.ai.`,
       html: `
-        <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
-          <p style="font-size:16px">Hi ${first},</p>
-          <p style="font-size:16px;line-height:1.6">Here are the questions buyers in ${escHtml(city)} are asking ChatGPT, Google and Siri, each with an answer written for your website and a video topic. Answer them on video and you're the one they find.</p>
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;font-size:15px;line-height:1.6">
+          <p>Hi ${first},</p>
+          <p>${escHtml(intro)}</p>
           ${items}
-          <p style="margin:28px 0">
-            <a href="https://www.sparkreels.ai/beta" style="background:#1e3a8a;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 22px;display:inline-block">Make my free video</a>
-          </p>
-          <p style="font-size:13px;color:#64748b;line-height:1.5">You asked for these on sparkreels.ai. Questions? Just reply to this email.<br>SparkReels.ai · Speak. Spark. Share.</p>
+          <p style="margin:24px 0 4px">${escHtml(outro)}</p>
+          <p style="margin:0 0 24px"><a href="${signUp}" style="color:#1e3a8a;font-weight:bold">sparkreels.ai/beta</a></p>
+          <p>${escHtml(signoff)}</p>
+          <p style="margin:0">Carmella Thompson<br>Founder, SparkReels.ai</p>
+          <p style="margin-top:24px;font-size:12px;color:#94a3b8">You asked for these on sparkreels.ai.</p>
         </div>
       `,
     }),

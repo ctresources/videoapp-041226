@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     .ilike("email", email).gte("created_at", since);
   if ((emailCount ?? 0) > 0) {
     return NextResponse.json(
-      { error: "You've already run this today. Your questions are in your email; you can try again tomorrow." },
+      { error: "You've already run this today. Your questions are in your email (check your spam or junk folder too); you can try again tomorrow." },
       { status: 429 },
     );
   }

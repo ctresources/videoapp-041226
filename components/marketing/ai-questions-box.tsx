@@ -97,7 +97,7 @@ export function AiQuestionsBox() {
               Make my free video <ArrowRight size={16} />
             </Link>
           </div>
-          <p className="mt-3 text-xs text-slate-400">Sent to {shownFor.email} too.</p>
+          <p className="mt-3 text-xs text-slate-500">Sent to {shownFor.email} too. Don&apos;t see it in a few minutes? Check your spam or junk folder.</p>
         </>
       ) : (
         <form onSubmit={submit} noValidate={false}>
