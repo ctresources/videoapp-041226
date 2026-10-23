@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -166,7 +167,7 @@ export async function middleware(request: NextRequest) {
       return applyRef(NextResponse.redirect(new URL("/onboarding", request.url)));
     }
 
-    if (profile.role === "admin") {
+    if (hasAdminPerks(profile.role)) {
       return applyRef(NextResponse.redirect(new URL("/create", request.url)));
     }
 

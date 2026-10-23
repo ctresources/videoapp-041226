@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prepareImportedArticle } from "@/lib/api/article-import";
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
    * so a closed trial cannot be a way around it. Refused outright rather than
    * saved with the article stripped out: here the article IS the request.
    */
-  const trialOpen = profile.role === "admin"
+  const trialOpen = hasAdminPerks(profile.role)
     || !freeTrialLocked(profile.first_video_generated_at, profile.subscription_tier);
   // An article brought in is a blog like any other, so it is what the one
   // free blog before the video can be spent on.

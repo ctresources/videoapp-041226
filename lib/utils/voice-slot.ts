@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cloneVoice, deleteVoice, resolveVoiceId, voiceIsGone } from "@/lib/api/heygen";
 import { notifyVoiceSlotsNearlyFull } from "@/lib/email";
@@ -259,7 +260,7 @@ export function shouldRetireAfterRender(p: {
   purchased_long_videos?: number | null;
   voice_sample_url?: string | null;
 }): boolean {
-  if (p.role === "admin") return false;
+  if (hasAdminPerks(p.role)) return false;
   if (p.subscription_tier && p.subscription_tier !== "free") return false;
   // No sample means retiring would cost them a re-record — not a trade worth
   // making for one slot.

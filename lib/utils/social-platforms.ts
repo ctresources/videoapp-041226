@@ -1,3 +1,5 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
+
 /**
  * The platforms a video can be published to besides YouTube, and the rules
  * each one imposes.
@@ -85,7 +87,7 @@ export function platformFromAccountId(accountId: string): PartnerPlatform | null
  * Infinity for unlimited, so callers can compare without a special case.
  */
 export function partnerPlatformLimit(tier: string | null | undefined, role?: string | null): number {
-  if (role === "admin") return Infinity;
+  if (hasAdminPerks(role)) return Infinity;
   if (tier === "agent" || tier === "pro") return Infinity;
   if (tier === "starter") return 3;
   return 0;

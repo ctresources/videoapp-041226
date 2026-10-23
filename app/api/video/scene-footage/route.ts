@@ -16,6 +16,7 @@
  * Counts as one short video, taken only once the file exists. Recording
  * yourself is free; this is the one part of it that costs something to make.
  */
+import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cameraGateResponse } from "@/lib/utils/free-trial";
@@ -54,7 +55,10 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
-  const isAdmin = p.role === "admin";
+  const isAdmin = hasAdminPerks(p.role);
+  // Staff accounts have a monthly cap (2026-10-23).
+  const capMsg = await staffCapMessage(admin, user.id, p.role);
+  if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
   if (!isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       {

@@ -1,3 +1,4 @@
+import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -74,7 +75,10 @@ export async function POST(req: NextRequest) {
     role: string | null;
   } | null;
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = hasAdminPerks(profile?.role);
+  // Staff accounts have a monthly cap (2026-10-23).
+  const capMsg = await staffCapMessage(admin, user.id, profile?.role);
+  if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
   // Charge the same kind (short/long) the source video was charged — a
   // translation is HeyGen's own separately-billed render, same as the

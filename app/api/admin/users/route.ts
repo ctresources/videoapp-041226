@@ -53,9 +53,11 @@ export async function PATCH(req: NextRequest) {
   if (!admin_user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const { userId, role, subscription_tier, credits_remaining, suspended } = body as {
+  const { userId, role, subscription_tier, credits_remaining, suspended, staff_video_cap } = body as {
     userId: string;
     role?: string;
+    /** A staff account's monthly video cap (2026-10-23). */
+    staff_video_cap?: number;
     subscription_tier?: string;
     credits_remaining?: number;
     suspended?: boolean;
@@ -67,7 +69,7 @@ export async function PATCH(req: NextRequest) {
   const updates: Record<string, unknown> = {};
 
   if (role !== undefined) {
-    if (!["user", "admin"].includes(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    if (!["user", "admin", "staff"].includes(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     updates.role = role;
   }
   if (subscription_tier !== undefined) {
@@ -77,6 +79,12 @@ export async function PATCH(req: NextRequest) {
   if (credits_remaining !== undefined) {
     if (typeof credits_remaining !== "number" || credits_remaining < 0) return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
     updates.credits_remaining = credits_remaining;
+  }
+  if (staff_video_cap !== undefined) {
+    if (!Number.isInteger(staff_video_cap) || staff_video_cap < 0 || staff_video_cap > 500) {
+      return NextResponse.json({ error: "Cap must be a whole number from 0 to 500" }, { status: 400 });
+    }
+    updates.staff_video_cap = staff_video_cap;
   }
   if (suspended !== undefined) {
     // Its own column now. Writing "suspended" into role destroyed the role —
@@ -96,7 +104,7 @@ export async function PATCH(req: NextRequest) {
     .from("profiles")
     .update(updates)
     .eq("id", userId)
-    .select("id, email, full_name, role, suspended, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, created_at")
+    .select("id, email, full_name, role, suspended, staff_video_cap, subscription_tier, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, created_at")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true, user: updated });

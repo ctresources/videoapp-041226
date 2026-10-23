@@ -90,6 +90,8 @@ interface UserRow {
   /** Its own column now — it used to be the string "suspended" in role,
    *  which destroyed the role and which nothing in the app ever read. */
   suspended?: boolean;
+  /** A staff account's monthly video cap (2026-10-23). */
+  staff_video_cap?: number;
 }
 
 const TIERS = ["free", "starter", "agent", "pro", "agency"] as const;
@@ -668,7 +670,7 @@ export default function AdminPage() {
                         </td>
                         <td className="py-2 px-3">
                           <span className="text-xs text-slate-600">
-                            {r.role === "admin" ? "Admin" : tierName(r.tier)}
+                            {r.role === "admin" ? "Admin" : r.role === "staff" ? "Staff" : tierName(r.tier)}
                           </span>
                         </td>
                         <td className="py-2 px-3 text-slate-600">
@@ -931,6 +933,8 @@ export default function AdminPage() {
                           ? <Badge variant="error">Suspended</Badge>
                           : user.role === "admin"
                           ? <Badge variant="warning">Admin</Badge>
+                          : user.role === "staff"
+                          ? <Badge variant="info">Staff</Badge>
                           : <Badge variant="default">Active</Badge>}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">
@@ -1014,14 +1018,51 @@ export default function AdminPage() {
                             <div>
                               <p className="text-xs font-semibold text-slate-500 mb-2">Role</p>
                               <div className="flex gap-1.5">
-                                {user.role !== "admin" && !isSuspended(user) ? (
-                                  <button
-                                    onClick={() => handleRoleChange(user.id, "admin")}
-                                    disabled={saving[user.id]}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-secondary-400 hover:text-secondary-600 transition-all"
-                                  >
-                                    <ShieldCheck size={12} /> Make Admin
-                                  </button>
+                                {user.role === "user" && !isSuspended(user) ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleRoleChange(user.id, "admin")}
+                                      disabled={saving[user.id]}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-secondary-400 hover:text-secondary-600 transition-all"
+                                    >
+                                      <ShieldCheck size={12} /> Make Admin
+                                    </button>
+                                    {/* Staff: an assistant's own account, admin perks
+                                        without the Admin panel, capped (2026-10-23). */}
+                                    <button
+                                      onClick={() => handleRoleChange(user.id, "staff")}
+                                      disabled={saving[user.id]}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-secondary-400 hover:text-secondary-600 transition-all"
+                                    >
+                                      <ShieldCheck size={12} /> Make Staff
+                                    </button>
+                                  </>
+                                ) : user.role === "staff" ? (
+                                  <span className="flex flex-wrap items-center gap-1.5">
+                                    <button
+                                      onClick={() => handleRoleChange(user.id, "user")}
+                                      disabled={saving[user.id]}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg hover:border-slate-400 text-slate-500 transition-all"
+                                    >
+                                      <UserX size={12} /> Remove Staff
+                                    </button>
+                                    <label className="flex items-center gap-1 text-xs text-slate-500">
+                                      Videos a month
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={500}
+                                        defaultValue={user.staff_video_cap ?? 10}
+                                        onBlur={(e) => {
+                                          const n = Math.round(Number(e.target.value));
+                                          if (Number.isFinite(n) && n !== (user.staff_video_cap ?? 10)) {
+                                            patch(user.id, { staff_video_cap: n }, `Cap set to ${n} videos a month`);
+                                          }
+                                        }}
+                                        className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                                      />
+                                    </label>
+                                  </span>
                                 ) : user.role === "admin" ? (
                                   <button
                                     onClick={() => handleRoleChange(user.id, "user")}

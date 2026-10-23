@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card } from "@/components/ui/card";
@@ -147,7 +148,7 @@ export default async function BillingPage({
   const longBought = profile?.purchased_long_videos ?? 0;
   // Admins are uncapped, so the counters below describe a limit that
   // doesn't apply to them — say so rather than showing a plan quota.
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = hasAdminPerks(profile?.role);
   const shortLeft = shortPlan + shortBought;
   const longLeft = longPlan + longBought;
 

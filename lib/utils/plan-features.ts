@@ -1,3 +1,5 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
+
 /**
  * Which plans unlock which features.
  *
@@ -41,7 +43,7 @@ export const PAID_TIERS: readonly string[] = ["starter", "agent", "pro", "agency
  * the owner's call). Admins always pass.
  */
 export function canUseTwinInFullVideo(tier: string | null | undefined, role?: string | null): boolean {
-  if (role === "admin") return true;
+  if (hasAdminPerks(role)) return true;
   return PAID_TIERS.includes(tier ?? "free");
 }
 
@@ -50,7 +52,7 @@ export const TWIN_FULL_VIDEO_MESSAGE =
   "Avatar video with your Digital Twin is on the paid plans. Choose Avatar in circle, or see plans in Billing.";
 
 export function canUseDigitalTwin(tier: string | null | undefined, role?: string | null): boolean {
-  if (role === "admin") return true;
+  if (hasAdminPerks(role)) return true;
   return DIGITAL_TWIN_TIERS.includes(tier ?? "free");
 }
 

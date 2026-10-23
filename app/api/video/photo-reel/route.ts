@@ -12,6 +12,7 @@
  * also the video's length — the photos are spread across whatever it turns out
  * to be, rather than the other way round.
  */
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
@@ -169,7 +170,7 @@ export async function POST(req: NextRequest) {
    * video is actually taken after the reel exists, so a render that fails
    * takes nothing and there is no refund to get right.
    */
-  const isAdmin = p.role === "admin";
+  const isAdmin = hasAdminPerks(p.role);
   if ((cinematic || scenes) && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       {

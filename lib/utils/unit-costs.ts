@@ -1,3 +1,5 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
+
 /**
  * What one account costs to serve.
  *
@@ -113,7 +115,7 @@ export function costsFor(input: {
   const tier = input.tier ?? "free";
   // An admin account is staff, not a customer: counting its plan as revenue
   // would show the house paying itself and turn real losses into profits.
-  const revenueUsd = input.role === "admin" ? 0 : (PLAN_REVENUE[tier] ?? 0);
+  const revenueUsd = hasAdminPerks(input.role) ? 0 : (PLAN_REVENUE[tier] ?? 0);
 
   return {
     userId: input.userId,

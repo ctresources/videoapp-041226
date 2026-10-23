@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
@@ -309,7 +310,7 @@ export async function POST(req: NextRequest) {
   // render then refuses — a wasted wait ending in a 402. Fall back to standard
   // instead of failing: the script is still the one they can actually make.
   const isUnbranded = unbranded === true;
-  const isAdmin = (profile as { role?: string | null }).role === "admin";
+  const isAdmin = hasAdminPerks((profile as { role?: string | null }).role);
   const canGoLong = isAdmin || availableFor(profile as never, "long") > 0;
   const length: VideoLength = videoLength === "long" && canGoLong ? "long" : "standard";
   const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;

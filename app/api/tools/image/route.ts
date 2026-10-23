@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FREE_IMAGES_BEFORE_VIDEO, freeTrialGateResponse } from "@/lib/utils/free-trial";
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
   const profile = profileRow as { role?: string; first_video_generated_at?: string | null } | null;
-  const unlimited = profile?.role === "admin";
+  const unlimited = hasAdminPerks(profile?.role);
   /**
    * Two before the free video, a hundred after it.
    *

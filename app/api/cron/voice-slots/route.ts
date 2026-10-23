@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { retireVoiceClone } from "@/lib/utils/voice-slot";
 import { NextRequest, NextResponse } from "next/server";
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   let retired = 0;
   for (const row of rows) {
-    if (row.role === "admin") continue;
+    if (hasAdminPerks(row.role)) continue;
     if (row.subscription_tier && row.subscription_tier !== "free") continue;
 
     /**

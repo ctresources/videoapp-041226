@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
@@ -55,7 +56,7 @@ export const AUTOPILOT_PROFILE_SELECT =
 
 /** Paid plans and admins. */
 export function autopilotEligible(p: Pick<AutopilotProfile, "role" | "subscription_tier">): boolean {
-  return p.role === "admin" || PAID_TIERS.includes(p.subscription_tier ?? "free");
+  return hasAdminPerks(p.role) || PAID_TIERS.includes(p.subscription_tier ?? "free");
 }
 
 export function zoneOf(p: Pick<AutopilotProfile, "time_zone">): string {

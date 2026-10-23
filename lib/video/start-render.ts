@@ -1,3 +1,4 @@
+import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 import { ensureVoiceForRender, VoiceGoneError } from "@/lib/utils/voice-slot";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -796,7 +797,7 @@ export async function startRender(
     );
   }
 
-  const isAdmin = profile.role === "admin";
+  const isAdmin = hasAdminPerks(profile.role);
 
   // ── Script length by plan ─────────────────────────────────────────────────
   // Short videos: about 3 min on every plan (standardMaxWords is 400 words
@@ -904,6 +905,10 @@ export async function startRender(
     if (tier !== "free" || profile?.first_video_generated_at) return;
     await admin.from("profiles").update({ first_video_generated_at: new Date().toISOString() }).eq("id", userId);
   }
+
+  // Staff accounts have a monthly cap instead of a plan (2026-10-23).
+  const capMsg = await staffCapMessage(admin, user.id, profile.role);
+  if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
   if (!isAdmin && !charge && !introFree) {
     // `code` and `kind` let the client open the plan picker instead of

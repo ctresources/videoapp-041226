@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { ListenButton } from "@/components/ui/listen-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -311,7 +312,7 @@ export default function ProjectEditorPage() {
   // Set when a render is refused for lack of videos — opens the plan picker.
   const [outOfVideos, setOutOfVideos] = useState<{ kind: "short" | "long"; tier: string } | null>(null);
   // Remaining allowance, so the Generate button can say so up front.
-  const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean; isRealAdmin?: boolean } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   // Where the user is in the flow that began on /create. Step 1 is the brief on
   // that route; this page owns 2 through 5. Kept in state rather than the URL:
@@ -933,7 +934,7 @@ export default function ProjectEditorPage() {
       // Producer (2/mo) and Influencer (4/mo) include long videos in their
       // allowance; Creator buys them one at a time as an add-on.
       setLongFormIncluded(
-        p.subscription_tier === "pro" || p.subscription_tier === "agent" || p.role === "admin",
+        p.subscription_tier === "pro" || p.subscription_tier === "agent" || hasAdminPerks(p.role),
       );
       setTwinFullOk(canUseTwinInFullVideo(p.subscription_tier, p.role));
     }
@@ -4516,7 +4517,7 @@ export default function ProjectEditorPage() {
                         <Copy size={12} /> Copy as text
                       </button>
                       {/* Admins only: put this article on sparkreels.ai/blog (2026-10-22). */}
-                      {allowance?.isAdmin && (
+                      {allowance?.isRealAdmin && (
                         <PublishToBlog
                           projectId={project.id}
                           headline={script.blog_headline || project.title || ""}

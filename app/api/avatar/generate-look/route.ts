@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAvatarLook } from "@/lib/api/heygen";
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const isAdmin = profile.role === "admin";
+  const isAdmin = hasAdminPerks(profile.role as string | null);
   const currentPeriod = new Date().toISOString().slice(0, 7); // "YYYY-MM"
   const isNewPeriod = (profile.look_gen_period as string) !== currentPeriod;
   const usedThisMonth = isNewPeriod ? 0 : (profile.look_gen_count as number);

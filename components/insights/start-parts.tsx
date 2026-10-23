@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,7 @@ export async function PlanBar({ userId }: { userId: string }) {
 
   const creditsLeft = (profile?.credits_remaining ?? 0) + (profile?.purchased_short_videos ?? 0);
   const longFormLeft = (profile?.long_credits_remaining ?? 0) + (profile?.purchased_long_videos ?? 0);
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = hasAdminPerks(profile?.role);
 
   // What the camera routes will actually allow; see free-trial.ts.
   const trialLocked = !isAdmin && freeTrialLocked(profile?.first_video_generated_at, profile?.subscription_tier);

@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
@@ -27,7 +28,9 @@ export async function GET() {
     .single();
 
   const profile = (data ?? {}) as Record<string, number | string | null>;
-  const isAdmin = profile.role === "admin";
+  const isAdmin = hasAdminPerks(profile.role as string | null);
+  /** The owner: Admin panel and owner-only tools. Staff get perks, not this. */
+  const isRealAdmin = profile.role === "admin";
   const preVideo = isPreVideoAccount(profile as never);
 
   /**
@@ -58,6 +61,8 @@ export async function GET() {
     long: availableFor(profile as never, "long"),
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
+    isRealAdmin,
+    isStaff: profile.role === "staff",
     campaignCalendar,
     // AI images made this calendar month, for the image generator's counter.
     // Two before the free video, a hundred after it — the same ceiling the

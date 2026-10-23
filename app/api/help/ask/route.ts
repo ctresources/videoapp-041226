@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
   const p = prof as { full_name: string | null; subscription_tier: string | null; role: string | null } | null;
-  const isAdmin = p?.role === "admin";
+  const isAdmin = hasAdminPerks(p?.role);
   const paid = !!p?.subscription_tier && p.subscription_tier !== "free";
 
   if (!isAdmin) {

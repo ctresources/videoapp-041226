@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { availableFor, type VideoKind } from "@/lib/utils/video-allowance";
@@ -69,7 +70,7 @@ export function TranslateModal({
         purchased_long_videos: number;
         role: string | null;
       };
-      setIsAdmin(p.role === "admin");
+      setIsAdmin(hasAdminPerks(p.role));
       setBalance(availableFor(p, videoKind));
     })();
     return () => { cancelled = true; };

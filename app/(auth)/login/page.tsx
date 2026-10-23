@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,7 @@ export default function LoginPage() {
         .single();
 
       if (profile?.onboarding_done) {
-        if (profile.role !== "admin") {
+        if (!hasAdminPerks(profile.role)) {
           const tier = profile.subscription_tier ?? "free";
           const paidPlans = ["starter", "agent", "pro"];
           const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0 || (profile.purchased_short_videos ?? 0) > 0 || (profile.purchased_long_videos ?? 0) > 0;

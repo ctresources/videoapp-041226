@@ -138,7 +138,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   // Role and plan for the sidebar: the Admin link was rendered for everyone
   // (the /admin route bounced them straight back), and the plan label was
   // hardcoded to "Free plan" even for Pro subscribers.
-  const [account, setAccount] = useState<{ isAdmin: boolean; tier: string; campaignCalendar: boolean } | null>(null);
+  const [account, setAccount] = useState<{ isAdmin: boolean; isRealAdmin: boolean; isStaff: boolean; tier: string; campaignCalendar: boolean } | null>(null);
   // Submitted directly rather than by its own button, so the guard can hold
   // the sign-out open while the user retries or downloads.
   const logoutFormRef = useRef<HTMLFormElement>(null);
@@ -147,7 +147,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
     if (!user) return;
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
+      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, isRealAdmin: !!a.isRealAdmin, isStaff: !!a.isStaff, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
       .catch(() => {});
   }, [user]);
 
@@ -324,7 +324,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
 
         {/* Admin link — actually only for admins now. Hidden until the role is
             known, so it never flashes in for a regular user on load. */}
-        {account?.isAdmin && (
+        {account?.isRealAdmin && (
           <Link
             href="/admin"
             className={cn(
@@ -353,7 +353,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
               {!account
                 ? " "
                 : account.isAdmin
-                  ? "Admin-Unlimited"
+                  ? (account.isStaff ? "Staff" : "Admin-Unlimited")
                   : (PLAN_LABELS[account.tier] ?? account.tier + " plan")}
             </p>
           </div>

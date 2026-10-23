@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -127,7 +128,7 @@ export async function GET(req: NextRequest) {
       .single();
 
     // Admins always go straight to the app — no billing or onboarding check
-    if (profile?.role === "admin") {
+    if (hasAdminPerks(profile?.role)) {
       return redirectTo("/create");
     }
 

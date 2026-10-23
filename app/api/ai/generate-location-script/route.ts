@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
@@ -180,7 +181,7 @@ export async function POST(req: NextRequest) {
    * render.
    */
   const p = profile as { role?: string | null; subscription_tier?: string | null; first_video_generated_at?: string | null };
-  const trialOpen = p.role === "admin"
+  const trialOpen = hasAdminPerks(p.role)
     || !freeTrialLocked(p.first_video_generated_at, p.subscription_tier);
   /**
    * The one free blog, before the free video.

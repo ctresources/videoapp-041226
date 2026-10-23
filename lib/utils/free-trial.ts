@@ -1,3 +1,4 @@
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
@@ -135,7 +136,7 @@ export const freeRecordingsUsed = (userId: string) => marksUsed(userId, FREE_REC
 export function isPreVideoAccount(p: {
   role?: string | null; subscription_tier?: string | null; first_video_generated_at?: string | null;
 } | null | undefined): boolean {
-  if (!p || p.role === "admin") return false;
+  if (!p || hasAdminPerks(p.role)) return false;
   if (p.subscription_tier && p.subscription_tier !== "free") return false;
   return !p.first_video_generated_at;
 }
@@ -200,7 +201,7 @@ export async function freeTrialGateResponse(
     .single();
 
   const p = data as { role: string | null; subscription_tier: string | null; first_video_generated_at: string | null } | null;
-  if (!p || p.role === "admin") return null;
+  if (!p || hasAdminPerks(p.role)) return null;
   if (!freeTrialLocked(p.first_video_generated_at, p.subscription_tier)) return null;
 
   const notStarted = !p.first_video_generated_at;

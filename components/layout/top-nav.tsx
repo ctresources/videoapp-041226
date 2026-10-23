@@ -36,7 +36,7 @@ const PLAN_LABELS: Record<string, string> = {
   free: "Free plan", beta: "Beta access", starter: "Creator plan", agent: "Producer plan", pro: "Influencer plan",
 };
 
-interface Account { isAdmin: boolean; tier: string; campaignCalendar: boolean }
+interface Account { isAdmin: boolean; isRealAdmin: boolean; isStaff: boolean; tier: string; campaignCalendar: boolean }
 
 function useAccount(): Account | null {
   const { user } = useAuth();
@@ -45,7 +45,7 @@ function useAccount(): Account | null {
     if (!user) return;
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
+      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, isRealAdmin: !!a.isRealAdmin, isStaff: !!a.isStaff, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
       .catch(() => {});
   }, [user]);
   return account;
@@ -205,10 +205,10 @@ export function AccountMenu({ dark }: { dark: boolean }) {
           <div className="px-3.5 pb-2">
             <p className="truncate text-[12.5px] font-medium text-spark-ink">{user?.email}</p>
             <p className="text-[11.5px] text-spark-ink-faint">
-              {!account ? " " : account.isAdmin ? "Admin-Unlimited" : (PLAN_LABELS[account.tier] ?? `${account.tier} plan`)}
+              {!account ? " " : account.isAdmin ? (account.isStaff ? "Staff" : "Admin-Unlimited") : (PLAN_LABELS[account.tier] ?? `${account.tier} plan`)}
             </p>
           </div>
-          {account?.isAdmin && (
+          {account?.isRealAdmin && (
             <Link href="/admin" className="flex items-center gap-2 px-3.5 py-2 text-[13px] text-spark-ink-soft hover:bg-spark-amber-tint">
               <ShieldCheck size={14} /> Admin
             </Link>
