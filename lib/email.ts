@@ -1061,6 +1061,33 @@ export async function sendFreeFollowupEmail({ email, name, city, step, unsubscri
   unsubscribeUrl: string;
 }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
+  const { subject, html, text } = buildFreeFollowupEmail({ name, city, step, unsubscribeUrl });
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: PERSONAL_FROM,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject,
+      html,
+      text,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
+/** The follow-up's subject, HTML and plain text, without sending (also used for previews). */
+export function buildFreeFollowupEmail({ name, city, step, unsubscribeUrl }: {
+  name: string | null;
+  city: string | null;
+  step: 1 | 2 | 3;
+  unsubscribeUrl: string;
+}): { subject: string; html: string; text: string } {
   const firstRaw = (name ?? "").trim().split(/\s+/)[0] || "there";
   const first = escHtml(firstRaw);
   const cityRaw = (city ?? "").trim();
@@ -1153,22 +1180,5 @@ export async function sendFreeFollowupEmail({ email, name, city, step, unsubscri
     "--",
     `${footer} Stop these reminders: ${unsubscribeUrl}`,
   ].join("\n");
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: PERSONAL_FROM,
-      to: email,
-      reply_to: NOTIFY_EMAIL,
-      subject,
-      html,
-      text,
-      headers: {
-        "List-Unsubscribe": `<${unsubscribeUrl}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-    }),
-  }).catch(() => null);
-  return !!res?.ok;
+  return { subject, html, text };
 }

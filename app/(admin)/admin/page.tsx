@@ -102,6 +102,8 @@ interface UserRow {
   followup2_sent_at?: string | null;
   followup3_sent_at?: string | null;
   followup_opt_out_at?: string | null;
+  /** Created after 2026-10-23: the daily job sends their follow-ups. */
+  followup_auto?: boolean;
 }
 
 const FOLLOWUPS = [
@@ -970,11 +972,16 @@ export default function AdminPage() {
                           ? <span className="font-medium text-red-600">Opted out</span>
                           : (() => {
                               const sent = FOLLOWUPS.filter((f) => user[f.key]);
-                              if (sent.length === 0) return <span className="font-medium text-amber-600">Not sent</span>;
+                              const auto = user.followup_auto ? <span className="ml-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">Auto</span> : null;
+                              if (sent.length === 0) {
+                                return user.followup_auto
+                                  ? <span className="font-medium text-slate-500">Scheduled{auto}</span>
+                                  : <span className="font-medium text-amber-600">Not sent</span>;
+                              }
                               const last = sent[sent.length - 1];
                               return (
                                 <span className="font-medium text-green-700">
-                                  {sent.length === 3 ? "All 3 sent" : `#${sent.map((f) => f.n).join(", #")} sent`}
+                                  {sent.length === 3 ? "All 3 sent" : `#${sent.map((f) => f.n).join(", #")} sent`}{auto}
                                   <span className="block font-normal text-slate-400">last {shortDate(user[last.key] as string)}</span>
                                 </span>
                               );
