@@ -85,6 +85,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Another post already uses that web address. Change it and try again." }, { status: 409 });
   }
 
+  // Its latest finished video, if it has one, plays at the top of the post.
+  const { data: video } = await admin
+    .from("generated_videos")
+    .select("video_url, duration_seconds")
+    .eq("project_id", proj.id)
+    .eq("render_status", "completed")
+    .not("video_url", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const vid = video as { video_url: string | null; duration_seconds: number | null } | null;
+
   const { data: existing } = await admin.from("blog_posts").select("slug").eq("project_id", proj.id).maybeSingle();
   const row = {
     slug,
@@ -92,6 +104,9 @@ export async function POST(req: NextRequest) {
     description: description || null,
     topic: body.topic?.trim().slice(0, 40) || null,
     cover_url: s.blog_header_url?.startsWith("https://") ? s.blog_header_url : null,
+    video_url: vid?.video_url?.startsWith("https://") ? vid.video_url : null,
+    video_duration_seconds: vid?.duration_seconds ? Math.round(vid.duration_seconds) : null,
+    header_video_url: s.blog_header_video_url?.startsWith("https://") ? s.blog_header_video_url : null,
     body_html: bodyHtml,
     faqs: articleFaqs(articleBody),
     author_name: body.author?.trim().slice(0, 80) || fullName?.trim() || null,

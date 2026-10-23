@@ -41,12 +41,24 @@ export default async function BlogHome() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {posts.map((p) => (
                 <Link key={p.id} href={`/blog/${p.slug}`} className="group block overflow-hidden border border-slate-200 bg-white hover:border-blue-900 transition-colors">
-                  {p.cover_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.cover_url} alt="" className="aspect-video w-full object-cover" />
-                  ) : (
-                    <div className="aspect-video w-full bg-gradient-to-br from-blue-900 to-slate-800" />
-                  )}
+                  {/* The moving header plays, silent, when there is one (2026-10-22). */}
+                  <div className="relative">
+                    {p.header_video_url ? (
+                      <video autoPlay muted loop playsInline poster={p.cover_url ?? undefined} className="aspect-video w-full object-cover" aria-hidden="true">
+                        <source src={p.header_video_url} type="video/mp4" />
+                      </video>
+                    ) : p.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.cover_url} alt="" className="aspect-video w-full object-cover" />
+                    ) : (
+                      <div className="aspect-video w-full bg-gradient-to-br from-blue-900 to-slate-800" />
+                    )}
+                    {p.video_url && (
+                      <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-xs font-bold text-white">
+                        ▶ Video
+                      </span>
+                    )}
+                  </div>
                   <div className="p-5">
                     {p.topic && (
                       <span className="inline-block rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-[#BA7517]">{p.topic}</span>

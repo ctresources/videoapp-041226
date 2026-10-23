@@ -15,13 +15,18 @@ export interface BlogPost {
   faqs: { q: string; a: string }[];
   author_name: string | null;
   word_count: number;
+  /** The post's latest finished video, played with controls (2026-10-22). */
+  video_url: string | null;
+  video_duration_seconds: number | null;
+  /** The moving header: a silent loop of the cover picture. */
+  header_video_url: string | null;
   published_at: string;
   updated_at: string;
 }
 
 type ListedPost = Omit<BlogPost, "body_html" | "faqs">;
 
-const LISTED = "id, slug, title, description, topic, cover_url, author_name, word_count, published_at, updated_at";
+const LISTED = "id, slug, title, description, topic, cover_url, author_name, word_count, video_url, video_duration_seconds, header_video_url, published_at, updated_at";
 
 export async function listPublishedPosts(limit = 100): Promise<ListedPost[]> {
   try {
