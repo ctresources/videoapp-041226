@@ -543,7 +543,7 @@ export default function LandingPage() {
 
                   "Never uses one of your videos" is the claim that stays true
                   on every plan — the article is not metered against your
-                  allowance. It sits inside the same 30-day free window as
+                  allowance. It sits inside the same 14-day free window as
                   camera recording, which is why this does not say free. */}
               <p className="text-slate-500 mb-4 leading-relaxed">
                 Right now it isn&apos;t quoting you. Fixing that takes two things, and you get both.

@@ -379,7 +379,7 @@ export async function notifyTrialWindow({
 
   const subject = stage === "warning"
     ? `${daysLeft} ${dayWord} left of your camera recording and AI tools`
-    : "Your free 30 days have ended";
+    : "Your free 14 days have ended";
 
   // Sent from noreply@, so there was no way to ask a question. Said in both.
   const contact = `<p>Any questions, please send us an email at
@@ -387,7 +387,7 @@ export async function notifyTrialWindow({
 
   const html = stage === "warning"
     ? `<p>${hi}</p>
-       <p>Your free video opened 30 days of unlimited camera recording, the AI tools and the
+       <p>Your free video opened 14 days of unlimited camera recording, the AI tools and the
        article writer. <strong>${daysLeft} ${dayWord}</strong> of that is left.</p>
        <p>If you want to keep recording, writing articles and making videos after that, pick a
        plan and nothing stops.</p>
@@ -396,7 +396,7 @@ export async function notifyTrialWindow({
        account stays open.</p>
        ${contact}`
     : `<p>${hi}</p>
-       <p>Your 30 days of unlimited camera recording, AI tools and article writing have ended.</p>
+       <p>Your 14 days of unlimited camera recording, AI tools and article writing have ended.</p>
        <p>Everything you made is still in your account and still yours. To record, write or
        generate anything new, pick a plan.</p>
        <p><a href="${plans}">See the plans</a></p>

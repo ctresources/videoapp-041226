@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
  * listing parse/scrape) are all gated by this. Not by signup date, and not
  * open-by-default either: the window is UNLOCKED by generating the one free
  * video (profiles.first_video_generated_at, set once in create-blog/
- * route.ts), then runs for 30 days from that moment. Before that video is
+ * route.ts), then runs for 14 days from that moment (30 until 2026-10-23, the owner's call). Before that video is
  * generated, these features are locked — the free video itself has no
  * server-side gate and never expires while unused, but it's the only thing
  * that starts the clock. Paid plans and admins are never gated.
@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
  * stay open unconditionally, or nobody could ever generate the first video
  * that's supposed to unlock everything else.
  */
-export const FREE_TRIAL_DAYS = 30;
+export const FREE_TRIAL_DAYS = 14;
 
 /**
  * What an account may do BEFORE it makes its free video.
@@ -37,7 +37,7 @@ export const FREE_IMAGES_BEFORE_VIDEO = 2;
  * One blog and one camera recording, also before the video, at the owner's
  * ask. Both cards on the Create page used to be locked on day one, so the two
  * cheapest things the product makes were the two a new account could not try.
- * One of each is enough to see them work. Neither starts the 30 days: the
+ * One of each is enough to see them work. Neither starts the 14 days: the
  * free video is still what unlocks everything, and after the one, each says
  * so.
  *
@@ -60,7 +60,7 @@ const TRIAL_MS = FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000;
 /**
  * True when a free-tier account should be blocked from trial-gated features
  * right now — either it has never generated its free video (never unlocked)
- * or more than 30 days have passed since it did (window closed). Paid tiers
+ * or more than FREE_TRIAL_DAYS have passed since it did (window closed). Paid tiers
  * are never locked.
  */
 export function freeTrialLocked(
@@ -213,7 +213,7 @@ export async function freeTrialGateResponse(
     if ((await freeRecordingsUsed(userId)) < FREE_RECORDINGS_BEFORE_VIDEO) return null;
     return NextResponse.json(
       {
-        error: "You've used your free camera recording. Make your free video — it costs nothing and unlocks unlimited recordings for 30 days.",
+        error: "You've used your free camera recording. Make your free video — it costs nothing and unlocks unlimited recordings for 14 days.",
         code: "free_recording_spent",
       },
       { status: 403 },
@@ -239,7 +239,7 @@ export async function freeTrialGateResponse(
     }
     return NextResponse.json(
       {
-        error: `You've used your ${FREE_RUNS_BEFORE_VIDEO} free tries. Make your free video — it costs nothing and unlocks everything for 30 days.`,
+        error: `You've used your ${FREE_RUNS_BEFORE_VIDEO} free tries. Make your free video — it costs nothing and unlocks everything for 14 days.`,
         code: "free_runs_spent",
       },
       { status: 403 },
@@ -249,8 +249,8 @@ export async function freeTrialGateResponse(
   return NextResponse.json(
     {
       error: notStarted
-        ? "Generate your free video first to unlock 30 days of camera recording and AI Tools."
-        : "Your 30-day free trial has ended. Pick a plan to keep using this.",
+        ? "Generate your free video first to unlock 14 days of camera recording and AI Tools."
+        : "Your 14-day free trial has ended. Pick a plan to keep using this.",
       code: notStarted ? "free_trial_not_started" : "free_trial_expired",
     },
     { status: 403 },

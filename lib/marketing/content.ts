@@ -307,7 +307,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       { q: "What is SparkReels?", a: "SparkReels is a video and content app for real estate agents. Talk for a minute and get a finished video with your AI avatar and cloned voice, plus a blog post, captions and posts for every platform." },
       { q: "Do I need to be on camera?", a: "No. Your AI avatar can deliver every video in your cloned voice. If you like being on camera, the built-in teleprompter lets you film yourself too." },
       { q: "How long does it take to make a video?", a: "About a minute of your time to say what it's about. Most short AI videos are ready within the hour." },
-      { q: "What can I do for free?", a: "Make your first AI video free, with no credit card. Before that you can also write one blog post and make one camera recording. After your free video, you get 30 days of unlimited blogs, camera recordings and tools." },
+      { q: "What can I do for free?", a: "Make your first AI video free, with no credit card. Before that you can also write one blog post and make one camera recording. After your free video, you get 14 days of unlimited blogs, camera recordings and tools." },
       { q: "Is there help inside the app?", a: "Yes. Ask Sparklee, the voice helper at the top of every page, how to do anything on the page you're on, or read How It Works." },
     ],
   },

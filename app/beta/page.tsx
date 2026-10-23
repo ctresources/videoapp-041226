@@ -12,9 +12,9 @@ import Link from "next/link";
 const perks = [
   { icon: Sparkles, text: "1 free AI video — one short video, up to 3 minutes long." },
   { icon: Camera,   text: "Your photo as the presenter, speaking in your own cloned voice." },
-  { icon: Camera,   text: "30 days of unlimited camera recordings, starting the day you generate your free video." },
+  { icon: Camera,   text: "14 days of unlimited camera recordings, starting the day you generate your free video." },
   { icon: CheckCircle, text: "Built-in teleprompter — your script scrolls while you record." },
-  { icon: CheckCircle, text: "AI script writer, thumbnails, channel banner and the rest of the AI tools — free for those same 30 days." },
+  { icon: CheckCircle, text: "AI script writer, thumbnails, channel banner and the rest of the AI tools — free for those same 14 days." },
   { icon: CheckCircle, text: "No credit card required." },
 ];
 
@@ -204,7 +204,7 @@ export default function BetaPage() {
               <Clock size={16} className="text-slate-400 shrink-0 mt-0.5" />
               <p className="text-xs text-slate-500 leading-relaxed">
                 <span className="font-semibold text-slate-700">After your free video:</span> the
-                moment you generate it, you get 30 days of unlimited camera recording and every
+                moment you generate it, you get 14 days of unlimited camera recording and every
                 AI tool. After that, to make more AI videos — or longer ones, up to 8 minutes —
                 or to keep using camera and AI tools, you pick a plan. No auto-charge, and your
                 free video itself never expires — generate it whenever you&rsquo;re ready.

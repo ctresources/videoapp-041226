@@ -29,7 +29,7 @@ export function showTrialLock(payload: unknown): boolean {
   if (!isTrialLock(payload)) return false;
 
   const message = (payload as { error?: string }).error
-    ?? "Your 30-day free trial has ended.";
+    ?? "Your 14-day free trial has ended.";
   // "not started" is a different fix from "expired" — one needs a plan, the
   // other needs the free video that opens the window.
   const notStarted = (payload as { code?: string }).code === "free_trial_not_started";

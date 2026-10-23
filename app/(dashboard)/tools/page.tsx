@@ -3422,13 +3422,13 @@ export default function ToolsPage() {
                   plus 2 free AI images.
                 </span>{" "}
                 Every tool here — titles, descriptions, tags, scripts — uses one try.
-                Your free video unlocks all of them, unlimited, for 30 days. It costs
+                Your free video unlocks all of them, unlimited, for 14 days. It costs
                 nothing and takes a few minutes.
               </>
             ) : (
               <>
                 <span className="font-semibold">That&apos;s your 2 free tries used.</span>{" "}
-                Make your free video and every tool here is unlimited for 30 days, along with
+                Make your free video and every tool here is unlimited for 14 days, along with
                 the camera and articles — it costs nothing.
               </>
             )}

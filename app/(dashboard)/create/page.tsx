@@ -2374,7 +2374,7 @@ function CreatePageInner() {
    * and so is the photo reel, so neither should be warned off.
    */
   /**
-   * The article is inside the same 30-day free window as camera recording and
+   * The article is inside the same free window (14 days since 2026-10-23) as camera recording and
    * the AI Tools — unlocked by generating the free video, then 30 days.
    * Null while the allowance is still loading, so the tile does not flash
    * "locked" at a paying customer on every page load.
@@ -2402,8 +2402,8 @@ function CreatePageInner() {
   const blogLocked = trialLocked && !freeBlogNow;
   const cameraLocked = trialLocked && !freeRecordingNow;
   // Said when the free one is gone and the free video has not been made.
-  const BLOG_SPENT = "You've used your free blog. Make your free video — it unlocks unlimited blogs, tools and the camera for 30 days.";
-  const CAMERA_SPENT = "You've used your free recording. Make your free video — it unlocks unlimited recordings for 30 days.";
+  const BLOG_SPENT = "You've used your free blog. Make your free video — it unlocks unlimited blogs, tools and the camera for 14 days.";
+  const CAMERA_SPENT = "You've used your free recording. Make your free video — it unlocks unlimited recordings for 14 days.";
 
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
