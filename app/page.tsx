@@ -12,6 +12,7 @@ import {
 import type { Metadata } from "next";
 import { canonicalUrl } from "@/lib/seo/public-pages";
 import { PricingSection } from "@/components/marketing/pricing-section";
+import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { FaqList } from "@/components/marketing/faq-list";
@@ -426,21 +427,11 @@ export default function LandingPage() {
               <p className="mt-2 text-base text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
             </div>
 
-            {/* Hero image — centred against the text column so neither side
-                leaves a block of dead space. */}
-            <div className="relative hidden lg:block animate-float">
-              <Image
-                src="/hit-record.png"
-                alt="Hit the Mic. Speak, Spark, Share."
-                width={900}
-                height={1125}
-                className="w-full h-[660px] object-cover rounded-2xl shadow-2xl"
-                priority
-              />
-              <div className="absolute bottom-6 left-6 bg-white border border-slate-200 shadow-lg px-6 py-4">
-                <p className="text-base text-slate-500 uppercase tracking-wide font-semibold mb-0.5">Agents using video grow</p>
-                <p className="text-4xl font-black text-blue-900">49% faster</p>
-              </div>
+            {/* "What buyers in your area ask AI" where the phone picture was
+                (2026-10-23, the owner's approved mockup): a lead form that
+                shows the product working. Under the text on phones. */}
+            <div className="lg:self-center">
+              <AiQuestionsBox />
             </div>
           </div>
         </div>

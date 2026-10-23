@@ -733,6 +733,22 @@ function CreatePageInner() {
     else if (tab === "listing") { setInputMode("listing"); setLastSparkTab("listing"); }
     else if (tab === "paste" || tab === "script") { setInputMode(tab); setLastSparkTab(tab); }
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); setLastSparkTab("script"); }
+    // The home page's "What buyers in your area ask AI" box left its first
+    // question here (2026-10-23): it becomes the topic once, within a week.
+    if (!topic) {
+      try {
+        const raw = localStorage.getItem("sr_pending_topic");
+        if (raw) {
+          localStorage.removeItem("sr_pending_topic");
+          const pending = JSON.parse(raw) as { topic?: string; at?: number };
+          if (pending.topic && pending.at && Date.now() - pending.at < 7 * 24 * 60 * 60 * 1000) {
+            setLocCustomTopic(pending.topic);
+            setInputMode("script");
+            setLastSparkTab("script");
+          }
+        }
+      } catch { /* storage unavailable */ }
+    }
 
     // Said on the home screen: "create a blog about…". The voice panel works
     // out what was meant and goes ahead if it is complete. The parameter is

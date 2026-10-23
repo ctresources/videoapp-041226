@@ -821,3 +821,73 @@ export async function sendAutopilotWeek({
   }).catch(() => null);
   return !!res?.ok;
 }
+
+/** A lead from the home page's "What buyers in your area ask AI" box (2026-10-23). */
+export async function notifySiteLead({ name, email, city, questions, when }: {
+  name: string;
+  email: string;
+  city: string;
+  questions: string[];
+  when: string;
+}) {
+  if (!RESEND_API_KEY) return;
+  const at = new Date(when).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      reply_to: email,
+      subject: `New lead — ${name}, ${city}`,
+      html: `
+        <p>A visitor asked what buyers in their area ask AI, on the sparkreels.ai home page.</p>
+        <table>
+          <tr><td><strong>Name</strong></td><td>${escHtml(name)}</td></tr>
+          <tr><td><strong>Email</strong></td><td>${escHtml(email)}</td></tr>
+          <tr><td><strong>City</strong></td><td>${escHtml(city)}</td></tr>
+          <tr><td><strong>When</strong></td><td>${escHtml(at)} ET</td></tr>
+        </table>
+        <p><strong>Their questions</strong></p>
+        <ol>${questions.map((q) => `<li>${escHtml(q)}</li>`).join("")}</ol>
+        <p>Reply to this email to write to them.</p>
+      `,
+    }),
+  }).catch(() => {});
+}
+
+/** The visitor's own copy of their questions and answers (2026-10-23). */
+export async function sendAiQuestionsToVisitor({ name, email, city, blocks }: {
+  name: string;
+  email: string;
+  city: string;
+  blocks: { question: string; answerBlock: string; videoTopic: string }[];
+}) {
+  if (!RESEND_API_KEY) return;
+  const first = escHtml(name.split(" ")[0] || name);
+  const items = blocks.map((b, i) => `
+    <h3 style="margin:22px 0 6px;font-size:17px;color:#0f172a">${i + 1}. ${escHtml(b.question)}</h3>
+    <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#334155">${escHtml(b.answerBlock)}</p>
+    ${b.videoTopic ? `<p style="margin:0;font-size:14px;color:#BA7517"><strong>Video topic:</strong> ${escHtml(b.videoTopic)}</p>` : ""}`).join("");
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject: `What buyers in ${city} ask AI`,
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+          <p style="font-size:16px">Hi ${first},</p>
+          <p style="font-size:16px;line-height:1.6">Here are the questions buyers in ${escHtml(city)} are asking ChatGPT, Google and Siri, each with an answer written for your website and a video topic. Answer them on video and you're the one they find.</p>
+          ${items}
+          <p style="margin:28px 0">
+            <a href="https://www.sparkreels.ai/beta" style="background:#1e3a8a;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 22px;display:inline-block">Make my free video</a>
+          </p>
+          <p style="font-size:13px;color:#64748b;line-height:1.5">You asked for these on sparkreels.ai. Questions? Just reply to this email.<br>SparkReels.ai · Speak. Spark. Share.</p>
+        </div>
+      `,
+    }),
+  }).catch(() => {});
+}
