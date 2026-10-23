@@ -147,6 +147,8 @@ interface SparkPanelProps {
   tryLine?: string;
   /** Puts that sentence in the box. */
   onUseTry?: (text: string) => void;
+  /** A fixed first chip before the drawn ones: the Agent Intro (2026-10-23). */
+  leadChip?: { label: string; title?: string; onClick: () => void };
 }
 
 /**
@@ -162,7 +164,7 @@ interface SparkPanelProps {
  * grouped library for anyone who does want to browse. Nothing is hidden that
  * was reachable before; it is one press further away and the press is labelled.
  */
-export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className = "", variant = "joined" }: SparkPanelProps) {
+export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, leadChip, className = "", variant = "joined" }: SparkPanelProps) {
   const inline = variant === "inline";
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -219,6 +221,12 @@ export function SparkPanel({ city, state, onSelect, tryLine, onUseTry, className
               the owner's ask; the Oct 14 layout had left it out). */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[13px] font-semibold text-spark-ink-soft">Or try:</span>
+            {leadChip && (
+              <button type="button" onClick={leadChip.onClick} title={leadChip.title}
+                className="rounded-full border-[1.5px] border-spark-amber bg-spark-amber-tint px-2.5 py-1 text-[12px] font-semibold leading-[1.35] text-[#A3660F] transition-colors hover:bg-white">
+                {leadChip.label}
+              </button>
+            )}
             {shortlist.slice(0, 4).map((t) => (
               <button key={t.id} type="button" onClick={() => pick(t)} title={t.description} className={chip}>
                 {SHORT_LABELS[t.id] ?? t.label}

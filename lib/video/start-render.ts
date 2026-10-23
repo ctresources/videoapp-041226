@@ -648,6 +648,11 @@ export async function startRender(
    */
   const isVerbatimProject = (aiScript as { verbatim?: boolean } | null)?.verbatim === true;
   /**
+   * The Agent Intro (2026-10-23): a plain talking head, never b-roll or
+   * scenes, on Avatar V when the presenter is a Digital Twin.
+   */
+  const isAgentIntro = (aiScript as { kind?: string } | null)?.kind === "agent_intro";
+  /**
    * Never for a voice-only video.
    *
    * Direct Video is the talking-head renderer: below, it falls back to the
@@ -680,6 +685,7 @@ export async function startRender(
    */
   const wantsFull = styleAsked === "full" && !isLongForm;
   let useDirectVideo = (isLongForm || (!wantsFull && (engineIsDirect || isVerbatimProject || isCircleProject))) && !voiceOnly;
+  if (isAgentIntro && !voiceOnly) useDirectVideo = true;
   if (voiceOnly && (engineIsDirect || isVerbatimProject)) {
     console.log(`[create-blog] project=${projectId} asked for voice only — not using Direct Video, which would supply a face`);
   }
@@ -856,6 +862,25 @@ export async function startRender(
   const videoKind: VideoKind = isLongForm ? "long" : "short";
   const charge = chargeFor(profile, videoKind);
   const creditCost = 1;
+  /**
+   * Producer and Influencer get one Agent Intro a calendar month free (the
+   * owner's call, 2026-10-23); more that month use a short video. Creator
+   * and free plans spend a video as usual. A failed one never counts.
+   */
+  let introFree = false;
+  if (isAgentIntro && !voiceOnly && (tier === "agent" || tier === "pro")) {
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const { count } = await admin
+      .from("generated_videos")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", monthStart.toISOString())
+      .eq("metadata->>credit_source", "intro_free")
+      .neq("render_status", "failed");
+    introFree = (count ?? 0) === 0;
+  }
 
   // Starts the free-trial clock (camera recording, AI Tools — see
   // lib/utils/free-trial.ts) the moment a free-tier user's first video is
@@ -867,7 +892,7 @@ export async function startRender(
     await admin.from("profiles").update({ first_video_generated_at: new Date().toISOString() }).eq("id", userId);
   }
 
-  if (!isAdmin && !charge) {
+  if (!isAdmin && !charge && !introFree) {
     // `code` and `kind` let the client open the plan picker instead of
     // string-matching the message. Someone who just watched their free video
     // render is the most likely person to buy — a dead-end toast wastes that.
@@ -1169,7 +1194,7 @@ export async function startRender(
 
       // Photos to composite as b-roll behind the avatar (up to DIRECT_PHOTO_LIMIT, 20) — uploaded
       // photos take priority, then any listing photos.
-      const directPhotos = [
+      const directPhotos = isAgentIntro ? [] : [
         ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),
         ...listingPhotos,
       ].slice(0, DIRECT_PHOTO_LIMIT);
@@ -1209,7 +1234,7 @@ export async function startRender(
         new Set([...footageTerms(safeScript, 4), ...aiKeywords]),
       ).slice(0, 5);
 
-      const stockClips = await stockBrollFor({
+      const stockClips = isAgentIntro ? [] : await stockBrollFor({
         userPhotoCount: directPhotos.length,
         // Long-form is capped by word count in the helper, so pass a figure
         // that trips that check rather than duplicating the rule here.
@@ -1248,7 +1273,7 @@ export async function startRender(
             // nothing to do with what was being said. The store step decides:
             // a few photos take a sentence each among the scenes, and many
             // photos stay the background they always were.
-            ...(!isLongForm && { scene_script: safeScript.slice(0, 2000) }),
+            ...(!isLongForm && !isAgentIntro && { scene_script: safeScript.slice(0, 2000) }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves
             // at a readable size. Recorded so the store step knows to.
             captions_enabled: captions !== false,
@@ -1287,7 +1312,8 @@ export async function startRender(
       // test renders of her twin: Avatar V ($7.20/min against $0.99) is not
       // offered, so nothing here may choose it. (The circle test this replaced
       // was true for every short and every long video already.)
-      const preferredEngine = "avatar_iii" as "avatar_iii" | "avatar_iv";
+      // Avatar V only for an Agent Intro with a Digital Twin (2026-10-23).
+      const preferredEngine = (isAgentIntro && isDigitalTwin ? "avatar_v" : "avatar_iii") as "avatar_iii" | "avatar_iv" | "avatar_v";
 
       /**
        * Ask the look what it supports before asking it for anything.
@@ -1366,9 +1392,9 @@ export async function startRender(
           render_job_id: directVideoId,
           metadata: {
             ...(videoRow.metadata ?? {}),
-            credit_cost: creditCost,
+            credit_cost: introFree ? 0 : creditCost,
             credit_kind: videoKind,
-            credit_source: charge?.source ?? "plan",
+            credit_source: introFree ? "intro_free" : (charge?.source ?? "plan"),
             // What it was actually rendered with. Both are needed to price it:
             // the engine and the avatar type each move the rate, by up to four
             // times between them. Recorded here because this is the only place
@@ -1386,7 +1412,7 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree) await chargeOneVideo(admin, user.id, videoKind);
       await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
@@ -1577,7 +1603,7 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree) await chargeOneVideo(admin, user.id, videoKind);
       await startFreeTrialClockIfNeeded();
     await admin.from("api_usage_log").insert({
       user_id: user.id,

@@ -240,7 +240,8 @@ const RATE_PER_SECOND_USD: Record<string, Record<string, number>> = {
   avatar_iv:  { photo_avatar: 0.05,   digital_twin: 0.0667, studio: 0.0667 },
   // Avatar V is twin-only per the card; the photo entry mirrors it so an
   // unexpected pairing costs something rather than silently costing nothing.
-  avatar_v:   { photo_avatar: 0.0667, digital_twin: 0.0667, studio: 0.0667 },
+  // $7.20/min on the owner's bills (2026-10-19), not the $4 once listed.
+  avatar_v:   { photo_avatar: 0.12, digital_twin: 0.12, studio: 0.12 },
 };
 
 /**

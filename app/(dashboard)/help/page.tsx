@@ -501,7 +501,13 @@ export default function HelpPage() {
                 <strong>What buyers ask AI</strong> (step 21), and under that <strong>Or try</strong>:
                 ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
                 and a search box. Tap one and it lands in the same box the mic writes into, so you can
-                add to it before you send.
+                add to it before you send. The first chip, <strong>👋 Agent Intro</strong>, is a short
+                video introducing you: your name, brokerage, area and years are filled in from Settings,
+                you pick who you help most, add anything personal or your profile link, and choose{" "}
+                <strong>30 or 60 seconds</strong>. You get the intro script plus a short and a long bio
+                in the Share Kit. It&apos;s you, full screen, and with your Digital Twin it&apos;s made
+                on our most lifelike avatar. Producer and Influencer get <strong>one free every
+                month</strong>; otherwise it uses 1 short video (on the free plan, your free video).
                 Either way, AI researches live market data for your city and writes a
                 broadcast-quality script with real stats.
               </span>

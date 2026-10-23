@@ -30,6 +30,7 @@ import { ListingVideoForm } from "@/components/create/listing-video-form";
 import { PhotoReelForm } from "@/components/create/photo-reel-form";
 import { ScenesReelForm } from "@/components/create/scenes-reel-form";
 import { SparkPanel } from "@/components/create/spark-panel";
+import { AgentIntroPanel } from "@/components/create/agent-intro-panel";
 import {
   TEMPLATE_COUNT,
   substitutePlaceholders,
@@ -359,6 +360,8 @@ function CreatePageInner() {
   const [audienceDraft, setAudienceDraft] = useState("");
   // A topic picked from the spark panel, on its way into the composer box.
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
+  // The Agent Intro panel (2026-10-23).
+  const [introOpen, setIntroOpen] = useState(false);
   /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
   const [voiceCommand, setVoiceCommand] = useState({ text: "", n: 0 });
   // Whether a sentence said on the home screen (?say=…) is still being worked
@@ -3023,12 +3026,25 @@ function CreatePageInner() {
               variant="inline"
               city={locCity || undefined}
               state={locState || undefined}
+              leadChip={{ label: "👋 Agent Intro", title: "A short video introducing you", onClick: () => setIntroOpen(true) }}
               onSelect={(topic, raw) => {
                 setLocCustomTopic(topic);
                 setTopicTemplateRaw(raw);
                 setSparkSeed((s) => ({ text: topic, n: s.n + 1 }));
               }}
             />
+            {introOpen && (
+              <AgentIntroPanel
+                defaults={{
+                  name: ctaProfile?.full_name,
+                  brokerage: ctaProfile?.company_name,
+                  city: locCity || ctaProfile?.location_city,
+                  state: locState || ctaProfile?.location_state,
+                  years: ctaProfile?.market_years,
+                }}
+                onClose={() => setIntroOpen(false)}
+              />
+            )}
           </BuyerQuestions>
           </div>
 

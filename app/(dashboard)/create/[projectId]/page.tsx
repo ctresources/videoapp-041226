@@ -2014,6 +2014,16 @@ export default function ProjectEditorPage() {
             </p>
           </div>
         )}
+        {/* What an Agent Intro costs on this plan (2026-10-23, the owner's call). */}
+        {(script as unknown as { kind?: string } | null)?.kind === "agent_intro" && !selfRecord && allowance && !allowance.isAdmin && (
+          <p className="rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
+            {allowance.tier === "agent" || allowance.tier === "pro"
+              ? <>Agent Intro: your first one each month is <b className="text-[#A3660F]">free</b>; more use a short video.</>
+              : allowance.tier === "free"
+                ? <>Agent Intro: this uses your free video.</>
+                : <>Agent Intro: this uses 1 short video. Producer and Influencer get one free every month.</>}
+          </p>
+        )}
         {/* The Digital Twin and the format (2026-10-22, the owner's wording):
             a twin on a horizontal video is made as Avatar in circle (see
             start-render), a vertical one stays a full Avatar video. */}
@@ -4051,6 +4061,36 @@ export default function ProjectEditorPage() {
                 two more buttons further down: five mentions of a video on the
                 one route where nobody asked for one. */}
           </div>
+          {/* The Agent Intro's bios (2026-10-23, the owner's approved mockup). */}
+          {(() => {
+            const bios = script as unknown as { agent_bio_short?: string; agent_bio_long?: string };
+            if (!bios.agent_bio_short && !bios.agent_bio_long) return null;
+            return (
+              <div className="rounded-xl border border-spark-rule bg-white p-4">
+                <p className="mb-2 text-[13.5px] font-bold text-spark-ink">Your bio</p>
+                {bios.agent_bio_short && (
+                  <div className="mb-3">
+                    <p className="text-[11.5px] font-semibold text-spark-ink-muted">Short · Google Business, Instagram</p>
+                    <p className="mt-1 text-[13.5px] leading-[1.55] text-spark-ink">{bios.agent_bio_short}</p>
+                    <button type="button" onClick={() => copyToClipboard(bios.agent_bio_short ?? "", "Short bio")}
+                      className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber">
+                      <Copy size={12} /> Copy short
+                    </button>
+                  </div>
+                )}
+                {bios.agent_bio_long && (
+                  <div>
+                    <p className="text-[11.5px] font-semibold text-spark-ink-muted">Long · your website&apos;s About page</p>
+                    <p className="mt-1 whitespace-pre-line text-[13.5px] leading-[1.55] text-spark-ink">{bios.agent_bio_long}</p>
+                    <button type="button" onClick={() => copyToClipboard(bios.agent_bio_long ?? "", "Long bio")}
+                      className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber">
+                      <Copy size={12} /> Copy long
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {/* The two cards are built first and placed after, because their
               order depends on what this project is. After a render the title,
               description and hashtags are what Publish needs, so they lead. On
