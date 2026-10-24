@@ -218,6 +218,12 @@ export interface BackgroundItem {
   seconds?: number;
   /** The clip is shorter than `seconds` and has to run again to fill it. */
   loop?: boolean;
+  /**
+   * Play the clip this many times slower (1.0–1.4) so it fills `seconds`
+   * without running again (2026-10-24): a scene restarting from its first
+   * frame read as the same picture popping in and out.
+   */
+  slow?: number;
 }
 
 /**
@@ -271,7 +277,7 @@ export async function compositePhotos(
     // phone photos coming out sideways.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sharp = ((await import("sharp")) as any).default;
-    const downloaded: { path: string; kind: BackgroundKind; seconds?: number; loop?: boolean; w?: number; h?: number }[] = [];
+    const downloaded: { path: string; kind: BackgroundKind; seconds?: number; loop?: boolean; slow?: number; w?: number; h?: number }[] = [];
     /**
      * Time owed by a timed clip that would not download.
      *
@@ -300,8 +306,10 @@ export async function compositePhotos(
           // over a blurred copy rather than cropped (2026-10-24).
           const { width: w, height: h } = await probeVideoSize(p).catch(() => ({ width: 0, height: 0 }));
           const timed = sources[i].seconds;
+          const slow = sources[i].slow && sources[i].slow! > 1.001 ? Math.min(1.4, sources[i].slow!) : undefined;
           downloaded.push(timed
-            ? { path: p, kind, seconds: timed + owed, loop: sources[i].loop || owed > 0, w, h }
+            // Time owed by a lost clip can't be met by slowing further, so it loops.
+            ? { path: p, kind, seconds: timed + owed, loop: sources[i].loop || owed > 0, slow: owed > 0 ? undefined : slow, w, h }
             : { path: p, kind, w, h });
           if (timed) owed = 0;
         } else {
@@ -329,8 +337,12 @@ export async function compositePhotos(
     // ── Pass 1: build the background track (video only) ──────────────────────
     await new Promise<void>((resolve, reject) => {
       const cmd = ffmpeg();
-      for (const { path: p, kind, seconds: timed, loop } of downloaded) {
-        if (kind === "clip" && timed) {
+      for (const { path: p, kind, seconds: timed, loop, slow } of downloaded) {
+        if (kind === "clip" && timed && slow) {
+          // Slowed to fill its stretch: read only as much of the clip as that
+          // takes (the setpts in the filter below stretches it).
+          cmd.input(p).inputOptions(["-t", (timed / slow).toFixed(3)]);
+        } else if (kind === "clip" && timed) {
           // On screen for exactly its stretch of the narration. Run again
           // only when it is shorter than that, which is the rare case.
           cmd.input(p).inputOptions([...(loop ? ["-stream_loop", "-1"] : []), "-t", timed.toFixed(3)]);
@@ -351,7 +363,12 @@ export async function compositePhotos(
         parts.push(...ffmpegFitFilter({
           input: `[${i}:v]`, output: `[p${i}]`, width: outW, height: outH,
           srcW: d.kind === "clip" ? d.w ?? 0 : outW, srcH: d.kind === "clip" ? d.h ?? 0 : outH,
-          post: "setsar=1,format=yuv420p,fps=25", tag: `c${i}`,
+          ...(d.kind === "clip" && d.seconds && d.slow && { pre: `setpts=${d.slow.toFixed(4)}*(PTS-STARTPTS)` }),
+          post: d.kind === "clip" && d.seconds && d.slow
+            // Exactly its stretch after slowing, so every later cut stays on its word.
+            ? `setsar=1,format=yuv420p,fps=25,trim=duration=${d.seconds.toFixed(3)},setpts=PTS-STARTPTS`
+            : "setsar=1,format=yuv420p,fps=25",
+          tag: `c${i}`,
         }));
       }
       parts.push(`${downloaded.map((_, i) => `[p${i}]`).join("")}concat=n=${n}:v=1:a=0[bg]`);

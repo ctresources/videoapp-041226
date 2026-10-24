@@ -1,4 +1,5 @@
 import { chatJson } from "@/lib/api/perplexity-chat";
+import { openaiChatJson } from "@/lib/api/openai-chat";
 
 /**
  * Scenes for a reel that has no photos: the pictures are made from the script.
@@ -193,6 +194,9 @@ function promptFor(s: Shoot, look: SceneLook): string {
  * people is choosing them, and nothing here should.
  */
 const LOOK_DISTANT_PEOPLE = LOOK
+  // A real park, station or landmark the narration names may be shown
+  // (the owner's call, 2026-10-24), still with no readable signs.
+  .replace("Not a real, identifiable place or landmark.", "A real public place may be shown as it generally looks; no private homes.")
   .replace(
     "No people at all: no faces, no hands, no figures, no silhouettes, no reflections of people.",
     "Any person is seen only from behind or at a distance, at work or walking away, never posed: no face turned towards the camera, no close-up of a face, no eye contact. " +
@@ -309,29 +313,52 @@ Hard limits, every scene:
 - Never describe who a person is: no age, race, ethnicity, gender, family, religion or disability. Say "a person" or "someone" and nothing more about them.
 - No readable words or numbers anywhere: no signs of any kind (no yard sign, no for-sale sign, no sign post, no street sign), no documents you could read, no charts, no price tags, no house numbers. Screens show only a soft glow or blurred shapes.
 - No brands, logos or app interfaces. Do not show or name the product being talked about.
-- No real, nameable place, building or landmark, even if the narration names a town. Not a specific property.
+- A real public place the part names may be shown (the owner's call, 2026-10-24): a park, shopping center, train station, main street or landmark in that town. Write its name and town, like "Reiff Park in Harleysville, Pennsylvania", and describe it as such a place generally looks there. Never a specific private home or property.
 - No two scenes alike.`;
 
+  const turns = [{ role: "user" as const, content: `NARRATION:\n${beats.map((b, i) => `${i + 1}. ${b.slice(0, 400)}`).join("\n")}` }];
+  const read = (out: Record<string, unknown> | null): string[] => {
+    const raw = Array.isArray(out?.scenes) ? (out!.scenes as unknown[]) : [];
+    const scenes = raw
+      .filter((x): x is string => typeof x === "string" && x.trim().length > 12)
+      .map((x) => x.trim().slice(0, 400));
+    // One per beat or it is not a plan for these beats.
+    return scenes.length === n ? scenes : [];
+  };
+
+  // OpenAI first (2026-10-24, the owner's ask): the cheap Perplexity model
+  // matched about half the lines of a real events video. Perplexity stays as
+  // the fallback, so a missing key or an outage still gets a plan.
+  const fromOpenAI = read(await openaiChatJson(system + SCENE_PLAN_EXTRA, turns, { maxTokens: 4000, label: "scene-plan-beats" }));
+  if (fromOpenAI.length) {
+    console.log(`[scenes] beat plan: openai (${n} scenes)`);
+    return fromOpenAI;
+  }
   let out: Record<string, unknown> | null = null;
   try {
-    out = await chatJson(
-      system,
-      [{ role: "user", content: `NARRATION:\n${beats.map((b, i) => `${i + 1}. ${b.slice(0, 400)}`).join("\n")}` }],
-      // Room for 24 of them, and warmer than it was: the cooler it ran, the
-      // more often it chose the same picture.
-      { maxTokens: 2400, temperature: 0.6, label: "scene-plan-beats" },
-    );
+    // Room for 24 of them, and warmer than it was: the cooler it ran, the
+    // more often it chose the same picture.
+    out = await chatJson(system, turns, { maxTokens: 2400, temperature: 0.6, label: "scene-plan-beats" });
   } catch (err) {
     console.warn("[scenes] beat plan failed:", err instanceof Error ? err.message : err);
     return [];
   }
-  const raw = Array.isArray(out?.scenes) ? (out!.scenes as unknown[]) : [];
-  const scenes = raw
-    .filter((x): x is string => typeof x === "string" && x.trim().length > 12)
-    .map((x) => x.trim().slice(0, 400));
-  // One per beat or it is not a plan for these beats.
-  return scenes.length === n ? scenes : [];
+  const fromPerplexity = read(out);
+  if (fromPerplexity.length) console.log(`[scenes] beat plan: perplexity fallback (${n} scenes)`);
+  return fromPerplexity;
 }
+
+/**
+ * Added for the OpenAI planner (2026-10-24), from what Daniel Okiro's events
+ * video got wrong: named events and places became empty rooms and hallways.
+ */
+const SCENE_PLAN_EXTRA = `
+
+More rules:
+- Read the whole narration first so you know what the video is about, then picture each part.
+- When a part names a local event, place or activity, show it happening there: a Halloween parade is children in costumes walking down the town's decorated main street; a named park is that park's paths and trees; a volunteer planting day is people from behind planting by the creek it names; a historic log house is that old log cabin. Never an empty room or hallway standing in for it.
+- An address, a date, a price or a phone number is not a picture: show the thing the part is about instead.
+- Each part is only a few seconds long. Show the one thing being said in it.`;
 
 /** Marks a refusal because HeyGen is running its ten jobs, with the wait it asked for. */
 const AT_CAPACITY = "AT_CAPACITY:";

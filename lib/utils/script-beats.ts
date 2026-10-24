@@ -34,7 +34,7 @@ function seconds(stamp: string): number {
  * @param maxBeats the most pictures one video gets. Past it the shortest
  *   neighbours are joined, so a long script gets a picture per section.
  */
-export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12): Beat[] {
+export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12, maxSeconds = Infinity): Beat[] {
   // Every word with a time. A cue only times its first and last word, so the
   // ones between are spread evenly across it, which is near enough for a cut.
   const words: TimedWord[] = [];
@@ -50,7 +50,7 @@ export function beatsFromSrt(srt: string, minSeconds = 4, maxBeats = 12): Beat[]
       });
     });
   }
-  return beatsFromTimed(words, minSeconds, maxBeats, Infinity);
+  return beatsFromTimed(words, minSeconds, maxBeats, maxSeconds);
 }
 
 /**
