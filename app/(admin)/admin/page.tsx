@@ -913,6 +913,11 @@ export default function AdminPage() {
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
+          {/* Every user as Outlook contacts, category "SparkReels User" (2026-10-24). */}
+          <a href="/api/admin/emails?contacts=outlook"
+            className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 hover:border-blue-300 whitespace-nowrap">
+            Download contacts for Outlook
+          </a>
         </div>
       </Card>
 

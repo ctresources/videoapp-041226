@@ -33,6 +33,54 @@ export async function GET(req: NextRequest) {
   if (!(await verifyAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const admin = createAdminClient();
 
+  // The user picker under Add request (2026-10-24): accounts whose name or
+  // email has the typed text in it.
+  const q = req.nextUrl.searchParams.get("users");
+  if (q !== null) {
+    const term = q.trim().replace(/[%_,()]/g, " ").slice(0, 80);
+    if (term.length < 2) return NextResponse.json({ users: [] });
+    const { data } = await admin
+      .from("profiles")
+      .select("id, full_name, email, subscription_tier")
+      .or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+      .not("email", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    return NextResponse.json({
+      users: ((data ?? []) as { id: string; full_name: string | null; email: string; subscription_tier: string | null }[])
+        .map((u) => ({ id: u.id, name: u.full_name, email: u.email, plan: planName(u.subscription_tier) })),
+    });
+  }
+
+  // Every user as an Outlook contacts file (2026-10-24, the owner's ask):
+  // Outlook's own CSV columns, filed under the category "SparkReels User".
+  if (req.nextUrl.searchParams.get("contacts") === "outlook") {
+    const { data } = await admin
+      .from("profiles")
+      .select("full_name, email, phone, company_name, subscription_tier, created_at")
+      .not("email", "is", null)
+      .order("created_at");
+    const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const rows = ((data ?? []) as { full_name: string | null; email: string; phone: string | null; company_name: string | null; subscription_tier: string | null; created_at: string }[])
+      .map((u) => {
+        const parts = (u.full_name ?? "").trim().split(/\s+/).filter(Boolean);
+        const first = parts[0] ?? "";
+        const last = parts.slice(1).join(" ");
+        const joined = new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return [first, last, u.email, u.phone ?? "", u.company_name ?? "", "SparkReels User",
+          `SparkReels ${planName(u.subscription_tier)} plan. Joined ${joined}.`].map(cell).join(",");
+      });
+    const csv = ["First Name,Last Name,E-mail Address,Mobile Phone,Company,Categories,Notes", ...rows].join("\r\n");
+    const stamp = new Date().toISOString().slice(0, 10);
+    return new NextResponse(`﻿${csv}`, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="sparkreels-users-${stamp}.csv"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const key = req.nextUrl.searchParams.get("preview");
   if (key) {
     if (!emailConfigured()) return NextResponse.json({ error: "Email isn't set up on this server, so there is nothing to preview." }, { status: 503 });

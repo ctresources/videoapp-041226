@@ -55,7 +55,9 @@ export async function sendAdminReply({ to, subject, html, text }: {
   const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "SparkReels <support@sparkreels.ai>", to, reply_to: NOTIFY_EMAIL, subject, html, text }),
+    // A hidden copy to support@ (2026-10-24, the owner's ask), so every
+    // reply sent from Admin also lands in the support inbox in Outlook.
+    body: JSON.stringify({ from: "SparkReels <support@sparkreels.ai>", to, bcc: NOTIFY_EMAIL, reply_to: NOTIFY_EMAIL, subject, html, text }),
   }).catch(() => null);
   if (!res?.ok) console.error(`[admin-reply] to ${to} failed: ${res ? res.status : "network error"}`);
   return !!res?.ok;
