@@ -562,6 +562,8 @@ export default function ProjectEditorPage() {
   // chips is pressed; it sat between the chips and what they open (the
   // owner's ask, 2026-10-24). The green badge brings it back.
   const [aiInfoHidden, setAiInfoHidden] = useState(false);
+  // "Where do I find this?" under the email's post link (2026-10-24).
+  const [linkHelpOpen, setLinkHelpOpen] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -4386,7 +4388,28 @@ export default function ProjectEditorPage() {
                       needs it; BoldTrailSend labels its own 3 and 4. */}
                     <p className="text-xs font-semibold text-green-700">1 · Written ✓</p>
                     <div>
-                      <p className="text-xs font-semibold text-spark-ink mb-1">2 · Link to the full post on your website</p>
+                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-spark-ink">2 · Link to the full post on your website</p>
+                        <button type="button" onClick={() => setLinkHelpOpen((o) => !o)} className="text-[11.5px] font-semibold text-spark-amber hover:underline">
+                          Where do I find this?
+                        </button>
+                      </div>
+                      {/* The address can't be fetched for the agent: BoldTrail's
+                          API has no blog, so the post goes up by hand and its
+                          live address comes back here (2026-10-24, after Daniel
+                          Okiro's first email stopped at this box). */}
+                      {linkHelpOpen && (
+                        <ol className="mb-2 list-decimal space-y-0.5 rounded-lg bg-spark-amber-tint py-2 pl-7 pr-3 text-[12px] text-spark-ink-soft">
+                          <li>Press <strong>Copy as HTML</strong> on the article above.</li>
+                          {btConnected ? (
+                            <li>In BoldTrail: <strong>WebIDX → Blog → Add Post</strong>, press <strong>&lt;&gt;</strong>, paste, add the Headline as the title, then <strong>Publish</strong>.</li>
+                          ) : (
+                            <li>Add a new blog post on your website, paste it in the code or HTML view, and publish it.</li>
+                          )}
+                          <li>Open the published post on your website.</li>
+                          <li>Copy the address from your browser&apos;s address bar and paste it below.</li>
+                        </ol>
+                      )}
                       <input
                         type="url"
                         value={emailUrlValue}
