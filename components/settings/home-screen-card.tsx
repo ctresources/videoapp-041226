@@ -20,7 +20,7 @@ export function HomeScreenCard({ id }: { id: string }) {
           <Smartphone size={18} className="text-spark-amber" />
         </div>
         <div>
-          <h3 className="font-semibold text-brand-text">Put SparkReels on your phone</h3>
+          <h3 className="font-semibold text-brand-text">7 · Put SparkReels on your phone</h3>
           <p className="text-xs text-slate-400 mt-0.5">Opens like an app, one tap from your Home Screen.</p>
         </div>
       </div>

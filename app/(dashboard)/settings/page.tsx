@@ -241,14 +241,16 @@ export default function SettingsPage() {
 
       <SettingsSteps
         steps={[
-          { id: "preferences", label: "Preferences", done: savedCity },
-          { id: "voice", label: "Voice", done: !!brandData?.heygen_voice_id },
-          { id: "brand", label: "Brand & photo", done: !!brandData?.avatar_url },
-          { id: "cta", label: "Video CTA", done: savedCta },
-          { id: "email-import", label: "Email import" },
-          { id: "phone", label: "Phone", done: standalone },
-          { id: "crm", label: "CRM" },
-          { id: "account", label: "Account" },
+          // Numbered as How It Works numbers its steps (2026-10-24).
+          { id: "preferences", n: 1, label: "Preferences", done: savedCity },
+          { id: "voice", n: 2, label: "Voice", done: !!brandData?.heygen_voice_id },
+          { id: "brand", n: 3, label: "Brand & photo", done: !!brandData?.avatar_url },
+          { id: "twin", n: 4, label: "Digital Twin", done: !!brandData?.heygen_digital_twin_look_id },
+          { id: "cta", n: 5, label: "Video CTA", done: savedCta },
+          { id: "email-import", n: 6, label: "Email import" },
+          { id: "phone", n: 7, label: "Phone", done: standalone },
+          { id: "crm", n: 8, label: "CRM" },
+          { id: "account", n: 9, label: "Account" },
         ]}
       />
 
@@ -259,7 +261,7 @@ export default function SettingsPage() {
             <Globe size={18} className="text-spark-amber" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">Content Preferences</h3>
+            <h3 className="font-semibold text-brand-text">1 · Content Preferences</h3>
             <p className="text-xs text-slate-400 mt-0.5">Used for AI script generation and trending topics</p>
           </div>
         </div>
@@ -335,7 +337,7 @@ export default function SettingsPage() {
               <Mic size={18} className="text-spark-blue" />
             </div>
             <div>
-              <h3 className="font-semibold text-brand-text">AI Voice Clone</h3>
+              <h3 className="font-semibold text-brand-text">2 · AI Voice Clone</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Record or upload your voice — your AI videos will speak in your voice
               </p>
@@ -366,7 +368,7 @@ export default function SettingsPage() {
               <Palette size={18} className="text-pink-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-brand-text">Brand & AI Profile</h3>
+              <h3 className="font-semibold text-brand-text">3 · Brand & AI Profile</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Brand kit, contact info, photos, and AI avatar
               </p>
@@ -402,7 +404,7 @@ export default function SettingsPage() {
             <Megaphone size={18} className="text-orange-500" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">Default Video CTA</h3>
+            <h3 className="font-semibold text-brand-text">5 · Default Video CTA</h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Spoken at the end of your AI avatar and teleprompter videos
             </p>
@@ -477,7 +479,7 @@ export default function SettingsPage() {
             <Mail size={18} className="text-spark-amber" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">Import Articles By Email</h3>
+            <h3 className="font-semibold text-brand-text">6 · Import Articles By Email</h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Your private address for forwarding articles into SparkReels
             </p>
@@ -496,7 +498,7 @@ export default function SettingsPage() {
             <Webhook size={18} className="text-spark-amber" />
           </div>
           <div>
-            <h3 className="font-semibold text-brand-text">CRM Integration</h3>
+            <h3 className="font-semibold text-brand-text">8 · CRM Integration</h3>
             <p className="text-xs text-slate-400 mt-0.5">
               BoldTrail connects by token below; webhooks notify GoHighLevel when videos publish
             </p>
@@ -516,7 +518,7 @@ export default function SettingsPage() {
           <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
             <Lock size={18} className="text-slate-500" />
           </div>
-          <h3 className="font-semibold text-brand-text">{hasPassword ? "Change Password" : "Set A Password"}</h3>
+          <h3 className="font-semibold text-brand-text">{hasPassword ? "9 · Change Password" : "9 · Set A Password"}</h3>
         </div>
         <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
           {hasPassword && (

@@ -247,7 +247,7 @@ function SocialSettingsContent() {
       {/* No back arrow: Profile is the tab beside this one. */}
       <div className="flex items-center gap-3 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-brand-text">Social Accounts</h2>
+          <h2 className="text-xl font-bold text-brand-text">10 · Social Accounts</h2>
           <p className="text-sm text-slate-500 mt-0.5">Connect your accounts once and publish to them straight from SparkReels</p>
         </div>
       </div>
@@ -256,8 +256,8 @@ function SocialSettingsContent() {
           "More platforms" (paid) are the same place, one or the other, so one step. */}
       <SettingsSteps
         steps={[
-          { id: "youtube", label: "YouTube", done: !!youtubeConnected && !youtubeChannel?.needsReconnect },
-          { id: "other-platforms", label: "Other platforms", done: connectedCount > 0 },
+          { id: "youtube", n: "10.1", label: "YouTube", done: !!youtubeConnected && !youtubeChannel?.needsReconnect },
+          { id: "other-platforms", n: "10.2", label: "Other platforms", done: connectedCount > 0 },
         ]}
       />
 

@@ -7,8 +7,14 @@ export interface SettingsStep {
   /** The id of the section this step jumps to. */
   id: string;
   label: string;
-  /** Already set up: shown with a tick instead of its number. */
+  /** Already set up: its number turns green. */
   done?: boolean;
+  /**
+   * Its number in How It Works (2026-10-24, the owner's ask: Settings
+   * sections carry the guide's step numbers, so "step 8" is "8" here).
+   * Defaults to its position.
+   */
+  n?: string | number;
 }
 
 /**
@@ -75,7 +81,7 @@ export function SettingsSteps({ steps }: { steps: SettingsStep[] }) {
               >
                 <span
                   className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold",
+                    "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold",
                     s.done
                       ? "bg-emerald-600 text-white"
                       : on
@@ -83,7 +89,7 @@ export function SettingsSteps({ steps }: { steps: SettingsStep[] }) {
                         : "border border-slate-300 bg-white text-slate-500",
                   )}
                 >
-                  {s.done ? "✓" : i + 1}
+                  {s.n ?? i + 1}
                 </span>
                 {s.label}
               </button>

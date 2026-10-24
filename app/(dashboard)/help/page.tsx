@@ -117,18 +117,15 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 1 · One-Time Setup</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Set Up Once (~10 Minutes)</h2>
           <div className="flex flex-col gap-4">
-            <Step n={1} title="Complete Your Brand Profile" icon={User}>
-              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Profile → Brand &amp; AI Profile</Link>, add
-              your name, brokerage, phones, website, and license number. Upload your <strong>logo</strong> and
-              your <strong>headshot</strong> — the headshot becomes your AI Photo Avatar, and your contact card
-              and logo appear automatically in every video.
-            </Step>
-            <Step n={2} title="Set Your Market" icon={MapPin}>
-              In <strong>Settings → Profile → Content Preferences</strong>, enter your city, state, and video language.
+            {/* Part 1 follows Settings, and each step's number is the number on
+                that Settings section (2026-10-24, the owner's ask). */}
+            <Step n={1} title="Set Your Market And Video Language" icon={MapPin}>
+              In <Link href="/settings#preferences" className="text-primary-600 font-medium hover:underline">Settings → Profile → 1 · Content Preferences</Link>,
+              enter your city, state, and video language.
               This powers live local market research, trending topics, and auto-localized templates.
             </Step>
-            <Step n={3} title="Create Your AI Voice" icon={Mic}>
-              In <strong>Settings → Profile → AI Voice Clone</strong>, record or upload about 30 seconds of your voice.
+            <Step n={2} title="Create Your AI Voice" icon={Mic}>
+              In <Link href="/settings#voice" className="text-primary-600 font-medium hover:underline">Settings → Profile → 2 · AI Voice Clone</Link>, record or upload about 30 seconds of your voice.
               Your AI videos will speak in <em>your</em> voice.
               {/* The two tabs looked like buttons that did nothing; said here
                   as what they are, with the one that starts it. */}
@@ -146,11 +143,17 @@ export default function HelpPage() {
                 again.
               </span>
             </Step>
+            <Step n={3} title="Complete Your Brand Profile" icon={User}>
+              In <Link href="/settings#brand" className="text-primary-600 font-medium hover:underline">Settings → Profile → 3 · Brand &amp; AI Profile</Link>, add
+              your name, brokerage, phones, website, and license number. Upload your <strong>logo</strong> and
+              your <strong>headshot</strong> — the headshot becomes your AI Photo Avatar, and your contact card
+              and logo appear automatically in every video.
+            </Step>
             {/* Back since 2026-10-20: HeyGen confirmed API twins need no
                 Enterprise plan. The owner's wording. */}
             <Step n={4} title="Make Your Digital Twin (Optional)" icon={Video}>
               Your Digital Twin is a lifelike video of you that talks and moves like you. In{" "}
-              <strong>Settings → Profile → Digital Twin</strong>, record about 2 minutes of yourself
+              <strong>Settings → Profile → 4 · Digital Twin</strong> (inside Brand &amp; AI Profile), record about 2 minutes of yourself
               talking to the camera: phone at eye level, good light, quiet room, only you in the shot.
               Upload it or pick a recording from the Camera tab, then tap{" "}
               <strong>Train Digital Twin</strong>. It&apos;s ready in 15 to 30 minutes, and it shows up
@@ -182,7 +185,7 @@ export default function HelpPage() {
                 music work as usual. You can make up to 20 new backgrounds a month.
               </span>
               <span className="block mt-1.5">
-                In <strong>Settings → Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them:
+                In <strong>Settings → 4 · Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them:
                 tap one to make it your default, which every horizontal twin video uses when you don&apos;t
                 pick another (a soft studio color until you do). <strong>Wide videos</strong> chooses{" "}
                 <strong>Me on my background</strong> or <strong>Avatar in circle</strong>, if you&apos;d
@@ -190,14 +193,92 @@ export default function HelpPage() {
               </span>
             </Step>
             <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
-              In <strong>Settings → Profile → Default Video CTA</strong>, add your years in real estate and review the
+              In <Link href="/settings#cta" className="text-primary-600 font-medium hover:underline">Settings → Profile → 5 · Default Video CTA</Link>, add your years in real estate and review the
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
               edit it once and every video ends with a proven subscribe-and-contact close. Change it
               later and it carries into videos you have already started, unless you typed over the
               closing line in that video; <strong>Use my saved CTA</strong> there brings it back.
             </Step>
-            <Step n={6} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
-              In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → Social Accounts</Link>,
+            {/* Setup rather than creating, because the useful half is done once:
+                saving the address. After that it is a Forward button in whatever
+                mail app you already live in. */}
+            <Step n={6} title="Save Your Import Address" icon={Mail}>
+              In <Link href="/settings#email-import" className="text-primary-600 font-medium hover:underline">Settings → Profile → 6 · Import Articles By Email</Link>{" "}
+              you have a private address that looks like{" "}
+              <strong>yourname-k7m3qz@in.sparkreels.ai</strong>. Forward anything to it — a newsletter, a
+              market report, an article someone sent you, or a post you wrote yourself — and it appears
+              inside SparkReels within a minute, with the signatures, forwarding headers and unsubscribe
+              footers already stripped out. Press <strong>Email this address to me</strong> and save it to
+              your contacts; after that, forwarding is the whole of it.
+              <span className="block mt-1.5">
+                It is private to your account, so treat it like a password. Anyone who has it can send
+                articles into your list, and you can replace it any time from the same screen.
+              </span>
+              {/* Where it turns up. The address was explained and the arrival
+                  was not: the only sign an email had landed was a list four
+                  taps into a route. */}
+              <span className="block mt-1.5">
+                Once something has arrived,{" "}
+                <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
+                has it under <strong>My Content/Forwarded in</strong>, in the{" "}
+                <strong>Script source</strong> row, with a <strong>new</strong> badge when something
+                has come in since you last looked. Open it, choose <strong>From email</strong>, and
+                pick the one you want. Nothing is written until you press the button at
+                the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
+                report is used to its last page. Forwarded emails are kept for 30 days.
+              </span>
+              {/* Email drafts (2026-10-24). */}
+              <span className="block mt-1.5">
+                On a paid plan, each email you forward also becomes a video draft on the{" "}
+                <Link href="/autosparks" className="text-primary-600 font-medium hover:underline">AutoSparks</Link>{" "}
+                page, ready to approve (step 16).
+              </span>
+            </Step>
+            <Step n={7} title="Put SparkReels On Your Phone" icon={PlayCircle}>
+              <Link href="/settings#phone" className="text-primary-600 font-medium hover:underline">Settings → Profile → 7 · Put SparkReels on your phone</Link>{" "}
+              shows how to open SparkReels like an app, one tap from your Home Screen.
+              <span className="block mt-1.5">
+                <strong>iPhone:</strong> open sparkreels.ai in <strong>Safari</strong>, tap{" "}
+                <strong>Share</strong> (the square with an arrow), then <strong>Add to Home Screen</strong>.{" "}
+                <strong>Android:</strong> open it in <strong>Chrome</strong>, tap the <strong>⋮</strong> menu,
+                then <strong>Add to Home screen</strong> (or <strong>Install app</strong>). On a phone that
+                can install it straight away, the card has a button for it.
+              </span>
+            </Step>
+            <Step n={8} title="Connect Your CRM" icon={Rocket}>
+              <Link href="/settings#crm" className="text-primary-600 font-medium hover:underline">Settings → Profile → 8 · CRM Integration</Link>{" "}
+              sends your work to the CRM you already use.
+              <span className="block mt-1.5">
+                <strong>BoldTrail.</strong> If you use BoldTrail, SparkReels can email your sellers and
+                clients through it, from your own BoldTrail address, and BoldTrail keeps each email on
+                that contact&apos;s record. In BoldTrail, go to Lead Engine → Lead Dropbox → My API
+                Tokens, tick <strong>Contacts</strong>, press <strong>Generate</strong> and copy the
+                token. Then paste it into the <strong>BoldTrail</strong> box in Settings → 8 · CRM
+                Integration and press <strong>Connect</strong>. It&apos;s saved securely and shown only
+                by its last four characters; <strong>Disconnect</strong> removes it. If BoldTrail
+                won&apos;t send with a Contacts token, make one with <strong>All</strong> ticked.
+                Tokens last a year.
+              </span>
+              <span className="block mt-1.5">
+                <strong>GoHighLevel and other CRMs.</strong> Every video you finish can be sent to your
+                CRM automatically, with its title, a short caption, the link, the thumbnail and your name,
+                so a workflow there can text it, email it or post it for you. In GoHighLevel, create a
+                workflow with an <strong>Inbound Webhook</strong> trigger and copy its address. In SparkReels
+                press <strong>Set up for GoHighLevel</strong>, paste the address, keep{" "}
+                <strong>Video published</strong> ticked and save. <strong>Test</strong> sends a sample with
+                the same fields a real video has, so GoHighLevel can learn them. Want it done for you? Press{" "}
+                <strong>Ask for the workflow</strong> on the GoHighLevel card and we&apos;ll email you a
+                ready-made one with step-by-step instructions. Any tool that takes a webhook (Zapier, Make
+                and others) works the same way.
+              </span>
+            </Step>
+            <Step n={9} title="Your Account" icon={User}>
+              <Link href="/settings#account" className="text-primary-600 font-medium hover:underline">Settings → Profile → 9 · Account</Link>{" "}
+              is where you set or change your password (if you signed in with Google, you can add one
+              here), sign out, or delete your account.
+            </Step>
+            <Step n={10} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
+              In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → 10 · Social Accounts</Link>,
               connect the Google account that owns your channel. One-time tip: verify the channel by phone at
               youtube.com/verify so your thumbnails are added automatically.
               {/* The two things that kept the owner's own channel unverified
@@ -239,52 +320,22 @@ export default function HelpPage() {
                 Google Business location. Pick once and every post goes there. With two Facebook
                 Pages or two locations you do have to pick, or posts there won&apos;t go out.
               </span>
-              {/* BoldTrail, added 2026-10-15. */}
-              <span className="block mt-1.5">
-                <strong>BoldTrail.</strong> If you use BoldTrail, SparkReels can email your sellers and
-                clients through it, from your own BoldTrail address, and BoldTrail keeps each email on
-                that contact&apos;s record. In BoldTrail, go to Lead Engine → Lead Dropbox → My API
-                Tokens, tick <strong>Contacts</strong>, press <strong>Generate</strong> and copy the
-                token. Then paste it into the <strong>BoldTrail</strong> box in Settings → CRM
-                Integration and press <strong>Connect</strong>. It&apos;s saved securely and shown only
-                by its last four characters; <strong>Disconnect</strong> removes it. If BoldTrail
-                won&apos;t send with a Contacts token, make one with <strong>All</strong> ticked.
-                Tokens last a year.
-              </span>
             </Step>
-            {/* Setup rather than creating, because the useful half is done once:
-                saving the address. After that it is a Forward button in whatever
-                mail app you already live in. */}
-            <Step n={7} title="Save Your Import Address" icon={Mail}>
-              In <Link href="/settings" className="text-primary-600 font-medium hover:underline">Settings → Profile → Import Articles By Email</Link>{" "}
-              you have a private address that looks like{" "}
-              <strong>yourname-k7m3qz@in.sparkreels.ai</strong>. Forward anything to it — a newsletter, a
-              market report, an article someone sent you, or a post you wrote yourself — and it appears
-              inside SparkReels within a minute, with the signatures, forwarding headers and unsubscribe
-              footers already stripped out. Press <strong>Email this address to me</strong> and save it to
-              your contacts; after that, forwarding is the whole of it.
+            <Step n={11} title="Your Plan And Buying More Videos" icon={DollarSign}>
+              <Link href="/settings/billing" className="text-primary-600 font-medium hover:underline">Settings → 11 · Billing &amp; Plan</Link>{" "}
+              shows your plan, when it renews, and what you have left this month.
               <span className="block mt-1.5">
-                It is private to your account, so treat it like a password. Anyone who has it can send
-                articles into your list, and you can replace it any time from the same screen.
+                Every plan includes <strong>4 short videos</strong> a month; Producer adds 2 long videos and
+                Influencer 4. They reset each billing month. Blog posts, camera recordings and AutoSparks
+                drafts don&apos;t use any. Need more? <strong>Buy More Videos</strong> adds one short video
+                for $25 or one long video for $29, and bought videos never expire; your plan&apos;s videos
+                are used first. The AutoSparks page shows <strong>Videos left this month</strong>, and a
+                draft you have no video left for says <strong>Needs 1 more video</strong>: pressing Approve
+                on it offers to upgrade or buy one.
               </span>
-              {/* Where it turns up. The address was explained and the arrival
-                  was not: the only sign an email had landed was a list four
-                  taps into a route. */}
               <span className="block mt-1.5">
-                Once something has arrived,{" "}
-                <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-                has it under <strong>My Content/Forwarded in</strong>, in the{" "}
-                <strong>Script source</strong> row, with a <strong>new</strong> badge when something
-                has come in since you last looked. Open it, choose <strong>From email</strong>, and
-                pick the one you want. Nothing is written until you press the button at
-                the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
-                report is used to its last page. Forwarded emails are kept for 30 days.
-              </span>
-              {/* Email drafts (2026-10-24). */}
-              <span className="block mt-1.5">
-                On a paid plan, each email you forward also becomes a video draft on the{" "}
-                <Link href="/autosparks" className="text-primary-600 font-medium hover:underline">AutoSparks</Link>{" "}
-                page, ready to approve (step 12).
+                <strong>Manage Billing</strong> changes your plan or card, or cancels. A cancelled plan stays
+                active until the end of the month you paid for.
               </span>
             </Step>
           </div>
@@ -379,10 +430,10 @@ export default function HelpPage() {
                 headline, and the cards and the source row follow it. Its own
                 sections are called by their labels here, not "step 1", so
                 they are not mistaken for the numbered steps of this guide. */}
-            <Step n={8} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
+            <Step n={12} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
               has four sections, top to bottom. <strong>1 · Say or Pick a Topic</strong> — one card with
-              the mic and a box, where you say or type what it&apos;s about (step 9).{" "}
+              the mic and a box, where you say or type what it&apos;s about (step 13).{" "}
               <strong>2 · Create</strong> — four
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>. Video / Reel stays on
@@ -391,8 +442,8 @@ export default function HelpPage() {
               already said or typed comes with you.{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
-              you forwarded in turns up (step 7). A listing or a photos only reel skips this
-              one (step 15). <strong>4 · Details</strong> — the city and state, who
+              you forwarded in turns up (step 6). A listing or a photos only reel skips this
+              one (step 19). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s format.
               <span className="block mt-1.5">
                 You don&apos;t have to work down all four. Give it a topic at the top, check the
@@ -408,7 +459,7 @@ export default function HelpPage() {
                 <strong> Avatar video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
-                has nobody on screen: it is a Scenes Reel (step 13). Each uses one short video. If
+                has nobody on screen: it is a Scenes Reel (step 17). Each uses one short video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
                 &ldquo;voice over only&rdquo;, it isn&apos;t asked.
               </span>
@@ -428,7 +479,7 @@ export default function HelpPage() {
                 <strong>Already written it?</strong>{" "}
                 <strong>My Content/Forwarded in</strong> is the one place for it, the second
                 box under Script source. Paste your words in, or attach a PDF, a link, or an email you
-                forwarded to your import address (step 7). On a video you then say what happens to
+                forwarded to your import address (step 6). On a video you then say what happens to
                 them: <strong>Speak it word for word</strong>, for a finished script, or{" "}
                 <strong>Have AI write from it</strong>, which either writes a new script from it or
                 shortens an article of your own. The script comes back for you to read before
@@ -459,7 +510,7 @@ export default function HelpPage() {
                 shows <strong>Remove from my list</strong> for when you no longer want it.
               </span>
             </Step>
-            <Step n={9} title="Speak It Or Type It — Your Choice" icon={Mic}>
+            <Step n={13} title="Speak It Or Type It — Your Choice" icon={Mic}>
               {/* Ask Sparklee, added 2026-10-14; her badge and the card on the
                   steps bar, 2026-10-15. */}
               <span className="block mb-1.5">
@@ -499,7 +550,7 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 Say <em>&ldquo;make a reel about&hellip;&rdquo;</em> and it makes a Voice over only
-                Scenes Reel (step 13). Say who&apos;s in it, as in <em>&ldquo;a reel with my
+                Scenes Reel (step 17). Say who&apos;s in it, as in <em>&ldquo;a reel with my
                 avatar&rdquo;</em>, and it makes that instead.
               </span>
               {/* The cards and the box agree, in both directions. */}
@@ -527,7 +578,7 @@ export default function HelpPage() {
                 the one showing, or just start typing. Under it is a{" "}
                 <strong>Quick win</strong>: a ready topic for your town in one press, with a new idea
                 each time you sign in (your very first one is a market update). Then{" "}
-                <strong>What buyers ask AI</strong> (step 21), and under that <strong>Or try</strong>:
+                <strong>What buyers ask AI</strong> (step 25), and under that <strong>Or try</strong>:
                 ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
                 and a search box. Tap one and it lands in the same box the mic writes into, so you can
                 add to it before you send. The first chip, <strong>👋 Agent Intro</strong>, is a short
@@ -541,7 +592,7 @@ export default function HelpPage() {
                 broadcast-quality script with real stats.
               </span>
             </Step>
-            <Step n={10} title="Review & Edit The Script" icon={Wand2}>
+            <Step n={14} title="Review & Edit The Script" icon={Wand2}>
               Pick your favorite <strong>hook</strong> — it becomes the video title too, so the two never
               disagree. Edit the script freely; a live word counter keeps you inside the cap. Your{" "}
               <strong>Call To Action</strong> is on the next screen, in Video setup under Music: it is spoken
@@ -558,7 +609,7 @@ export default function HelpPage() {
                 voice clone yet, it reads in a standard voice.
               </span>
             </Step>
-            <Step n={11} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
+            <Step n={15} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
               <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes — or{" "}
               <strong>Longform 16:9</strong> (up to 8 minutes. Add your own photos and you&apos;re in a
@@ -608,7 +659,7 @@ export default function HelpPage() {
             {/* Its own step: the owner wants it found, and it was the last
                 paragraph of the listings step. */}
             {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
-            <Step n={12} title="AutoSparks, Halo Sites And Email Drafts (Paid Plans)" icon={Sparkles}>
+            <Step n={16} title="AutoSparks, Halo Sites And Email Drafts (Paid Plans)" icon={Sparkles}>
               Every Sunday evening, SparkReels writes 3 posts for your week about your market, the
               season, and what buyers are asking AI: 1 video and 2 blog posts to start, or pick your
               own mix at the top of the AutoSparks page (2 videos and 1 blog, 3 videos, or 3 blogs).
@@ -679,7 +730,7 @@ export default function HelpPage() {
               </span>
               <span className="block mt-3 font-semibold text-brand-text">Email drafts</span>
               <span className="block mt-1">
-                Every email you forward to your import address (step 7) also becomes a video draft in
+                Every email you forward to your import address (step 6) also becomes a video draft in
                 the same list, marked <strong>Email</strong>, about a minute after it arrives. It is set
                 for the next free day at your Halo time and is not one of your Halo videos for the
                 month. The script is written fresh from the email, so a market report from a data
@@ -690,7 +741,7 @@ export default function HelpPage() {
                 sites box; your emails still arrive in Spark Studio either way.
               </span>
             </Step>
-            <Step n={13} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
+            <Step n={17} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
               A <strong>Scenes Reel</strong> needs no photos, no camera and no face. Your voice
               clone reads the script over short, realistic scenes made with AI, one for each
               sentence, on screen while that sentence is spoken. It is the quickest video to make
@@ -722,11 +773,11 @@ export default function HelpPage() {
                 close-ups, rooms, streets, different light. They are generic on purpose. People
                 appear only from behind or at a distance, there are no readable words, and it is
                 never your town or a real listing. For a real property use a Photos only reel with
-                its own photos (step 15). A Scenes Reel uses <strong>one short video</strong>, and{" "}
+                its own photos (step 19). A Scenes Reel uses <strong>one short video</strong>, and{" "}
                 <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
               </span>
             </Step>
-            <Step n={14} title="Camera/Teleprompter — The Free Option" icon={Camera}>
+            <Step n={18} title="Camera/Teleprompter — The Free Option" icon={Camera}>
               Pressing <strong>Camera/Teleprompter</strong> opens a page of its own, with{" "}
               <strong>Back</strong> on the bar at the bottom to return to Spark Studio. The mic box at
               the top holds what it&apos;s about; anything you already said or typed on Spark Studio
@@ -820,7 +871,7 @@ export default function HelpPage() {
             {/* Its own step since the card moved up to row 1 and the reel
                 gained a paid kind. "Free" on its own stopped being true of
                 the photo reel the day Cinematic shipped. */}
-            <Step n={15} title="Listings And Photos Only Reels" icon={ImageIcon}>
+            <Step n={19} title="Listings And Photos Only Reels" icon={ImageIcon}>
               <strong>Listings &amp; photos</strong>, the fourth card, opens a page of its own with two
               tabs, and both start from a set of property pictures. <strong>Back</strong>, on the bar
               at the bottom, returns to Spark Studio.{" "}
@@ -874,17 +925,17 @@ export default function HelpPage() {
                 accepts.
               </span>
               <span className="block mt-1.5">
-                No photos to start from? That is a Scenes Reel (step 13).
+                No photos to start from? That is a Scenes Reel (step 17).
               </span>
             </Step>
-            <Step n={16} title="Your Share Kit — And A Blog Post" icon={FileText}>
+            <Step n={20} title="Your Share Kit — And A Blog Post" icon={FileText}>
               Every video finishes on its <strong>Share Kit</strong>: the title, description and hashtags
               Publish fills in for you, plus an Instagram caption, a LinkedIn post and an email blurb. It also
               holds a <strong>blog article</strong> — usually 1,000 to 1,500 words, titled with the question a
               reader would actually type, headings written the same way and answered in the first line,
               and a <strong>Frequently Asked Questions</strong> section of six questions at the end, chosen
               from what people are asking about that subject in your town. Those six are{" "}
-              <strong>AI answer blocks</strong>, built into every article (step 21). That is the shape an AI
+              <strong>AI answer blocks</strong>, built into every article (step 25). That is the shape an AI
               assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               {/* Editing the article (2026-10-16). */}
               To change the words, press <strong>Edit</strong> on the article. The introduction, body
@@ -967,7 +1018,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 3 · Publish</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Get It In Front Of People</h2>
           <div className="flex flex-col gap-4">
-            <Step n={17} title="Publish To YouTube — One Click" icon={MonitorPlay}>
+            <Step n={21} title="Publish To YouTube — One Click" icon={MonitorPlay}>
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
@@ -994,8 +1045,8 @@ export default function HelpPage() {
             {/* Rewritten when posting to the other platforms went live. It said
                 to download the MP4 and post it by hand, which is still there
                 at the end for anywhere that is not connected. */}
-            <Step n={18} title="Everywhere Else — From The Same Window" icon={Upload}>
-              The <strong>Publish</strong> window lists every account you connected in step 6. Tick the
+            <Step n={22} title="Everywhere Else — From The Same Window" icon={Upload}>
+              The <strong>Publish</strong> window lists every account you connected in step 10. Tick the
               ones this video should go to and the button names them — <strong>Publish to
               Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
               until you press it. <strong>Creator</strong> posts each video to YouTube plus three
@@ -1086,7 +1137,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={19} title="The Everyday Tools" icon={Wand2}>
+            <Step n={23} title="The Everyday Tools" icon={Wand2}>
               You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
@@ -1101,7 +1152,7 @@ export default function HelpPage() {
               <span className="block mt-1.5">
                 <strong>Google Reviews</strong> shows the reviews on your Google Business profile,
                 with your average and how many there are. It needs Google Business connected
-                (step 6). <strong>Needs a reply</strong> is ticked to begin with, so you see only
+                (step 10). <strong>Needs a reply</strong> is ticked to begin with, so you see only
                 the ones you haven&apos;t answered; untick it to see them all. On any review,{" "}
                 <strong>Draft a reply</strong> writes a short one in your voice for you to edit, or{" "}
                 <strong>Write my own</strong> gives you an empty box. Nothing goes to Google until
@@ -1149,7 +1200,7 @@ export default function HelpPage() {
             {/* The graphics tools, which were not described anywhere — and the
                 counting rule, which is the thing people actually need to know
                 before they press a button that spends something. */}
-            <Step n={20} title="Graphics Without A Designer" icon={ImageIcon}>
+            <Step n={24} title="Graphics Without A Designer" icon={ImageIcon}>
               The <strong>Image Generator</strong> makes a finished graphic: pick{" "}
               <strong>Just listed</strong>, <strong>Open house</strong>, <strong>Market update</strong>,{" "}
               <strong>Blog header</strong> or <strong>Blank</strong>, describe the picture you want, and
@@ -1190,7 +1241,7 @@ export default function HelpPage() {
                 you can change the text and colors yourself.
               </span>
             </Step>
-            <Step n={21} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
+            <Step n={25} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;
               months before they call an agent. On <strong>Create</strong>, under the topic box,{" "}
               <strong>What buyers ask AI</strong> shows a question buyers in your city are asking right
@@ -1199,7 +1250,7 @@ export default function HelpPage() {
               topic, so the video answers it.
               <span className="block mt-1.5">
                 <strong>Every blog article already has answer blocks.</strong> The six questions at the end
-                of each article in your Share Kit (step 16) are written the way AI assistants quote, for
+                of each article in your Share Kit (step 20) are written the way AI assistants quote, for
                 that article&apos;s topic, so there is nothing extra to make.
               </span>
               <span className="block mt-1.5">
@@ -1220,7 +1271,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 5 · Finding Your Work</p>
           <h2 className="text-base font-bold text-brand-text mb-4">Sparks, Insights And The Calendar</h2>
           <div className="flex flex-col gap-4">
-            <Step n={22} title="What A Spark Is" icon={Sparkles}>
+            <Step n={26} title="What A Spark Is" icon={Sparkles}>
               A <strong>Spark</strong> is one idea and everything that came out of it: the script, the
               video or videos made from it, the article, the captions, and where each has been
               published. One topic, one Spark — even if you make a short version, a long version and a
@@ -1237,7 +1288,7 @@ export default function HelpPage() {
               </span>
             </Step>
             {/* The Dashboard and Spark Insights became one page on 2026-10-14. */}
-            <Step n={23} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
+            <Step n={27} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
               opens with what you have left — short videos, long videos, and whether camera recording
               is unlocked with the days remaining — a <strong>Getting Started</strong> checklist that
@@ -1258,14 +1309,14 @@ export default function HelpPage() {
               </span>
               </span>
             </Step>
-            <Step n={24} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
+            <Step n={28} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
               view, with the <strong>All Sparks</strong> panel beside it for everything that has no
               date yet. Open any Spark from either side to reach its card. This one is still rolling
               out: it appears in your menu when your account has it.
             </Step>
             {/* The affiliate program (2026-10-17), worded as the owner approved. */}
-            <Step n={25} title="Earn With The Affiliate Program" icon={DollarSign}>
+            <Step n={29} title="Earn With The Affiliate Program" icon={DollarSign}>
               Recommend SparkReels and earn <strong>20% of what each customer you refer pays, every
               month for their first 12 months</strong>. Open <strong>Affiliate</strong> in the menu and
               press <strong>Apply to join</strong>, or use <strong>Affiliates</strong> at the bottom of

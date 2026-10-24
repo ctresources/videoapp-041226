@@ -155,7 +155,7 @@ export default async function BillingPage({
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-brand-text">Billing & Plan</h2>
+        <h2 className="text-2xl font-bold text-brand-text">11 · Billing & Plan</h2>
         <p className="text-sm text-slate-500 mt-1">Manage Your Subscription And Usage</p>
       </div>
 
@@ -210,10 +210,10 @@ export default async function BillingPage({
       {/* Steps (2026-10-17). */}
       <SettingsSteps
         steps={[
-          { id: "your-plan", label: "Your plan" },
-          { id: "plans", label: "Plans" },
-          { id: "buy-more", label: "Buy more videos" },
-          { id: "questions", label: "Questions" },
+          { id: "your-plan", n: "11.1", label: "Your plan" },
+          { id: "plans", n: "11.2", label: "Plans" },
+          { id: "buy-more", n: "11.3", label: "Buy more videos" },
+          { id: "questions", n: "11.4", label: "Questions" },
         ]}
       />
 

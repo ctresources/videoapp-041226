@@ -1571,9 +1571,9 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
 
       <div className="border-t border-slate-100" />
 
-      {/* ── Digital Twin ─────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Digital Twin</p>
+      {/* ── Digital Twin ── step 4 in How It Works (2026-10-24) ─────────── */}
+      <div id="twin" className="scroll-mt-28">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">4 · Digital Twin</p>
         <p className="text-xs text-slate-400 mb-4">
           A lifelike video of you, made from a 2-minute recording.
         </p>

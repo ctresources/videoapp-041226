@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils/cn";
  * work and open the right tab, because Stripe and many buttons point at them.
  */
 const TABS = [
-  { href: "/settings", label: "Profile" },
-  { href: "/settings/social", label: "Social Accounts" },
-  { href: "/settings/billing", label: "Billing" },
+  { href: "/settings", label: "Profile · 1–9" },
+  { href: "/settings/social", label: "Social Accounts · 10" },
+  { href: "/settings/billing", label: "Billing · 11" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

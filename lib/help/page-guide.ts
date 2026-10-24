@@ -18,16 +18,16 @@ const PARTS = (guide as { parts: GuidePart[] }).parts;
 
 /** Each screen, by its address, and the guide steps about it. */
 const PAGES: { name: string; match: (p: string) => boolean; steps: number[] }[] = [
-  { name: "Spark Studio (Create)", match: (p) => p === "/create", steps: [8, 9, 11, 13, 14, 15, 21] },
-  { name: "the video editor (script, setup, Share Kit)", match: (p) => p.startsWith("/create/"), steps: [10, 11, 16, 17, 18] },
-  { name: "AutoSparks", match: (p) => p.startsWith("/autosparks") || p.startsWith("/autopilot"), steps: [12] },
-  { name: "My Sparks", match: (p) => p.startsWith("/videos"), steps: [16, 17, 18, 22] },
-  { name: "Social Accounts settings", match: (p) => p.startsWith("/settings/social") || p.startsWith("/social"), steps: [6, 17, 18] },
-  { name: "Billing (in Settings)", match: (p) => p.startsWith("/billing") || p.startsWith("/settings/billing"), steps: [] },
-  { name: "Settings", match: (p) => p.startsWith("/settings"), steps: [1, 2, 3, 4, 5, 7] },
-  { name: "Spark Tools", match: (p) => p.startsWith("/tools"), steps: [19, 20, 21] },
-  { name: "Spark Insights", match: (p) => p.startsWith("/analytics") || p.startsWith("/dashboard"), steps: [22, 23] },
-  { name: "Spark Calendar", match: (p) => p.startsWith("/calendar") || p.startsWith("/campaigns"), steps: [24, 22] },
+  { name: "Spark Studio (Create)", match: (p) => p === "/create", steps: [12, 13, 15, 17, 18, 19, 25] },
+  { name: "the video editor (script, setup, Share Kit)", match: (p) => p.startsWith("/create/"), steps: [14, 15, 20, 21, 22] },
+  { name: "AutoSparks", match: (p) => p.startsWith("/autosparks") || p.startsWith("/autopilot"), steps: [16] },
+  { name: "My Sparks", match: (p) => p.startsWith("/videos"), steps: [20, 21, 22, 26] },
+  { name: "Social Accounts settings", match: (p) => p.startsWith("/settings/social") || p.startsWith("/social"), steps: [10, 21, 22] },
+  { name: "Billing (in Settings)", match: (p) => p.startsWith("/billing") || p.startsWith("/settings/billing"), steps: [11] },
+  { name: "Settings", match: (p) => p.startsWith("/settings"), steps: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+  { name: "Spark Tools", match: (p) => p.startsWith("/tools"), steps: [23, 24, 25] },
+  { name: "Spark Insights", match: (p) => p.startsWith("/analytics") || p.startsWith("/dashboard"), steps: [26, 27] },
+  { name: "Spark Calendar", match: (p) => p.startsWith("/calendar") || p.startsWith("/campaigns"), steps: [28, 26] },
   { name: "How It Works", match: (p) => p.startsWith("/help"), steps: [] },
   { name: "the welcome setup", match: (p) => p.startsWith("/onboarding"), steps: [1, 2, 3] },
 ];
