@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Loader2, Search, Send, X } from "lucide-react";
+import { Loader2, Search, Send, UserPlus, X } from "lucide-react";
 
 /**
  * Send through BoldTrail, for a blog post's email and a newsletter
@@ -46,6 +46,11 @@ export function BoldTrailSend({
   const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
   const [last, setLast] = useState<{ at: string; to: Result[] } | null>(null);
+  // Someone not in BoldTrail yet: name + email, added to BoldTrail, then picked.
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [adding, setAdding] = useState(false);
   const seq = useRef(0);
 
   useEffect(() => {
@@ -81,6 +86,38 @@ export function BoldTrailSend({
     setTo((prev) => (prev.some((x) => x.id === c.id) ? prev : prev.length >= MAX ? (toast.error(`Up to ${MAX} people at a time.`), prev) : [...prev, c]));
     setQuery("");
     setFound([]);
+  }
+
+  function openNew() {
+    const term = query.trim();
+    if (term.includes("@")) { setNewEmail(term); setNewName(""); } else { setNewName(term); setNewEmail(""); }
+    setNewOpen(true);
+    setOpen(false);
+  }
+
+  async function addNew() {
+    if (!newName.trim()) { toast.error("Enter their name."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) { toast.error("Enter their email."); return; }
+    if (to.length >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    setAdding(true);
+    try {
+      const res = await fetch("/api/boldtrail/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), email: newEmail.trim() }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.error || "Couldn't add them.");
+      add(d.contact as BtContact);
+      toast.success(d.created ? `${d.contact.name} added to your BoldTrail.` : `${d.contact.name} was already in your BoldTrail.`);
+      setNewOpen(false);
+      setNewName("");
+      setNewEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't add them.");
+    } finally {
+      setAdding(false);
+    }
   }
 
   function pressSend() {
@@ -166,11 +203,37 @@ export function BoldTrailSend({
                     <span className="shrink-0 text-[12px] text-spark-ink-muted">{c.email}</span>
                   </button>
                 ))}
+                {!searching && (
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openNew}
+                    className="flex w-full items-center gap-1.5 border-t border-spark-rule px-3 py-2 text-left text-[13px] font-semibold text-[#A3660F] hover:bg-orange-50">
+                    <UserPlus size={13} /> Add someone new
+                  </button>
+                )}
               </div>
             )}
           </div>
         )}
+        {to.length < MAX && !newOpen && (
+          <button type="button" onClick={openNew} className="flex items-center gap-1 text-[12.5px] font-semibold text-[#A3660F] hover:underline">
+            <UserPlus size={13} /> Add someone new
+          </button>
+        )}
       </div>
+      {newOpen && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[10px] border border-orange-200 bg-white p-2">
+          <input type="text" name="boldtrail-new-name" autoComplete="off" data-1p-ignore data-lpignore="true" value={newName}
+            onChange={(e) => setNewName(e.target.value)} placeholder="Name" className={`${input} min-w-[140px] flex-1`} />
+          <input type="email" name="boldtrail-new-email" autoComplete="off" data-1p-ignore data-lpignore="true" value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNew(); } }}
+            placeholder="Email" className={`${input} min-w-[180px] flex-[1.4]`} />
+          <button type="button" onClick={addNew} disabled={adding}
+            className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50">
+            {adding ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Add
+          </button>
+          <button type="button" onClick={() => setNewOpen(false)} aria-label="Cancel" className="text-spark-ink-muted hover:text-red-600"><X size={14} /></button>
+          <p className="w-full text-[11.5px] text-spark-ink-muted">Also saved to your BoldTrail as a Sphere contact.</p>
+        </div>
+      )}
       {free.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-spark-ink-muted">
           Recent:
