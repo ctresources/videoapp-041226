@@ -10,6 +10,12 @@ import { CAMPAIGN_CALENDAR, hasFeature } from "@/lib/utils/feature-access";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 
 /**
+ * Short videos each plan gets a month, as in PLANS (lib/stripe.ts). Copied
+ * rather than imported: that module starts the payment client on load.
+ */
+const SHORT_PER_MONTH: Record<string, number> = { starter: 4, agent: 4, pro: 4 };
+
+/**
  * The caller's remaining short/long videos.
  *
  * Lets the create screen say "you're out" BEFORE someone fills in a topic,
@@ -59,6 +65,10 @@ export async function GET() {
     unlimited: isAdmin,
     short: availableFor(profile as never, "short"),
     long: availableFor(profile as never, "long"),
+    // For "Videos left this month: 2 of 4 · 1 bought" on AutoSparks (2026-10-24).
+    shortPlanLeft: Number(profile.credits_remaining ?? 0),
+    shortBought: Number(profile.purchased_short_videos ?? 0),
+    shortPerMonth: SHORT_PER_MONTH[(profile.subscription_tier as string) ?? ""] ?? 0,
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
     isRealAdmin,

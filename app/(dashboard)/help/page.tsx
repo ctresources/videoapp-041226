@@ -586,8 +586,10 @@ export default function HelpPage() {
             {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
             <Step n={12} title="AutoSparks, Halo Sites And Email Drafts (Paid Plans)" icon={Sparkles}>
               Every Sunday evening, SparkReels writes 3 posts for your week about your market, the
-              season, and what buyers are asking AI: 2 videos and 1 blog post to start, or pick your
-              own mix at the top of the AutoSparks page (1 video and 2 blogs, 3 videos, or 3 blogs).
+              season, and what buyers are asking AI: 1 video and 2 blog posts to start, or pick your
+              own mix at the top of the AutoSparks page (2 videos and 1 blog, 3 videos, or 3 blogs).
+              Each video you approve uses one of your plan&apos;s videos for the month; the top of the
+              page shows how many you have left.
               Every video also comes with its own blog article. Each comes with
               its script, blog post, title and description, set for Tuesday, Thursday and Saturday
               at 9 AM, or the 3 days and time you pick under <strong>Post on</strong>. On Monday morning you get an email: &ldquo;Your week is ready.&rdquo; Open{" "}

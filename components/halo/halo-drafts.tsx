@@ -179,7 +179,7 @@ function PutOnHalo({ d }: { d: HaloDraft }) {
   );
 }
 
-function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
+function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo; needsVideo: boolean; onOutOfVideos: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -191,17 +191,14 @@ function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
   const done = d.status === "scheduled" || d.status === "posted";
 
   async function approve() {
+    // No video left for it: the Upgrade / Buy popup (2026-10-24).
+    if (needsVideo) { onOutOfVideos(); return; }
     setApproving(true);
     const err = await halo.approve(d);
     setApproving(false);
     if (!err) { setOpen(false); return; }
     if (err.code === "out_of_videos") {
-      toast((t) => (
-        <span className="flex flex-col gap-2 text-sm">
-          <span>That&apos;s this month&apos;s videos used. Nothing was charged.</span>
-          <a href="/settings/billing" onClick={() => toast.dismiss(t.id)} className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">See plans</a>
-        </span>
-      ), { duration: 12000 });
+      onOutOfVideos();
     } else if (err.code === "no_headshot") {
       toast((t) => (
         <span className="flex flex-col gap-2 text-sm">
@@ -230,6 +227,7 @@ function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
             <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
+            {needsVideo && d.status === "draft" && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
             <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : d.source === "email" ? "border-spark-rule bg-[#faf9f5] text-spark-ink-soft" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
           </div>
           <p className="mt-1.5 text-base font-semibold leading-snug text-spark-ink">{title}</p>
@@ -339,7 +337,12 @@ function AlsoNew({ halo }: { halo: Halo }) {
   );
 }
 
-export function HaloDrafts({ halo }: { halo: Halo }) {
+export function HaloDrafts({ halo, needsVideo, onOutOfVideos }: {
+  halo: Halo;
+  /** Drafts past the videos left this month (2026-10-24). */
+  needsVideo: Set<string>;
+  onOutOfVideos: () => void;
+}) {
   const { drafts, settings } = halo;
   if (!settings || (!drafts.length && !halo.pages.length)) return null;
 
@@ -364,7 +367,7 @@ export function HaloDrafts({ halo }: { halo: Halo }) {
           </span>
         )}
       </div>
-      {drafts.map((d) => <Card key={d.id} d={d} halo={halo} />)}
+      {drafts.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
       <AlsoNew halo={halo} />
     </div>
   );

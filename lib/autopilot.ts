@@ -188,9 +188,10 @@ export async function startDrafts(
   const recent = ((recentRows ?? []) as { title: string | null }[]).map((r) => r.title ?? "").filter(Boolean);
 
   const count = opts.count ?? AUTOPILOT_PER_WEEK;
-  // The agent's weekly mix (2 videos + 1 blog unless they chose otherwise),
-  // scaled to however many are being written.
-  const weekly = Math.max(0, Math.min(AUTOPILOT_PER_WEEK, profile.autopilot_videos ?? 2));
+  // The agent's weekly mix (1 video + 2 blogs unless they chose otherwise,
+  // since 2026-10-24: every plan has 4 short videos a month), scaled to
+  // however many are being written.
+  const weekly = Math.max(0, Math.min(AUTOPILOT_PER_WEEK, profile.autopilot_videos ?? 1));
   // An ask that says "blog" or "video" gets that, whatever the weekly mix.
   const asked = opts.request ?? "";
   const videos = /\bblogs?\b|\barticles?\b/i.test(asked) && !/\bvideos?\b|\breels?\b/i.test(asked)

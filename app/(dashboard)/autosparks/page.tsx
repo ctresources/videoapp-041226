@@ -14,6 +14,7 @@ import { PAID_TIERS } from "@/lib/utils/plan-features";
 import { useHalo } from "@/components/halo/use-halo";
 import { HaloSitesCard } from "@/components/halo/halo-sites-card";
 import { HaloDrafts } from "@/components/halo/halo-drafts";
+import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 
 /**
  * Weekly Autopilot's review screen (2026-10-21, the owner's plan and mockup).
@@ -74,6 +75,18 @@ export default function AutopilotPage() {
   const monday = thisMonday();
   // Halo sites and their drafts (2026-10-24), shown on this page with their own list.
   const halo = useHalo(user?.id);
+  // Videos left this month, and the Upgrade / Buy popup (2026-10-24, the owner's ask).
+  const [allowance, setAllowance] = useState<{
+    unlimited: boolean; short: number; tier: string;
+    shortPlanLeft: number; shortBought: number; shortPerMonth: number;
+  } | null>(null);
+  const [outOfVideos, setOutOfVideos] = useState(false);
+  const loadAllowance = useCallback(() => {
+    fetch("/api/profile/allowance")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => { if (a) setAllowance(a); })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -92,9 +105,30 @@ export default function AutopilotPage() {
     void load();
     fetch("/api/profile/allowance")
       .then((r) => (r.ok ? r.json() : null))
-      .then((a) => setEligible(!!a && (a.isAdmin || PAID_TIERS.includes(a.tier))))
+      .then((a) => {
+        setEligible(!!a && (a.isAdmin || PAID_TIERS.includes(a.tier)));
+        if (a) setAllowance(a);
+      })
       .catch(() => setEligible(true));
   }, [load]);
+
+  /**
+   * Which video drafts the agent has no video left for (2026-10-24): every
+   * video draft still to approve, AutoSparks and Halo alike, in date order;
+   * the ones past the videos left are marked "Needs 1 more video", and their
+   * Approve opens the Upgrade / Buy popup.
+   */
+  const needsVideo = new Set<string>();
+  if (allowance && !allowance.unlimited) {
+    const pending = [
+      ...drafts.filter((d) => d.kind === "video" && d.status === "draft").map((d) => ({ id: d.id, at: d.slot_at })),
+      ...halo.drafts.filter((d) => d.status === "draft").map((d) => ({ id: d.id, at: d.slot_at })),
+    ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+    pending.slice(Math.max(0, allowance.short)).forEach((p) => needsVideo.add(p.id));
+  }
+  // A Halo video was approved, so a video was used: show the new count.
+  const haloApproved = halo.drafts.filter((d) => d.status !== "draft" && d.status !== "writing").length;
+  useEffect(() => { loadAllowance(); }, [haloApproved, loadAllowance]);
 
   useEffect(() => {
     if (!user) return;
@@ -102,7 +136,7 @@ export default function AutopilotPage() {
       .then(({ data }) => {
         const p = data as { autopilot_enabled?: boolean; autopilot_videos?: number; autopilot_days?: number[]; autopilot_time?: string } | null;
         setEnabled(p?.autopilot_enabled ?? true);
-        setVideos(p?.autopilot_videos ?? 2);
+        setVideos(p?.autopilot_videos ?? 1);
         setDays(p?.autopilot_days?.length ? p.autopilot_days : [2, 4, 6]);
         setTime(p?.autopilot_time ?? "09:00");
       });
@@ -228,6 +262,18 @@ export default function AutopilotPage() {
           <p className="text-sm text-spark-ink-muted">
             {weekLabel(monday)}{toReview > 0 && ` · ${toReview} to review`}
           </p>
+          {/* Videos left this month (2026-10-24, the owner's ask). */}
+          {allowance && !allowance.unlimited && (
+            <p className="mt-0.5 text-[13px] text-spark-ink-muted">
+              Videos left this month:{" "}
+              <b className={allowance.short > 0 ? "text-spark-ink" : "text-red-600"}>
+                {allowance.shortPlanLeft} of {allowance.shortPerMonth}
+              </b>
+              {allowance.shortBought > 0 && ` · ${allowance.shortBought} bought`}
+              {" · "}
+              <Link href="/billing#add-ons" className="font-semibold text-spark-blue">Get more</Link>
+            </p>
+          )}
         </div>
         {enabled !== null && (
           <button
@@ -249,8 +295,8 @@ export default function AutopilotPage() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-spark-ink-muted">Each week:</span>
           {[
-            { n: 2, label: "2 videos + 1 blog" },
             { n: 1, label: "1 video + 2 blogs" },
+            { n: 2, label: "2 videos + 1 blog" },
             { n: 3, label: "3 videos" },
             { n: 0, label: "3 blogs" },
           ].map(({ n, label }) => (
@@ -328,7 +374,7 @@ export default function AutopilotPage() {
         <p className="mt-1.5 text-[11px] text-spark-ink-faint">Up to 3 drafts each time, written in about a minute.</p>
       </div>
 
-      <HaloDrafts halo={halo} />
+      <HaloDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       {halo.drafts.length > 0 && (
         <p className="mt-1 text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">AutoSparks</p>
       )}
@@ -354,6 +400,7 @@ export default function AutopilotPage() {
                     {d.kind === "video" ? <><Video size={11} /> Video · Avatar in circle</> : <><FileText size={11} /> Blog post</>}
                   </span>
                   {d.requested && <span className="rounded-full bg-spark-amber-tint px-2 py-0.5 text-[#A3660F]">You asked</span>}
+                  {needsVideo.has(d.id) && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
                 </div>
                 <p className="mt-1.5 text-[15px] font-semibold leading-snug text-spark-ink">{title}</p>
                 {hook && d.status !== "writing" && <p className="mt-0.5 line-clamp-2 text-[13px] text-spark-ink-muted">&ldquo;{hook}&rdquo;</p>}
@@ -371,7 +418,11 @@ export default function AutopilotPage() {
                   )}
                   {d.status === "draft" && (
                     <>
-                      <Button size="sm" onClick={async () => { if (await setStatus(d, "approved")) open(d); }}>Approve</Button>
+                      <Button size="sm" onClick={async () => {
+                        // No video left for it: the Upgrade / Buy popup instead (2026-10-24).
+                        if (needsVideo.has(d.id)) { setOutOfVideos(true); return; }
+                        if (await setStatus(d, "approved")) open(d);
+                      }}>Approve</Button>
                       {d.kind === "video" && (
                         <Button size="sm" variant="outline" onClick={() => void recordMyself(d)} className="gap-1.5">
                           <Camera size={13} /> Record it myself
@@ -405,6 +456,10 @@ export default function AutopilotPage() {
             Approve opens it ready to make. Nothing is made or posted until you do.
           </p>
         </div>
+      )}
+      {/* Upgrade or buy one more (2026-10-24): the same popup the editor shows. */}
+      {outOfVideos && (
+        <OutOfVideosModal kind="short" tier={allowance?.tier ?? "free"} onClose={() => setOutOfVideos(false)} />
       )}
     </div>
   );
