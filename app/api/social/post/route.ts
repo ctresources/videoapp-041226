@@ -33,8 +33,21 @@ interface PostRequestTarget {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  /**
+   * Approved Halo videos post themselves once finished (lib/halo/post.ts,
+   * 2026-10-24): that job comes in with the cron secret and says whose video
+   * it is, the same way AutoSparks drafts are written. Every other request is
+   * the signed-in agent, as before.
+   */
+  const asUser = req.headers.get("x-autopilot-user");
+  const cronSecret = process.env.CRON_SECRET;
+  let user: { id: string } | null = null;
+  if (asUser && cronSecret && req.headers.get("authorization") === `Bearer ${cronSecret}`) {
+    user = { id: asUser };
+  } else {
+    const supabase = await createClient();
+    user = (await supabase.auth.getUser()).data.user;
+  }
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();

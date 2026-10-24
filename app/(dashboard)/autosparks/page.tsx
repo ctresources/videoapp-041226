@@ -11,6 +11,9 @@ import { ListenButton } from "@/components/ui/listen-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
+import { useHalo } from "@/components/halo/use-halo";
+import { HaloSitesCard } from "@/components/halo/halo-sites-card";
+import { HaloDrafts } from "@/components/halo/halo-drafts";
 
 /**
  * Weekly Autopilot's review screen (2026-10-21, the owner's plan and mockup).
@@ -69,6 +72,8 @@ export default function AutopilotPage() {
   const [ask, setAsk] = useState("");
   const [asking, setAsking] = useState(false);
   const monday = thisMonday();
+  // Halo sites and their drafts (2026-10-24), shown on this page with their own list.
+  const halo = useHalo(user?.id);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -76,6 +81,8 @@ export default function AutopilotPage() {
       .from("autopilot_drafts")
       .select("id, week_of, slot_at, kind, topic, reason, requested, project_id, status, projects(title, ai_script)")
       .gte("week_of", monday)
+      // Halo drafts share the table; they have their own list below.
+      .eq("source", "autosparks")
       .order("slot_at");
     setDrafts((data ?? []) as unknown as Draft[]);
     setLoading(false);
@@ -298,6 +305,9 @@ export default function AutopilotPage() {
         </div>
       )}
 
+      {/* Halo sites (2026-10-24, the owner's mockup). */}
+      {halo.loaded && halo.settings && <HaloSitesCard halo={halo} />}
+
       {/* Ask for ideas (2026-10-21, the owner's ask). */}
       <div className="rounded-2xl border border-spark-rule bg-white p-4">
         <p className="mb-2 text-sm font-semibold text-spark-ink">Ask for ideas</p>
@@ -317,6 +327,11 @@ export default function AutopilotPage() {
         </div>
         <p className="mt-1.5 text-[11px] text-spark-ink-faint">Up to 3 drafts each time, written in about a minute.</p>
       </div>
+
+      <HaloDrafts halo={halo} />
+      {halo.drafts.length > 0 && (
+        <p className="mt-1 text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">AutoSparks</p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-10"><Loader2 className="animate-spin text-spark-amber" /></div>

@@ -66,7 +66,9 @@
     { "path": "/api/cron/social-stats", "schedule": "30 13 * * *" },
     { "path": "/api/cron/voice-slots", "schedule": "0 4 * * *" },
     { "path": "/api/cron/social-slots", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/render-queue", "schedule": "* * * * *" }
+    { "path": "/api/cron/render-queue", "schedule": "* * * * *" },
+    { "path": "/api/cron/halo-daily", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/halo-post", "schedule": "*/10 * * * *" }
   ],
   "headers": [
     {

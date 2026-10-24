@@ -43,7 +43,9 @@ export async function GET(req: NextRequest) {
           .select("id", { count: "exact", head: true })
           .eq("user_id", p.id)
           .eq("week_of", monday)
-          .eq("requested", false);
+          .eq("requested", false)
+          // Halo drafts share the table and are not the Sunday three.
+          .eq("source", "autosparks");
         if ((count ?? 0) > 0) { results.push({ userId: p.id, drafts: 0 }); continue; }
         const { ids, written } = await startDrafts(admin, p);
         await written;
