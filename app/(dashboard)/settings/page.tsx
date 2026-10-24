@@ -15,6 +15,7 @@ import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { SettingsSteps } from "@/components/settings/settings-steps";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
+import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
 import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
@@ -508,6 +509,9 @@ export default function SettingsPage() {
         <BoldTrailConnect />
         <CrmIntegrations />
       </Card>
+
+      {/* Halo website (2026-10-24, moved here from AutoSparks): optional, so not a numbered step. */}
+      <HaloSettingsCard />
 
       {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
       <AffiliateCard />

@@ -678,9 +678,11 @@ export default function HelpPage() {
               {/* Halo sites, promo videos and email drafts (2026-10-24, the owner's ask). */}
               <span className="block mt-3 font-semibold text-brand-text">Halo sites</span>
               <span className="block mt-1">
-                If you have a Halo website, add it in the <strong>Halo sites</strong> box on the
-                AutoSparks page (type the address, like <em>springfieldhomes.com</em>, and press{" "}
-                <strong>Add</strong>). You can add more than one. Every morning SparkReels looks for
+                If you have a Halo website, add it in{" "}
+                <Link href="/settings#halo" className="text-primary-600 font-medium hover:underline">Settings → Halo website</Link>,
+                right after CRM Integration: press <strong>Add your Halo site</strong>, type the address,
+                like <em>springfieldhomes.com</em>, and press <strong>Add</strong>. You can add more than
+                one. Its drafts show up on the AutoSparks page. Every morning SparkReels looks for
                 what is new on them: new blog posts and guides, and your market report and events
                 page when they change. Pages already on your site when you add it are left alone, so
                 adding a site never turns your old posts into videos.

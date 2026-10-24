@@ -12,7 +12,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
 import { useHalo } from "@/components/halo/use-halo";
-import { HaloSitesCard } from "@/components/halo/halo-sites-card";
 import { HaloDrafts } from "@/components/halo/halo-drafts";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 
@@ -351,8 +350,13 @@ export default function AutopilotPage() {
         </div>
       )}
 
-      {/* Halo sites (2026-10-24, the owner's mockup). */}
-      {halo.loaded && halo.settings && <HaloSitesCard halo={halo} />}
+      {/* Halo sites moved to Settings after CRM Integration (2026-10-24, the
+          owner's mockup); a link for agents who have one, above their drafts. */}
+      {halo.loaded && halo.sites.length > 0 && (
+        <Link href="/settings#halo" className="-mb-2 self-end text-[13px] font-semibold text-[#A3660F] hover:underline">
+          Halo settings →
+        </Link>
+      )}
 
       {/* Ask for ideas (2026-10-21, the owner's ask). */}
       <div className="rounded-2xl border border-spark-rule bg-white p-4">

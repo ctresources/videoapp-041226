@@ -141,7 +141,7 @@ export function useHalo(userId: string | undefined) {
   const addSite = useCallback(async (url: string) => {
     const r = await post("/api/halo/sites", { url });
     if (!r.ok) { toast.error(String(r.out.error ?? "Couldn't add that site.")); return false; }
-    toast.success("Added. New posts will show up here as drafts.");
+    toast.success("Added. New posts will show up on AutoSparks as drafts.");
     await loadAll();
     return true;
   }, [loadAll]);

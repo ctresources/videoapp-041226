@@ -94,7 +94,8 @@ export function PlatformPicker({ connected, value, onChange }: { connected: stri
 
 const host = (u: string) => u.replace(/^https?:\/\//, "");
 
-export function HaloSitesCard({ halo }: { halo: Halo }) {
+/** `bare`: inside the Settings card, which has its own frame and title. */
+export function HaloSitesCard({ halo, bare = false }: { halo: Halo; bare?: boolean }) {
   const { settings, sites, looks, twinLookId, connected } = halo;
   const [url, setUrl] = useState("");
   const [adding, setAdding] = useState(false);
@@ -114,9 +115,9 @@ export function HaloSitesCard({ halo }: { halo: Halo }) {
   }
 
   return (
-    <div className="rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
+    <div className={bare ? "" : "rounded-2xl border border-spark-rule bg-white p-4 sm:p-5"}>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-base font-bold text-spark-ink">Halo sites</p>
+        <p className={bare ? "text-[13px] font-medium text-spark-ink-muted" : "text-base font-bold text-spark-ink"}>{bare ? "Your Halo sites" : "Halo sites"}</p>
         <Switch on={s.enabled} onClick={() => void halo.saveSettings({ enabled: !s.enabled })} label={s.enabled ? "On" : "Off"} />
       </div>
 
