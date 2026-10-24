@@ -14,14 +14,26 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await createAdminClient()
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from("profiles")
     .select("full_name")
     .eq("id", user.id)
     .maybeSingle();
   const name = (profile as { full_name: string | null } | null)?.full_name?.trim() || user.email;
 
+  // Listed in Admin → Emails (2026-10-24), as well as the email to support.
+  // A second press while one is still waiting adds no new row.
+  const { count } = await admin
+    .from("ghl_workflow_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "waiting");
+  const listed = (count ?? 0) > 0 || !(await admin
+    .from("ghl_workflow_requests")
+    .insert({ user_id: user.id, name, email: user.email })).error;
+
   const sent = await notifyGhlWorkflowRequest({ name, email: user.email });
-  if (!sent) return NextResponse.json({ error: "The request didn't send. Try again in a minute." }, { status: 502 });
+  if (!sent && !listed) return NextResponse.json({ error: "The request didn't send. Try again in a minute." }, { status: 502 });
   return NextResponse.json({ ok: true });
 }

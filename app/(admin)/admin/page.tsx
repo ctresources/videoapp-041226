@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmailsTab } from "@/components/admin/emails-tab";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Users, Video, ShieldCheck, UserX, UserCheck,
@@ -146,7 +147,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Invite codes state
-  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist" | "costs">("users");
+  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist" | "costs" | "emails">("users");
 
   // ── Cost per user ────────────────────────────────────────────────────────
   const [costs, setCosts] = useState<CostsResponse | null>(null);
@@ -457,7 +458,7 @@ export default function AdminPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-5">
-        {([["users", Users, "Users"], ["costs", Coins, "Costs"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"]] as const).map(([tab, Icon, label]) => (
+        {([["users", Users, "Users"], ["costs", Coins, "Costs"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"], ["emails", Mail, "Emails"]] as const).map(([tab, Icon, label]) => (
           <button key={tab} onClick={() => setAdminTab(tab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
@@ -466,6 +467,9 @@ export default function AdminPage() {
           </button>
         ))}
       </div>
+
+      {/* ── EMAILS TAB (2026-10-24, the owner's mockup) ── */}
+      {adminTab === "emails" && <EmailsTab />}
 
       {/* ── INVITE CODES TAB ── */}
       {adminTab === "invites" && (

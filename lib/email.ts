@@ -1,6 +1,65 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const NOTIFY_EMAIL = "support@sparkreels.ai";
 const FROM_EMAIL = process.env.NOTIFY_FROM_EMAIL || "SparkReels <noreply@sparkreels.ai>";
+
+/**
+ * How every email to a customer signs off (2026-10-24, the owner's wording):
+ * the team, the support address and the website, in place of any personal
+ * sign-off. Admin → Emails shows it on every email it previews.
+ */
+export const SIGNOFF_TEXT = "The SparkReels Team\nsupport@sparkreels.ai\nhttps://SparkReels.ai";
+export const SIGNOFF_HTML =
+  `<p style="margin:18px 0 0">The SparkReels Team<br>` +
+  `<a href="mailto:support@sparkreels.ai">support@sparkreels.ai</a><br>` +
+  `<a href="https://www.sparkreels.ai">https://SparkReels.ai</a></p>`;
+
+/**
+ * Admin → Emails previews (2026-10-24): an email built inside previewEmails()
+ * is captured instead of sent, so the preview is exactly what goes out. Every
+ * send in this file goes through resendPost for that reason.
+ */
+export interface CapturedEmail {
+  from?: string; to?: string | string[]; reply_to?: string; subject?: string; html?: string; text?: string;
+}
+const previewStore = new AsyncLocalStorage<CapturedEmail[]>();
+
+async function resendPost(init: RequestInit): Promise<Response> {
+  const captured = previewStore.getStore();
+  if (captured) {
+    try { captured.push(JSON.parse(String(init.body ?? "{}")) as CapturedEmail); } catch { /* not JSON */ }
+    return new Response(JSON.stringify({ id: "preview" }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  return fetch("https://api.resend.com/emails", init);
+}
+
+/** Runs `build` and returns the emails it would have sent, sending none. */
+export async function previewEmails(build: () => Promise<unknown>): Promise<CapturedEmail[]> {
+  const captured: CapturedEmail[] = [];
+  await previewStore.run(captured, async () => { await build(); });
+  return captured;
+}
+
+/** Whether email can be sent at all here (the key is set). */
+export const emailConfigured = () => !!RESEND_API_KEY;
+
+/**
+ * A saved reply sent from Admin → Emails (2026-10-24). From SparkReels at
+ * support@, so the person can simply reply. True when Resend accepted it.
+ */
+export async function sendAdminReply({ to, subject, html, text }: {
+  to: string; subject: string; html: string; text: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "SparkReels <support@sparkreels.ai>", to, reply_to: NOTIFY_EMAIL, subject, html, text }),
+  }).catch(() => null);
+  if (!res?.ok) console.error(`[admin-reply] to ${to} failed: ${res ? res.status : "network error"}`);
+  return !!res?.ok;
+}
 
 export async function notifyNewUser({
   name,
@@ -16,7 +75,7 @@ export async function notifyNewUser({
   const displayName = name || "(no name)";
   const displayEmail = email || "(no email)";
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -48,7 +107,7 @@ export async function notifyWaitlistSignup({
 }) {
   if (!RESEND_API_KEY) return;
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -83,7 +142,7 @@ export async function notifyBetaCapacity({
   if (!RESEND_API_KEY) return;
 
   const full = remaining <= 0;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -122,7 +181,7 @@ export async function notifyRenderBalanceLow({
 }) {
   if (!RESEND_API_KEY) return;
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -161,7 +220,7 @@ export async function notifyVoiceCloneUnavailable({
 }) {
   if (!RESEND_API_KEY) return;
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -193,7 +252,7 @@ export async function notifyVoiceCloneUnavailable({
 export async function notifyVoiceSlotsNearlyFull({ used, limit }: { used: number; limit: number }) {
   if (!RESEND_API_KEY) return;
   const full = used >= limit;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -223,7 +282,7 @@ export async function notifyNewAffiliateApplication({
   website?: string | null;
 }) {
   if (!RESEND_API_KEY) return;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -270,7 +329,7 @@ export async function notifyAffiliateApproved({
   if (!RESEND_API_KEY) return false;
   const refLink = `${appUrl}/?ref=${refCode}`;
   const claimLink = claimToken ? `${appUrl}/affiliate?claim=${claimToken}` : null;
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -295,6 +354,7 @@ export async function notifyAffiliateApproved({
         <p>Thanks for helping more agents discover SparkReels.</p>
         <p>Any questions, please send us an email at
         <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
+        ${SIGNOFF_HTML}
       `,
     }),
   }).catch(() => null);
@@ -383,7 +443,8 @@ export async function notifyTrialWindow({
 
   // Sent from noreply@, so there was no way to ask a question. Said in both.
   const contact = `<p>Any questions, please send us an email at
-       <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>`;
+       <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
+       ${SIGNOFF_HTML}`;
 
   const html = stage === "warning"
     ? `<p>${hi}</p>
@@ -402,7 +463,7 @@ export async function notifyTrialWindow({
        <p><a href="${plans}">See the plans</a></p>
        ${contact}`;
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     // Sent from noreply@, so Reply went nowhere. Most people press the reply
@@ -440,7 +501,7 @@ export async function sendImportAddress({
 
   const hi = name ? `Hi ${name.split(" ")[0]},` : "Hi,";
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -461,6 +522,7 @@ export async function sendImportAddress({
         list, so treat it like a password; you can replace it any time in Settings.</p>
         <p>Any questions, please send us an email at
         <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
+        ${SIGNOFF_HTML}
       `,
     }),
   }).catch(() => null);
@@ -499,7 +561,7 @@ export async function notifyBillingEvent({
     periodEnd ? ["Access until", periodEnd] : null,
   ].filter(Boolean) as [string, string][];
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -533,7 +595,7 @@ export async function notifyBillingEvent({
 export async function notifySocialCapacity({ used, limit }: { used: number; limit: number }) {
   if (!RESEND_API_KEY) return;
   const full = used >= limit;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -601,9 +663,10 @@ export async function notifyPostFailed({
      ${safe(platform)}.</p>
      <p><a href="${appUrl}/videos">Open My Sparks</a></p>`}
      <p>Any questions, please send us an email at
-     <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>`;
+     <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a> and we will respond within 2 days.</p>
+     ${SIGNOFF_HTML}`;
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -637,7 +700,7 @@ export async function notifyReferralSignup({
   userEmail: string | null;
 }) {
   if (!RESEND_API_KEY) return;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -672,7 +735,7 @@ export async function notifyCommissionEarned({
   firstPayment: boolean;
 }) {
   if (!RESEND_API_KEY) return;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -708,7 +771,7 @@ export async function notifyAffiliateCommission({
   appUrl: string;
 }) {
   if (!RESEND_API_KEY) return;
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -723,6 +786,7 @@ export async function notifyAffiliateCommission({
         <p>See your earnings on your <a href="${appUrl}/affiliate">Affiliate Program page</a>.</p>
         <p>Thanks for sharing SparkReels. Any questions, email
         <a href="mailto:${NOTIFY_EMAIL}">${NOTIFY_EMAIL}</a>.</p>
+        ${SIGNOFF_HTML}
       `,
     }),
   }).catch(() => {});
@@ -736,7 +800,7 @@ export async function notifyAffiliateCommission({
 export async function notifyGhlWorkflowRequest({ name, email }: { name: string; email: string }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -759,7 +823,7 @@ export async function notifyGhlWorkflowRequest({ name, email }: { name: string; 
 export async function notifyTwinRefused({ userEmail, detail }: { userEmail: string; detail: string }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -803,12 +867,13 @@ export async function sendAutopilotWeek({
   const total = videos + blogs;
   const url = "https://www.sparkreels.ai/autosparks";
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: email,
+      reply_to: NOTIFY_EMAIL,
       subject: "Your AutoSparks are ready ✨",
       html: `
         <p><strong>Your AutoSparks are ready${first ? `, ${first}` : ""} ✨</strong></p>
@@ -816,6 +881,7 @@ export async function sendAutopilotWeek({
         Each has its script, blog post, title and description written. Approve, change or skip each one.</p>
         <p><a href="${url}" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">Review my week</a></p>
         <p style="color:#6f6b60;font-size:13px">Nothing is made or posted until you approve it. You can turn AutoSparks off on that page.</p>
+        ${SIGNOFF_HTML}
       `,
     }),
   }).catch(() => null);
@@ -832,7 +898,7 @@ export async function notifySiteLead({ name, email, city, questions, when }: {
 }) {
   if (!RESEND_API_KEY) return;
   const at = new Date(when).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -864,7 +930,8 @@ export async function notifySiteLead({ name, email, city, questions, when }: {
  * junk folder. A plain-text part goes with the HTML, and one ordinary link
  * rather than a big button.
  */
-const PERSONAL_FROM = "Carmella at SparkReels <support@sparkreels.ai>";
+// From "SparkReels" since 2026-10-24 (the owner's ask), still at support@.
+const PERSONAL_FROM = "SparkReels <support@sparkreels.ai>";
 
 export async function sendAiQuestionsToVisitor({ name, email, city, blocks }: {
   name: string;
@@ -888,9 +955,9 @@ ${b.answerBlock}${b.videoTopic ? `
 Video idea: ${b.videoTopic}` : ""}`).join("\n\n");
   const intro = `Thanks for trying SparkReels! Here are 3 questions buyers in ${city} are asking ChatGPT, Google and Siri right now, each with an answer written for your website.`;
   const outro = "Answering these on video is the quickest way to be the agent AI recommends. You can make your first video free here:";
-  const signoff = "If you have any questions, just reply to this email. It comes straight to me.";
+  const signoff = "If you have any questions, just reply to this email. It comes straight to us.";
 
-  await fetch("https://api.resend.com/emails", {
+  await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -909,8 +976,7 @@ ${signUp}
 
 ${signoff}
 
-Carmella Thompson
-Founder, SparkReels.ai
+${SIGNOFF_TEXT}
 
 You asked for these on sparkreels.ai.`,
       html: `
@@ -921,7 +987,7 @@ You asked for these on sparkreels.ai.`,
           <p style="margin:24px 0 4px">${escHtml(outro)}</p>
           <p style="margin:0 0 24px"><a href="${signUp}" style="color:#1e3a8a;font-weight:bold">sparkreels.ai/beta</a></p>
           <p>${escHtml(signoff)}</p>
-          <p style="margin:0">Carmella Thompson<br>Founder, SparkReels.ai</p>
+          ${SIGNOFF_HTML}
           <p style="margin-top:24px;font-size:12px;color:#94a3b8">You asked for these on sparkreels.ai.</p>
         </div>
       `,
@@ -990,8 +1056,9 @@ export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
       <p style="${h2}">Earn while you share it</p>
       <p style="margin:0 0 12px">Know other agents who should be on video? Join the SparkReels affiliate program and earn <strong>20% commission</strong> on every customer you refer, <strong>every month for their first 12 months</strong>, paid monthly straight to your bank.</p>
       <p style="margin:0 0 22px"><a href="${app}/affiliates/apply" style="color:#1e3a8a;font-weight:bold">Become an affiliate</a></p>`}
-      <p>Need help? Tap <strong>Ask Sparklee</strong> at the top of any page, read <strong>How It Works</strong>, or just reply to this email. It comes straight to me.</p>
-      <p style="margin:0">Welcome aboard,<br>Carmella Thompson<br>Founder, SparkReels.ai</p>
+      <p>Need help? Tap <strong>Ask Sparklee</strong> at the top of any page, read <strong>How It Works</strong>, or just reply to this email. It comes straight to us.</p>
+      <p style="margin:0">Welcome aboard,</p>
+      ${SIGNOFF_HTML}
     </div>`;
 
   const text = [
@@ -1023,14 +1090,13 @@ export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
       `Become an affiliate: ${app}/affiliates/apply`,
     ]),
     "",
-    "Need help? Tap Ask Sparklee at the top of any page, read How It Works, or just reply to this email. It comes straight to me.",
+    "Need help? Tap Ask Sparklee at the top of any page, read How It Works, or just reply to this email. It comes straight to us.",
     "",
     "Welcome aboard,",
-    "Carmella Thompson",
-    "Founder, SparkReels.ai",
+    SIGNOFF_TEXT,
   ].join("\n");
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1062,7 +1128,7 @@ export async function sendFreeFollowupEmail({ email, name, city, step, unsubscri
 }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const { subject, html, text } = buildFreeFollowupEmail({ name, city, step, unsubscribeUrl });
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await resendPost({
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1111,18 +1177,14 @@ export function buildFreeFollowupEmail({ name, city, step, unsubscribeUrl }: {
       <p>Your free AI video is ready when you are. It takes about a minute of your time:</p>
       <ol style="margin:0;padding-left:20px">${steps.map(([b, t]) => `<li><strong>${b}</strong> ${escHtml(t)}</li>`).join("")}</ol>
       ${cta}
-      <p>Questions? Just reply. It comes straight to me.</p>
-      <p style="margin:0">Carmella Thompson<br>Founder, SparkReels.ai</p>`;
+      <p>Questions? Just reply. It comes straight to us.</p>`;
     bodyText = [
       "Your free AI video is ready when you are. It takes about a minute of your time:",
       ...steps.map(([b, t], i) => `${i + 1}. ${b} ${t}`),
       "",
       ctaText,
       "",
-      "Questions? Just reply. It comes straight to me.",
-      "",
-      "Carmella Thompson",
-      "Founder, SparkReels.ai",
+      "Questions? Just reply. It comes straight to us.",
     ];
   } else if (step === 2) {
     subject = "Not sure what to say? Here are 3 ideas";
@@ -1137,31 +1199,25 @@ export function buildFreeFollowupEmail({ name, city, step, unsubscribeUrl }: {
       <p>The hardest part is picking a topic, so here are three that work for any agent:</p>
       <ul style="margin:0;padding-left:20px">${ideas.map(([b, t]) => `<li><strong>${escHtml(b)}</strong>: ${escHtml(t)}</li>`).join("")}</ul>
       <p style="margin:18px 0 0">Pick one and your free video is made for you, no filming needed.</p>
-      ${cta}
-      <p style="margin:0">Carmella</p>`;
+      ${cta}`;
     bodyText = [
       "The hardest part is picking a topic, so here are three that work for any agent:",
       ...ideas.map(([b, t]) => `- ${b}: ${t}`),
       "",
       "Pick one and your free video is made for you, no filming needed.",
       ctaText,
-      "",
-      "Carmella",
     ];
   } else {
     subject = "Should I keep your free video for you?";
     bodyHtml = `
       <p>Just checking in: your free AI video is still here, with your face, your voice and your market, ready in minutes.</p>
-      <p>If something got in the way, reply and tell me. I read every email and I'm happy to help you make your first one.</p>
-      ${cta}
-      <p style="margin:0">Carmella</p>`;
+      <p>If something got in the way, reply and tell us. We read every email and we're happy to help you make your first one.</p>
+      ${cta}`;
     bodyText = [
       "Just checking in: your free AI video is still here, with your face, your voice and your market, ready in minutes.",
       "",
-      "If something got in the way, reply and tell me. I read every email and I'm happy to help you make your first one.",
+      "If something got in the way, reply and tell us. We read every email and we're happy to help you make your first one.",
       ctaText,
-      "",
-      "Carmella",
     ];
   }
 
@@ -1170,12 +1226,15 @@ export function buildFreeFollowupEmail({ name, city, step, unsubscribeUrl }: {
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0f172a;font-size:15px;line-height:1.6">
       <p>Hi ${first},</p>
       ${bodyHtml}
+      ${SIGNOFF_HTML}
       <p style="margin-top:28px;font-size:12px;color:#94a3b8">${footer} <a href="${escHtml(unsubscribeUrl)}" style="color:#94a3b8">Stop these reminders</a></p>
     </div>`;
   const text = [
     `Hi ${firstRaw},`,
     "",
     ...bodyText,
+    "",
+    SIGNOFF_TEXT,
     "",
     "--",
     `${footer} Stop these reminders: ${unsubscribeUrl}`,
