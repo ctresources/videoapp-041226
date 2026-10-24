@@ -24,6 +24,7 @@
 import sharp from "sharp";
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fitImageBuffer, needsBlurFill } from "@/lib/utils/fit-frame";
 
 const BUCKET = "assets";
 
@@ -75,7 +76,9 @@ export async function cropPhotosToAspect(
          * where the HEAD check below would happily go on serving it. A new key
          * is how a fix reaches photos that have already been through here.
          */
-        const key = createHash("sha1").update(`${src}|${targetAspect.toFixed(4)}|v2`).digest("hex").slice(0, 16);
+        // "v3" (2026-10-24): a photo of the other orientation is no longer
+        // cropped to a strip but shown whole over a blurred copy (fit-frame.ts).
+        const key = createHash("sha1").update(`${src}|${targetAspect.toFixed(4)}|v3`).digest("hex").slice(0, 16);
         const path = `${userId}/video-photos/crop/${key}.jpg`;
         const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
 
@@ -108,12 +111,19 @@ export async function cropPhotosToAspect(
         // Close enough already — skip the round trip and keep the original.
         if (Math.abs(srcAspect - targetAspect) / targetAspect < ASPECT_TOLERANCE) return src;
 
-        const { width: cropW, height: cropH } = cropBox(meta.width, meta.height, targetAspect);
+        // Close in shape: cropped to fill, at the photo's own size. Otherwise
+        // the whole photo over a blurred copy, at the video's size.
+        const blurFill = needsBlurFill(meta.width, meta.height, width, height);
+        const { width: cropW, height: cropH } = blurFill
+          ? { width, height }
+          : cropBox(meta.width, meta.height, targetAspect);
 
-        const output = await sharp(upright)
-          .resize(cropW, cropH, { fit: "cover", position: "centre" })
-          .jpeg({ quality: 85 })
-          .toBuffer();
+        const output = blurFill
+          ? await fitImageBuffer(upright, width, height)
+          : await sharp(upright)
+            .resize(cropW, cropH, { fit: "cover", position: "centre" })
+            .jpeg({ quality: 85 })
+            .toBuffer();
 
         const { error } = await admin.storage
           .from(BUCKET)

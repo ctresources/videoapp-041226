@@ -13,9 +13,13 @@ import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 import { generateASS, type WordTimestamp } from "./whisper";
+import { ffmpegFitFilter, fitImageBuffer, probeVideoSize } from "@/lib/utils/fit-frame";
 
 // Point fluent-ffmpeg to the installed binary
 ffmpeg.setFfmpegPath(ffmpegPath.path);
+
+/** Each downloaded clip's size, by its temp path (2026-10-24, fit-frame.ts). */
+const CLIP_SIZES = new Map<string, { width: number; height: number }>();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -357,7 +361,12 @@ export async function renderVideo(
     for (let i = 0; i < params.stockVideoUrls.length; i++) {
       const p = join(renderTmpDir, `clip${i}.mp4`);
       const ok = await downloadFile(params.stockVideoUrls[i], p);
-      if (ok) clipPaths.push(p);
+      if (ok) {
+        clipPaths.push(p);
+        // Its shape, so one of the other orientation is fitted whole over a
+        // blurred copy rather than cropped (2026-10-24). Read in buildAndRun.
+        CLIP_SIZES.set(p, await probeVideoSize(p).catch(() => ({ width: 0, height: 0 })));
+      }
     }
 
     // Logo (non-fatal)
@@ -479,14 +488,17 @@ async function buildAndRun(
   }
 
   // ── Scale each clip ───────────────────────────────────────────────────────
+  // Close in shape: cropped to fill. The other orientation: whole over a
+  // blurred copy (fit-frame.ts, 2026-10-24).
   for (let i = 0; i < clipPaths.length; i++) {
     const dur = Math.min(cfg.sceneDuration, audioDuration);
-    filterParts.push(
-      `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,` +
-      `crop=${width}:${height},setpts=PTS-STARTPTS,` +
-      `trim=duration=${dur},setpts=PTS-STARTPTS,` +
-      `fps=30[clip${i}]`
-    );
+    const size = CLIP_SIZES.get(clipPaths[i]) ?? { width: 0, height: 0 };
+    filterParts.push(...ffmpegFitFilter({
+      input: `[${i}:v]`, output: `[clip${i}]`, width, height,
+      srcW: size.width, srcH: size.height,
+      post: `setpts=PTS-STARTPTS,trim=duration=${dur},setpts=PTS-STARTPTS,fps=30`,
+      tag: `s${i}`,
+    }));
   }
 
   // ── Concatenate clips ─────────────────────────────────────────────────────
@@ -891,6 +903,11 @@ export async function renderPhotoSlideshow(
       }
       const p = join(renderTmpDir, `photo${i}.jpg`);
       if (await downloadFile(params.photoUrls[i], p)) {
+        // Fitted to the reel's shape first (2026-10-24): a photo of the other
+        // orientation is shown whole over a blurred copy, not cropped to a
+        // strip. Close in shape it is cropped to fill, as before.
+        try { await fs.writeFile(p, await fitImageBuffer(await fs.readFile(p), cfg.width, cfg.height)); }
+        catch (err) { console.warn(`[ffmpeg-slideshow] photo ${i} not fitted: ${err instanceof Error ? err.message : err}`); }
         photoPaths.push(p);
         clipInfos.push(null);
       }

@@ -23,6 +23,7 @@
  */
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
+import { ffmpegFitFilter, fitImageBuffer, probeVideoSize } from "@/lib/utils/fit-frame";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -270,7 +271,7 @@ export async function compositePhotos(
     // phone photos coming out sideways.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sharp = ((await import("sharp")) as any).default;
-    const downloaded: { path: string; kind: BackgroundKind; seconds?: number; loop?: boolean }[] = [];
+    const downloaded: { path: string; kind: BackgroundKind; seconds?: number; loop?: boolean; w?: number; h?: number }[] = [];
     /**
      * Time owed by a timed clip that would not download.
      *
@@ -295,14 +296,20 @@ export async function compositePhotos(
         if (kind === "clip") {
           const p = join(dir, `clip-${i}.mp4`);
           await fs.writeFile(p, raw);
+          // Its shape, so one of the other orientation can be fitted whole
+          // over a blurred copy rather than cropped (2026-10-24).
+          const { width: w, height: h } = await probeVideoSize(p).catch(() => ({ width: 0, height: 0 }));
           const timed = sources[i].seconds;
           downloaded.push(timed
-            ? { path: p, kind, seconds: timed + owed, loop: sources[i].loop || owed > 0 }
-            : { path: p, kind });
+            ? { path: p, kind, seconds: timed + owed, loop: sources[i].loop || owed > 0, w, h }
+            : { path: p, kind, w, h });
           if (timed) owed = 0;
         } else {
           const p = join(dir, `photo-${i}.jpg`);
-          await fs.writeFile(p, await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer());
+          // Fitted to the frame first (2026-10-24): a photo of the other
+          // orientation is shown whole over a blurred copy, not cropped to a
+          // strip. Close in shape it is cropped to fill, as before.
+          await fs.writeFile(p, await fitImageBuffer(raw, outW, outH).catch(async () => sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer()));
           // A photo given a sentence of its own is held for that sentence,
           // and picks up time owed exactly as a timed clip does.
           const timed = sources[i].seconds;
@@ -339,10 +346,13 @@ export async function compositePhotos(
       }
       const parts: string[] = [];
       for (let i = 0; i < n; i++) {
-        parts.push(
-          `[${i}:v]scale=${outW}:${outH}:force_original_aspect_ratio=increase,` +
-          `crop=${outW}:${outH},setsar=1,format=yuv420p,fps=25[p${i}]`,
-        );
+        // Photos arrive already fitted; a clip is fitted here by the same rule.
+        const d = downloaded[i];
+        parts.push(...ffmpegFitFilter({
+          input: `[${i}:v]`, output: `[p${i}]`, width: outW, height: outH,
+          srcW: d.kind === "clip" ? d.w ?? 0 : outW, srcH: d.kind === "clip" ? d.h ?? 0 : outH,
+          post: "setsar=1,format=yuv420p,fps=25", tag: `c${i}`,
+        }));
       }
       parts.push(`${downloaded.map((_, i) => `[p${i}]`).join("")}concat=n=${n}:v=1:a=0[bg]`);
       cmd

@@ -1,4 +1,5 @@
 import { UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
+import { needsBlurFill } from "@/lib/utils/fit-rule";
 
 /** Skin smoothing on the speaker: off, light or more. */
 export type SmoothSkin = "off" | "light" | "more";
@@ -164,6 +165,8 @@ export class BrandedComposite {
   /** Skin smoothing on the speaker (2026-10-16); see drawSpeaker. */
   private smoothSkin: SmoothSkin = "off";
   private smoothCanvas: HTMLCanvasElement | null = null;
+  /** A tiny canvas the blurred backdrop is drawn through (fit-rule.ts, 2026-10-24). */
+  private blurCanvas: HTMLCanvasElement | null = null;
   /** Set when the chosen music never loaded, so the caller can say so rather
    *  than letting the user record in silence expecting a soundtrack. */
   musicUnavailable = false;
@@ -1116,11 +1119,14 @@ export class BrandedComposite {
       ctx.globalAlpha = fade;
     }
 
-    // Cover-crop, the same rule the photos use: fill the frame and lose the
-    // overhang, rather than letterbox a portrait clip into a landscape take.
+    // Cover-crop when close in shape. A clip of the other orientation is shown
+    // whole over a blurred copy instead (2026-10-24): cropping it kept a
+    // strip a third of its height.
     const vw = el.videoWidth;
     const vh = el.videoHeight;
-    if (vw && vh) {
+    if (vw && vh && needsBlurFill(vw, vh, W, H)) {
+      this.drawWholeOnBlur(el, vw, vh, W, H);
+    } else if (vw && vh) {
       const target = W / H;
       let sw = vw;
       let sh = vh;
@@ -1192,6 +1198,12 @@ export class BrandedComposite {
   ) {
     const ctx = this.ctx;
     if (!ctx || !img.width || !img.height) return;
+    // A photo of the other orientation: whole over a blurred copy, with the
+    // same slow push-in (2026-10-24).
+    if (needsBlurFill(img.width, img.height, W, H)) {
+      this.drawWholeOnBlur(img, img.width, img.height, W, H, zoom);
+      return;
+    }
     const target = W / H;
     let sw = img.width;
     let sh = img.height;
@@ -1225,6 +1237,13 @@ export class BrandedComposite {
     const v = this.videoEl;
     if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
 
+    // A clip or camera of the other orientation (a vertical phone clip in a
+    // horizontal video): whole over a blurred copy, not cut to a strip
+    // through the middle of the speaker (2026-10-24).
+    if (needsBlurFill(v.videoWidth, v.videoHeight, W, H)) {
+      this.drawWholeOnBlur(v, v.videoWidth, v.videoHeight, W, H, 1, true);
+      return;
+    }
     const srcAspect = v.videoWidth / v.videoHeight;
     const dstAspect = W / H;
     let sw = v.videoWidth;
@@ -1239,6 +1258,47 @@ export class BrandedComposite {
     const sx = Math.round((v.videoWidth - sw) / 2);
     const sy = Math.round((v.videoHeight - sh) / 2);
     this.drawSpeaker(v, sx, sy, sw, sh, 0, 0, W, H);
+  }
+
+  /**
+   * A source of the other orientation, shown whole over a blurred, slightly
+   * darkened copy of itself (2026-10-24, the owner's ask; fit-rule.ts).
+   *
+   * The blur is drawing through a tiny canvas and scaling it back up, which
+   * every browser does cheaply, unlike ctx.filter. `zoom` keeps a photo's
+   * slow push-in; `speaker` routes the front copy through drawSpeaker so
+   * Smooth skin still applies.
+   */
+  private drawWholeOnBlur(
+    src: CanvasImageSource, sw: number, sh: number, W: number, H: number, zoom = 1, speaker = false,
+  ) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const b = this.blurCanvas ?? (this.blurCanvas = document.createElement("canvas"));
+    const bw = Math.max(8, Math.round(W / 24));
+    const bh = Math.max(8, Math.round(H / 24));
+    if (b.width !== bw || b.height !== bh) { b.width = bw; b.height = bh; }
+    const bctx = b.getContext("2d");
+    if (bctx) {
+      // Cover-crop into the tiny canvas, then up to the full frame.
+      const target = W / H;
+      let cw = sw;
+      let ch = sh;
+      if (sw / sh > target) cw = sh * target;
+      else ch = sw / target;
+      bctx.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, bw, bh);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(b, 0, 0, bw, bh, 0, 0, W, H);
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      ctx.fillRect(0, 0, W, H);
+    }
+    const scale = Math.min(W / sw, H / sh) * zoom;
+    const dw = sw * scale;
+    const dh = sh * scale;
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    if (speaker && src instanceof HTMLVideoElement) this.drawSpeaker(src, 0, 0, sw, sh, dx, dy, dw, dh);
+    else ctx.drawImage(src, 0, 0, sw, sh, dx, dy, dw, dh);
   }
 
   private drawCameraPip(W: number, H: number) {
