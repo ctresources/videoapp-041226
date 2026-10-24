@@ -257,6 +257,12 @@ export default function HelpPage() {
                 the bottom of the page. The whole piece is read, up to about 10,000 words, so a long market
                 report is used to its last page. Forwarded emails are kept for 30 days.
               </span>
+              {/* Email drafts (2026-10-24). */}
+              <span className="block mt-1.5">
+                On a paid plan, each email you forward also becomes a video draft on the{" "}
+                <Link href="/autosparks" className="text-primary-600 font-medium hover:underline">AutoSparks</Link>{" "}
+                page, ready to approve (step 12).
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Getting Set Up" />
@@ -578,7 +584,7 @@ export default function HelpPage() {
             {/* Its own step: the owner wants it found, and it was the last
                 paragraph of the listings step. */}
             {/* Weekly Autopilot, paid plans (2026-10-21, the owner's wording). */}
-            <Step n={12} title="AutoSparks (Paid Plans)" icon={Sparkles}>
+            <Step n={12} title="AutoSparks, Halo Sites And Email Drafts (Paid Plans)" icon={Sparkles}>
               Every Sunday evening, SparkReels writes 3 posts for your week about your market, the
               season, and what buyers are asking AI: 2 videos and 1 blog post to start, or pick your
               own mix at the top of the AutoSparks page (1 video and 2 blogs, 3 videos, or 3 blogs).
@@ -592,6 +598,71 @@ export default function HelpPage() {
               <strong>Ask for ideas</strong>: type or say a topic, and up to 3 drafts are written in
               about a minute. Nothing is made, posted or charged until you approve it, and you can
               turn AutoSparks off at the top of that page.
+              {/* Halo sites, promo videos and email drafts (2026-10-24, the owner's ask). */}
+              <span className="block mt-3 font-semibold text-brand-text">Halo sites</span>
+              <span className="block mt-1">
+                If you have a Halo website, add it in the <strong>Halo sites</strong> box on the
+                AutoSparks page (type the address, like <em>springfieldhomes.com</em>, and press{" "}
+                <strong>Add</strong>). You can add more than one. Every morning SparkReels looks for
+                what is new on them: new blog posts and guides, and your market report and events
+                page when they change. Pages already on your site when you add it are left alone, so
+                adding a site never turns your old posts into videos.
+              </span>
+              <span className="block mt-1.5">
+                Choose which pages to make videos from under <strong>Videos from</strong> (Blog,
+                Guides, Events, Market report and more), how many a month under{" "}
+                <strong>Each month</strong> (1 to 4, one a week), and the day and time under{" "}
+                <strong>Post on</strong>. The rest are the starting choices for every Halo video:{" "}
+                <strong>Look</strong> (Avatar in circle, Avatar video, or <strong>Mix</strong>, which
+                uses Avatar video for the market report and Avatar in circle for the rest),{" "}
+                <strong>Avatar</strong>, <strong>Size</strong>, <strong>Post to</strong> (the accounts
+                you connected), <strong>Captions</strong> and <strong>Music</strong>. When your sites
+                publish more than your month holds, the others wait under{" "}
+                <strong>Also new on your sites</strong>, and <strong>Use instead</strong> swaps one in.
+              </span>
+              <span className="block mt-1.5">
+                Each Halo draft shows up under <strong>From your Halo sites</strong> with its thumbnail
+                and setup at a glance, and a link to the post it came from. The script is written from
+                the post itself. The thumbnail uses the post&apos;s photo, or an AI picture of the town
+                when there isn&apos;t one, with your headshot on top. Press <strong>Setup</strong> to
+                change anything for that one video: the picture (from the post, an AI picture, or{" "}
+                <strong>Upload</strong> your own), look, avatar, size, what is on screen (stock clips of
+                the area or the post&apos;s own photos), captions, music, accounts and when it posts.{" "}
+                <strong>Edit script</strong> opens it in the editor.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Approve</strong> on a Halo draft makes the video straight away and uses one
+                video from your plan. Once it is finished it posts by itself on its day to the accounts
+                you chose, and each caption links back to your Halo post. Then the card shows{" "}
+                <strong>Put on my Halo post</strong>: it writes the message for you, and on your phone{" "}
+                <strong>Text Halo</strong> opens your messages with it filled in, so Halo can add the
+                video to the post. <strong>Skip</strong> sets a draft aside and its day is filled with
+                the next new post.
+              </span>
+              <span className="block mt-3 font-semibold text-brand-text">Promo video for your Halo referral page</span>
+              <span className="block mt-1">
+                Add your Halo referral page too. It is marked <strong>Affiliate</strong> and has a{" "}
+                <strong>Make promo video</strong> button. Pick an angle (<strong>Why I use Halo</strong>,{" "}
+                <strong>Free authority page</strong> or <strong>Halo Pro</strong>) and press{" "}
+                <strong>Write it</strong>. The script uses your referral code, and the video says out
+                loud that you earn a referral fee when someone joins with it. The caption carries{" "}
+                <strong>#ad</strong> for the same reason, as the law requires for paid referrals. It is
+                set to post to Facebook, LinkedIn and Instagram, where other agents will see it.{" "}
+                <strong>New script</strong> writes a fresh one. Promo videos are made when you ask, and
+                are not one of your Halo videos for the month.
+              </span>
+              <span className="block mt-3 font-semibold text-brand-text">Email drafts</span>
+              <span className="block mt-1">
+                Every email you forward to your import address (step 7) also becomes a video draft in
+                the same list, marked <strong>Email</strong>, about a minute after it arrives. It is set
+                for the next free day at your Halo time and is not one of your Halo videos for the
+                month. The script is written fresh from the email, so a market report from a data
+                provider is never posted word for word. The email&apos;s photos are used for the
+                thumbnail and, if you choose, on screen. <strong>Setup</strong> and{" "}
+                <strong>Approve</strong> work the same as on a Halo draft. Up to 5 email drafts are
+                written a day. Turn it off with the <strong>Forwarded emails</strong> switch in the Halo
+                sites box; your emails still arrive in Spark Studio either way.
+              </span>
             </Step>
             <Step n={13} title="Voice Over Only — The Scenes Reel" icon={Sparkles}>
               A <strong>Scenes Reel</strong> needs no photos, no camera and no face. Your voice
@@ -1190,6 +1261,7 @@ export default function HelpPage() {
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
+            <li><strong>Hands off:</strong> add your Halo site on AutoSparks, or forward an email, and approve the drafts that show up there — they make and post themselves</li>
             <li><strong>Publish:</strong> one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached</li>
             <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
             <li><strong>No photos and no camera:</strong> Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video</li>
