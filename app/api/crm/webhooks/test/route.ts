@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
-import { signPayload } from "@/lib/utils/webhook-publisher";
+import { signPayload, videoMessage } from "@/lib/utils/webhook-publisher";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -21,21 +21,36 @@ export async function POST(req: NextRequest) {
 
   if (!webhook) return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
+  /**
+   * The same fields a real finished-video message has (2026-10-24), so a CRM
+   * that learns its fields from a sample (GoHighLevel does) can be set up
+   * before the first video. Filled from the agent's latest finished video
+   * when there is one, else with sample words.
+   */
+  const { data: latest } = await admin
+    .from("generated_videos")
+    .select("id, video_url, video_type, project_id")
+    .eq("user_id", user.id)
+    .eq("render_status", "completed")
+    .not("video_url", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const v = latest as { id: string; video_url: string | null; video_type: string | null; project_id: string | null } | null;
+  const data = await videoMessage(admin, user.id, v
+    ? { video_id: v.id, video_url: v.video_url, video_type: v.video_type, project_id: v.project_id }
+    : { video_id: "test", video_url: "https://www.sparkreels.ai", video_type: "reel_9x16", project_id: null });
+  if (!v) {
+    data.title = "Test video from SparkReels";
+    data.caption = `Your webhook "${webhook.name}" is working. Your real videos will arrive with these same fields.`;
+  }
+  if (!data.agent_email) data.agent_email = user.email ?? "";
 
   const payload = {
     event: "test",
     timestamp: new Date().toISOString(),
     source: "SparkReels",
-    data: {
-      message: `Test webhook from SparkReels — webhook "${webhook.name}" is working correctly.`,
-      agent_name: (profile as { full_name: string } | null)?.full_name || "Agent",
-      agent_email: user.email,
-    },
+    data,
   };
 
   const body = JSON.stringify(payload);

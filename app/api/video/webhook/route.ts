@@ -549,7 +549,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Auto-generate a YouTube thumbnail once the video is ready ─────────────
+  // Skipped when the project already has one — the user may have made their
+  // own in AI Tools. Failures never affect the render result.
+  if (success && video.project_id && video.user_id) {
+    await ensureProjectThumbnail(video.project_id, video.user_id);
+  }
+
   // ── Fire CRM webhooks on video completion ─────────────────────────────────
+  // After the thumbnail (2026-10-24), so the message can carry it.
   if (success && video.user_id && finalVideoUrl) {
     publishWebhookEvent(video.user_id, "video.published", {
       video_id: video.id,
@@ -557,13 +565,6 @@ export async function POST(req: NextRequest) {
       video_type: video.video_type,
       project_id: video.project_id,
     }).catch(console.error);
-  }
-
-  // ── Auto-generate a YouTube thumbnail once the video is ready ─────────────
-  // Skipped when the project already has one — the user may have made their
-  // own in AI Tools. Failures never affect the render result.
-  if (success && video.project_id && video.user_id) {
-    await ensureProjectThumbnail(video.project_id, video.user_id);
   }
 
   /**
