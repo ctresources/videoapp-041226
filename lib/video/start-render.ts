@@ -623,6 +623,42 @@ export async function startRender(
 
   if (!projectData) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
+  /**
+   * One video per draft (2026-10-24, the owner's ask after Daniel Okiro's Halo
+   * draft was made twice and charged twice). A project written as an
+   * AutoSparks, Halo or email draft gets one video: once one is finished or
+   * being made, another is refused here, whichever screen asked (the editor
+   * opened from Setup or Edit script, or Approve). A failed one doesn't count.
+   */
+  const { data: draftRow } = await admin
+    .from("autopilot_drafts")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (draftRow) {
+    const { data: madeRow } = await admin
+      .from("generated_videos")
+      .select("id, render_status")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .neq("render_status", "failed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (madeRow) {
+      const made = madeRow as { id: string; render_status: string | null };
+      return NextResponse.json({
+        error: made.render_status === "completed"
+          ? "This video is already made. Find it in My Sparks. Nothing was charged."
+          : "This video is already being made. Find it in My Sparks. Nothing was charged.",
+        code: "already_made",
+        videoId: made.id,
+      }, { status: 409 });
+    }
+  }
+
   const project = projectData as {
     id: string;
     title: string;

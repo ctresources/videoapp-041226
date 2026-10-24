@@ -25,6 +25,8 @@ interface DraftRow {
   source_url: string | null;
   setup: HaloSetup;
   approved_at: string;
+  /** Set when Approve used a video already made from the draft. */
+  video_id: string | null;
 }
 
 function baseUrl(): string {
@@ -80,7 +82,7 @@ function wordsFor(d: DraftRow, ai: Record<string, unknown>, seo: Record<string, 
 export async function postReadyHaloVideos(admin: Admin, opts: { limit?: number } = {}) {
   const { data } = await admin
     .from("autopilot_drafts")
-    .select("id, user_id, project_id, slot_at, source, source_url, setup, approved_at")
+    .select("id, user_id, project_id, slot_at, source, source_url, setup, approved_at, video_id")
     .in("source", ["halo", "halo_promo", "email"])
     .eq("status", "approved")
     .is("posted_at", null)
@@ -92,14 +94,19 @@ export async function postReadyHaloVideos(admin: Admin, opts: { limit?: number }
 
   for (const d of drafts) {
     if (!d.project_id) continue;
-    const { data: vids } = await admin
-      .from("generated_videos")
-      .select("id, render_status, video_url, created_at, projects(title, ai_script, seo_data)")
-      .eq("project_id", d.project_id)
-      .eq("user_id", d.user_id)
-      .gte("created_at", new Date(Date.parse(d.approved_at) - 5 * 60_000).toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1);
+    // The video Approve chose when one was already made; otherwise the one
+    // Approve started.
+    const sel = "id, render_status, video_url, created_at, projects(title, ai_script, seo_data)";
+    const { data: vids } = d.video_id
+      ? await admin.from("generated_videos").select(sel).eq("id", d.video_id).eq("user_id", d.user_id).limit(1)
+      : await admin
+        .from("generated_videos")
+        .select(sel)
+        .eq("project_id", d.project_id)
+        .eq("user_id", d.user_id)
+        .gte("created_at", new Date(Date.parse(d.approved_at) - 5 * 60_000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
     const v = (vids ?? [])[0] as unknown as {
       id: string; render_status: string | null; video_url: string | null;
       projects: { title: string | null; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
@@ -126,7 +133,23 @@ export async function postReadyHaloVideos(admin: Admin, opts: { limit?: number }
     }
     if (v.render_status !== "completed" || !v.video_url) continue;
 
-    const platforms = await connectedOf(admin, d.user_id, d.setup.platforms ?? []);
+    // Never the same video twice to one account: skip any it's already on or
+    // headed for (the agent may have published it themselves first).
+    const { data: already } = await admin
+      .from("social_posts")
+      .select("platform")
+      .eq("video_id", v.id)
+      .in("post_status", ["posted", "scheduled", "posting"]);
+    const onAlready = new Set(((already ?? []) as { platform: string }[]).map((r) => r.platform));
+    const wanted = d.setup.platforms ?? [];
+    if (wanted.length && wanted.every((p) => onAlready.has(p))) {
+      await admin.from("autopilot_drafts").update({
+        status: "posted", video_id: v.id, posted_at: new Date().toISOString(), post_error: null,
+      }).eq("id", d.id);
+      results.push({ id: d.id, outcome: "already posted" });
+      continue;
+    }
+    const platforms = (await connectedOf(admin, d.user_id, wanted)).filter((p) => !onAlready.has(p));
     if (!platforms.length) {
       await admin.from("autopilot_drafts").update({
         status: "scheduled", video_id: v.id, posted_at: new Date().toISOString(),

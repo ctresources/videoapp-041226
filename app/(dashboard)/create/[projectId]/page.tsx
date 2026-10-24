@@ -325,6 +325,28 @@ export default function ProjectEditorPage() {
   // Set once a render has been accepted, so the last steps can link straight
   // to the video rather than the whole My Content list.
   const [renderedVideoId, setRenderedVideoId] = useState<string | null>(null);
+  /**
+   * The video already made for this project when it's an AutoSparks, Halo or
+   * email draft (2026-10-24, the owner's ask): such a draft gets one video, so
+   * the editor offers to open it instead of making another. The server refuses
+   * a second one too (start-render, code already_made).
+   */
+  const [draftVideo, setDraftVideo] = useState<{ id: string; ready: boolean } | null>(null);
+  useEffect(() => {
+    if (!projectId) return;
+    let live = true;
+    (async () => {
+      const sb = createClient();
+      const { data: dr } = await sb.from("autopilot_drafts").select("id").eq("project_id", projectId).limit(1).maybeSingle();
+      if (!dr) return;
+      const { data: v } = await sb.from("generated_videos").select("id, render_status")
+        .eq("project_id", projectId).neq("render_status", "failed")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const row = v as { id: string; render_status: string | null } | null;
+      if (live && row) setDraftVideo({ id: row.id, ready: row.render_status === "completed" });
+    })();
+    return () => { live = false; };
+  }, [projectId]);
   // The HeyGen job behind the current render, so step 4 can poll it.
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   /**
@@ -1796,6 +1818,21 @@ export default function ProjectEditorPage() {
           });
           // Nothing is rendering, so the generating step would be a lie.
           setEditorStep(3);
+          return;
+        }
+        // A draft's video is made once (2026-10-24): this one already is.
+        if (res.status === 409 && err?.code === "already_made") {
+          setEditorStep(3);
+          setDraftVideo({ id: String(err.videoId ?? ""), ready: !/being made/.test(String(err.error ?? "")) });
+          toast((t) => (
+            <span className="flex flex-col gap-2 text-sm">
+              <span>{String(err.error)}</span>
+              <a href="/videos" onClick={() => toast.dismiss(t.id)}
+                className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">
+                Open My Sparks
+              </a>
+            </span>
+          ), { duration: 12000 });
           return;
         }
         // No headshot yet (2026-10-23): one press to add it.
@@ -4635,7 +4672,7 @@ export default function ProjectEditorPage() {
                          * reading a 0.8-minute script that is only the sign-off.
                          */
                         const hasScript = editedScript.trim().length > 0;
-                        const canMakeVideo = !renderedVideoId && !renderComplete;
+                        const canMakeVideo = !renderedVideoId && !renderComplete && !draftVideo;
                         const row = "flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-spark-amber-tint";
                         return (
                           <div ref={videoMenuRef} className="relative">
@@ -4651,6 +4688,12 @@ export default function ProjectEditorPage() {
                             </button>
                             {videoMenuOpen && (
                               <div role="menu" className="absolute left-0 sm:left-auto sm:right-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-xl border border-spark-rule bg-white p-1 shadow-lg">
+                                {draftVideo && !renderedVideoId && (
+                                  <Link href="/videos" role="menuitem" className={row} onClick={() => setVideoMenuOpen(false)}>
+                                    <span className="text-xs font-semibold text-spark-ink">{draftVideo.ready ? "Your video is made" : "Your video is being made"}</span>
+                                    <span className="text-[11px] text-spark-ink-faint">Open it in My Sparks</span>
+                                  </Link>
+                                )}
                                 {canMakeVideo && (
                                   <button
                                     type="button"

@@ -37,6 +37,33 @@ export async function POST(req: NextRequest) {
   if (d.status !== "draft") return NextResponse.json({ error: d.status === "writing" ? "Still writing. Try again in a minute." : "This one is already approved." }, { status: 409 });
   if (!d.project_id) return NextResponse.json({ error: "Still writing. Try again in a minute." }, { status: 409 });
 
+  /**
+   * A video already made from this draft (2026-10-24, Daniel Okiro's draft):
+   * he made it from Setup → the editor, then pressed Approve, which made and
+   * charged a second identical one, and the posting job would have posted that
+   * one again. Now a video that is finished or still being made is used as it
+   * is: no new video, nothing charged. The posting job sends it on its day to
+   * the accounts it isn't on yet. A failed one is ignored and a new one made.
+   */
+  const { data: made } = await s.admin
+    .from("generated_videos")
+    .select("id, render_status")
+    .eq("project_id", d.project_id)
+    .eq("user_id", s.user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const existing = made as { id: string; render_status: string | null } | null;
+  if (existing && existing.render_status !== "failed") {
+    await s.admin.from("autopilot_drafts").update({
+      status: "approved",
+      approved_at: new Date().toISOString(),
+      video_id: existing.id,
+      post_error: null,
+    }).eq("id", d.id);
+    return NextResponse.json({ ok: true, reused: true, ready: existing.render_status === "completed" });
+  }
+
   const { data: proj } = await s.admin.from("projects").select("ai_script").eq("id", d.project_id).single();
   const ai = ((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
   const hook = String(ai.hook ?? "");
@@ -87,6 +114,8 @@ export async function POST(req: NextRequest) {
   await s.admin.from("autopilot_drafts").update({
     status: "approved",
     approved_at: new Date().toISOString(),
+    // A failed earlier video may be noted here; the posting job finds the new one.
+    video_id: null,
     post_error: null,
   }).eq("id", d.id);
   return NextResponse.json({ ok: true, queued: res.status === 202 });

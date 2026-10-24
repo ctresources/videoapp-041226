@@ -191,8 +191,9 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
   const done = d.status === "scheduled" || d.status === "posted";
 
   async function approve() {
-    // No video left for it: the Upgrade / Buy popup (2026-10-24).
-    if (needsVideo) { onOutOfVideos(); return; }
+    // No video left for it: the Upgrade / Buy popup (2026-10-24). Not when its
+    // video is already made: posting that one uses nothing.
+    if (needsVideo && !d.madeVideo) { onOutOfVideos(); return; }
     setApproving(true);
     const err = await halo.approve(d);
     setApproving(false);
@@ -227,7 +228,8 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
             <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
-            {needsVideo && d.status === "draft" && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
+            {d.madeVideo && d.status === "draft" && <span className="rounded-full bg-green-50 px-2 py-0.5 font-semibold text-green-700">{d.madeVideo.ready ? "Video made" : "Video being made"}</span>}
+            {needsVideo && !d.madeVideo && d.status === "draft" && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
             <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : d.source === "email" ? "border-spark-rule bg-[#faf9f5] text-spark-ink-soft" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
           </div>
           <p className="mt-1.5 text-base font-semibold leading-snug text-spark-ink">{title}</p>
@@ -263,7 +265,7 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         )}
         {d.status === "draft" && (
           <>
-            <Button size="sm" onClick={() => void approve()} loading={approving}>Approve</Button>
+            <Button size="sm" onClick={() => void approve()} loading={approving}>{d.madeVideo ? "Post this video" : "Approve"}</Button>
             <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>{open ? "Close setup" : "Setup"}</Button>
             {d.project_id && <Link href={`/create/${d.project_id}`}><Button size="sm" variant="outline">Edit script</Button></Link>}
             {d.source === "halo_promo" && d.setup.promo && (
@@ -284,7 +286,7 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         )}
         {d.status === "approved" && (
           <span className="flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-            <Check size={13} /> Approved · making
+            <Check size={13} /> {d.video_id && d.videoUrl ? `Approved · posts ${when(d.slot_at)}` : "Approved · making"}
           </span>
         )}
         {done && (

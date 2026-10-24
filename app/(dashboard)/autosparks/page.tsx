@@ -121,7 +121,8 @@ export default function AutopilotPage() {
   if (allowance && !allowance.unlimited) {
     const pending = [
       ...drafts.filter((d) => d.kind === "video" && d.status === "draft").map((d) => ({ id: d.id, at: d.slot_at })),
-      ...halo.drafts.filter((d) => d.status === "draft").map((d) => ({ id: d.id, at: d.slot_at })),
+      // A draft whose video is already made needs none.
+      ...halo.drafts.filter((d) => d.status === "draft" && !d.madeVideo).map((d) => ({ id: d.id, at: d.slot_at })),
     ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
     pending.slice(Math.max(0, allowance.short)).forEach((p) => needsVideo.add(p.id));
   }

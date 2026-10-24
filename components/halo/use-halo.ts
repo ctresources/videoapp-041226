@@ -35,6 +35,8 @@ export interface HaloDraft {
   /** Filled in after posting: the YouTube link and the finished file. */
   youtubeUrl?: string | null;
   videoUrl?: string | null;
+  /** A video already made (or being made) from this draft, e.g. from the editor. */
+  madeVideo?: { id: string; ready: boolean } | null;
 }
 export interface HaloPageItem { id: string; url: string; kind: string; title: string | null; image_url: string | null }
 export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
@@ -77,6 +79,18 @@ export function useHalo(userId: string | undefined) {
       const yt = new Map(((posts ?? []) as { video_id: string; platform_post_id: string }[]).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
       const file = new Map(((files ?? []) as { id: string; video_url: string | null }[]).map((f) => [f.id, f.video_url]));
       for (const d of list) if (d.video_id) { d.youtubeUrl = yt.get(d.video_id) ?? null; d.videoUrl = file.get(d.video_id) ?? null; }
+    }
+    // Drafts still to approve whose video was already made elsewhere (the
+    // editor): Approve then posts that one instead of making another.
+    const open = list.filter((d) => d.status === "draft" && d.project_id).map((d) => d.project_id as string);
+    if (open.length) {
+      const { data: made } = await sb.from("generated_videos").select("id, project_id, render_status, created_at")
+        .in("project_id", open).neq("render_status", "failed").order("created_at", { ascending: false });
+      const byProject = new Map<string, { id: string; ready: boolean }>();
+      for (const m of (made ?? []) as { id: string; project_id: string; render_status: string | null }[]) {
+        if (!byProject.has(m.project_id)) byProject.set(m.project_id, { id: m.id, ready: m.render_status === "completed" });
+      }
+      for (const d of list) if (d.status === "draft" && d.project_id) d.madeVideo = byProject.get(d.project_id) ?? null;
     }
     setDrafts(list);
   }, [userId]);
@@ -207,7 +221,9 @@ export function useHalo(userId: string | undefined) {
   const approve = useCallback(async (d: HaloDraft): Promise<Record<string, unknown> | null> => {
     const r = await post("/api/halo/approve", { draftId: d.id });
     if (r.ok) {
-      toast.success(r.out.queued ? "Approved. It's in line to be made." : "Approved. Your video is being made.");
+      toast.success(r.out.reused
+        ? "Approved. Your video posts on its day. No new video was made."
+        : r.out.queued ? "Approved. It's in line to be made." : "Approved. Your video is being made.");
       void loadDrafts();
       return null;
     }

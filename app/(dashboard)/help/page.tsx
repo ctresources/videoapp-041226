@@ -711,7 +711,9 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Approve</strong> on a Halo draft makes the video straight away and uses one
-                video from your plan. Once it is finished it posts by itself on its day to the accounts
+                video from your plan. Each draft gets one video: if you already made it from the
+                editor, the card says <strong>Video made</strong> and the button becomes{" "}
+                <strong>Post this video</strong>, which posts that one and uses nothing more. Once it is finished it posts by itself on its day to the accounts
                 you chose, and each caption links back to your Halo post. Then the card shows{" "}
                 <strong>Put on my Halo post</strong>: it writes the message for you, and on your phone{" "}
                 <strong>Text Halo</strong> opens your messages with it filled in, so Halo can add the
