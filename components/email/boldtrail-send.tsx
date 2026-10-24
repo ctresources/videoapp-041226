@@ -14,51 +14,43 @@ import { Loader2, Search, Send, UserPlus, X } from "lucide-react";
  *
  * 2026-10-24 (the owner's ask, after Daniel Okiro's first try): people are
  * found by typing part of a name or email, from a dropdown of BoldTrail
- * contacts, instead of typing each full address; and Send always answers,
- * saying what is missing, instead of sitting greyed out with nothing said.
+ * contacts, instead of typing each full address; someone not in BoldTrail yet
+ * can be added by name and email (they're added to BoldTrail too); and Send
+ * always answers, saying what is missing. The picking is BoldTrailPeople, also
+ * used on its own by Email it (/video-email).
  */
 
 export type BtContact = { id: string; name: string; email: string };
 type Result = { name: string; sent: boolean };
-const MAX = 10;
+export const BT_MAX = 10;
+const MAX = BT_MAX;
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-1.5 text-[16px] text-spark-ink outline-none focus:border-[#A3660F] sm:text-[14px]";
 
-export function BoldTrailSend({
-  subject,
-  blockedReason,
-  onSend,
-  numbered = false,
+/**
+ * The people box: chips for who's on the list, a search of the agent's
+ * BoldTrail contacts by name or email, "Add someone new", and recent picks.
+ */
+export function BoldTrailPeople({
+  to,
+  onChange,
+  picks,
 }: {
-  subject: string;
-  /** Why it can't go yet (e.g. a missing post link), said when Send is pressed. */
-  blockedReason?: string | null;
-  onSend: (contacts: BtContact[]) => Promise<{ sentAt: string; results: Result[] }>;
-  /** Label the parts "3 · People" and "4 · Send" (the Share Kit's numbered steps). */
-  numbered?: boolean;
+  to: BtContact[];
+  onChange: (next: BtContact[]) => void;
+  picks: BtContact[];
 }) {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [picks, setPicks] = useState<BtContact[]>([]);
-  const [to, setTo] = useState<BtContact[]>([]);
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<BtContact[]>([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [last, setLast] = useState<{ at: string; to: Result[] } | null>(null);
-  // Someone not in BoldTrail yet: name + email, added to BoldTrail, then picked.
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const seq = useRef(0);
-
-  useEffect(() => {
-    fetch("/api/boldtrail")
-      .then((r) => (r.ok ? r.json() : { connected: false, picks: [] }))
-      .then((d) => { setConnected(!!d.connected); setPicks(d.picks ?? []); })
-      .catch(() => setConnected(false));
-  }, []);
+  // The latest list, so an add after an await never works from a stale copy.
+  const toRef = useRef(to);
+  toRef.current = to;
 
   // Search BoldTrail as they type: a short pause, and only the latest answer counts.
   useEffect(() => {
@@ -83,7 +75,11 @@ export function BoldTrailSend({
   }, [query]);
 
   function add(c: BtContact) {
-    setTo((prev) => (prev.some((x) => x.id === c.id) ? prev : prev.length >= MAX ? (toast.error(`Up to ${MAX} people at a time.`), prev) : [...prev, c]));
+    const now = toRef.current;
+    if (!now.some((x) => x.id === c.id)) {
+      if (now.length >= MAX) toast.error(`Up to ${MAX} people at a time.`);
+      else onChange([...now, c]);
+    }
     setQuery("");
     setFound([]);
   }
@@ -98,7 +94,7 @@ export function BoldTrailSend({
   async function addNew() {
     if (!newName.trim()) { toast.error("Enter their name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) { toast.error("Enter their email."); return; }
-    if (to.length >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    if (toRef.current.length >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
     setAdding(true);
     try {
       const res = await fetch("/api/boldtrail/contact", {
@@ -120,52 +116,16 @@ export function BoldTrailSend({
     }
   }
 
-  function pressSend() {
-    if (blockedReason) { toast.error(blockedReason); return; }
-    if (!to.length) { toast.error("Add at least one person first: type a name or email above."); return; }
-    if (!subject.trim()) { toast.error("Pick a subject line first."); return; }
-    setConfirming(true);
-  }
-
-  async function send() {
-    setSending(true);
-    try {
-      const d = await onSend(to);
-      setLast({ at: d.sentAt, to: d.results });
-      const failed = d.results.filter((r) => !r.sent);
-      if (failed.length) toast.error(`Not sent to ${failed.map((r) => r.name).join(", ")}.`);
-      else toast.success(`Sent to ${d.results.length} ${d.results.length === 1 ? "person" : "people"} through BoldTrail.`);
-      setConfirming(false);
-      setTo([]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send it.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  if (connected === null) return null;
-  if (!connected) {
-    return (
-      <p className="mt-3 text-[12.5px] text-spark-ink-muted">
-        <Link href="/settings#crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail in Settings</Link> to send this to up to {MAX} people from here.
-      </p>
-    );
-  }
-
   const free = picks.filter((p) => !to.some((t) => t.id === p.id));
   const shown = found.filter((c) => !to.some((t) => t.id === c.id));
   const term = query.trim();
   return (
-    <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/60 p-3">
-      <p className="mb-2 text-[12px] font-bold text-orange-800">
-        {numbered ? "3 · " : ""}People from BoldTrail · up to {MAX}
-      </p>
+    <>
       <div className="flex flex-wrap items-center gap-2">
         {to.map((c) => (
           <span key={c.id} className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[12.5px] text-spark-ink">
             {c.name}<span className="text-[11px] text-orange-800">{c.email}</span>
-            <button type="button" onClick={() => setTo((p) => p.filter((x) => x.id !== c.id))} aria-label={`Remove ${c.name}`} className="text-spark-ink-muted hover:text-red-600"><X size={12} /></button>
+            <button type="button" onClick={() => onChange(to.filter((x) => x.id !== c.id))} aria-label={`Remove ${c.name}`} className="text-spark-ink-muted hover:text-red-600"><X size={12} /></button>
           </span>
         ))}
         {to.length < MAX && (
@@ -244,6 +204,76 @@ export function BoldTrailSend({
           ))}
         </div>
       )}
+    </>
+  );
+}
+
+export function BoldTrailSend({
+  subject,
+  blockedReason,
+  onSend,
+  numbered = false,
+}: {
+  subject: string;
+  /** Why it can't go yet (e.g. a missing post link), said when Send is pressed. */
+  blockedReason?: string | null;
+  onSend: (contacts: BtContact[]) => Promise<{ sentAt: string; results: Result[] }>;
+  /** Label the parts "3 · People" and "4 · Send" (the Share Kit's numbered steps). */
+  numbered?: boolean;
+}) {
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [picks, setPicks] = useState<BtContact[]>([]);
+  const [to, setTo] = useState<BtContact[]>([]);
+  const [confirming, setConfirming] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [last, setLast] = useState<{ at: string; to: Result[] } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/boldtrail")
+      .then((r) => (r.ok ? r.json() : { connected: false, picks: [] }))
+      .then((d) => { setConnected(!!d.connected); setPicks(d.picks ?? []); })
+      .catch(() => setConnected(false));
+  }, []);
+
+  function pressSend() {
+    if (blockedReason) { toast.error(blockedReason); return; }
+    if (!to.length) { toast.error("Add at least one person first: type a name or email above."); return; }
+    if (!subject.trim()) { toast.error("Pick a subject line first."); return; }
+    setConfirming(true);
+  }
+
+  async function send() {
+    setSending(true);
+    try {
+      const d = await onSend(to);
+      setLast({ at: d.sentAt, to: d.results });
+      const failed = d.results.filter((r) => !r.sent);
+      if (failed.length) toast.error(`Not sent to ${failed.map((r) => r.name).join(", ")}.`);
+      else toast.success(`Sent to ${d.results.length} ${d.results.length === 1 ? "person" : "people"} through BoldTrail.`);
+      setConfirming(false);
+      setTo([]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send it.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (connected === null) return null;
+  if (!connected) {
+    return (
+      <p className="mt-3 text-[12.5px] text-spark-ink-muted">
+        <Link href="/settings#crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail in Settings</Link> to send this to up to {MAX} people from here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+      <p className="mb-2 text-[12px] font-bold text-orange-800">
+        {numbered ? "3 · " : ""}People from BoldTrail · up to {MAX}
+      </p>
+      <BoldTrailPeople to={to} onChange={setTo} picks={picks} />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"

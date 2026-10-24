@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ArrowLeft, Loader2, Plus, RefreshCw, Send, X } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Send } from "lucide-react";
 import { EmailResult } from "@/components/email/email-result";
+import { BoldTrailPeople, BT_MAX } from "@/components/email/boldtrail-send";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { videoEmailAsHtml, videoEmailAsText, type SellerVideo } from "@/lib/utils/newsletter-html";
 import type { EmailSignature } from "@/lib/utils/email-html";
@@ -18,7 +19,7 @@ import { showTrialLock } from "@/lib/utils/trial-lock";
  */
 
 type Contact = { id: string; name: string; email: string };
-const MAX = 10;
+const MAX = BT_MAX;
 const eyebrow = "mb-2 text-[11.5px] font-bold uppercase tracking-[0.12em] text-spark-ink";
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F] sm:text-[14px]";
 const firstOf = (c?: Contact) => (c && !c.name.includes("@") ? c.name.split(/\s+/)[0] : "");
@@ -33,8 +34,6 @@ export default function VideoEmailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [to, setTo] = useState<Contact[]>([]);
-  const [addEmail, setAddEmail] = useState("");
-  const [adding, setAdding] = useState(false);
   const [subject, setSubject] = useState("");
   const [note, setNote] = useState("");
   const [writing, setWriting] = useState(false);
@@ -89,45 +88,9 @@ export default function VideoEmailPage() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function addContact(c: Contact) {
-    setTo((prev) => (prev.some((x) => x.id === c.id) ? prev : prev.length >= MAX ? (toast.error(`Up to ${MAX} people at a time.`), prev) : [...prev, c]));
-  }
-
-  async function addByEmail(): Promise<boolean> {
-    if (!addEmail.includes("@")) return false;
-    setAdding(true);
-    try {
-      const res = await fetch("/api/video-email/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: addEmail.trim() }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d?.error || "Couldn't find that contact.");
-      addContact(d.contact);
-      setAddEmail("");
-      return true;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't find that contact.");
-      return false;
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  /**
-   * The Send button under the To box (2026-10-18). An address typed but not
-   * added was the owner's case: the list was empty, so no Send appeared and
-   * nothing went. Pressing Send now adds it first.
-   */
-  async function startSend() {
-    if (addEmail.includes("@")) {
-      if (!(await addByEmail())) return;
-      if (!subject.trim()) { toast.error("Add a subject first."); return; }
-      setConfirming(true);
-      return;
-    }
-    if (to.length === 0) { toast.error("Add someone first."); return; }
+  /** The Send button under the To box: says what's missing instead of doing nothing. */
+  function startSend() {
+    if (to.length === 0) { toast.error("Add at least one person first: type a name or email above."); return; }
     if (!subject.trim()) { toast.error("Add a subject first."); return; }
     setConfirming(true);
   }
@@ -189,51 +152,19 @@ export default function VideoEmailPage() {
             <p className={eyebrow}>To · from your BoldTrail</p>
             {boldtrail ? (
               <>
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-200 bg-orange-50/60 p-2.5">
-                  {to.map((c) => (
-                    <span key={c.id} className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[12.5px] text-spark-ink">
-                      {c.name}<span className="text-[11px] text-orange-800">{c.email}</span>
-                      <button type="button" onClick={() => setTo((p) => p.filter((x) => x.id !== c.id))} aria-label={`Remove ${c.name}`} className="text-spark-ink-muted hover:text-red-600"><X size={12} /></button>
-                    </span>
-                  ))}
-                  {to.length < MAX && (
-                    <span className="flex min-w-[220px] flex-1 items-center gap-1.5">
-                      <input
-                        type="email"
-                        name="video-email-contact"
-                        autoComplete="off"
-                        data-1p-ignore
-                        data-lpignore="true"
-                        value={addEmail}
-                        onChange={(e) => setAddEmail(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addByEmail(); } }}
-                        placeholder="Add by email"
-                        className={`${input} py-1.5`}
-                      />
-                      <button type="button" onClick={addByEmail} disabled={adding || !addEmail.includes("@")} className="flex shrink-0 items-center gap-1 rounded-[10px] border border-orange-300 bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-orange-800 disabled:opacity-50">
-                        {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add
-                      </button>
-                    </span>
-                  )}
+                {/* Same people box as the Share Kit (2026-10-24, the owner's
+                    ask): search BoldTrail by name or email, or add someone new. */}
+                <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-2.5">
+                  <BoldTrailPeople to={to} onChange={setTo} picks={picks} />
                 </div>
-                {picks.filter((p) => !to.some((t) => t.id === p.id)).length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-spark-ink-muted">
-                    Quick picks:
-                    {picks.filter((p) => !to.some((t) => t.id === p.id)).map((p) => (
-                      <button key={p.id} type="button" onClick={() => addContact(p)} className="rounded-full border border-dashed border-[#d9c6a8] bg-white px-2.5 py-0.5 text-spark-ink hover:border-[#A3660F]">
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">Up to {MAX} people, each sent their own email.</p>
                 <button
                   type="button"
-                  onClick={() => void startSend()}
-                  disabled={adding || sending}
+                  onClick={startSend}
+                  disabled={sending}
                   className="mt-2.5 flex w-fit items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60"
                 >
-                  {adding ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send through BoldTrail
+                  <Send size={13} /> Send through BoldTrail{to.length ? ` to ${to.length}` : ""}
                 </button>
               </>
             ) : (
