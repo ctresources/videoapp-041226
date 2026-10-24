@@ -82,7 +82,7 @@ function Chips({ d }: { d: HaloDraft }) {
     <div className="mt-2 flex flex-wrap gap-1.5">
       <span className={`${chip} font-semibold text-spark-ink`}>{d.setup.look === "full" ? "Avatar video" : "Avatar in circle"}</span>
       <span className={chip}>{d.setup.size === "horizontal" ? "Horizontal 16:9" : "Vertical 9:16"}</span>
-      {town && d.source === "halo" && <span className={chip}>📍 {town}</span>}
+      {town && d.source !== "halo_promo" && <span className={chip}>📍 {town}</span>}
       {len && <span className={chip}>{len}</span>}
       {d.setup.captions !== false && <span className={chip}>Captions</span>}
       {plats && <span className={chip}>{plats}</span>}
@@ -93,7 +93,8 @@ function Chips({ d }: { d: HaloDraft }) {
 function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const hasPostPhoto = d.source === "halo" && !!d.halo_page_id;
+  const hasPostPhoto = !!d.setup.sourceImage || (d.source === "halo" && !!d.halo_page_id);
+  const from = d.source === "email" ? "the email" : "the post";
   const pic = async (p: "post" | "ai" | "upload", file?: File) => {
     setBusy(p);
     await halo.setPicture(d, p, file);
@@ -107,7 +108,7 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <Row label="Picture">
-          {hasPostPhoto && <button type="button" className={tile(d.setup.picture === "post")} onClick={() => void pic("post")} disabled={!!busy}>{busy === "post" ? "…" : "From the post"}</button>}
+          {hasPostPhoto && <button type="button" className={tile(d.setup.picture === "post")} onClick={() => void pic("post")} disabled={!!busy}>{busy === "post" ? "…" : `From ${from}`}</button>}
           <button type="button" className={tile(d.setup.picture === "ai")} onClick={() => void pic("ai")} disabled={!!busy}>{busy === "ai" ? "…" : "AI picture"}</button>
           <button type="button" className={tile(d.setup.picture === "upload")} onClick={() => fileRef.current?.click()} disabled={!!busy}>{busy === "upload" ? "…" : "Upload"}</button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden"
@@ -127,7 +128,7 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
         <Row label="On screen">
           <button type="button" className={tile(d.setup.onScreen !== "post")} onClick={() => void halo.patchSetup(d, { onScreen: "stock" })}>Stock clips of the area</button>
           {d.setup.photos?.length > 0 && (
-            <button type="button" className={tile(d.setup.onScreen === "post")} onClick={() => void halo.patchSetup(d, { onScreen: "post" })}>Photos from the post</button>
+            <button type="button" className={tile(d.setup.onScreen === "post")} onClick={() => void halo.patchSetup(d, { onScreen: "post" })}>Photos from {from}</button>
           )}
         </Row>
         <Row label="Captions">
@@ -186,7 +187,7 @@ function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
   const [rewriting, setRewriting] = useState(false);
   const title = d.projects?.ai_script?.title || d.topic;
   const hook = d.projects?.ai_script?.hook;
-  const tag = d.source === "halo_promo" ? "Halo · Promo" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
+  const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
   const done = d.status === "scheduled" || d.status === "posted";
 
   async function approve() {
@@ -229,7 +230,7 @@ function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
             <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
-            <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
+            <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : d.source === "email" ? "border-spark-rule bg-[#faf9f5] text-spark-ink-soft" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
           </div>
           <p className="mt-1.5 text-base font-semibold leading-snug text-spark-ink">{title}</p>
           {hook && d.status !== "writing" && !done && <p className="mt-0.5 line-clamp-2 text-sm text-spark-ink-muted">&ldquo;{hook}&rdquo;</p>}
@@ -276,7 +277,7 @@ function Card({ d, halo }: { d: HaloDraft; halo: Halo }) {
                 setRewriting(false);
               }}>New script</Button>
             )}
-            {d.source === "halo" && (
+            {d.source !== "halo_promo" && (
               <Button size="sm" variant="outline" onClick={recordMyself} className="gap-1.5"><Camera size={13} /> Record it myself</Button>
             )}
             <Button size="sm" variant="ghost" onClick={() => void halo.skip(d)}>Skip</Button>
@@ -354,7 +355,9 @@ export function HaloDrafts({ halo }: { halo: Halo }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">From your Halo sites</p>
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">
+          {drafts.some((d) => d.source === "email") ? "From your sites & emails" : "From your Halo sites"}
+        </p>
         {halos.length > 0 && (
           <span className="text-[13px] font-medium text-spark-ink-muted">
             {month.toLocaleString(undefined, { month: "long" })} · {inMonth} of {settings.perMonth} planned

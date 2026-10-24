@@ -10,7 +10,9 @@ import { extractImageUrls } from "@/lib/utils/listing-photos";
 import { rehostImageUrls, storeDataUriImages, storeImageBuffer } from "@/lib/utils/rehost-images";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { extractText, getDocumentProxy } from "unpdf";
+import { startEmailDraft } from "@/lib/halo";
 
 /**
  * Receives a forwarded email and saves the article inside it.
@@ -25,7 +27,9 @@ import { extractText, getDocumentProxy } from "unpdf";
  * minutes. So anything unusable is answered 200 with a reason in the log.
  */
 
-export const maxDuration = 60;
+// 300: a saved email is now also written as a draft (lib/halo startEmailDraft),
+// which carries on after the reply and takes about a minute.
+export const maxDuration = 300;
 
 /** Fetching the body, images and attachments all happen on this one clock. */
 const RESEND_API = "https://api.resend.com";
@@ -400,7 +404,7 @@ export async function POST(req: NextRequest) {
   // photo forwarded with a one-line note gets through.
   const images = await imagesFromEmail(userId, email, html);
 
-  const { error } = await admin.from("email_imports").insert({
+  const { data: saved, error } = await admin.from("email_imports").insert({
     user_id: userId,
     provider_email_id: email.id,
     from_address: (email.from ?? "").slice(0, 320) || null,
@@ -412,13 +416,26 @@ export async function POST(req: NextRequest) {
     // arrived rather than leaving a 2,000-word row looking like a forwarded
     // note that happened to be long.
     pdf_source: pdf.source || null,
-  });
+  }).select("id").single();
 
   // 23505 is a duplicate key: the same delivery arriving twice, which is a
   // success — the article is already saved.
   if (error && error.code !== "23505") {
     console.error("Inbound email insert failed:", error.message);
     return NextResponse.json({ error: "Could not save" }, { status: 500 });
+  }
+
+  // A new email is also written as a video draft on the AutoSparks page, for
+  // paid plans with it switched on (2026-10-24). Only on the first delivery:
+  // a duplicate has no new row. Never fails the delivery.
+  const importId = (saved as { id: string } | null)?.id;
+  if (importId) {
+    try {
+      const written = await startEmailDraft(admin, userId, importId);
+      if (written) waitUntil(written);
+    } catch (err) {
+      console.error("Inbound email draft failed:", err instanceof Error ? err.message : err);
+    }
   }
 
   return NextResponse.json({ ok: true });

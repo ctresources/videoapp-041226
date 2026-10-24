@@ -81,7 +81,7 @@ export async function postReadyHaloVideos(admin: Admin, opts: { limit?: number }
   const { data } = await admin
     .from("autopilot_drafts")
     .select("id, user_id, project_id, slot_at, source, source_url, setup, approved_at")
-    .in("source", ["halo", "halo_promo"])
+    .in("source", ["halo", "halo_promo", "email"])
     .eq("status", "approved")
     .is("posted_at", null)
     .not("approved_at", "is", null)

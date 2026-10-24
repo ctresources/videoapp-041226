@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     .eq("user_id", s.user.id)
     .single();
   const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null } | null;
-  if (!d || (d.source !== "halo" && d.source !== "halo_promo")) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
+  if (!d || !["halo", "halo_promo", "email"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   if (d.status !== "draft") return NextResponse.json({ error: d.status === "writing" ? "Still writing. Try again in a minute." : "This one is already approved." }, { status: 409 });
   if (!d.project_id) return NextResponse.json({ error: "Still writing. Try again in a minute." }, { status: 409 });
 

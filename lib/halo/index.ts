@@ -49,6 +49,8 @@ export interface HaloSettings {
   captions: boolean;
   /** A music preset id (lib/utils/music-presets.ts). */
   music: string;
+  /** Forwarded emails become drafts too (2026-10-24). */
+  emails: boolean;
 }
 
 export const HALO_DEFAULTS: HaloSettings = {
@@ -63,6 +65,7 @@ export const HALO_DEFAULTS: HaloSettings = {
   platforms: ["facebook", "instagram", "youtube", "google_business"],
   captions: true,
   music: "bright",
+  emails: true,
 };
 
 const ALL_KINDS: HaloKind[] = ["blog", "guides", "events", "market", "neighborhoods", "communities", "relocation", "dining", "just_sold", "other"];
@@ -89,6 +92,7 @@ export function sanitizeSettings(raw: unknown): HaloSettings {
     platforms: Array.from(new Set(platforms)),
     captions: typeof r.captions === "boolean" ? r.captions : d.captions,
     music: typeof r.music === "string" && MUSIC_IDS.includes(r.music) ? r.music : d.music,
+    emails: typeof r.emails === "boolean" ? r.emails : d.emails,
   };
 }
 
@@ -100,6 +104,8 @@ export interface HaloSetup {
   /** The thumbnail's picture: the post's photo, an AI picture, or their own upload. */
   picture: "post" | "ai" | "upload";
   pictureUrl: string | null;
+  /** The post's (or email's) own main picture, for "From the post". */
+  sourceImage?: string | null;
   /** What is on screen behind them: stock clips, or the post's own photos. */
   onScreen: "stock" | "post";
   /** The post's photos, kept for "Photos from the post". */
@@ -248,6 +254,7 @@ export function setupFor(s: HaloSettings, kind: string, page?: { image_url: stri
     size: s.size,
     picture: page?.image_url ? "post" : "ai",
     pictureUrl: null,
+    sourceImage: page?.image_url ?? null,
     onScreen: "stock",
     photos: [],
     platforms: s.platforms,
@@ -535,6 +542,113 @@ export async function startPromo(
     }
   })();
   return { id, written };
+}
+
+/** Email drafts written per agent per day, at most: each is a writer call. */
+const EMAIL_DRAFTS_PER_DAY = 5;
+
+/**
+ * A forwarded email as a video draft (2026-10-24, the owner's ask).
+ *
+ * Called by the inbound email webhook once the email is saved. It goes in the
+ * same list as Halo drafts, with the same setup, on the next day at the
+ * agent's Halo time that no other email draft has. It is not one of the
+ * month's Halo videos. The email is someone else's piece as often as not (a
+ * data provider's market report), so the script is written fresh from it.
+ */
+export async function startEmailDraft(admin: Admin, userId: string, importId: string): Promise<Promise<void> | null> {
+  const { data } = await admin.from("profiles").select(HALO_PROFILE_SELECT).eq("id", userId).single();
+  const profile = data as HaloProfile | null;
+  if (!profile || !autopilotEligible(profile)) return null;
+  const s = sanitizeSettings(profile.halo_settings);
+  if (!s.emails) return null;
+
+  const { data: imp } = await admin
+    .from("email_imports")
+    .select("id, subject, body_text, image_urls")
+    .eq("id", importId)
+    .eq("user_id", userId)
+    .single();
+  const email = imp as { id: string; subject: string | null; body_text: string; image_urls: string[] | null } | null;
+  if (!email) return null;
+
+  const { count } = await admin
+    .from("autopilot_drafts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("source", "email")
+    .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
+  if ((count ?? 0) >= EMAIL_DRAFTS_PER_DAY) return null;
+
+  // The next day at their Halo time with no other email draft on it.
+  const tz = zoneOf(profile);
+  const { data: taken } = await admin
+    .from("autopilot_drafts")
+    .select("slot_at")
+    .eq("user_id", userId)
+    .eq("source", "email")
+    .not("status", "in", "(skipped,failed)")
+    .gte("slot_at", new Date().toISOString());
+  const takenDays = new Set(((taken ?? []) as { slot_at: string }[]).map((r) => dayKey(new Date(r.slot_at), tz)));
+  const today = dayKey(new Date(), tz);
+  let day = addDays(today, 1);
+  for (let i = 1; i <= 21 && takenDays.has(day); i++) day = addDays(today, i + 1);
+  const slot = zonedToUtc(day, s.time, tz);
+
+  const images = (email.image_urls ?? []).filter((u) => /^https:\/\//.test(u));
+  const setup: HaloSetup = {
+    ...setupFor(s, "email", { image_url: images[0] ?? null }),
+    photos: images.slice(0, 12),
+  };
+  const topic = (email.subject || "Forwarded email").slice(0, 300);
+  const { data: row, error } = await admin
+    .from("autopilot_drafts")
+    .insert({
+      user_id: userId,
+      week_of: mondayFor(slot, tz),
+      slot_at: slot.toISOString(),
+      kind: "video",
+      topic,
+      source: "email",
+      source_kind: "email",
+      email_import_id: email.id,
+      setup,
+      status: "writing",
+    })
+    .select("id")
+    .single();
+  if (error || !row) {
+    console.error("[halo] email draft insert:", error?.message);
+    return null;
+  }
+  const draftId = (row as { id: string }).id;
+
+  return (async () => {
+    try {
+      const vertical = setup.size === "vertical";
+      const now = new Date();
+      const projectId = await callWriter(userId, {
+        videoType: "custom",
+        customTopic: topic,
+        sourceText: email.body_text,
+        sourceIsOwn: false,
+        city: profile.location_city?.trim() ?? "",
+        state: profile.location_state?.trim() ?? "",
+        month: now.toLocaleString("en-US", { month: "long", timeZone: tz }),
+        year: now.getFullYear(),
+        videoLength: "standard",
+        shortScript: vertical,
+        videoPlatform: vertical ? "reel" : "youtube",
+        renderMode: "avatar_voice",
+        ...(setup.look === "circle" && { avatarStyle: "circle" }),
+      });
+      await admin.from("autopilot_drafts").update({ project_id: projectId, status: "draft" }).eq("id", draftId);
+      await buildThumbnail(admin, userId, projectId, setup.picture === "post" ? setup.sourceImage ?? null : null);
+    } catch (err) {
+      console.error(`[halo] email draft ${draftId} failed:`, err instanceof Error ? err.message : err);
+      await admin.from("autopilot_drafts").update({ status: "failed" }).eq("id", draftId);
+    }
+  })();
 }
 
 /** Everything a morning run does for one agent: read their sites, then plan. */

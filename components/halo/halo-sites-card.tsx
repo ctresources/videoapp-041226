@@ -219,6 +219,11 @@ export function HaloSitesCard({ halo }: { halo: Halo }) {
             {MUSIC_PRESETS.filter((m) => m.id !== "custom").map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </Row>
+        <div className="border-t border-spark-rule" />
+        {/* Forwarded emails become drafts too (2026-10-24, the owner's ask). */}
+        <Row label="Forwarded emails">
+          <Switch on={s.emails} onClick={() => void halo.saveSettings({ emails: !s.emails })} label={s.emails ? "Make drafts" : "Off"} />
+        </Row>
       </div>
       {lastChecked && (
         <p className="mt-4 text-[12.5px] text-spark-ink-faint">

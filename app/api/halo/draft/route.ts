@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     .eq("user_id", s.user.id)
     .single();
   const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null } | null;
-  if (!d || (d.source !== "halo" && d.source !== "halo_promo")) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
+  if (!d || !["halo", "halo_promo", "email"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   const editable = d.status === "draft" || d.status === "failed";
 
   if (action === "setup") {
@@ -63,11 +63,13 @@ export async function POST(req: NextRequest) {
     if (!picture) return NextResponse.json({ error: "Unknown picture." }, { status: 400 });
     let url: string | null = null;
     if (picture === "post") {
-      const { data: page } = d.halo_page_id
-        ? await s.admin.from("halo_pages").select("image_url").eq("id", d.halo_page_id).single()
-        : { data: null };
-      url = (page as { image_url: string | null } | null)?.image_url ?? null;
-      if (!url) return NextResponse.json({ error: "This post has no photo." }, { status: 400 });
+      // The post's (or email's) own picture, kept on the setup when written.
+      url = d.setup.sourceImage ?? null;
+      if (!url && d.halo_page_id) {
+        const { data: page } = await s.admin.from("halo_pages").select("image_url").eq("id", d.halo_page_id).single();
+        url = (page as { image_url: string | null } | null)?.image_url ?? null;
+      }
+      if (!url) return NextResponse.json({ error: "There's no photo to use." }, { status: 400 });
     }
     if (picture === "upload") {
       const u = typeof body.pictureUrl === "string" ? body.pictureUrl : "";
