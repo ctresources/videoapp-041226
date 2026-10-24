@@ -558,6 +558,10 @@ export default function ProjectEditorPage() {
   const [emailSending, setEmailSending] = useState(false);
   /** The email panel under the blog card's button row. */
   const [emailOpen, setEmailOpen] = useState(false);
+  // The green "What are AI answer blocks?" note goes once any of the article's
+  // chips is pressed; it sat between the chips and what they open (the
+  // owner's ask, 2026-10-24). The green badge brings it back.
+  const [aiInfoHidden, setAiInfoHidden] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // PDF attachment
@@ -4476,14 +4480,19 @@ export default function ProjectEditorPage() {
                   <Badge variant="default" className="text-xs">AEO/GEO/SEO</Badge>
                   {/* What the badge means, in the owner's words for it: the
                       article's closing questions are AI answer blocks. */}
-                  <Badge variant="success" className="text-xs">Includes 6 AI answer blocks</Badge>
+                  <button type="button" onClick={() => setAiInfoHidden((h) => !h)} aria-label="What are AI answer blocks?">
+                    <Badge variant="success" className="text-xs">Includes 6 AI answer blocks</Badge>
+                  </button>
                 </div>
 
                 {/* The actions, in the header rather than buried inside the
                     disclosure. They are the entire reason the card exists —
                     Copy as HTML is how the article gets to your site — and
                     they were only reachable after expanding it. */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className="flex flex-wrap items-center gap-2"
+                  onClickCapture={(e) => { if ((e.target as HTMLElement).closest("button")) setAiInfoHidden(true); }}
+                >
                   {(script.blog_intro || script.blog_body) && (articleDraft ? (
                     <>
                       <button
@@ -4754,7 +4763,7 @@ export default function ProjectEditorPage() {
               )}
               {/* What the badge above means, in plain words, at the owner's
                   ask (2026-10-14). Only once there is an article to point at. */}
-              {(script.blog_intro || script.blog_body) && (
+              {(script.blog_intro || script.blog_body) && !aiInfoHidden && (
                 <div className="mx-2 mb-3 rounded-xl border border-green-200 bg-green-50 px-3.5 py-2.5">
                   <p className="text-[13px] font-semibold text-green-900">What are AI answer blocks?</p>
                   <p className="mt-0.5 text-[13px] leading-[1.45] text-green-900">
