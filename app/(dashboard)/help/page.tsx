@@ -709,6 +709,34 @@ export default function HelpPage() {
                 the area or the post&apos;s own photos), captions, music, accounts and when it posts.{" "}
                 <strong>Edit script</strong> opens it in the editor.
               </span>
+              {/* The owner's ask (2026-10-24), after Daniel Okiro made a Halo
+                  draft's video twice: how to change a draft and get one video. */}
+              <span className="block mt-1.5 font-semibold text-brand-text">Changing a draft without making two videos</span>
+              <span className="block mt-1">
+                Nothing is made until you press <strong>Approve</strong>, so change as much as you like first.
+              </span>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>
+                  <strong>The look, size, avatar, captions, music, picture, accounts or day:</strong> press{" "}
+                  <strong>Setup</strong> on the card. Changing these makes nothing.
+                </li>
+                <li>
+                  <strong>The words:</strong> press <strong>Edit script</strong>, change the script, then press{" "}
+                  <strong>Save Draft</strong> next to the video settings. Don&apos;t press{" "}
+                  <strong>Spark Video</strong> there. Go back to AutoSparks; the card shows your new words.
+                </li>
+                <li>
+                  When you&apos;re happy, press <strong>Approve</strong> on the card. It uses the card&apos;s{" "}
+                  <strong>Setup</strong> choices, not the editor&apos;s video settings, so change the look and
+                  size in Setup and only the words in the editor.
+                </li>
+                <li>
+                  Pressed <strong>Spark Video</strong> in the editor by mistake? That&apos;s fine: the card
+                  then says <strong>Video made</strong> and its button becomes{" "}
+                  <strong>Post this video</strong>, which posts that video and uses nothing more. A draft
+                  never makes a second video.
+                </li>
+              </ul>
               <span className="block mt-1.5">
                 <strong>Approve</strong> on a Halo draft makes the video straight away and uses one
                 video from your plan. Each draft gets one video: if you already made it from the
