@@ -40,6 +40,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { joinHookAndScript, dropDuplicateHook } from "@/lib/utils/script-assembly";
+import { TwinBackgrounds, type TwinBgChoice } from "@/components/avatar/twin-backgrounds";
 
 /** Safely parse JSON from a fetch Response — returns null if the body is HTML/empty */
 async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
@@ -448,6 +449,8 @@ export default function ProjectEditorPage() {
   const [twinFullOk, setTwinFullOk] = useState(true);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
+  // The background behind a Digital Twin in a horizontal video (2026-10-24).
+  const [twinBg, setTwinBg] = useState<TwinBgChoice | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: true, blog: false,
   });
@@ -1765,6 +1768,9 @@ export default function ProjectEditorPage() {
           // For paste with no explicit pick, the server resolves the default avatar.
           ...((renderMode === "avatar_voice" || source === "paste") && selectedLookId && { lookId: selectedLookId }),
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
+          // The Digital Twin's background (2026-10-24); the server uses it
+          // only for a twin in a horizontal video.
+          ...(twinBg && twinLookId && selectedLookId === twinLookId && { twinBackground: twinBg }),
           // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
           ...(pipLayout && { pipLayout: true }),
           ...(pdfUrl && { pdfUrl }),
@@ -2049,9 +2055,27 @@ export default function ProjectEditorPage() {
             {selectedVideoType === "reel_9x16" || selectedVideoType === "short_1x1" ? (
               <span>With your Digital Twin, a vertical video is a full <b className="text-[#A3660F]">vertical Avatar video</b>.</span>
             ) : (
-              <span>With your Digital Twin, a horizontal video is made as <b className="text-[#A3660F]">Avatar in circle</b>. Choose Vertical for a vertical Avatar video.</span>
+              <span>With your Digital Twin, a horizontal video shows you <b className="text-[#A3660F]">full size on a background</b>. Pick it below.</span>
             )}
           </p>
+        )}
+        {/* The background behind the twin (2026-10-24, the owner's mockup). */}
+        {!!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice" && !circleStyle
+          && !selfRecord && !twinFullLocked && project
+          && selectedVideoType === "youtube_16x9" && (
+          <div className="rounded-xl border-2 border-[#f1d29a] bg-white p-3">
+            <TwinBackgrounds
+              mode="pick"
+              value={twinBg}
+              onChange={setTwinBg}
+              orientation="landscape"
+              city={project.location_city}
+              state={project.location_state}
+              projectId={project.id}
+              hasListing={Array.isArray((project as unknown as { listing_data?: { photoUrls?: unknown[] } }).listing_data?.photoUrls)
+                && ((project as unknown as { listing_data: { photoUrls: unknown[] } }).listing_data.photoUrls.length > 0)}
+            />
+          </div>
         )}
         {/* Says out loud that these are two different exits, not three
             settings on one.

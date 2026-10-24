@@ -138,6 +138,45 @@ const TEMPLATE_MOOD: Record<string, string> = {
  * Returns the raw PNG, or null when OPENAI_API_KEY is missing or the request
  * fails; the caller falls back to a plain background and does not count it.
  */
+/**
+ * A background for the agent's Digital Twin to stand in front of (2026-10-24):
+ * a place they described, or their town. The twin is cut out and placed in
+ * the middle, so the picture is the room or view behind a presenter: eye
+ * level, the middle kept open, softly focused like a real backdrop. Never
+ * people or words. Null when the key is missing or the request fails.
+ */
+export async function generateTwinBackdrop(opts: {
+  description: string;
+  orientation: "portrait" | "landscape";
+}): Promise<Buffer | null> {
+  const openai = getOpenAI();
+  if (!openai) return null;
+  const description = opts.description.trim().slice(0, 300);
+  const prompt = `A photograph of a place, to sit behind a person speaking to camera in a video.
+
+PLACE: ${description}
+
+Camera at standing eye level, as if two metres in front of someone standing in this place. The middle of the frame is open space where the presenter will stand; keep anything important to the left and right thirds and the background. Natural light, true-to-life color, believable, like a well-shot video interview. The background slightly soft, as with a real camera lens.
+
+STRICT RULES:
+- NO people, faces, figures or silhouettes anywhere.
+- NO text, words, numbers, signs with writing, logos or watermarks.
+- NO collages, split panels, borders or frames. One scene, edge to edge.`;
+  try {
+    const result = await openai.images.generate({
+      model: IMAGE_MODEL,
+      prompt,
+      size: opts.orientation === "portrait" ? "1024x1536" : "1536x1024",
+      quality: "medium",
+      n: 1,
+    });
+    return await imageBytes(result.data?.[0]);
+  } catch (err) {
+    console.error("[openai-image] twin backdrop failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function generateImageBackground(opts: {
   template: string;
   scene?: string;

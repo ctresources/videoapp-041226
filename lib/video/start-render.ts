@@ -32,6 +32,7 @@ import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
+import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
@@ -558,7 +559,7 @@ export async function startRender(
 ): Promise<NextResponse> {
   // When this attempt began, so a refusal can tidy up only what it made.
   const attemptStartedAt = new Date().toISOString();
-  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode, avatarStyle } = body;
+  const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode, avatarStyle, twinBackground } = body;
 
   /**
    * "Nobody on screen" is a decision, not an omission.
@@ -727,7 +728,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg")
     .eq("id", user.id)
     .single();
 
@@ -756,6 +757,9 @@ export async function startRender(
     role: string | null;
     subscription_tier: string | null;
     first_video_generated_at: string | null;
+    /** Horizontal twin videos: on a background (new) or in the circle (2026-10-24). */
+    twin_wide_mode: string | null;
+    twin_default_bg: unknown;
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
@@ -1200,6 +1204,26 @@ export async function startRender(
       if (!directAvatarId) throw new Error("Set up your avatar in Settings → Brand Profile to generate a talking-head video.");
       console.log(`[create-blog] Direct Video path (engine=direct) — avatar ${directAvatarId}`);
 
+      /**
+       * A Digital Twin full size on a background (2026-10-24, the owner's
+       * mockup). A twin is filmed upright, so a horizontal twin video was
+       * made as Avatar in circle. HeyGen now removes the twin's own
+       * background and puts the agent's chosen one behind them, full height.
+       * For "Avatar video" and the Agent Intro, as the agent's Wide videos
+       * setting says (on a background unless they chose the circle); for a
+       * long video only when this video asked for a background, since long
+       * videos lean on the agent's photos. No photos, clips or scenes go
+       * behind it: the background is the picture.
+       */
+      const twinChoice = parseChoice(twinBackground);
+      const twinOnBackground = directAvatarId === profile.heygen_digital_twin_look_id
+        && orientation === "landscape" && !voiceOnly
+        && (wantsFull || isAgentIntro || (isLongForm && !!twinChoice && twinChoice.type !== "circle"));
+      const twinBackdrop = twinOnBackground
+        ? await resolveTwinBackdrop(admin, user.id, twinChoice, profile)
+        : null;
+      if (twinBackdrop) console.log(`[create-blog] project=${projectId} Digital Twin on a ${twinBackdrop.type} background`);
+
       // Direct Video needs a HeyGen voice_id. Only the user's OWN clone, or a
       // neutral public voice — never another account's private clone. See the
       // note on resolveVoiceId.
@@ -1212,7 +1236,7 @@ export async function startRender(
 
       // Photos to composite as b-roll behind the avatar (up to DIRECT_PHOTO_LIMIT, 20) — uploaded
       // photos take priority, then any listing photos.
-      const directPhotos = isAgentIntro ? [] : [
+      const directPhotos = isAgentIntro || twinBackdrop ? [] : [
         ...(Array.isArray(extraPhotoUrls) ? extraPhotoUrls.filter((u): u is string => typeof u === "string") : []),
         ...listingPhotos,
       ].slice(0, DIRECT_PHOTO_LIMIT);
@@ -1252,7 +1276,7 @@ export async function startRender(
         new Set([...footageTerms(safeScript, 4), ...aiKeywords]),
       ).slice(0, 5);
 
-      const stockClips = isAgentIntro ? [] : await stockBrollFor({
+      const stockClips = isAgentIntro || twinBackdrop ? [] : await stockBrollFor({
         userPhotoCount: directPhotos.length,
         // Long-form is capped by word count in the helper, so pass a figure
         // that trips that check rather than duplicating the rule here.
@@ -1291,7 +1315,8 @@ export async function startRender(
             // nothing to do with what was being said. The store step decides:
             // a few photos take a sentence each among the scenes, and many
             // photos stay the background they always were.
-            ...(!isLongForm && !isAgentIntro && { scene_script: safeScript.slice(0, 2000) }),
+            ...(!isLongForm && !isAgentIntro && !twinBackdrop && { scene_script: safeScript.slice(0, 2000) }),
+            ...(twinBackdrop && { twin_backdrop: twinBackdrop }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves
             // at a readable size. Recorded so the store step knows to.
             captions_enabled: captions !== false,
@@ -1396,6 +1421,7 @@ export async function startRender(
         // prompt, so the same flag has to be sent to HeyGen explicitly here.
         captions: captions !== false,
         ...(directEngine && { engine: directEngine }),
+        ...(twinBackdrop && { backdrop: twinBackdrop }),
       });
 
       // Accepted with the twin: any approval it was waiting for is done.

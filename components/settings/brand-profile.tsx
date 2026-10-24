@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
+import { TwinBackgrounds } from "@/components/avatar/twin-backgrounds";
 import {
   AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
   RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck,
@@ -574,6 +575,10 @@ function DigitalTwinCreator({
           >
             <Trash2 size={11} /> Remove
           </button>
+        </div>
+        {/* Backgrounds for wide videos (2026-10-24, the owner's mockup). */}
+        <div className="rounded-xl border border-spark-rule bg-white p-4">
+          <TwinBackgrounds mode="manage" orientation="landscape" />
         </div>
       </div>
     );

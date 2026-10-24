@@ -726,6 +726,12 @@ export interface GenerateVideoV3Params {
    * for.
    */
   idempotencyKey?: string;
+  /**
+   * The presenter's own background removed and this one put behind them
+   * (2026-10-24): how a Digital Twin, filmed upright, fills a horizontal video
+   * full height. Tested on the owner's twin with a color and an image.
+   */
+  backdrop?: { type: "color"; value: string } | { type: "image"; url: string };
 }
 
 /** Map pixel dimensions to the aspect_ratio string the v3 Videos API expects. */
@@ -762,6 +768,7 @@ export async function generateVideoV3(params: GenerateVideoV3Params): Promise<st
     ...(params.captions && { caption: { file_format: "srt" } }),
     ...(params.callbackUrl && { callback_url: params.callbackUrl }),
     ...(params.callbackId && { callback_id: params.callbackId }),
+    ...(params.backdrop && { remove_background: true, background: params.backdrop }),
   };
 
   console.log(`[heygen] Submitting v3 avatar video (avatar: ${params.avatarId}, voice: ${params.voiceId}, engine: ${params.engine ?? "default"}, captions: ${params.captions ? "on" : "off"})...`);
