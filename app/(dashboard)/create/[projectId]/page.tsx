@@ -4334,7 +4334,7 @@ export default function ProjectEditorPage() {
           const emailSubjectAt = emailNow ? Math.min(emailSubjectIdx, emailNow.email.subjects.length - 1) : 0;
           const emailBtn = "flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-ink transition-colors hover:border-spark-amber hover:text-spark-amber disabled:opacity-50";
           const emailPanel = hasArticle && emailOpen && (
-            <div className="mx-2 mb-3 rounded-xl border border-spark-rule bg-white p-3">
+            <div id="share-kit-email" className="mx-2 mb-3 scroll-mt-24 rounded-xl border border-spark-rule bg-white p-3">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <Mail size={16} className="text-spark-amber" />
@@ -4366,8 +4366,7 @@ export default function ProjectEditorPage() {
                 {!emailNow ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm text-slate-600">
-                      Turn this post into a short email for your past clients and contacts: subject lines, a quick
-                      summary and a button to the full post.
+                      <b className="text-spark-ink">1 · Write the email.</b> Then add the post&apos;s link, pick people and send.
                     </p>
                     <button type="button" onClick={writeEmail} disabled={emailWriting}
                       className="flex items-center gap-1.5 px-4 py-2 spark-cta-gradient text-white rounded-lg text-xs font-semibold disabled:opacity-50">
@@ -4377,17 +4376,13 @@ export default function ProjectEditorPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                  {/* To up to ten people through BoldTrail, the short
-                      version with Read more (2026-10-15, the owner's pick),
-                      right under the copy and test buttons so every way
-                      out of here sits together (the owner's markup). */}
-                    <BoldTrailSend
-                      subject={emailNow.subject}
-                      blockedReason={/^https?:\/\/\S+\.\S+/i.test(emailNow.blogUrl) ? null : "Paste the post's web address below first, so Read more has somewhere to go."}
-                      onSend={(contacts) => postBoldTrailEmail({ kind: "blog", projectId: project!.id, subjectIdx: emailSubjectAt, contacts })}
-                    />
+                  {/* Numbered steps (2026-10-24, after Daniel Okiro's first
+                      try found the order silent): 1 Write, 2 Link, 3 People,
+                      4 Send. The link comes before the people because Send
+                      needs it; BoldTrailSend labels its own 3 and 4. */}
+                    <p className="text-xs font-semibold text-green-700">1 · Written ✓</p>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1">Link to the full post (for the button)</p>
+                      <p className="text-xs font-semibold text-spark-ink mb-1">2 · Link to the full post on your website</p>
                       <input
                         type="url"
                         value={emailUrlValue}
@@ -4402,6 +4397,12 @@ export default function ProjectEditorPage() {
                         </p>
                       )}
                     </div>
+                    <BoldTrailSend
+                      numbered
+                      subject={emailNow.subject}
+                      blockedReason={/^https?:\/\/\S+\.\S+/i.test(emailNow.blogUrl) ? null : "Step 2 first: paste the post's web address above, so Read more has somewhere to go."}
+                      onSend={(contacts) => postBoldTrailEmail({ kind: "blog", projectId: project!.id, subjectIdx: emailSubjectAt, contacts })}
+                    />
                     <div>
                       <p className="text-xs font-medium text-slate-500 mb-1">Subject line: pick one</p>
                       <div className="space-y-1.5">
@@ -4716,7 +4717,12 @@ export default function ProjectEditorPage() {
                       })()}
                       <button
                         type="button"
-                        onClick={() => setEmailOpen((o) => !o)}
+                        onClick={() => {
+                          // The panel opens under the Headline box, often off
+                          // screen, so bring it into view (2026-10-24).
+                          if (!emailOpen) setTimeout(() => document.getElementById("share-kit-email")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+                          setEmailOpen((o) => !o);
+                        }}
                         aria-expanded={emailOpen}
                         className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                           emailOpen

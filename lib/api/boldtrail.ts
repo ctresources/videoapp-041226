@@ -57,7 +57,7 @@ export async function checkBoldTrailToken(token: string): Promise<"ok" | "reject
   }
 }
 
-type Contact = { id: number | string; email?: string; first_name?: string; last_name?: string };
+type Contact = { id: number | string; email?: string; first_name?: string; last_name?: string; name?: string };
 
 function contactsIn(json: unknown): Contact[] {
   if (Array.isArray(json)) return json as Contact[];
@@ -80,6 +80,48 @@ export async function findContactByEmail(token: string, email: string): Promise<
     if (hit) return { contact: hit, tried };
   }
   return { contact: null, tried };
+}
+
+/**
+ * Contacts whose first name, last name or email starts with what the agent
+ * typed (2026-10-24, the search box in the send box). BoldTrail's contacts
+ * list takes filter[first_name], filter[last_name] and filter[email], each an
+ * exact match or a prefix (read off apidocs.kvcore.com). "Dan Ok" searches
+ * first name Dan and last name Ok together. Only contacts with an email, up
+ * to 8.
+ */
+export async function searchContacts(token: string, q: string): Promise<{ id: string; name: string; email: string }[]> {
+  const term = q.trim().replace(/\s+/g, " ").slice(0, 60);
+  if (term.length < 2) return [];
+  const enc = encodeURIComponent;
+  const parts = term.split(" ");
+  const paths = term.includes("@")
+    ? [`/contacts?filter[email]=${enc(term)}&limit=10`]
+    : parts.length >= 2
+      ? [
+          `/contacts?filter[first_name]=${enc(parts[0])}&filter[last_name]=${enc(parts.slice(1).join(" "))}&limit=10`,
+          `/contacts?filter[last_name]=${enc(term)}&limit=10`,
+        ]
+      : [
+          `/contacts?filter[first_name]=${enc(term)}&limit=10`,
+          `/contacts?filter[last_name]=${enc(term)}&limit=10`,
+          `/contacts?filter[email]=${enc(term)}&limit=10`,
+        ];
+  const results = await Promise.all(paths.map((p) => call(token, "GET", p).catch(() => null)));
+  const seen = new Set<string>();
+  const out: { id: string; name: string; email: string }[] = [];
+  for (const r of results) {
+    if (!r?.ok) continue;
+    for (const c of contactsIn(r.json)) {
+      const id = String(c.id);
+      const email = (c.email ?? "").trim();
+      if (!email || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ id, email, name: (c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || email).trim() });
+      if (out.length >= 8) return out;
+    }
+  }
+  return out;
 }
 
 export async function sendBoldTrailEmail(token: string, contactId: string | number, subject: string, message: string) {
