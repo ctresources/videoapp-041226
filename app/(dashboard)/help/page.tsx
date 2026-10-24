@@ -156,15 +156,38 @@ export default function HelpPage() {
               <strong>Train Digital Twin</strong>. It&apos;s ready in 15 to 30 minutes, and it shows up
               as an avatar look in every video. On the free plan your twin appears in{" "}
               <strong>Avatar (You) in circle</strong>; on paid plans it works in{" "}
-              <strong>Avatar (You in full) video</strong> too. With your twin, a{" "}
-              <strong>horizontal</strong> video is always made as Avatar (You) in circle, and a{" "}
-              <strong>vertical</strong> video can be a full Avatar video; a note under{" "}
-              <em>Who&apos;s on screen</em> says which. Your twin needs your{" "}
+              <strong>Avatar (You in full) video</strong> too. A <strong>vertical</strong> video
+              shows you in the room you filmed in. Your twin needs your{" "}
               <strong>approval once</strong>. If a video says so, press <strong>Approve now</strong>{" "}
               (or <strong>Approve My Digital Twin</strong> in Settings), follow the short approval
               on camera, then press <strong>I&apos;ve approved it</strong> in Settings and{" "}
               <strong>Spark It</strong> again. Nothing is charged for a video that waits on approval.
               You can delete your twin any time in Settings.
+              {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
+              <span className="block mt-3 font-semibold text-brand-text">Backgrounds for wide videos</span>
+              <span className="block mt-1">
+                Your twin is filmed upright, so in a <strong>horizontal</strong> Avatar video your own
+                background is taken away and you stand <strong>full size in front of a new one</strong>.
+                In the video setup, when your Digital Twin, <strong>Avatar video</strong> and{" "}
+                <strong>Horizontal</strong> are picked, a <strong>Background</strong> box appears. Choose
+                one of your saved backgrounds, a color, <strong>Town photo</strong> (a picture of the
+                video&apos;s town), or, on a listing video, the <strong>Listing front photo</strong>. Or
+                press <strong>+ Describe</strong>, type or say a place (&ldquo;a bright living room with
+                big windows&rdquo;) or tap an idea, and press <strong>Make it</strong>: a picture is made
+                in about 20 seconds and saved to your backgrounds. A preview shows where you&apos;ll stand.
+              </span>
+              <span className="block mt-1.5">
+                Only the setting changes; your outfit and movements stay as you filmed them. Nothing else
+                plays behind you on these videos, because the background is the picture. Captions and
+                music work as usual. You can make up to 20 new backgrounds a month.
+              </span>
+              <span className="block mt-1.5">
+                In <strong>Settings → Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them:
+                tap one to make it your default, which every horizontal twin video uses when you don&apos;t
+                pick another (a soft studio color until you do). <strong>Wide videos</strong> chooses{" "}
+                <strong>Me on my background</strong> or <strong>Avatar in circle</strong>, if you&apos;d
+                rather keep your photos playing behind you in a corner circle.
+              </span>
             </Step>
             <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
               In <strong>Settings → Profile → Default Video CTA</strong>, add your years in real estate and review the
@@ -553,8 +576,9 @@ export default function HelpPage() {
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
                 <strong>Shorten closing line</strong> to trim your closing line yourself. With your
-                Digital Twin, a horizontal Avatar video is made as Avatar in circle, and a vertical
-                one stays a full Avatar video.
+                Digital Twin, a horizontal Avatar video shows you full size on a background you
+                choose in the <strong>Background</strong> box (step 4), and a vertical one stays a
+                full Avatar video.
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
