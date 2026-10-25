@@ -81,7 +81,9 @@ const CAPTION_SCALE = 0.065;
  * How far captions sit above the bottom edge, as a fraction of height. Larger
  * when an avatar PiP is present so lines clear the corner inset.
  */
-const CAPTION_MARGIN = 0.08;
+// 3.5% (was 8%, 2026-10-25): with the Video Agent's graphics now starting at
+// 12% up, a caption line sits in the empty strip below them.
+const CAPTION_MARGIN = 0.035;
 
 /**
  * Escape a path for use inside a filter-graph argument.

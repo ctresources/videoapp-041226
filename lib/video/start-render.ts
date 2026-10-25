@@ -423,7 +423,7 @@ ${propertyPhotos
   // Tightened 2026-10-24 (same points, fewer words) to make room in the
   // never-trimmed head for the b-roll-matches-the-words and photo rules.
   const styleBlock = `STYLE — ${params.isShortForm ? "Social Property Cut" : "Local Property Feature"}
-Calm, premium, editorial. Photos fill the frame in true natural colour, no grade (never washed-out, grey or teal-and-orange). Graphics sit on the bottom band (RULE #1) in the brand kit's colours and type. Slow, deliberate motion: a gentle push or drift on each photo; text rises into place and holds — no sliding, spinning, bouncing, shake, whip pans or fast zooms. ${params.isShortForm ? "Quick straight cuts, no dissolves" : "Straight cuts, an occasional half-second dissolve between subjects"}. Charts: bars for prices, lines for trends${toneVisual ? `; ${params.tone!.toLowerCase()}: ${toneVisual}` : ""}. Feel: ${params.isShortForm ? "immediate and confident" : "warm, confident, never salesy"}. Never a blank, white, grey or plain background. ${params.burnCaptions === false ? "No captions or subtitles." : "Captions of the narration in the bottom band, clear of graphics; never at the same time as other on-screen words."}`;
+Calm, premium, editorial. Photos fill the frame in true natural colour, no grade (never washed-out, grey or teal-and-orange). Graphics sit on the bottom band (RULE #1) in the brand kit's colours and type. Slow, deliberate motion: a gentle push or drift on each photo; text rises into place and holds — no sliding, spinning, bouncing, shake, whip pans or fast zooms. ${params.isShortForm ? "Quick straight cuts, no dissolves" : "Straight cuts, an occasional half-second dissolve between subjects"}. Charts: bars for prices, lines for trends${toneVisual ? `; ${params.tone!.toLowerCase()}: ${toneVisual}` : ""}. Feel: ${params.isShortForm ? "immediate and confident" : "warm, confident, never salesy"}. Never a blank, white, grey or plain background. No captions or subtitles: SparkReels adds them afterward, in the bottom strip (the bottom 12%), so keep that strip empty.`;
 
   /**
    * Moved into the head on 2026-10-24 (the owner: "b-roll to match words is
@@ -452,7 +452,7 @@ ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 - All ${totalPhotos} photos appear. With the photos on screen the whole time there is room for every one of them.
 
 ` : ""}${params.hasAvatar && !pipMode ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
-- EVERY text and graphic element — captions, headlines, hooks, stats, charts, logos, badges, arrows — sits ENTIRELY inside the BOTTOM 20% of the canvas, on a full-width semi-transparent dark bar. The top 80% is a NO-OVERLAY ZONE: the presenter's head is there, and that holds even when they are only partly visible.
+- EVERY text and graphic element — headlines, hooks, stats, charts, logos, badges, arrows — sits ENTIRELY inside the band from 12% to 25% up from the bottom of the canvas, on a full-width semi-transparent dark bar. The bottom 12% is kept empty for SparkReels' captions. The top 75% is a NO-OVERLAY ZONE: the presenter's head is there, and that holds even when they are only partly visible.
 - A graphic too large for the band is SHRUNK to fit, or given a b-roll-only scene with the presenter off camera. Never enlarged into the face zone.
 - The top 80% is NEVER empty. Behind every band of stats, charts or checklists, full-frame b-roll footage fills the canvas, not the presenter, and never a blank or plain-colour background.
 - When in doubt, move it DOWN.
@@ -492,7 +492,7 @@ ${pipMode
   : params.hasAvatar
   ? `- The talking presenter alone on a filled ${canvasLabel} canvas, framed per RULE #2 — the avatar IS the thumbnail; no separate background photo.`
   : `- The strongest available visual, full-screen and filling the entire ${canvasLabel} canvas. No presenter, no person, no talking head.`}
-- MANDATORY OVERLAY: a full-width dark semi-transparent bar across the bottom 20% containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
+- MANDATORY OVERLAY: a full-width dark semi-transparent bar in the band from 12% to 25% up from the bottom, containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
 - No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
 
 FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
@@ -1641,7 +1641,10 @@ export async function startRender(
           // store step not to burn a second set; it still makes the SRT for
           // download. The prompt says "no captions" when they're unticked.
           captions_enabled: captions !== false,
-          captions_by_agent: true,
+          // SparkReels burns the captions now (2026-10-25): the agent's own
+          // captions sat on its graphics. The store step makes the SRT and
+          // burns it into the bottom strip.
+          captions_by_agent: false,
         },
       })
       .select()
