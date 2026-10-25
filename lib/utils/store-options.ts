@@ -52,6 +52,8 @@ export async function buildStoreOptions(
     // A Video Agent render captions itself; burning ours too showed two sets.
     burnCaptions: meta.captions_by_agent !== true,
     cachedSrt: typeof meta.srt === "string" ? meta.srt : null,
+    // A Digital Twin moves; its circle follows it (2026-10-24).
+    followSubject: meta.is_digital_twin === true,
   };
 }
 

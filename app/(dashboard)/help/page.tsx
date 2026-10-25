@@ -161,10 +161,12 @@ export default function HelpPage() {
               <strong>Avatar (You) in circle</strong>; on paid plans it works in{" "}
               <strong>Avatar (You in full) video</strong> too. A <strong>vertical</strong> video
               shows you in the room you filmed in. Your twin needs your{" "}
-              <strong>approval once</strong>. If a video says so, press <strong>Approve now</strong>{" "}
-              (or <strong>Approve My Digital Twin</strong> in Settings), follow the short approval
-              on camera, then press <strong>I&apos;ve approved it</strong> in Settings and{" "}
-              <strong>Spark It</strong> again. Nothing is charged for a video that waits on approval.
+              <strong>approval once</strong>, right after it&apos;s trained: Settings shows{" "}
+              <strong>Approval Required</strong>. Press <strong>Approve My Digital Twin</strong>, follow the
+              short approval on camera, and you come back to SparkReels with it marked approved (if
+              not, press <strong>I&apos;ve approved it</strong>). Until then it can&apos;t be used in a video;
+              if you try, the video setup offers <strong>Approve now</strong> and nothing is charged.
+              In <strong>Avatar in circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
               <span className="block mt-3 font-semibold text-brand-text">Backgrounds for wide videos</span>

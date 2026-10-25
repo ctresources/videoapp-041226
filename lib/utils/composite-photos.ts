@@ -24,6 +24,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import { ffmpegFitFilter, fitImageBuffer, probeVideoSize } from "@/lib/utils/fit-frame";
+import { followCropX, trackSubjectX } from "@/lib/utils/subject-track";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -247,6 +248,8 @@ export async function compositePhotos(
    * separate pass, which costs a whole extra encode.
    */
   srtPath?: string | null,
+  /** A Digital Twin: the circle follows the speaker (2026-10-24). */
+  opts: { followSubject?: boolean } = {},
 ): Promise<Buffer | null> {
   const sources = items.filter((it) => it?.url).slice(0, MAX_SOURCES);
   if (sources.length === 0) return null;
@@ -407,6 +410,27 @@ export async function compositePhotos(
     });
     const fontsDir = srtPath ? await captionFontDir(dir) : null;
     const pass2Log: string[] = [];
+
+    /**
+     * The square cut for the circle. The middle of the picture, as always —
+     * except on a Digital Twin, which is real footage of someone who moves:
+     * there the square follows them across the frame (2026-10-24, the owner's
+     * "not in circle most of the time"). Anything it can't read keeps the middle.
+     */
+    let squareCut = `[0:v]scale=${pipW}:${pipW}:force_original_aspect_ratio=increase,crop=${pipW}:${pipW},format=rgba[sq]`;
+    if (opts.followSubject) {
+      try {
+        const { width: sw, height: sh } = await probeVideoSize(videoPath);
+        const centres = sw > sh * 1.05 ? await trackSubjectX(videoPath) : null;
+        if (centres && sh > 0) {
+          const scaledW = Math.round((pipW * sw) / sh / 2) * 2;
+          squareCut = `[0:v]scale=${scaledW}:${pipW},crop=${pipW}:${pipW}:${followCropX(centres, scaledW, pipW)}:0,format=rgba[sq]`;
+          console.log(`[composite-photos] circle follows the speaker (${centres.length} points, ${Math.round(Math.min(...centres) * 100)}–${Math.round(Math.max(...centres) * 100)}% across)`);
+        }
+      } catch (err) {
+        console.warn("[composite-photos] speaker tracking skipped:", err instanceof Error ? err.message : err);
+      }
+    }
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(videoPath)
@@ -416,8 +440,7 @@ export async function compositePhotos(
         .inputOptions(["-loop", "1"]) // still image — overlay's shortest=1 ends it
         .complexFilter([
           // Square-crop the avatar, then punch it to a circle with the mask.
-          `[0:v]scale=${pipW}:${pipW}:force_original_aspect_ratio=increase,` +
-            `crop=${pipW}:${pipW},format=rgba[sq]`,
+          squareCut,
           `[sq][2:v]alphamerge[av]`,
           // Captions burn last so they sit over the avatar inset, not under it.
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +

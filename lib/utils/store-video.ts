@@ -63,6 +63,8 @@ export interface StoreOptions {
   burnCaptions?: boolean;
   /** An SRT already transcribed for this video, so a replay never pays twice. */
   cachedSrt?: string | null;
+  /** A Digital Twin: the circle follows the speaker (2026-10-24). */
+  followSubject?: boolean;
 }
 
 /**
@@ -306,6 +308,7 @@ export async function storeVideoDetailed(
       // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
         processed, broll, opts.dimension.width, opts.dimension.height, srtPath,
+        { followSubject: opts.followSubject === true },
       );
       if (withBroll) { processed = withBroll; changed = true; brollApplied = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);

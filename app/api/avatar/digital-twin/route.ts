@@ -56,6 +56,10 @@ export async function POST(req: NextRequest) {
       .update({
         heygen_digital_twin_group_id: result.groupId || null,
         heygen_digital_twin_look_id: result.lookId || null,
+        // Needs its one-time approval before any video (2026-10-24, the
+        // owner's ask): asked for as soon as training ends, not found out
+        // when a video fails.
+        twin_consent_needed: true,
       })
       .eq("id", user.id);
     if (updateErr) console.error("[digital-twin] profile update error:", updateErr);
@@ -110,9 +114,12 @@ export async function GET() {
   try {
     const looks = await getAvatarLooks(profile.heygen_digital_twin_group_id);
     const look = looks[0] ?? null;
-    // A render refused for approval sets twin_consent_needed (2026-10-23);
-    // the look itself still reads "completed".
-    const status = profile.twin_consent_needed ? "pending_consent" : (look?.status ?? "processing");
+    // Training first; once trained, the one-time approval if it's still
+    // needed (set when training starts since 2026-10-24, and by a render
+    // HeyGen refused); the look itself reads "completed" either way.
+    const lookStatus = look?.status ?? "processing";
+    const trained = lookStatus === "completed" || lookStatus === "active" || lookStatus === "pending_consent";
+    const status = trained && profile.twin_consent_needed ? "pending_consent" : lookStatus;
 
     // Keep stored look_id up to date
     if (look?.id && look.id !== profile.heygen_digital_twin_look_id) {

@@ -13,6 +13,7 @@ import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
 import { TwinBackgrounds } from "@/components/avatar/twin-backgrounds";
+import { takeTwinConsentDone, withTwinConsentDone } from "@/lib/utils/twin-consent-return";
 import {
   AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
   RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck,
@@ -425,6 +426,15 @@ function DigitalTwinCreator({
     if (initialGroupId) checkStatus();
   }, [initialGroupId, checkStatus]);
 
+  // Back from HeyGen's approval page (2026-10-24): marked approved here, so
+  // nobody has to remember to press "I've approved it".
+  useEffect(() => {
+    if (!takeTwinConsentDone()) return;
+    void fetch("/api/avatar/digital-twin", { method: "PATCH" })
+      .then(() => { toast.success("Digital Twin approved. It's ready for your videos."); void checkStatus(); })
+      .catch(() => {});
+  }, [checkStatus]);
+
   useEffect(() => {
     if (dtStatus !== "processing" && dtStatus !== "pending_consent") return;
     const id = setInterval(checkStatus, 20_000);
@@ -495,7 +505,8 @@ function DigitalTwinCreator({
       const res = await fetch("/api/avatar/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ group_id: groupId, reroute_url: window.location.href }),
+        // Back here marked approved (2026-10-24): ?twin_consent=done.
+        body: JSON.stringify({ group_id: groupId, reroute_url: withTwinConsentDone(window.location.href) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -592,7 +603,7 @@ function DigitalTwinCreator({
           <div className="flex-1">
             <p className="text-sm font-semibold text-spark-ink">Approval Required</p>
             <p className="text-xs text-spark-blue mt-0.5">
-              Your Digital Twin is trained! Click below to approve it. This is needed once.
+              Your Digital Twin is trained! Approve it once before your first video.
             </p>
             <button
               onClick={handleGetConsent}
@@ -602,7 +613,7 @@ function DigitalTwinCreator({
             </button>
           </div>
         </div>
-        <p className="text-xs text-slate-400">After approving, come back here and press I&apos;ve approved it.</p>
+        <p className="text-xs text-slate-400">After approving you come back here and it&apos;s marked approved. If it isn&apos;t, press I&apos;ve approved it.</p>
         {/* The look already reads "completed" at HeyGen, so nothing can
             confirm the approval but the next render; this clears the card
             (2026-10-23), and a render refused again brings it back. */}

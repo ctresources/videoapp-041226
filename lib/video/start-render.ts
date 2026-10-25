@@ -555,7 +555,7 @@ export async function startRender(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body: Record<string, any>,
   /** Set when the waiting line is starting this, so it is not put back in line. */
-  opts: { queueId?: string } = {},
+  opts: { queueId?: string; lookRetried?: boolean } = {},
 ): Promise<NextResponse> {
   // When this attempt began, so a refusal can tidy up only what it made.
   const attemptStartedAt = new Date().toISOString();
@@ -764,11 +764,12 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed")
     .eq("id", user.id)
     .single();
 
   const profile = profileData as {
+    twin_consent_needed: boolean | null;
     heygen_voice_id: string | null;
     voice_sample_url: string | null;
     heygen_photo_id: string | null;
@@ -1057,6 +1058,20 @@ export async function startRender(
     if (!useDirectVideo && avatarId && avatarId === profile.heygen_digital_twin_look_id
         && !canUseTwinInFullVideo(tier, profile.role)) {
       return NextResponse.json({ error: TWIN_FULL_VIDEO_MESSAGE, code: "twin_full_paid" }, { status: 403 });
+    }
+
+    // Not approved yet (2026-10-24, the owner's ask): asked for here, before
+    // anything is written or charged, instead of HeyGen refusing the render
+    // and leaving a failed video. Approving clears it (Settings, the editor's
+    // Approve now, or a render HeyGen accepts).
+    if (avatarId && avatarId === profile.heygen_digital_twin_look_id && profile.twin_consent_needed) {
+      return NextResponse.json(
+        {
+          error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
+          code: "twin_consent_required",
+        },
+        { status: 409 },
+      );
     }
 
     /**
@@ -1727,6 +1742,49 @@ export async function startRender(
       }
       const place = await joinLine(admin, user.id, projectId, body);
       if (place) return NextResponse.json({ queued: true, ...place }, { status: 202 });
+    }
+
+    /**
+     * A look HeyGen no longer has (2026-10-24, the owner's video): the wide
+     * copy of her headshot the profile remembered was gone at HeyGen, so the
+     * render failed with "avatar not found". The dead copy is forgotten (it is
+     * made again on a later render) and the video tried once more with one of
+     * her looks that still exists. Nothing was charged: the charge comes after
+     * HeyGen accepts.
+     */
+    const failText = err instanceof Error ? err.message : String(err);
+    if (/avatar_not_found/i.test(failText) && !opts.lookRetried) {
+      const missing = failText.match(/Avatar not found:\s*([0-9a-f]{32})/i)?.[1] ?? null;
+      const { data: pf } = await admin
+        .from("profiles")
+        .select("heygen_photo_id, heygen_look_wide, heygen_look_tall")
+        .eq("id", user.id)
+        .maybeSingle();
+      const p = pf as { heygen_photo_id: string | null; heygen_look_wide: string | null; heygen_look_tall: string | null } | null;
+      if (missing && p) {
+        const forget: Record<string, null> = {};
+        if (p.heygen_look_wide === missing) forget.heygen_look_wide = null;
+        if (p.heygen_look_tall === missing) forget.heygen_look_tall = null;
+        if (Object.keys(forget).length) await admin.from("profiles").update(forget).eq("id", user.id);
+        const looks = p.heygen_photo_id ? await getAvatarLooks(p.heygen_photo_id).catch(() => []) : [];
+        const other = [p.heygen_look_wide, p.heygen_look_tall].find((x) => x && x !== missing && looks.some((l) => l.id === x));
+        const replacement = other
+          ?? looks.find((l) => l.id !== missing && (!l.status || l.status === "completed" || l.status === "active"))?.id
+          ?? null;
+        if (replacement) {
+          // This attempt's row was never accepted: taken away, not failed.
+          await admin
+            .from("generated_videos")
+            .delete()
+            .eq("project_id", projectId)
+            .eq("user_id", user.id)
+            .eq("render_status", "rendering")
+            .is("render_job_id", null)
+            .gte("created_at", attemptStartedAt);
+          console.warn(`[create-blog] look ${missing} is gone at HeyGen — trying again with ${replacement}`);
+          return startRender(user, { ...body, lookId: replacement }, { ...opts, lookRetried: true });
+        }
+      }
     }
 
     await admin.from("projects").update({ status: "error" }).eq("id", projectId);

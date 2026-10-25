@@ -35,6 +35,7 @@ import {
   User, Square, Camera, Settings, Paperclip, X, ImageIcon, Plus, Globe, Save, MapPin, Mail, Send,
 } from "lucide-react";
 import Link from "next/link";
+import { takeTwinConsentDone, withTwinConsentDone } from "@/lib/utils/twin-consent-return";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -332,6 +333,14 @@ export default function ProjectEditorPage() {
    * a second one too (start-render, code already_made).
    */
   const [draftVideo, setDraftVideo] = useState<{ id: string; ready: boolean } | null>(null);
+  // Back from approving the Digital Twin at HeyGen (2026-10-24): marked
+  // approved, so Spark It works straight away.
+  useEffect(() => {
+    if (!takeTwinConsentDone()) return;
+    void fetch("/api/avatar/digital-twin", { method: "PATCH" })
+      .then(() => toast.success("Digital Twin approved. Press Spark It to make your video."))
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     if (!projectId) return;
     let live = true;
@@ -1867,7 +1876,8 @@ export default function ProjectEditorPage() {
                     const r = await fetch("/api/avatar/consent", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ twin: true, reroute_url: window.location.href }),
+                      // Back here marked approved (2026-10-24).
+                      body: JSON.stringify({ twin: true, reroute_url: withTwinConsentDone(window.location.href) }),
                     });
                     const d = await r.json();
                     if (!r.ok || !d.url) throw new Error(d.error || "No approval link");
