@@ -49,6 +49,7 @@ interface SeoOutput {
   youtube_description: string;
   instagram_caption: string;
   linkedin_post: string;
+  facebook_post?: string;
   email_blurb: string;
 }
 
@@ -308,7 +309,7 @@ ${FAIR_HOUSING_GUARDRAIL}`;
 
 Title: "${title}"
 Keywords: ${keywords.join(", ")}
-Script excerpt: "${script.slice(0, 500)}..."
+Spoken words (the whole video, as said): "${script.slice(0, 6000)}"
 
 Return ONLY valid JSON:
 {
@@ -320,7 +321,8 @@ Return ONLY valid JSON:
   "youtube_title": "YouTube video title (under 70 chars, includes keyword)",
   "youtube_description": "Full YouTube description (300-400 words, keywords in first 125 chars, includes timestamps placeholder, links placeholder)",
   "instagram_caption": "Instagram caption (150-200 chars, punchy, ends with emoji, includes 3-5 hashtags inline)",
-  "linkedin_post": "LinkedIn post (150-200 words, professional tone, data-driven insight, ends with a question to drive comments, no hashtag spam)",
+  "linkedin_post": "LinkedIn post (150-200 words, professional tone, the video's main insight in the first two lines, one concrete detail from the spoken words, ends with a question to drive comments, no hashtag spam)",
+  "facebook_post": "Facebook post (80-120 words, warm and conversational, opens with the point of the video, invites a comment, ends with one link placeholder, no hashtag spam)",
   "email_blurb": "Email newsletter blurb (60-80 words, conversational tone, one clear CTA, no clickbait subject lines)"
 }`;
 

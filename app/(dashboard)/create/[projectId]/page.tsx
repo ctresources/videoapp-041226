@@ -160,6 +160,7 @@ interface SeoData {
   youtube_description: string;
   instagram_caption: string;
   linkedin_post?: string;
+  facebook_post?: string;
   email_blurb?: string;
   /** The blog post's email version, written on request from the Share Kit. */
   email?: EmailVersion;
@@ -2605,6 +2606,38 @@ export default function ProjectEditorPage() {
    * and shows it; nothing is taken from the plan for either.
    */
   const [motionBusy, setMotionBusy] = useState<"header" | "teaser" | null>(null);
+  /**
+   * Writes the social posts and the blog from the words in the video
+   * (2026-10-25): a scripted video's script, or an uploaded clip's transcript.
+   * Fills gaps only; the server keeps anything already written.
+   */
+  const [shareKitWriting, setShareKitWriting] = useState(false);
+  async function writeShareKit() {
+    if (!project || shareKitWriting) return;
+    setShareKitWriting(true);
+    try {
+      const res = await fetch("/api/ai/share-kit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Couldn't write the posts just now.");
+      setProject((prev) => prev ? {
+        ...prev,
+        seo_data: data.seo ?? prev.seo_data,
+        ai_script: (data.blog
+          ? { ...(prev.ai_script ?? {}), blog_headline: data.blog.headline ?? "", blog_intro: data.blog.intro, blog_body: data.blog.body, blog_conclusion: data.blog.conclusion }
+          : prev.ai_script) as Project["ai_script"],
+      } : prev);
+      toast.success("Posts and blog are ready.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't write the posts just now.");
+    } finally {
+      setShareKitWriting(false);
+    }
+  }
+
   async function makeBlogMotion(kind: "header" | "teaser") {
     if (!project || motionBusy) return;
     setMotionBusy(kind);
@@ -4201,7 +4234,22 @@ export default function ProjectEditorPage() {
           {(() => {
           const articleFirst = !renderedVideoId && !renderComplete;
           // Social Content Pack
-          const seoCard = seo && (
+          // Shown even before any copy exists (2026-10-25): an uploaded clip
+          // has its words only once transcribed, so this is where they are
+          // turned into the posts and the blog.
+          const seoCard = !seo ? (
+            <Card padding="sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-2 py-1">
+                <div>
+                  <h3 className="font-semibold text-sm text-brand-text">Social posts, title &amp; description</h3>
+                  <p className="text-[11.5px] text-spark-ink-muted">Written from what is said in this video: LinkedIn, Facebook, Instagram, YouTube and the blog.</p>
+                </div>
+                <Button size="sm" loading={shareKitWriting} onClick={() => void writeShareKit()}>
+                  Write them
+                </Button>
+              </div>
+            </Card>
+          ) : (
             <Card padding="sm">
               <button
                 onClick={() => toggle("seo")}
@@ -4293,9 +4341,11 @@ export default function ProjectEditorPage() {
                     )}
                     <p className="text-[11px] text-slate-400 mt-1">Saved as you go. These are what Publish fills in for you.</p>
                   </div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500 pt-1">Social posts</p>
                   {[
-                    { label: "Instagram Caption", value: seo.instagram_caption },
                     ...(seo.linkedin_post ? [{ label: "LinkedIn Post", value: seo.linkedin_post }] : []),
+                    ...(seo.facebook_post ? [{ label: "Facebook Post", value: seo.facebook_post }] : []),
+                    { label: "Instagram Caption", value: seo.instagram_caption },
                     // Superseded by the Email card wherever there is an
                     // article to write it from; kept for the projects without one.
                     ...(seo.email_blurb && !(script.blog_intro || script.blog_body) ? [{ label: "Email Newsletter Blurb", value: seo.email_blurb }] : []),
@@ -4311,6 +4361,11 @@ export default function ProjectEditorPage() {
                       </div>
                     </div>
                   ))}
+                  {(!seo.linkedin_post || !seo.facebook_post || !seo.instagram_caption) && (
+                    <Button size="sm" variant="outline" loading={shareKitWriting} onClick={() => void writeShareKit()} className="self-start">
+                      Write the missing social posts
+                    </Button>
+                  )}
                   {/* Editable, saved as you go (2026-10-20, the owner's ask). */}
                   <div>
                     <p className="text-xs font-medium text-slate-500 mb-1">Meta Description</p>
