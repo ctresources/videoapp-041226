@@ -301,8 +301,13 @@ export function buildVideoAgentPrompt(params: {
    * instruction asked for. Nothing anywhere bounded how large the head could
    * get; PRESENTER FRAMING below now does.
    */
-  const fillRule = "Fill leftover space with a background (blurred enlarged footage, b-roll, or a branded backdrop)"
-    + (params.hasAvatar ? " — never by zooming into the presenter." : ".");
+  // Changed 2026-10-25: the old wording asked for "blurred enlarged footage" in
+  // leftover space, which produced the blurred side panels the owner rejected,
+  // and let portrait clips sit pillarboxed in a landscape frame. Footage now
+  // matches the frame's own shape and fills it.
+  const footageShape = params.isSquare ? "square" : params.isShortForm ? "portrait" : "landscape";
+  const fillRule = `Every shot fills the frame edge to edge with ${footageShape} footage cropped or zoomed to fit; never footage of another shape, pillarboxed or letterboxed clips, or blurred side panels`
+    + (params.hasAvatar ? " — and never by zooming into the presenter." : ".");
 
   /**
    * The short form, used when the presenter's look was registered at this
@@ -428,7 +433,8 @@ Calm, premium, editorial. Photos fill the frame in true natural colour, no grade
    */
   const matchBlock = `B-ROLL MATCHES THE WORDS (RULE #3)
 - Every cutaway shows what is being said at that moment: a room → that room; a street or neighborhood → that place; a number or price → that number on screen in the bottom band; a lifestyle benefit → show it.
-- Change the shot when the topic changes. Never show one topic while narrating another.${propertyPhotos ? `
+- Change the shot when the topic changes. Never show one topic while narrating another.
+- Footage must be of what is said: a named place or street → footage of that place; a price or figure → that figure on screen. No generic stock (couples, offices, staged rooms) where the narration is about a place, a number or the market.${propertyPhotos ? `
 - PROPERTY: the ${totalPhotos} attached photos${params.listingAddress ? ` of ${params.listingAddress}` : ""} are the ONLY property visuals. Never stock, generated or invented rooms, yards or exteriors. Use every photo, each with the sentence that describes it.` : ""}`;
 
   const head = `You are producing a professional real estate marketing video.
