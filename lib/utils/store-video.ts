@@ -565,7 +565,9 @@ async function sceneBackground(
       // model makes well, and within the budget for the whole video.
       const cap = Math.max(5, Math.floor(SCENE_SECONDS_BUDGET / Math.max(1, forScenes.length)));
       const lengths = forScenes.map((i) => Math.min(cap, Math.ceil(onScreen[i])));
-      const madeFor = await makeSceneClips(forScenes.map((i) => plan[i]), lengths, aspect, started + 150_000, "behind-speaker", await scenesAtOnce());
+      // 2½ minutes for the clips from when the plan is in (2026-10-24): the
+      // plan can now take up to 2½ minutes itself and mustn't eat into this.
+      const madeFor = await makeSceneClips(forScenes.map((i) => plan[i]), lengths, aspect, Date.now() + 150_000, "behind-speaker", await scenesAtOnce());
       const made = new Map(forScenes.map((i, k) => [i, madeFor[k]] as const));
       const got = madeFor.filter(Boolean).length;
       if (got >= Math.max(SCENES_MIN, Math.ceil(forScenes.length / 2))) {

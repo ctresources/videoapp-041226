@@ -329,9 +329,12 @@ Hard limits, every scene:
   // OpenAI first (2026-10-24, the owner's ask): the cheap Perplexity model
   // matched about half the lines of a real events video. Perplexity stays as
   // the fallback, so a missing key or an outage still gets a plan.
-  const fromOpenAI = read(await openaiChatJson(system + SCENE_PLAN_EXTRA, turns, { maxTokens: 4000, label: "scene-plan-beats" }));
+  // Up to 2½ minutes (was 60 s, which the first live plan ran past). The clip
+  // budget starts after the plan arrives, so a slow plan doesn't cost clips.
+  const asked = Date.now();
+  const fromOpenAI = read(await openaiChatJson(system + SCENE_PLAN_EXTRA, turns, { maxTokens: 4000, label: "scene-plan-beats", timeoutMs: 150_000 }));
   if (fromOpenAI.length) {
-    console.log(`[scenes] beat plan: openai (${n} scenes)`);
+    console.log(`[scenes] beat plan: openai (${n} scenes, ${Math.round((Date.now() - asked) / 1000)}s)`);
     return fromOpenAI;
   }
   let out: Record<string, unknown> | null = null;

@@ -23,18 +23,29 @@ export async function openaiChatJson(
   const { maxTokens = 2400, label = "openai-chat", timeoutMs = 60_000 } = opts;
   const model = process.env.OPENAI_CHAT_MODEL || DEFAULT_MODEL;
   try {
-    const res = await fetch(OPENAI_URL, {
+    /**
+     * Low reasoning effort (2026-10-24): the first live scene plan ran past 60
+     * seconds and timed out, and choosing pictures doesn't need deep thought.
+     * A model that won't take the setting is asked again without it.
+     */
+    const ask = (effort: boolean) => fetch(OPENAI_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
         // No temperature: the newer models take only their default.
         max_completion_tokens: maxTokens,
+        ...(effort && { reasoning_effort: "low" }),
         response_format: { type: "json_object" },
         messages: [{ role: "system", content: system }, ...turns],
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
+    let res = await ask(true);
+    if (res.status === 400) {
+      const why = await res.clone().text().catch(() => "");
+      if (/reasoning/i.test(why)) res = await ask(false);
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       console.error(`[${label}] openai ${model} ${res.status}: ${body.slice(0, 300)}`);
