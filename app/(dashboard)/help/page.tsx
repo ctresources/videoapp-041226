@@ -682,7 +682,8 @@ export default function HelpPage() {
                 <Link href="/settings#halo" className="text-primary-600 font-medium hover:underline">Settings → Halo website</Link>,
                 right after CRM Integration: press <strong>Add your Halo site</strong>, type the address,
                 like <em>springfieldhomes.com</em>, and press <strong>Add</strong>. You can add more than
-                one. Its drafts show up on the AutoSparks page. Every morning SparkReels looks for
+                one. Its drafts show up on the AutoSparks page. No Halo website yet? The same card has{" "}
+                <strong>Get Halo</strong>, which opens Halo&apos;s sign-up ($99 a month, billed by Halo). Every morning SparkReels looks for
                 what is new on them: new blog posts and guides, and your market report and events
                 page when they change. Pages already on your site when you add it are left alone, so
                 adding a site never turns your old posts into videos.
@@ -1359,6 +1360,14 @@ export default function HelpPage() {
               while signed in, to connect the program to your account. Then, on the{" "}
               <strong>Affiliate</strong> page, connect your bank with Stripe to get paid. Payouts are
               sent monthly. If the email hasn&apos;t arrived, look in spam.
+              {/* The owner's ask (2026-10-24). */}
+              <span className="block mt-1.5">
+                <strong>Also a Halo affiliate?</strong> On the <strong>Affiliate</strong> page, put your Halo
+                page (like <em>halo-your-name.huzi.site</em>) or your Halo code in{" "}
+                <strong>Your Halo affiliate link</strong> and press <strong>Save</strong>. Agents you refer to
+                SparkReels then get your link on their <strong>Get Halo</strong> button. With only a code,
+                the button texts &ldquo;CODE PRO&rdquo; to Halo instead.
+              </span>
             </Step>
           </div>
           <VideoPlaceholder label="Finding Your Work" />

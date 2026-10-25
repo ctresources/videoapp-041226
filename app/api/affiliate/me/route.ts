@@ -35,6 +35,8 @@ export async function GET() {
       connectStatus: affiliate.connect_onboarding_status,
       commissionRate: affiliate.commission_rate,
       commissionDurationMonths: affiliate.commission_duration_months,
+      // Their own Halo link, for referred agents' Get Halo button (2026-10-24).
+      haloLink: (affiliate as { halo_link?: string | null }).halo_link ?? null,
     },
     stats: {
       clicks: clicksRes.count ?? 0,

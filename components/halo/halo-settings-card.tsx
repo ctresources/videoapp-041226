@@ -22,6 +22,12 @@ export function HaloSettingsCard() {
   const halo = useHalo(user?.id);
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
+  // Where Get Halo goes: the referring affiliate's Halo link, or the owner's.
+  const [getLink, setGetLink] = useState<{ url: string | null; code: string | null; sms: string | null; phone: string; referrer: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/halo/get-link").then((r) => (r.ok ? r.json() : null)).then((d) => d && setGetLink(d)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/profile/allowance")
@@ -52,6 +58,35 @@ export function HaloSettingsCard() {
         )}
       </div>
       {full && <HaloSitesCard halo={halo} bare />}
+
+      {/* Get Halo (2026-10-24, the owner's mockup): for agents without a Halo
+          site, through the referring affiliate's Halo link or the owner's.
+          Halo bills its own $99; nothing here touches SparkReels billing. */}
+      {halo.sites.length === 0 && getLink && (
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="min-w-[200px] flex-1 text-sm text-slate-600">
+              <strong className="text-brand-text">Don&apos;t have one?</strong> Halo builds your AI-ready real estate
+              website. $99/month, billed by Halo.
+            </p>
+            <a
+              href={getLink.url ?? getLink.sms ?? "#"}
+              {...(getLink.url && { target: "_blank", rel: "noopener noreferrer" })}
+              // Recorded for Admin → Halo; a beacon survives the page leaving.
+              onClick={() => { try { navigator.sendBeacon("/api/halo/get-link"); } catch { void fetch("/api/halo/get-link", { method: "POST", keepalive: true }); } }}
+              className="shrink-0 rounded-[10px] bg-spark-blue px-3.5 py-2 text-[13.5px] font-semibold text-white hover:opacity-90"
+            >
+              Get Halo →
+            </a>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            {getLink.url
+              ? <>Opens <strong>{getLink.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</strong>, the Halo page of {getLink.referrer ? "the person who referred you to SparkReels" : "SparkReels' founder"}. </>
+              : <>Text <strong>{getLink.code} PRO</strong> to {getLink.phone} to sign up. </>}
+            They may earn a referral fee.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

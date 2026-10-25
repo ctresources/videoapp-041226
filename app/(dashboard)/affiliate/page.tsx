@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { HaloLinkCard } from "@/components/affiliate/halo-link-card";
 import {
   DollarSign, Copy, Check, MousePointerClick, UserCheck, Clock, Wallet, CircleCheck, Loader2,
 } from "lucide-react";
@@ -17,6 +18,7 @@ interface Me {
     connectStatus: "not_started" | "pending" | "complete" | "restricted";
     commissionRate: number;
     commissionDurationMonths: number;
+    haloLink?: string | null;
   } | null;
   stats?: { clicks: number; conversions: number; pendingCents: number; availableCents: number; paidCents: number; deductionCents?: number };
   appUrl?: string;
@@ -169,6 +171,9 @@ export default function AffiliatePage() {
           customer makes for their first {aff.commissionDurationMonths} months.
         </p>
       </Card>
+
+      {/* Their own Halo link, for referred agents' Get Halo button (2026-10-24). */}
+      <HaloLinkCard initial={aff.haloLink ?? null} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
