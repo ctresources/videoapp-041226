@@ -353,6 +353,17 @@ const steps = [
   },
 ];
 
+// Everything included, one line each (2026-10-25, the owner's ask): every
+// feature named, and the 12 Spark Tools listed one by one.
+const SPARK_TOOLS = [
+  "Channel name", "LinkedIn profile", "Banner", "Thumbnails", "Post graphics from the Image Generator",
+  "Titles", "Descriptions", "Tags", "Scripts", "AI Answer Blocks", "Google Reviews replies", "Seller Update",
+];
+const everythingIncluded: string[] = [
+  ...features.filter((f) => !f.title.startsWith("12 Spark Tools")).map((f) => f.title.replace(/^"|"$/g, "")),
+  ...SPARK_TOOLS.map((t) => `Spark Tool: ${t}`),
+];
+
 // Feature cards that have a page of their own (2026-10-22).
 const LEARN_MORE: Record<string, string> = {
   "AutoSparks: Your Week, Written For You": "/real-estate-content-autopilot",
@@ -870,6 +881,19 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Everything included, one line each (2026-10-25). */}
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-4">Everything included, one line each</p>
+            <ul className="grid grid-cols-1 gap-x-8 gap-y-2 text-lg text-slate-700 sm:grid-cols-2 lg:grid-cols-3">
+              {everythingIncluded.map((item) => (
+                <li key={item} className="flex gap-2 leading-snug">
+                  <span className="text-[#BA7517] font-bold" aria-hidden="true">✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
