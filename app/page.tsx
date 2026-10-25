@@ -156,6 +156,13 @@ const features: { title: string; description: string; photo: string; paid?: bool
     description: "One click publishes your video to YouTube with SEO-optimized title, description, and tags already filled in — ready to rank. Paid plans post it to Instagram, Facebook, LinkedIn, TikTok and more from the same window.",
     photo: "https://images.unsplash.com/photo-1502209877429-d7c6df9eb3f9?auto=format&fit=crop&w=600&q=80",
   },
+  // The owner's line (2026-10-25): for agents who already film on camera.
+  {
+    title: "Already Have Videos? Upload Them Once",
+    description: "Already have a YouTube channel? Upload your existing videos once, and SparkReels optimizes each one, turns it into a blog for your website, adapts it for LinkedIn and Facebook, and auto-posts it to all your social platforms.",
+    photo: "https://images.unsplash.com/photo-1502209877429-d7c6df9eb3f9?auto=format&fit=crop&w=600&q=80",
+    paid: true,
+  },
   // Added 2026-10-15 with the features they describe.
   {
     title: "Seller Updates With Video",
