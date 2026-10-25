@@ -482,8 +482,11 @@ export default function HelpPage() {
                 forwarded to your import address (step 6). On a video you then say what happens to
                 them: <strong>Speak it word for word</strong>, for a finished script, or{" "}
                 <strong>Have AI write from it</strong>, which either writes a new script from it or
-                shortens an article of your own. The script comes back for you to read before
-                anything is made. If an email&apos;s subject names a town, the city and state fill in
+                shortens an article of your own. To write a new one, press{" "}
+                <strong>Write my script from the link</strong> (or the PDF or email); type something in{" "}
+                <strong>Anything to focus on?</strong> first if you want it to lean one way. The script comes
+                back for you to read before anything is made. <strong>+ Opening line</strong> under it adds a
+                line spoken first, which also becomes the video&apos;s title. If an email&apos;s subject names a town, the city and state fill in
                 for you. Recording yourself has its own version of this, <strong>From a document</strong>.
               </span>
               <span className="block mt-1.5">

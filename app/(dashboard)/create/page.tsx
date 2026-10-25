@@ -422,6 +422,8 @@ function CreatePageInner() {
 
   // Paste-script tab
   const [pasteTitle, setPasteTitle] = useState("");
+  // "+ Opening line" under the script, opened (2026-10-24).
+  const [pasteHookOpen, setPasteHookOpen] = useState(false);
   const [pasteScript, setPasteScript] = useState("");
   /** Cutting a script down to what the renderer will actually speak. */
   const [pasteShortening, setPasteShortening] = useState(false);
@@ -1698,6 +1700,9 @@ function CreatePageInner() {
         // names no town cannot be given one by the CTA alone.
         body: JSON.stringify({
           pdfText: pastePdfText || undefined,
+          // The optional focus line (2026-10-24); the writer reads a topic
+          // given with a source as "focus the script on this".
+          ...(pasteAiTopic.trim() && { topic: pasteAiTopic.trim() }),
           photoCount: pastePhotos.length,
           length: pasteScriptLength,
           city: pasteCity.trim() || undefined,
@@ -4344,35 +4349,37 @@ function CreatePageInner() {
               </div>
             </div>
 
-            {/* Generate script from uploads. The same sub-action as the
-                camera tab's, demoted the same way — it competes with this
-                tab's real primary in the footer for the same reason. */}
-            {pasteSource === "ai" && (pastePdfText || pastePhotos.length > 0) && (
-              <div className="mb-4">
+            {/* One way to write once something is attached (2026-10-24, the
+                owner's mockup). There were two: "Write the script from these"
+                (the attachment) and "Let AI Spark The Script" (a topic, which
+                ignored the attachment entirely), side by side. Now one button
+                writes from the attachment, and an optional focus line steers
+                it (sent as the topic, which the writer reads as "focus on"). */}
+            {pasteSource === "ai" && pastePdfText && (
+              <div className="mb-4 pb-4 border-b border-spark-rule-soft">
+                <label className="text-sm font-bold text-spark-ink-soft block mb-1">
+                  Anything to focus on? <span className="font-normal text-spark-ink-faint">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={pasteAiTopic}
+                  onChange={(e) => setPasteAiTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !pasteUploadGenerating && handleGenerateScriptFromPasteUploads()}
+                  placeholder="e.g. first-time buyers, the new townhomes"
+                  className="w-full text-sm px-3 py-2 border border-spark-rule rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                />
                 <Button
-                  size="sm"
-                  variant="outline"
                   loading={pasteUploadGenerating}
                   onClick={handleGenerateScriptFromPasteUploads}
-                  className="gap-1.5"
+                  className="mt-3 gap-1.5"
                 >
                   {pasteUploadGenerating
-                    ? <><Loader2 size={13} className="animate-spin" /> Generating Script…</>
-                    : <><Sparkles size={13} /> Write the script from these</>}
+                    ? <><Loader2 size={14} className="animate-spin" /> Writing your script…</>
+                    : <><Sparkles size={14} /> Write my script from the {pastePdfMode === "email" ? "email" : pastePdfMode === "url" ? "link" : "PDF"}</>}
                 </Button>
-                {/* The photos are never read — only their COUNT reaches the
-                    prompt, as one sentence saying how many exist. */}
-                {/* Names the thing actually attached. It said "your attached
-                    PDF" whichever route the text came in by, so an article
-                    brought in from an email or a link was described as a PDF
-                    the user had never uploaded. */}
-                <p className="text-[11px] text-spark-ink-faint mt-1.5">
-                  AI will write a script from {
-                    pastePdfMode === "email" ? "the article you forwarded"
-                      : pastePdfMode === "url" ? "the page you attached"
-                        : "your attached PDF"
-                  }.{pastePhotos.length > 0 ? " Your photos become b-roll; they aren't read." : ""}
-                </p>
+                {pastePhotos.length > 0 && (
+                  <p className="text-[11px] text-spark-ink-faint mt-1.5">Your photos become b-roll; they aren&apos;t read.</p>
+                )}
               </div>
             )}
 
@@ -4426,8 +4433,9 @@ function CreatePageInner() {
             </div>
             )}
 
-            {/* Let AI Spark The Script */}
-            {pasteSource === "ai" && (
+            {/* Let AI Spark The Script: only with nothing attached (2026-10-24);
+                with an attachment the one button above writes from it. */}
+            {pasteSource === "ai" && !pastePdfText && (
             <div className="mb-4 pb-4 border-b border-spark-rule-soft">
               <p className="text-sm font-bold text-spark-ink-soft mb-2">Let AI Spark The Script</p>
               <div className="flex gap-2">
@@ -4457,34 +4465,10 @@ function CreatePageInner() {
             </div>
             )}
 
-            {/* Title */}
-            <div className="mb-4">
-              <label className="text-sm font-bold text-spark-ink-soft block mb-1">Video Title (optional)</label>
-              <input
-                type="text"
-                value={pasteTitle}
-                onChange={(e) => setPasteTitle(e.target.value)}
-                placeholder="e.g. Austin Market Update, June 2026"
-                className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
-              />
-            </div>
-
-            {/* Optional thumbnail hook */}
-            <div className="mb-4">
-              <label className="text-sm font-bold text-spark-ink-soft block mb-1">
-                Opening Line <span className="font-normal text-spark-ink-faint">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={pasteHook}
-                onChange={(e) => setPasteHook(e.target.value)}
-                placeholder="e.g. Why Austin Buyers Are Moving Fast Right Now"
-                className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
-              />
-              <p className="text-[11px] text-spark-ink-faint mt-1">
-                Spoken first, before your script. It also becomes the video&apos;s title, so the two never disagree.
-              </p>
-            </div>
+            {/* The Video Title box came off (2026-10-24, the owner's mockup):
+                the title comes from the attached page, the topic, or the
+                opening line (paste-script), and is editable in the Share Kit.
+                The opening line moved under the script as "+ Opening line". */}
 
             {/* Script textarea.
                 The length of the video is not chosen here — it is picked in the
@@ -4604,6 +4588,29 @@ function CreatePageInner() {
                   video. It doesn&apos;t come out of the {pasteWordCap.toLocaleString()} above. You
                   can edit it on the next step.
                 </p>
+              )}
+
+              {/* Opening line, tucked under the script (2026-10-24, the
+                  owner's mockup): optional, so a link until it's wanted. */}
+              {pasteHookOpen || pasteHook.trim() ? (
+                <div className="mt-3">
+                  <label className="text-sm font-bold text-spark-ink-soft block mb-1">
+                    Opening line <span className="font-normal text-spark-ink-faint">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pasteHook}
+                    onChange={(e) => setPasteHook(e.target.value)}
+                    placeholder="e.g. Why Austin Buyers Are Moving Fast Right Now"
+                    autoFocus={!pasteHook.trim()}
+                    className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber"
+                  />
+                  <p className="text-[11px] text-spark-ink-faint mt-1">Spoken first, and used as the video&apos;s title.</p>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setPasteHookOpen(true)} className="mt-2.5 text-[13px] font-semibold text-spark-amber hover:underline">
+                  + Opening line
+                </button>
               )}
             </div>
 

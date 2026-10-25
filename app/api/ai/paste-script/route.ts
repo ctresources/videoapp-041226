@@ -35,7 +35,9 @@ export async function POST(req: NextRequest) {
   // "Blue Bell," previously produced "Blue Bell,, PA".
   const cleanPart = (s: string) => s.trim().replace(/[,\s]+$/, "");
   const market = [cleanPart(city), cleanPart(state)].filter(Boolean).join(", ");
-  const title = body.title?.trim() || market || "Untitled Video";
+  // The opening line, when there's no title (2026-10-24): the title box came
+  // off the screen, which already promised the opening line becomes the title.
+  const title = body.title?.trim() || body.hook?.trim().slice(0, 120) || market || "Untitled Video";
 
   if (!script?.trim()) {
     return NextResponse.json({ error: "script is required" }, { status: 400 });
