@@ -624,6 +624,8 @@ export default function HelpPage() {
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
                 exactly as written, over scenes made for each sentence. Attach a few photos and
                 each takes a sentence among the scenes; attach many and the photos are the background.
+                Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
+                to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo;
               </span>
               <span className="block mt-1.5">
                 <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made

@@ -7,6 +7,27 @@ import { transcribeToSrt } from "@/lib/utils/srt";
 import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MIN } from "@/lib/api/scene-clips";
 import { beatsFromSrt } from "@/lib/utils/script-beats";
 import { lineIsWaiting } from "@/lib/video/render-queue";
+import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
+import { CINEMATIC_DISCLOSURE } from "@/lib/utils/ai-made";
+
+/** Adds "Photos animated with AI." to the video's YouTube description, once. */
+async function discloseAnimatedPhotos(admin: ReturnType<typeof createAdminClient>, videoId: string) {
+  const { data: v } = await admin.from("generated_videos").select("project_id").eq("id", videoId).maybeSingle();
+  const projectId = (v as { project_id: string | null } | null)?.project_id;
+  if (!projectId) return;
+  const { data: p } = await admin.from("projects").select("seo_data").eq("id", projectId).maybeSingle();
+  const seo = ((p as { seo_data: Record<string, unknown> | null } | null)?.seo_data) ?? {};
+  const desc = typeof seo.youtube_description === "string" ? seo.youtube_description : "";
+  if (desc.includes(CINEMATIC_DISCLOSURE)) return;
+  await admin.from("projects").update({
+    seo_data: { ...seo, youtube_description: [desc.trim(), CINEMATIC_DISCLOSURE].filter(Boolean).join("\n\n") },
+  }).eq("id", projectId);
+}
+
+/** Listing photos animated behind Avatar in circle (2026-10-24); the rest stay stills. */
+const ANIMATED_PHOTOS = 12;
+/** Each one's clip: 6 s, which with the 1.4× slow-down covers up to ~8.4 s on screen. */
+const ANIMATED_CLIP_SECONDS = 6;
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -268,6 +289,22 @@ export async function storeVideoDetailed(
     // the user's own photos still lead.
     let clips: { url: string; seconds?: number; loop?: boolean; slow?: number }[] = (opts.clipUrls ?? []).map((url) => ({ url }));
     const photos = opts.photoUrls ?? [];
+    /**
+     * The photos, moving (2026-10-24, the owner's ask after HeyGen's own
+     * listing sample): behind Avatar in circle, each listing photo becomes a
+     * few seconds of a barely-there forward drift, made from the photo itself
+     * (the Cinematic reel's image-to-video, gentle push-in only) and checked
+     * to have stayed on the photo; any that wandered stay a still. Started now
+     * so it runs while the scenes are planned. Short circle videos only (they
+     * carry sceneScript); up to ANIMATED_PHOTOS of them, ~$0.10 each.
+     */
+    const toAnimate = opts.sceneScript ? photos.slice(0, ANIMATED_PHOTOS) : [];
+    const animating: Promise<(CinematicClip | null)[]> = toAnimate.length
+      ? makeCinematicClips(toAnimate, ANIMATED_CLIP_SECONDS).catch((err) => {
+          console.warn(`[store-video] ${videoId}: photo animation skipped:`, err instanceof Error ? err.message : err);
+          return [];
+        })
+      : Promise.resolve([]);
     // Photos and scenes as one sequence cut to the narration, when there is one.
     let cutToWords: BackgroundItem[] | null = null;
     if (opts.sceneScript && opts.dimension) {
@@ -297,10 +334,34 @@ export async function storeVideoDetailed(
     // video each hold about 8 seconds and none comes round twice.
     const spoken = clips.length === 0 && photos.length > 0 ? srtEndSeconds(srt ?? opts.cachedSrt ?? null) : 0;
     const hold = spoken > 0 ? Math.max(4, spoken / photos.length) : 0;
-    const broll: BackgroundItem[] = cutToWords ?? [
+    let broll: BackgroundItem[] = cutToWords ?? [
       ...photos.map((url) => (hold ? { url, kind: "photo" as const, seconds: hold } : { url, kind: "photo" as const })),
       ...clips.map((c) => ({ ...c, kind: "clip" as const })),
     ];
+
+    // Each animated photo takes its own still's place: the clip for as long as
+    // its moment lasts (up to 1.4× slower), then the still holds the rest.
+    const animated = await animating;
+    const clipFor = new Map(toAnimate.map((url, i) => [url, animated[i] ?? null] as const));
+    let moving = 0;
+    broll = broll.flatMap((item): BackgroundItem[] => {
+      const c = item.kind === "photo" ? clipFor.get(item.url) : null;
+      if (!c) return [item];
+      moving++;
+      const t = item.seconds;
+      if (!t) return [{ url: c.url, kind: "clip" }];
+      if (t <= c.seconds - 0.2) return [{ url: c.url, kind: "clip", seconds: t }];
+      if (t <= c.seconds * 1.4) return [{ url: c.url, kind: "clip", seconds: t, slow: t / c.seconds }];
+      const own = c.seconds * 1.4;
+      return [{ url: c.url, kind: "clip", seconds: own, slow: 1.4 }, { url: item.url, kind: "photo", seconds: t - own }];
+    });
+    if (toAnimate.length) {
+      console.log(`[store-video] ${videoId}: ${moving}/${toAnimate.length} photo(s) moving behind the speaker`);
+      await mergeMetadata(admin, videoId, { animated_photos: moving });
+      // Disclosed in the description, as the Cinematic reel is (the owner's
+      // rule, 2026-10-06): "Photos animated with AI."
+      if (moving > 0) await discloseAnimatedPhotos(admin, videoId).catch(() => {});
+    }
 
     let brollApplied = false;
     if (broll.length > 0 && opts.dimension) {
