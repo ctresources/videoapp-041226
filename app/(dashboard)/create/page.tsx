@@ -1,6 +1,7 @@
 "use client";
 
 import { VoiceUploader, isVideoFile } from "@/components/voice/voice-uploader";
+import { YouTubePicker } from "@/components/create/youtube-picker";
 import { extractSpeechWav, ClipAudioUnavailable } from "@/lib/utils/clip-audio";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5041,6 +5042,12 @@ function CreatePageInner() {
             {cameraSource === "audio" && (
               <div className="mb-4">
                 <VoiceUploader onFileSelected={handleFileSelected} />
+              </div>
+            )}
+            {/* Videos already on the YouTube channel (2026-10-25). */}
+            {cameraSource === "uploads" && (
+              <div className="mb-4">
+                <YouTubePicker />
               </div>
             )}
 

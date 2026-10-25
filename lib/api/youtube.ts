@@ -10,9 +10,14 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const YOUTUBE_API = "https://www.googleapis.com/youtube/v3";
 const YOUTUBE_UPLOAD_API = "https://www.googleapis.com/upload/youtube/v3";
 
+// youtube.force-ssl (2026-10-25, the owner's ask) lets the app read the spoken
+// words from captions of the owner's own videos, for the blog. Existing
+// connections keep their current permissions and keep publishing; the new one
+// applies when a channel is connected (or reconnected). Google reviews it.
 const SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
 ].join(" ");
 
 export function getRedirectUri(): string {

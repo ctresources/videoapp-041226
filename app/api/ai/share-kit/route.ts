@@ -72,16 +72,18 @@ export async function POST(req: NextRequest) {
       if (srt.ok) spoken = srtToPlainText(parseSrt(srt.srt)).trim();
     }
   }
-  if (spoken.length < 200) {
+  // Posts need a little text; the blog needs a real article's worth (below).
+  // An imported YouTube video starts from its description (2026-10-25).
+  if (spoken.length < 40) {
     return NextResponse.json(
-      { error: "There aren't enough spoken words in this video yet to write the posts from." },
+      { error: "There aren't enough words in this video yet to write the posts from." },
       { status: 422 },
     );
   }
 
   const socialMissing = force
     || !seoExisting.linkedin_post || !seoExisting.facebook_post || !seoExisting.instagram_caption;
-  const blogMissing = force || !String(script.blog_body ?? "").trim();
+  const blogMissing = (force || !String(script.blog_body ?? "").trim()) && spoken.length >= 200;
 
   const title = String(script.title ?? project.title ?? "").trim();
   const keywords = Array.isArray(script.keywords) ? (script.keywords as string[]) : [];
