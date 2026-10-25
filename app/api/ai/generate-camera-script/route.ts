@@ -8,6 +8,7 @@ import {
   cameraTargetWords, minutesFor,
   type CameraLength, type RenderedScriptLength,
 } from "@/lib/utils/video-length";
+import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
@@ -64,9 +65,13 @@ export async function POST(req: NextRequest) {
   // A plain number, for a caller that needs a length none of the named ones
   // is: the Scenes reel, whose narration has to fit in a minute. The shortest
   // named length is two.
+  // A short avatar script leaves room for this agent's own closing line
+  // (2026-10-24): script + closing line is the 2-minute cap.
   const words = typeof targetWords === "number" && Number.isFinite(targetWords)
     ? Math.min(2200, Math.max(60, Math.round(targetWords)))
-    : cameraTargetWords(length as CameraLength | RenderedScriptLength | undefined);
+    : length === "rendered_short"
+      ? shortScriptBudget(await closingLineWords(supabase, user.id, { city, state })).target
+      : cameraTargetWords(length as CameraLength | RenderedScriptLength | undefined);
   const low = Math.round(words * 0.92);
   const high = Math.round(words * 1.08);
   const mins = minutesFor(words);

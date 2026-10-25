@@ -15,6 +15,7 @@ import {
 import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import { isPlaceholderTitle } from "@/lib/utils/article-headline";
+import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
 
 /**
  * The heaviest route in the app and, until now, the only script route that
@@ -202,11 +203,16 @@ export async function POST(req: NextRequest) {
   const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
   const length: VideoLength = videoLength === "long" ? "long" : "standard";
   const short = length === "standard" && shortScript === true && blogOnly !== true;
-  const words = short ? VERTICAL_TARGET_WORDS : targetWords(length, tier);
+  // A standard script leaves room for this agent's own closing line, measured
+  // (2026-10-24): script + closing line is the 2-minute cap, not the script alone.
+  const standardBudget = !short && length === "standard"
+    ? shortScriptBudget(await closingLineWords(createAdminClient(), user.id, { city, state }))
+    : null;
+  const words = short ? VERTICAL_TARGET_WORDS : standardBudget ? standardBudget.target : targetWords(length, tier);
   // The cap is stated in the prompt too. Asking for a target without naming the
   // limit is what produced 676-word scripts against a 522-word target, which
   // were then cut mid-sentence at render time.
-  const cap = short ? VERTICAL_MAX_WORDS : maxWords(length, tier);
+  const cap = short ? VERTICAL_MAX_WORDS : standardBudget ? standardBudget.cap : maxWords(length, tier);
 
   const params: LocationParams = {
     city, state, zip, month, year, customTopic,

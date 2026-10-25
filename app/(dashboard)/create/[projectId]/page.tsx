@@ -2132,7 +2132,10 @@ export default function ProjectEditorPage() {
           return (
             <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
               <p className="min-w-0 flex-1 text-[12.5px] text-amber-900">
-                Avatar video takes up to {standardMaxWords()} words. Your script and closing line are {total}.
+                {/* Both looks since 2026-10-24: the circle is held to 2 minutes too,
+                    and an over-length script would lose its ending there. */}
+                Avatar video and Avatar in circle take up to {standardMaxWords()} words (about 2 minutes),
+                counting your closing line. Yours are {total}.
               </p>
               <button
                 type="button"
@@ -3537,7 +3540,7 @@ export default function ProjectEditorPage() {
                   offered, on the tab most likely to hold a script someone
                   wrote to read aloud. */}
               {renderModeSelector()}
-              {isPaste && !selfRecord && (
+              {isPaste && !selfRecord && !fullTooLong && (
                 <p className="mt-1.5 text-[10.5px] leading-[1.45] text-spark-ink-faint">
                   Either way your script is read word for word, so nothing gets shortened or rewritten.
                 </p>
