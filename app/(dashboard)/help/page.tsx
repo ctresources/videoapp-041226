@@ -185,7 +185,9 @@ export default function HelpPage() {
               pre-written closing call-to-action. It auto-fills your name, team, and <em>each video&apos;s</em> city —
               edit it once and every video ends with a proven subscribe-and-contact close. Change it
               later and it carries into videos you have already started, unless you typed over the
-              closing line in that video; <strong>Use my saved CTA</strong> there brings it back.
+              closing line in that video; <strong>Use my saved CTA</strong> there brings it back. Keep it to{" "}
+              <strong>40 words</strong> (about 17 seconds): the count under the box shows yours with your
+              details filled in, because it&apos;s spoken inside your 2-minute video.
             </Step>
             {/* Setup rather than creating, because the useful half is done once:
                 saving the address. After that it is a Forward button in whatever

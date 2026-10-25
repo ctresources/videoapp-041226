@@ -17,7 +17,7 @@ import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
-import { DEFAULT_CTA_TEMPLATE, resolveCta } from "@/lib/utils/default-cta";
+import { DEFAULT_CTA_TEMPLATE, MAX_CTA_WORDS, ctaWords, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -183,9 +183,24 @@ export default function SettingsPage() {
     setSavingPrefs(false);
   }
 
+  // The closing line as it will be spoken, and its length (2026-10-24: 40 words at most).
+  const spokenCta = resolveCta(ctaTemplate, {
+    city: prefs.city,
+    state: prefs.state,
+    name: brandData?.full_name,
+    company: brandData?.company_name,
+    years: marketYears,
+  });
+  const spokenCtaWords = ctaWords(spokenCta);
+  const ctaTooLong = spokenCtaWords > MAX_CTA_WORDS;
+
   async function handleSaveCta(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    if (ctaTooLong) {
+      toast.error(`Keep your closing line to ${MAX_CTA_WORDS} words. It's ${spokenCtaWords} now.`);
+      return;
+    }
     setSavingCta(true);
     const supabase = createClient();
     const { error } = await supabase
@@ -421,16 +436,21 @@ export default function SettingsPage() {
               placeholder='e.g. 20+ or "over 15"'
               className="w-40 text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
-            <p className="text-xs text-slate-400 mt-1">Fills the &ldquo;I&apos;ve been guiding buyers and sellers… for ___ years&rdquo; line</p>
+            <p className="text-xs text-slate-400 mt-1">Used where your closing line says <code className="bg-slate-100 rounded px-1">{"{years}"}</code></p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">CTA Template</label>
             <textarea
               value={ctaTemplate}
               onChange={(e) => setCtaTemplate(e.target.value)}
-              rows={9}
-              className="w-full text-sm px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 leading-relaxed resize-y"
+              rows={4}
+              className={`w-full text-sm px-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 leading-relaxed resize-y ${ctaTooLong ? "border-amber-400" : "border-slate-200"}`}
             />
+            {/* Counted as spoken, with your details filled in (2026-10-24). */}
+            <p className={`text-xs mt-1 font-medium ${ctaTooLong ? "text-amber-700" : "text-slate-500"}`}>
+              {spokenCtaWords} / {MAX_CTA_WORDS} words
+              {ctaTooLong ? ` · shorten it by ${spokenCtaWords - MAX_CTA_WORDS} to save` : " · about " + Math.round((spokenCtaWords / 145) * 60) + " seconds"}
+            </p>
             <p className="text-xs text-slate-400 mt-1">
               <code className="bg-slate-100 rounded px-1">{"{city}"}</code> and{" "}
               <code className="bg-slate-100 rounded px-1">{"{state}"}</code> auto-fill with each video&apos;s market
@@ -459,7 +479,7 @@ export default function SettingsPage() {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <Button type="submit" loading={savingCta} className="self-start">
+            <Button type="submit" loading={savingCta} disabled={ctaTooLong} className="self-start">
               Save Default CTA
             </Button>
             <button

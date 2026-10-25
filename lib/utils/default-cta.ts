@@ -20,13 +20,21 @@
  * who has saved Settings is pinned to whatever the wording was that day. They
  * pick up changes here via "Reset to default" in Settings.
  */
-export const DEFAULT_CTA_TEMPLATE = `If this is your first time here and you want to know everything about living in {city} and the surrounding suburbs, subscribe, like or follow so you can be the first to know about the current market in {city}.
+// Shortened 2026-10-24 (the owner's wording): the old default ran about 74
+// words, a third of a 2-minute video, and pushed scripts over the cap.
+export const DEFAULT_CTA_TEMPLATE = `If you're buying or selling in {city}, subscribe or follow to be first to know about our market. I'm {name}, and I'd love to help with your move. My contact info is in the description below.`;
 
-My name is {name} and I've been guiding buyers and sellers across the {city} area for {years} years.
+/**
+ * The most words a closing line may have, filled in (2026-10-24, the
+ * owner's call): about 17 seconds of a 2-minute video.
+ */
+export const MAX_CTA_WORDS = 40;
 
-{i_or_team} love helping people make their move to {city} — whether that's 9 days or 90 days away, feel free to reach out.
-
-All of our contact info is in the description or bio below, and we'd be happy to help you make a smooth move to {city}.`;
+/** Words in a closing line as it will be spoken. */
+export function ctaWords(text: string): number {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
 
 export interface CtaVars {
   city?: string | null;
