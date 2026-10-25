@@ -326,7 +326,8 @@ export function buildVideoAgentPrompt(params: {
   const shortOrientationBlock = `OUTPUT FORMAT — ${canvasLabel} (NON-NEGOTIABLE)
 Fill the canvas edge to edge — no black bars, which are a failed render.${params.hasAvatar
     ? " Never gain width by zooming into the presenter, and never crop the head, chin or ears."
-    : ""}`;
+    : ""}
+Every shot is ${footageShape} footage filling the frame edge to edge: no portrait or square clips, no pillarboxing, no blurred side panels.`;
 
   const orientationBlock = params.avatarMatchesCanvas ? shortOrientationBlock : params.isSquare
     ? `OUTPUT FORMAT — 1:1 SQUARE (NON-NEGOTIABLE)
