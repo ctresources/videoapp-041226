@@ -333,6 +333,8 @@ export default function ProjectEditorPage() {
    * a second one too (start-render, code already_made).
    */
   const [draftVideo, setDraftVideo] = useState<{ id: string; ready: boolean } | null>(null);
+  // Opener for a listing video in the circle: full body by default (2026-10-24).
+  const [openerChoice, setOpenerChoice] = useState<"full" | "chest" | "off">("full");
   // Back from approving the Digital Twin at HeyGen (2026-10-24): marked
   // approved, so Spark It works straight away.
   useEffect(() => {
@@ -1808,6 +1810,8 @@ export default function ProjectEditorPage() {
           // The Digital Twin's background (2026-10-24); the server uses it
           // only for a twin in a horizontal video.
           ...(twinBg && twinLookId && selectedLookId === twinLookId && { twinBackground: twinBg }),
+          // The agent in front of the home, first (2026-10-24).
+          ...(openerOffered && openerChoice !== "off" && { opener: openerChoice }),
           // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
           ...(pipLayout && { pipLayout: true }),
           ...(pdfUrl && { pdfUrl }),
@@ -2108,6 +2112,22 @@ export default function ProjectEditorPage() {
             {/* Avatar video is always the Video Agent, either shape (2026-10-24). */}
             <span>With your Digital Twin, this is a full <b className="text-[#A3660F]">Avatar video</b>, with b-roll and graphics made for you.</span>
           </p>
+        )}
+        {/* Opener: the agent in front of the home, before the video (2026-10-24,
+            the owner's ask). Listing videos in the circle; full body or chest up. */}
+        {openerOffered && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-spark-rule bg-white px-3 py-2">
+            <span className="text-[12.5px] font-semibold text-spark-ink">Open with me in front of the home</span>
+            <div className="flex flex-wrap gap-1.5">
+              {([["full", "Full body"], ["chest", "Chest up"], ["off", "Off"]] as const).map(([v, label]) => (
+                <button key={v} type="button" onClick={() => setOpenerChoice(v)} aria-pressed={openerChoice === v}
+                  className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors ${openerChoice === v ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="w-full text-[11px] text-spark-ink-faint">A 6-second shot of you at the front of the listing, made with AI, before you start talking.</span>
+          </div>
         )}
         {/* The twin's Background box came off Avatar video (2026-10-24): that
             is always the Video Agent now, which sets its own scene. Settings
@@ -3067,6 +3087,11 @@ export default function ProjectEditorPage() {
   const twinFullLocked = !twinFullOk && !!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice";
   const fullBlocked = fullTooLong || twinFullLocked;
   const circleStyle = avatarStyle === "circle" || fullBlocked;
+  // The opener is offered on a listing video in the circle (2026-10-24).
+  const openerOffered = circleStyle && renderMode === "avatar_voice" && !selfRecord
+    && selectedVideoType !== "youtube_long" && selectedVideoType !== "short_1x1"
+    && (project?.project_type === "listing_video"
+      || ((project as unknown as { listing_data?: { photoUrls?: unknown[] } } | null)?.listing_data?.photoUrls?.length ?? 0) > 0);
 
   /**
    * How long this render takes, worked out once for the whole page.

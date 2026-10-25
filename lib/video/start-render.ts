@@ -34,6 +34,7 @@ import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
+import { parseOpenerStyle } from "@/lib/api/agent-opener";
 import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
 /**
@@ -560,6 +561,8 @@ export async function startRender(
   // When this attempt began, so a refusal can tidy up only what it made.
   const attemptStartedAt = new Date().toISOString();
   const { projectId, videoType = "blog_long", script, cta, lookId, hook: requestHook, musicUrl, pdfUrl, pdfText, extraPhotoUrls, engine, longForm, captions = true, pipLayout, renderMode, avatarStyle, twinBackground } = body;
+  /** "full" | "chest": open a listing video with the agent in front of the home (2026-10-24). */
+  const openerStyle = parseOpenerStyle(body.opener);
 
   /**
    * "Nobody on screen" is a decision, not an omission.
@@ -1486,6 +1489,20 @@ export async function startRender(
             heygen_engine: directEngine ?? "avatar_iv",
             heygen_avatar_type: look.avatarType,
             is_digital_twin: isDigitalTwin,
+            // The agent in front of the home, opening a listing video in the
+            // circle (2026-10-24): made and put first when the video is finished.
+            // Listing videos only: the front photo is the listing's own.
+            ...(openerStyle && !isLongForm && !isAgentIntro && !twinBackdrop && directPhotos.length > 0
+              && (project.project_type === "listing_video" || Array.isArray(listingData?.photoUrls)) && {
+              opener: {
+                style: openerStyle,
+                // Their Digital Twin once approved, otherwise the look this video uses.
+                look_id: (profile.heygen_digital_twin_look_id && !profile.twin_consent_needed)
+                  ? profile.heygen_digital_twin_look_id
+                  : directAvatarId,
+                photo_url: listingPhotos[0] || directPhotos[0],
+              },
+            }),
           },
         })
         .eq("id", videoRow.id);

@@ -625,7 +625,10 @@ export default function HelpPage() {
                 exactly as written, over scenes made for each sentence. Attach a few photos and
                 each takes a sentence among the scenes; attach many and the photos are the background.
                 Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
-                to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo;
+                to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo; On a
+                listing video, <strong>Open with me in front of the home</strong> starts it with a 6-second
+                shot of you at the front of the listing, made with AI from your look and its front photo:
+                choose <strong>Full body</strong>, <strong>Chest up</strong> or <strong>Off</strong>.
               </span>
               <span className="block mt-1.5">
                 <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made
@@ -933,6 +936,12 @@ export default function HelpPage() {
                 instead. If fewer than half your photos can be animated, no video is taken from your
                 plan. <strong>&ldquo;Photos animated with AI.&rdquo;</strong> is added to the
                 description, so the reel says what it is.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Open with me in front of the home</strong> (either kind, vertical or horizontal):
+                your first photo becomes a 6-second shot of you at the front of the home, made with AI
+                from your look. Choose <strong>Full body</strong>, <strong>Chest up</strong> or{" "}
+                <strong>Off</strong>. It uses your Digital Twin once approved, otherwise your headshot.
               </span>
               <span className="block mt-1.5">
                 <strong>Build the reel</strong> is on the bar at the bottom. When the reel is done

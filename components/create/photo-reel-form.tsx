@@ -134,6 +134,8 @@ export function PhotoReelForm({
   const [endCardHeadline, setEndCardHeadline] = useState("See it in person");
   const [address, setAddress] = useState(initialAddress ?? "");
   const [motion, setMotion] = useState<Motion>("classic");
+  // Open with the agent in front of the home: full body by default (2026-10-24).
+  const [opener, setOpener] = useState<"full" | "chest" | "off">("full");
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -381,6 +383,8 @@ export function PhotoReelForm({
           format,
           seconds,
           motion,
+          // The agent in front of the home as the first moment (2026-10-24).
+          ...(opener !== "off" && format !== "short_1x1" && { opener }),
           script: voice === "script" ? script.trim() : undefined,
           voiceoverPath: voice === "record" ? voiceoverPath : undefined,
           musicQuery,
@@ -688,6 +692,22 @@ export function PhotoReelForm({
           ))}
         </div>
       </div>
+
+      {/* ── Opener (2026-10-24, the owner's ask) ── */}
+      {format !== "short_1x1" && (
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold text-spark-ink-muted">Open with me in front of the home</p>
+          <div className="flex flex-wrap gap-1.5">
+            {([["full", "Full body"], ["chest", "Chest up"], ["off", "Off"]] as const).map(([v, label]) => (
+              <button key={v} type="button" onClick={() => setOpener(v)} aria-pressed={opener === v}
+                className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${opener === v ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[10.5px] text-spark-ink-faint">Your first photo becomes a 6-second shot of you at the front of the home, made with AI.</p>
+        </div>
+      )}
 
       {/* ── Motion ── */}
       <div>

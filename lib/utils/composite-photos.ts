@@ -506,6 +506,58 @@ export async function compositePhotos(
  *
  * Returns null on any failure so the caller keeps the un-captioned video.
  */
+export async function prependClip(
+  videoBuffer: Buffer,
+  /** A silent opening shot (its own sound is dropped), downloaded straight away. */
+  clipUrl: string,
+  clipSeconds: number,
+): Promise<Buffer | null> {
+  const startedAt = Date.now();
+  const dir = join(tmpdir(), `opener-${randomUUID()}`);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const inPath = join(dir, "in.mp4");
+    const clipPath = join(dir, "clip.mp4");
+    const outPath = join(dir, "out.mp4");
+    await fs.writeFile(inPath, videoBuffer);
+    const res = await fetch(clipUrl, { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) throw new Error(`opener download HTTP ${res.status}`);
+    await fs.writeFile(clipPath, Buffer.from(await res.arrayBuffer()));
+    const { width: w, height: h } = await probeVideoSize(inPath);
+    if (!w || !h) throw new Error("couldn't read the video's size");
+    const W = Math.round(w / 2) * 2, H = Math.round(h / 2) * 2;
+    const d = Math.max(1, clipSeconds).toFixed(3);
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(clipPath)
+        .input(inPath)
+        .complexFilter([
+          `[0:v]trim=duration=${d},setpts=PTS-STARTPTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=25,format=yuv420p[cv]`,
+          `aevalsrc=0:c=stereo:s=48000:d=${d}[ca]`,
+          `[1:v]scale=${W}:${H},setsar=1,fps=25,format=yuv420p[mv]`,
+          `[1:a]aresample=48000,aformat=channel_layouts=stereo[ma]`,
+          `[cv][ca][mv][ma]concat=n=2:v=1:a=1[outv][outa]`,
+        ])
+        .outputOptions([
+          "-map", "[outv]", "-map", "[outa]",
+          "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-threads", "0",
+          "-c:a", "aac", "-b:a", "192k",
+        ])
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err))
+        .save(outPath);
+    });
+    const out = await fs.readFile(outPath);
+    console.log(`[composite-photos] Opener put first (${d}s) in ${Math.round((Date.now() - startedAt) / 1000)}s`);
+    return out;
+  } catch (err) {
+    console.error("[composite-photos] Opener skipped, keeping the video as it was:", err instanceof Error ? err.message : err);
+    return null;
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 export async function burnSubtitles(
   videoBuffer: Buffer,
   srtPath: string,

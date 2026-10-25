@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus, estimateRenderCostUsd } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
-import { compositePhotos, burnSubtitles, type BackgroundItem } from "@/lib/utils/composite-photos";
+import { compositePhotos, burnSubtitles, prependClip, type BackgroundItem } from "@/lib/utils/composite-photos";
+import { makeAgentOpener, type OpenerStyle } from "@/lib/api/agent-opener";
 import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
 import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MIN } from "@/lib/api/scene-clips";
@@ -86,6 +87,8 @@ export interface StoreOptions {
   cachedSrt?: string | null;
   /** A Digital Twin: the circle follows the speaker (2026-10-24). */
   followSubject?: boolean;
+  /** The agent in front of the home, put first (2026-10-24). */
+  opener?: { style: OpenerStyle; lookId: string; photoUrl: string } | null;
 }
 
 /**
@@ -298,6 +301,13 @@ export async function storeVideoDetailed(
      * so it runs while the scenes are planned. Short circle videos only (they
      * carry sceneScript); up to ANIMATED_PHOTOS of them, ~$0.10 each.
      */
+    // The opener, started now so it is made while everything else is.
+    const openerMaking = opts.opener && opts.dimension
+      ? makeAgentOpener({
+          ...opts.opener,
+          aspect: opts.dimension.height > opts.dimension.width ? "9:16" : "16:9",
+        })
+      : Promise.resolve(null);
     const toAnimate = opts.sceneScript ? photos.slice(0, ANIMATED_PHOTOS) : [];
     const animating: Promise<(CinematicClip | null)[]> = toAnimate.length
       ? makeCinematicClips(toAnimate, ANIMATED_CLIP_SECONDS).catch((err) => {
@@ -383,6 +393,19 @@ export async function storeVideoDetailed(
     if (!brollApplied && srtPath && opts.dimension) {
       const withSubs = await burnSubtitles(processed, srtPath, opts.dimension.width, opts.dimension.height);
       if (withSubs) { processed = withSubs; changed = true; }
+    }
+    // The agent in front of the home, first (2026-10-24): after the circle and
+    // captions are made, so both stay in time with the speech, and before the
+    // music, so the music runs under the opener too.
+    const openerShot = await openerMaking;
+    if (openerShot) {
+      const withOpener = await prependClip(processed, openerShot.url, openerShot.seconds);
+      if (withOpener) {
+        processed = withOpener;
+        changed = true;
+        await mergeMetadata(admin, videoId, { opener_seconds: openerShot.seconds });
+        await discloseAnimatedPhotos(admin, videoId).catch(() => {});
+      }
     }
     if (opts.musicUrl) {
       const mixed = await mixBackgroundMusic(processed, opts.musicUrl);

@@ -13,6 +13,7 @@
 
 import { getVideoStatus } from "@/lib/api/heygen";
 import type { StoreOptions } from "@/lib/utils/store-video";
+import { parseOpenerStyle } from "@/lib/api/agent-opener";
 
 export async function buildStoreOptions(
   metadata: Record<string, unknown> | null,
@@ -54,7 +55,16 @@ export async function buildStoreOptions(
     cachedSrt: typeof meta.srt === "string" ? meta.srt : null,
     // A Digital Twin moves; its circle follows it (2026-10-24).
     followSubject: meta.is_digital_twin === true,
+    opener: openerOf(meta.opener),
   };
+}
+
+/** The opener asked for at render time, if it is whole. */
+function openerOf(v: unknown): StoreOptions["opener"] {
+  const o = v as { style?: unknown; look_id?: unknown; photo_url?: unknown } | null;
+  const style = parseOpenerStyle(o?.style);
+  if (!style || typeof o?.look_id !== "string" || typeof o?.photo_url !== "string") return null;
+  return { style, lookId: o.look_id, photoUrl: o.photo_url };
 }
 
 /** True once post-processing has run for this render — see store-video. */

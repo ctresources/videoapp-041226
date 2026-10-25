@@ -22,6 +22,7 @@ import { searchBackgroundMusic } from "@/lib/api/heygen";
 import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type VideoType } from "@/lib/api/ffmpeg-render";
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
+import { makeAgentOpener, parseOpenerStyle } from "@/lib/api/agent-opener";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
 import { CINEMATIC_DISCLOSURE, SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { formatPhone } from "@/lib/utils/format-phone";
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest) {
      * video from the plan. Anything else is the classic reel, which is free.
      */
     motion?: string;
+    /** "full" | "chest": open with the agent in front of the home (2026-10-24). */
+    opener?: string;
     /**
      * A Scenes reel: no photos, the pictures are made from the script. Needs
      * `script`, runs up to a minute, and counts as one short video.
@@ -141,10 +144,24 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select(`id, full_name, company_name, logo_url, avatar_url, voice_clone_id, heygen_voice_id, voice_sample_url, location_city, location_state, phone, company_phone, role, subscription_tier, first_video_generated_at, ${ALLOWANCE_SELECT}`)
+    .select(`id, full_name, company_name, logo_url, avatar_url, voice_clone_id, heygen_voice_id, voice_sample_url, location_city, location_state, phone, company_phone, role, subscription_tier, first_video_generated_at, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall, twin_consent_needed, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, string | null>;
+
+  /**
+   * The agent in front of the home, as the reel's first moment (2026-10-24,
+   * the owner's ask): their Digital Twin (approved) or headshot look, with the
+   * reel's first photo. Started now so it is made while the voice is.
+   * heygen-video-1 makes 16:9 and 9:16 only, so not for a square reel.
+   */
+  const openerStyle = parseOpenerStyle(body.opener);
+  const openerAspect = videoType === "youtube_16x9" ? "16:9" as const : videoType === "reel_9x16" ? "9:16" as const : null;
+  const twinOk = !!p.heygen_digital_twin_look_id && !(profile as { twin_consent_needed?: boolean } | null)?.twin_consent_needed;
+  const openerLook = twinOk ? p.heygen_digital_twin_look_id : (openerAspect === "9:16" ? p.heygen_look_tall : p.heygen_look_wide) ?? null;
+  const openerMaking = openerStyle && openerAspect && openerLook && photoUrls.length > 0
+    ? makeAgentOpener({ lookId: openerLook, photoUrl: photoUrls[0], aspect: openerAspect, style: openerStyle })
+    : Promise.resolve(null);
 
   // Theirs, or it is not attached to anything.
   let ownProject: { id: string; seo_data: Record<string, unknown> | null } | null = null;
@@ -411,6 +428,14 @@ export async function POST(req: NextRequest) {
      * reel that got this far has its scenes, and is one.
      */
     const earnedItsCharge = scenes || (cinematic && moving * 2 > photoUrls.length);
+
+    // The opener takes the first photo's moment (it is made from that photo).
+    const openerShot = await openerMaking;
+    if (openerShot && !scenes) {
+      if (clips.length < photoUrls.length) clips = photoUrls.map((_, i) => clips[i] ?? null);
+      if (!clips[0]) moving++;
+      clips[0] = { url: openerShot.url, seconds: openerShot.seconds, width: 0, height: 0, similarity: 1 };
+    }
 
     // ── Music bed ───────────────────────────────────────────────────────────
     let musicUrl: string | null = body.musicUrl?.startsWith("https://") ? body.musicUrl : null;
