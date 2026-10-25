@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, FileText, Loader2, Sparkles, Video } from "lucide-react";
+import { ArrowRight, Camera, Check, FileText, Loader2, Sparkles, Video } from "lucide-react";
+import { StepFooter } from "@/components/create/step-footer";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { FieldMic } from "@/components/ui/field-mic";
@@ -255,7 +256,8 @@ export default function AutopilotPage() {
   const toReview = drafts.filter((d) => d.status === "draft").length;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    // Room at the bottom for the Back / Done bar (2026-10-24).
+    <div className="mx-auto flex max-w-2xl flex-col gap-4 pb-28">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[28px] font-bold leading-tight text-[#A3660F]">Your week</h1>
@@ -466,6 +468,14 @@ export default function AutopilotPage() {
       {outOfVideos && (
         <OutOfVideosModal kind="short" tier={allowance?.tier ?? "free"} onClose={() => setOutOfVideos(false)} />
       )}
+
+      {/* Back and Done at the bottom, like the editor (2026-10-24, the owner's
+          ask). Everything here saves as it's changed, so Done just leaves. */}
+      <StepFooter onBack={() => (window.history.length > 1 ? router.back() : router.push("/create"))}>
+        <Button size="lg" onClick={() => router.push("/create")} className="gap-2">
+          Done <ArrowRight size={17} />
+        </Button>
+      </StepFooter>
     </div>
   );
 }
