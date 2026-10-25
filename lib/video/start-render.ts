@@ -25,7 +25,7 @@ import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin, canUseTwinInFullVideo, TWIN_FULL_VIDEO_MESSAGE } from "@/lib/utils/plan-features";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
-import { formatPhones } from "@/lib/utils/format-phone";
+import { formatPhone, formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
 import { registerFormatLooks } from "@/lib/utils/avatar-crops";
 import { dropDuplicateCta } from "@/lib/utils/script-assembly";
@@ -205,7 +205,7 @@ const TONE_VISUALS: Record<string, string> = {
   "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
 };
 
-function buildVideoAgentPrompt(params: {
+export function buildVideoAgentPrompt(params: {
   script: string;
   city: string;
   state: string;
@@ -415,8 +415,21 @@ ${propertyPhotos
    * request and applies the agent's own palette and fonts deterministically,
    * which beats describing them in prose and then disagreeing with the kit.
    */
+  // Tightened 2026-10-24 (same points, fewer words) to make room in the
+  // never-trimmed head for the b-roll-matches-the-words and photo rules.
   const styleBlock = `STYLE — ${params.isShortForm ? "Social Property Cut" : "Local Property Feature"}
-Calm, premium and editorial. Photographs fill the frame in true, natural colour with no grade — never desaturated, washed-out, grey, teal-and-orange or filmic — and every graphic sits on the bottom band described in RULE #1, taking its colours and type from the attached brand kit. Motion is slow and deliberate: a gentle push or drift across each photograph on a locked camera, text rising a few pixels into place and then holding still, never sliding, spinning, bouncing or scaling, and never a handheld shake, whip pan or rapid zoom. Transitions are ${params.isShortForm ? "straight cuts, quick and rhythmic, with no dissolves" : "straight cuts, with an occasional half-second dissolve between subjects and a single accent rule that wipes across when the topic changes"}. Charts follow the content: bars for prices, lines for trends, infographics for inventory and demand${toneVisual ? `; ${params.tone!.toLowerCase()} throughout — ${toneVisual}` : ""}. The feel is ${params.isShortForm ? "immediate and confident, made to stop a thumb" : "unhurried, warm and expensive-looking: confident, never salesy, never flashy"}. No scene is ever a blank, white, grey or plain-colour background. ${params.burnCaptions === false ? "Do not add captions or subtitles." : "Add captions of the narration in the bottom band, clear of every graphic. Never show a caption while a title card, headline, stat or any other on-screen words are showing: one set of words on screen at a time, never two overlapping."}`;
+Calm, premium, editorial. Photos fill the frame in true natural colour, no grade (never washed-out, grey or teal-and-orange). Graphics sit on the bottom band (RULE #1) in the brand kit's colours and type. Slow, deliberate motion: a gentle push or drift on each photo; text rises into place and holds — no sliding, spinning, bouncing, shake, whip pans or fast zooms. ${params.isShortForm ? "Quick straight cuts, no dissolves" : "Straight cuts, an occasional half-second dissolve between subjects"}. Charts: bars for prices, lines for trends${toneVisual ? `; ${params.tone!.toLowerCase()}: ${toneVisual}` : ""}. Feel: ${params.isShortForm ? "immediate and confident" : "warm, confident, never salesy"}. Never a blank, white, grey or plain background. ${params.burnCaptions === false ? "No captions or subtitles." : "Captions of the narration in the bottom band, clear of graphics; never at the same time as other on-screen words."}`;
+
+  /**
+   * Moved into the head on 2026-10-24 (the owner: "b-roll to match words is
+   * important"). In the tail they were cut on most 2-minute renders: with
+   * music and a look not registered at the canvas shape, 23 of the tail's
+   * 1,220 characters survived.
+   */
+  const matchBlock = `B-ROLL MATCHES THE WORDS (RULE #3)
+- Every cutaway shows what is being said at that moment: a room → that room; a street or neighborhood → that place; a number or price → that number on screen in the bottom band; a lifestyle benefit → show it.
+- Change the shot when the topic changes. Never show one topic while narrating another.${propertyPhotos ? `
+- PROPERTY: the ${totalPhotos} attached photos${params.listingAddress ? ` of ${params.listingAddress}` : ""} are the ONLY property visuals. Never stock, generated or invented rooms, yards or exteriors. Use every photo, each with the sentence that describes it.` : ""}`;
 
   const head = `You are producing a professional real estate marketing video.
 
@@ -452,6 +465,8 @@ ${propertyPhotos
 - This video has NO on-screen presenter. Do NOT place any person, avatar, host, narrator, spokesperson or talking head in any scene — not full screen, not in a corner, not in an inset, not for one frame. No avatar was supplied and none may be substituted.
 - The narration is voiceover over visuals for the entire runtime. Every scene is imagery, footage or a text card.
 - With no face to protect, overlays may use the frame freely — but keep captions in the lower third and leave the middle clear for the subject of the shot.` : ""}
+
+${matchBlock}
 
 LOCATION ACCURACY — ${locationOr}, ${monthName}
 - Any establishing shot, aerial or street scene must be OF ${locationOr}, never another town or a generic stand-in, and must be believable there during ${monthName}: correct season, foliage, weather, daylight, architecture, materials and terrain. Nothing the area does not genuinely have.
@@ -494,10 +509,9 @@ DURATION (CRITICAL)
   // taking scenes of their own, closer to five did. Room for every photo,
   // the title card, the contact card and the presenter's cutaways.
   : `${Math.max(10, totalPhotos + 4)} scenes`}.${params.isLongForm ? "" : `
-- HARD CEILING: the finished video must run no longer than ${MAX_SHORT_MINUTES} minutes. The narration below is written to fit inside that with room to spare for the contact card.
-- Do NOT pad to reach a length. No extra scenes, no stock footage of places not named in the script, no repeated or held shots, no stretched pauses. If the narration ends at ninety seconds, the video ends at ninety seconds.`}
-- The voiceover must contain 100% of the narration script below, word for word, first word to last, at a natural unhurried ~145 wpm. Never summarize, paraphrase, shorten, trim or speed-read it. The video ends only after the FINAL word is spoken — ending before the script is finished is WRONG.
-- No intro music, countdown or silent title scene. No filler or silent gaps.
+- HARD CEILING: no longer than ${MAX_SHORT_MINUTES} minutes. Never pad: no extra, repeated or held shots, no places the script doesn't name, no stretched pauses.`}
+- Speak 100% of the narration below, word for word, at a natural ~145 wpm. Never summarize, shorten or speed-read it; the video ends only after the final word.
+- No intro music, countdown, silent title scene or gaps.
 
 DETAILS
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? ` · ${params.brokerage}` : ""} · Market: ${locationOr}
@@ -505,7 +519,7 @@ DETAILS
 - DISPLAY ONLY, never spoken:${params.phone1 ? ` Mobile ${params.phone1}` : ""}${params.phone2 ? ` · Office ${params.phone2}` : ""}${params.website ? ` · Web ${params.website}` : ""}
 
 NARRATION SCRIPT — SPEAK THIS EXACTLY, ONCE, IN FULL
-Do not repeat the opening line. Never speak any headline, title-card, overlay or thumbnail text — those are visual only. Never speak phone numbers, emails or URLs: they are display-only, shown on screen and omitted from the voiceover, and no contact detail may be added that is not in the script. The script is already normalized — read every word as written, never spelling out letters. The voiceover starts with the first words below:
+Speak the opening line only once. Never speak headline, title-card or overlay text, phone numbers, emails or URLs (display only), and add no contact details. Read every word as written; never spell out letters. The voiceover starts with the first words below:
 
 ${params.script}
 `;
@@ -532,11 +546,8 @@ ${params.script}
    * runs to 2,000 characters, so at the front it consumed the entire slice and
    * took every rule below it down with it.
    */
-  const tail = `${photoBlock}
-
-VISUAL SYNC — every b-roll clip must match what is being spoken at that moment
-- Room mentioned → show that room. Neighborhood/street → that street type. Statistic or price → a data overlay of that exact number (in the bottom band). Lifestyle benefit → show it. Address → a matching home exterior.
-- Cut to new b-roll whenever the topic changes. Never show Topic B while narrating Topic A.${propertyPhotos ? "" : `
+  // VISUAL SYNC moved into the head as RULE #3 (2026-10-24).
+  const tail = `${photoBlock}${propertyPhotos ? "" : `
 
 B-ROLL CONTENT — ${locationOr} aerials and establishing shots, residential streets and curb appeal, interiors, lifestyle scenes.
 - MEDIUM: real places → stock footage; numbers and trends → motion graphics; abstract ideas → AI-generated.`}${audienceVisual ? `
@@ -1120,9 +1131,12 @@ export async function startRender(
     // typed, which is usually ten bare digits, and "6104578698" went onto the
     // card exactly like that. De-duplicated after formatting so the same
     // number entered two different ways collapses to one line.
-    const phones = Array.from(
-      new Set(formatPhones([profile.phone, profile.company_phone])),
-    );
+    // Mobile and office each from its own field (2026-10-24): PA requires the
+    // brokerage's office number in ads, and the first number found used to be
+    // called "Mobile" whichever it was. Shown once if they are the same.
+    const mobilePhone = formatPhone(profile.phone);
+    const officePhone = formatPhone(profile.company_phone);
+    const phones = [mobilePhone, officePhone !== mobilePhone ? officePhone : ""];
 
     const listingAddress = (listingData?.address as string | undefined) || undefined;
 
@@ -1146,8 +1160,8 @@ export async function startRender(
       audience,
       tone,
       ctaPreference,
-      phone1: phones[0],
-      phone2: phones[1],
+      phone1: phones[0] || undefined,
+      phone2: phones[1] || undefined,
       website: profile.website || undefined,
       logoUrl: profile.logo_url || undefined,
       keywords: aiKeywords,
@@ -1492,10 +1506,13 @@ export async function startRender(
             // The contact card drawn over the last seconds (2026-10-24, the
             // owner's ask): what the Video Agent shows on its own card.
             contact_card: {
+              // Both numbers, labelled (PA requires the office number in ads).
               lines: [
                 profile.full_name,
                 profile.company_name,
-                formatPhones([profile.phone, profile.company_phone])[0],
+                formatPhone(profile.phone) ? `Mobile ${formatPhone(profile.phone)}` : "",
+                formatPhone(profile.company_phone) && formatPhone(profile.company_phone) !== formatPhone(profile.phone)
+                  ? `Office ${formatPhone(profile.company_phone)}` : "",
                 (profile.website ?? "").replace(/^https?:\/\//i, "").replace(/\/$/, ""),
               ].filter((l): l is string => !!l && !!l.trim()).map((l) => l.trim().slice(0, 60)),
               logo_url: profile.logo_url || null,
