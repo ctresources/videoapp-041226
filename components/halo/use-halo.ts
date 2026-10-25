@@ -223,7 +223,7 @@ export function useHalo(userId: string | undefined) {
     if (r.ok) {
       toast.success(r.out.reused
         ? "Approved. Your video posts on its day. No new video was made."
-        : r.out.queued ? "Approved. It's in line to be made." : "Approved. Your video is being made.");
+        : r.out.queued ? "Approved. It's in line to be made. You can close this page." : "Approved. It'll be in My Sparks when it's done. You can close this page.");
       void loadDrafts();
       return null;
     }

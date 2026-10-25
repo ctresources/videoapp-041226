@@ -742,7 +742,9 @@ export default function HelpPage() {
                 <strong>Approve</strong> on a Halo draft makes the video straight away and uses one
                 video from your plan. Each draft gets one video: if you already made it from the
                 editor, the card says <strong>Video made</strong> and the button becomes{" "}
-                <strong>Post this video</strong>, which posts that one and uses nothing more. Once it is finished it posts by itself on its day to the accounts
+                <strong>Post this video</strong>, which posts that one and uses nothing more. After you approve,
+                the card says your video will be in <strong>My Sparks</strong> when it&apos;s done and the day it
+                posts. You don&apos;t have to wait: close the page, or press <strong>Make another</strong>. Once it is finished it posts by itself on its day to the accounts
                 you chose, and each caption links back to your Halo post. Then the card shows{" "}
                 <strong>Put on my Halo post</strong>: it writes the message for you, and on your phone{" "}
                 <strong>Text Halo</strong> opens your messages with it filled in, so Halo can add the

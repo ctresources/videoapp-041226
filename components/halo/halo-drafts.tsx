@@ -285,9 +285,21 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
           </>
         )}
         {d.status === "approved" && (
-          <span className="flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-            <Check size={13} /> {d.video_id && d.videoUrl ? `Approved · posts ${when(d.slot_at)}` : "Approved · making"}
-          </span>
+          // What happens next, so nobody waits on this page (2026-10-24, the
+          // owner's ask): it lands in My Sparks and posts on its day by itself.
+          <div className="w-full rounded-xl border border-green-200 bg-green-50 px-3.5 py-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-green-800">
+              <Check size={15} /> {d.video_id && d.videoUrl ? "Approved. Your video is ready." : "Approved. Your video is being made."}
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-green-900">
+              {d.video_id && d.videoUrl ? "It's in My Sparks" : "It'll be in My Sparks when it's done"}, and it posts by itself on{" "}
+              {when(d.slot_at)}. You can close this page or make another.
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <Link href="/videos"><Button size="sm" variant="outline">Open My Sparks</Button></Link>
+              <Link href="/create"><Button size="sm" variant="outline">Make another</Button></Link>
+            </div>
+          </div>
         )}
         {done && (
           <>
