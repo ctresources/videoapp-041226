@@ -60,7 +60,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "Your AI avatar, or your Digital Twin, speaking in your cloned voice",
       "Automatic b-roll, captions, music and your logo and colors",
       "Vertical for Reels and Shorts, or horizontal for YouTube",
-      "Short videos up to 3 minutes, and long videos up to 8 minutes on Producer and Influencer",
+      "Short videos up to 2 minutes, and long videos up to 8 minutes on Producer and Influencer",
       "A blog post of 1,000 to 1,500 words for your own site",
       "Titles, descriptions and hashtags for every platform",
     ],
@@ -291,7 +291,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 /** The pricing page's own questions. */
 export const PRICING_FAQS: Faq[] = [
   { q: "Is there a contract?", a: "No. Plans are billed monthly and you can cancel anytime." },
-  { q: "What's the difference between short and long videos?", a: "Short videos run up to 3 minutes, for reels and quick updates. Long videos run up to 8 minutes, for YouTube market updates and tours, and use your photos for visuals. They're counted separately." },
+  { q: "What's the difference between short and long videos?", a: "Short videos run up to 2 minutes, for reels and quick updates. Long videos run up to 8 minutes, for YouTube market updates and tours, and use your photos for visuals. They're counted separately." },
   { q: "What if I need more videos one month?", a: "Add them anytime: $25 for a short video or $29 for a long one. Add-on videos never expire, so they're non-refundable." },
   { q: "What's unlimited?", a: "Blog posts, camera recordings and screen recordings are unlimited on every paid plan, and photo reels don't use any of your monthly videos." },
   { q: "Can I try it free?", a: "Yes. Sign up free and make your first AI video, no credit card needed." },

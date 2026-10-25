@@ -11,7 +11,8 @@ export const WPM = 145;
 export type VideoLength = "standard" | "long";
 
 /**
- * Maximum words for a STANDARD video — 400 on every plan, ~2.8 minutes.
+ * Maximum words for a STANDARD video — 290 on every plan, ~2 minutes
+ * (400 until 2026-10-24).
  *
  * Was 580 for agent/pro and 435 for everyone else. It is one number because a
  * plan split here bought ~25 seconds of extra video while doubling the number
@@ -45,7 +46,11 @@ export function standardMaxWords(_tier?: string | null): number {
   // Raising this is therefore a prompt-size question, not a pricing one: trim
   // the prompt head and the cap can move. See the tail-ordering note in
   // create-blog for where the budget actually goes.
-  return 400; // ~2.8 min at 145 wpm
+  //
+  // 2026-10-24, the owner's call: every short avatar video is up to 2
+  // minutes, Avatar in circle included. 400 words was ~2:45 and the Video
+  // Agent's prompt was already trimming 397-word scripts to ~296.
+  return 290; // ~2.0 min at 145 wpm, closing line included
 }
 
 /**
@@ -66,7 +71,10 @@ export const VERTICAL_MAX_WORDS = 217;
 
 /** Maximum runtime in minutes for a STANDARD video. */
 export function standardMaxMinutes(_tier?: string | null): number {
-  return 4; // the slot; 400 words actually lands at ~2.8
+  // 2 since 2026-10-24 (was a 4-minute slot). Avatar in circle's script plus
+  // closing line is held to this slot (start-render ctaOnTop), so a long
+  // closing line can no longer stretch it past 2 minutes.
+  return 2;
 }
 
 /** A LONG video is 8 minutes on every plan. */

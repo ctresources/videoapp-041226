@@ -728,7 +728,7 @@ function ScriptGenerator({
             <div className="relative">
               <select value={videoType} onChange={(e) => setVideoType(e.target.value)}
                 className="w-full appearance-none border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white text-slate-700 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300">
-                <option value="blog_video">Standard video (about 3 min)</option>
+                <option value="blog_video">Standard video (up to 2 min)</option>
                 <option value="short_form">Short / Reel (60-90 sec)</option>
                 <option value="youtube_16x9">Long video (about 8 min)</option>
               </select>

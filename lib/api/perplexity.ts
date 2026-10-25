@@ -139,7 +139,7 @@ export async function generateVideoScript(
           ? "This is a LONG-FORM video — cover 6-9 distinct points, each developed with its own data, example, or short story, moving between them with natural spoken transitions. Do not pad or repeat to reach the length."
           : "Include specific market stats you found (prices, DOM, inventory)."
       } Structure: ${STRUCTURE_AFTER_HOOK} → ${closing}. Write as natural spoken words. ${NO_HOOK_RULE}`
-    : `complete 3 minute video script (about 400 spoken words, never more) in ${voice}. Include specific market stats you found (prices, DOM, inventory). Structure: ${STRUCTURE_AFTER_HOOK} → ${closing}. Write as natural spoken words. ${NO_HOOK_RULE}`;
+    : `complete 2 minute video script (about 250 spoken words, never more) in ${voice}. Include specific market stats you found (prices, DOM, inventory). Structure: ${STRUCTURE_AFTER_HOOK} → ${closing}. Write as natural spoken words. ${NO_HOOK_RULE}`;
   const systemPrompt = `You are an expert real estate video content strategist AND a real-time market data researcher. You create compelling, data-driven video scripts for real estate agents.
 
 YOUR PROCESS:

@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     ? "60-90 seconds (about 150-200 words). Never exceed 200 words."
     : videoType === "youtube_16x9"
     ? "about 8 minutes (1,000-1,150 words). Never exceed 1,150 words."
-    : "about 3 minutes (350-400 words). Never exceed 400 words.";
+    // 2 minutes since 2026-10-24 (the owner's call); room left for the closing line.
+    : "about 2 minutes (220-250 words). Never exceed 250 words.";
 
   const raw = await perplexityChat([
     {

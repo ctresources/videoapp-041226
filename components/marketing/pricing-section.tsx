@@ -19,7 +19,7 @@ export const pricingTiers = [
     description: "For agents ready to build a consistent online presence.",
     badge: null as string | null,
     highlights: [
-      "4 short AI videos a month, up to 3 minutes each",
+      "4 short AI videos a month, up to 2 minutes each",
       "Unlimited blog posts",
       "AutoSparks: 3 drafts written for you every week",
       "Publish to YouTube + 3 more platforms per video",
@@ -36,7 +36,7 @@ export const pricingTiers = [
     description: "For agents ready to pair weekly visibility with in-depth content.",
     badge: "Recommended for Growing Agents" as string | null,
     highlights: [
-      "4 short AI videos a month, up to 3 minutes each",
+      "4 short AI videos a month, up to 2 minutes each",
       "2 long AI videos a month, up to 8 minutes each",
       "Publish to YouTube + every platform",
       "A free Agent Intro video every month",
@@ -54,7 +54,7 @@ export const pricingTiers = [
     description: "For agents committed to a fuller long-form content schedule.",
     badge: null as string | null,
     highlights: [
-      "4 short AI videos a month, up to 3 minutes each",
+      "4 short AI videos a month, up to 2 minutes each",
       "4 long AI videos a month, up to 8 minutes each",
       "Publish to YouTube + every platform",
       "A free Agent Intro video every month",
@@ -81,7 +81,7 @@ const SHARED = [
  * `false` is not, and a string is what that plan gets.
  */
 const COMPARISON: { feature: string; values: [boolean | string, boolean | string, boolean | string] }[] = [
-  { feature: "Short AI videos a month (up to 3 minutes, automatic b-roll)", values: ["4", "4", "4"] },
+  { feature: "Short AI videos a month (up to 2 minutes, automatic b-roll)", values: ["4", "4", "4"] },
   { feature: "Long AI videos a month (up to 8 minutes, using your photos for visuals)", values: [false, "2", "4"] },
   { feature: "AutoSparks: 3 posts drafted for you every week, ready to approve", values: [true, true, true] },
   // The Agent Intro (2026-10-23, the owner's call).
@@ -245,7 +245,7 @@ export function PricingSection() {
             <div className="flex flex-wrap gap-3 shrink-0 text-xl">
               <div className="rounded-lg border border-neutral-700 px-4 py-2">
                 <span className="font-black text-white">$25</span>
-                <span className="text-neutral-400 text-lg"> · One short video, up to 3 minutes</span>
+                <span className="text-neutral-400 text-lg"> · One short video, up to 2 minutes</span>
               </div>
               <div className="rounded-lg border px-4 py-2" style={{ borderColor: GOLD }}>
                 <span className="font-black" style={{ color: GOLD }}>$29</span>

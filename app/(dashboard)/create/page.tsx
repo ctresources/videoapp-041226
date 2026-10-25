@@ -3854,7 +3854,7 @@ function CreatePageInner() {
                       // second line, which made it taller than its neighbours
                       // and dropped their titles out of line with it.
                       { p: "reel", l: "standard", title: "Vertical 9:16", sub: "Up to 90 sec · Reels, Shorts", w: "11px", h: "17px" },
-                      { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 3 min · YouTube + websites", w: "20px", h: "12px" },
+                      { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 2 min · YouTube + websites", w: "20px", h: "12px" },
                       { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
                       const on = locPlatform === p && locLength === l;
@@ -4787,7 +4787,7 @@ function CreatePageInner() {
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Title, description &amp; hashtags for publishing</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Nothing spent. Turn it into a video afterwards if you want one</li>
               </>) : listingMode === "scenes" ? (<>
-                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script from 30 seconds to 3 minutes, written from your topic or typed by you</li>
+                <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A script from 30 seconds to 2 minutes, written from your topic or typed by you</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Your voice clone reading it</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> A realistic scene for each sentence, made with AI and on screen while it is spoken. Any people are seen from behind or at a distance</li>
                 <li className="flex items-start gap-2"><CheckCircle size={15} className="text-spark-amber mt-0.5 shrink-0" /> Captions, music, and a closing card with your ask and phone number</li>

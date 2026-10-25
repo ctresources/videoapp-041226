@@ -1020,7 +1020,7 @@ export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
   const app = "https://www.sparkreels.ai";
 
   const monthly = [
-    "4 short AI videos, up to 3 minutes each",
+    "4 short AI videos, up to 2 minutes each",
     longLine,
     "Unlimited blog posts and camera recordings",
     "AutoSparks: 3 posts drafted for you, ready every Monday",

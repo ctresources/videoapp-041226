@@ -25,7 +25,7 @@ const PLANS = [
     blurb: "4 short videos",
     highlighted: false,
     features: [
-      "4 short AI videos/month — about 3 minutes each",
+      "4 short AI videos/month — up to 2 minutes each",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "Automatic b-roll, captions & titles on every video",
       "MLS listing videos — paste a listing link, get a finished property tour",
@@ -49,7 +49,7 @@ const PLANS = [
     blurb: "4 short + 2 long videos",
     highlighted: true,
     features: [
-      "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
+      "4 short AI videos/month — up to 2 minutes each, with automatic b-roll",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "2 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
@@ -73,7 +73,7 @@ const PLANS = [
     blurb: "4 short + 4 long videos",
     highlighted: false,
     features: [
-      "4 short AI videos/month — about 3 minutes each, with automatic b-roll",
+      "4 short AI videos/month — up to 2 minutes each, with automatic b-roll",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "4 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
@@ -474,7 +474,7 @@ export default async function BillingPage({
               <span className="text-3xl font-black text-brand-text">$25</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">One short video, about 3 minutes of finished video. Added to your account instantly.</p>
+            <p className="text-xs text-slate-500">One short video, up to 2 minutes of finished video. Added to your account instantly.</p>
             <a href="/api/stripe/credits?pack=short1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy 1 Video <ArrowRight size={12} />

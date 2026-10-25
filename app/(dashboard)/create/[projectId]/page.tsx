@@ -191,8 +191,8 @@ type VideoChoice = VideoType | "youtube_long";
 // the two apart — it has to be on the button itself, while the rest of the
 // detail only has to be true of the one you have actually picked.
 const videoTypes: { value: VideoChoice; label: string; ratio: string; desc: string; proOnly?: boolean; credits: number }[] = [
-  { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "About 3 min · vertical · automatic b-roll", credits: 1 },
-  { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "About 3 min · horizontal · automatic b-roll", credits: 1 },
+  { value: "reel_9x16", label: "Shorts", ratio: "9:16", desc: "Up to 2 min · vertical · automatic b-roll", credits: 1 },
+  { value: "youtube_16x9", label: "Shorts", ratio: "16:9", desc: "Up to 2 min · horizontal · automatic b-roll", credits: 1 },
   { value: "youtube_long", label: "Longform", ratio: "16:9", desc: "Up to 8 min · horizontal · uses your photos for visuals", proOnly: true, credits: 1 },
 ];
 
@@ -1983,7 +1983,7 @@ export default function ProjectEditorPage() {
               mode: "avatar_voice" as const,
               style: "full" as const,
               label: "Avatar video",
-              desc: twinFullLocked ? "Paid plans" : fullBlocked ? "Up to 3 minutes" : "B-roll and graphics made for you",
+              desc: twinFullLocked ? "Paid plans" : fullBlocked ? "Up to 2 minutes" : "B-roll and graphics made for you",
               blocked: fullBlocked,
             },
             {
@@ -2491,7 +2491,7 @@ export default function ProjectEditorPage() {
       .trim();
     if (!articleText) return null;
     const isLong = length === "rendered_long";
-    const minutes = isLong ? "8-minute" : "3-minute";
+    const minutes = isLong ? "8-minute" : "2-minute";
     // Only when there is something to lose. An imported article arrives with
     // no script at all, and asking permission to replace nothing is a dialog
     // that can only be answered one way.
@@ -3405,7 +3405,7 @@ export default function ProjectEditorPage() {
                         looking at an empty box with no way to fill it. */}
                     <div className="flex flex-wrap items-center gap-2">
                       {([
-                        { key: "rendered_short" as const, label: "3-minute script", note: "Shorts" },
+                        { key: "rendered_short" as const, label: "2-minute script", note: "Shorts" },
                         { key: "rendered_long" as const, label: "8-minute script", note: "Longform" },
                       ]).map(({ key, label, note }) => (
                         <button
@@ -4718,7 +4718,7 @@ export default function ProjectEditorPage() {
                                       {hasScript
                                         ? `Avatar or cloned voice · about ${mins(scriptWords)} min · Uses 1 video`
                                         : articleWords > 0
-                                          ? "Writes a 3-minute script from the article first · Uses 1 video"
+                                          ? "Writes a 2-minute script from the article first · Uses 1 video"
                                           : "Avatar or cloned voice · Uses 1 video"}
                                     </span>
                                   </button>
@@ -4770,7 +4770,7 @@ export default function ProjectEditorPage() {
                                       {articleScriptWriting ? "Writing the script…" : "Record it on camera"}
                                     </span>
                                     <span className="text-[11px] text-spark-ink-faint">
-                                      Writes a 3-minute script from the article, then opens the camera · Free
+                                      Writes a 2-minute script from the article, then opens the camera · Free
                                     </span>
                                   </button>
                                 )}

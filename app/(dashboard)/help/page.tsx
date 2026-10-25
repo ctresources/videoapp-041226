@@ -371,7 +371,7 @@ export default function HelpPage() {
                     video" page and Video setup both use. */}
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar video</td>
-                  <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 3 minutes</td>
+                  <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 2 minutes</td>
                   <td className="py-2 whitespace-nowrap">1 short video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
@@ -548,7 +548,7 @@ export default function HelpPage() {
                 A blog is written straight away. A video stops at its script, so nothing comes out
                 of your plan until you choose to make it. The script&apos;s length follows the
                 format: up to <strong>90 seconds</strong> for Vertical, up to{" "}
-                <strong>3 minutes</strong> for Horizontal, and up to <strong>8 minutes</strong> for
+                <strong>2 minutes</strong> for Horizontal, and up to <strong>8 minutes</strong> for
                 Longform.
               </span>
               <span className="block mt-1.5">
@@ -614,7 +614,7 @@ export default function HelpPage() {
             </Step>
             <Step n={15} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
-              <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 3 minutes — or{" "}
+              <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 2 minutes — or{" "}
               <strong>Longform 16:9</strong> (up to 8 minutes. Add your own photos and you&apos;re in a
               circle over them; add none and you&apos;re full screen the whole time. Long videos have their
               own monthly allowance — 2 with Producer, 4 with Influencer — or $29 on its own.)
@@ -625,8 +625,8 @@ export default function HelpPage() {
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar video</strong> — you on screen, with b-roll and graphics made
-                for you. Up to 3 minutes, so it is not offered for Longform. It takes a script of up
-                to 400 words, counting your closing line. If yours is longer, Avatar video is greyed
+                for you. Up to 2 minutes, so it is not offered for Longform. It takes a script of up
+                to 290 words, counting your closing line. If yours is longer, Avatar video is greyed
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
                 <strong>Shorten closing line</strong> to trim your closing line yourself. With your

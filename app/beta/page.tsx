@@ -10,7 +10,7 @@ import Link from "next/link";
 // "1 free AI video" sets people up to be disappointed by the 3-minute cap or
 // to go looking for a digital twin they don't have.
 const perks = [
-  { icon: Sparkles, text: "1 free AI video — one short video, up to 3 minutes long." },
+  { icon: Sparkles, text: "1 free AI video — one short video, up to 2 minutes long." },
   { icon: Camera,   text: "Your photo as the presenter, speaking in your own cloned voice." },
   { icon: Camera,   text: "14 days of unlimited camera recordings, starting the day you generate your free video." },
   { icon: CheckCircle, text: "Built-in teleprompter — your script scrolls while you record." },
