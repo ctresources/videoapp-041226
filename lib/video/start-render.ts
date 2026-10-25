@@ -1049,7 +1049,7 @@ export async function startRender(
     // Voice Only, where the whole point is that nobody is on screen —
     // resolving a default here would put a presenter into a video that asked
     // for none.
-    const avatarId: string | undefined = voiceOnly || !requestedLook
+    let avatarId: string | undefined = voiceOnly || !requestedLook
       ? undefined
       : pickedAFormatVariant
         ? (formatLook || requestedLook)
@@ -1081,6 +1081,13 @@ export async function startRender(
         },
         { status: 409 },
       );
+    }
+
+    // A horizontal Digital Twin is upright footage, so the Video Agent gets the
+    // headshot's wide look in its place (2026-10-25, the owner's call). The
+    // twin checks above still apply to the twin as chosen.
+    if (avatarId && orientation !== "portrait" && avatarId === profile.heygen_digital_twin_look_id && profile.heygen_look_wide) {
+      avatarId = profile.heygen_look_wide;
     }
 
     /**
