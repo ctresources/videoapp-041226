@@ -514,8 +514,8 @@ export default function HelpPage() {
               {/* Ask Sparklee, added 2026-10-14; her badge and the card on the
                   steps bar, 2026-10-15. */}
               <span className="block mb-1.5">
-                Need help on a section? Tap <strong>Sparklee</strong>, the gold star at the top of the
-                screen, or <strong>Ask Sparklee</strong> at the end of the steps on Spark Studio, and ask
+                Need help on a section? Tap <strong>Ask Sparklee</strong>, the gold star just under the top
+                bar on the right of every page, and ask
                 out loud how to do something. She answers in a few seconds, out loud and on screen, from
                 this guide. Each conversation runs up to five minutes. Five conversations a day before you
                 pick a plan, twenty a day on one.

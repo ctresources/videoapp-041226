@@ -72,8 +72,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const onCreate = progress !== null;
 
   return (
-    // Sticky only in the Create treatment: elsewhere the bar has always
-    // scrolled with the page and moving it would be a change to every route.
+    <>
+    {/* Sticky only in the Create treatment: elsewhere the bar has always
+        scrolled with the page and moving it would be a change to every route. */}
     <div className={cn("shrink-0", onCreate && "sticky top-0 z-20")}>
       <header
         className={cn(
@@ -143,8 +144,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               for later. There is no side menu here, so the phone menu's rows
               never showed. */}
           <MeetMenu dark={onCreate} />
-          {/* Ask Sparklee, the spoken helper, on every page with this bar. */}
-          <AskSparklee />
           {/* The "Step 1" label came off at the owner's ask (2026-10-15): the
               steps bar on the page already says where you are. */}
           <AccountMenu dark={onCreate} />
@@ -156,5 +155,14 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           crooked line, and the steps bar on the page already shows where
           you are. */}
     </div>
+    {/* Ask Sparklee, just under the bar's line in the top right corner, on
+        every page and at every width (2026-10-24, the owner's ask; it was in
+        the bar itself, computers only). Its own row, not floating, so it never
+        covers anything on a page; outside the sticky part, so on Create it
+        scrolls away with the page instead of riding over it. */}
+    <div className="flex shrink-0 justify-end px-4 pt-2.5 md:px-5">
+      <AskSparklee />
+    </div>
+    </>
   );
 }

@@ -291,7 +291,8 @@ export function AskSparklee() {
           type="button"
           onClick={() => void start()}
           aria-label="Ask Sparklee"
-          className="hidden shrink-0 items-center gap-2 rounded-xl border border-[#3a3226] bg-[#0f0d0b] py-1 pl-1 pr-3 text-left transition-opacity hover:opacity-90 md:flex"
+          // Every width since 2026-10-24: it sits under the bar now, with room.
+          className="flex shrink-0 items-center gap-2 rounded-xl border border-[#3a3226] bg-[#0f0d0b] py-1 pl-1 pr-3 text-left transition-opacity hover:opacity-90"
         >
           <span
             onAnimationEnd={(e) => { if (e.animationName === "sparklee-buzz") setBuzz(false); }}
@@ -303,7 +304,7 @@ export function AskSparklee() {
             <span className="block bg-gradient-to-b from-[#ffe39a] via-[#e7a92c] to-[#b9780f] bg-clip-text font-display text-[14.5px] font-bold text-transparent">
               Ask Sparklee
             </span>
-            <span className="block whitespace-nowrap text-[11px] text-[#f3e6cf]">Need help on a section? Just ask her.</span>
+            <span className="hidden whitespace-nowrap text-[11px] text-[#f3e6cf] sm:block">Need help on a section? Just ask her.</span>
           </span>
         </button>
       )}
@@ -314,7 +315,8 @@ export function AskSparklee() {
           aria-label="Ask Sparklee"
           // Top right, just under the bar (2026-10-14). At the bottom it sat
           // behind Create's footer, which hid half the words and the Stop.
-          className="fixed right-4 top-[56px] z-[60] flex w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-spark-rule bg-white shadow-xl"
+          // Below the button's row under the bar (2026-10-24).
+          className="fixed right-4 top-[104px] z-[60] flex w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-spark-rule bg-white shadow-xl"
         >
           <div className="flex items-center justify-between gap-2 border-b border-spark-rule px-4 py-2.5">
             <p className="flex items-center gap-1.5 text-[14px] font-bold text-spark-ink">
