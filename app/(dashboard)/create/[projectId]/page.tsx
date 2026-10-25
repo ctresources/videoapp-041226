@@ -2612,17 +2612,21 @@ export default function ProjectEditorPage() {
    * Fills gaps only; the server keeps anything already written.
    */
   const [shareKitWriting, setShareKitWriting] = useState(false);
-  async function writeShareKit() {
+  async function writeShareKit(opts?: { auto?: boolean }) {
     if (!project || shareKitWriting) return;
     setShareKitWriting(true);
     try {
       const res = await fetch("/api/ai/share-kit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
+        body: JSON.stringify({ projectId: project.id, ...(opts?.auto ? { auto: true } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Couldn't write the posts just now.");
+      // Written on arrival and not possible: say nothing; the button is there.
+      if (!res.ok) {
+        if (opts?.auto) return;
+        throw new Error(data?.error || "Couldn't write the posts just now.");
+      }
       setProject((prev) => prev ? {
         ...prev,
         seo_data: data.seo ?? prev.seo_data,
@@ -2825,6 +2829,26 @@ export default function ProjectEditorPage() {
     void writeBlog({ auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, editorStep, blogWriting]);
+
+  /**
+   * An uploaded clip's Share Kit, written on arrival (2026-10-25): its words
+   * come from the transcript, so there is no script to wait for. Once per
+   * project per visit, only when something is missing, and never spends a
+   * new account's free try (the server blocks that for auto).
+   */
+  const autoShareKitFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!project || editorStep !== 5 || shareKitWriting) return;
+    if (autoShareKitFor.current === project.id) return;
+    const seoNow = project.seo_data as SeoData | null;
+    const ai = project.ai_script as AiScript | null;
+    const missing = !seoNow || !seoNow.linkedin_post || !seoNow.facebook_post || !seoNow.instagram_caption
+      || !ai?.blog_body;
+    if (!missing) return;
+    autoShareKitFor.current = project.id;
+    void writeShareKit({ auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, editorStep, shareKitWriting]);
 
   // ── Teleprompter ────────────────────────────────────────────────
   useEffect(() => {

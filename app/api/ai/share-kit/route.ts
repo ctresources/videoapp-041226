@@ -26,10 +26,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const gate = await freeTrialGateResponse(user.id);
-  if (gate) return gate;
+  const { projectId, force, auto } = (await req.json().catch(() => ({}))) as { projectId?: string; force?: boolean; auto?: boolean };
 
-  const { projectId, force } = (await req.json().catch(() => ({}))) as { projectId?: string; force?: boolean };
+  // `auto` is the Share Kit writing on arrival with nobody asking, so it must
+  // never spend a new account's free try (same rule as /api/ai/blog).
+  const gate = await freeTrialGateResponse(user.id, auto ? { preVideo: "block" } : undefined);
+  if (gate) return gate;
   if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
 
   const admin = createAdminClient();
