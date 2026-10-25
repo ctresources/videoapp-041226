@@ -16,7 +16,7 @@ import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { FaqList } from "@/components/marketing/faq-list";
-import { LANDING_FAQS } from "@/lib/marketing/content";
+import { LANDING_FAQS, FEATURE_PAGES } from "@/lib/marketing/content";
 
 // Title and description come from the root layout.
 export const metadata: Metadata = {
@@ -881,6 +881,20 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* The top bar's Features menu, listed here too (2026-10-25, the owner's
+              ask): the same feature pages, with the same names and descriptions. */}
+          <div className="mt-8">
+            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-4">Features, page by page</p>
+            <div className="grid grid-cols-1 gap-px bg-slate-200 border border-slate-200 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURE_PAGES.map((f) => (
+                <Link key={f.slug} href={`/${f.slug}`} className="block bg-white p-5 hover:bg-slate-50 transition-colors">
+                  <span className="block text-xl font-bold text-slate-900 mb-1">{f.navLabel}</span>
+                  <span className="block text-lg text-slate-500 leading-relaxed">{f.blurb}</span>
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* Everything included, one line each (2026-10-25). */}
