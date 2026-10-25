@@ -91,7 +91,7 @@ export function ffmpegFitFilter(opts: {
  * Rotation metadata (phone video) is applied, so a portrait clip reads tall.
  * Zeros when it cannot tell, which means "fill as before".
  */
-export async function probeVideoSize(filePath: string): Promise<{ width: number; height: number }> {
+export async function probeVideoSize(filePath: string): Promise<{ width: number; height: number; seconds: number }> {
   const ffmpeg = (await import("fluent-ffmpeg")).default;
   const stderr = await new Promise<string>((resolve) => {
     let buf = "";
@@ -103,12 +103,15 @@ export async function probeVideoSize(filePath: string): Promise<{ width: number;
       .addOption("-f", "null")
       .save(process.platform === "win32" ? "NUL" : "/dev/null");
   });
+  // Its length too (2026-10-24, for the contact card's timing).
+  const d = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+  const seconds = d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : 0;
   const m = stderr.match(/Stream #\d+:\d+[^\n]*Video:[^\n]*?\s(\d{2,5})x(\d{2,5})/);
-  if (!m) return { width: 0, height: 0 };
+  if (!m) return { width: 0, height: 0, seconds };
   let width = Number(m[1]);
   let height = Number(m[2]);
   const rot = stderr.match(/rotation of (-?\d+(?:\.\d+)?) degrees|rotate\s*:\s*(-?\d+)/);
   const deg = Math.abs(Number(rot?.[1] ?? rot?.[2] ?? 0)) % 180;
   if (deg === 90) [width, height] = [height, width];
-  return { width, height };
+  return { width, height, seconds };
 }

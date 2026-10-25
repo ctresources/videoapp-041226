@@ -193,7 +193,7 @@ function fitTitleLines(
 }
 
 /** Escape text for FFmpeg drawtext filter (colons, backslashes, single quotes). */
-function escapeDrawtext(text: string): string {
+export function escapeDrawtext(text: string): string {
   return text
     .replace(/\\/g, "\\\\\\\\")
     .replace(/:/g, "\\:")
@@ -302,7 +302,7 @@ function looksLikeFont(bytes: Buffer): boolean {
  * Montserrat Variable instead of Montserrat ExtraBold is a slightly lighter
  * title; a title in a font that will not load is no video.
  */
-async function stageFont(weight: string, dir: string): Promise<string | null> {
+export async function stageFont(weight: string, dir: string): Promise<string | null> {
   const candidates = [
     join(process.cwd(), "public", "fonts", `Montserrat-${weight}.ttf`),
     join(process.cwd(), "public", "fonts", "Montserrat-Variable.ttf"),

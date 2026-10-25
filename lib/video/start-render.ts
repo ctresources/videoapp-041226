@@ -1489,6 +1489,17 @@ export async function startRender(
             heygen_engine: directEngine ?? "avatar_iv",
             heygen_avatar_type: look.avatarType,
             is_digital_twin: isDigitalTwin,
+            // The contact card drawn over the last seconds (2026-10-24, the
+            // owner's ask): what the Video Agent shows on its own card.
+            contact_card: {
+              lines: [
+                profile.full_name,
+                profile.company_name,
+                formatPhones([profile.phone, profile.company_phone])[0],
+                (profile.website ?? "").replace(/^https?:\/\//i, "").replace(/\/$/, ""),
+              ].filter((l): l is string => !!l && !!l.trim()).map((l) => l.trim().slice(0, 60)),
+              logo_url: profile.logo_url || null,
+            },
             // The agent in front of the home, opening a listing video in the
             // circle (2026-10-24): made and put first when the video is finished.
             // Listing videos only: the front photo is the listing's own.

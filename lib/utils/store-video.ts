@@ -87,6 +87,8 @@ export interface StoreOptions {
   cachedSrt?: string | null;
   /** A Digital Twin: the circle follows the speaker (2026-10-24). */
   followSubject?: boolean;
+  /** The contact card over the last seconds: headline first (2026-10-24). */
+  endCard?: { lines: string[]; logoUrl?: string | null } | null;
   /** The agent in front of the home, put first (2026-10-24). */
   opener?: { style: OpenerStyle; lookId: string; photoUrl: string } | null;
 }
@@ -379,7 +381,7 @@ export async function storeVideoDetailed(
       // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
         processed, broll, opts.dimension.width, opts.dimension.height, srtPath,
-        { followSubject: opts.followSubject === true },
+        { followSubject: opts.followSubject === true, endCard: opts.endCard ?? null },
       );
       if (withBroll) { processed = withBroll; changed = true; brollApplied = true; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);

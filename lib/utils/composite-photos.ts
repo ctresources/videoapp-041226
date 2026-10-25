@@ -25,6 +25,10 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import { ffmpegFitFilter, fitImageBuffer, probeVideoSize } from "@/lib/utils/fit-frame";
 import { followCropX, trackSubjectX } from "@/lib/utils/subject-track";
+import { escapeDrawtext, stageFont } from "@/lib/api/ffmpeg-render";
+
+/** How long the contact card stays up at the end (2026-10-24). */
+const CARD_SECONDS = 5;
 import { promises as fs } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -249,7 +253,11 @@ export async function compositePhotos(
    */
   srtPath?: string | null,
   /** A Digital Twin: the circle follows the speaker (2026-10-24). */
-  opts: { followSubject?: boolean } = {},
+  opts: {
+    followSubject?: boolean;
+    /** The contact card over the last seconds: headline first (2026-10-24). */
+    endCard?: { lines: string[]; logoUrl?: string | null } | null;
+  } = {},
 ): Promise<Buffer | null> {
   const sources = items.filter((it) => it?.url).slice(0, MAX_SOURCES);
   if (sources.length === 0) return null;
@@ -431,13 +439,79 @@ export async function compositePhotos(
         console.warn("[composite-photos] speaker tracking skipped:", err instanceof Error ? err.message : err);
       }
     }
+    /**
+     * The contact card (2026-10-24, the owner's ask): the agent's name,
+     * company, phone and website, and their logo, over the last few seconds
+     * while the closing line is spoken, as the Video Agent's own card does.
+     * Drawn here, in the pass that already re-encodes every frame, so it costs
+     * nothing extra; in the left two thirds, clear of the circle. Skipped
+     * whole if no font will load (drawtext without one fails the render).
+     */
+    const cardParts: string[] = [];
+    let cardLogoPath: string | null = null;
+    if (opts.endCard && opts.endCard.lines.length > 0) {
+      try {
+        const total = (await probeVideoSize(videoPath)).seconds;
+        const headFont = await stageFont("ExtraBold", dir);
+        const bodyFont = (await stageFont("SemiBold", dir)) ?? headFont;
+        if (total > 8 && headFont) {
+          const from = Math.max(0, total - CARD_SECONDS).toFixed(3);
+          const when = `enable='between(t\\,${from}\\,${total.toFixed(3)})'`;
+          const S = Math.min(outW, outH);
+          const areaW = Math.round(outW * 0.64);
+          const headSize = Math.round(S * 0.062);
+          const bodySize = Math.round(S * 0.042);
+          let y = Math.round(outH * 0.3);
+          if (opts.endCard.logoUrl) {
+            const res = await fetch(opts.endCard.logoUrl, { signal: AbortSignal.timeout(20_000) }).catch(() => null);
+            if (res?.ok) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const sharp = ((await import("sharp")) as any).default;
+              cardLogoPath = join(dir, "card-logo.png");
+              const logoH = Math.round(S * 0.12);
+              await fs.writeFile(cardLogoPath, await sharp(Buffer.from(await res.arrayBuffer()))
+                .resize({ height: logoH, width: Math.round(areaW * 0.6), fit: "inside" }).png().toBuffer());
+              y = Math.round(outH * 0.16) + logoH + Math.round(S * 0.04);
+            }
+          }
+          let label = "base";
+          opts.endCard.lines.forEach((line, i) => {
+            const size = i === 0 ? headSize : bodySize;
+            const font = i === 0 ? headFont : bodyFont;
+            const out = `card${i}`;
+            cardParts.push(
+              `[${label}]drawtext=text='${escapeDrawtext(line)}':${font}fontsize=${size}:` +
+              `fontcolor=white:borderw=2:bordercolor=black@0.5:box=1:boxcolor=black@0.55:boxborderw=${Math.round(size * 0.34)}:` +
+              `x=(${areaW}-text_w)/2:y=${y}:${when}[${out}]`,
+            );
+            label = out;
+            y += Math.round(size * (i === 0 ? 1.9 : 1.55));
+          });
+          if (cardLogoPath) {
+            cardParts.push(`[${label}][3:v]overlay=x=(${areaW}-overlay_w)/2:y=${Math.round(outH * 0.16)}:${when}:shortest=1[cardlogo]`);
+            label = "cardlogo";
+          }
+          cardParts.push(`[${label}]null[outv]`);
+          console.log(`[composite-photos] contact card over the last ${CARD_SECONDS}s (${opts.endCard.lines.length} lines${cardLogoPath ? " + logo" : ""})`);
+        }
+      } catch (err) {
+        console.warn("[composite-photos] contact card skipped:", err instanceof Error ? err.message : err);
+        cardParts.length = 0;
+        cardLogoPath = null;
+      }
+    }
+    const afterCaptions = cardParts.length ? "[base]" : "[outv]";
+
     await new Promise<void>((resolve, reject) => {
-      ffmpeg()
+      const cmd = ffmpeg()
         .input(videoPath)
         .input(slidePath)
         .inputOptions(["-stream_loop", "-1"]) // applies to slidePath (2nd input)
         .input(maskPath)
-        .inputOptions(["-loop", "1"]) // still image — overlay's shortest=1 ends it
+        .inputOptions(["-loop", "1"]); // still image — overlay's shortest=1 ends it
+      // The card's logo, when there is one, is input 3.
+      if (cardLogoPath) cmd.input(cardLogoPath).inputOptions(["-loop", "1"]);
+      cmd
         .complexFilter([
           // Square-crop the avatar, then punch it to a circle with the mask.
           squareCut,
@@ -445,8 +519,9 @@ export async function compositePhotos(
           // Captions burn last so they sit over the avatar inset, not under it.
           `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +
             (srtPath
-              ? `[comp];[comp]${subtitlesFilter(srtPath, fontsDir, captionStyle(outW, outH, true))}[outv]`
-              : `[outv]`),
+              ? `[comp];[comp]${subtitlesFilter(srtPath, fontsDir, captionStyle(outW, outH, true))}${afterCaptions}`
+              : afterCaptions),
+          ...cardParts,
         ])
         .on("stderr", (line: string) => { if (/fontselect|font provider/i.test(line)) pass2Log.push(line); })
         // This encodes the full length of the avatar video — the one step that

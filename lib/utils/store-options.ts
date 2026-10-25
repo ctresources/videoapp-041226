@@ -56,6 +56,7 @@ export async function buildStoreOptions(
     // A Digital Twin moves; its circle follows it (2026-10-24).
     followSubject: meta.is_digital_twin === true,
     opener: openerOf(meta.opener),
+    endCard: cardOf(meta.contact_card),
   };
 }
 
@@ -65,6 +66,14 @@ function openerOf(v: unknown): StoreOptions["opener"] {
   const style = parseOpenerStyle(o?.style);
   if (!style || typeof o?.look_id !== "string" || typeof o?.photo_url !== "string") return null;
   return { style, lookId: o.look_id, photoUrl: o.photo_url };
+}
+
+/** The contact card recorded at render time, if it has anything to say. */
+function cardOf(v: unknown): StoreOptions["endCard"] {
+  const c = v as { lines?: unknown; logo_url?: unknown } | null;
+  const lines = Array.isArray(c?.lines) ? c!.lines.filter((l): l is string => typeof l === "string" && !!l.trim()) : [];
+  if (!lines.length) return null;
+  return { lines, logoUrl: typeof c?.logo_url === "string" ? c.logo_url : null };
 }
 
 /** True once post-processing has run for this render — see store-video. */

@@ -630,7 +630,9 @@ export default function HelpPage() {
                 to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo; On a
                 listing video, <strong>Open with me in front of the home</strong> starts it with a 6-second
                 shot of you at the front of the listing, made with AI from your look and its front photo:
-                choose <strong>Full body</strong>, <strong>Chest up</strong> or <strong>Off</strong>.
+                choose <strong>Full body</strong>, <strong>Chest up</strong> or <strong>Off</strong>. The last 5
+                seconds show your contact card beside your circle: your logo, name, company, phone and website,
+                from your profile.
               </span>
               <span className="block mt-1.5">
                 <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made
