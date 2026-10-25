@@ -2105,31 +2105,13 @@ export default function ProjectEditorPage() {
           && !selfRecord && !twinFullLocked && (
           <p className="flex items-start gap-2 rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
             <Info size={14} className="mt-[1px] shrink-0 text-[#A3660F]" aria-hidden="true" />
-            {selectedVideoType === "reel_9x16" || selectedVideoType === "short_1x1" ? (
-              <span>With your Digital Twin, a vertical video is a full <b className="text-[#A3660F]">vertical Avatar video</b>.</span>
-            ) : (
-              <span>With your Digital Twin, a horizontal video shows you <b className="text-[#A3660F]">full size on a background</b>. Pick it below.</span>
-            )}
+            {/* Avatar video is always the Video Agent, either shape (2026-10-24). */}
+            <span>With your Digital Twin, this is a full <b className="text-[#A3660F]">Avatar video</b>, with b-roll and graphics made for you.</span>
           </p>
         )}
-        {/* The background behind the twin (2026-10-24, the owner's mockup). */}
-        {!!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice" && !circleStyle
-          && !selfRecord && !twinFullLocked && project
-          && selectedVideoType === "youtube_16x9" && (
-          <div className="rounded-xl border-2 border-[#f1d29a] bg-white p-3">
-            <TwinBackgrounds
-              mode="pick"
-              value={twinBg}
-              onChange={setTwinBg}
-              orientation="landscape"
-              city={project.location_city}
-              state={project.location_state}
-              projectId={project.id}
-              hasListing={Array.isArray((project as unknown as { listing_data?: { photoUrls?: unknown[] } }).listing_data?.photoUrls)
-                && ((project as unknown as { listing_data: { photoUrls: unknown[] } }).listing_data.photoUrls.length > 0)}
-            />
-          </div>
-        )}
+        {/* The twin's Background box came off Avatar video (2026-10-24): that
+            is always the Video Agent now, which sets its own scene. Settings
+            keeps the backgrounds for the Agent Intro. */}
         {/* Says out loud that these are two different exits, not three
             settings on one.
             Two of them finish on this screen and spend a video; the third

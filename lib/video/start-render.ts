@@ -1035,21 +1035,10 @@ export async function startRender(
         ? (formatLook || requestedLook)
         : requestedLook;
 
-    /**
-     * A Digital Twin in a horizontal video is made as Avatar in circle
-     * (2026-10-22, the owner's call). Twin clips are usually filmed upright on
-     * a phone, so on a 16:9 canvas the Video Agent improvised: it put the twin
-     * in a circle of its own and then filled that circle with listing photos
-     * (the Harleysville video). Avatar in circle is composited here, so the
-     * twin stays in its circle for the whole video, with the photos behind it,
-     * and it costs about $0.99 a minute instead of $5.82. Vertical videos keep
-     * the Video Agent, where an upright twin fits the frame.
-     */
-    if (!useDirectVideo && !voiceOnly && avatarId && avatarId === profile.heygen_digital_twin_look_id
-        && orientation === "landscape") {
-      useDirectVideo = true;
-      console.log(`[create-blog] project=${projectId} Digital Twin on a horizontal video — Avatar in circle instead of the Video Agent`);
-    }
+    // A horizontal Digital Twin used to be switched to Avatar in circle here
+    // (2026-10-22). Retired 2026-10-24 (the owner's call, final): "Avatar video" always
+    // uses the Video Agent, vertical or horizontal, Digital Twin included.
+    // A horizontal twin is no longer switched to Avatar in circle here.
 
     // A Digital Twin in Avatar video is for paid plans; on the free plan it
     // works in Avatar in circle (2026-10-20, the owner's call). The editor

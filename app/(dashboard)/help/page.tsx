@@ -169,29 +169,15 @@ export default function HelpPage() {
               In <strong>Avatar in circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
-              <span className="block mt-3 font-semibold text-brand-text">Backgrounds for wide videos</span>
+              <span className="block mt-3 font-semibold text-brand-text">Backgrounds for your Agent Intro</span>
               <span className="block mt-1">
-                Your twin is filmed upright, so in a <strong>horizontal</strong> Avatar video your own
-                background is taken away and you stand <strong>full size in front of a new one</strong>.
-                In the video setup, when your Digital Twin, <strong>Avatar video</strong> and{" "}
-                <strong>Horizontal</strong> are picked, a <strong>Background</strong> box appears. Choose
-                one of your saved backgrounds, a color, <strong>Town photo</strong> (a picture of the
-                video&apos;s town), or, on a listing video, the <strong>Listing front photo</strong>. Or
-                press <strong>+ Describe</strong>, type or say a place (&ldquo;a bright living room with
-                big windows&rdquo;) or tap an idea, and press <strong>Make it</strong>: a picture is made
-                in about 20 seconds and saved to your backgrounds. A preview shows where you&apos;ll stand.
-              </span>
-              <span className="block mt-1.5">
-                Only the setting changes; your outfit and movements stay as you filmed them. Nothing else
-                plays behind you on these videos, because the background is the picture. Captions and
-                music work as usual. You can make up to 20 new backgrounds a month.
-              </span>
-              <span className="block mt-1.5">
-                In <strong>Settings → 4 · Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them:
-                tap one to make it your default, which every horizontal twin video uses when you don&apos;t
-                pick another (a soft studio color until you do). <strong>Wide videos</strong> chooses{" "}
-                <strong>Me on my background</strong> or <strong>Avatar in circle</strong>, if you&apos;d
-                rather keep your photos playing behind you in a corner circle.
+                Your twin is filmed upright, so in your horizontal <strong>Agent Intro</strong> your own
+                background is taken away and you stand <strong>full size in front of a new one</strong>. In{" "}
+                <strong>Settings → 4 · Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them: a
+                color, a town photo, or press <strong>+ Describe</strong>, type or say a place and press{" "}
+                <strong>Make it</strong> (about 20 seconds). Tap one to make it your default. Up to 20 new
+                backgrounds a month. <strong>Avatar video</strong> with your twin is made by our video
+                agent, which sets its own scenes, so it doesn&apos;t use these.
               </span>
             </Step>
             <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
@@ -632,9 +618,7 @@ export default function HelpPage() {
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
                 <strong>Shorten closing line</strong> to trim your closing line yourself. With your
-                Digital Twin, a horizontal Avatar video shows you full size on a background you
-                choose in the <strong>Background</strong> box (step 4), and a vertical one stays a
-                full Avatar video.
+                Digital Twin it is a full Avatar video too, vertical or horizontal.
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
