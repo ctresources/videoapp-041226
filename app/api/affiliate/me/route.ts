@@ -24,6 +24,27 @@ export async function GET() {
     admin.from("affiliate_commissions").select("commission_amount_cents, status").eq("affiliate_id", affiliate.id),
   ]);
 
+  /**
+   * Agents who pressed Get Halo through this affiliate's Halo link (2026-10-24,
+   * the owner's ask), so a Halo affiliate can match them on their own Halo
+   * dashboard. Name and email only: the agent signed up with SparkReels, not
+   * with them, so no phone. One row per agent, newest press first.
+   */
+  const { data: presses } = await admin
+    .from("halo_get_clicks")
+    .select("user_id, created_at")
+    .eq("affiliate_id", affiliate.id)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const lastBy = new Map<string, string>();
+  for (const p of (presses ?? []) as { user_id: string; created_at: string }[]) if (!lastBy.has(p.user_id)) lastBy.set(p.user_id, p.created_at);
+  const pressIds = Array.from(lastBy.keys());
+  const { data: pressProfiles } = pressIds.length
+    ? await admin.from("profiles").select("id, full_name, email").in("id", pressIds)
+    : { data: [] };
+  const who = new Map(((pressProfiles ?? []) as { id: string; full_name: string | null; email: string }[]).map((x) => [x.id, x]));
+  const haloPresses = pressIds.map((id) => ({ name: who.get(id)?.full_name ?? null, email: who.get(id)?.email ?? "", at: lastBy.get(id)! }));
+
   const comms = (commsRes.data ?? []) as { commission_amount_cents: number; status: string }[];
   const sumBy = (status: string) =>
     comms.filter((c) => c.status === status).reduce((a, c) => a + c.commission_amount_cents, 0);
@@ -50,6 +71,7 @@ export async function GET() {
         .filter((c) => c.status === "available" && c.commission_amount_cents < 0)
         .reduce((a, c) => a + c.commission_amount_cents, 0),
     },
+    haloPresses,
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "",
   });
 }

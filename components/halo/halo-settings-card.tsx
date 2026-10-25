@@ -83,7 +83,7 @@ export function HaloSettingsCard() {
             {getLink.url
               ? <>Opens <strong>{getLink.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</strong>, the Halo page of {getLink.referrer ? "the person who referred you to SparkReels" : "SparkReels' founder"}. </>
               : <>Text <strong>{getLink.code} PRO</strong> to {getLink.phone} to sign up. </>}
-            They may earn a referral fee.
+            They may earn a referral fee{getLink.referrer ? ", and will see your name and email when you press it" : ""}.
           </p>
         </div>
       )}

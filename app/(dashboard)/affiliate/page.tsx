@@ -22,6 +22,7 @@ interface Me {
   } | null;
   stats?: { clicks: number; conversions: number; pendingCents: number; availableCents: number; paidCents: number; deductionCents?: number };
   appUrl?: string;
+  haloPresses?: { name: string | null; email: string; at: string }[];
 }
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -173,7 +174,7 @@ export default function AffiliatePage() {
       </Card>
 
       {/* Their own Halo link, for referred agents' Get Halo button (2026-10-24). */}
-      <HaloLinkCard initial={aff.haloLink ?? null} />
+      <HaloLinkCard initial={aff.haloLink ?? null} presses={data!.haloPresses ?? []} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">

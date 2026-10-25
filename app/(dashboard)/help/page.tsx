@@ -1366,7 +1366,9 @@ export default function HelpPage() {
                 page (like <em>halo-your-name.huzi.site</em>) or your Halo code in{" "}
                 <strong>Your Halo affiliate link</strong> and press <strong>Save</strong>. Agents you refer to
                 SparkReels then get your link on their <strong>Get Halo</strong> button. With only a code,
-                the button texts &ldquo;CODE PRO&rdquo; to Halo instead.
+                the button texts &ldquo;CODE PRO&rdquo; to Halo instead. Under it,{" "}
+                <strong>Pressed Get Halo</strong> lists each agent who pressed it, with their name, email and
+                date, so you can find them on your Halo dashboard and see who signed up.
               </span>
             </Step>
           </div>

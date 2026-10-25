@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
  * mockup): an affiliate who is also a Halo affiliate saves their Halo page or
  * code, and agents they referred to SparkReels get it on their Get Halo button.
  */
-export function HaloLinkCard({ initial }: { initial: string | null }) {
+export function HaloLinkCard({ initial, presses = [] }: {
+  initial: string | null;
+  /** Agents who pressed Get Halo through this link (2026-10-24): name, email, last press. */
+  presses?: { name: string | null; email: string; at: string }[];
+}) {
   const [value, setValue] = useState(initial ?? "");
   const [saved, setSaved] = useState<string | null>(initial);
   const [saving, setSaving] = useState(false);
@@ -56,6 +60,33 @@ export function HaloLinkCard({ initial }: { initial: string | null }) {
       </p>
       {saved && (
         <p className="mt-2 inline-block rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">✓ Saved · {saved.replace(/^https?:\/\//, "").replace(/\/$/, "")}</p>
+      )}
+
+      {/* Who went to sign up through it, to match on the Halo dashboard. */}
+      {(saved || presses.length > 0) && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Pressed Get Halo · {presses.length}
+          </p>
+          {presses.length === 0 ? (
+            <p className="text-sm text-slate-400">No one yet. Agents you refer see Get Halo in their Settings.</p>
+          ) : (
+            <>
+              <ul className="divide-y divide-slate-100">
+                {presses.map((p) => (
+                  <li key={p.email + p.at} className="flex flex-wrap items-baseline justify-between gap-x-3 py-1.5 text-sm">
+                    <span className="min-w-0">
+                      <span className="font-medium text-slate-800">{p.name || "—"}</span>{" "}
+                      <span className="text-slate-500">{p.email}</span>
+                    </span>
+                    <span className="text-xs text-slate-400">{new Date(p.at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-slate-400">Find them on your Halo dashboard to see who signed up.</p>
+            </>
+          )}
+        </div>
       )}
     </Card>
   );
