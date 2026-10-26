@@ -17,7 +17,7 @@ import {
 /**
  * Halo drafts on the AutoSparks page (2026-10-24, the owner's mockup): each
  * with its thumbnail and setup at a glance, a Setup panel to change any of it
- * for this one video, Approve to make and post it, and once it is out, the
+ * for this one video, Make video then Approve to post it, and once it is out, the
  * message to text Halo so it goes on the post itself.
  */
 
@@ -190,12 +190,16 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
   const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
   const done = d.status === "scheduled" || d.status === "posted";
 
-  async function approve() {
+  /**
+   * Make video, then Approve (2026-10-26, the owner's ask): the video is made
+   * and watched here first, and only Approve sets it to post by itself.
+   */
+  async function approve(kind: "make" | "approve") {
     // No video left for it: the Upgrade / Buy popup (2026-10-24). Not when its
     // video is already made: posting that one uses nothing.
-    if (needsVideo && !d.madeVideo) { onOutOfVideos(); return; }
+    if (kind === "make" && needsVideo && !d.madeVideo) { onOutOfVideos(); return; }
     setApproving(true);
-    const err = await halo.approve(d);
+    const err = kind === "make" ? await halo.make(d) : await halo.approve(d);
     setApproving(false);
     if (!err) { setOpen(false); return; }
     if (err.code === "out_of_videos") {
@@ -265,7 +269,24 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         )}
         {d.status === "draft" && (
           <>
-            <Button size="sm" onClick={() => void approve()} loading={approving}>{d.madeVideo ? "Post this video" : "Approve"}</Button>
+            {!d.madeVideo && (
+              <Button size="sm" onClick={() => void approve("make")} loading={approving}>Make video</Button>
+            )}
+            {d.madeVideo && !d.madeVideo.ready && (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-spark-ink-muted">
+                <Loader2 size={13} className="animate-spin" /> Making your video…
+              </span>
+            )}
+            {d.madeVideo?.ready && (
+              <>
+                {d.madeVideo.url && (
+                  <a href={d.madeVideo.url} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button>
+                  </a>
+                )}
+                <Button size="sm" onClick={() => void approve("approve")} loading={approving}>Approve to post</Button>
+              </>
+            )}
             <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>{open ? "Close setup" : "Setup"}</Button>
             {d.project_id && <Link href={`/create/${d.project_id}`}><Button size="sm" variant="outline">Edit script</Button></Link>}
             {d.source === "halo_promo" && d.setup.promo && (
@@ -282,6 +303,16 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
             )}
             <Button size="sm" variant="ghost" onClick={() => void halo.skip(d)}>Skip</Button>
             {!open && <ListenButton text={spoken(d)} />}
+            {/* What each step does, so it isn't posted by hand as well (2026-10-26). */}
+            <p className={`w-full rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed ${d.madeVideo?.ready ? "border border-amber-200 bg-amber-50 text-amber-900" : "text-spark-ink-muted"}`}>
+              {!d.madeVideo
+                ? "Make video makes it for you to watch. Nothing posts until you approve it."
+                : !d.madeVideo.ready
+                  ? "When it's done, watch it here, then press Approve to post. Nothing posts until you approve it."
+                  : <>Watch it first. <strong>Approve to post</strong> and it posts by itself on {when(d.slot_at)}
+                      {d.setup.platforms?.length ? ` to ${PLATFORM_ORDER.filter((p) => (d.setup.platforms ?? []).includes(p)).map((p) => PLATFORM_LABELS[p]).join(", ")}` : ""}.
+                      {" "}<strong>Don&apos;t post this video yourself</strong> from My Sparks, or it will go up twice.</>}
+            </p>
           </>
         )}
         {d.status === "approved" && (
@@ -293,7 +324,7 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-green-900">
               {d.video_id && d.videoUrl ? "It's in My Sparks" : "It'll be in My Sparks when it's done"}, and it posts by itself on{" "}
-              {when(d.slot_at)}. You can close this page or make another.
+              {when(d.slot_at)}. <strong>Don&apos;t post it yourself</strong>, or it will go up twice. You can close this page or make another.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <Link href="/videos"><Button size="sm" variant="outline">Open My Sparks</Button></Link>

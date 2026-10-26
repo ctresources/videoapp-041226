@@ -10,13 +10,18 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * POST /api/halo/approve { draftId } — make this Halo video.
+ * POST /api/halo/approve { draftId, make? }
  *
- * Starts the render exactly as the editor's Spark Video button does
- * (lib/video/start-render), with this draft's setup: look, avatar, size,
- * captions, music, and what is on screen. It is charged to the plan then, like
- * any video. Once it is finished, the halo-post job posts it on its day to the
- * accounts chosen (lib/halo/post.ts).
+ * Two steps since 2026-10-26 (the owner's ask: approve after watching it).
+ *
+ * make: true — Make video. Starts the render exactly as the editor's Spark
+ * Video button does (lib/video/start-render), with this draft's setup: look,
+ * avatar, size, captions, music, and what is on screen. It is charged to the
+ * plan then, like any video. The draft stays a draft: nothing is posted.
+ *
+ * Without make — Approve. Only once the video is finished, so it has been
+ * watched first. The halo-post job then posts it on its day to the accounts
+ * chosen (lib/halo/post.ts).
  *
  * Refusals come back as start-render gives them (out of videos, no headshot,
  * Digital Twin approval …), so the page can say what to do.
@@ -24,7 +29,7 @@ export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const s = await haloSession();
   if (!s.ok) return s.response;
-  const { draftId } = (await req.json().catch(() => ({}))) as { draftId?: string };
+  const { draftId, make } = (await req.json().catch(() => ({}))) as { draftId?: string; make?: boolean };
 
   const { data } = await s.admin
     .from("autopilot_drafts")
@@ -54,7 +59,23 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle();
   const existing = made as { id: string; render_status: string | null } | null;
-  if (existing && existing.render_status !== "failed") {
+  const hasVideo = !!existing && existing.render_status !== "failed";
+
+  // Approve: the video must be finished, so it can be watched first.
+  if (!make) {
+    if (!hasVideo) {
+      return NextResponse.json({ error: "Make the video first, watch it, then approve it to post." }, { status: 409 });
+    }
+    if (existing!.render_status !== "completed") {
+      return NextResponse.json({ error: "Your video is still being made. Watch it when it's done, then approve it." }, { status: 409 });
+    }
+  }
+  // Make video when one is already made or being made: nothing new, nothing charged.
+  if (make && hasVideo) {
+    return NextResponse.json({ ok: true, made: true, ready: existing!.render_status === "completed" });
+  }
+
+  if (hasVideo && existing) {
     await s.admin.from("autopilot_drafts").update({
       status: "approved",
       approved_at: new Date().toISOString(),
@@ -111,12 +132,7 @@ export async function POST(req: NextRequest) {
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (res.status >= 400) return NextResponse.json(out, { status: res.status });
 
-  await s.admin.from("autopilot_drafts").update({
-    status: "approved",
-    approved_at: new Date().toISOString(),
-    // A failed earlier video may be noted here; the posting job finds the new one.
-    video_id: null,
-    post_error: null,
-  }).eq("id", d.id);
-  return NextResponse.json({ ok: true, queued: res.status === 202 });
+  // Made, not approved: the card shows it to watch, then Approve posts it.
+  await s.admin.from("autopilot_drafts").update({ post_error: null }).eq("id", d.id);
+  return NextResponse.json({ ok: true, made: true, ready: false, queued: res.status === 202 });
 }

@@ -35,8 +35,8 @@ export interface HaloDraft {
   /** Filled in after posting: the YouTube link and the finished file. */
   youtubeUrl?: string | null;
   videoUrl?: string | null;
-  /** A video already made (or being made) from this draft, e.g. from the editor. */
-  madeVideo?: { id: string; ready: boolean } | null;
+  /** A video already made (or being made) from this draft, with its file to watch. */
+  madeVideo?: { id: string; ready: boolean; url: string | null } | null;
 }
 export interface HaloPageItem { id: string; url: string; kind: string; title: string | null; image_url: string | null }
 export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
@@ -84,11 +84,13 @@ export function useHalo(userId: string | undefined) {
     // editor): Approve then posts that one instead of making another.
     const open = list.filter((d) => d.status === "draft" && d.project_id).map((d) => d.project_id as string);
     if (open.length) {
-      const { data: made } = await sb.from("generated_videos").select("id, project_id, render_status, created_at")
+      const { data: made } = await sb.from("generated_videos").select("id, project_id, render_status, video_url, created_at")
         .in("project_id", open).neq("render_status", "failed").order("created_at", { ascending: false });
-      const byProject = new Map<string, { id: string; ready: boolean }>();
-      for (const m of (made ?? []) as { id: string; project_id: string; render_status: string | null }[]) {
-        if (!byProject.has(m.project_id)) byProject.set(m.project_id, { id: m.id, ready: m.render_status === "completed" });
+      const byProject = new Map<string, { id: string; ready: boolean; url: string | null }>();
+      for (const m of (made ?? []) as { id: string; project_id: string; render_status: string | null; video_url: string | null }[]) {
+        if (!byProject.has(m.project_id)) {
+          byProject.set(m.project_id, { id: m.id, ready: m.render_status === "completed" && !!m.video_url, url: m.video_url });
+        }
       }
       for (const d of list) if (d.status === "draft" && d.project_id) d.madeVideo = byProject.get(d.project_id) ?? null;
     }
@@ -135,7 +137,7 @@ export function useHalo(userId: string | undefined) {
 
   // Watch drafts being written, made or posted.
   useEffect(() => {
-    if (!drafts.some((d) => d.status === "writing" || d.status === "approved")) return;
+    if (!drafts.some((d) => d.status === "writing" || d.status === "approved" || (d.madeVideo && !d.madeVideo.ready))) return;
     const t = setInterval(() => void loadDrafts(), 15000);
     return () => clearInterval(t);
   }, [drafts, loadDrafts]);
@@ -218,12 +220,23 @@ export function useHalo(userId: string | undefined) {
     }
   }, [draftAction, loadDrafts, loadPages, settings]);
 
+  /** Make video: renders it, posts nothing. Approve comes after watching it. */
+  const make = useCallback(async (d: HaloDraft): Promise<Record<string, unknown> | null> => {
+    const r = await post("/api/halo/approve", { draftId: d.id, make: true });
+    if (r.ok) {
+      toast.success(r.out.ready
+        ? "Your video is ready. Watch it, then approve it to post."
+        : "Making your video. Watch it here when it's done, then approve it to post.");
+      void loadDrafts();
+      return null;
+    }
+    return { ...r.out, status: r.status };
+  }, [loadDrafts]);
+
   const approve = useCallback(async (d: HaloDraft): Promise<Record<string, unknown> | null> => {
     const r = await post("/api/halo/approve", { draftId: d.id });
     if (r.ok) {
-      toast.success(r.out.reused
-        ? "Approved. Your video posts on its day. No new video was made."
-        : r.out.queued ? "Approved. It's in line to be made. You can close this page." : "Approved. It'll be in My Sparks when it's done. You can close this page.");
+      toast.success("Approved. It posts by itself on its day. Don't post it yourself.");
       void loadDrafts();
       return null;
     }
@@ -240,7 +253,7 @@ export function useHalo(userId: string | undefined) {
 
   return {
     loaded, settings, sites, drafts, pages, looks, twinLookId, connected,
-    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, approve, promo,
+    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo,
     reload: loadAll,
   };
 }

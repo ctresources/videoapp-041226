@@ -12,6 +12,7 @@ import { FIRST_COMMENT_PLATFORMS } from "@/lib/utils/social-platforms";
 import { uploadImage } from "@/lib/utils/upload-image";
 import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-style";
 import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { createClient } from "@/lib/supabase/client";
 
 interface SocialAccount {
   id: string;
@@ -185,6 +186,23 @@ export function PublishModal({
   const [photoThumb, setPhotoThumb] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+  /**
+   * When this project's video is already set to post by itself from an
+   * approved Halo or email card (2026-10-26, the owner posted one by hand too).
+   */
+  const [autoPostAt, setAutoPostAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!projectId) return;
+    createClient()
+      .from("autopilot_drafts")
+      .select("slot_at")
+      .eq("project_id", projectId)
+      .eq("status", "approved")
+      .is("posted_at", null)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setAutoPostAt((data as { slot_at: string } | null)?.slot_at ?? null));
+  }, [projectId]);
   /** The thumbnail editor (2026-10-25): its words, font, size, colour and style. */
   const [editorOpen, setEditorOpen] = useState(false);
   const [thumbStyle, setThumbStyle] = useState<ThumbStyle>(DEFAULT_THUMB_STYLE);
@@ -769,6 +787,14 @@ ${hashes.join(" ")}` : hashes.join(" ");
             <X size={18} className="text-slate-400" />
           </button>
         </div>
+
+        {autoPostAt && !posted && (
+          <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-amber-900">
+            <strong>This video posts by itself</strong> on{" "}
+            {new Date(autoPostAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric" })}{" "}
+            from its card on AutoSparks. Don&apos;t post it here too, or it will go up twice.
+          </div>
+        )}
 
         {posted ? (
           <div className="p-6 flex flex-col items-center text-center gap-3">

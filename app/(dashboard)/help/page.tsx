@@ -712,7 +712,7 @@ export default function HelpPage() {
                   draft's video twice: how to change a draft and get one video. */}
               <span className="block mt-1.5 font-semibold text-brand-text">Changing a draft without making two videos</span>
               <span className="block mt-1">
-                Nothing is made until you press <strong>Approve</strong>, so change as much as you like first.
+                Nothing is made until you press <strong>Make video</strong>, so change as much as you like first.
               </span>
               <ul className="list-disc pl-5 mt-1 space-y-1">
                 <li>
@@ -725,29 +725,46 @@ export default function HelpPage() {
                   <strong>Spark Video</strong> there. Go back to AutoSparks; the card shows your new words.
                 </li>
                 <li>
-                  When you&apos;re happy, press <strong>Approve</strong> on the card. It uses the card&apos;s{" "}
+                  When you&apos;re happy, press <strong>Make video</strong> on the card. It uses the card&apos;s{" "}
                   <strong>Setup</strong> choices, not the editor&apos;s video settings, so change the look and
                   size in Setup and only the words in the editor.
                 </li>
                 <li>
                   Pressed <strong>Spark Video</strong> in the editor by mistake? That&apos;s fine: the card
-                  then says <strong>Video made</strong> and its button becomes{" "}
-                  <strong>Post this video</strong>, which posts that video and uses nothing more. A draft
-                  never makes a second video.
+                  then says <strong>Video made</strong> and shows <strong>Watch</strong> and{" "}
+                  <strong>Approve to post</strong> for that video, using nothing more. A draft never makes a
+                  second video.
                 </li>
               </ul>
+              {/* Two steps since 2026-10-26 (the owner's ask): make and watch,
+                  then approve. And never post an approved one by hand. */}
+              <span className="block mt-1.5 font-semibold text-brand-text">Make it, watch it, then approve it</span>
+              <ol className="list-decimal pl-5 mt-1 space-y-1">
+                <li>
+                  <strong>Make video</strong> makes the video and uses one video from your plan. Nothing posts
+                  yet. The card says <strong>Making your video</strong> until it&apos;s done.
+                </li>
+                <li>
+                  When it&apos;s done, the card shows <strong>Watch</strong>. Watch it first.
+                </li>
+                <li>
+                  <strong>Approve to post</strong> sets it to post by itself on the card&apos;s day and time, to
+                  the accounts you chose, and each caption links back to your Halo post.
+                </li>
+              </ol>
               <span className="block mt-1.5">
-                <strong>Approve</strong> on a Halo draft makes the video straight away and uses one
-                video from your plan. Each draft gets one video: if you already made it from the
-                editor, the card says <strong>Video made</strong> and the button becomes{" "}
-                <strong>Post this video</strong>, which posts that one and uses nothing more. After you approve,
-                the card says your video will be in <strong>My Sparks</strong> when it&apos;s done and the day it
-                posts. You don&apos;t have to wait: close the page, or press <strong>Make another</strong>. Once it is finished it posts by itself on its day to the accounts
-                you chose, and each caption links back to your Halo post. Then the card shows{" "}
-                <strong>Put on my Halo post</strong>: it writes the message for you, and on your phone{" "}
-                <strong>Text Halo</strong> opens your messages with it filled in, so Halo can add the
-                video to the post. <strong>Skip</strong> sets a draft aside and its day is filled with
-                the next new post.
+                <strong>Don&apos;t post an approved video yourself</strong> from My Sparks or the Publish window.
+                It posts by itself, so posting it by hand puts it up twice. The Publish window warns you when a
+                video is set to post by itself. Already posted it yourself? Press <strong>Skip</strong> on the
+                card instead of approving it.
+              </span>
+              <span className="block mt-1.5">
+                After it posts, the card shows <strong>Put on my Halo post</strong>: it writes the message for
+                you, and on your phone <strong>Text Halo</strong> opens your messages with it filled in, so Halo
+                can add the video to the post. To put a video you posted yourself on your Halo post, text Halo at
+                (415) 726-3224: &ldquo;Halo, add this video to the top of my post [your post&apos;s link]: [your
+                YouTube link]&rdquo;. <strong>Skip</strong> sets a draft aside and its day is filled with the
+                next new post.
               </span>
               <span className="block mt-3 font-semibold text-brand-text">Promo video for your Halo referral page</span>
               <span className="block mt-1">
@@ -768,8 +785,8 @@ export default function HelpPage() {
                 for the next free day at your Halo time and is not one of your Halo videos for the
                 month. The script is written fresh from the email, so a market report from a data
                 provider is never posted word for word. The email&apos;s photos are used for the
-                thumbnail and, if you choose, on screen. <strong>Setup</strong> and{" "}
-                <strong>Approve</strong> work the same as on a Halo draft. Up to 5 email drafts are
+                thumbnail and, if you choose, on screen. <strong>Setup</strong>,{" "}
+                <strong>Make video</strong> and <strong>Approve to post</strong> work the same as on a Halo draft. Up to 5 email drafts are
                 written a day. Turn it off with the <strong>Forwarded emails</strong> switch in the Halo
                 sites box; your emails still arrive in Spark Studio either way.
               </span>
