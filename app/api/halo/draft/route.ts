@@ -40,8 +40,14 @@ export async function POST(req: NextRequest) {
   const editable = d.status === "draft" || d.status === "failed";
 
   if (action === "setup") {
-    if (!editable) return NextResponse.json({ error: "This one is already approved." }, { status: 409 });
-    const setup = sanitizeSetupPatch(body.setup, d.setup);
+    // Approved but not yet posted: only the words may still change, since the
+    // video is already made (2026-10-26).
+    const wordsOnly = d.status === "approved" && !d.posted_at;
+    if (!editable && !wordsOnly) return NextResponse.json({ error: "This one is already approved." }, { status: 409 });
+    const raw = wordsOnly && !editable
+      ? { words: ((body.setup ?? {}) as { words?: unknown }).words }
+      : body.setup;
+    const setup = sanitizeSetupPatch(raw, d.setup);
     await s.admin.from("autopilot_drafts").update({ setup }).eq("id", d.id);
     return NextResponse.json({ setup });
   }

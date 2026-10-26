@@ -792,7 +792,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
           <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-amber-900">
             <strong>This video posts by itself</strong> on{" "}
             {new Date(autoPostAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric" })}{" "}
-            from its card on AutoSparks. Don&apos;t post it here too, or it will go up twice.
+            from its card on AutoSparks, so publishing here is off. Change its thumbnail, words or time on the card:{" "}
+            <a href="/autosparks" className="font-semibold underline">open AutoSparks</a>.
           </div>
         )}
 
@@ -1458,11 +1459,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
             <Button
               onClick={handleSubmit}
               loading={loading}
-              disabled={accounts.length === 0}
+              // Off while an approved AutoSparks card will post it by itself
+              // (2026-10-26, the owner's ask: it let her post it twice).
+              disabled={accounts.length === 0 || !!autoPostAt}
               size="lg"
               className="w-full gap-2"
             >
-              {tab === "now"
+              {autoPostAt ? "Posts by itself from AutoSparks" : tab === "now"
                 ? <><Send size={16} /> {selectedIds.length > 0
                     ? `Publish to ${namePlatforms(accounts.filter((a) => selectedIds.includes(a.id)).map((a) => a.platform))}`
                     : "Select a Platform"}</>

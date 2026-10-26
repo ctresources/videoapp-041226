@@ -372,6 +372,27 @@ function ReadyPanel({ d, halo }: { d: HaloDraft; halo: Halo }) {
   );
 }
 
+/** On an approved card, before it posts: watch it, and fix the thumbnail or words. */
+function ApprovedActions({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const [words, setWords] = useState(false);
+  return (
+    <>
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {d.videoUrl && (
+          <a href={d.videoUrl} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button>
+          </a>
+        )}
+        <ThumbEdit d={d} halo={halo} />
+        <Button size="sm" variant="outline" onClick={() => setWords((w) => !w)}>
+          {words ? "Close title and caption" : "Edit title and caption"}
+        </Button>
+      </div>
+      {words && <div className="mt-3"><WordsEditor d={d} halo={halo} /></div>}
+    </>
+  );
+}
+
 function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo; needsVideo: boolean; onOutOfVideos: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -526,10 +547,10 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
               {when(d.slot_at)}. <strong>Don&apos;t post it yourself</strong>, or it will go up twice.{d.source === "halo" && <> {haloTextNote(d)}</>}
             </p>
             <div className="mt-2.5"><WhenInput d={d} halo={halo} /></div>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <Link href="/videos"><Button size="sm" variant="outline">Open My Sparks</Button></Link>
-              <Link href="/create"><Button size="sm" variant="outline">Make another</Button></Link>
-            </div>
+            {/* Watch, thumbnail and words stay changeable here until it posts
+                (2026-10-26, the owner's ask). Open My Sparks and Make another
+                are gone: My Sparks led to posting it by hand. */}
+            <ApprovedActions d={d} halo={halo} />
           </div>
         )}
         {done && (
