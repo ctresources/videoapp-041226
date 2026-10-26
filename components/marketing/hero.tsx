@@ -217,6 +217,10 @@ export function Hero() {
                     preload="metadata"
                     className="h-full w-full object-cover"
                   />
+                  {/* What it is, said on it (2026-10-26, the owner's wording). */}
+                  <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">
+                    Made with SparkReels · Digital Twin
+                  </span>
                   <button
                     type="button"
                     onClick={() => setMuted((m) => !m)}

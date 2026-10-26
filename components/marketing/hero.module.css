@@ -96,7 +96,9 @@
   .chip { --kx: 1.5; --ky: .42; }
   .vid { width: 54%; }
   /* Top left on wide screens, beside the mic bubble, so it covers nothing. */
-  .f2 { top: -18px; bottom: auto; left: 20px; }
+  .f2 { top: -18px; bottom: auto; left: auto; right: 24px; }
+  /* Flipped (2026-10-26, the owner's ask): the mic bubble top left, Posted top right. */
+  .f1 { left: 20px; right: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
