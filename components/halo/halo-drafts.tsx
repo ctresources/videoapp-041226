@@ -10,6 +10,8 @@ import { ListenButton } from "@/components/ui/listen-button";
 import { kindLabel } from "@/lib/halo/kinds";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import type { Halo, HaloDraft } from "@/components/halo/use-halo";
+import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { cleanThumbStyle, type ThumbStyle } from "@/lib/utils/thumbnail-style";
 import {
   LookPicker, PLATFORM_LABELS, PLATFORM_ORDER, PlatformPicker, Row, Switch, tile,
 } from "@/components/halo/halo-sites-card";
@@ -179,6 +181,156 @@ function PutOnHalo({ d }: { d: HaloDraft }) {
   );
 }
 
+/** When to text Halo: once the video is public on the channel (2026-10-26). */
+function haloTextNote(d: HaloDraft) {
+  return `After it's published on your channel on ${when(d.slot_at)}, come back here and press Put on my Halo post to text Halo the link.`;
+}
+
+/** The day and time it posts, editable until it is handed to the accounts. */
+function WhenInput({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-[13px] text-spark-ink-soft">
+      <span className="font-semibold text-spark-ink">Posts on</span>
+      <input
+        type="datetime-local"
+        key={d.slot_at}
+        defaultValue={localInput(d.slot_at)}
+        onBlur={(e) => {
+          if (!e.target.value) return;
+          const iso = new Date(e.target.value).toISOString();
+          if (iso !== new Date(d.slot_at).toISOString()) void halo.setWhen(d, iso);
+        }}
+        className="rounded-lg border border-spark-rule bg-white px-2 py-1 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
+      />
+    </label>
+  );
+}
+
+/** What the auto-post would write, the same as lib/halo/post.ts. */
+function defaultWords(d: HaloDraft) {
+  const seo = d.projects?.seo_data ?? {};
+  const ai = d.projects?.ai_script ?? {};
+  const hook = ai.hook || ai.title || d.topic;
+  const caption = captionOf(d);
+  const title = (seo.youtube_title || ai.title || d.projects?.title || d.topic || "").slice(0, 100);
+  const description = d.source === "halo_promo"
+    ? caption
+    : [seo.youtube_description || hook, d.source_url && `Read the full post: ${d.source_url}`].filter(Boolean).join("\n\n");
+  return { title, description, caption };
+}
+
+/** The title, description and caption that go out with it (2026-10-26). */
+function WordsEditor({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const def = defaultWords(d);
+  const saved = d.setup.words ?? {};
+  const [title, setTitle] = useState(saved.title ?? def.title);
+  const [description, setDescription] = useState(saved.description ?? def.description);
+  const [caption, setCaption] = useState(saved.caption ?? def.caption);
+  const [saving, setSaving] = useState(false);
+  const plats = d.setup.platforms ?? [];
+  const yt = plats.includes("youtube");
+  const others = plats.some((p) => p !== "youtube");
+  const box = "w-full rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber";
+
+  async function save() {
+    setSaving(true);
+    await halo.patchSetup(d, { words: { title, description, caption } });
+    setSaving(false);
+    toast.success("Saved. These words go out with it.");
+  }
+
+  if (!yt && !others) return <p className="text-[13px] text-spark-ink-muted">Pick its accounts in Setup first.</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {yt && (
+        <>
+          <label className="text-xs font-semibold text-spark-ink-soft">YouTube title</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} className={box} />
+          <label className="text-xs font-semibold text-spark-ink-soft">YouTube description</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={5000} className={box} />
+        </>
+      )}
+      {others && (
+        <>
+          <label className="text-xs font-semibold text-spark-ink-soft">Caption for the other accounts</label>
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={4} maxLength={2200} className={box} />
+        </>
+      )}
+      <div>
+        <Button size="sm" onClick={() => void save()} loading={saving}>Save words</Button>
+      </div>
+    </div>
+  );
+}
+
+/** The thumbnail editor from Publish, on the card (2026-10-26). */
+function ThumbEdit({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!d.project_id) return null;
+  const seo = d.projects?.seo_data ?? {};
+
+  async function apply(next: { backgroundUrl: string; headline: string; style: ThumbStyle }) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/tools/thumbnail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: d.project_id,
+          headline: next.headline,
+          style: next.style,
+          ...(next.backgroundUrl ? { backgroundUrl: next.backgroundUrl } : {}),
+        }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out?.error || "Couldn't update the thumbnail.");
+      toast.success("Thumbnail updated.");
+      setOpen(false);
+      await halo.reloadDrafts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't update the thumbnail.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} loading={busy}>Edit thumbnail</Button>
+      {open && (
+        <ThumbnailEditor
+          projectId={d.project_id}
+          photos={d.setup.photos ?? []}
+          headline={seo.thumbnail_headline ?? ""}
+          style={cleanThumbStyle(seo.thumbnail_style)}
+          currentBg={null}
+          busy={busy}
+          onClose={() => setOpen(false)}
+          onApply={(next) => void apply(next)}
+        />
+      )}
+    </>
+  );
+}
+
+/** Before Approve: when, the thumbnail and the words (2026-10-26). */
+function ReadyPanel({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const [words, setWords] = useState(false);
+  return (
+    <div className="mt-3 flex flex-col gap-3 rounded-xl border border-spark-rule bg-[#faf9f5] p-3">
+      <WhenInput d={d} halo={halo} />
+      <div className="flex flex-wrap gap-2">
+        <ThumbEdit d={d} halo={halo} />
+        <Button size="sm" variant="outline" onClick={() => setWords((w) => !w)}>
+          {words ? "Close title and caption" : "Edit title and caption"}
+        </Button>
+      </div>
+      {words && <WordsEditor d={d} halo={halo} />}
+    </div>
+  );
+}
+
 function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo; needsVideo: boolean; onOutOfVideos: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -311,10 +463,12 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
                   ? "When it's done, watch it here, then press Approve to post. Nothing posts until you approve it."
                   : <>Watch it first. <strong>Approve to post</strong> and it posts by itself on {when(d.slot_at)}
                       {d.setup.platforms?.length ? ` to ${PLATFORM_ORDER.filter((p) => (d.setup.platforms ?? []).includes(p)).map((p) => PLATFORM_LABELS[p]).join(", ")}` : ""}.
-                      {" "}<strong>Don&apos;t post this video yourself</strong> from My Sparks, or it will go up twice.</>}
+                      {" "}<strong>Don&apos;t post this video yourself</strong> from My Sparks, or it will go up twice.
+                      {d.source === "halo" && <>{" "}{haloTextNote(d)}</>}</>}
             </p>
           </>
         )}
+        {d.status === "draft" && d.madeVideo?.ready && <div className="w-full"><ReadyPanel d={d} halo={halo} /></div>}
         {d.status === "approved" && (
           // What happens next, so nobody waits on this page (2026-10-24, the
           // owner's ask): it lands in My Sparks and posts on its day by itself.
@@ -324,8 +478,9 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-green-900">
               {d.video_id && d.videoUrl ? "It's in My Sparks" : "It'll be in My Sparks when it's done"}, and it posts by itself on{" "}
-              {when(d.slot_at)}. <strong>Don&apos;t post it yourself</strong>, or it will go up twice. You can close this page or make another.
+              {when(d.slot_at)}. <strong>Don&apos;t post it yourself</strong>, or it will go up twice.{d.source === "halo" && <> {haloTextNote(d)}</>}
             </p>
+            <div className="mt-2.5"><WhenInput d={d} halo={halo} /></div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <Link href="/videos"><Button size="sm" variant="outline">Open My Sparks</Button></Link>
               <Link href="/create"><Button size="sm" variant="outline">Make another</Button></Link>
@@ -338,9 +493,14 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
             {d.videoUrl && (
               <a href={d.videoUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>
             )}
-            {d.source === "halo" && (d.youtubeUrl || d.videoUrl) && (
+            {/* Only once it is public on the channel: before that, Halo
+                would get a link that doesn't play yet (2026-10-26). */}
+            {d.source === "halo" && (d.youtubeUrl || d.videoUrl) && (d.status === "posted" || Date.parse(d.slot_at) <= Date.now()) && (
               <button type="button" onClick={() => setSheet((x) => !x)}
                 className="rounded-lg bg-spark-blue px-3 py-1.5 text-sm font-semibold text-white">Put on my Halo post</button>
+            )}
+            {d.source === "halo" && d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && (
+              <span className="w-full text-[13px] text-spark-ink-muted">{haloTextNote(d)}</span>
             )}
           </>
         )}

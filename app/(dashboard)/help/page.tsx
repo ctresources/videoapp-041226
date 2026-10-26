@@ -745,7 +745,11 @@ export default function HelpPage() {
                   yet. The card says <strong>Making your video</strong> until it&apos;s done.
                 </li>
                 <li>
-                  When it&apos;s done, the card shows <strong>Watch</strong>. Watch it first.
+                  When it&apos;s done, the card shows <strong>Watch</strong>. Watch it first. Below it you can change{" "}
+                  <strong>Posts on</strong> (the day and time), press <strong>Edit thumbnail</strong> (background,
+                  words, font, size, style and colour, the same editor as in Publish), and press{" "}
+                  <strong>Edit title and caption</strong> to change the YouTube title and description and the caption
+                  for the other accounts, then <strong>Save words</strong>. What you save there is exactly what posts.
                 </li>
                 <li>
                   <strong>Approve to post</strong> sets it to post by itself on the card&apos;s day and time, to
@@ -759,7 +763,10 @@ export default function HelpPage() {
                 card instead of approving it.
               </span>
               <span className="block mt-1.5">
-                After it posts, the card shows <strong>Put on my Halo post</strong>: it writes the message for
+                After approving, you can still change <strong>Posts on</strong> until it&apos;s handed to your
+                accounts. <strong>When to text Halo:</strong> after the video is published on your channel on its
+                day and time, not before, because until then the link doesn&apos;t play. Then the card shows{" "}
+                <strong>Put on my Halo post</strong>: it writes the message for
                 you, and on your phone <strong>Text Halo</strong> opens your messages with it filled in, so Halo
                 can add the video to the post. To put a video you posted yourself on your Halo post, text Halo at
                 (415) 726-3224: &ldquo;Halo, add this video to the top of my post [your post&apos;s link]: [your

@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
   const draftId = typeof body.draftId === "string" ? body.draftId : "";
   const { data } = await s.admin
     .from("autopilot_drafts")
-    .select("id, status, source, setup, project_id, halo_page_id, slot_at, source_url")
+    .select("id, status, source, setup, project_id, halo_page_id, slot_at, source_url, posted_at")
     .eq("id", draftId)
     .eq("user_id", s.user.id)
     .single();
-  const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null } | null;
+  const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null; posted_at: string | null } | null;
   if (!d || !["halo", "halo_promo", "email"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   const editable = d.status === "draft" || d.status === "failed";
 
@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === "when") {
-    if (!editable) return NextResponse.json({ error: "This one is already approved." }, { status: 409 });
+    // Approved but not yet handed to the accounts: the posting job reads the
+    // time when it posts, so it can still move (2026-10-26).
+    const movable = editable || (d.status === "approved" && !d.posted_at);
+    if (!movable) return NextResponse.json({ error: "It's already scheduled on your accounts." }, { status: 409 });
     const at = typeof body.slotAt === "string" ? new Date(body.slotAt) : null;
     if (!at || Number.isNaN(at.getTime()) || at.getTime() < Date.now() + 30 * 60_000) {
       return NextResponse.json({ error: "Pick a time at least half an hour from now." }, { status: 400 });

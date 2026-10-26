@@ -115,6 +115,12 @@ export interface HaloSetup {
   music: string;
   /** Promo videos only: the referral code and number read off the page. */
   promo?: { code: string | null; phone: string | null; angle: PromoAngle };
+  /**
+   * The words as the agent edited them on the card (2026-10-26): the YouTube
+   * title and description, and the caption for the other accounts. Unset
+   * means the auto-post writes them (lib/halo/post.ts).
+   */
+  words?: { title?: string; description?: string; caption?: string };
 }
 
 export function sanitizeSetupPatch(raw: unknown, current: HaloSetup): HaloSetup {
@@ -127,6 +133,15 @@ export function sanitizeSetupPatch(raw: unknown, current: HaloSetup): HaloSetup 
   if (Array.isArray(r.platforms)) next.platforms = Array.from(new Set(r.platforms.filter((p): p is string => HALO_PLATFORMS.includes(p as string))));
   if (typeof r.captions === "boolean") next.captions = r.captions;
   if (typeof r.music === "string" && MUSIC_IDS.includes(r.music)) next.music = r.music;
+  if (r.words && typeof r.words === "object") {
+    const w = r.words as Record<string, unknown>;
+    const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+    next.words = {
+      title: text(w.title, 100),
+      description: text(w.description, 5000),
+      caption: text(w.caption, 2200),
+    };
+  }
   return next;
 }
 

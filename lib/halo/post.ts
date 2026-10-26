@@ -55,8 +55,18 @@ async function connectedOf(admin: Admin, userId: string, wanted: string[]): Prom
   return out;
 }
 
-/** The words that go with the video, everywhere. */
+/** The words that go with the video, everywhere. The agent's edits win. */
 function wordsFor(d: DraftRow, ai: Record<string, unknown>, seo: Record<string, unknown>, title: string) {
+  const auto = autoWords(d, ai, seo, title);
+  const w = d.setup.words ?? {};
+  return {
+    caption: w.caption || auto.caption,
+    description: w.description || auto.description,
+    title: (w.title || auto.title).slice(0, 100),
+  };
+}
+
+function autoWords(d: DraftRow, ai: Record<string, unknown>, seo: Record<string, unknown>, title: string) {
   const link = d.source_url ?? "";
   const hook = String(ai.hook || ai.title || title);
   if (d.source === "halo_promo") {

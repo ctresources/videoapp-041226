@@ -31,6 +31,11 @@ export interface HaloDraft {
   projects: {
     title: string | null; thumbnail_url: string | null; location_city: string | null; location_state: string | null;
     ai_script: { hook?: string; script?: string; cta?: string; title?: string } | null;
+    /** For the card's word and thumbnail editors (2026-10-26). */
+    seo_data?: {
+      youtube_title?: string; youtube_description?: string;
+      thumbnail_headline?: string; thumbnail_style?: unknown;
+    } | null;
   } | null;
   /** Filled in after posting: the YouTube link and the finished file. */
   youtubeUrl?: string | null;
@@ -63,7 +68,7 @@ export function useHalo(userId: string | undefined) {
     const since = new Date(Date.now() - 21 * 86_400_000).toISOString();
     const { data } = await sb
       .from("autopilot_drafts")
-      .select("id, slot_at, status, source, source_url, source_kind, topic, setup, project_id, halo_page_id, video_id, post_error, projects(title, thumbnail_url, location_city, location_state, ai_script)")
+      .select("id, slot_at, status, source, source_url, source_kind, topic, setup, project_id, halo_page_id, video_id, post_error, projects(title, thumbnail_url, location_city, location_state, ai_script, seo_data)")
       .in("source", ["halo", "halo_promo", "email"])
       .neq("status", "skipped")
       .gte("slot_at", since)
@@ -255,6 +260,7 @@ export function useHalo(userId: string | undefined) {
     loaded, settings, sites, drafts, pages, looks, twinLookId, connected,
     saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo,
     reload: loadAll,
+    reloadDrafts: loadDrafts,
   };
 }
 
