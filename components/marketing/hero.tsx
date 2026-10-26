@@ -11,15 +11,18 @@ import s from "./hero.module.css";
  * step, the mic, or Watch the demo for the full video with sound.
  */
 
-/** The demo video (the owner's pick, 2026-10-26): Avatar in circle, 16:9, fast start. */
+/**
+ * The demo video (the owner's pick, 2026-10-26): her Montgomery County market
+ * update, Video Agent with her Digital Twin, 16:9, fast start.
+ */
 export const HERO_VIDEO_URL =
-  "https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/videos/0eeae470-2851-4578-95d1-7b0be1c3e0f6/32ae9e92-9999-4644-ac83-91951d3353c7.mp4";
+  "https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/videos/166a6b62-d2cb-40c3-a477-a584d15e9a41/616e71c1-bbe0-4fa7-aa8d-4d5419b834a2.mp4";
 const HERO_POSTER = "/hero/demo-poster.jpg";
 
 const STEP_MS = 4500;
 const SHARE_MS = 9000;
-const SAID = "Hey SparkReels, make a 60-second video about the Maplewood market this month…";
-const CAPTION = ["Homes in", "Maplewood", "are selling", "faster", "this month"];
+const SAID = "Hey SparkReels, make a video about the Montgomery County market this month…";
+const CAPTION = ["Your", "Montgomery County", "market update", "for October"];
 const ROTOR = ["Visible.", "Trusted.", "Found.", "Booked."];
 const CHIPS: { label: string; x: number; y: number }[] = [
   { label: "▶ YouTube", x: -150, y: -128 },
@@ -134,7 +137,7 @@ export function Hero() {
           }}
           onMouseLeave={() => setTilt("")}
         >
-          <div className={`${s.float} ${s.f1}`}>🎤 <b className="text-blue-900">“Make a video about Maplewood”</b></div>
+          <div className={`${s.float} ${s.f1}`}>🎤 <b className="text-blue-900">“Make a market update”</b></div>
           <div className={`${s.float} ${s.f2}`}>✓ <b className="text-blue-900">Posted</b> to 4 accounts</div>
           <div className={s.card} style={{ transform: tilt, "--step": `${step === 2 ? SHARE_MS : STEP_MS}ms` } as CSSProperties}>
             <div className="grid grid-cols-3 gap-2">
@@ -167,7 +170,7 @@ export function Hero() {
                       <div key={t} className={`${s.step} ${done > i ? s.stepDone : ""}`}><span className={s.dot}>✓</span>{t}</div>
                     ))}
                     <div className="mt-1 rounded-xl bg-white/95 p-3 text-[13px] text-slate-900">
-                      <strong>Maplewood market, this month</strong>
+                      <strong>Montgomery County market update</strong>
                       <div className={s.shimmer} style={{ width: "92%" }} />
                       <div className={s.shimmer} style={{ width: "78%" }} />
                       <div className={s.shimmer} style={{ width: "85%" }} />

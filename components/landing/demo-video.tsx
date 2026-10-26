@@ -3,6 +3,10 @@
 import { useRef, useState } from "react";
 import { Play, Pause, AlertCircle } from "lucide-react";
 
+/** The owner's video about SparkReels, Avatar in circle, 16:9, fast start (2026-10-26). */
+const SPARKREELS_DEMO_URL =
+  "https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/videos/0eeae470-2851-4578-95d1-7b0be1c3e0f6/32ae9e92-9999-4644-ac83-91951d3353c7.mp4";
+
 export function DemoVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -39,17 +43,16 @@ export function DemoVideo() {
       <div className="relative bg-black aspect-video">
         <video
           ref={videoRef}
-          // #t=0.1 seeks to a frame rather than merely asking for one. iOS
-          // ignores preload="metadata" to save cellular data, so the comment
-          // below was wrong on exactly the devices most likely to see this —
-          // the hero video was a black rectangle to every iPhone visitor.
-          src="/demo.mp4#t=0.1"
-          muted
-          loop
+          // The owner's SparkReels video since 2026-10-26 (it was /demo.mp4),
+          // with sound: a click is a gesture, so it may play unmuted. The
+          // poster is a still from it, since iOS ignores preload="metadata".
+          src={SPARKREELS_DEMO_URL}
+          poster="/hero/sparkreels-demo-poster.jpg"
           playsInline
-          controls={errored}
+          // Native controls once it plays, for sound and scrubbing.
+          controls={errored || playing}
           // Click-to-play: this sits high on the landing page and the file is
-          // ~7 MB, so we fetch metadata (enough for a first frame) and let the
+          // ~11 MB, so we fetch metadata (enough for a first frame) and let the
           // overlay button pull the rest only when someone actually wants it.
           preload="metadata"
           className="absolute inset-0 w-full h-full object-contain"
@@ -59,7 +62,7 @@ export function DemoVideo() {
         />
 
         {/* Custom overlay — hidden once errored (native controls take over) */}
-        {!errored && (
+        {!errored && !playing && (
           <div
             className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-200 ${
               playing ? "opacity-0 hover:opacity-100" : "opacity-100"
