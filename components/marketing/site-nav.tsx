@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ShinyLogo } from "@/components/marketing/shiny-logo";
+import { AskSparkleePublic } from "@/components/marketing/ask-sparklee-public";
 import { ChevronDown } from "lucide-react";
 import { FEATURE_PAGES } from "@/lib/marketing/content";
 
@@ -27,6 +28,7 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
     `transition-colors hover:text-slate-900 ${on ? "text-slate-900 underline decoration-amber-500 decoration-2 underline-offset-8" : ""}`;
 
   return (
+    <>
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* A little smaller on phones, so Log In and Start Free fit on one
@@ -74,5 +76,8 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
         </div>
       </div>
     </nav>
+    {/* Ask Sparklee on every website page (2026-10-26). */}
+    <AskSparkleePublic />
+    </>
   );
 }
