@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { canonicalUrl } from "@/lib/seo/public-pages";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
+import { Hero } from "@/components/marketing/hero";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { FaqList } from "@/components/marketing/faq-list";
@@ -382,76 +383,15 @@ export default function LandingPage() {
           since 2026-10-22, with a Features menu. */}
       <SiteNav />
 
-      {/* ── Hero ──
-          pt must clear the fixed 64px navbar with room to breathe, or the first
-          line renders underneath it. */}
-      <section className="pt-28 pb-16 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-[1600px] mx-auto">
+      {/* ── Hero ── moving Speak → Spark → Share demo with the real video
+          (2026-10-26, the owner's approved mockup). */}
+      <Hero />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <div>
-              {/* Eyebrow — sets the tone, stays out of the headline's way */}
-              <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide mb-4">
-                Speak, Spark, Share — <span className="text-slate-400 font-bold">no filming, no editing, no glam required.</span>
-              </p>
-
-              <h1 className="text-4xl sm:text-6xl font-black leading-[1.08] mb-5 text-slate-900">
-                Hit the Mic. Be Visible.
-                <span className="block text-blue-900 mt-1">Become the go-to local expert in your town.</span>
-              </h1>
-
-              <p className="text-xl text-slate-500 mb-5 leading-relaxed max-w-xl">
-                Most real estate agents are invisible online. SparkReels.ai fixes that — turning one
-                voice recording into a publish-ready video. A 60-second reel for social, or a full
-                8-minute market update built to rank on YouTube.
-              </p>
-
-              {/* Proof, sized as support rather than a second headline */}
-              <div className="flex items-start gap-3 border-l-4 border-amber-400 pl-4 mb-7">
-                <p className="text-xl sm:text-2xl text-slate-600 leading-snug text-pretty">
-                  Agents who post video grow revenue <span className="font-black text-slate-900">49% faster</span> —
-                  {/* Forced break only once the container hits its 1600px max,
-                      where the column (~768px) can hold the whole first clause.
-                      Tailwind's xl (1280px) fires while the column is still
-                      ~557px, which strands "faster —" on its own line; below
-                      this threshold the natural wrap already gives two lines. */}
-                  <br className="hidden [@media(min-width:1700px)]:inline" />
-                  yet only <span className="font-black text-slate-900">8%</span> do it consistently.{" "}
-                  {/* The question is answered by the pain-points section — make it
-                      go there rather than leaving it purely rhetorical. */}
-                  <a href="#pain" className="font-black text-blue-900 underline decoration-2 underline-offset-2 hover:text-blue-700">
-                    Why?
-                  </a>
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-                <a href="/beta" className="inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-xl font-semibold px-7 py-4 hover:bg-blue-800 transition-colors">
-                  Sign up for free <ArrowRight size={18} />
-                </a>
-                <a href="#how-it-works" className="inline-flex items-center justify-center gap-2 border border-slate-300 text-slate-700 text-xl font-semibold px-7 py-4 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-                  See How It Works <ChevronRight size={18} />
-                </a>
-              </div>
-
-              <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-base font-bold px-4 py-2 rounded-full mt-5 hover:bg-emerald-100 transition-colors">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                First 100 agents get 1 free AI video — no credit card
-              </a>
-
-              <p className="mt-6 text-xl font-semibold text-slate-400 tracking-wide">
-                Visibility <span className="text-slate-300">→</span> Credibility <span className="text-slate-300">→</span> Trust <span className="text-slate-300">→</span> Business
-              </p>
-              <p className="mt-2 text-base text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
-            </div>
-
-            {/* "What buyers in your area ask AI" where the phone picture was
-                (2026-10-23, the owner's approved mockup): a lead form that
-                shows the product working. Under the text on phones. */}
-            <div className="lg:self-center">
-              <AiQuestionsBox />
-            </div>
-          </div>
+      {/* "What buyers in your area ask AI", moved from the hero to just under
+          it (2026-10-26) so the hero has room to move. */}
+      <section className="px-4 sm:px-6 py-10 bg-[#f7f3ea] border-b border-slate-200">
+        <div className="max-w-3xl mx-auto">
+          <AiQuestionsBox />
         </div>
       </section>
 
