@@ -74,17 +74,6 @@ export function useHalo(userId: string | undefined) {
       .gte("slot_at", since)
       .order("slot_at");
     const list = (data ?? []) as unknown as HaloDraft[];
-    // The YouTube link and file for the ones that are out, for "Put on my Halo post".
-    const vids = list.map((d) => d.video_id).filter((v): v is string => !!v);
-    if (vids.length) {
-      const [{ data: posts }, { data: files }] = await Promise.all([
-        sb.from("social_posts").select("video_id, platform_post_id").in("video_id", vids).eq("platform", "youtube").not("platform_post_id", "is", null),
-        sb.from("generated_videos").select("id, video_url").in("id", vids),
-      ]);
-      const yt = new Map(((posts ?? []) as { video_id: string; platform_post_id: string }[]).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
-      const file = new Map(((files ?? []) as { id: string; video_url: string | null }[]).map((f) => [f.id, f.video_url]));
-      for (const d of list) if (d.video_id) { d.youtubeUrl = yt.get(d.video_id) ?? null; d.videoUrl = file.get(d.video_id) ?? null; }
-    }
     // Drafts still to approve whose video was already made elsewhere (the
     // editor): Approve then posts that one instead of making another.
     const open = list.filter((d) => d.status === "draft" && d.project_id).map((d) => d.project_id as string);
@@ -98,6 +87,22 @@ export function useHalo(userId: string | undefined) {
         }
       }
       for (const d of list) if (d.status === "draft" && d.project_id) d.madeVideo = byProject.get(d.project_id) ?? null;
+    }
+    // The YouTube link and file for "Put on my Halo post", for any card with a
+    // video, including one the agent posted by hand (2026-10-26).
+    const vidOf = (d: HaloDraft) => d.video_id ?? d.madeVideo?.id ?? null;
+    const vids = list.map(vidOf).filter((v): v is string => !!v);
+    if (vids.length) {
+      const [{ data: posts }, { data: files }] = await Promise.all([
+        sb.from("social_posts").select("video_id, platform_post_id").in("video_id", vids).eq("platform", "youtube").not("platform_post_id", "is", null),
+        sb.from("generated_videos").select("id, video_url").in("id", vids),
+      ]);
+      const yt = new Map(((posts ?? []) as { video_id: string; platform_post_id: string }[]).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
+      const file = new Map(((files ?? []) as { id: string; video_url: string | null }[]).map((f) => [f.id, f.video_url]));
+      for (const d of list) {
+        const v = vidOf(d);
+        if (v) { d.youtubeUrl = yt.get(v) ?? null; d.videoUrl = file.get(v) ?? null; }
+      }
     }
     setDrafts(list);
   }, [userId]);

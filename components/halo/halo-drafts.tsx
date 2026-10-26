@@ -162,11 +162,21 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
 }
 
 function PutOnHalo({ d }: { d: HaloDraft }) {
-  const link = d.youtubeUrl || d.videoUrl || "";
+  // The YouTube link when it went out from here; otherwise the agent pastes
+  // the link of the one they posted by hand (2026-10-26).
+  const [link, setLink] = useState(d.youtubeUrl || d.videoUrl || "");
   const title = d.projects?.ai_script?.title || d.topic;
-  const message = `Halo, add this video to the top of my post "${title}" (${d.source_url}): ${link}`;
+  const message = `Halo, add this video to the top of my post "${title}" (${d.source_url}): ${link.trim()}`;
   return (
     <div className="mt-3 rounded-xl border-[1.5px] border-spark-blue bg-[#f6fafc] p-3">
+      <label className="mb-1 block text-xs font-semibold text-spark-ink-soft">Your video&apos;s link</label>
+      <input
+        value={link}
+        onChange={(e) => setLink(e.target.value)}
+        placeholder="Paste the YouTube link of the video you posted"
+        className="mb-2 w-full rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
+      />
+      <p className="mb-2 text-[12px] text-spark-ink-muted">Send it once the video is live on your channel, so the link plays.</p>
       <p className="text-sm leading-relaxed text-spark-ink">{message}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         <a href={`sms:${HALO_SMS}?&body=${encodeURIComponent(message)}`}
@@ -493,19 +503,21 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
             {d.videoUrl && (
               <a href={d.videoUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>
             )}
-            {/* Only once it is public on the channel: before that, Halo
-                would get a link that doesn't play yet (2026-10-26). */}
-            {d.source === "halo" && (d.youtubeUrl || d.videoUrl) && (d.status === "posted" || Date.parse(d.slot_at) <= Date.now()) && (
-              <button type="button" onClick={() => setSheet((x) => !x)}
-                className="rounded-lg bg-spark-blue px-3 py-1.5 text-sm font-semibold text-white">Put on my Halo post</button>
-            )}
             {d.source === "halo" && d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && (
               <span className="w-full text-[13px] text-spark-ink-muted">{haloTextNote(d)}</span>
             )}
           </>
         )}
       </div>
-      {sheet && done && <PutOnHalo d={d} />}
+      {/* Always there on a Halo card, so a video posted by hand can go on
+          the post too; the sheet takes a pasted link (2026-10-26). */}
+      {d.source === "halo" && d.status !== "writing" && d.status !== "failed" && (
+        <div className="mt-2">
+          <button type="button" onClick={() => setSheet((x) => !x)}
+            className="rounded-lg bg-spark-blue px-3 py-1.5 text-sm font-semibold text-white">Put on my Halo post</button>
+        </div>
+      )}
+      {sheet && <PutOnHalo d={d} />}
     </div>
   );
 }

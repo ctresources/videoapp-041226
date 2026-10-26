@@ -766,7 +766,8 @@ export default function HelpPage() {
                 After approving, you can still change <strong>Posts on</strong> until it&apos;s handed to your
                 accounts. <strong>When to text Halo:</strong> after the video is published on your channel on its
                 day and time, not before, because until then the link doesn&apos;t play. Then the card shows{" "}
-                <strong>Put on my Halo post</strong>: it writes the message for
+                <strong>Put on my Halo post</strong> (it is on every Halo card, also for a video you posted
+                yourself: paste its YouTube link in the box if it isn&apos;t filled in): it writes the message for
                 you, and on your phone <strong>Text Halo</strong> opens your messages with it filled in, so Halo
                 can add the video to the post. To put a video you posted yourself on your Halo post, text Halo at
                 (415) 726-3224: &ldquo;Halo, add this video to the top of my post [your post&apos;s link]: [your
