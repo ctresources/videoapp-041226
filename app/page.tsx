@@ -12,7 +12,6 @@ import {
 import type { Metadata } from "next";
 import { canonicalUrl } from "@/lib/seo/public-pages";
 import { PricingSection } from "@/components/marketing/pricing-section";
-import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import { Hero } from "@/components/marketing/hero";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -385,15 +384,8 @@ export default function LandingPage() {
 
       {/* ── Hero ── moving Speak → Spark → Share demo with the real video
           (2026-10-26, the owner's approved mockup). */}
+      {/* "What buyers in your area ask AI" is in the hero, under the demo. */}
       <Hero />
-
-      {/* "What buyers in your area ask AI", moved from the hero to just under
-          it (2026-10-26) so the hero has room to move. */}
-      <section className="px-4 sm:px-6 py-10 bg-[#f7f3ea] border-b border-slate-200">
-        <div className="max-w-3xl mx-auto">
-          <AiQuestionsBox />
-        </div>
-      </section>
 
       {/* ── Scrolling Video Strip ── */}
       <section className="py-12 bg-slate-900 border-y border-slate-800">

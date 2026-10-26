@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Mic, Play, Volume2, VolumeX, X } from "lucide-react";
+import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import s from "./hero.module.css";
 
 /**
@@ -127,6 +128,9 @@ export function Hero() {
           <p className="mt-2 text-base text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
         </div>
 
+        {/* The demo a little lower, with the AI-questions form right under it
+            (2026-10-26, the owner's ask). */}
+        <div className="flex flex-col gap-8 lg:pt-12">
         <div
           className={s.stage}
           onMouseMove={(e) => {
@@ -209,6 +213,8 @@ export function Hero() {
               </div>
             </div>
           </div>
+        </div>
+        <AiQuestionsBox />
         </div>
       </div>
 
