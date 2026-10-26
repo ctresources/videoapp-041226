@@ -56,7 +56,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone")
+      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone, brand_colors")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -72,6 +72,7 @@ export default function SettingsPage() {
           heygen_digital_twin_group_id: string | null; heygen_digital_twin_look_id: string | null;
           default_cta: string | null; market_years: string | null;
           time_zone: string | null;
+          brand_colors: string[] | null;
         } | null;
         if (row) {
           setPrefs({
@@ -105,6 +106,7 @@ export default function SettingsPage() {
             license_number:  row.license_number,
             heygen_digital_twin_group_id: row.heygen_digital_twin_group_id,
             heygen_digital_twin_look_id:  row.heygen_digital_twin_look_id,
+            brand_colors:    row.brand_colors ?? [],
           });
         }
         setLoaded(true);

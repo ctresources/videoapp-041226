@@ -25,6 +25,10 @@ interface Body {
   headline?: string;
   subline?: string;
   accent?: string;
+  /** The headline's font, size multiplier and colour (2026-10-25). */
+  font?: string;
+  textSize?: number;
+  textColor?: string;
   showLogo?: boolean;
   showHeadshot?: boolean;
   projectId?: string;
@@ -167,6 +171,11 @@ export async function POST(req: NextRequest) {
     headline: (body.headline || "").slice(0, 120),
     subline: (body.subline || "").slice(0, 160),
     accent: body.accent,
+    font: body.font === "anton" || body.font === "montserrat" ? body.font : "archivo",
+    textSize: typeof body.textSize === "number" && Number.isFinite(body.textSize)
+      ? Math.min(1.3, Math.max(0.7, body.textSize))
+      : 1,
+    textColor: body.textColor,
     showLogo: body.showLogo !== false,
     showHeadshot: !!body.showHeadshot,
     // Whatever is in the boxes, trimmed to what a card can hold. Nothing here

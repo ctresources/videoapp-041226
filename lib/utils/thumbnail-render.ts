@@ -28,17 +28,21 @@ const TH = 1920;
 // boxes. Instead we bundle Anton (OFL license — the classic tall condensed
 // YouTube-thumbnail font) and convert every string to vector <path> outlines
 // with opentype.js — renders identically on any server, no fontconfig needed.
-/** The bundled fonts the thumbnail words can be set in (2026-10-25). */
-const FONT_FILES: Record<ThumbFont, string[]> = {
-  anton: ["fonts", "Anton-Regular.ttf"],
-  archivo: ["fonts", "ArchivoBlack-Regular.ttf"],
-  montserrat: ["public", "fonts", "Montserrat-ExtraBold.ttf"],
-};
+/**
+ * The bundled fonts the thumbnail words can be set in (2026-10-25). Literal
+ * paths under /fonts, one per font: the deployment's file tracer cannot follow
+ * a path built from a table (see image-render.ts), and /public is not bundled.
+ */
+function readFontFile(font: ThumbFont): Buffer {
+  if (font === "archivo") return readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
+  if (font === "montserrat") return readFileSync(path.join(process.cwd(), "fonts", "Montserrat-SemiBold.ttf"));
+  return readFileSync(path.join(process.cwd(), "fonts", "Anton-Regular.ttf"));
+}
 const _fonts = new Map<ThumbFont, opentypeNs.Font>();
 function getFont(font: ThumbFont = "anton"): opentypeNs.Font {
   let f = _fonts.get(font);
   if (!f) {
-    const buf = readFileSync(path.join(process.cwd(), ...FONT_FILES[font]));
+    const buf = readFontFile(font);
     f = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
     _fonts.set(font, f);
   }
@@ -446,13 +450,14 @@ export async function renderAndSaveThumbnail(
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("full_name, avatar_url, location_city, location_state")
+    .select("full_name, avatar_url, location_city, location_state, brand_colors")
     .eq("id", opts.userId)
     .single();
 
   const p = profile as {
     full_name: string | null; avatar_url: string | null;
     location_city: string | null; location_state: string | null;
+    brand_colors: string[] | null;
   } | null;
 
   // Project context — title for the "no repeated words" rule, market for the scene
@@ -579,6 +584,7 @@ export async function renderAndSaveThumbnail(
       scene: sceneUsed || undefined,
       city,
       state,
+      brandColors: p?.brand_colors ?? [],
     });
 
     if (aiBg) {

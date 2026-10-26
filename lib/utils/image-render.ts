@@ -44,6 +44,10 @@ export interface ImageText {
   subline?: string;
   /** #rrggbb for the kicker pill. */
   accent?: string;
+  /** The headline's font, size multiplier (0.7 to 1.3) and colour (2026-10-25). */
+  font?: "archivo" | "anton" | "montserrat";
+  textSize?: number;
+  textColor?: string;
   showLogo?: boolean;
   showHeadshot?: boolean;
   /**
@@ -72,7 +76,7 @@ let _font: opentypeNs.Font | null = null;
  * Both are already in the repo. No third file, and nothing fetched at render
  * time: a font that has to be downloaded is a picture that fails at midnight.
  */
-type FaceName = "display" | "text";
+type FaceName = "display" | "text" | "condensed";
 const _faces: Partial<Record<FaceName, opentypeNs.Font>> = {};
 
 /**
@@ -92,7 +96,9 @@ function getFont(face: FaceName = "display"): opentypeNs.Font {
   if (cached) return cached;
   const buf = face === "text"
     ? readFileSync(path.join(process.cwd(), "fonts", "Montserrat-SemiBold.ttf"))
-    : readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
+    : face === "condensed"
+      ? readFileSync(path.join(process.cwd(), "fonts", "Anton-Regular.ttf"))
+      : readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
   const parsed = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
   _faces[face] = parsed;
   return parsed;
@@ -226,6 +232,8 @@ export async function makeBackground(opts: {
         .toBuffer();
     }
   } else {
+    // The agent's brand colours as the palette, so images differ per agent (2026-10-25).
+    const { data: brandRow } = await admin.from("profiles").select("brand_colors").eq("id", opts.userId).maybeSingle();
     const generated = await generateImageBackground({
       template: opts.template,
       scene: opts.scene,
@@ -233,6 +241,7 @@ export async function makeBackground(opts: {
       state: opts.state,
       orientation,
       variant: opts.variant,
+      brandColors: (brandRow as { brand_colors: string[] | null } | null)?.brand_colors ?? [],
     });
     if (generated) {
       ai = true;
@@ -517,8 +526,19 @@ export async function renderImage(opts: {
   const kPadX = Math.round(kSize * 0.8);
   const kH = Math.round(kSize * 2);
 
+  // The headline's font, size and colour, as chosen on the Image tab (2026-10-25).
+  const hlFace: FaceName = opts.text.font === "anton" ? "condensed" : opts.text.font === "montserrat" ? "text" : "display";
+  const hlScale = typeof opts.text.textSize === "number" ? Math.min(1.3, Math.max(0.7, opts.text.textSize)) : 1;
+  const hlColor = opts.text.textColor && HEX.test(opts.text.textColor) ? opts.text.textColor : "#ffffff";
   const hl = headline
-    ? fitWrapped(headline, maxW, Math.round(w * (landscape ? 0.062 : 0.1)), Math.round(w * (landscape ? 0.032 : 0.05)), 3)
+    ? fitWrapped(
+        headline,
+        maxW,
+        Math.round(w * (landscape ? 0.062 : 0.1) * hlScale),
+        Math.round(w * (landscape ? 0.032 : 0.05) * Math.min(1, hlScale)),
+        3,
+        hlFace,
+      )
     : { size: 0, lines: [] as string[] };
   const hlLH = Math.round(hl.size * 1.1);
 
@@ -626,7 +646,7 @@ export async function renderImage(opts: {
   }
   if (hl.lines.length) {
     hl.lines.forEach((line, i) => {
-      parts.push(lineToPaths(line, M, y + Math.round(hl.size * 0.92) + i * hlLH, hl.size, "#ffffff"));
+      parts.push(lineToPaths(line, M, y + Math.round(hl.size * 0.92) + i * hlLH, hl.size, hlColor, hlFace));
     });
     y += hl.lines.length * hlLH + gap;
   }

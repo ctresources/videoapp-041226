@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Loader2, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import {
   THUMB_COLOURS,
   THUMB_FONTS,
@@ -29,7 +30,10 @@ const PREVIEW_FONT: Record<ThumbFont, string> = {
 };
 
 export function ThumbnailEditor(props: {
-  projectId: string;
+  /** With a project, stills from its finished video are offered as backgrounds. */
+  projectId?: string;
+  /** The caller's own controls (market, person, upload), shown under the style. */
+  children?: ReactNode;
   /** Listing photos on the project, offered as backgrounds after the stills. */
   photos: string[];
   headline: string;
@@ -45,8 +49,22 @@ export function ThumbnailEditor(props: {
   const [bg, setBg] = useState<string | null>(props.currentBg);
   const [words, setWords] = useState(props.headline);
   const [style, setStyle] = useState<ThumbStyle>(props.style);
+  /** The agent's brand colours from Settings, offered first. */
+  const [brandColors, setBrandColors] = useState<string[]>([]);
 
   useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("brand_colors").eq("id", user.id).maybeSingle();
+      const saved = ((data as { brand_colors: string[] | null } | null)?.brand_colors ?? [])
+        .filter((c) => /^#[0-9a-fA-F]{6}$/.test(c));
+      setBrandColors(saved);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!props.projectId) { setFrames([]); return; }
     let cancelled = false;
     fetch("/api/tools/thumbnail/frames", {
       method: "POST",
@@ -143,7 +161,9 @@ export function ThumbnailEditor(props: {
                 ))}
               </div>
             )}
-            <p className="mt-1.5 text-[11px] text-slate-400">The first pictures are stills from your video. Pick a moment you like.</p>
+            {props.projectId && (
+              <p className="mt-1.5 text-[11px] text-slate-400">The first pictures are stills from your video. Pick a moment you like.</p>
+            )}
           </div>
 
           {/* Words */}
@@ -208,7 +228,7 @@ export function ThumbnailEditor(props: {
               >
                 Default
               </button>
-              {THUMB_COLOURS.map((c) => (
+              {[...brandColors, ...THUMB_COLOURS.filter((c) => !brandColors.includes(c))].map((c) => (
                 <button
                   key={c}
                   type="button"
@@ -227,7 +247,14 @@ export function ThumbnailEditor(props: {
                 className="h-7 w-9 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
               />
             </div>
+            {brandColors.length === 0 && (
+              <p className="mt-1.5 text-[11px] text-slate-400">Add your brand colours in Settings to see them first here.</p>
+            )}
           </div>
+
+          {props.children && (
+            <div className="border-t border-slate-100 pt-4">{props.children}</div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">

@@ -40,6 +40,8 @@ export interface BrandProfileInitial {
   heygen_digital_twin_look_id: string | null;
   /** Chosen HeyGen brand kit, applied to Video Agent graphics. Null = none. */
   heygen_brand_kit_id: string | null;
+  /** Up to three hex colours: thumbnail editor swatches and the AI image palette. */
+  brand_colors?: string[] | null;
 }
 
 interface BrandProfileProps {
@@ -1373,6 +1375,11 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
     license_number:   initial.license_number  || "",
   });
   const [saving, setSaving] = useState(false);
+  /** Brand colours (2026-10-25). Empty strings are unused slots. */
+  const [brandColors, setBrandColors] = useState<string[]>(() => {
+    const saved = (initial.brand_colors ?? []).filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)).slice(0, 3);
+    return [...saved, "", "", ""].slice(0, 3);
+  });
   /** Ticked means "you may text me". Unticking is how someone stops it. */
   const [smsConsent, setSmsConsent] = useState(!!initial.sms_consent_at);
 
@@ -1403,6 +1410,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         logo_url:        fields.logo_url               || null,
         website:         fields.website.trim()         || null,
         license_number:  fields.license_number.trim()  || null,
+        brand_colors:    brandColors.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)),
         onboarding_done: true,
       })
       .eq("id", userId);
@@ -1549,6 +1557,35 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
               shape="square"
               icon={ImageIcon}
             />
+          </div>
+          {/* Brand colours (2026-10-25): the thumbnail editor's first swatches
+              and the palette for AI backgrounds. Saved with Save Profile. */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Brand Colors</label>
+            <div className="flex flex-wrap items-center gap-3">
+              {brandColors.map((c, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    type="color"
+                    value={c || "#ffffff"}
+                    onChange={(e) => setBrandColors((all) => all.map((x, j) => (j === i ? e.target.value : x)))}
+                    aria-label={`Brand color ${i + 1}`}
+                    className="h-9 w-11 cursor-pointer rounded-lg border border-slate-200 bg-white p-0.5"
+                  />
+                  {c ? (
+                    <button
+                      type="button"
+                      onClick={() => setBrandColors((all) => all.map((x, j) => (j === i ? "" : x)))}
+                      className="text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      Clear
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400">Not set</span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

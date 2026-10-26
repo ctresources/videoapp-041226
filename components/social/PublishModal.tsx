@@ -1067,43 +1067,9 @@ ${hashes.join(" ")}` : hashes.join(" ");
                         setEditorOpen(false);
                         void buildPhotoThumb(backgroundUrl, false, undefined, words, style);
                       }}
-                    />
-                  )}
-                  {/* The words on the image, edited where they are read.
-                      This panel could change the market, the backdrop and the
-                      person on it, but not the largest thing on the picture —
-                      the one control that lived in another tool entirely. */}
-                  {projectId && (
-                    <div className="mt-2">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          value={headline}
-                          onChange={(e) => setHeadline(e.target.value)}
-                          placeholder="Words on the image — AI writes them if you leave this empty"
-                          className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => buildPhotoThumb(activePhoto || photos[0] || "")}
-                          disabled={thumbBusy}
-                          className="flex-none rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                        >
-                          {thumbBusy ? "…" : "Update"}
-                        </button>
-                      </div>
-                      {/* Said before the fifth word is lost rather than after:
-                          the renderer keeps four and drops the rest, which is
-                          silent and looks like a bug. */}
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        {headlineWords > 4
-                          ? `Four words fit — only the first four will print ("${headline.trim().split(/\s+/).slice(0, 4).join(" ").toUpperCase()}").`
-                          : headlineWords > 0
-                            ? `${headlineWords} of 4 words · printed in capitals`
-                            : "Three or four short words read best on a thumbnail."}
-                      </p>
-                    </div>
-                  )}
-
+                    >
+                      {/* The dialog's other thumbnail controls, moved here so the
+                          Publish dialog stays short (2026-10-25). */}
                   {/* What the picture shows — only where one is being drawn.
                       With listing photos on the project the backdrop strip
                       below already answers this, and a box that changed
@@ -1250,31 +1216,7 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       </div>
                     </div>
                   )}
-
-                  {/* Swap the backdrop. Built from the first photo already —
-                      this is for disagreeing with that pick. */}
-                  {photos.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-[11px] text-slate-400 mb-1.5">
-                        {thumbBusy ? "Building…" : "Tap a photo to use it as the backdrop"}
-                      </p>
-                      <div className="flex gap-1.5 overflow-x-auto pb-1">
-                        {photos.map((src) => (
-                          <button
-                            key={src}
-                            type="button"
-                            onClick={() => buildPhotoThumb(src)}
-                            disabled={thumbBusy}
-                            className={`h-12 w-20 flex-none overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
-                              activePhoto === src ? "border-primary-500" : "border-transparent hover:border-slate-300"
-                            }`}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={src} alt="" className="h-full w-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    </ThumbnailEditor>
                   )}
 
                   {/* Only once it is live. Before that the thumbnail goes up

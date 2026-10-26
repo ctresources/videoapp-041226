@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
+import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-style";
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
@@ -1507,6 +1509,9 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   };
 
   const [bgUrl, setBgUrl] = useState("");
+  /** The thumbnail editor (2026-10-25): font, size, colour and style of the words. */
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [thumbStyle, setThumbStyle] = useState<ThumbStyle>(DEFAULT_THUMB_STYLE);
 
   // Custom background photo (e.g. a listing exterior) — overrides the AI scene.
   const [customBg, setCustomBg] = useState("");
@@ -1611,8 +1616,12 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   // reuseBackground=true re-renders just the text/photo over the same scene —
   // takes seconds instead of regenerating a whole new AI background.
   // A custom uploaded photo always wins over both.
-  const generate = async (reuseBackground = false) => {
-    if (!headline.trim() && !projectId) {
+  const generate = async (
+    reuseBackground = false,
+    over?: { backgroundUrl?: string; headline?: string; style?: ThumbStyle },
+  ) => {
+    const words = (over?.headline ?? headline).trim();
+    if (!words && !projectId) {
       toast.error("Select a project (AI writes the text) or type a 3–4 word headline");
       return;
     }
@@ -1622,11 +1631,12 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          headline: headline.trim() || undefined,
+          headline: words || undefined,
           projectId: projectId || undefined,
           photoUrl: photoUrl || undefined,
           photoSide,
-          backgroundUrl: customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
+          backgroundUrl: over?.backgroundUrl || customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
+          style: over?.style ?? thumbStyle,
           // The boxes mean what they show. Changed and emptied is "no badge";
           // changed and filled is that market; untouched says nothing, and the
           // thumbnail keeps the market it had.
@@ -1643,6 +1653,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         throw new Error(data.error);
       }
       setThumbUrl(data.url);
+      if (over?.style) setThumbStyle(over.style);
       if (data.headline) setHeadline(data.headline);
       if (data.backgroundUrl) setBgUrl(data.backgroundUrl);
       // What was printed, into the boxes that edit it. They used to sit empty
@@ -1826,6 +1837,29 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
           </div>
+          <button
+            type="button"
+            onClick={() => setEditorOpen(true)}
+            disabled={loading}
+            className="mt-3 w-full max-w-2xl rounded-xl border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+          >
+            Edit thumbnail
+          </button>
+          {editorOpen && (
+            <ThumbnailEditor
+              projectId={projectId || undefined}
+              photos={[customBg, bgUrl].filter((u): u is string => !!u)}
+              headline={headline}
+              style={thumbStyle}
+              currentBg={customBg || bgUrl || null}
+              busy={loading}
+              onClose={() => setEditorOpen(false)}
+              onApply={({ backgroundUrl, headline: words, style }) => {
+                setEditorOpen(false);
+                void generate(true, { backgroundUrl: backgroundUrl || undefined, headline: words, style });
+              }}
+            />
+          )}
           {/* Inline text editor — edit text/photo above, then Update Thumbnail */}
           <div className="mt-3">
             <label className="block text-xs font-semibold text-slate-600 mb-1">Edit Thumbnail Text</label>
@@ -2719,6 +2753,10 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
   const [headline, setHeadline] = useState("");
   const [subline, setSubline] = useState("");
   const [accent, setAccent] = useState(IMAGE_ACCENTS[0]);
+  /** The headline's font, size and colour (2026-10-25). */
+  const [hlFont, setHlFont] = useState<"archivo" | "anton" | "montserrat">("archivo");
+  const [hlSize, setHlSize] = useState(1);
+  const [hlColor, setHlColor] = useState("#ffffff");
   const [showLogo, setShowLogo] = useState(true);
   const [showHeadshot, setShowHeadshot] = useState(false);
   const [bgSource, setBgSource] = useState<ImageBgSource>("ai");
@@ -2889,6 +2927,7 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       headline: headline.trim(),
       subline: subline.trim(),
       accent, showLogo, showHeadshot,
+      font: hlFont, textSize: hlSize, textColor: hlColor,
       fit: fitWhole ? "whole" : "fill",
       stats: stats.filter((st) => st.label.trim() && st.value.trim()),
       source: statSource.trim(),
@@ -3212,6 +3251,31 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
                 className={`h-6 w-6 rounded-full border ${accent === c ? "ring-2 ring-offset-1 ring-spark-amber border-slate-300" : "border-slate-300"}`}
                 style={{ background: c }} />
             ))}
+          </div>
+        </div>
+        {/* The headline's font, size and colour (2026-10-25). */}
+        <div>
+          <p className="text-sm font-medium text-slate-700 mb-1.5">Headline</p>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {([["archivo", "Heavy"], ["anton", "Condensed"], ["montserrat", "Clean"]] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setHlFont(id)} aria-pressed={hlFont === id}
+                className={`rounded-full border px-3 py-1 text-xs font-medium ${hlFont === id ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              Size
+              <input type="range" min={70} max={130} value={Math.round(hlSize * 100)}
+                onChange={(e) => setHlSize(Number(e.target.value) / 100)} className="w-28 accent-amber-600" />
+              <span>{Math.round(hlSize * 100)}%</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              Color
+              <input type="color" value={hlColor} onChange={(e) => setHlColor(e.target.value)}
+                className="h-7 w-9 cursor-pointer rounded border border-slate-200 bg-white p-0.5" />
+            </label>
           </div>
         </div>
       </div>

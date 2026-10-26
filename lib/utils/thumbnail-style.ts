@@ -21,7 +21,7 @@ export interface ThumbStyle {
 export const THUMB_FONTS: { id: ThumbFont; label: string }[] = [
   { id: "anton", label: "Condensed" },
   { id: "archivo", label: "Heavy" },
-  { id: "montserrat", label: "Bold" },
+  { id: "montserrat", label: "Clean" },
 ];
 
 export const THUMB_TEXT_STYLES: { id: ThumbTextStyle; label: string }[] = [

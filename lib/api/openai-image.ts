@@ -23,7 +23,19 @@ function getOpenAI(): OpenAI | null {
  * falls back to a plain background when a request fails, so the worst case of
  * a bad value is graphics that look like they did before the key was added.
  */
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-flare";
+// Sunburst since 2026-10-25 (the owner's ask for the latest model): OpenAI's
+// most capable image model, at the same $30 per million output tokens as Flare.
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst";
+
+/**
+ * The agent's brand colours as a palette line (2026-10-25), so two agents in
+ * the same town stop getting the same picture. Empty when none are set.
+ */
+function paletteLine(colors?: string[]): string {
+  const hex = (colors ?? []).filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)).slice(0, 3);
+  if (!hex.length) return "";
+  return `\nPalette: build the color grading around these brand colors, ${hex.join(", ")}: in the light, the sky, objects and accents where they look natural. Never flat blocks of color or tinted overlays.\n`;
+}
 
 /**
  * The bytes of a generated image, however this model chose to return them.
@@ -66,6 +78,8 @@ export async function generateThumbnailBackground(opts: {
    * same house.
    */
   scene?: string;
+  /** The agent's brand colours, used as the palette. */
+  brandColors?: string[];
 }): Promise<Buffer | null> {
   const openai = getOpenAI();
   if (!openai) {
@@ -90,7 +104,7 @@ export async function generateThumbnailBackground(opts: {
 SUBJECT: ${scene || `the subject of this video — "${(opts.topic || "").trim().slice(0, 140)}" — photographed literally, not a generic property shot`}
 
 Style: bright, vibrant, high-energy. Punchy color grading built around TWO dominant colors with one warm accent. Crisp daylight, high contrast, HD photographic quality. If the subject is outdoors, a deep saturated sky belongs in the upper frame; if it is indoors or a close subject, light it bright and clean instead.
-
+${paletteLine(opts.brandColors)}
 Composition: leave the right ~40% of the frame relatively clean and uncluttered (a presenter photo will be placed there); concentrate the hero imagery in the left ~60%. One clear subject — this is seen small, on a phone, while scrolling.
 
 STRICT RULES:
@@ -185,6 +199,8 @@ export async function generateImageBackground(opts: {
   orientation: "portrait" | "landscape";
   /** 0 for the first option; anything else asks for a different take. */
   variant: number;
+  /** The agent's brand colours, used as the palette. */
+  brandColors?: string[];
 }): Promise<Buffer | null> {
   const openai = getOpenAI();
   if (!openai) {
@@ -249,7 +265,7 @@ ${scene ? "" : `MOOD: ${mood}
 Style: natural light, true-to-life color, sharp detail, ${editorial
     ? "editorial magazine photography. Photograph the SUBJECT of the article — a house belongs in frame only if the article is about a house."
     : "professional real estate photography."} Believable, not glossy CGI.
-
+${paletteLine(opts.brandColors)}
 Composition: keep the lower third calmer and less detailed, because headline text will sit over it. Keep the key subject out of the top corners.
 
 STRICT RULES:
