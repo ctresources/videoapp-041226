@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play } from "lucide-react";
+import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { ListenButton } from "@/components/ui/listen-button";
@@ -59,18 +59,50 @@ function localInput(iso: string) {
   return new Date(d.getTime() - off).toISOString().slice(0, 16);
 }
 
-function Thumb({ d, big = false }: { d: HaloDraft; big?: boolean }) {
+function Thumb({ d, big = false, onOpen }: { d: HaloDraft; big?: boolean; onOpen?: () => void }) {
   const url = d.projects?.thumbnail_url;
   const vertical = d.setup.size !== "horizontal";
   const size = big
     ? vertical ? "h-[267px] w-[150px]" : "h-[113px] w-[200px]"
     : vertical ? "h-[139px] w-[78px]" : "h-[62px] w-[110px]";
+  const box = `${size} shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#5d7d8f] to-[#1f2f38]`;
+  // Tap to see it full size (2026-10-26, the owner's ask).
+  if (url && onOpen) {
+    return (
+      <button type="button" onClick={onOpen} aria-label="See the thumbnail full size" className={`${box} cursor-zoom-in ring-spark-amber transition hover:ring-2`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" className="h-full w-full object-cover" />
+      </button>
+    );
+  }
   return (
-    <div className={`${size} shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#5d7d8f] to-[#1f2f38]`}>
+    <div className={box}>
       {url
         // eslint-disable-next-line @next/next/no-img-element
         ? <img src={url} alt="" className="h-full w-full object-cover" />
         : d.status === "writing" ? <div className="flex h-full items-center justify-center"><Loader2 size={16} className="animate-spin text-white/80" /></div> : null}
+    </div>
+  );
+}
+
+/** The thumbnail full size, wide and (for a vertical video) tall. */
+function ThumbView({ d, onClose }: { d: HaloDraft; onClose: () => void }) {
+  const wide = d.projects?.thumbnail_url;
+  const tall = d.setup.size !== "horizontal" ? d.projects?.seo_data?.thumbnail_tall_url : null;
+  if (!wide) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div className="relative flex max-h-full w-full max-w-5xl flex-col items-center gap-4 overflow-auto sm:flex-row sm:items-start sm:justify-center" onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-0 top-0 z-10 rounded-full bg-white/15 p-2 text-white hover:bg-white/25">
+          <X size={18} />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={wide} alt="Thumbnail" className="w-full max-w-3xl rounded-xl" />
+        {tall && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={tall} alt="Tall thumbnail" className="max-h-[80vh] w-auto rounded-xl" />
+        )}
+      </div>
     </div>
   );
 }
@@ -331,7 +363,6 @@ function ReadyPanel({ d, halo }: { d: HaloDraft; halo: Halo }) {
     <div className="mt-3 flex flex-col gap-3 rounded-xl border border-spark-rule bg-[#faf9f5] p-3">
       <WhenInput d={d} halo={halo} />
       <div className="flex flex-wrap gap-2">
-        <ThumbEdit d={d} halo={halo} />
         <Button size="sm" variant="outline" onClick={() => setWords((w) => !w)}>
           {words ? "Close title and caption" : "Edit title and caption"}
         </Button>
@@ -347,6 +378,7 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
   const [sheet, setSheet] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rewriting, setRewriting] = useState(false);
+  const [viewThumb, setViewThumb] = useState(false);
   const title = d.projects?.ai_script?.title || d.topic;
   const hook = d.projects?.ai_script?.hook;
   const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
@@ -390,7 +422,8 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
   return (
     <div className="rounded-2xl border border-spark-rule bg-white p-4">
       <div className="flex gap-3.5">
-        {!open && <Thumb d={d} />}
+        {!open && <Thumb d={d} onOpen={() => setViewThumb(true)} />}
+        {viewThumb && <ThumbView d={d} onClose={() => setViewThumb(false)} />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
             <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
@@ -446,6 +479,8 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
                     <Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button>
                   </a>
                 )}
+                {/* Next to Watch, so the thumbnail is checked too (2026-10-26). */}
+                <ThumbEdit d={d} halo={halo} />
                 <Button size="sm" onClick={() => void approve("approve")} loading={approving}>Approve to post</Button>
               </>
             )}

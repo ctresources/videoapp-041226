@@ -34,7 +34,7 @@ export interface HaloDraft {
     /** For the card's word and thumbnail editors (2026-10-26). */
     seo_data?: {
       youtube_title?: string; youtube_description?: string;
-      thumbnail_headline?: string; thumbnail_style?: unknown;
+      thumbnail_headline?: string; thumbnail_style?: unknown; thumbnail_tall_url?: string;
     } | null;
   } | null;
   /** Filled in after posting: the YouTube link and the finished file. */
